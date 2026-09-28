@@ -174,7 +174,12 @@ import {
   ensureOpeningGeneratedScenarioPropPackage,
   syncVisiblePointLightBudget,
 } from './precompile.js';
-import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
+import {
+  detectGpu,
+  createAdaptiveResolution,
+  shouldSuggestIntegratedPreset,
+  INTEGRATED_PRESET_SUGGESTION,
+} from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { perfCountersRequested } from '../core/perfCounters.js';
@@ -186,6 +191,7 @@ import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
   noteRealtimeShadowCasterPose,
+  shouldNoteRealtimeShadowCasterPose,
   SHADOW_MAP_SIZE,
   SHADOW_ORTHO_EXTENT,
   shadowCastAxisDistance,
@@ -602,6 +608,13 @@ const OPENING_PICTURE_HOLD_FAILSAFE_MS = 15000;
 // stamp is still missing after this much longer, treat the armed afterBrowserPaint chain as lost
 // and let shouldScheduleFirstPlayablePaintRelease re-arm it (the release is idempotent).
 const FIRST_PLAYABLE_PAINT_REARM_MS = 2000;
+// Live-flight admission slices pace one slot per present through yieldToNextPresent. On a
+// healthy cadence that is exactly right — each bounded slice lands just after its present
+// and the next beat is only ~16 ms away. Once presents run slower than ~40 fps the same
+// pacing strands multi-subject chains (a convoy's serial compile tail) for dozens of
+// presents while the compositor's idle window sits unspent. Racing the resume against a
+// tighter bound keeps ≥40 fps behavior identical — rAF always wins — and drains below it.
+const FLIGHT_ADMISSION_PRESENT_BOUND_MS = 24;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -1915,6 +1928,74 @@ const _clearanceVecA = typeof THREE !== 'undefined' ? new THREE.Vector3() : null
 const _clearanceVecB = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
 const _clearanceVecC = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
 
+// Field rocks are uniformly scaled by entity radius on `asteroidBody`. Unit-ish displaced
+// geo spans ~2R; veins/gas hulls add <~25%. When that upper bound cannot clear the 120 WU
+// span bar, skip setFromObject — drifting rocks re-invalidate the numeric cache every WU
+// and otherwise re-enter updateWorldMatrix under camera.follow (quiet profile).
+// (vm-drop camera-clearance-asteroid-span-reject)
+let CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = true;
+// After span-reject: undersized field rocks still re-entered the floor walk every WU
+// (pos-keyed cache miss → re-reject). Sticky never-roof + structural exclude keeps them
+// off the per-frame walk until scale/asset changes. Soft-GPU fps not claimed.
+// (vm-drop camera-clearance-never-roof-exclude)
+let CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE = true;
+export function setCameraClearanceAsteroidSpanRejectForBench(enabled) {
+  CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = enabled !== false;
+  return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT;
+}
+export function getCameraClearanceAsteroidSpanRejectForBench() {
+  return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT !== false;
+}
+export function setCameraClearanceAsteroidNeverRoofExcludeForBench(enabled) {
+  CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE = enabled !== false;
+  return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE;
+}
+export function getCameraClearanceAsteroidNeverRoofExcludeForBench() {
+  return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE !== false;
+}
+
+// Settled / quiet-chase clearance: retain the last floor so follow() skips the structural
+// walk + box-cache hits. Retain KEY quantizes cam X/Y/Z to 0.25 WU (same cell as #53/#77);
+// exact floats still drive the AABB walk on cell change. Box rewrites bump a module epoch
+// so a drifting capital rock / authored stamp change cannot return a stale roof.
+// Soft-GPU fps not claimed. (vm-drop camera-clearance-floor-retain + -pos-quantize)
+let CAMERA_CLEARANCE_FLOOR_RETAIN = true;
+let _clearanceBoxEpoch = 0;
+export function setCameraClearanceFloorRetainForBench(enabled) {
+  CAMERA_CLEARANCE_FLOOR_RETAIN = enabled !== false;
+  return CAMERA_CLEARANCE_FLOOR_RETAIN;
+}
+export function getCameraClearanceFloorRetainForBench() {
+  return CAMERA_CLEARANCE_FLOOR_RETAIN !== false;
+}
+
+// Quiet chase drift used to miss floor retain every frame: cam floats creep by ≪ glass,
+// so bit-identical keys never matched in flight (settled-only retain). Quantize the retain
+// KEY (not the AABB walk) to the same 0.25 WU cell as authored-instance / presentation
+// query retain. Exact floats still drive the structural walk on cell change. Margin is
+// 16 WU, so a one-cell delay at an AABB edge is negligible. Soft-GPU fps not claimed.
+const CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANT_WU = 0.25;
+let CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE = true;
+export function setCameraClearanceFloorRetainPosQuantizeForBench(enabled) {
+  CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE = enabled !== false;
+  return CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE;
+}
+export function getCameraClearanceFloorRetainPosQuantizeForBench() {
+  return CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE !== false;
+}
+function quantizeClearanceRetainPos(value) {
+  if (CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE === false) return value;
+  const q = CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANT_WU;
+  return Math.round(value / q) * q;
+}
+
+function asteroidClearanceSpanHint(data) {
+  const body = data && data.asteroidBody;
+  if (!body || !body.scale) return 0;
+  const scale = Math.abs(Number(body.scale.x) || 0);
+  return scale > 0 ? scale * 2.5 : 0;
+}
+
 function clearanceBoundUnsettled(data) {
   if (!data) return true;
   if (data.geometryPending === true) return true;
@@ -1931,6 +2012,15 @@ function clearanceBoundUnsettled(data) {
 function cameraClearanceBoxForMesh(mesh) {
   const data = mesh && mesh.userData;
   if (!data || !CAMERA_CLEARANCE_KINDS.has(data.kind)) return null;
+  // Sticky never-roof: undersized asteroids cannot clear the span bar at any position.
+  // Do not invalidate on drift — only on scale change (capital promotion / authoring).
+  if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid'
+      && data.cameraClearanceNeverRoof === true) {
+    const body = data.asteroidBody;
+    const scaleX = body && body.scale ? Math.abs(Number(body.scale.x) || 0) : 0;
+    if (data.cameraClearanceNeverRoofScale === scaleX) return null;
+    data.cameraClearanceNeverRoof = false;
+  }
   // A model that is still arriving does not have a roof. Measuring the stand-in, or the
   // half-built body, is what yanked the camera up and down while stations loaded.
   if (clearanceBoundUnsettled(data)) return null;
@@ -1944,6 +2034,25 @@ function cameraClearanceBoxForMesh(mesh) {
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
       && cached.posX === posX && cached.posZ === posZ) {
     return cached;
+  }
+  if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid') {
+    const hint = asteroidClearanceSpanHint(data);
+    if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
+      const body = data.asteroidBody;
+      data.cameraClearanceNeverRoof = true;
+      data.cameraClearanceNeverRoofScale = body && body.scale
+        ? Math.abs(Number(body.scale.x) || 0) : 0;
+      const rec = cached || (data.cameraClearanceBox = {});
+      rec.assetState = assetState;
+      rec.compositionId = compositionId;
+      rec.posX = posX;
+      rec.posZ = posZ;
+      rec.box = null;
+      rec.grid = null;
+      _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+      return rec;
+    }
+    data.cameraClearanceNeverRoof = false;
   }
   _clearanceBoxScratch.setFromObject(mesh);
   let box = null;
@@ -1973,6 +2082,7 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.posZ = posZ;
   rec.box = box;
   rec.grid = grid;
+  _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
   return rec;
 }
 
@@ -2082,11 +2192,87 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
     if (!structural) structural = owner._clearanceMeshes = [];
     structural.length = 0;
     for (const mesh of meshes.values()) {
-      const kind = mesh && mesh.userData && mesh.userData.kind;
-      if (CAMERA_CLEARANCE_KINDS.has(kind)) structural.push(mesh);
+      const data = mesh && mesh.userData;
+      const kind = data && data.kind;
+      if (!CAMERA_CLEARANCE_KINDS.has(kind)) continue;
+      // Quiet Ceres: dozens of field rocks can never roof. Keep them off the per-frame
+      // structural walk (rebuild only on _meshesVersion). Scale growth clears the sticky bit.
+      if (CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE
+          && CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT
+          && kind === 'asteroid') {
+        const hint = asteroidClearanceSpanHint(data);
+        if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
+          const body = data.asteroidBody;
+          data.cameraClearanceNeverRoof = true;
+          data.cameraClearanceNeverRoofScale = body && body.scale
+            ? Math.abs(Number(body.scale.x) || 0) : 0;
+          continue;
+        }
+        data.cameraClearanceNeverRoof = false;
+      }
+      structural.push(mesh);
     }
     owner._clearanceMeshesVersion = owner._meshesVersion;
   }
+  if (CAMERA_CLEARANCE_FLOOR_RETAIN) {
+    // Moving structural kinds (asteroid / wreck) can drift or grow without a
+    // _meshesVersion bump; never retain across them — full walk stays authoritative.
+    // Stations/places are authored-static: cam identity + boxEpoch + a light
+    // authored-stamp check is enough (pending→authored must not return a stale
+    // -Infinity from the empty-substrate frame).
+    let staticStructural = true;
+    for (let i = 0; i < structural.length; i++) {
+      const kind = structural[i] && structural[i].userData && structural[i].userData.kind;
+      if (kind === 'asteroid' || kind === 'wreck') { staticStructural = false; break; }
+    }
+    const cache = owner._clearanceFloorCache || (owner._clearanceFloorCache = {
+      camX: NaN,
+      camZ: NaN,
+      camY: NaN,
+      meshesVersion: -1,
+      boxEpoch: -1,
+      floor: -Infinity,
+    });
+    const qCamX = quantizeClearanceRetainPos(camX);
+    const qCamZ = quantizeClearanceRetainPos(camZ);
+    const qCamY = quantizeClearanceRetainPos(camY);
+    if (staticStructural
+        && cache.camX === qCamX && cache.camZ === qCamZ && cache.camY === qCamY
+        && cache.meshesVersion === owner._clearanceMeshesVersion
+        && cache.boxEpoch === _clearanceBoxEpoch) {
+      // Quiet flight is almost always off-roof (floor === -Infinity). Trust the
+      // quantized cam cell there — spawn/despawn bumps _meshesVersion. Under a
+      // roof, also confirm authored stamps so pending→authored on a station
+      // cannot keep a stale empty floor (PIC-07 style in-place stamp without
+      // map churn). Exact floats still drive the AABB walk below on cell miss.
+      if (cache.floor === -Infinity) return cache.floor;
+      let stampsFresh = true;
+      for (let i = 0; stampsFresh && i < structural.length; i++) {
+        const data = structural[i].userData;
+        const cached = data && data.cameraClearanceBox;
+        if (!cached
+            || cached.assetState !== (data.authoredAssetState || '')
+            || cached.compositionId !== (data.authoredCompositionId || '')) {
+          stampsFresh = false;
+        }
+      }
+      if (stampsFresh) return cache.floor;
+    }
+    const floor = cameraClearanceFloorWalk(structural, camX, camZ, camY);
+    cache.camX = qCamX;
+    cache.camZ = qCamZ;
+    cache.camY = qCamY;
+    cache.meshesVersion = owner._clearanceMeshesVersion;
+    cache.boxEpoch = _clearanceBoxEpoch;
+    cache.floor = floor;
+    return floor;
+  }
+  return cameraClearanceFloorWalk(structural, camX, camZ, camY);
+}
+
+// The structural walk itself — grid-aware box/occupancy lookup shared by the retain and
+// always-walk paths so a bench-off frame is bit-identical to a retained-frame miss.
+function cameraClearanceFloorWalk(structural, camX, camZ, camY) {
   let floor = -Infinity;
   for (let i = 0; i < structural.length; i++) {
     const rec = cameraClearanceBoxForMesh(structural[i]);
@@ -6360,12 +6546,13 @@ export const render = {
       floor: dynFloor,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
     });
-    // Dynamic resolution is reserved for the SOFTWARE-rendering emergency. Every scale change
-    // reallocates the whole render-target chain (canvas + HDR + bloom pyramid), which measured as
-    // 0.5-1.3s render stalls on this class of hardware (.devshots/perf/hitch-budget-after-lightfix*
-    // vs *-nodynres) — on hardware tiers the controller caused more visible hitching than it
-    // prevented, while steady-state already holds the frame budget at full quality.
-    this._dynResAllowed = gpu.tier === 'software';
+    // Dynamic resolution is allowed for SOFTWARE (emergency) and INTEGRATED (opt-in setting).
+    // Scale changes used to reallocate the whole render-target chain (0.5-1.3s stalls on this
+    // class of hardware — .devshots/perf/hitch-budget-after-lightfix* vs *-nodynres). The bloom
+    // target pool now pre-allocates at max size and renders into viewport sub-rects via
+    // setContentScale — zero realloc on scale change — so integrated can opt in safely.
+    // Discrete stays off: steady-state already holds the frame budget at full quality.
+    this._dynResAllowed = gpu.tier === 'software' || gpu.tier === 'integrated';
     this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
 
     if (gpu.software) {
@@ -6388,6 +6575,17 @@ export const render = {
           });
         } catch (_) { /* toast is best-effort; the console log above still records it */ }
       }, 1200);
+    }
+
+    // Opt-in integrated-GPU preset suggestion. Never auto-applies — PERF_WHAT_MATTERS forbids
+    // silent bloom/shadow cuts. One toast per boot when detectGpu reports integrated.
+    if (shouldSuggestIntegratedPreset(gpu, state.settings && state.settings.video) && !this._integratedPresetSuggested) {
+      this._integratedPresetSuggested = true;
+      scheduleTimeout(() => {
+        try {
+          bus.emit('toast', { ...INTEGRATED_PRESET_SUGGESTION });
+        } catch (_) { /* toast is best-effort */ }
+      }, 1600);
     }
 
     // ?perf — auto-enable the on-screen FPS/GPU/scale overlay for quick self-diagnosis.
@@ -6444,6 +6642,7 @@ export const render = {
       }
       return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene);
     };
+    const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
@@ -6506,7 +6705,7 @@ export const render = {
         return finish(compileSubjectsAcrossPresents(
           sliced,
           (subject) => compileSubjectColorAndDepth(subject, route, compileOptions),
-          yieldToNextPresent,
+          admissionPaceYield,
         ));
       }
       if (batch.length === 1) {
@@ -6559,7 +6758,7 @@ export const render = {
         ? null
         : createSlicedYield(async () => {
           if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
-            await yieldToNextPresent();
+            await admissionPaceYield();
           } else {
             await yieldToBrowser();
           }
@@ -9565,15 +9764,15 @@ export const render = {
         // the receipt entirely. Give the published plan a bounded window first; on KHR runners the
         // warmup never runs, so self-build immediately.
         let plan = state.render.openingSubmissionPlan;
+        // Soft-GPU / no-KHR: a prior miss showed waiting here just renamed cost into
+        // drainWait+residency (~2.5 s wall). Do not poll — use a plan already published
+        // by the concurrent warmup if present, otherwise self-build below.
         if (!plan && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
           const planWaitStarted = openingNow();
-          while (!state.render.openingSubmissionPlan
-              && openingNow() - planWaitStarted < 8000
-              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-          recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted,
-            state.render.openingSubmissionPlan ? 'resolved' : 'timeout');
+          recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted, 'skipped', {
+            budgetMs: 0,
+            reason: 'soft-gpu-self-build',
+          });
           plan = state.render.openingSubmissionPlan || null;
         }
         if (!plan) plan = buildOpeningSubmissionPlan();
@@ -9601,6 +9800,15 @@ export const render = {
           return { skipped: true, reason: 'opening-plan-incomplete' };
         }
         openingStepStarted = openingNow();
+        const softGpuOpening = !shouldAwaitOpeningGpuCook({
+          gpu: state.render && state.render.gpu,
+          renderer,
+        });
+        // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
+        // bounded so this stage yields back to the loading/flight event loop sooner.
+        // Also pass deadlineMs into the uploader — Promise.race alone misses sync initTexture
+        // bursts that starve the timer until well past the budget.
+        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           // Same sliced cadence as the end-of-cook census: per-item task hops
           // cost more than the small uploads themselves on a contended host.
@@ -9608,6 +9816,7 @@ export const render = {
           includeEmpty: true,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
+          deadlineMs: softGpuOpening ? residencyBudgetMs : undefined,
         });
         const result = await Promise.race([
           residency,
@@ -9615,15 +9824,23 @@ export const render = {
             skipped: true,
             reason: 'loading-budget',
             textures: 0,
-          }), 5000)),
+          }), residencyBudgetMs)),
         ]);
-        recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted,
-          result && result.reason === 'loading-budget' ? 'timeout' : 'resolved', {
-            subjects: Array.isArray(plan.residencySubjects) ? plan.residencySubjects.length : undefined,
-            textureRefs: Array.isArray(plan.textureRefs) ? plan.textureRefs.length : undefined,
-            textures: result ? result.textures : undefined,
-          });
-        if (result && result.skipped === true) {
+        const residencyOutcome = result && (
+          result.reason === 'loading-budget'
+          || result.reason === 'loading-deadline'
+          || result.reason === 'loading-deadline-partial'
+        ) ? 'timeout' : 'resolved';
+        recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted, residencyOutcome, {
+          subjects: Array.isArray(plan.residencySubjects) ? plan.residencySubjects.length : undefined,
+          textureRefs: Array.isArray(plan.textureRefs) ? plan.textureRefs.length : undefined,
+          textures: result ? result.textures : undefined,
+          reason: result && result.reason || undefined,
+        });
+        // Soft-GPU partial deadline must continue to receipt. Only abandon when residency
+        // itself refused the whole stage (legacy loading-budget skip without partial work).
+        if (result && result.skipped === true && result.partial !== true
+            && result.reason !== 'loading-deadline-partial') {
           result.openingSubmissionPlan = plan;
           return result;
         }
@@ -9686,24 +9903,15 @@ export const render = {
         // presented frame. Give the published drain a bounded window to settle before the census;
         // on KHR runners the warmup never runs, so the handle stays unset and this skips.
         const drainWaitStarted = openingNow();
+        // Soft-GPU: the concurrent exact-plan drain still runs; awaiting it here was the
+        // dominant prepareOpeningGpuResources wall after planWait was removed (~1.9 s).
+        // Freeze the receipt with whatever is already resident and let mid-flight admission
+        // cover the rest — same fire-and-forget policy as waitForOpeningGpuResources.
         if (!shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
-          while (!state.render.openingSubmissionReady
-              && openingNow() - drainWaitStarted < 2000
-              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-          const submission = state.render.openingSubmissionReady;
-          if (submission && typeof submission.then === 'function') {
-            const drainOutcome = await Promise.race([
-              Promise.resolve(submission).then(() => 'resolved', () => 'error'),
-              new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000)),
-            ]);
-            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, drainOutcome);
-          } else {
-            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
-              reason: 'no-submission-handle',
-            });
-          }
+          recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
+            budgetMs: 0,
+            reason: 'soft-gpu-no-await',
+          });
         }
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
@@ -12335,6 +12543,9 @@ export const render = {
       typeof norm.vignette === 'number' ? norm.vignette.toFixed(4) : '',
       typeof norm.toe === 'number' ? norm.toe.toFixed(4) : '',
       typeof norm.grain === 'number' ? norm.grain.toFixed(4) : '',
+      norm.postFx === false ? 0 : 1,
+      norm.sharpen === true ? 1 : 0,
+      Number.isFinite(norm.bloomLevels) ? (norm.bloomLevels | 0) : 2,
       video.ao === false ? 0 : 1,
       Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1)).toFixed(4),
     ].join('|');
@@ -12507,6 +12718,8 @@ export const render = {
       bloomThreshold: norm.bloomThreshold,
       exposure: norm.exposure,
       acesToneMapping: norm.acesToneMapping,
+      bloomLevels: norm.bloomLevels,
+      sharpen: norm.sharpen === true,
       grade: norm.grade,
       vignette: norm.vignette,
       toe: norm.toe,
@@ -13299,9 +13512,11 @@ export const render = {
       // the loading shell; leftovers stay off bloom until that stamp exists.
       const compileFn = this.state.render && this.state.render.compileObjectPipelines;
       if (!holdFirstFlightBuffers && typeof compileFn === 'function') {
-        if (compileAsteroid || !linkOnGlass) {
-          void compileFn(m);
-        } else {
+        // Backlog #24: time-slice in-flight admission (new ships + promoted rocks) the way
+        // loading already does — after present, not stacked on the mesh-build drain turn.
+        const sliceInFlight = this.state.mode === 'flight'
+          && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+        if (sliceInFlight || linkOnGlass) {
           const data = m.userData || (m.userData = {});
           data.pipelinesPending = true;
           const subject = m;
@@ -13313,6 +13528,8 @@ export const render = {
             }
             if (subject && subject.userData) subject.userData.pipelinesPending = false;
           });
+        } else {
+          void compileFn(m);
         }
       }
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
@@ -13698,9 +13915,11 @@ export const render = {
       _protectedRootOptions.forceRender = forceRender;
       _protectedRootOptions.neverCull = neverCull;
       const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
+      let poseApplied = false;
       if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
         | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
         posed = this._applyPresentationPose(slot, mesh, alpha);
+        poseApplied = !!posed;
         if (!posed && !protectedRoot) {
           if (applyEntityMeshVisibility(mesh, false)) {
             this._persistentSubmitLanes.markDirty(entityId, 'visibility');
@@ -13745,10 +13964,12 @@ export const render = {
       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
       // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
+      let shadowPolicyRefreshed = false;
       if (typeName === 'ship' || typeName === 'station') {
         // entity may be null for a world-record row; the retained stand-in keeps the old
         // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
         if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || _shadowFallbackEntity, mesh))) {
+          shadowPolicyRefreshed = true;
           shadowPolicyRefreshes++;
           noteShadowPolicyChanged(this._shadowReceiverTally, true);
           this._markShadowReceiversDirty();
@@ -13811,11 +14032,19 @@ export const render = {
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
       if (typeName === 'ship' || typeName === 'station') {
-        _shadowCasterPoseOptions.visualRadius = lodRadius;
-        _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
-        _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
-        if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
-          this._shadowMapDirty = true;
+        // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
+        // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
+        if (shouldNoteRealtimeShadowCasterPose(mesh, {
+          poseApplied,
+          visibilityChanged,
+          policyRefreshed: shadowPolicyRefreshed,
+        })) {
+          _shadowCasterPoseOptions.visualRadius = lodRadius;
+          _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
+          _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
+          if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
+            this._shadowMapDirty = true;
+          }
         }
       }
 
@@ -15042,12 +15271,55 @@ export const render = {
             }
           } else {
             this._openingMissingHoldSinceMs = null;
+            // Uncaptured extras (already resident) used to force extrasOnly fail-open and leave
+            // the identity gate red (quiet-witness: uncaptured-first-draw-resource). Recapture
+            // once so receipt.before absorbs the live census; prefer an honest ok over fail-open.
+            let stamped = null;
+            if (!this._openingExtrasRecaptured) {
+              this._openingExtrasRecaptured = true;
+              const plan = this.state.render.openingSubmissionPlan;
+              if (plan) {
+                try {
+                  const route = this._selectPostRoute();
+                  let postMaterials = [];
+                  if (route === POST_PROCESS_ROUTE.BLOOM
+                    && this.bloom && typeof this.bloom.openingProgramMaterials === 'function') {
+                    postMaterials = this.bloom.openingProgramMaterials();
+                  } else if (route === POST_PROCESS_ROUTE.GRAPH
+                    && this._renderGraph
+                    && typeof this._renderGraph.openingProgramMaterials === 'function') {
+                    postMaterials = this._renderGraph.openingProgramMaterials();
+                  }
+                  this.state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(
+                    this.renderer,
+                    plan,
+                    {
+                      scene: this.scene,
+                      programMaterials: postMaterials,
+                      shadowProgramKeys: (this._openingShadowAdmission
+                        && this._openingShadowAdmission.programCacheKeys) || [],
+                      shadowProgramBindingFailures: (this._openingShadowAdmission
+                        && this._openingShadowAdmission.programBindingFailures) || [],
+                    },
+                  );
+                  const refreshed = validateOpeningSubmissionReceipt(
+                    this.state.render.openingSubmissionReceipt,
+                    this.renderer,
+                  );
+                  stamped = refreshed.ok
+                    ? refreshed
+                    : { ...refreshed, ok: true, extrasOnly: true };
+                } catch (_) {
+                  stamped = null;
+                }
+              }
+            }
+            this.state.render.openingSubmissionPreSubmitValidation = stamped || {
+              ...preSubmitValidation,
+              ok: true,
+              extrasOnly: true,
+            };
           }
-          this.state.render.openingSubmissionPreSubmitValidation = {
-            ...preSubmitValidation,
-            ok: true,
-            extrasOnly: true,
-          };
         }
       }
       // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so
@@ -15766,9 +16038,12 @@ export const render = {
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
     const drawSize = applyRendererSize(this.renderer, this.state);
+    // Drawing buffer / RT pool sized at max (no dynResScale). Dyn scale is a content sub-rect.
+    const dyn = finiteInRange(this.state?.render?.dynResScale, 0.2, 1, 1);
     if (this.bloom) {
       const disp = displayPixelFootprint();
       this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
+      if (typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(dyn);
     }
     if (this._renderGraph && this.state?.settings?.video?.renderGraph === true) {
       const video = this.state?.settings?.video || {};
@@ -16075,8 +16350,8 @@ function applyRendererSize(renderer, state) {
   const vd = (state.settings && state.settings.video) || {};
   // Per-tier ceiling on the device pixel ratio. The renderScale 1.0 A/B that set the default
   // quality ran at DPR 1; an integrated GPU on a 200 % display would otherwise shade ~4.7x the
-  // validated pixel count, and dynamic resolution is deliberately off on hardware tiers, so
-  // nothing else would rescue that case. The player's own cap still applies beneath this.
+  // validated pixel count. Dyn-res used to also multiply here (and reallocate bloom targets);
+  // it now only shrinks the bloom content sub-rect via setContentScale — see _applySize.
   const tier = state.render && state.render.gpu && state.render.gpu.tier;
   const tierCap = tier === 'software' ? 1 : tier === 'integrated' ? 1.5 : 4;
   const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap);
@@ -16086,11 +16361,13 @@ function applyRendererSize(renderer, state) {
   const graphOwnsScale = vd.renderGraph === true
     && state.render?.renderGraphUnavailable !== true;
   const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
-  // Live dynamic-resolution multiplier (adaptiveQuality.js). Defaults to 1 (no effect) until the
-  // controller lowers it under GPU load; kept separate from the persisted renderScale so it recovers.
-  const dyn = finiteInRange(state.render && state.render.dynResScale, 0.2, 1, 1);
+  // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
+  // single size entry-point aware of the live multiplier (tests/probes still see the field), but
+  // the pixel ratio stays at the max pool size so bloom/post targets are not reallocated on scale
+  // change. _applySize forwards the multiplier to bloom.setContentScale.
+  void finiteInRange(state.render && state.render.dynResScale, 0.2, 1, 1);
   const base = Math.min(window.devicePixelRatio || 1, cap);
-  renderer.setPixelRatio(Math.max(0.2, base * scale * dyn));
+  renderer.setPixelRatio(Math.max(0.2, base * scale));
   renderer.setSize(window.innerWidth, window.innerHeight);
   return renderer.getDrawingBufferSize(_drawSize);
 }

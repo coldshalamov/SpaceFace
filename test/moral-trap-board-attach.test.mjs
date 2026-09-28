@@ -87,19 +87,25 @@ test('Helios keeps exactly its authored teaching trap — never a procedural sec
 
 test('a trapped offer accepted carries its trap into the active instance', () => {
   const h = boot(SEED);
+  // Individual boards may refuse a signature (collateral, standing) — the claim is about an
+  // accepted trapped run, so accept the first trapped offer the board will sign, while that
+  // board is current (ensureBoard replaces slots per epoch, so accept inline in the sweep).
+  let mission = null;
   let trappedOffer = null;
+  outer:
   for (const stationId of NON_HELIOS_STATIONS) {
-    for (let epoch = 0; epoch < 16 && !trappedOffer; epoch += 1) {
-      trappedOffer = boardAt(h, stationId, epoch).find((o) => o && o.trap) || null;
-      if (trappedOffer) break;
+    for (let epoch = 0; epoch < 16; epoch += 1) {
+      for (const offer of boardAt(h, stationId, epoch)) {
+        if (!offer || !offer.trap) continue;
+        if (h.missionsSys.acceptMission(offer.id) !== true) continue;
+        trappedOffer = offer;
+        mission = h.state.missions.active.find((m) => m && m.sourceOfferId === offer.id);
+        break outer;
+      }
     }
-    if (trappedOffer) break;
   }
-  assert.ok(trappedOffer, 'a trapped offer must exist somewhere on the route');
-  assert.equal(h.missionsSys.acceptMission(trappedOffer.id), true, 'the trapped offer accepts');
-  const mission = h.state.missions.active
-    .find((m) => m && m.sourceOfferId === trappedOffer.id);
-  assert.ok(mission, 'the accepted offer becomes an active mission');
+  assert.ok(trappedOffer, 'a trapped offer the board will sign must exist on the route');
+  assert.ok(mission, 'an accepted trapped offer becomes an active mission');
   assert.equal(mission.trap.id, trappedOffer.trap.id,
     'the trap rides the instance — the mid-run reveal can find it');
 });

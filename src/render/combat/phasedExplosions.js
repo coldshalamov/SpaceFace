@@ -317,6 +317,10 @@ export class PhasedExplosionLifecycle {
   }
 
   update(dt, emit) {
+    // Quiet open flight: capacity walk (prod 40) only continues on dead slots when
+    // activeCount===0. Trust the counter (start ++ / _release -- / clear); picture
+    // unchanged — emit never runs for inactive entries.
+    if (!(this.activeCount > 0)) return 0;
     const step = Math.max(0, finite(dt, 0));
     for (let entryIndex = 0; entryIndex < this.entries.length; entryIndex++) {
       const entry = this.entries[entryIndex];

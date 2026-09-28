@@ -133,6 +133,11 @@ def cli() -> argparse.Namespace:
     parser.add_argument("--places-root", type=Path, required=True)
     parser.add_argument("--blend-root", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument(
+        "--skip-places", action="store_true",
+        help="export only the per-asset authored_down GLBs — leaves the live Ceres place files "
+             "(Forge-authored since packet 5) untouched",
+    )
     return parser.parse_args(values)
 
 
@@ -284,15 +289,18 @@ def resolve_material_name(mat) -> str:
             return target
     if "glass" in lower:
         return "Material_Glass"
-    if "armor" in lower:
+    if "armor" in lower or "armour" in lower:
         return "Material_Armor"
-    if "heat" in lower or "scorch" in lower or "hot" in lower:
+    if "heat" in lower or "scorch" in lower or "hot" in lower or "emerg" in lower \
+            or "glow" in lower:
         return "Material_Heat"
-    if "cable" in lower or "service" in lower:
+    if "cable" in lower or "service" in lower or "pipe" in lower:
         return "Material_Service"
     if "torn" in lower or "insul" in lower or "dust" in lower or "ore" in lower:
         return "Material_Insulation"
-    if "frame" in lower or "steel" in lower or "grate" in lower or "struct" in lower:
+    if "frame" in lower or "steel" in lower or "grate" in lower or "struct" in lower \
+            or "gunmetal" in lower or "wk_cut" in lower or "truss" in lower \
+            or "beam" in lower or "rib" in lower or "strut" in lower:
         return "Material_Structural"
     return "Material_Hull"
 
@@ -1100,8 +1108,10 @@ def main() -> None:
         )
         return report
 
-    bait_report = build_place_from_authored("place_ceres_bait_wreck", list(BAIT_PIECES))
-    grave_report = build_place_from_authored("place_ceres_grave_shard", list(GRAVE_PIECES))
+    bait_report = grave_report = None
+    if not args.skip_places:
+        bait_report = build_place_from_authored("place_ceres_bait_wreck", list(BAIT_PIECES))
+        grave_report = build_place_from_authored("place_ceres_grave_shard", list(GRAVE_PIECES))
 
     raw_mesh_total = sum(a["sourceMeshes"] for a in asset_reports)
     raw_tris_total = sum(a["sourceTris"] for a in asset_reports)
@@ -1128,11 +1138,11 @@ def main() -> None:
             "meshReduction": raw_mesh_total - authored_mesh_total,
             "assets": asset_reports,
         },
-        "places": {
+        "places": {} if bait_report is None else {
             "place_ceres_bait_wreck": bait_report,
             "place_ceres_grave_shard": grave_report,
         },
-        "costModel": {
+        "costModel": {} if bait_report is None else {
             "place_ceres_bait_wreck": {
                 "drawCallsLod0": bait_report["drawCallsLod0"],
                 "materials": len(bait_report["materials"]),

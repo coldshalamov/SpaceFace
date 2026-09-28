@@ -6,183 +6,233 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ef4aa058f8c0b2c0ede628c84c386d742b4e1c6506e75d6295e5531ee6504be4",
+  "contentHash": "dfa82862d81b7a6b9c68b1ff59459dce57ea21c9a98d309f8e726c6bfa299a40",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          2.2663357257843018,
-          1.4630885124206543,
-          -0.3932124674320221
+          0.5653731822967529,
+          1.0926623344421387,
+          -0.8026930093765259
         ],
         "min": [
-          -2.2663357257843018,
-          -0.2892228364944458,
-          -1.434468388557434
+          -2.5,
+          -0.29123198986053467,
+          -1.535381555557251
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abf20b114e793b25513933d5d228fb4f03719d8fe3c3d1f145977025e6dcda47",
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "067b658cde9d7c182586b9bebe3d79d02baa09f9f180b48276640f8628bff75a",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe00.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0",
+      "meshName": "pipe00",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe00",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          2.004643201828003,
-          1.879868507385254,
-          1.2420552968978882
+          2.5,
+          1.9520937204360962,
+          0.49883249402046204
         ],
         "min": [
-          -1.9046430587768555,
-          0.5973038673400879,
-          -0.768237292766571
+          0.3090198040008545,
+          0.6507582664489746,
+          -1.263674020767212
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6691c7bc0dbfb5618a363835cf300910b0b43745dc166d05bfb7d33cfcb86754",
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "fb224553d72c2516be6ba21546e88fd52d6fdd0f319aa539c15a9da3db0b0c0c",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe01.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1",
+      "meshName": "pipe01",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe01",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          1.6763174533843994,
-          0.9859938621520996,
-          1.728717565536499
+          0.40692955255508423,
+          1.5975371599197388,
+          1.6624197959899902
         ],
         "min": [
-          -1.4763174057006836,
-          -0.04085669666528702,
-          0.4764525890350342
+          -2.1639838218688965,
+          0.7359630465507507,
+          -0.3338492214679718
         ]
       },
       "drawMode": 4,
-      "geometryHash": "36a6830026d54f8eee7c0195b76bfae718aeac0253d0ee6b4defbe06c40afeb7",
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "c6736ac6d09604d6e8094051db8e523261e75af261c10a92f5726bda6c867c43",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe10.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2",
+      "meshName": "pipe10",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe10",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          1.4251223802566528,
-          -0.005025022197514772,
-          1.375649333000183
+          2.1642870903015137,
+          1.6350419521331787,
+          1.729422688484192
         ],
         "min": [
-          -1.125122308731079,
-          -1.742994785308838,
-          0.09869135916233063
+          0.1395982950925827,
+          0.3857620060443878,
+          0.5513253211975098
         ]
       },
       "drawMode": 4,
-      "geometryHash": "088357970c1932c8e4b85a62ed43e9eb06cbf1bd16547f6351a4177853b5776c",
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "ec5943e14b1e2b5738a4499d76f5c984c47442dc0e879044191dea8c27dfe1c4",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe11.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3",
+      "meshName": "pipe11",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe11",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          1.1703022718429565,
-          -0.7792209386825562,
-          0.5143977999687195
+          0.19047945737838745,
+          0.336251825094223,
+          1.498897910118103
         ],
         "min": [
-          -0.7703021764755249,
-          -1.8799749612808228,
-          -1.4344120025634766
+          -1.6918758153915405,
+          -0.9688217639923096,
+          0.9457437992095947
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7df9c19ca1a9de089446c6232bb4089af28a93e0a33affb3f283f99293125008",
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "1f70eb8ec38bb85c6d1605f38c8db22ddb556b6f3aee7389d6ca69d1cf97d9bd",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe20.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4",
+      "meshName": "pipe20",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe20",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          0.8724868297576904,
-          0.17041733860969543,
-          -0.6647448539733887
+          1.91097092628479,
+          -0.5365440845489502,
+          1.401940941810608
         ],
         "min": [
-          -0.3724866807460785,
-          -0.9630678296089172,
-          -1.696580171585083
+          -0.10282474756240845,
+          -1.952168583869934,
+          -0.4323972463607788
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f75dec6153a86dc73558a7d2cab7fe89d2f69bdbafa3401b7898717eaaa1632",
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "52ce103ae9462d56f0920fd2c1238db9f736e1ab79c1e09301c4731504a01ab6",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe21.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5",
+      "meshName": "pipe21",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe21",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          0.8499466180801392,
-          -1.0087411403656006,
-          1.276045799255371
+          0.06939103454351425,
+          -0.8021268844604492,
+          0.39740419387817383
         ],
         "min": [
-          0.35005342960357666,
-          -1.508634328842163,
-          -1.3239541053771973
+          -1.3833588361740112,
+          -1.787144660949707,
+          -1.4732388257980347
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f592efe1db8d7767f28092a9d3c80912c46893dbaba4b9aadaaf868ce0a347a",
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "71d2bbef50b93c3188a925d30c93d995f4ebabdbef8378783873b61bca84709a",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe30.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket",
+      "meshName": "pipe30",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe30",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5420114994049072,
+          -0.7203745245933533,
+          -0.6210389137268066
+        ],
+        "min": [
+          -0.2451421022415161,
+          -1.82352614402771,
+          -1.6094356775283813
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6aa691a7d0d44e57e798539157aa4e993f8b3be578047d9d360e23559c396fc4",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe31.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialPipelineKey": "opaque",
+      "meshName": "pipe31",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe31",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1821564435958862,
+          -0.9395837783813477,
+          1.9707156419754028
+        ],
+        "min": [
+          -0.6713399887084961,
+          -1.6160756349563599,
+          -1.9707156419754028
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1766089392e5335e492b10bdb58cf4e149c6dfda56683652c77cd2a69946fde",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipebracket.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialPipelineKey": "opaque",
+      "meshName": "pipeBracket",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipebracket",
+      "primitiveIndex": 0,
+      "vertexCount": 30
     }
   ],
   "hlods": [],
@@ -190,23 +240,73 @@
   "lods": [],
   "materials": [
     {
-      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "id": "material:cd6123b380f546013af23403",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "id": "material:0c7aa7865a150ff305773a74",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
-      "id": "material:f3523d8806199d6eff1110c0",
-      "name": "wrk_pipe",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "id": "material:ee4e7dc63df018e0c222a18c",
+      "name": "Forge_ore_barge_wk_cut",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe00",
       "localTransform": [
         1,
         0,
@@ -226,8 +326,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "fp_0",
-      "nodeName": "fp_0",
+      "mergeBoundary": "pipe00",
+      "nodeName": "pipe00",
       "nodePath": [
         0,
         0
@@ -255,7 +355,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe01",
       "localTransform": [
         1,
         0,
@@ -275,8 +375,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "fp_1",
-      "nodeName": "fp_1",
+      "mergeBoundary": "pipe01",
+      "nodeName": "pipe01",
       "nodePath": [
         0,
         1
@@ -304,7 +404,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe10",
       "localTransform": [
         1,
         0,
@@ -324,8 +424,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "fp_2",
-      "nodeName": "fp_2",
+      "mergeBoundary": "pipe10",
+      "nodeName": "pipe10",
       "nodePath": [
         0,
         2
@@ -353,7 +453,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe11",
       "localTransform": [
         1,
         0,
@@ -373,8 +473,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "fp_3",
-      "nodeName": "fp_3",
+      "mergeBoundary": "pipe11",
+      "nodeName": "pipe11",
       "nodePath": [
         0,
         3
@@ -402,7 +502,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe20",
       "localTransform": [
         1,
         0,
@@ -422,8 +522,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "fp_4",
-      "nodeName": "fp_4",
+      "mergeBoundary": "pipe20",
+      "nodeName": "pipe20",
       "nodePath": [
         0,
         4
@@ -451,7 +551,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe21",
       "localTransform": [
         1,
         0,
@@ -471,8 +571,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "fp_5",
-      "nodeName": "fp_5",
+      "mergeBoundary": "pipe21",
+      "nodeName": "pipe21",
       "nodePath": [
         0,
         5
@@ -500,7 +600,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe30",
       "localTransform": [
         1,
         0,
@@ -520,11 +620,109 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "fp_bracket",
-      "nodeName": "fp_bracket",
+      "mergeBoundary": "pipe30",
+      "nodeName": "pipe30",
       "nodePath": [
         0,
         6
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe31",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pipe31",
+      "nodeName": "pipe31",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipebracket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pipeBracket",
+      "nodeName": "pipeBracket",
+      "nodePath": [
+        0,
+        8
       ],
       "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
       "role": "immutable",
@@ -599,53 +797,52 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a4c69709d97b9ac4c02fd053516b1a9ba862db03f4bdf9aea2a1e33dfad5a3ff"
+      "sha256": "199599e42723776cab8261722302f97275bd61702275820e70ddb823066c9ea8"
     },
     "sourceGlb": {
-      "bytes": 12868,
-      "sha256": "67394e1ba64753a748e76620b69462327241b1f463a3db499e5d4a0c8fbf878b",
+      "bytes": 127904,
+      "sha256": "037c88a355c8f3ee7890c9f3507fca70553fe48df3ec6d2d9223581b5b9a77f2",
       "uri": "place_aftermath_frag_pipe_tangle.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 21100,
-    "sha256": "3a017d89c8504a3a02fca4cf32c3f751e6189119fdbe0fca2cbed0e55ab7d3e4",
+    "bytes": 131828,
+    "sha256": "2704ba5bebc843dae699c79f9cb66bf2333c658889fa9baeeb7de10259c2b678",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        -0.00005322694778442383,
-        0.016068696975708008
+        -0.00003743171691894531,
+        0
       ],
       "max": [
-        2.2663357257843018,
-        1.879868507385254,
-        1.728717565536499
+        2.5,
+        1.9520937204360962,
+        1.9707156419754028
       ],
       "min": [
-        -2.2663357257843018,
-        -1.8799749612808228,
-        -1.696580171585083
+        -2.5,
+        -1.952168583869934,
+        -1.9707156419754028
       ],
       "size": [
-        4.5326714515686035,
-        3.7598434686660767,
-        3.425297737121582
+        5,
+        3.9042623043060303,
+        3.9414312839508057
       ]
     },
     "hidden": [],
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 1,
-      "mechanical": 6
+      "mechanical": 9
     },
     "materialProfiles": [
       {
@@ -681,10 +878,20 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 9,
+    "nodeCount": 11,
     "primitives": [
       {
         "canopy": false,
@@ -706,7 +913,7 @@
           0,
           1
         ],
-        "name": "fp_0",
+        "name": "pipe00",
         "planIndex": 2,
         "tags": {
           "canopy": false,
@@ -733,7 +940,7 @@
           0,
           1
         ],
-        "name": "fp_1",
+        "name": "pipe01",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -760,7 +967,7 @@
           0,
           1
         ],
-        "name": "fp_2",
+        "name": "pipe10",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -787,7 +994,7 @@
           0,
           1
         ],
-        "name": "fp_3",
+        "name": "pipe11",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -814,7 +1021,7 @@
           0,
           1
         ],
-        "name": "fp_4",
+        "name": "pipe20",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -841,7 +1048,7 @@
           0,
           1
         ],
-        "name": "fp_5",
+        "name": "pipe21",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -868,8 +1075,62 @@
           0,
           1
         ],
-        "name": "fp_bracket",
+        "name": "pipe30",
         "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pipe31",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pipeBracket",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -880,31 +1141,33 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb"
   },
-  "runtimeHash": "9681f9dd8451518087d31c7e171795f43e06900ff19d5d16ce05984eb7d31fd4",
+  "runtimeHash": "9b1d4de751872f866c731e1e3de953cc305350c45dc78898a6b879c3fcd555ac",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          2.2663357257843018,
-          1.879868507385254,
-          1.728717565536499
+          2.5,
+          1.9520937204360962,
+          1.9707156419754028
         ],
         "min": [
-          -2.2663357257843018,
-          -1.8799749612808228,
-          -1.696580171585083
+          -2.5,
+          -1.952168583869934,
+          -1.9707156419754028
         ]
       },
       "id": "sf.render.aftermath-frag-pipe-tangle.body",
       "nodeIds": [
-        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0",
-        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1",
-        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2",
-        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3",
-        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4",
-        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5",
-        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe00",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe01",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe10",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe11",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe20",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe21",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe30",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipe31",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.pipebracket",
         "sf.render.aftermath-frag-pipe-tangle.root"
       ]
     }

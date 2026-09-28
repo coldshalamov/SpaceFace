@@ -1,0 +1,218 @@
+CRUCIBLE SUITE CRITIC — rs1 (2026-09-28)
+Suite: arena run mode — door, draft/Armory, refit, results.
+Stills: .devshots/ui-review/view/rs-cru-{door,draft,refit,results}-{1920,1280}.png
+Crops: .devshots/ui-review/crops/cru-*.png. Scoring law: CRITIC_BRIEF.md + owner (a)/(b), bar 8.0.
+No previous round — rs1 is first scoring for this suite, so §3 (previous list) is N/A throughout.
+
+SUITE-WIDE RULING: KEY-CAP CHROME (current law — NOT grandfathered)
+Draft, refit and results all render key hints as boxed caps (inset 1px outline +
+3px radius): draft "1 2 3 … Tab" + "Enter" + "ESC", refit "ENTER" + "HOLD F·X" +
+"SPACE·Y", results "ENTER". The door already shows the lawful pattern — "BACK ESC"
+as plain dim words (door-1920 x615-680 y1035-1050, no box). The caps also sit on
+screens that already use dotted leader rules (refit "+ Autocannon S" dotted rule),
+so the suite contradicts itself. Rule: every boxed cap is unlawful chrome and an
+owed fix on its screen. Style sites: src/ui/orrery/screenLayouts.js:272-274
+(refit .sf-cru-kbd), :530-532 (.orr-armory-keycap), :560-562 (draft foot .sf-cru-kbd),
+plus the same-file results-foot kbd rule (grep sf-cru-kbd). Creation sites:
+src/ui/screens/crucibleDraft.js:85-95 (setKeyLabel/sf-cru-kbd), :672, :868 (Esc),
+:892-893 (1/2/3/Tab), :967 (Enter), :1329 (hold F·X/Esc); results ENTER chip next to
+the word built at src/ui/screens/crucible.js:2535. Fix everywhere: delete the
+box-shadow + border-radius, render the key as a dim bone dotted/plain word at the
+same position and size. Caps cost each offending screen on ORRERY fidelity.
+
+SUITE-WIDE NOTE: LAMP KEY SHAPE. All four screens render the primary verb as amber
+display text with an amber rule/bloom (LAUNCH SWARM, BUY · 18 CR, RUN IT AGAIN),
+not the ORRERY §3.6 filled amber field with 45° cut. Consistent suite idiom, so
+scored as minor fidelity drag, not failure — but it is a deviation on record.
+
+================================================================================
+1. DOOR — NOT PASSED, overall 7.8
+================================================================================
+Axes (no previous): Composition 8.5 — split instrument/art layout holds at both
+widths. Hierarchy 8.5 — title → mode → build → arena → seed → launch reads top to
+bottom. Legibility 7.5 — GHOST option measures lum 64 ≈ 1.9:1, unreadable as text
+(see fix 1). ORRERY fidelity 7.0 — needle scales, produced arena art, single amber
+Lamp, zero caps; but no amber Hand anywhere (all three needles bone) and the Lamp
+is the underline variant, not the §3.6 field. Craft/detail 8.5 — art, type scale,
+needle ticks all produced. Interaction clarity 7.5 — state is visible, but no hint
+of HOW to move between options (keys? click? stick?), and QUICK PLAY vs LAUNCH
+SWARM is unexplained.
+7(a) weight/generic: PASS. No bands used; weight carried by 100px+ display type,
+arena key art, amber verb. Scales are hairline rules but carry needles + ticks and
+do not read as the whole screen.
+7(b) signature interaction: FAIL — no signature. Mode/build/arena are three runs
+of the same needle-scale idiom; seed is static text; nothing here is a creative,
+distinct mini-app interaction. The ORRERY §6 door spec (arena Orbit Carousel,
+mode dial with the Hand, focus-card builds, mechanical seed Counter) was not
+built — the arena sits as a text row while the art beside it never changes.
+NOT PASSED on (b) even before the 7.8 < 8.0.
+Reduced motion: stills frozen; no evidence of motion-only information. Verify live
+that decrypt/needle swings resolve instantly with no lost state.
+1280: drops "No ghost for this seed yet" (x110 y300 @1920), the RECORDS &
+CHALLENGES row (x95-255 y890-905 — a whole feature gone), and the Practice room
+description (only "Practice room ›" survives). RECORDS loss is a real defect.
+RANKED FIXES:
+1. GHOST option x500-560 y205-225 (door-1920): raise to ≥4.5:1 (lum ≥~140) and
+   mark unavailable another way (dotted strike or "no ghost" tag); src/ui/screens/crucible.js door modes (~:814-920 region).
+2. Signature owed: make arena selection an Orbit Carousel — changing arena
+   crossfades the right-side key art + arena caption (x1400-1720 y760-855) with a
+   300ms settle; art per arena (5 key arts exist per ORRERY §5). This one fix
+   answers (b).
+3. Hand owed: the focused scale's needle goes amber (#f2b950) and swings between
+   options with overshoot; unfocused needles stay bone. One amber Hand + Lamp Key
+   preserved. Same file as fix 1.
+4. 1280: restore RECORDS & CHALLENGES row (abbreviate to "RECORDS ›" if needed)
+   and the one-line Practice room description; nothing interactive may vanish at
+   compact width.
+5. Interaction clarity: one quiet hint line under the foot ("← → choose · Enter
+   launch" as dotted words, bone 12px, x95 y1055) — door currently documents no
+   input at all.
+6. Seed "2038786572" (x95-250 y680-705) is static tabular text; per spec it is a
+   mechanical Counter — roll digits on NEW SEED. Supports (b) depth.
+Memorable-ought: arriving at the door should feel like the foundry powers up for
+YOU — mode choice re-lights the room art (Swarm = furnace orange, Ghost = cold
+bone). Nothing here attempts reactive art.
+
+================================================================================
+2. DRAFT / ARMORY — NOT PASSED, overall 7.4
+================================================================================
+Axes: Composition 8.0 — ladder / hull ring / reading three-column holds.
+Hierarchy 8.0 — filters → ladder → ship → buy → launch path is clear. Legibility
+7.0 — slot tags truncate even at 1920 ("CHARG…" x150-215 y425-445; 1280 also
+"SIDEAR…"), and the 28 CR overflow row is cut mid-row at 1280. ORRERY fidelity
+6.0 — six boxed caps (1/2/3/Tab x805-978 y980-1002; Enter x1520-1572 y583-610;
+ESC x410-445 y968-990) under a dotted-words law, and amber spent FIVE ways
+(chevron Hand, lit-row price, HARDPOINT 3 label, wallet bar, BUY verb) against a
+one-Hand + one-Lamp law. Craft/detail 7.5 — caps + truncation + amber scatter
+drag an otherwise tight screen. Interaction clarity 8.0 — pick → preview → BUY →
+launch is legible and every action names its key.
+7(a) weight/generic: marginal PASS. Hull line cores measured 2-3px at lum 218
+(~15:1 on glass — bright, not faint); ring + ticks + segmented fit arc + stat
+sliders add weight; no generic cards. But NO bloom skirt measured (lum≥60 runs =
+core runs; frozen still, so verify live) — the hull reads one step from line
+drawing. Fix 2 closes it.
+7(b) signature interaction: soft PASS. The fit-preview leader ("HARDPOINT 3
+empty" x1010-1125 y235-265 + node bead + "HORNET · 4 OF 8 FITTED" arc) — every
+offer shows WHERE it fits on your hull before you buy — is genuinely per-screen
+and distinct. But it is static and small; it must light up (fix 3) to be strong.
+Reduced motion: as door — no motion-only info visible; verify the preview leader
+and counters resolve instantly.
+1280: ladder shows 7 of 28 rows (fine — it scrolls), but slot-tag truncation
+worsens and a half-cut row sits at the fold; compass numerals on the ring are
+dropped (acceptable).
+RANKED FIXES:
+1. Palette: demote lit-row price "BUY 18 cr" (x520-615 y350-368) and "HARDPOINT 3
+   empty" label to bone; wallet bar fill (x1380-1640 y505-520) bone; keep amber
+   ONLY on the chevron Hand (screenLayouts.js:540-541) + BUY verb (:525-526).
+   Kills three unlawful ambers in one stylesheet pass.
+2. Hull weight: add bone 5% hull fill + geometric bloom under-stroke (5px,
+   22% alpha, same path) to the schematic so it reads as a lit object; verify on
+   pixels (bloom skirt ≥2px each side at lum≥60).
+3. Signature strength: hovering/focusing a ladder row animates the leader beam
+   from the row to its hardpoint node (ice pulse travelling the beam — motion,
+   lawful ice use) and pulses the node ring. Static in still; must exist live.
+4. All six caps → dotted/plain words per suite ruling (style sites above).
+5. Slot-tag column: widen so no tag truncates at 1920 (CHARG… → CHARGE), and at
+   1280 abbreviate by dictionary ("SID", "CHG") instead of mid-word ellipsis;
+   never render a half-cut row at the fold — clip to whole rows.
+6. "1–13 OF 28" counter (x95 y890): keep visible at 1280 (it becomes "1–7 OF 28"
+   — fine) and add a ladder position cursor so scroll depth is visible.
+Memorable-ought: buying should feel physical — the bought item's glyph should fly
+the beam into its hardpoint with a Salvage Burst into the fit arc. Nothing here
+attempts the purchase moment.
+
+================================================================================
+3. REFIT — NOT PASSED, overall 8.0 (fidelity 6.5 < 7.0 floor)
+================================================================================
+Axes: Composition 8.5 — symmetric exploded schematic, callouts balanced both
+sides. Hierarchy 8.5 — ship first, chosen callout second (amber arm earns it),
+settlement verbs last. Legibility 8.0 — callout sub-lines ("No spare…" lum 163
+≈ 7:1) pass; circular fit legend is small but redundant with the arc. ORRERY
+fidelity 6.5 — the schematic/leader/Hand instrument is the suite's best, but
+three boxed caps (ENTER x1310-1380 y438-462; HOLD F·X x815-878 y942-964;
+SPACE·Y x1335-1408 y942-964), a third amber (bottom fit-arc segment), and NO
+Lamp-shaped primary (both settlement verbs bone). Craft/detail 8.0 — caps are
+the drag. Interaction clarity 8.5 — STRIP/FIT per hardpoint + hold-to-take-win
+vs endless readout is exemplary.
+7(a) weight/generic: PASS. Filled node rings, dashed connector arcs, glowing
+amber arm, segmented fit arc, filled hold-ring dot — the instrument has body.
+7(b) signature interaction: PASS. The exploded hardpoint schematic — pick a node
+ON the hull, strip/fit spares through leader callouts — is strong, distinct,
+and the screen's obvious memory.
+Reduced motion: hold ring (x~885-905 y945-965) must fill instantly-with-confirm
+under reduced motion AND still require the deliberate hold intent (no accidental
+take-win); verify live. Nothing else carries info in motion.
+1280: compass numerals dropped (fine), but the fit-count arc + "HORNET · 5 OF 8
+FITTED" legend vanish entirely — the only fitted-count readout, gone.
+RANKED FIXES:
+1. All three caps → dotted/plain words per suite ruling; HOLD F·X keeps its hold
+   ring (the ring is lawful — Destiny hold idiom) with the key as a plain word
+   beside it. screenLayouts.js:272-274; creation crucibleDraft.js:1326-1345.
+2. Palette: bottom fit-arc segments all bone (bright = fitted, dim = empty);
+   the 03 arm + node + FIT verb stay the single Hand + Lamp pair.
+3. Primary-verb hierarchy: TAKE THE WIN (the run-ending commit) takes the Lamp
+   underline treatment (amber text + rule, as the suite's Lamp idiom); KEEP
+   GOING stays bone. One Lamp, correct weight.
+4. 1280: restore the fitted count as an inline reading under the hull ("5 OF 8
+   FITTED", bone 12px) when the arc is dropped.
+5. Dashed "no fit" connector at node 08 (x~790 y560-600) is the only dashed
+   leader — extend the dash idiom to ALL empty hardpoints so emptiness reads at
+   a glance, not just on 08.
+6. Node numerals 01/02 cluster at the nose (x~905-985 y315-355 @1920; worse at
+   1280) — separate leader elbows by ≥12px so 01/02 never touch.
+Memorable-ought: stripping a part should visibly detach it — the module glyph
+slides off the hull along its leader and the node goes dark. The schematic is
+built for exactly this animation.
+
+================================================================================
+4. RESULTS — PASSED, overall 8.3
+================================================================================
+Axes: Composition 9.0 — stats ledger left, kill orrery right, Lamp foot; the
+suite's best-composed screen. Hierarchy 8.5 — verdict → cause → numerals →
+share → the run → timeline → retry. Legibility 8.0 — dim lines pass (Score line
+lum 138 ≈ 6:1; "Converged…" lum 155 ≈ 7:1); mono share codes small but
+selectable. ORRERY fidelity 7.0 — single amber Lamp, red spent ONLY on threat
+(kill beam, KILLED BY, hit bars, 0% vitals — textbook), bone rings, beaded
+timeline; dragged by one boxed ENTER cap (x618-700 y993-1020) and the
+underline-Lamp shape (suite idiom, noted). Craft/detail 8.5 — death-angle beam
+with filled cone, last-5-hits bars, wave beads. Interaction clarity 8.5 —
+retry / new run / main menu unambiguous; codes say what they do.
+7(a) weight/generic: PASS. Filled red beam cone, filled hull panels in the
+schematic, filled hit bars and timeline beads, hero numerals — nothing wireframe.
+7(b) signature interaction: PASS, strongest in suite. The kill orrery — your
+death drawn as a threat diagram (angle, weapon, warning time, last hits) — plus
+the run-as-timeline ("3 drafts changed what your guns do", wave beads x110-615
+y815-835) is creative, distinct, and memorable.
+Reduced motion: beam pulse and counter rolls must resolve instantly; the kill
+diagram is fully legible frozen (proven by this still) — best reduced-motion
+posture in the suite.
+1280: drops duplicative rows (Combo 0 / Gun kills 31 duplicate the numerals —
+fine), "Converged…" (minor), "It warned you…" (duplicates THE RUN — fine), BUT
+also the hit legend ("HA Heavy Autocannon M — 3 hits…" x1030-1545 y948-965),
+leaving HA/PL/? abbreviations unexplained. One fix.
+RANKED FIXES:
+1. ENTER cap → dotted/plain word per suite ruling (results-foot kbd rule in
+   screenLayouts.js; word built at src/ui/screens/crucible.js:2535).
+2. 1280: keep the hit legend in abbreviated form ("HA Autocannon · PL Pulse ·
+   ? unknown", one line, bone 12px) — abbreviations must never stand undefined.
+3. "Score 1240·Level 4·640 xp" (x110-300 y318-335): promote to a Counter reading
+   with tabular numerals at 15px+; it currently sits between label and body size.
+4. Timeline beads (x110-615 y815-835): the wave-6 bead is filled (current) but
+   wave-2/4 beads read identical to the rule — brighten visited beads to full
+   bone so the run's path reads at a glance.
+5. Consider: the Lamp underline (x95-640 y1045-1055) spans the full verb width;
+   shorten to the verb text width so NEW RUN doesn't visually inherit it.
+Memorable-ought: the kill beam already stabs from astern — live, it should do so:
+on arrival the beam strikes down the bearing with the hit bars landing in
+sequence. The still promises it; motion must deliver.
+
+================================================================================
+SUMMARY
+================================================================================
+DOOR 7.8 NOT PASSED — no signature interaction (b); GHOST 1.9:1; records row lost at 1280.
+DRAFT 7.4 NOT PASSED — fidelity 6.0: six caps + amber×5; tag truncation; hull needs fill/bloom.
+REFIT 8.0 NOT PASSED — fidelity 6.5 floor: three caps + third amber; fit count lost at 1280.
+RESULTS 8.3 PASSED — kill orrery + timeline carry it; one cap + 1280 legend fix owed.
+Biggest suite win available: one stylesheet pass over the three kbd rules in
+src/ui/orrery/screenLayouts.js (:272-274, :530-532, :560-562 + results rule)
+fixes every cap on every screen and lifts draft +2, refit +1.5 on fidelity.

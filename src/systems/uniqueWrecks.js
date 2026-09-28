@@ -51,6 +51,59 @@ export const RUMOR_EVENT_BY_CHANNEL = Object.freeze({
   bar: 'uniqueWreck:rumorHeard',
 });
 
+// Sector-entry first-read surfaces. Four authored wrecks had no always-live producer for their
+// canonical channel (loss_investigation machinery, late-campaign story beats, Vael patrol barks),
+// so their biggest story payoffs were sealed behind a once-per-save numbers-station lottery. Each
+// row names the carrier that delivers the wreck's authored sourceText when the player enters its
+// home sector. `_surfaceCanonicalRumor` carries the def's exact bearingSourceRef + channel, so
+// `_recordRumor`'s source gate stays the only minting authority — these surfaces never invent a
+// bearing, and the organic producers (real story beats, loss promotion, bar keeps) remain
+// alternate carriers of the same single first read.
+export const SECTOR_RUMOR_SURFACES = Object.freeze({
+  sector_nyx_march: {
+    wreckId: 'wreck_dmc_ironsong',
+    channelId: 'comms_intercept',
+    eventName: 'comms:popup',
+    extra: { sender: 'QUIET CUT-LANE INTERCEPT' },
+  },
+  sector_eunomia_gulf: {
+    wreckId: 'wreck_gravhand_tideline',
+    channelId: 'news',
+    eventName: 'news:publish',
+    extra: { sender: 'EUNOMIA RECOVERY DESK' },
+  },
+  // D1: the Concord case file rides the news ticker; the record still mints under its authored
+  // loss_investigation channel via the exact loss.vigilant sourceRef.
+  sector_veil_nebula: {
+    wreckId: 'wreck_isc_vigilant',
+    channelId: 'loss_investigation',
+    eventName: 'news:publish',
+    extra: { sender: 'CONCORD CASE DESK' },
+  },
+  // D5: a Vael patrol taunt on the bark channel — the shrine warns the tractor-happy.
+  sector_triton_wake: {
+    wreckId: 'wreck_choir_bell_aegis',
+    channelId: 'bark',
+    eventName: 'barkDirector:voice',
+    extra: { factionId: 'faction_vael', situation: 'patrol_contact' },
+  },
+  // D3/D12: campaign-relay comms popups shaped exactly like the carrier `_onNativeRumor` builds
+  // when a real story beat 7/6 arrives — without emitting a synthetic story:beatAdvanced, which
+  // would fire story.js's whole beat device chain for a beat that did not happen.
+  sector_ashfall_reach: {
+    wreckId: 'wreck_isc_lighthouse',
+    channelId: 'campaign',
+    eventName: 'comms:popup',
+    extra: { sender: 'ASHFALL CAMPAIGN RELAY', beatIndex: 7 },
+  },
+  sector_haumea_rift: {
+    wreckId: 'wreck_choir_cassandra',
+    channelId: 'campaign',
+    eventName: 'comms:popup',
+    extra: { sender: 'CASSANDRA DIPLOMATIC THREAD', beatIndex: 6 },
+  },
+});
+
 function clonePlain(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
@@ -280,6 +333,37 @@ function tutorialOwnsOpeningPresentation(state) {
   return !!(onboarding && onboarding.active && !onboarding.finished);
 }
 
+// ── Salvaged-site husk identity ────────────────────────────────────────────────────────────────
+// A recovered unique wreck stays a place with a past: the map ring keeps pointing at a real husk
+// stamped with the outcome the player chose there, and nothing pays out twice.
+
+/** The outcome phrase stamped onto the husk's scan identity, derived from the recorded choice. */
+function siteStampForRecord(def, record) {
+  if (record.phase === 'decision') return 'RECOVERY CLAIM PENDING';
+  const choice = record.choiceId && def.decision
+    ? (def.decision.choices || []).find((entry) => entry.id === record.choiceId)
+    : null;
+  if (choice && choice.siteStamp) return choice.siteStamp;
+  return record.outcome === 'claimed' ? 'CLAIMED UNDER YOUR NAME' : 'FILED WITH THE AUTHORITY';
+}
+
+/** Decision husks and handover husks are stripped/impounded: empty. Claim keeps salvage rights
+ * to the remains — the husk pool is the claim path's own residual yield, never a second decision
+ * payout (unique drops and bonus cargo flow only through _onChoose). */
+function huskPoolForRecord(def, record) {
+  return record.phase === 'salvaged' && record.outcome === 'claimed' ? def.salvagePool : {};
+}
+
+function huskPlacard(def, record, stamp) {
+  if (record.phase === 'decision') {
+    return `Recovered. The recovery claim is still open — choose who receives ${def.name}'s surviving systems.`;
+  }
+  const detail = record.rewardReceipt && typeof record.rewardReceipt.detail === 'string'
+    ? record.rewardReceipt.detail
+    : null;
+  return detail ? `${stamp}. ${detail}` : `${def.name} recovered. ${stamp}.`;
+}
+
 export const uniqueWrecks = {
   name: 'uniqueWrecks',
 
@@ -314,6 +398,8 @@ export const uniqueWrecks = {
     });
     this._listen('npcjobs:work', (payload) => this._choirRelief.work(payload));
     this._listen('npcjobs:complete', (payload) => this._choirRelief.complete(payload));
+    this._listen('combat:subsystemEnabled', (payload) => this._choirRelief.enabled(payload));
+    this._listen('combat:subsystemDisabled', (payload) => this._choirRelief.disabled(payload));
     this._listen('entity:killed', (payload) => {
       this._choirRelief.killed(payload);
       this._memorialThief.killed(payload);
@@ -426,6 +512,9 @@ export const uniqueWrecks = {
       }
     }
     this._syncSector(this.state.world && this.state.world.currentSectorId);
+    // A save parked in a surface sector still deserves its first-read carrier even though no
+    // fresh sector:enter fires until the player next jumps. Idempotent: recorded rumors no-op.
+    this._surfaceSectorRumors(this.state.world && this.state.world.currentSectorId);
     for (const record of Object.values(this._ensureState().bearings)) {
       if (record && record.phase === 'decision') this._publishDecision(record.wreckId, 'continue');
     }
@@ -785,23 +874,14 @@ export const uniqueWrecks = {
   },
 
   _surfaceSectorRumors(sectorId) {
-    if (sectorId === 'sector_nyx_march') {
-      return this._surfaceCanonicalRumor(
-        'wreck_dmc_ironsong',
-        'comms_intercept',
-        'comms:popup',
-        { sender: 'QUIET CUT-LANE INTERCEPT' },
-      );
-    }
-    if (sectorId === 'sector_eunomia_gulf') {
-      return this._surfaceCanonicalRumor(
-        'wreck_gravhand_tideline',
-        'news',
-        'news:publish',
-        { sender: 'EUNOMIA RECOVERY DESK' },
-      );
-    }
-    return null;
+    const surface = sectorId && SECTOR_RUMOR_SURFACES[sectorId];
+    if (!surface) return null;
+    return this._surfaceCanonicalRumor(
+      surface.wreckId,
+      surface.channelId,
+      surface.eventName,
+      { ...surface.extra },
+    );
   },
 
   _offerLostCoils() {
@@ -1094,7 +1174,9 @@ export const uniqueWrecks = {
     if (!sectorId) return;
     const own = this._ensureState();
     for (const record of Object.values(own.bearings)) {
-      if (record && record.sectorId === sectorId && (record.phase === 'rumored' || record.phase === 'fixed')) {
+      // Every phase keeps its site physical: rumored/fixed spawn the live wreck, decision/salvaged
+      // spawn the outcome-stamped husk, so a map bearing never points at empty space.
+      if (record && record.sectorId === sectorId && VALID_PHASES.has(record.phase)) {
         this._materialize(record.wreckId);
       }
     }
@@ -1118,7 +1200,7 @@ export const uniqueWrecks = {
     const def = uniqueWreckById(wreckId);
     const own = this._ensureState();
     const record = own.bearings[wreckId];
-    if (!def || !record || (record.phase !== 'rumored' && record.phase !== 'fixed')) return null;
+    if (!def || !record || !VALID_PHASES.has(record.phase)) return null;
     if (def.sectorId !== (this.state.world && this.state.world.currentSectorId)) return null;
     let entity = this._findLive(wreckId);
     if (!entity) {
@@ -1134,7 +1216,8 @@ export const uniqueWrecks = {
         type: 'wreck',
         // Live entities use galactic-global XZ; the authored placement was composed into that
         // space once by placementForUniqueWreck. Only zone-planner inputs remain sector-local.
-        pos: { ...record.exactPos },
+        // Past the rumor phase the durable fixed point is the site authority.
+        pos: { ...(record.phase === 'rumored' ? record.exactPos : (record.fixedPos || record.exactPos)) },
         vel: { x: 0, z: 0 },
         radius: def.id === 'wreck_choir_tender' ? 12 : 10,
         mass: 1e6,
@@ -1201,34 +1284,48 @@ export const uniqueWrecks = {
     data.wreckClassBlurb = authored.wreckClassBlurb;
     data.provenance = { ...authored.provenance };
     data.name = def.name;
-    data.scanLabel = authored.scanLabel;
+    const husked = record.phase === 'decision' || record.phase === 'salvaged';
+    const stamp = husked ? siteStampForRecord(def, record) : null;
+    data.scanLabel = stamp ? `${def.scanLabel} · ${stamp}` : authored.scanLabel;
     data.scanDescription = record.phase === 'rumored'
       ? 'Pulse scan inside the charted bearing ring to resolve this named wreck.'
-      : `${def.name}. Recover the wreck, then choose who receives its surviving systems.`;
+      : husked
+        ? huskPlacard(def, record, stamp)
+        : `${def.name}. Recover the wreck, then choose who receives its surviving systems.`;
     data.interactionPrompt = record.phase === 'rumored'
       ? 'PULSE SCANNER TO IDENTIFY'
-      : 'SALVAGE TO OPEN RECOVERY CLAIM';
+      : husked
+        ? (record.phase === 'decision' ? 'RECOVERY CLAIM PENDING' : 'OUTCOME FILED — SEE SCAN')
+        : 'SALVAGE TO OPEN RECOVERY CLAIM';
     data.objectiveLabel = record.phase === 'rumored'
       ? `Search for ${def.name}`
-      : `Recover ${def.name}`;
+      : husked ? `${def.name} site` : `Recover ${def.name}`;
     data.scanned = record.phase !== 'rumored';
+    // The recovered site keeps its husk: intervention.js reads _salvaged to close jumper
+    // interventions as recovered, and the hull can never be re-salvaged into a second decision.
+    if (husked) {
+      data._salvaged = true;
+      delete data.unstableReactor;
+    }
     this._entityByWreck.set(def.id, entity.id);
     this._wreckByEntity.set(entity.id, def.id);
     if (def.id === 'wreck_choir_tender') this._choirRelief?.sync();
 
     const salvage = this.registry && this.registry.get && this.registry.get('salvageActions');
-    const arm = !!(def.reactor && record.phase !== 'rumored');
+    // Only a freshly fixed (not yet recovered) wreck arms its reactor; a husk has none to arm.
+    const arm = !!(def.reactor && record.phase === 'fixed');
+    const pool = husked ? huskPoolForRecord(def, record) : def.salvagePool;
     if (salvage && typeof salvage.configureAuthoredWreck === 'function') {
       salvage.configureAuthoredWreck(entity, {
-        salvagePool: def.salvagePool,
-        scanLabel: def.scanLabel,
+        salvagePool: pool,
+        scanLabel: data.scanLabel,
         reactorTimerS: arm ? def.reactor.timerS : null,
       });
     } else {
-      data.authoredSalvagePool = { ...def.salvagePool };
-      data.salvagePool = salvagePoolForWreck(entity, def.salvagePool);
-      data.authoredScanLabel = def.scanLabel;
-      data.scanLabel = def.scanLabel;
+      data.authoredSalvagePool = { ...pool };
+      data.salvagePool = salvagePoolForWreck(entity, data.authoredSalvagePool);
+      data.authoredScanLabel = data.scanLabel;
+      data.scanLabel = data.scanLabel;
       if (arm) {
         data.unstableReactor = {
           dueAt: finite(this.state.simTime) + def.reactor.timerS,
@@ -1318,6 +1415,12 @@ export const uniqueWrecks = {
     this._entityByWreck.delete(def.id);
     this._wreckByEntity.delete(entityId);
     this._publishDecision(def.id, 'salvage');
+    // The recovered hull collapsed, but the site stays physical: a claim-pending husk spawns at
+    // the fixed point so the bearing never points at empty space between recovery and choice.
+    // mining.js flips alive AFTER this dispatch returns, so flip it here first — otherwise
+    // _findLive would re-bind the dying hull and the husk would die with it.
+    if (entity) entity.alive = false;
+    this._materialize(def.id);
     return record;
   },
 
@@ -1534,6 +1637,9 @@ export const uniqueWrecks = {
     // durable named receipt. Mirroring the same title/detail as an eight-second toast stacked two
     // copies in the upper-right flight HUD and obscured contacts during the recovery aftermath.
     // `news:publish` remains the durable follow-up/history surface.
+    // Re-bind (or respawn) the site husk so the choice just made is legible on site immediately:
+    // outcome-stamped scan identity, placard scan line, and the outcome's residual pool.
+    this._materialize(def.id);
     return record;
   },
 

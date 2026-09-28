@@ -32,26 +32,27 @@ Since 2026-09-25 late the bar is the OWNER'S: every surface must also answer (a)
 elements and (b) one distinct signature interaction (`design/frontend/OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
 a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
 that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
-Latest critic report per surface: `design/frontend/review/reports/`. 15 surfaces approved; the station gates
-(Market, Missions, Industry, Bar, Factions re-score) plus Title/Pause/Crucible re-scores are the work left
-before wave 2.
+Latest critic report per surface: `design/frontend/review/reports/`. 31 surfaces approved — Wave 2
+fully APPROVED (Ship 8.2, Range 8.3, Automation 8.0, Replay 8.1, Clips 8.0; RG7 closed). Next: Wave 3
+(Asteroid Works, Drill, Base, Loading audit, HUD weight, Sandbox).
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
 | Flight HUD (bench `orrery-flight`) | Phase 0a passed; live via `hudAdapter.js` | 8 | `flightPreview.js`, `hudSkin.js` | Live-route pass: ring brightness, orphan hairlines, objective dial. Radar/lock |
-| Title / main menu | 8.1 letter; re-score under (a)/(b) owed | 8.1 | `arcRail.js` (`place`, `clearOf`), `screenLayouts.js`, `mainMenu.js` | Re-shoot 1920/1280/2560 and re-score |
-| Pause | 8.0 letter; re-score under (a)/(b) owed | 8.0 | `arcRail.js` (`grouped`), `pause.js`, `screenLayouts.js` | Re-shoot 1920/1280/2560 and re-score |
+| Title / main menu | **APPROVED 8.3** (frontdoor-r2) | 8.3 | `arcRail.js` (`place`, `clearOf`, `freeTrack`), `screenLayouts.js`, `mainMenu.js` | Done; Pause unregressed |
+| Pause | **APPROVED 8.3** (frontdoor-rs1) | 8.3 | `arcRail.js` (`grouped`), `pause.js`, `screenLayouts.js` | Polish only: 0% gauge 2px + bead, 1280 LOCAL MAP nudge, brief name bone .92 |
 | New game | **APPROVED** (r7 8.2, both owner criteria): Spin the yard (`yardCarousel.js`, mass-weighted drag, stat arcs sweep between hulls), the difficulty stop-arc, the hull ring, the launch beat | **8.2 (r7)** | `yardCarousel.js`, `hullRing.js`, `stopDial.js`, `newGame.js`, `screenLayouts.js` | The form column's empty band (270 px at 1920); the Pelican poster is blockout (asset job) |
-| Crucible door / armory / refit / results | 8 letter; re-audit under (a)/(b) owed | 8 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Re-shoot and re-score; refit key caps → dotted words |
+| Crucible door / armory / refit / results | **ALL APPROVED** (crucible-r2): door 8.2, draft 8.1, refit 8.3, results 8.3 (rs1, unregressed) | 8.2 / 8.1 / 8.3 / 8.3 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Done; suite carry-over per r2 report only |
 | Station shell (all 7 tabs share it) | **APPROVED 8.0** (station3-r1, zero margin) | 8.0 | `stationLayouts.js` | Rail .27→.30 in tree; UNDOCK instrument + MUNITIONS band + thin dial numerals owed |
-| Station Market | 7.3 station3-r1 — structural: the sweep never reached it (ladder/dial/trace all wire; divider rules, stat grids, underlined filters/search, pictograms off, no Lamp Key, no ticker) | 7.3 | `marketLayouts.js`, `market.js` | Full rebuild per station3-r1 §D fixes 1–9; bench buyable-at-rest landed (58ba928db) |
+| Station Market | **APPROVED 8.0** (market-r1, on the line) | 8.0 | `marketLayouts.js`, `market.js` | Carry-over: right-edge scale + spread bracket wires (~1.6:1), CIVILIAN clip, AVG stub, bead knot, unlabeled 40 |
 | Station Shipworks (dock host) | **APPROVED 8.1** (sw-r16); r17 landed (2334d326d: detents, centred hulls, lit view tag, rail part) | 8.1 | `shipworks.js`, `shipworksLayouts.js` | Not re-scored since r17; Pelican art (D72) |
-| Station Missions | 8.03 missions-r15 — (a) RISK/STANDING still 1px stock sliders; (b) hold-to-charge not wired (two ambient pulses, hold only with collateral) | 8.03 | `routeOrrery.js`, `contracts.js` | Blockers 1–5 in order; hierarchy/halo groundwork dirty in tree |
-| Station Bar | 8.1 bar-r15 — (a) passes at the floor; (b) FAILS (everything the player does is pick from a list; replies-as-dial in no still; focus plate is a stock row) | 8.1 | `waveform.js`, `barReplyDial.js` (new), `bar.js` | B1 dial with preview + B2–B4; arc/dial groundwork dirty in tree |
-| Station Factions | 8.0 station3-r1 — failed (a) on the sun rings only; fix landed (9e4a69d99: sun bands, leaders below figures, hover ghost Hand) | 8.0 | `crestOrbit.js`, `factions.js` | Re-score owed |
-| Station Industry | 8.0 industry-r14 — (a) product node/key/pictograms; (b) signature not built (FABRICATE a click, pulses ambient, refine instant) | 8.0 | `chainBeam.js`, `industry.js`, `industryGlyphs.js` (new), `lampKey.js` | Signature + weight fixes dirty in tree, uncommitted — finish, shoot, commit |
+| Station Missions | **APPROVED 8.2** (missions-r16) | 8.2 | `routeOrrery.js`, `contracts.js` | Beyond 8: YOURS void, beam glow heaviest, ring cores to §3.3 rest |
+| Station Bar | **APPROVED 8.4** (bar-r17) | 8.4 | `waveform.js`, `barReplyDial.js`, `bar.js` | Beyond 8: lower-centre void, ladder tick spread |
+| Station Factions | **APPROVED 8.1** (factions-rs1) | 8.1 | `crestOrbit.js`, `factions.js` | Beyond 8: hostile crest-track fills red per §6, Tilt Plate hero crest |
+| Station Industry | **APPROVED 8.5** (industry-r16) | 8.5 | `chainBeam.js`, `industry.js`, `industryGlyphs.js`, `lampKey.js` | Beyond 8: ghost run ends on the missing thing; live-hold landing still |
 | Station Ledger | **APPROVED 8.1** (station3-r1) | 8.1 | `ledgerTape.js`, `ledger.js` | Nits only (purse scale/dock, left void, 1280 axis) |
-| THE SHIP (F2, flight host of the Shipworks stage) | Old sheet | — | `shipworksLayouts.js` scopes the dock host only | Extend the jig composition to `#sf-ship` |
+| THE SHIP (F2, flight host of the Shipworks stage) | 6.9 FAIL (wave2-audit) | 6.9 | `shipworks.js`, `station.css` | r1: 1280 overlap + fold, chips→leader callouts, wheel relight/Ladder, SAVE FIT Lamp Key, ladder spine, type sweep |
+| Range / Automation / Replay / Clips | Replay **APPROVED 8.1**, Clips **APPROVED 8.0** (replayclips-r1); Automation **APPROVED 8.0** (automation-r2, on the line); ship/range r2 running | see left | `range.js`, `automationPanel.js`, `replay.js`, `clips.js` | Carry-over: replay dormant band 3.5:1 + world exposure; clips ghost sub 16px + glyph bloom; automation link bodies 3.1:1 + rail-follow + focus segment; populated stills when stageable |
 | Chart / galaxy map | **APPROVED 8.1** (chart-r4); r5 polish landed (849a0a0dd) | 8.1 | `chartInstruments.js`, `chartLayouts.js`, `galaxyMap.js` presentation layer | Optional margin: orbital tracks + Lens (the critic's §8) |
 | Meta | ALL APPROVED: Settings 8.1 / Credits 8.2 (setcr-r3); Save/Load 8.1 / Game Over 8.2 (sav-r3); Codex 8.1 / Mission Log 8.0 (archive-r4); Research 8.0 / Achievements 8.1 (con-r5); Help 8.0 (help-r4, r9 follow-ups landed) | see left | `settingsLayouts.js`, `saveLayouts.js`, `saveFilmstrip.js`, `saveBerth.js`, `saveSortieTape.js`, `archiveLayouts.js`, `archiveInstruments.js`, `constellation*.js` | Done |
 | Loading | Not started | — | `bootRing.js` exists | Emblem dial; the load's real stages as ticks; no developer copy |

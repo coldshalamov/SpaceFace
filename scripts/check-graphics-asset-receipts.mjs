@@ -58,43 +58,52 @@ if (!forgeStamp(heliosRelease.source)) {
     'Helios promotion/release meshopt count');
 }
 
-const rockSummary = json('assets/ships/m4_helios_hub/evidence/helios_rock_a_build_summary.json');
-const rockReceipt = rockSummary.receiptClosure;
 const rockPart = required(partById.get('place_asteroid_rock_a'), 'place_asteroid_rock_a', 'parts manifest');
 const rockRelease = required(releaseById.get('place_asteroid_rock_a'), 'place_asteroid_rock_a', 'release manifest');
-assert.equal(rockReceipt.schema, 'spaceface.graphicsAssetReceiptClosure.v1');
-assert.equal(rockReceipt.status, 'accepted_live');
-assertFileReceipt(rockSummary.sourceGlb, rockSummary.sourceBytes, rockSummary.sourceSha256,
-  'Rock A current build summary source');
-assertObjectReceipt(rockReceipt.authoringBlend, 'Rock A authoring blend');
-assertObjectReceipt(rockReceipt.familySource, 'Rock A family source');
-assertObjectReceipt(rockReceipt.liveSource, 'Rock A live source');
-assertObjectReceipt(rockReceipt.release, 'Rock A release');
 assertReleaseManifest(rockRelease, 'Rock A release manifest');
-assert.equal(fileRecord(rockReceipt.familySource.path).sha256, fileRecord(rockReceipt.liveSource.path).sha256,
-  'Rock A family source must be byte-identical to the live source');
-const rockMetrics = glbMetrics(rockReceipt.liveSource.path);
-assert.equal(rockPart.bytes, fileRecord(rockReceipt.liveSource.path).bytes, 'Rock A parts-manifest bytes');
-assert.equal(rockPart.tris, rockMetrics.triangles, 'Rock A parts-manifest triangles');
-assert.deepEqual(rockReceipt.metrics, {
-  triangles: rockMetrics.triangles,
-  lod0Triangles: rockMetrics.lods.lod0,
-  lod1Triangles: rockMetrics.lods.lod1,
-  lod2Triangles: rockMetrics.lods.lod2,
-  materials: rockMetrics.materials,
-  textures: rockMetrics.textures,
-}, 'Rock A closure metrics must describe the current live GLB');
-assert.equal(rockSummary.totalTriangles, rockMetrics.triangles, 'Rock A top-level triangle summary');
-assert.equal(rockSummary.lod0Triangles, rockMetrics.lods.lod0, 'Rock A top-level LOD0 triangle summary');
-const embeddedRock = rockMetrics.gltf.asset?.extras?.spacefaceAsset || {};
-assert.equal(rockReceipt.legacyEmbeddedMetadata.triangleCount,
-  rockMetrics.gltf.asset?.extras?.triangleCount, 'Rock A legacy embedded triangle count must be explicit');
-assert.equal(rockReceipt.legacyEmbeddedMetadata.wiringStatus,
-  embeddedRock.wiringStatus, 'Rock A legacy embedded wiring status must be explicit');
-assert.equal(authoring.entries.place_asteroid_rock_a.blend_path, rockReceipt.authoringBlend.path,
-  'Rock A authoring registry must name the bound blend');
-assert.equal(authoring.entries.place_asteroid_rock_a.promotion_pipeline,
-  'scripts/promote-m4-surface-remaster.mjs', 'Rock A authoring registry must name its promoter');
+if (!forgeStamp(rockRelease.source)) {
+  // Pre-Forge rock: the m4 surface-remaster receipt closure binds the live body.
+  const rockSummary = json('assets/ships/m4_helios_hub/evidence/helios_rock_a_build_summary.json');
+  const rockReceipt = rockSummary.receiptClosure;
+  assert.equal(rockReceipt.schema, 'spaceface.graphicsAssetReceiptClosure.v1');
+  assert.equal(rockReceipt.status, 'accepted_live');
+  assertFileReceipt(rockSummary.sourceGlb, rockSummary.sourceBytes, rockSummary.sourceSha256,
+    'Rock A current build summary source');
+  assertObjectReceipt(rockReceipt.authoringBlend, 'Rock A authoring blend');
+  assertObjectReceipt(rockReceipt.familySource, 'Rock A family source');
+  assertObjectReceipt(rockReceipt.liveSource, 'Rock A live source');
+  assertObjectReceipt(rockReceipt.release, 'Rock A release');
+  assert.equal(fileRecord(rockReceipt.familySource.path).sha256, fileRecord(rockReceipt.liveSource.path).sha256,
+    'Rock A family source must be byte-identical to the live source');
+  const rockMetrics = glbMetrics(rockReceipt.liveSource.path);
+  assert.equal(rockPart.bytes, fileRecord(rockReceipt.liveSource.path).bytes, 'Rock A parts-manifest bytes');
+  assert.equal(rockPart.tris, rockMetrics.triangles, 'Rock A parts-manifest triangles');
+  assert.deepEqual(rockReceipt.metrics, {
+    triangles: rockMetrics.triangles,
+    lod0Triangles: rockMetrics.lods.lod0,
+    lod1Triangles: rockMetrics.lods.lod1,
+    lod2Triangles: rockMetrics.lods.lod2,
+    materials: rockMetrics.materials,
+    textures: rockMetrics.textures,
+  }, 'Rock A closure metrics must describe the current live GLB');
+  assert.equal(rockSummary.totalTriangles, rockMetrics.triangles, 'Rock A top-level triangle summary');
+  assert.equal(rockSummary.lod0Triangles, rockMetrics.lods.lod0, 'Rock A top-level LOD0 triangle summary');
+  const embeddedRock = rockMetrics.gltf.asset?.extras?.spacefaceAsset || {};
+  assert.equal(rockReceipt.legacyEmbeddedMetadata.triangleCount,
+    rockMetrics.gltf.asset?.extras?.triangleCount, 'Rock A legacy embedded triangle count must be explicit');
+  assert.equal(rockReceipt.legacyEmbeddedMetadata.wiringStatus,
+    embeddedRock.wiringStatus, 'Rock A legacy embedded wiring status must be explicit');
+  assert.equal(authoring.entries.place_asteroid_rock_a.blend_path, rockReceipt.authoringBlend.path,
+    'Rock A authoring registry must name the bound blend');
+  assert.equal(authoring.entries.place_asteroid_rock_a.promotion_pipeline,
+    'scripts/promote-m4-surface-remaster.mjs', 'Rock A authoring registry must name its promoter');
+} else {
+  // Forge rock: same binding the forged hub uses — release manifest (asserted above) plus
+  // parts-manifest bytes/triangles against the live GLB on disk.
+  const rockMetrics = glbMetrics(rockRelease.source);
+  assert.equal(rockPart.bytes, fileRecord(rockRelease.source).bytes, 'Rock A parts-manifest bytes');
+  assert.equal(rockPart.tris, rockMetrics.triangles, 'Rock A parts-manifest triangles');
+}
 
 // Forge bodies (tools/blender/forge) carry their provenance in the GLB itself
 // (spacefaceAsset.forge); the old pipeline's acceptance receipts describe bodies that no longer

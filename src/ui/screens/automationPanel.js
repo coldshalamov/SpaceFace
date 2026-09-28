@@ -417,6 +417,19 @@ const CSS = `
   border: 1px solid var(--panel-edge); overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-minibar > i { display: block; height: 100%; background: linear-gradient(90deg, #10b981, #34d399); }
 #sf-automation .au-locked { font-size: 13px; color: var(--warn); }
+html body #screens #sf-automation.au-orrery .au-shop .nm > .au-locked--mark {
+  display: inline-block; width: 11px; height: 11px; margin-left: 9px; vertical-align: -1px;
+  /* the unlit lamp: a 1px bone outline of the cut shape, no dark fill, no words — the dotted
+     verb beside it already names the research that unlocks the tier. */
+  background-image:
+    linear-gradient(to bottom right, transparent 42%, rgb(var(--au-bone) / .5) 42%, rgb(var(--au-bone) / .5) 58%, transparent 58%),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5));
+  background-size: 5px 5px, calc(100% - 5px) 1px, 1px 100%, 100% 1px, 1px calc(100% - 5px);
+  background-position: right top, left top, left top, left bottom, right bottom;
+  background-repeat: no-repeat; }
 @media (max-width: 760px) {
   #sf-automation .au-command { grid-template-columns: 1fr; }
   #sf-automation .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -429,6 +442,301 @@ const CSS = `
     background: Canvas; color: CanvasText; border-color: CanvasText;
   }
 }
+/* ---- ORRERY r1 (A2): ONE borderless glass surface. Every rule keys off .au-orrery so it beats
+   the LEGACY AU overrides in deckplate/screens.js. Palette law: bone rgb(236 230 216) rest light,
+   ice rgb(223 238 255) motion only, one amber Hand + one amber Lamp Key, red threat only. */
+html body #screens #sf-automation.au-orrery {
+  --au-bone: 236 230 216;
+  --au-ice: 223 238 255;
+  border: 0; border-radius: 0;
+  background: linear-gradient(180deg, rgb(10 13 18 / .94) 0%, rgb(6 8 12 / .94) 100%);
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+  position: relative;
+  /* The glass fits the instrument: no void below the last rung. Long ledgers still scroll. */
+  height: auto; max-height: min(88vh, 860px);
+}
+html body #screens #sf-automation.au-orrery::before,
+html body #screens #sf-automation.au-orrery::after {
+  content: ""; position: absolute; left: 10px; right: 10px; height: 15px; z-index: 5;
+  pointer-events: none; background-repeat: no-repeat;
+  background-image:
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6));
+  background-size: 2px 15px, 15px 2px, 2px 15px, 15px 2px;
+}
+html body #screens #sf-automation.au-orrery::before { top: 8px; background-position: left top, left top, right top, right top; }
+html body #screens #sf-automation.au-orrery::after { bottom: 8px; background-position: left bottom, left bottom, right bottom, right bottom; }
+/* O2 header: amber audit — title pip goes bone, purse is a bone Counter, CLOSE is a dotted word. */
+html body #screens #sf-automation.au-orrery .au-head { padding: 14px 26px 10px; gap: 8px; border-bottom: 0; background: none; }
+html body #screens #sf-automation.au-orrery .au-title::before {
+  width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--au-bone)); box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-credits {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 2px 0;
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600;
+  letter-spacing: .06em; color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-close {
+  border: 0; border-radius: 0; background: none; box-shadow: none; min-height: 0; padding: 4px 2px;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .75);
+  text-decoration: underline dotted rgb(var(--au-bone) / .55); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; cursor: pointer; }
+html body #screens #sf-automation.au-orrery .au-close:hover { color: rgb(var(--au-bone)); translate: none; filter: none; }
+html body #screens #sf-automation.au-orrery .au-close::after { display: none; }
+/* O3 (A4+A7): the income row is an instrument — Arc Gauge, rolling Counter, ghost headroom,
+   and the asset-flow strip running into the purse. No bar, no box. */
+html body #screens #sf-automation.au-orrery .au-income {
+  display: flex; align-items: center; gap: 14px; padding: 6px 2px;
+  border: 0; border-radius: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-gauge { width: 64px; height: 40px; flex: none; overflow: visible; }
+html body #screens #sf-automation.au-orrery .au-gauge__track {
+  fill: none; stroke: rgb(var(--au-bone) / .22); stroke-width: 1; }
+html body #screens #sf-automation.au-orrery .au-gauge__ghost {
+  fill: none; stroke: rgb(var(--au-bone) / .5); stroke-width: 2; stroke-linecap: butt; }
+html body #screens #sf-automation.au-orrery .au-gauge__fill {
+  fill: none; stroke: rgb(var(--au-bone) / .95); stroke-width: 3; stroke-linecap: butt; }
+html body #screens #sf-automation.au-orrery .au-gauge__bead {
+  fill: rgb(var(--au-bone)); stroke: rgb(var(--au-bone) / .28); stroke-width: 4; }
+html body #screens #sf-automation.au-orrery .au-gauge__tick {
+  stroke: rgb(var(--au-bone) / .45); stroke-width: 1; }
+html body #screens #sf-automation.au-orrery .au-gauge__tick--ghost {
+  stroke: rgb(var(--au-bone) / .55); stroke-width: 2; }
+html body #screens #sf-automation.au-orrery .au-meter { display: flex; flex-direction: column; gap: 1px; min-width: 128px; }
+html body #screens #sf-automation.au-orrery .au-income .lbl {
+  font-size: 12px; letter-spacing: .16em; color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-income .val {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: 20px; line-height: 1.1; color: rgb(var(--au-bone)); text-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-digit { display: inline-block; }
+html body #screens #sf-automation.au-orrery .au-digit.is-new { animation: au-roll .32s ease-out; }
+@keyframes au-roll { from { transform: translateY(-55%); opacity: .2; } to { transform: none; opacity: 1; } }
+html body #screens #sf-automation.au-orrery .au-captxt {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--au-bone) / .6); white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-flow {
+  flex: 1; display: flex; align-items: stretch; gap: 0; min-width: 0; margin-left: 6px; }
+html body #screens #sf-automation.au-orrery .au-node {
+  flex: 1 1 0; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0; }
+html body #screens #sf-automation.au-orrery .au-node__ring {
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  border: 2px solid rgb(var(--au-bone) / .75);
+  padding: 0; background: transparent; }
+html body #screens #sf-automation.au-orrery .au-node[data-live="1"] .au-node__ring {
+  border-color: rgb(var(--au-bone)); box-shadow: 0 0 0 3px rgb(var(--au-bone) / .14); }
+html body #screens #sf-automation.au-orrery .au-node--purse .au-node__ring {
+  border-radius: 0; transform: rotate(45deg) scale(.72); border-color: rgb(var(--au-bone)); cursor: default; }
+/* r2 F3: rings are throttles — the Hand rides the hovered or conducted ring. */
+html body #screens #sf-automation.au-orrery button.au-node__ring { cursor: pointer; }
+html body #screens #sf-automation.au-orrery button.au-node__ring:hover,
+html body #screens #sf-automation.au-orrery .au-node.is-conducted .au-node__ring {
+  border-color: var(--accent); box-shadow: 0 0 10px 2px var(--accent); }
+html body #screens #sf-automation.au-orrery button.au-node__ring:focus-visible {
+  outline: 2px solid rgb(var(--au-bone)); outline-offset: 2px; }
+/* One Hand, always: while a ring holds it (conducted or hovered) the rail bead rests in bone. */
+html body #screens #sf-automation.au-orrery.is-conducting .au-tab.active::after,
+html body #screens #sf-automation.au-orrery .au-head:has(.au-node__ring:hover) .au-tab.active::after {
+  background: rgb(var(--au-bone) / .7); box-shadow: none; }
+html body #screens #sf-automation.au-orrery.is-conducting .au-tab.active::before,
+html body #screens #sf-automation.au-orrery .au-head:has(.au-node__ring:hover) .au-tab.active::before {
+  background: rgb(var(--au-bone)); box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-flow__cap {
+  align-self: center; flex: none; white-space: nowrap; margin-right: 12px;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-node__t { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+html body #screens #sf-automation.au-orrery .au-node__t b {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: 14px; color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-node__t i {
+  font-style: normal; font-family: var(--sf-body-face); font-weight: 600; font-size: 12px;
+  letter-spacing: .12em; text-transform: uppercase; color: rgb(var(--au-bone) / .6); }
+html body #screens #sf-automation.au-orrery .au-node__beam {
+  position: relative; flex: 1; height: 12px; margin-left: 8px; min-width: 14px;
+  background:
+    linear-gradient(rgb(var(--au-bone) / .7), rgb(var(--au-bone) / .7)) center / 100% 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .18), rgb(var(--au-bone) / .18)) center / 100% 5px no-repeat; }
+html body #screens #sf-automation.au-orrery .au-node__beam i {
+  position: absolute; top: 50%; left: 0; width: 4px; height: 4px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55);
+  animation: au-pulse 2.8s linear infinite; }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam i { display: none; }
+/* r2 F2: the parked bead sits mid-beam at rest (stills show it), sized by cr/min; the dormant
+   0-state keeps a hollow ghost bead so the machine reads alive-but-idle, not dead. */
+html body #screens #sf-automation.au-orrery .au-node__beam b {
+  position: absolute; top: 50%; left: 46%; width: 4px; height: 4px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55); }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam b {
+  width: 6px; height: 6px; background: transparent; box-shadow: none;
+  border: 1px solid rgb(var(--au-ice) / .6); }
+@keyframes au-pulse { from { left: 4%; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } to { left: 92%; opacity: 0; } }
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-digit.is-new { animation: none; }
+/* r2 F9: under reduced motion the traveller rests and the parked bead stays mid-beam — pulses
+   park, they never vanish, and every numeral beside them is untouched. */
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-node__beam i { display: none; }
+/* O4 (A3): tabs are stations on an arc rail — bone dotted words, ticks to the spine,
+   and the ONE amber Hand (arm + bead) riding the chosen station. */
+html body #screens #sf-automation.au-orrery .au-tabs {
+  position: relative; gap: 0 26px; padding: 0 4px 16px; border: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-tabs::before {
+  content: ""; position: absolute; left: -6px; right: -6px; bottom: 4px; height: 30px;
+  border-bottom: 2px solid rgb(var(--au-bone) / .5); border-radius: 0 0 50% 50%; pointer-events: none; }
+html body #screens #sf-automation.au-orrery .au-tab {
+  position: relative; min-height: 0; padding: 2px 2px 10px; border: 0; background: none; box-shadow: none;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .6);
+  text-decoration: underline dotted rgb(var(--au-bone) / .45); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; text-shadow: none; cursor: pointer; }
+html body #screens #sf-automation.au-orrery .au-tab:nth-child(2),
+html body #screens #sf-automation.au-orrery .au-tab:nth-child(3) { margin-top: 5px; }
+html body #screens #sf-automation.au-orrery .au-tab:hover { color: rgb(var(--au-bone)); background: none; }
+html body #screens #sf-automation.au-orrery .au-tab::after {
+  content: ""; position: absolute; left: 50%; bottom: -1px; width: 2px; height: 11px; margin-left: -1px;
+  background: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-tab.active {
+  color: rgb(var(--au-bone)); background: none; box-shadow: none; text-shadow: none;
+  text-decoration-style: solid; text-decoration-color: rgb(var(--au-bone) / .8); }
+html body #screens #sf-automation.au-orrery .au-tab.active::after {
+  height: 12px; bottom: -3px; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+html body #screens #sf-automation.au-orrery .au-tab.active::before {
+  content: ""; position: absolute; left: 50%; bottom: -9px; width: 7px; height: 7px; margin-left: -3.5px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px 2px var(--accent); }
+/* O5 (A2+A1): the ops board is a dossier on the glass, not two cards — flat, tight, bone. */
+html body #screens #sf-automation.au-orrery .au-body { padding: 12px 26px 16px; gap: 10px; min-height: 0; }
+html body #screens #sf-automation.au-orrery .au-command {
+  gap: 20px; grid-template-columns: minmax(270px, 1.15fr) minmax(0, 1.85fr); }
+html body #screens #sf-automation.au-orrery .au-next,
+html body #screens #sf-automation.au-orrery .au-summary {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
+html body #screens #sf-automation.au-orrery .au-next { gap: 3px; border-left: 0; }
+html body #screens #sf-automation.au-orrery .au-kicker { color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-next-title { font-size: 15px; }
+html body #screens #sf-automation.au-orrery .au-next-body {
+  font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; }
+html body #screens #sf-automation.au-orrery .au-next-row { margin-top: 2px; padding-top: 2px; }
+html body #screens #sf-automation.au-orrery .au-next-meta { font-size: 12px; }
+html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-content: start; padding-top: 2px; }
+html body #screens #sf-automation.au-orrery .au-metric {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
+html body #screens #sf-automation.au-orrery .au-metric:hover { border: 0; background: none; }
+html body #screens #sf-automation.au-orrery .au-metric .v { font-size: 17px; }
+/* O6 (A6): the route Beam — bone band with bloom geometry, ice pulse travelling to the berth. */
+html body #screens #sf-automation.au-orrery .au-route { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-route__from,
+html body #screens #sf-automation.au-orrery .au-route__to {
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .12em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .75); white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-route__to { color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-route__beam {
+  position: relative; flex: 1; height: 12px; min-width: 40px;
+  /* r2 F4: 4px under-stroke at bone .38 (holds >=2:1 on glass) with the 1px 11:1 core on
+     top — bloom geometry, no live filters. */
+  background:
+    linear-gradient(rgb(var(--au-bone) / .8), rgb(var(--au-bone) / .8)) center / 100% 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .38), rgb(var(--au-bone) / .38)) center / 100% 4px no-repeat; }
+html body #screens #sf-automation.au-orrery .au-route__beam i {
+  position: absolute; top: 50%; left: 0; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
+  background: rgb(var(--au-ice)); box-shadow: 0 0 7px 2px rgb(var(--au-ice) / .6);
+  animation: au-pulse 2.4s linear infinite; }
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-route__beam i { animation: none; left: 46%; }
+/* O7a (A1+A2): purchase tiers are one-line ladder rungs (name + stats + verb), the helper
+   unfolding on hover/focus; the grey notice strip is a leader-note line; no boxes anywhere. */
+html body #screens #sf-automation.au-orrery .au-section-h { padding-bottom: 4px; margin-bottom: 0; }
+html body #screens #sf-automation.au-orrery .au-card {
+  position: relative; border: 0; border-radius: 0; background: none; box-shadow: none;
+  padding: 10px 0 10px 16px; gap: 14px; }
+html body #screens #sf-automation.au-orrery .au-card:hover { border: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-card::before {
+  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px;
+  background: rgb(var(--au-bone) / .4); }
+html body #screens #sf-automation.au-orrery .au-card:hover::before,
+html body #screens #sf-automation.au-orrery .au-card:focus-within::before { background: rgb(var(--au-bone) / .85); }
+html body #screens #sf-automation.au-orrery .au-shop { padding: 7px 0 7px 16px; align-items: center; }
+/* r2 F5: fixed columns for vertical scan — a name column plus a per-ladder stat grid, still one
+   line per rung so the 1280 fold does not move. */
+html body #screens #sf-automation.au-orrery .au-shop .grow {
+  display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 2px 16px; align-items: baseline; }
+html body #screens #sf-automation.au-orrery .au-shop--drones .grow { grid-template-columns: 92px minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery :is(.au-shop--traders, .au-shop--outposts) .grow { grid-template-columns: 150px minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop .nm {
+  grid-column: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html body #screens #sf-automation.au-orrery .au-shop .meta {
+  grid-column: 2; margin-top: 0; min-width: 0; font-size: 12px; display: grid; grid-auto-flow: column;
+  justify-content: stretch; gap: 10px; }
+html body #screens #sf-automation.au-orrery .au-shop .meta > span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Fixed tracks sized to measured content; the last column is fluid so the grid can never run
+   under the verbs — column starts still align across rungs. */
+html body #screens #sf-automation.au-orrery .au-shop--drones .meta {
+  grid-template-columns: 10ch 20ch 10ch 9ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--traders .meta {
+  grid-template-columns: 10ch 10ch 8ch 10ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--outposts .meta {
+  grid-auto-flow: row; grid-template-columns: 9ch 13ch 10ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--outposts .meta > span:first-child {
+  grid-column: 1 / -1; }
+html body #screens #sf-automation.au-orrery .au-shop--fleet .meta {
+  grid-template-columns: 24ch max-content; }
+html body #screens #sf-automation.au-orrery .au-shop .au-note {
+  display: none; grid-column: 1 / -1; margin-top: 2px; font-size: 12px; }
+html body #screens #sf-automation.au-orrery .au-shop:hover .au-note,
+html body #screens #sf-automation.au-orrery .au-shop:focus-within .au-note { display: block; }
+html body #screens #sf-automation.au-orrery .au-empty {
+  border: 0; border-radius: 0; background: none; box-shadow: none; position: relative;
+  padding: 2px 0 2px 16px; font-size: 13px; }
+html body #screens #sf-automation.au-orrery .au-empty::before {
+  content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px;
+  background: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-locked { color: rgb(var(--au-bone) / .8); }
+/* O7b (A5): every verb except the Lamp Key is a dotted word. Disabled verbs are a 1px bone
+   outline of the cut shape — a lamp unlit, never a dark chip. */
+html body #screens #sf-automation.au-orrery .au-card button {
+  box-sizing: border-box; min-height: 0; padding: 4px 2px; border: 0; border-radius: 0;
+  background: none; box-shadow: none; filter: none; opacity: 1; translate: none;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .85); text-shadow: none;
+  text-decoration: underline dotted rgb(var(--au-bone) / .5); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; cursor: pointer; white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-card button::after { display: none; }
+html body #screens #sf-automation.au-orrery .au-card button:hover:not(:disabled) {
+  color: rgb(var(--au-bone)); background: none; box-shadow: none; filter: none;
+  text-decoration-style: solid; text-decoration-color: rgb(var(--au-bone) / .85); }
+html body #screens #sf-automation.au-orrery .au-card button:active:not(:disabled) { translate: none; }
+html body #screens #sf-automation.au-orrery .au-card button:disabled {
+  border: 0; box-shadow: none; background: none;
+  color: rgb(var(--au-bone) / .55); opacity: 1; filter: none; cursor: default;
+  padding: 4px 2px;
+  text-decoration: underline dotted rgb(var(--au-bone) / .4); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; }
+/* O7c: amber audit — status ambers go bone (red keeps threat only); deployed instruments flat. */
+html body #screens #sf-automation.au-orrery :is(.au-pill, .au-program-badge) {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0;
+  color: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery .au-pill.warn {
+  color: rgb(var(--au-bone)); text-decoration: underline dotted rgb(var(--au-bone) / .6);
+  text-underline-offset: 3px; border: 0; }
+html body #screens #sf-automation.au-orrery .au-pill.ok { color: rgb(var(--au-bone)); border: 0; }
+html body #screens #sf-automation.au-orrery .au-pill.bad { color: var(--danger); border: 0; }
+html body #screens #sf-automation.au-orrery .au-operation-status.warn { color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="starved"] .au-flow-link,
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="storage_full"] .au-flow-link {
+  background: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="starved"] .au-flow-link::after,
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="storage_full"] .au-flow-link::after {
+  color: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery :is(.au-outpost-flow, .au-miner-ops) {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 8px 0; }
+html body #screens #sf-automation.au-orrery .au-flow-core { border-left: 0; border-right: 0; }
+html body #screens #sf-automation.au-orrery .au-outpost-detail summary {
+  color: rgb(var(--au-bone) / .85); text-decoration: underline dotted rgb(var(--au-bone) / .5);
+  text-underline-offset: 4px; }
+html body #screens #sf-automation.au-orrery .au-outpost-detail .au-detail-row {
+  background: none; border: 0; border-radius: 0; padding: 6px 0; }
+html body #screens #sf-automation.au-orrery .au-program {
+  border: 0; border-radius: 0; background: none; box-shadow: none; color: rgb(var(--au-bone)); }
 `;
 
 function injectStyle() {
@@ -446,12 +754,16 @@ export const automationScreen = {
   _tab: 'drones',
   _els: null,
   _bodySig: '',
+  _conduct: null,
 
   mount(rootEl, ctx) {
     injectStyle();
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-automation';
+    // au-orrery: the ORRERY r1 skin below keys off this class so it strictly beats the
+    // LEGACY AU overrides in deckplate/screens.js regardless of sheet order.
+    rootEl.classList.add('au-orrery');
     rootEl.innerHTML = `
       <div class="au-head">
         <div class="au-top">
@@ -462,9 +774,25 @@ export const automationScreen = {
           </div>
         </div>
         <div class="au-income">
-          <span class="lbl">PASSIVE</span><span class="val" data-rate>0 cr/min</span>
-          <div class="au-capbar"><div class="au-capfill" data-capfill></div></div>
-          <span class="au-captxt" data-captxt>cap —</span>
+          <svg class="au-gauge" data-gauge viewBox="0 0 64 40" aria-hidden="true" focusable="false">
+            <path class="au-gauge__track" d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <path class="au-gauge__ghost" data-gaugeghost d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <path class="au-gauge__fill" data-gaugefill d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <g class="au-gauge__ticks">
+              <line class="au-gauge__tick" x1="11" y1="18.7" x2="13.8" y2="20.8" />
+              <line class="au-gauge__tick" x1="24" y1="9.3" x2="25.1" y2="12.6" />
+              <line class="au-gauge__tick" x1="40" y1="9.3" x2="39" y2="12.6" />
+              <line class="au-gauge__tick" x1="53" y1="18.7" x2="50.2" y2="20.8" />
+              <line class="au-gauge__tick au-gauge__tick--ghost" x1="58" y1="34" x2="53" y2="34" />
+            </g>
+            <circle class="au-gauge__bead" data-gaugebead r="3" cx="6" cy="34" />
+          </svg>
+          <div class="au-meter">
+            <span class="lbl">PASSIVE</span>
+            <span class="val" data-rate>0 cr/min</span>
+            <span class="au-captxt" data-captxt>cap —</span>
+          </div>
+          <div class="au-flow" data-flow></div>
         </div>
         <div class="au-tabs" data-tabs>
           ${TABS.map((t) => `<button class="au-tab" data-tab="${t.id}">${t.label}</button>`).join('')}
@@ -475,8 +803,11 @@ export const automationScreen = {
     this._els = {
       cr: rootEl.querySelector('[data-cr]'),
       rate: rootEl.querySelector('[data-rate]'),
-      capfill: rootEl.querySelector('[data-capfill]'),
+      gaugefill: rootEl.querySelector('[data-gaugefill]'),
+      gaugeghost: rootEl.querySelector('[data-gaugeghost]'),
+      gaugebead: rootEl.querySelector('[data-gaugebead]'),
       captxt: rootEl.querySelector('[data-captxt]'),
+      flow: rootEl.querySelector('[data-flow]'),
       body,
       tabs: Array.from(rootEl.querySelectorAll('[data-tab]')),
     };
@@ -484,6 +815,13 @@ export const automationScreen = {
     rootEl.querySelector('[data-tabs]').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-tab]');
       if (btn && btn.dataset.tab !== this._tab) { this._tab = btn.dataset.tab; this.refresh(this._ctx, { forceBody: true }); }
+    });
+
+    // r2 F3: the flow-strip rings are throttles — conducting moves the Hand there.
+    const flow = rootEl.querySelector('[data-flow]');
+    if (flow) flow.addEventListener('click', (e) => {
+      const ring = e.target.closest('button[data-conduct]');
+      if (ring) this._onAction('conduct', ring.dataset.conduct, null);
     });
 
     const closeBtn = rootEl.querySelector('[data-close]');
@@ -566,11 +904,108 @@ export const automationScreen = {
     const rate = this._currentRatePerMin();
     const cap = this._passiveCapPerMin();
     const rateEl = this._els && this._els.rate;
-    if (rateEl) rateEl.textContent = `${Math.round(rate)} cr/min`;
-    const fill = this._els && this._els.capfill;
-    if (fill) fill.style.width = (cap > 0 ? Math.max(0, Math.min(100, (rate / cap) * 100)) : 0).toFixed(1) + '%';
+    if (rateEl) setRollingCounter(rateEl, `${Math.round(rate)} cr/min`);
+    // A4: Arc Gauge — bone fill to the drawn rate, ghost arc for the headroom beyond it.
+    const pct = cap > 0 ? Math.max(0, Math.min(100, (Math.max(0, rate) / cap) * 100)) : 0;
+    const headPct = cap > 0 ? Math.max(0, Math.min(100 - pct, ((cap - Math.max(0, rate)) / cap) * 100)) : 0;
+    const fill = this._els && this._els.gaugefill;
+    if (fill) {
+      fill.style.strokeDasharray = '100';
+      fill.style.strokeDashoffset = String(100 - pct);
+    }
+    const ghost = this._els && this._els.gaugeghost;
+    if (ghost) {
+      ghost.style.strokeDasharray = `${headPct.toFixed(1)} 100`;
+      ghost.style.strokeDashoffset = String(-pct);
+    }
+    const bead = this._els && this._els.gaugebead;
+    if (bead) {
+      const theta = (180 - pct * 1.8) * Math.PI / 180;
+      bead.setAttribute('cx', (32 + 26 * Math.cos(theta)).toFixed(1));
+      bead.setAttribute('cy', (34 - 26 * Math.sin(theta)).toFixed(1));
+    }
     const captxt = this._els && this._els.captxt;
-    if (captxt) captxt.textContent = `cap ${Math.round(cap)} cr/min`;
+    if (captxt) {
+      const over = Math.max(0, rate) - cap;
+      captxt.textContent = over > 0.5
+        ? `over +${fmtCr(over)} — dropped`
+        : `+${fmtCr(Math.max(0, cap - Math.max(0, rate)))} headroom`;
+      captxt.dataset.state = over > 0.5 ? 'over' : 'headroom';
+    }
+    this._syncFlow(rate, cap);
+  },
+
+  // A7: asset-flow strip — one node glyph per asset class, ice pulses sized by cr/min
+  // running into the purse. Built once, updated by value; text keeps every fact.
+  _syncFlow(rate, cap) {
+    const el = this._els && this._els.flow;
+    if (!el) return;
+    if (!el.dataset.built) {
+      el.dataset.built = '1';
+      el.setAttribute('role', 'group');
+      el.innerHTML = `<span class="au-flow__cap">Conduct the machine</span>`
+        + ['drones', 'traders', 'outposts', 'fleet'].map((kind) => `
+        <div class="au-node" data-node="${kind}">
+          <button type="button" class="au-node__ring" data-conduct="${kind}" aria-pressed="false" aria-label="Conduct ${kind} — take the throttle"></button>
+          <span class="au-node__t"><b data-n>0</b><i>${kind}</i></span>
+          <span class="au-node__beam" aria-hidden="true"><i data-p></i><b data-park></b></span>
+        </div>`).join('') + `
+        <div class="au-node au-node--purse" data-node="purse">
+          <span class="au-node__ring" aria-hidden="true"></span>
+          <span class="au-node__t"><b data-n-total>0</b><i data-n-sub>cr/min</i></span>
+        </div>`;
+    }
+    const st = this._ctx.state;
+    const a = (st && st.automation) || {};
+    const classRate = {
+      drones: (a.drones || []).reduce((s, d) => s + (d.ratePerMin != null ? d.ratePerMin : estDroneRate(d)), 0),
+      traders: (a.traders || []).reduce((s, t) => s + (t.ratePerMin != null ? t.ratePerMin : 0), 0),
+      outposts: (a.outposts || []).reduce((s, o) => s + (o.ratePerMin != null ? o.ratePerMin : 0), 0),
+      fleet: 0,
+    };
+    const counts = {
+      drones: (a.drones || []).length, traders: (a.traders || []).length,
+      outposts: (a.outposts || []).length, fleet: (a.fleet || []).length,
+    };
+    for (const kind of ['drones', 'traders', 'outposts', 'fleet']) {
+      const node = el.querySelector(`[data-node="${kind}"]`);
+      if (!node) continue;
+      const n = node.querySelector('[data-n]');
+      if (n) n.textContent = String(counts[kind]);
+      const share = cap > 0 ? Math.max(0, Math.min(1, classRate[kind] / cap)) : 0;
+      const live = counts[kind] > 0 && classRate[kind] > 0;
+      node.dataset.live = live ? '1' : '0';
+      const beadPx = `${(3 + share * 4).toFixed(1)}px`;
+      const pulse = node.querySelector('[data-p]');
+      if (pulse) {
+        pulse.style.width = beadPx;
+        pulse.style.height = beadPx;
+        pulse.style.animationDuration = `${(2.8 - share * 1.6).toFixed(2)}s`;
+      }
+      // The parked bead carries the same size law; dormant nodes clear it so the hollow
+      // ghost bead from the stylesheet shows instead.
+      const park = node.querySelector('[data-park]');
+      if (park) {
+        park.style.width = live ? beadPx : '';
+        park.style.height = live ? beadPx : '';
+      }
+      node.classList.toggle('is-conducted', this._conduct === kind);
+      const ring = node.querySelector('[data-conduct]');
+      if (ring) ring.setAttribute('aria-pressed', String(this._conduct === kind));
+    }
+    if (this._root) this._root.classList.toggle('is-conducting', !!this._conduct);
+    const total = el.querySelector('[data-n-total]');
+    if (total) total.textContent = fmtCr(Math.max(0, rate));
+    const sub = el.querySelector('[data-n-sub]');
+    if (sub) {
+      sub.textContent = this._conduct && classRate[this._conduct] != null
+        ? `${this._conduct} ${fmtCr(Math.max(0, classRate[this._conduct]))}/min`
+        : 'cr/min';
+    }
+    el.setAttribute('aria-label', `Conduct the machine — asset flow: ${counts.drones} drones, `
+      + `${counts.traders} traders, ${counts.outposts} outposts, ${counts.fleet} escorts; total `
+      + `${Math.round(Math.max(0, rate))} credits per minute`
+      + (this._conduct ? `; conducting ${this._conduct}.` : '.'));
   },
 
   _syncTabs() {
@@ -701,6 +1136,13 @@ export const automationScreen = {
     const actionTarget = next.targetRef != null ? next.targetRef : next.tab;
     const actionTitle = next.actionTitle || next.cta;
     const kindAttr = next.kind ? ` data-kind="${escapeHtml(next.kind)}"` : '';
+    // A6: the route Beam names where the commit lands — the visible consequence.
+    const berth = action === 'openShipworksRoute' ? 'Helios Shipworks berth'
+      : action === 'hireTrader' ? 'Trader berth'
+      : action === 'buildOutpost' ? 'Outpost charter'
+      : action === 'assignFleet' ? 'Fleet muster'
+      : action === 'refuel' || action === 'resumeTrader' ? 'Field rendezvous'
+      : `${next.tab[0].toUpperCase() + next.tab.slice(1)} bay`;
     const wrap = document.createElement('div');
     wrap.className = 'au-command';
     wrap.innerHTML = `
@@ -711,6 +1153,11 @@ export const automationScreen = {
         <div class="au-next-row">
           <span class="au-next-meta">${escapeHtml(next.meta)}</span>
           <button class="au-cta" data-focus-key="operations-next:${escapeHtml(action)}:${escapeHtml(actionTarget)}" data-act="${escapeHtml(action)}" data-ref="${escapeHtml(actionTarget)}"${kindAttr} data-why="${escapeHtml(actionTitle)}" aria-label="${escapeHtml(actionTitle)}">${escapeHtml(next.cta)}</button>
+        </div>
+        <div class="au-route" role="img" aria-label="Route plotted: you to ${escapeHtml(berth)}">
+          <span class="au-route__from">You</span>
+          <span class="au-route__beam" aria-hidden="true"><i></i></span>
+          <span class="au-route__to">${escapeHtml(berth)}</span>
         </div>
       </div>
       <div class="au-summary" aria-label="Automation summary">
@@ -789,10 +1236,10 @@ export const automationScreen = {
       const locked = def.tier > tier;
       const purchase = describeAutomationPurchase('drone', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card';
+      card.className = 'au-card au-shop au-shop--drones';
       card.innerHTML = `
         <div class="grow">
-          <div class="nm">${prettyId(def.id)} ${locked ? `<span class="au-locked">requires drone tier ${def.tier}</span>` : ''}</div>
+          <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" title="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
           <div class="meta">
             <span>mine ${def.mineRate}/s</span>
             <span>yield ~${fmtCr(estDroneRate(def))}/min gross</span>
@@ -802,6 +1249,7 @@ export const automationScreen = {
           </div>
           ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
         </div>
+        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the drones line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -861,7 +1309,7 @@ export const automationScreen = {
     for (const def of TRADERS) {
       const purchase = describeAutomationPurchase('trader', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card';
+      card.className = 'au-card au-shop au-shop--traders';
       card.innerHTML = `
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
@@ -874,6 +1322,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
         </div>
+        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the traders line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="hireTrader" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -950,7 +1399,7 @@ export const automationScreen = {
     for (const def of OUTPOSTS) {
       const purchase = describeAutomationPurchase('outpost', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card';
+      card.className = 'au-card au-shop au-shop--outposts';
       card.innerHTML = `
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
@@ -963,6 +1412,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
+        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the outposts line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buildOutpost" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1014,13 +1464,14 @@ export const automationScreen = {
     } else {
       for (const { s, i } of assignable) {
         const card = document.createElement('div');
-        card.className = 'au-card';
+        card.className = 'au-card au-shop au-shop--fleet';
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(s.customName) || prettyId(s.defId)) : (escapeHtml(s.customName) || '')}</div>
             <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
             <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
+          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" title="Take the wing throttle — conduct the fleet line" aria-label="Take the wing throttle">Throttle</button>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
         frag.appendChild(card);
       }
@@ -1030,6 +1481,13 @@ export const automationScreen = {
   // ---- intent dispatch ----------------------------------------------------
   // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
   _onAction(act, ref, kind, extra) {
+    // r2 F3: conducting is pure presentation state (the Hand rides a ring); it never emits
+    // into the sim. Re-activating the conducted line releases the Hand back to the rail.
+    if (act === 'conduct') {
+      this._conduct = this._conduct === ref ? null : ref;
+      this.refresh(this._ctx);
+      return;
+    }
     if (act === 'openShipworksRoute') {
       const ctx = this._ctx;
       const access = shipworksStationAccess(ctx && ctx.state);
@@ -1521,13 +1979,14 @@ function deploymentPill(deployment) {
 
 function miniBar(frac) {
   const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
-  const col = pct < 25 ? 'var(--danger)' : pct < 55 ? 'var(--warn)' : 'var(--good)';
+  // Bone carries every level; red is the threat channel (about to strand), never amber.
+  const col = pct < 25 ? 'var(--danger)' : 'rgb(236 230 216 / .85)';
   return `<span class="au-minibar"><i style="width:${pct.toFixed(0)}%;background:${col}"></i></span>`;
 }
 
 function storageBar(frac) {
   const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
-  const color = pct >= 90 ? 'var(--warn)' : 'var(--accent-2)';
+  const color = pct >= 90 ? 'rgb(236 230 216 / .95)' : 'rgb(236 230 216 / .55)';
   return `<span class="au-storebar" aria-hidden="true"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></span>`;
 }
 
@@ -1605,6 +2064,22 @@ function spokenComparisonRate(actual, target, unit) {
 function numOr(v) {
   const n = Number(v);
   return Number.isFinite(n) && String(v).trim() !== '' && !/^[a-z]/i.test(String(v)) ? n : v;
+}
+
+// A4 Counter: per-character columns that roll on change (CSS animates .is-new;
+// reduced-motion resolves instantly with the same text). Rebuilds only on change.
+function setRollingCounter(el, text) {
+  const next = String(text);
+  if (el.textContent === next) return;
+  el.textContent = '';
+  const frag = document.createDocumentFragment();
+  for (const ch of next) {
+    const s = document.createElement('span');
+    s.className = ch === ' ' ? 'au-digit au-digit--sp' : 'au-digit is-new';
+    s.textContent = ch === ' ' ? '\u00A0' : ch;
+    frag.appendChild(s);
+  }
+  el.appendChild(frag);
 }
 
 function fmtCr(v) {

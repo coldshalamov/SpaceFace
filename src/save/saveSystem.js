@@ -4713,6 +4713,8 @@ function sanitizeRestoredSettings(settings) {
   if (typeof gp.enabled !== 'boolean') gp.enabled = true;
   if (typeof gp.deadzone !== 'number' || !(gp.deadzone >= 0 && gp.deadzone <= 1)) gp.deadzone = 0.12;
   if (typeof gp.invertY !== 'boolean') gp.invertY = false;
+  if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'drive';
+  if (typeof gp.schemeSuggested !== 'boolean') gp.schemeSuggested = false;
   // Touch (P1-12): { enabled } where enabled is true/false/null (null = auto-detect on touch devices).
   if (!s.controls.touch || typeof s.controls.touch !== 'object' || Array.isArray(s.controls.touch)) {
     s.controls.touch = { enabled: null };

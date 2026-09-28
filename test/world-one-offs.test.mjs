@@ -10,6 +10,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { WORLD_ONE_OFFS } from '../src/data/worldOneOffs.js';
+import { AUTHORED_DOCK_RUMORS } from '../src/data/frontierRumors.js';
 import { NAMED_LANE_CONTACTS } from '../src/data/laneContacts.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { world } from '../src/systems/world.js';
@@ -19,11 +20,68 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
 test('the placed one-offs exist, plus the too-fast courier', () => {
-  assert.equal(WORLD_ONE_OFFS.length, 8, 'eight placed set pieces in worldOneOffs.js');
+  assert.equal(WORLD_ONE_OFFS.length, 31,
+    'thirty-one placed set pieces: the eight beside places, the four CV-QUIET detours on the legs, plus nineteen for per-sector coverage');
   const courier = NAMED_LANE_CONTACTS.find((c) => c.id === 'lane_cinder_run_courier');
   assert.ok(courier, 'the named express courier still lives in laneContacts.js');
   const ids = WORLD_ONE_OFFS.map((o) => o.id);
   assert.equal(new Set(ids).size, ids.length, 'one-off ids are unique');
+});
+
+test('CV-QUIET: the flight between jobs is a place, not a loading corridor', () => {
+  // A detour is worth one of four things in this universe. All four are on the default route, all
+  // four are in the OPEN TRANSIT rather than beside the place they were anchored from, and no two
+  // are the same kind of detour - the thin answer is four flavours of wreckage.
+  const KINDS = Object.freeze({
+    body: 'oneoff_spare_keg',
+    job: 'oneoff_half_shift',
+    signal: 'oneoff_answering_buoy',
+    joke: 'oneoff_the_settling',
+  });
+  const byId = new Map(WORLD_ONE_OFFS.map((o) => [o.id, o]));
+  for (const [kind, id] of Object.entries(KINDS)) {
+    assert.ok(byId.has(id), `the default route has a detour that is ${kind}: ${id}`);
+  }
+
+  for (const id of Object.values(KINDS)) {
+    const oneOff = byId.get(id);
+    assert.equal(oneOff.sectorId, 'sector_helios_prime',
+      `${id} is on the default route, in the start sector`);
+    const sector = SECTOR_BY_ID.get(oneOff.sectorId);
+    const anchorPos = world._oneOffAnchorPos(sector, oneOff.anchor);
+    const off = Math.hypot(oneOff.offsetLocal.x, oneOff.offsetLocal.z);
+    assert.ok(off > 200,
+      `${id} is ${off.toFixed(0)} WU off its anchor - out on the leg, not station dressing`);
+  }
+
+  // A body is a body: ropeable, with mass the existing rope/shove can actually feel.
+  const body = byId.get(KINDS.body);
+  assert.ok(body.physicalBody && body.physicalBody.mass > 0,
+    `${KINDS.body} carries a physical body, not a billboard`);
+
+  // A job already underway reads as a worksite: more than one prop, mid-task.
+  const job = byId.get(KINDS.job);
+  assert.ok(job.cluster && job.cluster.props.length >= 2,
+    `${KINDS.job} is a worksite with parts, not one prop`);
+
+  // A signal is readable furniture.
+  const signal = byId.get(KINDS.signal);
+  assert.ok(signal.cluster && signal.cluster.props.length >= 1,
+    `${KINDS.signal} has its supporting furniture`);
+
+  // A joke the physics tells is a shape in space - the spacing widens, so it reads as sorted.
+  const joke = byId.get(KINDS.joke);
+  assert.ok(joke.cluster && joke.cluster.props.length >= 3, `${KINDS.joke} is a scatter that reads`);
+  const spacings = joke.cluster.props.map((p) => Math.hypot(p.dx, p.dz));
+  for (let i = 1; i < spacings.length; i++) {
+    assert.ok(spacings[i] > spacings[i - 1],
+      `${KINDS.joke} spreads out with distance: heavy clumped, light strung out`);
+  }
+
+  // Every detour has a reason a stranger can read in one sentence.
+  for (const id of Object.values(KINDS)) {
+    assert.ok(byId.get(id).why && byId.get(id).why.length > 20, `${id} has a why`);
+  }
 });
 
 test('every one-off is authored against a real anchor inside the sector radius', () => {
@@ -45,14 +103,35 @@ test('every one-off is authored against a real anchor inside the sector radius',
         assert.ok(d <= sector.worldRadius, `${oneOff.id} cluster part stays inside the sector radius`);
       }
     }
-    // Reachable: starter-pocket one-offs stay within a hop of the start sector; frontier
-    // one-offs (2026-09-28 INFERENCE) reach the same bar structurally — a real anchor inside
-    // their own sector's radius, which the anchor assertion above already proves.
+  }
+});
+
+test('CR-TEXTURE-1: every named sector has a reachable one-off', () => {
+  const bySector = new Map();
+  for (const oneOff of WORLD_ONE_OFFS) {
+    if (!bySector.has(oneOff.sectorId)) bySector.set(oneOff.sectorId, []);
+    bySector.get(oneOff.sectorId).push(oneOff);
+  }
+  for (const sector of SECTORS) {
     assert.ok(
-      oneOff.sectorId === 'sector_helios_prime'
-      || SECTOR_BY_ID.get('sector_helios_prime').neighbors.includes(oneOff.sectorId)
-      || oneOff.id === 'oneoff_held_dock_pinnace',
-      `${oneOff.id} must be reachable: starter pocket or a structurally anchored frontier piece`,
+      (bySector.get(sector.id) || []).length >= 1,
+      `${sector.id} has no one-off — every named place gets one reachable surprise`,
+    );
+  }
+
+  // Reachability: starter-pocket one-offs are on the default route (skyline); every other
+  // sector reaches the same bar through an authored bar lead at one of its own stations,
+  // so a stranger can dock, ask for rumors, and fly to the thing.
+  const STARTER_POCKET = new Set([
+    'sector_helios_prime', 'sector_ceres_belt', 'sector_tethys_junction',
+    'sector_vesta_forge', 'sector_io_reach',
+  ]);
+  for (const sector of SECTORS) {
+    if (STARTER_POCKET.has(sector.id)) continue;
+    const stations = sector.stations || [];
+    assert.ok(
+      stations.some((s) => AUTHORED_DOCK_RUMORS[s.id]),
+      `${sector.id} has no authored bar lead at any of its stations`,
     );
   }
 });
@@ -156,12 +235,32 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
       `${prop.data.name || prop.data.placeId} must never be spun`);
   }
 
-  // Helios Prime: only the great tanker (the shrine lives in Ceres now).
+  // Helios Prime: the great tanker plus the four CV-QUIET lane detours and their furniture.
   const helios = SECTOR_BY_ID.get('sector_helios_prime');
   const activeHelios = { pois: [], stations: [], gates: [], dressing: [] };
   system._spawnWorldOneOffs(helios, activeHelios);
-  assert.equal(activeHelios.dressing.length, 1, 'the tanker alone sits in the start sector');
-  assert.equal(activeHelios.worldOneOffSpins, undefined, 'the tanker does not spin');
+  const heliosOneOffs = WORLD_ONE_OFFS.filter((o) => o.sectorId === 'sector_helios_prime');
+  const expectedRows = heliosOneOffs.reduce((total, o) => total + 1 + (o.cluster ? o.cluster.props.length : 0), 0);
+  assert.equal(activeHelios.dressing.length, expectedRows,
+    'every Helios one-off and every cluster part lands as dressing');
+  assert.equal(heliosOneOffs.length, 5,
+    'the tanker plus the four detours (body, job, signal, joke) sit in the start sector');
+  // The spare keg is a physical body, so its tumble is its own angVel and it is never double-spun
+  // as dressing. Only the two non-physical tumbling detours join the spin list.
+  assert.ok(activeHelios.worldOneOffSpins, 'the tumbling detours spin as dressing');
+  assert.equal(activeHelios.worldOneOffSpins.length, 2,
+    'exactly the two non-physical tumbling detours are spun as dressing');
+  const spunNames = activeHelios.worldOneOffSpins
+    .map((row) => {
+      const prop = dressingRows().find((p) => p.id === row.id);
+      return (prop && prop.data && prop.data.name) || '';
+    })
+    .sort();
+  assert.equal(spunNames.length, 2);
+  assert.ok(spunNames.some((n) => n.includes('Answering Buoy')), 'the signal tumbles slowly');
+  assert.ok(spunNames.some((n) => n.includes('Settling')), 'the joke tumbles slowly');
+  const keg = [...entities.values()].find((e) => e.data && e.data.oneOffId === 'oneoff_spare_keg');
+  assert.ok(keg && keg.angVel === 0.12, 'the spare keg tumbles as its own physical body');
 });
 
 test('world.js owns the pass end to end: spawn on dressing, tick in update, reset on strip', () => {

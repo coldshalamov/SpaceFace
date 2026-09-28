@@ -1,0 +1,42 @@
+AUTOMATION r2 CRITIC — ORRERY station-tab round 2
+Critic: automation r2 critic. Stills opened with own eyes: .devshots/ui-review/view/w2r2-automation-1920.png + w2r2-automation-1280.png (source .devshots/ui-bench/automation.png) plus conduct-state stills .devshots/ui-bench/automation--02-conduct-drones-take-the-throttle.png, --06-drones.png, --09-fleet.png, --11-control.png. All measurements in-memory with sharp .raw() vs glass rgb(8 10 13); ratios are WCAG-style. No crops written (task allows one file only); numbers below are the pixels.
+Scoring law: design/frontend/review/CRITIC_BRIEF.md. PASS = overall >= 8.0 AND no axis < 7.0 AND owner (a) AND owner (b).
+Previous: r1 7.2 (C 7.5 / H 7.0 / L 7.5 / O 7.0 / D 7.0 / I 6.5) — NOT PASSED.
+
+1. VERDICT: PASSED, overall 8.0 (previous 7.2).
+All ten r1 fixes close, the palette audit is exact (two ambers, bone/ice to the digit, zero red, all text >= 4.5:1), and the conduct gesture exists live with the Hand riding the ring and the purse naming the line. Two honest debits keep it at the bar instead of above it: the flow-link bodies measure 1.58-1.60:1 (invisible; fix #1) and conduct is still select-only presentation with no machine consequence (fix #2, §5).
+
+2. AXES (score, previous, one line):
+- Composition 8.0 (was 7.5): right column de-chipped into dotted verbs; bands ordered gauge -> strip -> rail -> dossier -> beam -> ladder; short flow links read slightly stubby.
+- Hierarchy 7.8 (was 7.0): fixed stat columns finally scan vertically; twin verbs per rung (THROTTLE + RESEARCH) are ordered but busy.
+- Legibility 8.0 (was 7.5): stats peak 9.2:1, THROTTLE 11.5:1, RESEARCH 5.18-5.19:1 — everything clears 4.5, the verbs only just.
+- ORRERY fidelity 8.5 (was 7.0): zero chrome, one Hand + one Lamp Key in rest AND conduct states, bone/ice/amber exact; bone tab focus box in walk stills is the one off-law shape.
+- Craft/detail 7.8 (was 7.0): route beam 4px at 3.05-3.10 + 12.2 core, arc 4.6, ghost beads parked at 46% — minus the sub-2:1 link bodies.
+- Interaction clarity 8.0 (was 6.5): conduct is a complete loop (take throttle -> Hand moves -> purse renames); capped because the throttle throttles nothing yet.
+
+3. R1 FIXES F1-F10, item by item:
+- F1 Zero key-cap chrome: DONE. All four research boxes are dotted words (1920 MK rows, verbs x1144-1478 y682-832); disabled = dim dotted verb, no dark fill anywhere; locked tiers carry the 1px bone unlit-lamp cut mark beside MK2-MK4 names. Caps match the CLOSE/Lamp Key convention.
+- F2 Flow-strip pulse: DONE. Hollow ice ghost beads (6px, 5.5:1) parked mid-beam at 46% on all four links in the dormant still (beam x959-981, bead x965-972); code sizes beads 3-7px by cr/min share and speeds travellers 2.8s->1.2s by share. Frozen only by bench reduce-motion, per law.
+- F3 Conduct action: DONE (minimal reading). Rings take the Hand on hover/conduct (--02: 155 amber px on DRONES ring; rail bead zone 0 amber px, bone 15.9:1 — one Hand holds); dotted THROTTLE per tier row; purse sub-line renames live ("drones 0/min" in --02); copy "Conduct the machine" on the strip; re-activating releases. Caveat: pure presentation state, no sim effect — see (b) and fix #2.
+- F4 Beam body: DONE, measured. Route beam vprof x=550: body rows y559/561/562 at 3.05-3.10:1 (>= 2:1), core y560 at 12.2:1; band x476-627, 4px, bloom geometry, no filters.
+- F5 Tier stat lines: DONE (fixed-columns option). Column starts align across all four rungs: mine x562, yield x650/654, buffer x820/826, range x910/918, upkeep x992/1000. One line per rung; 1280 fold unmoved.
+- F6 Tab-rail words: DONE. Active row full bone in code and pixels (DRONES 15.9:1); 12px floor in code, identical CSS at 1280.
+- F7 Gauge ticks: DONE. Four minor ticks + ghost tick in the SVG, visible in-still (gauge block peak 15.9:1); reads as instrument #3.
+- F8 Title dot: DONE. Bone in code AND pixels: rgb(236,230,216) exactly (x436-442 y256). Only ambers on screen: Lamp Key fill #f2b950 (x587-825 y506-544) + Hand.
+- F9 Reduced-motion: DONE in code. Flow traveller rests while the parked bead stays mid-beam; route traveller parks at 46%; all numerals untouched. Nothing vanishes.
+- F10 1280 gate: DONE. MK4 y628-638, corner ticks y656, zero bright pixels below y660 (fold 720); tier bands clean with 46px pitch, no overlap; verbs clear of stats.
+
+4. RANKED FIXES (files: src/ui/screens/automationPanel.js):
+F1. Flow-link body alpha (craft/(a)): beams at 1920 x959-981 / x1091-1106 / x1217-1232 / x1321-1358, y314-318 (avoiding beads) measure 1.58-1.60:1 (rgb ~50,52,53) — invisible body under the 1px 9.24 core. Change `.au-node__beam` under-stroke from bone .18 to bone .38 (the route beam's value) so the body holds ~3.1:1 like F4's. One value.
+F2. Conduct leaves rail and ring split (interaction): --06 shows the FLEET ring conducted (amber) while the DRONES tab stays active with a bone bead — two foci on two lines. In `_onAction` conduct, also set `this._tab = ref` (with forceBody) so the rail, dossier and ladder follow the Hand. UI-only, no sim touch.
+F3. Research-verb contrast margin (legibility): RESEARCH verbs peak 5.18-5.19:1 (MK1 x1284 y684, MK2 x1291 y730) — passes 4.5 but thinnest text on screen. Lift disabled-verb bone .55 -> .62.
+F4. Tab focus box (ORRERY): walk stills --06/--09 show a full 1px bone rectangle around the focused rail tab (1920 x438-505 y360-380, 15.35:1) — a box where law wants a light segment (legacy `.au-tab:focus-visible` outline + deckplate `:root :focus-visible` color). Add an orrery `.au-tab:focus-visible` that draws a bone underline segment / brightens the bead instead of boxing the word.
+F5. Purse Counter roll (interaction): the passive Counter rolls via setRollingCounter but the purse total is set with textContent — conducting a live line snaps instead of rolling. Route the purse total through setRollingCounter.
+
+5. MEMORABLE: a real throttle — drag the conducted ring along its link to set that line's upkeep share, pulses quickening/sickening with the setting, purse rolling live. The Hand would become a lever, not a lamp. Nothing here attempts drag yet; conduct is select-only.
+
+6. PALETTE / LAW NOTES: ambers = exactly two zones in rest (Lamp Key #f2b950 + rail Hand bead, amber px nowhere else in the row map) and exactly two in conduct (Lamp Key + conducted ring; rail bead pure bone, 0 amber px in x460-485 y380-400). Ice = ghost beads + travellers, motion only. Red absent — correct, no threat state. Bone rgb(236,230,216) and ice rgb(223,238,255) exact in code and sampled pixels. Text peaks: THROTTLE 11.5, stats 9.2, metric sub-lines 9.0, RESEARCH 5.18-5.19 — all >= 4.5:1. 12px floor in code incl. 1280 rail words. Reduced-motion parks, numerals kept.
+
+7. OWNER CRITERIA:
+(a) PASS — no wireframe look, no generic elements: glass + corner ticks, 3px gauge fill with ticks, 2px rings at 9.1:1, 2px arc at 4.6:1, 4px route beam at 3.05-3.10 + 12.2 core, 6px ghost beads at 5.5:1, dotted verbs, unlit-lamp cut marks. One element named as owed: the flow-link under-stroke bodies at 1.58-1.60:1 (fix #1 above) — sub-2:1, saved from a bare-wire read only by the beads parked on them.
+(b) PASS (weak, and the honest center of this review) — the signature is "conduct the machine": no other screen lets the player take a line's throttle, move the Hand onto its ring, and watch the purse rename to that line's rate. It is distinct, per-screen, and a complete feedback loop — but shallow: conducting changes no sim state, throttles nothing, and does not even move the rail tab. Fix #2 (tab follows the Hand) now; the upkeep-share lever in §5 is what would make it strong and memorable.

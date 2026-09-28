@@ -30,6 +30,23 @@ function travelLine(actorId, sequence, text) {
   };
 }
 
+// D13-D16: each SP1 chain IS its wreck's native `mission`-channel rumor carrier. Accepting the
+// chain's opening offer emits mission:accepted with the wreck's bearingSourceRef, and the
+// unique-wreck owner records the bearing through the exact source/channel guard — the same native
+// carrier the Lost Coils mission rides. These sources carry the full authored copy the toast reads.
+function chainRumorSource(programSlot, wreckId, archetypeId, alias, lines) {
+  return {
+    id: `rumor_${alias}`, programSlot, wreckId,
+    sources: [{
+      id: `sp1_${alias}_assignment`,
+      sourceRef: `mission.sp1.${archetypeId}.${alias}`,
+      channelId: 'mission',
+      nativeFormat: 'chain_assignment',
+      lines: lines.map((text, index) => ({ id: `${alias}_line_${index + 1}`, text })),
+    }],
+  };
+}
+
 export default defineFlavorPack({
   id: flavorId,
   kind: flavorKind,
@@ -192,5 +209,26 @@ export default defineFlavorPack({
     travelLine('kell', '02', 'Customs erased the question that made the cargo evidence.'),
     travelLine('kell', '03', 'I can testify to numbers. Motive costs extra.'),
     travelLine('kell', '04', 'Public or sheltered, someone keeps a receipt. Choose its reader.'),
+
+    chainRumorSource('D13', 'wreck_mts_quadrille', 'investigation_chain', 'quadrille', [
+      'CONTRACT FILE: the Quadrille went silent on the Reach shelf with her seal-log still keyed to her box.',
+      'Investigation brief: isolate the silent hull, then bring the corridor count home before Meridian’s cleaners do.',
+      'The box pings once an hour. It has been pinging since the corridor went quiet.',
+    ]),
+    chainRumorSource('D14', 'wreck_isc_double_entry', 'witness_run', 'double_entry', [
+      'WITNESS RUN PRE-BRIEF: one hull left Customs under two registries, and the second one answered.',
+      'Compare the alias work at the Driftmark anomaly — the Double-Entry wore both names into the rock.',
+      'Whoever can read that hull can prove which name signed the corridor order.',
+    ]),
+    chainRumorSource('D15', 'wreck_dmc_first_notch', 'hearing', 'first_notch', [
+      'HEARING PRE-BRIEF: the siege’s first kill still floats inside Vesta’s approach, held as evidence.',
+      'The First-Notch’s rangefinders kept the firing solution that killed her. Scan the suite into the record.',
+      'Open the hearing over a hull, not a claim. Hulls do not withdraw testimony.',
+    ]),
+    chainRumorSource('D16', 'wreck_mts_regular', 'blockade_run', 'regular', [
+      'BLOCKADE RUN PRE-BRIEF: the Regular almost made Drift. The graveyard on the approach is her map.',
+      'Scan the cordon’s latest kill before you run it — the Regular’s marks are the honest chart.',
+      'Her hold shifted mass past two cordons. The third one held her.',
+    ]),
   ],
 });

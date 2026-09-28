@@ -11,8 +11,9 @@
 // Required renderer seam (when red): a single video-runtime reconcile path
 // (e.g. `_reconcileVideoRuntime({ key })` / `_ensureKeyLightShadows()`) that
 // settings:changed and boot both call, so:
-//   • draw buffer = f(pixelRatioCap, renderScale, dynResScale) after every
-//     renderScale / pixelRatioCap / section-wide change
+//   • draw buffer = f(pixelRatioCap, renderScale) after every
+//     renderScale / pixelRatioCap / section-wide change (dynResScale is a bloom
+//     content sub-rect via setContentScale, not a drawing-buffer multiplier)
 //   • shadows ON always binds `_keyLight`, configures shadow map/frustum once,
 //     and leaves cast/enabled gating to `_syncShadowMapEnabled`
 //   • shadows OFF only disables cast/enabled (does not permanently null the
@@ -40,7 +41,7 @@ function finiteInRange(value, min, max, fallback) {
   return Math.max(min, Math.min(max, n));
 }
 
-/** Same product as renderer.js applyRendererSize → setPixelRatio. */
+/** Same product as renderer.js applyRendererSize → setPixelRatio. dynResScale is ignored (content sub-rect). */
 function expectedPixelRatio(video, {
   devicePixelRatio = 1,
   dynResScale = 1,
@@ -50,9 +51,9 @@ function expectedPixelRatio(video, {
   const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
   const graphOwnsScale = vd.renderGraph === true && renderGraphUnavailable !== true;
   const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
-  const dyn = finiteInRange(dynResScale, 0.2, 1, 1);
+  void finiteInRange(dynResScale, 0.2, 1, 1);
   const base = Math.min(devicePixelRatio || 1, cap);
-  return Math.max(0.2, base * scale * dyn);
+  return Math.max(0.2, base * scale);
 }
 
 function expectedDrawBuffer(video, {
@@ -277,12 +278,12 @@ test('applyRendererSize formula: boot defaults vs max vs restore (devicePR=2)', 
   assert.deepEqual(restored, boot, 'current→max→current must restore boot draw buffer');
 });
 
-test('applyRendererSize formula: dynResScale multiplies without mutating settings.video', () => {
+test('applyRendererSize formula: dynResScale does not shrink the drawing buffer', () => {
   const video = { ...SCALED_VIDEO };
   const full = expectedPixelRatio(video, { devicePixelRatio: 2, dynResScale: 1 });
   const half = expectedPixelRatio(video, { devicePixelRatio: 2, dynResScale: 0.5 });
   assert.equal(full, 1.7);
-  assert.equal(half, 0.85);
+  assert.equal(half, 1.7, 'dynResScale is a bloom content sub-rect, not a pixelRatio factor');
   assert.equal(video.renderScale, 0.85, 'dyn res must not rewrite persisted renderScale');
   assert.equal(video.pixelRatioCap, 2, 'dyn res must not rewrite pixelRatioCap');
 });
@@ -314,6 +315,13 @@ test('static: applyRendererSize uses one route-owned scale and is used at boot +
   assert.match(body, /setPixelRatio/, 'applyRendererSize writes setPixelRatio');
   assert.match(body, /setSize/, 'applyRendererSize writes setSize');
   assert.match(body, /getDrawingBufferSize/, 'applyRendererSize returns drawing buffer size');
+  assert.doesNotMatch(body, /base \* scale \* dyn/,
+    'dynResScale must not multiply into the drawing-buffer pixel ratio');
+  assert.match(rendererSource, /setContentScale\s*\(\s*dyn\s*\)/,
+    '_applySize must forward dynResScale to bloom.setContentScale');
+  assert.match(rendererSource,
+    /_dynResAllowed\s*=\s*gpu\.tier\s*===\s*['"]software['"]\s*\|\|\s*gpu\.tier\s*===\s*['"]integrated['"]/,
+    'dynRes allowed for software + integrated after the target-pool fix');
 
   assert.match(
     rendererSource,

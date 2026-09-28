@@ -38,8 +38,10 @@ const CSS = `
 /* your voice, on her track's inner side: dimmer than hers, one reply at a time */
 .orr-voicearc .orr-bardial__voice { opacity:0; transition:opacity .22s ease-out; }
 .orr-voicearc .orr-bardial__voice.is-on { opacity:1; }
-.orr-voicearc .orr-bardial__voice-bars { fill:none; stroke:rgb(${BONE} / .5); stroke-width:2.2px; stroke-linecap:butt; }
-.orr-voicearc .orr-bardial__voice-bloom { fill:none; stroke:rgb(${BONE} / .1); stroke-width:6px; stroke-linecap:butt; }
+.orr-voicearc .orr-bardial__voice-bars { fill:none; stroke:rgb(${BONE} / .5); stroke-width:2.6px; stroke-linecap:butt; }
+.orr-voicearc .orr-bardial__voice-bloom { fill:none; stroke:rgb(${BONE} / .1); stroke-width:7px; stroke-linecap:butt; }
+/* your voice reads over her bright cheek too: a dark halo cuts a bed under each bar (invisible on dark glass) */
+.orr-voicearc .orr-bardial__voice-halo { fill:none; stroke:rgb(5 7 10 / .85); stroke-width:5.5px; stroke-linecap:butt; }
 /* a wide invisible stroke along the dial: the pointer scrubs it, the wheel turns it */
 .orr-voicearc .orr-bardial__hit { fill:none; stroke:transparent; stroke-width:64px; pointer-events:stroke; cursor:pointer; }
 html.sf-reduce-motion .orr-voicearc .orr-bardial__voice, html.sf-reduce-motion .orr-voicearc .orr-bardial__tick { transition:none; }
@@ -125,11 +127,14 @@ export function createReplyDial(voice, { replies = [], R = 0, angles = null, foc
       const len = lens[i];
       if (!len) continue;
       const a = from + (span * (i + 0.5)) / n;
-      const L = len <= 4 ? Math.max(3, Math.round(4 * scale)) : len * scale * 0.9;
-      const [x0, y0] = polar(cx, cy, r - 5.5, a); const [x1, y1] = polar(cx, cy, r - 5.5 - L, a);
+      // your voice answers from its own side of the track with a dark gap between the layers,
+      // reaching deeper than hers so the two never read as one fringe
+      const L = len <= 4 ? Math.max(3, Math.round(4 * scale)) : len * scale * 1.1;
+      const [x0, y0] = polar(cx, cy, r - 10, a); const [x1, y1] = polar(cx, cy, r - 10 - L, a);
       d += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
     }
     const vg = svg('g', { class: 'orr-bardial__voice' });
+    vg.appendChild(svg('path', { d, class: 'orr-bardial__voice-halo' }));
     vg.appendChild(svg('path', { d, class: 'orr-bardial__voice-bloom' }));
     vg.appendChild(svg('path', { d, class: 'orr-bardial__voice-bars' }));
     g.appendChild(vg);

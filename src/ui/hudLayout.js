@@ -183,3 +183,59 @@ function stopEvent(event) {
 function finite(value, fallback) { return Number.isFinite(value) ? value : fallback; }
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 function inertController() { return { apply: () => null, destroy() {} }; }
+
+// ── Bottom-center lane contract (planetHud / fieldHud / massSeedHud) ────────────────────────
+// The three flight tell pills share one centered lane above the bottom band. Solo, each keeps
+// its authored seat (PLANET/FIELD/MSEED_LANE_BASE — the tuned offsets). Co-visible, they
+// negotiate one-way: the highest-priority voice keeps its seat, the lower visible voices stack
+// one LANE_SLOT_STEP above it, and a cooldown voice stays silent entirely while a load-bearing
+// voice (environmental or better) occupies the lane — readiness seconds are the least valuable
+// line on the deck. Negotiation is a pure function of the visible-claim set (claim-then-query),
+// so the registry's update order cannot flip who wins; at most one frame settles after a
+// simultaneous appearance.
+
+export const LANE_PILL_HEIGHT = 26; // the pills' rendered height (12px etch, padding, hairline)
+export const LANE_GAP = 10; // clear glass between stacked instruments
+export const LANE_SLOT_STEP = LANE_PILL_HEIGHT + LANE_GAP;
+
+// Voice classes, highest value first. Denial is fieldHud's charter and never yields or hides.
+export const LANE_PRIORITY = { cooldown: 0, environmental: 1, active: 2, denial: 3 };
+// Same-class ties resolve to a fixed instrument rank: the band readout leads, then fieldwork,
+// then the seed. Constant, so a stable lane never flickers between two equal voices.
+export const LANE_TIE_RANK = { planet: 0, field: 1, mseed: 2 };
+
+// The authored seats — the offsets the three sheets already paint at. Solo output is unchanged.
+export const PLANET_LANE_BASE = 142;
+export const FIELD_LANE_BASE = 146;
+export const MSEED_LANE_BASE = 118;
+
+const laneClaims = new Map();
+const LANE_CLAIM_TTL_S = 2; // sim seconds; a claim whose owner stops refreshing expires (pause-safe)
+
+export function resetBottomLaneClaims() { laneClaims.clear(); }
+
+export function releaseBottomLaneClaim(id) { laneClaims.delete(id); }
+
+// Claim this frame's voice, then read the whole lane. Returns the bottom offset to sit at in px,
+// or { visible: false } when this voice must stay silent (cooldown under a load-bearing voice).
+export function claimBottomLaneSeat(id, priority, base, now = 0) {
+  laneClaims.set(id, {
+    id,
+    priority: Number.isFinite(priority) ? priority : LANE_PRIORITY.active,
+    base: Number.isFinite(base) ? base : 0,
+    tie: LANE_TIE_RANK[id] ?? 9,
+    at: Number.isFinite(now) ? now : 0,
+  });
+  return negotiateBottomLaneSeat(Array.from(laneClaims.values()), id, now);
+}
+
+export function negotiateBottomLaneSeat(claims, id, now = Infinity) {
+  const live = (claims || []).filter((claim) => claim && Number.isFinite(claim.priority)
+    && (now === Infinity || !(Number.isFinite(claim.at) && now - claim.at > LANE_CLAIM_TTL_S)));
+  const loadBearing = live.some((claim) => claim.priority > LANE_PRIORITY.cooldown);
+  const seats = live.filter((claim) => claim.priority !== LANE_PRIORITY.cooldown || !loadBearing);
+  seats.sort((a, b) => (b.priority - a.priority) || (a.tie - b.tie));
+  const mine = seats.find((claim) => claim.id === id);
+  if (!mine) return { visible: false };
+  return { visible: true, bottom: seats[0].base + seats.indexOf(mine) * LANE_SLOT_STEP };
+}

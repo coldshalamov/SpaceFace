@@ -25,7 +25,7 @@ html.sf-reduce-motion .orr-wave__bar, html.sf-reduce-motion .orr-wave.is-speakin
 /* the voice arc: bars of light radiating from an open arc round a face, breathing as a whole */
 .orr-voicearc { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 /* weight, not wire: the voice stands on a luminous band with a crisp edge; its bars are 2.6px of light */
-.orr-voicearc .orr-voicearc__band { --orr-w-band:7px; --orr-band-a:.34; stroke-linecap:butt; }
+.orr-voicearc .orr-voicearc__band { --orr-w-band:7px; --orr-band-a:.4; stroke-linecap:butt; }
 .orr-voicearc .orr-voicearc__track { --orr-w-edge:1.5px; --orr-edge-a:.52; stroke-linecap:butt; }
 .orr-voicearc .orr-voicearc__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:7; opacity:.12; stroke-linecap:butt; }
 .orr-voicearc .orr-voicearc__bars { fill:none; stroke:rgb(${BONE} / .56); stroke-width:2.6; stroke-linecap:butt; transform-box:fill-box; transform-origin:center; animation:orr-voicearc-breathe 3.2s ease-in-out infinite alternate; }
@@ -254,7 +254,7 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
     lean = next;
     standG.classList.toggle('is-warm', lean > 0);
     standG.classList.toggle('is-cold', lean < 0);
-    if (lean) standG.setAttribute('transform', `rotate(${lean > 0 ? -5 : 5} ${f(sbx)} ${f(sby)})`);
+    if (lean) standG.setAttribute('transform', `rotate(${lean > 0 ? -9 : 9} ${f(sbx)} ${f(sby)})`);
     else standG.removeAttribute('transform');
   };
   host.appendChild(layer);

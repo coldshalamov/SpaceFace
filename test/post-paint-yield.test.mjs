@@ -34,3 +34,21 @@ test('next-present yield resumes in a macrotask after the requested frame callba
   assert.equal(resumed, true);
   assert.deepEqual(timeline, ['request-frame', 'schedule-task', 'resumed']);
 });
+
+test('boundMs arm drains the slice when no present arrives in time', async () => {
+  const frames = [];
+  const tasks = [];
+  let resumed = false;
+  const pending = yieldToNextPresent({
+    boundMs: 5,
+    requestFrame(callback) { frames.push(callback); },
+    scheduleTask(callback) { tasks.push(callback); },
+  }).then(() => { resumed = true; });
+
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.equal(frames.length, 1, 'the next-present arm stays armed');
+  assert.equal(tasks.length, 1, 'the bounded dispatch fires once when the present never lands');
+  tasks.shift()();
+  await pending;
+  assert.equal(resumed, true);
+});

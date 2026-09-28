@@ -130,8 +130,17 @@ export const customsPrompt = {
       // result clear or replace an unrelated legacy customs panel.
       if (p && p.lawfulInspectionCaseId) return;
       // INF-079: the visible result of compliance. The engine charges the fine silently;
-      // the panel that offered the decision reports what submission cost.
-      if (p && p.found === true) this._reportBust(p);
+      // the panel that offered the decision reports what submission cost. A body
+      // surrendered to the weir is not a bust — report the impound, not a fine that
+      // was never charged and standing that was never damaged.
+      if (p && p.found === true) {
+        // A body seized on someone else's line is that owner's bust — reporting
+        // "standing damaged" here would file a consequence the sim never charged.
+        const foreign = p.evidenceOwnerId != null && p.evidenceOwnerId !== this._state.playerId;
+        if (foreign) this._reportThirdPartySeizure();
+        else if (p.surrendered === true) this._reportImpound(p);
+        else this._reportBust(p);
+      }
       this._dismiss();
     }; // a generic bust/scan clears the generic panel
     if (this._bus && this._bus.on) {
@@ -158,6 +167,12 @@ export const customsPrompt = {
     // result. Opening the flight verb deck here would stamp a stale prompt + hail behind the
     // station screen for three verbs that cannot act.
     if (p && p.source === 'dock') return;
+    // A customs-weir read is a gate, not a patrol offer: lawSecurity resolves it
+    // synchronously through economy.runScan, so SUBMIT/BRIBE/BREAK RANGE would be
+    // three dead verbs on an already-decided scan. A bolt-resolved read is the same —
+    // the gate already kept what the beam caught. A jump-gate scan resolves the same
+    // way — synchronous, decided before any verb could act.
+    if (p && (p.source === 'customs_weir' || p.source === 'customs_weir_bolt' || p.source === 'jump')) return;
     // Debounce: the same ping inside the window is ONE panel (no double-hail, deterministic).
     const now = state.simTime || 0;
     if ((now - this._last.t) < DEBOUNCE_S) return;
@@ -228,17 +243,47 @@ export const customsPrompt = {
   // INF-079: the visible result of compliance. Reads the bust payload verbatim — fine,
   // seized units, faction — and never recomputes (the engine's math stays single-writer).
   // Standing is named qualitatively: the strike-scaled rep delta is factions' to compute.
+  // Pod scans carry no hold fine — the bust is a flag on your record, not a charge.
   _reportBust(p) {
     const units = Array.isArray(p.confiscated)
       ? p.confiscated.reduce((n, s) => n + (Math.max(0, s.qty | 0) || 0), 0)
       : Math.max(0, p.units | 0);
     const fine = Number.isFinite(p.fine) ? p.fine : null;
     const seized = units > 0 ? ` · ${units} unit${units === 1 ? '' : 's'} seized` : '';
+    const cost = fine != null ? `fined ${fine} cr` : 'contraband flagged';
     if (this._bus && this._bus.emit) {
       this._bus.emit('toast', {
-        text: `CUSTOMS BUST — ${factionShort(p.factionId)} fined ${fine != null ? fine : '—'} cr${seized}; standing damaged.`,
+        text: `CUSTOMS BUST — ${factionShort(p.factionId)} ${cost}${seized}; standing damaged.`,
         kind: 'warn',
         ttl: 5,
+      });
+    }
+  },
+
+  // The gate working on someone else's cargo: a quiet ambient beat that shows
+  // the law acting on the world, filed against no standing of yours.
+  _reportThirdPartySeizure() {
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('toast', {
+        text: 'CUSTOMS GATE — cargo seized from a third-party line.',
+        kind: 'info',
+        ttl: 3,
+      });
+    }
+  },
+
+  // A body cut loose at the gate: the weir keeps it and the hull keeps walking.
+  // This is the legal off-ramp made visible — an impound receipt, not a bust.
+  _reportImpound(p) {
+    const units = Array.isArray(p.confiscated)
+      ? p.confiscated.reduce((n, s) => n + (Math.max(0, s.qty | 0) || 0), 0)
+      : Math.max(0, p.units | 0);
+    const seized = units > 0 ? `${units} unit${units === 1 ? '' : 's'} ` : '';
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('toast', {
+        text: `CUSTOMS GATE — ${seized}surrendered cargo impounded. No charge filed.`,
+        kind: 'info',
+        ttl: 4,
       });
     }
   },

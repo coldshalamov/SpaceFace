@@ -28,7 +28,7 @@ import {
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
-import { createDeathDial } from '../orrery/deathDial.js';
+import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
 import {
   buildCodeFor,
   buildNameFor,
@@ -747,6 +747,8 @@ export const crucibleScreen = {
     // ORRERY §6 door: the arena you are about to fight in stands at the right as its own produced
     // render, large, with its name engraved under it; choosing another arena cross-fades it. The
     // form keeps the left. For the eye only: the arena tiles carry the words and the choice.
+    // r2: the arena row is an Orbit Carousel — Left/Right orbit through the five rooms (wrapping),
+    // and each change cross-fades the key art plus its caption with a ~300ms settle.
     let paintHero = () => {};
     if (ORRERY && typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
       const hero = el('div', 'orr-door-hero');
@@ -759,19 +761,47 @@ export const crucibleScreen = {
       heroWords.append(heroName, heroLine);
       hero.appendChild(heroWords);
       rootEl.appendChild(hero);
+      // Every room's art loads with the door, so orbiting never cross-fades to an empty frame.
+      if (typeof Image === 'function') {
+        for (const key of Object.keys(ARENA_TILE)) {
+          const preload = new Image();
+          preload.decoding = 'async';
+          preload.src = kitUrl(ARENA_TILE[key].replace(/\.png$/, '@2x.png'));
+        }
+      }
       let front = 0;
       let shown = null;
+      let heroTurn = 0;
       paintHero = (id, name, line) => {
         const src = kitUrl((ARENA_TILE[id] || ARENA_TILE.helios_core).replace(/\.png$/, '@2x.png'));
-        heroName.textContent = name || '';
-        heroLine.textContent = line || '';
-        if (shown === src) return;
+        const reduce = document.documentElement
+          && document.documentElement.classList.contains('sf-reduce-motion');
+        if (shown === src) {
+          heroName.textContent = name || '';
+          heroLine.textContent = line || '';
+          return;
+        }
         shown = src;
         const next = layers[1 - front];
         next.src = src;
         next.classList.add('is-on');
         layers[front].classList.remove('is-on');
         front = 1 - front;
+        // The caption dips and returns on the new words inside the art's settle; reduced motion
+        // swaps the words with no dip. A fast orbit never lands a stale caption (turn token).
+        if (reduce) {
+          heroName.textContent = name || '';
+          heroLine.textContent = line || '';
+          return;
+        }
+        const turn = ++heroTurn;
+        heroWords.classList.add('is-turning');
+        setTimeout(() => {
+          if (turn !== heroTurn) return;
+          heroName.textContent = name || '';
+          heroLine.textContent = line || '';
+          heroWords.classList.remove('is-turning');
+        }, 150);
       };
     }
 
@@ -970,6 +1000,10 @@ export const crucibleScreen = {
       ghostBlurb.textContent = offer.blurb || (offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff);
       syncChoice(ghostButton, !!(raceGhost && offer.available));
       ghostButton.setAttribute('aria-disabled', String(!offer.available));
+      // r2: no ghost on file reads as a bone word with a dotted strike — never as dimmed text.
+      if (ghostButton.classList && typeof ghostButton.classList.toggle === 'function') {
+        ghostButton.classList.toggle('is-unavail', !offer.available);
+      }
     }
 
     function practiceFromLine(line) {
@@ -1191,12 +1225,40 @@ export const crucibleScreen = {
     seedRow.appendChild(seedWell);
     const reroll = word('New seed', 'k-word--fine');
     paintKey(reroll, 'small');
-    reroll.addEventListener('click', () => {
-      if (daily) { cue('deny'); return; }
-      seedInput.value = String(freshSeed());
-      freeSeed = seedInput.value;
+    // r2: the seed is a mechanical Counter — its digits tumble and lock left to right on NEW
+    // SEED. The value is filed immediately (a fast launch never races the display); reduced
+    // motion (or no timers) sets it straight. A second press retires the first roll's timer.
+    let seedRoll = 0;
+    function rollSeed(finalSeed) {
+      freeSeed = String(finalSeed);
+      seedInput.value = freeSeed;
       cue('confirm');
       syncGhost();
+      const reduce = typeof document !== 'undefined' && document.documentElement
+        && document.documentElement.classList.contains('sf-reduce-motion');
+      if (reduce || typeof setInterval !== 'function') return;
+      const digits = freeSeed.length;
+      const started = Date.now();
+      const dur = 420;
+      const mine = ++seedRoll;
+      const iv = setInterval(() => {
+        if (mine !== seedRoll) { clearInterval(iv); return; }
+        const t = Date.now() - started;
+        let shown = '';
+        for (let i = 0; i < digits; i += 1) {
+          const lockAt = ((i + 1) / digits) * dur * 0.8;
+          shown += t >= lockAt ? freeSeed[i] : String(Math.floor(Math.random() * 10));
+        }
+        seedInput.value = shown;
+        if (t >= dur) {
+          clearInterval(iv);
+          seedInput.value = freeSeed;
+        }
+      }, 40);
+    }
+    reroll.addEventListener('click', () => {
+      if (daily) { cue('deny'); return; }
+      rollSeed(freshSeed());
     });
     seedInput.addEventListener('input', () => {
       if (!daily) freeSeed = seedInput.value;
@@ -1391,6 +1453,15 @@ export const crucibleScreen = {
         records.appendChild(recSum);
         records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
         stage.appendChild(records);
+        // r2: a short plate shortens the caption so the row stays above the fold.
+        if (typeof matchMedia === 'function') {
+          try {
+            const shortMq = matchMedia('(max-height: 800px)');
+            const applyRecSum = () => { recSum.textContent = shortMq.matches ? 'Records \u203a' : 'Records & challenges'; };
+            applyRecSum();
+            if (typeof shortMq.addEventListener === 'function') shortMq.addEventListener('change', applyRecSum);
+          } catch { /* the full caption stands */ }
+        }
       }
     } catch (err) {
       if (typeof console !== 'undefined' && console.warn) {
@@ -1399,6 +1470,32 @@ export const crucibleScreen = {
     }
     rootEl.appendChild(stage);
     if (corner) rootEl.appendChild(corner);
+
+    // r2: Left/Right orbit a tile row, wrapping at its ends. The arena carousel selects as
+    // it orbits (each room cross-fades the hero); mode and build only move focus — their tiles
+    // include toggles and locks that must never fire from passing through. The station scale's
+    // needle follows aria-pressed on its spring (amber while the row holds focus, bone without).
+    function orbitRow(row, { select = false } = {}) {
+      if (!row || typeof row.addEventListener !== 'function') return;
+      row.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        if (typeof row.querySelectorAll !== 'function' || typeof document === 'undefined') return;
+        const buttons = [...row.querySelectorAll('button')].filter((b) => !b.disabled);
+        if (!buttons.length) return;
+        const here = buttons.indexOf(document.activeElement);
+        const step = event.key === 'ArrowRight' ? 1 : -1;
+        const next = here < 0
+          ? buttons[step > 0 ? 0 : buttons.length - 1]
+          : buttons[(here + step + buttons.length) % buttons.length];
+        if (!next) return;
+        event.preventDefault();
+        if (typeof next.focus === 'function') next.focus();
+        if (select && typeof next.click === 'function') next.click();
+      });
+    }
+    orbitRow(modes);
+    orbitRow(hulls);
+    orbitRow(arenas, { select: true });
 
     // .k-foot — Enter as one word (the mode's verb), Back.
     const foot = el('footer', 'k-foot sf-crd-foot');
@@ -1487,6 +1584,8 @@ export const crucibleScreen = {
     back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
     addWord(footWords, back);
     foot.appendChild(footWords);
+    // r2: the door documents its input — one quiet line under the keys.
+    foot.appendChild(el('p', 'k-t-fine orr-door-hint', '\u2190 \u2192 choose \u00b7 Enter launch'));
     rootEl.appendChild(foot);
 
     syncMode();
@@ -1617,6 +1716,35 @@ export function weaponDisplayName(weaponId) {
   return words
     .map((word) => (word.length === 1 ? word.toUpperCase() : word[0].toUpperCase() + word.slice(1)))
     .join(' ');
+}
+
+/**
+ * A weapon's short name for the abbreviated hit legend: the size token goes, a weight class
+ * goes, and what is left names it ("Heavy Autocannon M" -> "Autocannon", "Pulse Laser M" ->
+ * "Pulse", "Unidentified fire" -> "unknown").
+ */
+export function shortWeaponName(weaponId) {
+  if (/^unidentified/i.test(String(weaponId || ''))) return 'unknown';
+  const words = String(weaponId || '').split(/\s+/).filter(Boolean);
+  if (words.length > 1 && /^[SMLX]+$/i.test(words[words.length - 1]) && words[words.length - 1].length <= 2) {
+    words.pop();
+  }
+  if (!words.length) return 'unknown';
+  if (words.length === 1) return words[0];
+  if (/^(heavy|light)$/i.test(words[0])) return words.slice(1).join(' ');
+  return words[0];
+}
+
+/**
+ * The hit legend in one abbreviated line for short plates ("HA Autocannon · PL Pulse ·
+ * ? unknown"): the same initials the dial prints under its ticks (deathDial.initials), the same
+ * groups the dial legends, so an abbreviation never stands undefined. DOM-free.
+ */
+export function abbreviatedHitLegend(result) {
+  const trail = result && Array.isArray(result.damageTrail) ? result.damageTrail : [];
+  const groups = damageBreakdown(trail).rows.slice(0, 3);
+  if (!groups.length) return '';
+  return groups.map((g) => `${deathDialInitials(g.weapon)} ${shortWeaponName(g.weapon)}`).join(' \u00b7 ');
 }
 
 /**
@@ -2458,6 +2586,13 @@ export const crucibleResultsScreen = {
         rootEl.classList.add('has-deathdial');
         // the run in four figures at the head of the left column; the full ledger stays for the ear
         ledger.insertBefore(resultFigures(result), ledger.firstChild);
+        // r2: the abbreviated hit legend rides in the dial's caption, where the full legend sits;
+        // the stylesheet shows it exactly where the dial hides its own (a short plate).
+        const hitLegend = abbreviatedHitLegend(result);
+        if (hitLegend && dialHost.querySelector) {
+          const capEl = dialHost.querySelector('.orr-deathdial__caption');
+          if (capEl) capEl.appendChild(el('p', 'orr-crres-hitlegend', hitLegend));
+        }
       }
     }
 
@@ -2532,7 +2667,20 @@ export const crucibleResultsScreen = {
       foot.appendChild(replayNote);
     }
 
-    const again = addWord(word('Run it again — same seed', 'k-word--emph k-word--primary'));
+    // r2: the Lamp rule spans the verb's own words — the verb rides in a span of its own so
+    // the key beside it never inherits the rule. The live text node moves into the span; a stub
+    // DOM with no child text nodes keeps the button's own textContent either way.
+    const againButton = word('Run it again — same seed', 'k-word--emph k-word--primary');
+    const againVerb = el('span', 'sf-crres-verb', '');
+    const againFirst = againButton.firstChild;
+    if (againFirst && typeof againButton.removeChild === 'function') {
+      againButton.removeChild(againFirst);
+      againVerb.appendChild(againFirst);
+    } else {
+      againVerb.textContent = 'Run it again — same seed';
+    }
+    againButton.appendChild(againVerb);
+    const again = addWord(againButton);
     again.addEventListener('click', () => {
       // INF-010: one explicit retry action — same seed and kit as the run began, deep-copied
       // so the challenge cannot silently change; replays through the ordinary New Game route.

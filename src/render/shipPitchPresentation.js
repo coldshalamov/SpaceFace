@@ -10,6 +10,19 @@ import {
   resolveTumbleRecoverPose,
 } from './masslinePresentation.js';
 
+// Epoch bumped when any craft writes active tumble / thrown-trail / recover
+// body-language. VFX consumers latch quiet walks against this so a tumble that
+// starts without an entityIndexVersion bump still wakes. Soft-GPU fps not claimed.
+let _pitchPresentationEpoch = 0;
+
+export function pitchPresentationEpoch() {
+  return _pitchPresentationEpoch;
+}
+
+function bumpPitchPresentationEpoch() {
+  _pitchPresentationEpoch = (_pitchPresentationEpoch + 1) | 0;
+}
+
 const CONTROL_LOSS_SCRATCH = {
   mode: 'idle',
   tumbling: false,
@@ -131,6 +144,7 @@ export function updateShipPitchPresentation(state, frameDt) {
   const dt = Math.min(0.05, Math.max(0, frameDt));
   const rate = 6.0;
   let updated = 0;
+  let anyActiveBodyLanguage = false;
   const now = Number.isFinite(state && state.simTime)
     ? state.simTime
     : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
@@ -176,6 +190,7 @@ export function updateShipPitchPresentation(state, frameDt) {
         THROWN_TRAIL_INPUT,
         existingThrownTrail || {},
       );
+      if (pres.thrownTrail && pres.thrownTrail.active) anyActiveBodyLanguage = true;
     }
 
     if (recover && Number.isFinite(recover.until) && now < recover.until) {
@@ -191,6 +206,7 @@ export function updateShipPitchPresentation(state, frameDt) {
       entity.pitch = body.pitch;
       pres.tumble = body;
       if (!body.recovering) delete pres.tumbleRecover;
+      else anyActiveBodyLanguage = true;
       updated++;
       continue;
     }
@@ -217,6 +233,7 @@ export function updateShipPitchPresentation(state, frameDt) {
       pres._lastTumbleBank = body.bank;
       pres._lastTumblePitch = body.pitch;
       pres.tumble = body;
+      anyActiveBodyLanguage = true;
       if (loss.mode === 'tumbling') {
         pres.wasTumbling = true;
       }
@@ -243,6 +260,7 @@ export function updateShipPitchPresentation(state, frameDt) {
       entity.bank = body.bank;
       entity.pitch = body.pitch;
       pres.tumble = body;
+      anyActiveBodyLanguage = true;
       updated++;
       continue;
     }
@@ -258,6 +276,7 @@ export function updateShipPitchPresentation(state, frameDt) {
     updated++;
   }
 
+  if (anyActiveBodyLanguage) bumpPitchPresentationEpoch();
   return updated;
 }
 

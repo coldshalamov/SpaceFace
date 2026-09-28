@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c41670f110d324df494f131d1774bb0e9ed057f0d506ff996904f5517a89e2bc",
+  "contentHash": "e9ab8f8519a6eab95030ce27eb86125ea7feb147a3a00b9795fb819e8b1bc5fe",
   "dynamicGroups": [
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port.dynamic",
@@ -107,7 +107,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b63fcdb952ac6b65b08390e76e46f188add182f9919a30550e6cc5c4d6fb69c5",
+      "geometryHash": "c201204626144090a85b29045694f7a2f6bd5c8e8a7f891c6cbed4ab5528d7ec",
       "id": "sf.render.conveyor-barge.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -132,16 +132,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbef2ff5c973b2e29b83a7f069e05450b7a3215dcf10300228ead7f7ca1d478a",
+      "geometryHash": "bc1dfdd5ffe0ab67916890a05c3d5e6956281eae7f6d06d2701763b5fadc21a4",
       "id": "sf.render.conveyor-barge.mesh.lod0-armor.primitive.0",
-      "indexCount": 9180,
+      "indexCount": 10308,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3196
+      "vertexCount": 3556
     },
     {
       "bounds": {
@@ -221,52 +221,52 @@
     {
       "bounds": {
         "max": [
-          70,
-          8.200053215026855,
-          8.1012601852417
+          70.00000762939453,
+          3.0994138717651367,
+          8.100000381469727
         ],
         "min": [
-          3,
-          0.6999463438987732,
-          -8.1012601852417
+          66.99999237060547,
+          0.7005858421325684,
+          -8.100000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4a192b5d1d5eec59c0ad15087bcebe7ef6b11cd4ee13e980e553543213be3ff",
+      "geometryHash": "9db8df819533d6ce20c547d43ea7aa1d4b50e496d3bb2351c4541f2ec4413780",
       "id": "sf.render.conveyor-barge.mesh.lod0-hull-aged.primitive.0",
-      "indexCount": 1692,
+      "indexCount": 1128,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 538
+      "vertexCount": 346
     },
     {
       "bounds": {
         "max": [
           72.17097473144531,
-          11.098949432373047,
-          7.197638511657715
+          11.098254203796387,
+          2.070068120956421
         ],
         "min": [
           -0.48614501953125,
-          3.001051187515259,
-          -7.197638511657715
+          4.401745319366455,
+          -6.285046577453613
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20c3e0641b8247ce3fc6718d2da5cd17adfaffc0607604973bb3f87c83632eee",
+      "geometryHash": "28f3100f91bb0492f43806df419627f21de44ee31d4fbcc7460fd85a77b572ae",
       "id": "sf.render.conveyor-barge.mesh.lod0-hull.primitive.0",
-      "indexCount": 2256,
+      "indexCount": 1128,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 688
+      "vertexCount": 336
     },
     {
       "bounds": {
@@ -322,26 +322,26 @@
       "bounds": {
         "max": [
           72.30000305175781,
-          9.69847297668457,
-          7.000897407531738
+          9.69977855682373,
+          7.000702381134033
         ],
         "min": [
-          3.700000762939453,
-          1.8015271425247192,
-          -7.000897407531738
+          1.5,
+          1.8002210855484009,
+          -7.000702381134033
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c9c6498b98f0cb644762b29610b149efea089bfa0537dd2bbf7a7e4c376ece5",
+      "geometryHash": "800013ffa65cea7256a7e605801fafe2952c6d432b857f625e064f2357738b0a",
       "id": "sf.render.conveyor-barge.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 5784,
+      "indexCount": 6528,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1828
+      "vertexCount": 2132
     },
     {
       "bounds": {
@@ -386,7 +386,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-warning.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-warning",
@@ -407,16 +407,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b4a3009830edd222fd0b3bd724286af9f360a9bdeb073d3cb0a1fc9aa69c605",
+      "geometryHash": "e15d3023ec68242c07194aef93bd7bbf4c3a08c0b920a419b5a80253c65afa1f",
       "id": "sf.render.conveyor-barge.mesh.lod1-armor.primitive.0",
-      "indexCount": 4266,
+      "indexCount": 4794,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1760
+      "vertexCount": 1942
     },
     {
       "bounds": {
@@ -496,52 +496,52 @@
     {
       "bounds": {
         "max": [
-          69.99478912353516,
-          8.194308280944824,
-          8.09557819366455
+          69.99514770507812,
+          3.0957183837890625,
+          8.094786643981934
         ],
         "min": [
-          3.0056819915771484,
-          0.7035983800888062,
-          -8.09613037109375
+          67.0048599243164,
+          0.7042814493179321,
+          -8.095338821411133
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f749d80f7196168ee6c1ea8aef7d54bb7aa00b3e0930389ef5d2e081e99e9c3",
+      "geometryHash": "c90046dfbab7bf09f9ede263083fbfbf3b14166e65b47ebdc31cd907ba518d55",
       "id": "sf.render.conveyor-barge.mesh.lod1-hull-aged.primitive.0",
-      "indexCount": 954,
+      "indexCount": 630,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 354
+      "vertexCount": 240
     },
     {
       "bounds": {
         "max": [
           72.17097473144531,
-          11.101200103759766,
-          7.193203926086426
+          11.098254203796387,
+          2.070068120956421
         ],
         "min": [
           -0.48614501953125,
-          3.003302574157715,
-          -7.193203926086426
+          4.401745319366455,
+          -6.285046577453613
         ]
       },
       "drawMode": 4,
-      "geometryHash": "161ab0ff97436dfb417e68ce6240e21abe264904b9a0a37cc0dd2f9fa8a015f2",
+      "geometryHash": "ee94f04fd452755b3578211414b26e1b82255a7849aac798f228af2a4b4c518d",
       "id": "sf.render.conveyor-barge.mesh.lod1-hull.primitive.0",
-      "indexCount": 1416,
+      "indexCount": 1128,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 444
+      "vertexCount": 336
     },
     {
       "bounds": {
@@ -597,26 +597,26 @@
       "bounds": {
         "max": [
           72.29485321044922,
-          9.694168090820312,
-          6.995873928070068
+          9.695525169372559,
+          6.9958720207214355
         ],
         "min": [
-          3.703054428100586,
-          1.8065404891967773,
-          -6.995873928070068
+          1.5,
+          1.8051837682724,
+          -6.9958720207214355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67c18538ce97b8d5a070b962d4877a01f6338815e0b0f0227eef0f11155f1bb4",
+      "geometryHash": "fb09b538328dc13831bc2178cf7256c948d67a154b44c418b1b6b5cc085162c7",
       "id": "sf.render.conveyor-barge.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 984,
+      "indexCount": 1140,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 487
+      "vertexCount": 611
     },
     {
       "bounds": {
@@ -661,7 +661,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-warning.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-warning",
@@ -682,16 +682,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "503ab1e3d4dbc823fa29e8d2c8068720177241cf4286d63c243bf5c702d67587",
+      "geometryHash": "8fa28bcb88cce648dc73bba1ac62a1b6a339998281a3e8babd541d090e55559e",
       "id": "sf.render.conveyor-barge.mesh.lod2-armor.primitive.0",
-      "indexCount": 1548,
+      "indexCount": 1668,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 930
+      "vertexCount": 994
     },
     {
       "bounds": {
@@ -771,52 +771,52 @@
     {
       "bounds": {
         "max": [
-          69.97114562988281,
-          8.167099952697754,
-          8.075867652893066
+          69.9708251953125,
+          3.0898654460906982,
+          8.07547664642334
         ],
         "min": [
-          3.0122928619384766,
-          0.7124689817428589,
-          -8.075834274291992
+          67.02918243408203,
+          0.7101345658302307,
+          -8.075443267822266
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4861ee1dc2ca8f50fd4d2ba5e6547f46b2dd3b34489dd2fd96d8a1809cb9a5cd",
+      "geometryHash": "51b5e1efd1b7bed195ede307f57ff978f0d989f7ac492900f1b2e735157a8af7",
       "id": "sf.render.conveyor-barge.mesh.lod2-hull-aged.primitive.0",
-      "indexCount": 186,
+      "indexCount": 102,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 98
+      "vertexCount": 58
     },
     {
       "bounds": {
         "max": [
           72.1607894897461,
-          11.07877254486084,
-          7.173142910003662
+          11.08041000366211,
+          2.05893611907959
         ],
         "min": [
           -0.4728202819824219,
-          3.0278286933898926,
-          -7.173142910003662
+          4.421534061431885,
+          -6.26687479019165
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81b75203ed096acbd33e2a346a4a3e0d082d904c2808a8cc60eeb8cf42c37d3c",
+      "geometryHash": "e57453c1a6b75367e6d827216206e6ac5a4db24b7537dfd91fb039837ac62a91",
       "id": "sf.render.conveyor-barge.mesh.lod2-hull.primitive.0",
-      "indexCount": 336,
+      "indexCount": 264,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 147
+      "vertexCount": 99
     },
     {
       "bounds": {
@@ -847,26 +847,26 @@
       "bounds": {
         "max": [
           72.2841567993164,
-          9.683592796325684,
-          5.298434734344482
+          9.684870719909668,
+          5.298325061798096
         ],
         "min": [
-          5.200000762939453,
-          4.950215816497803,
-          -5.298434734344482
+          3.006336212158203,
+          4.948937892913818,
+          -5.298325061798096
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8aa4556cbdc2328edc94284ab40a04de3c3f2dd5272b6c15951605a31a91ff11",
+      "geometryHash": "415e497043dee60da232e48593397af470987ef26a8a6a5d9bf00b139cde3b2f",
       "id": "sf.render.conveyor-barge.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 180,
+      "indexCount": 216,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 144
     },
     {
       "bounds": {
@@ -911,7 +911,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-warning.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-warning",
@@ -963,22 +963,8 @@
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
-      "id": "material:7c9a3daaaa00f25157b72e50",
+      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "id": "material:333a696e723d180dee93b90e",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1007,6 +993,20 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
@@ -2823,31 +2823,31 @@
       "sha256": "b9618a373ce14f6beae61b01c21523b18e70e9aed045ec05e107b9846d683cbb"
     },
     "sourceGlb": {
-      "bytes": 536776,
-      "sha256": "fa4b3e5c45c3baf08edb2a48313ca42c31979604a4fb2b335c9045220f49449b",
+      "bytes": 539168,
+      "sha256": "f6de65d7b09a37588252581622f195d9ae790605e6c093a2065e21f63951368a",
       "uri": "place_conveyor_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 791648,
-    "sha256": "7a7d133a13f3719717dd8a5a84e6f54bc15287b570fd1a6777545e67962c282e",
+    "bytes": 794992,
+    "sha256": "27d0532588cac4ac76ac88b6c2fc48beb29be11aded72b29990c37de6b3a2553",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         35.650001525878906,
-        5.550359889253741,
+        5.548886939272052,
         0
       ],
       "max": [
         72.30000305175781,
-        11.101200103759766,
+        11.098254203796387,
         8.301018714904785
       ],
       "min": [
@@ -2857,7 +2857,7 @@
       ],
       "size": [
         73.30000305175781,
-        11.101680429012049,
+        11.09873452904867,
         16.60203742980957
       ]
     },
@@ -3966,14 +3966,14 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
-  "runtimeHash": "6955242ecdae908fdc30c6b09f99424e8e9666e0175915e320d407c12609fbd4",
+  "runtimeHash": "1514d78c53d9fa366f426245c8dfaadb9a731147c918a0e910b8c02774ff189e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           72.30000305175781,
-          11.101200103759766,
+          11.098254203796387,
           8.301018714904785
         ],
         "min": [

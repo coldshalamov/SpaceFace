@@ -10,16 +10,27 @@
 // Reads only: state.massSeed, state.player.massSeed, entities, helpers.worldToScreen.
 // Writes only: its own DOM subtree. No sim state. Fully guarded headless.
 //
+// The status pill shares the bottom-center lane with planetHud/fieldHud through the contract in
+// src/ui/hudLayout.js: a live seed keeps its voice (yielding its seat upward when a higher voice
+// leads); a "SEED READY IN" cooldown stays silent while a load-bearing pill occupies the lane.
+//
 // INST-01: the seed tell is an instrument on the deck, not a cyan web pill. The injected sheet
 // paints only with the tokens that already live on #hud / :root (deckplate register,
 // src/ui/deckplate/): the flight glass face, the etched legend voice, and the warm lamp as the
 // one accent (danger is the lamp driven red). The lock marker is the same lamp — state keeps
 // living in SHAPE (dashed when offscreen/reduced-motion), never in a second hue.
 
+import {
+  MSEED_LANE_BASE,
+  LANE_PRIORITY,
+  claimBottomLaneSeat,
+  releaseBottomLaneClaim,
+} from './hudLayout.js';
+
 export const MASS_SEED_HUD_CSS = `
 .sf-mseed-root { position: absolute; inset: 0; pointer-events: none; z-index: 7; }
 .sf-mseed-pill {
-  position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: ${MSEED_LANE_BASE}px; transform: translateX(-50%);
   display: none; align-items: center; gap: var(--dp-gap, 8px); padding: 5px 14px 6px;
   font-family: var(--dp-face-etch, var(--hud-data, system-ui));
   font-size: var(--dp-fs-etch, 12px); font-weight: 700; line-height: 1.2;
@@ -154,6 +165,7 @@ export const massSeedHud = {
     this._lastPillText = '';
     this._lastPillClass = '';
     this._pillVisible = false;
+    this._laneSeat = '';
     this._markVisible = false;
     this._markOffscreen = null;
     this._lastMarkDirection = '';
@@ -165,8 +177,10 @@ export const massSeedHud = {
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
+    releaseBottomLaneClaim('mseed');
     this._dom = null;
     this._pillVisible = false;
+    this._laneSeat = '';
   },
 
   update(dt, state) {
@@ -211,12 +225,12 @@ export const massSeedHud = {
         cls = 'mseed-cooldown';
       }
     }
-    if (!text) {
-      if (this._pillVisible) dom.pill.style.display = 'none';
-      this._pillVisible = false;
-      this._lastPillText = '';
-      return;
-    }
+    if (!text) { this._hidePill(dom); return; }
+    // Lane contract: a live seed keeps its voice; a cooldown countdown yields to any
+    // load-bearing pill occupying the shared bottom-center lane (src/ui/hudLayout.js).
+    const priority = cls === 'mseed-cooldown' ? LANE_PRIORITY.cooldown : LANE_PRIORITY.active;
+    const seat = claimBottomLaneSeat('mseed', priority, MSEED_LANE_BASE, now);
+    if (!seat.visible) { this._hidePill(dom); return; }
     if (text !== this._lastPillText) {
       this._lastPillText = text;
       dom.pillText.textContent = text;
@@ -231,6 +245,26 @@ export const massSeedHud = {
       dom.pill.style.display = 'flex';
       this._pillVisible = true;
     }
+    this._applyLaneSeat(dom.pill, seat.bottom);
+  },
+
+  // Write-on-change seat: solo (or lane-leading) pills keep the sheet's authored offset — the
+  // inline style stays empty, so stable frames write nothing.
+  _applyLaneSeat(pill, bottom) {
+    const next = bottom === MSEED_LANE_BASE ? '' : `${bottom}px`;
+    if (next === this._laneSeat) return;
+    this._laneSeat = next;
+    pill.style.bottom = next;
+  },
+
+  _hidePill(dom) {
+    releaseBottomLaneClaim('mseed');
+    if (this._pillVisible) {
+      dom.pill.style.display = 'none';
+      if (this._laneSeat) { dom.pill.style.bottom = ''; this._laneSeat = ''; }
+    }
+    this._pillVisible = false;
+    this._lastPillText = '';
   },
 
   _updateLockMarker(dom, state, ms) {
@@ -291,10 +325,8 @@ export const massSeedHud = {
   _hideAll() {
     const dom = this._dom;
     if (!dom) return;
-    if (this._pillVisible) dom.pill.style.display = 'none';
+    this._hidePill(dom);
     if (this._markVisible) dom.mark.style.display = 'none';
-    this._pillVisible = false;
-    this._lastPillText = '';
     this._markVisible = false;
   },
 
@@ -337,6 +369,7 @@ export const massSeedHud = {
     this._lastPillText = '';
     this._lastPillClass = '';
     this._pillVisible = false;
+    this._laneSeat = '';
     this._markVisible = false;
     this._markOffscreen = null;
     this._lastMarkDirection = '';

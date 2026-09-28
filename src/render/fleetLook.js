@@ -18,6 +18,19 @@ import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 const RELEASE_ROOT = 'assets/ships/release/parts/';
 const TILT = 60 * Math.PI / 180;
 
+/**
+ * Stable preview-entity id per ship def, so the same ship always previews as the same hull.
+ * `visualFactory` derives a hull's displacement variant, palette jitter and decoration scatter from
+ * `hashId(entity.id)`, so the id is presentation identity, not a label. A defId-keyed counter is
+ * enough: ids only have to be distinct from each other and constant across captures.
+ */
+const previewIdByDef = new Map();
+let nextPreviewId = 0;
+function stablePreviewId(defId) {
+  if (!previewIdByDef.has(defId)) previewIdByDef.set(defId, nextPreviewId++);
+  return previewIdByDef.get(defId);
+}
+
 let renderSystem = null;
 function renderOnce(renderer, scene, cam) {
   if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
@@ -142,8 +155,15 @@ export function installFleetLook(SF) {
     const def = SHIPS.find((s) => s.id === opts.defId);
     if (!def) throw new Error('no ship def ' + opts.defId);
     const vf = state.render.vf || (await import('./visualFactory.js')).createVisualFactory();
+    // The preview entity id must be a stable function of the def, not ambient entropy. visualFactory
+    // seeds a hull's displacement variant, palette jitter and decoration scatter from
+    // `hashId(e.id)` (visualFactory.js:1791/2400/2430/2470/2758), so a random id made every capture
+    // of the same ship a different ship. The blank-frame retry in scripts/fleet-look.mjs re-calls
+    // shoot() up to four times, which made a retried frame disagree with the frame it replaced —
+    // the harness could not tell a lighting failure from a different hull. Deterministic ids also
+    // let a before/after pair be compared as the same object, which is the entire job of this tool.
     const ent = {
-      id: 900000 + Math.floor(Math.random() * 1000), kind: 'ship', defId: def.id, def,
+      id: 900000 + stablePreviewId(def.id), kind: 'ship', defId: def.id, def,
       x: 0, z: 0, y: 0, rot: 0, vx: 0, vz: 0, radius: def.radius || 6,
       faction: opts.faction || 'player', isPlayer: opts.isPlayer !== false,
       fittings: [], hull: def.hull || 100, maxHull: def.hull || 100, shield: 0, maxShield: 0,

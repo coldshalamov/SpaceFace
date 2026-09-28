@@ -394,6 +394,12 @@ export class PersistentCombatBeamPool {
    *   where the simulation put it, so nothing here can invent a hit.
    */
   update(timeS, toLocal, accessibility = null, cameraFloor = 0, resolveOrigin = null) {
+    // Quiet open flight: capacity walk (prod 16) + shader uniform refresh while
+    // activeCount===0 was pure CPU; group.visible already false after last release.
+    if (!(this.activeCount > 0)) {
+      this.group.visible = false;
+      return 0;
+    }
     const localize = typeof toLocal === 'function' ? toLocal : identityLocal;
     const socketOf = typeof resolveOrigin === 'function' ? resolveOrigin : null;
     const now = finite(timeS, 0);

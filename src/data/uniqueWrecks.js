@@ -36,10 +36,12 @@ function salvageDecision({
   claimConsequence,
   claimTitle,
   claimDetail,
+  claimStamp,
   handoverLabel,
   handoverConsequence,
   handoverTitle,
   handoverDetail,
+  handoverStamp,
   handoverCredits = 0,
   claimRepDelta = 0,
   handoverRepDelta = 0,
@@ -59,6 +61,8 @@ function salvageDecision({
         repDelta: claimRepDelta,
         receiptTitle: claimTitle,
         receiptDetail: claimDetail,
+        // Stamped onto the persisted site husk's scan identity after this choice wins.
+        siteStamp: claimStamp || 'CLAIMED UNDER YOUR NAME',
       },
       {
         id: 'authority_handover',
@@ -71,6 +75,7 @@ function salvageDecision({
         repDelta: handoverRepDelta,
         receiptTitle: handoverTitle,
         receiptDetail: handoverDetail,
+        siteStamp: handoverStamp || 'FILED WITH THE AUTHORITY',
       },
     ],
   };
@@ -125,10 +130,12 @@ const RAW_UNIQUE_WRECKS = [
       claimConsequence: 'Keep the unique beam weapon and classified salvage; SCN records an unlawful military claim.',
       claimTitle: 'VEIL-CUTTER CLAIMED',
       claimDetail: 'The Vigilant prototype and classified electronics entered your manifest.',
+      claimStamp: 'CLAIMED BY INDEPENDENT REGISTRY',
       handoverLabel: 'FILE CONCORD EVIDENCE',
       handoverConsequence: 'Surrender the prototype and black box for a lawful recovery award.',
       handoverTitle: 'VIGILANT EVIDENCE FILED',
       handoverDetail: 'Concord accepted the Vigilant black box and sealed prototype custody.',
+      handoverStamp: 'FILED AS CONCORD EVIDENCE',
       handoverCredits: 6800, claimRepDelta: -14, handoverRepDelta: 18,
     }),
     followup: { id: 'vigilant_recovered', text: 'VIGILANT RECOVERY ENTERS CONCORD EVIDENCE; SALVAGE FINES REMAIN PAYABLE.' },
@@ -152,8 +159,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'IRONSONG RESTRICTED RECOVERY', prompt: 'Choose who keeps the gun and the recording.',
       claimLabel: 'CLAIM IRONSONG AC', claimConsequence: 'Keep the etched gun; Concord can still fine the military salvage.',
       claimTitle: 'IRONSONG AC CLAIMED', claimDetail: 'The gun and captain recording entered your manifest.',
+      claimStamp: 'CLAIMED BY INDEPENDENT REGISTRY',
       handoverLabel: 'SELL THROUGH QUIET', handoverConsequence: 'Let the Quiet launder the restricted recovery for a smaller clean payment.',
       handoverTitle: 'IRONSONG FENCED', handoverDetail: 'Quiet custody erased your name from the first transfer.',
+      handoverStamp: 'FENCED THROUGH QUIET',
       handoverCredits: 5600, claimRepDelta: -10, handoverRepDelta: 6,
     }),
     followup: { id: 'ironsong_recovered', text: 'IRONSONG GUN CHANGES HANDS; CAPTAIN RECORDING REMAINS UNCLAIMED.' },
@@ -181,8 +190,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'LIGHTHOUSE PROTOTYPE RECOVERY', prompt: 'Choose whether the siege-beam leaves Ashfall with you.',
       claimLabel: 'CLAIM HEAVY BEAM', claimConsequence: 'Keep the endgame prototype and inherit its restricted-custody trail.',
       claimTitle: 'LIGHTHOUSE BEAM CLAIMED', claimDetail: 'The siege-beam cleared the moving burn under your registry.',
+      claimStamp: 'CLAIMED OUT OF ASHFALL',
       handoverLabel: 'SEAL WITH CONCORD', handoverConsequence: 'Return the prototype to sealed custody for the largest lawful recovery award.',
       handoverTitle: 'LIGHTHOUSE SEALED', handoverDetail: 'Concord accepted the beam without answering what returned fire.',
+      handoverStamp: 'SEALED WITH CONCORD',
       handoverCredits: 18000, claimRepDelta: -18, handoverRepDelta: 24,
     }),
     followup: { id: 'lighthouse_recovered', text: 'LIGHTHOUSE PROTOTYPE REMOVED FROM ASHFALL; RETURN-FIRE SOURCE STILL SEALED.' },
@@ -203,8 +214,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'PALE-COIL VAULT CLAIM', prompt: 'Choose whether the impossible coil flies or remains evidence.',
       claimLabel: 'CLAIM PALE-COIL', claimConsequence: 'Keep the blink-capable drive and end the Vael argument by using it.',
       claimTitle: 'PALE-COIL CLAIMED', claimDetail: 'The sealed coil entered your engine inventory.',
+      claimStamp: 'CLAIMED FROM THE VAULT',
       handoverLabel: 'LEAVE VAEL FINDING', handoverConsequence: 'Return the coil to the shrine and receive a Vael research award.',
       handoverTitle: 'PALE-COIL PRESERVED', handoverDetail: 'The relic-or-weapon finding remains open.',
+      handoverStamp: 'RETURNED TO VAEL CUSTODY',
       handoverCredits: 9200, handoverRepDelta: 14,
     }),
     followup: { id: 'pale_coil_recovered', text: 'PALE-COIL VAULT OPENED; RELIC-OR-WEAPON FINDING REMAINS UNRESOLVED.' },
@@ -226,8 +239,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'CHOIR-BELL SHRINE CLAIM', prompt: 'Choose whether the ringing shield leaves the Wake.',
       claimLabel: 'CLAIM CHOIR-BELL', claimConsequence: 'Keep the reactive Aegis; the Vael mark the shrine as broken.',
       claimTitle: 'CHOIR-BELL CLAIMED', claimDetail: 'The shield answered one final tractor beat.',
+      claimStamp: 'TAKEN FROM THE SHRINE',
       handoverLabel: 'PRESERVE THE SHRINE', handoverConsequence: 'Leave the Aegis ringing and receive Vael standing.',
       handoverTitle: 'SHRINE PRESERVED', handoverDetail: 'The Wake continues to ring around an unlooted fortress.',
+      handoverStamp: 'SHRINE PRESERVED',
       handoverCredits: 7600, handoverRepDelta: 16,
     }),
     followup: { id: 'choir_bell_recovered', text: 'WAKE SHRINE FALLS SILENT; AEGIS RESONANCE NOW TRAVELS WITH A PILOT.' },
@@ -249,8 +264,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'TIDELINE COUPLING CLAIM', prompt: 'Choose whether to cut the tractor or preserve its final hold.',
       claimLabel: 'CLAIM TIDELINE TRACTOR', claimConsequence: 'Take the tractor after confronting what remains on its line.',
       claimTitle: 'TIDELINE TRACTOR CLAIMED', claimDetail: 'The Gulf coupling released into your manifest.',
+      claimStamp: 'CUT FREE UNDER YOUR NAME',
       handoverLabel: 'FILE THE HELD MASS', handoverConsequence: 'Leave the coupling intact and sell the full survey record.',
       handoverTitle: 'TIDELINE FILED', handoverDetail: 'The recovery record names what the old report omitted.',
+      handoverStamp: 'FILED AS RECOVERY EVIDENCE',
       handoverCredits: 9800, handoverRepDelta: 10,
     }),
     followup: { id: 'tideline_recovered', text: 'TIDELINE TRACTOR RELEASED; GULF RECOVERY NOTICE WITHHOLDS WHAT IT HELD.' },
@@ -281,8 +298,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'NESTBREAKER SHRINE CLAIM', prompt: 'Choose whether to take the rack from a Reach shrine.',
       claimLabel: 'CLAIM NESTBREAKER', claimConsequence: 'Keep the split-missile rack and accept the admirers\' bounties.',
       claimTitle: 'NESTBREAKER CLAIMED', claimDetail: 'Vrael\'s rack entered your manifest under your name.',
+      claimStamp: 'TAKEN FROM THE SHRINE',
       handoverLabel: 'LEAVE THE SHRINE', handoverConsequence: 'Preserve the wreck and take a Reach honor payment.',
       handoverTitle: 'SHRINE LEFT INTACT', handoverDetail: 'Sker records that you read the legend and left it whole.',
+      handoverStamp: 'SHRINE LEFT WHOLE',
       handoverCredits: 8200, claimRepDelta: -8, handoverRepDelta: 14,
     }),
     followup: { id: 'nestbreaker_recovered', text: 'NESTBREAKER SHRINE LOOTED; ADMIRERS POST PRIVATE RECOVERY BOUNTIES.' },
@@ -308,8 +327,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'DEEPSURVEY RECOVERY', prompt: 'Choose whether Okar\'s deep-ping returns to service.',
       claimLabel: 'CLAIM DEEPSURVEY', claimConsequence: 'Keep the suite; repeated pings may call the ice again.',
       claimTitle: 'DEEPSURVEY CLAIMED', claimDetail: 'Okar\'s final ping now belongs to your scanner.',
+      claimStamp: 'RETURNED TO SERVICE',
       handoverLabel: 'RETURN TO OBSERVATORY', handoverConsequence: 'Give the suite and its warning to the Rift Observatory.',
       handoverTitle: 'DEEPSURVEY RETURNED', handoverDetail: 'The Observatory filed the third ping as evidence.',
+      handoverStamp: 'RETURNED TO THE OBSERVATORY',
       handoverCredits: 7000, handoverRepDelta: 12,
     }),
     followup: { id: 'deepsurvey_recovered', text: 'DEEPSURVEY PING RETURNS TO SERVICE; RIFT OBSERVATORY ADVISES RESTRAINT.' },
@@ -334,8 +355,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'SMOKESONG RECOVERY', prompt: 'Choose whether Tirr\'s smoke joins your countermeasures.',
       claimLabel: 'CLAIM SMOKESONG', claimConsequence: 'Keep the broad chaff cloud and its long reset.',
       claimTitle: 'SMOKESONG CLAIMED', claimDetail: 'Tracer flechettes were cut free before installation.',
+      claimStamp: 'CLAIMED FROM THE SMOKE',
       handoverLabel: 'RETURN TO THE MERCS', handoverConsequence: 'Return the dispenser to Tirr\'s old outpost.',
       handoverTitle: 'SMOKESONG RETURNED', handoverDetail: 'The mercenaries put her name back over the berth.',
+      handoverStamp: 'RETURNED TO THE MERCS',
       handoverCredits: 6200, handoverRepDelta: 10,
     }),
     followup: { id: 'smokesong_recovered', text: 'SMOKESONG CHAFF RECOVERED; CUSTOMS TRACER LOT REMAINS UNACCOUNTED.' },
@@ -365,10 +388,12 @@ const RAW_UNIQUE_WRECKS = [
       claimConsequence: 'Keep the repair swarm and medical cargo. Mercy remains stranded beside the wreck; SCN records an adverse claim.',
       claimTitle: 'KNITBOTS CLAIMED',
       claimDetail: 'Choir-Tender repair swarm and relief cargo entered your manifest.',
+      claimStamp: 'CLAIMED AS SALVAGE',
       handoverLabel: 'RETURN RELIEF CLAIM',
       handoverConsequence: 'Return the swarm to the Choir attendant. It can repair Mercy and carry the survivors to Helios; relief control pays the claim.',
       handoverTitle: 'RELIEF CLAIM RETURNED',
       handoverDetail: 'The Choir attendant receives the Knitbots to repair Mercy. Relief control accepted the recovery manifest.',
+      handoverStamp: 'RETURNED TO RELIEF CONTROL',
       handoverCredits: 3200, claimRepDelta: -6, handoverRepDelta: 12,
     }),
     followup: { id: 'choir_tender_recovered', text: 'CHOIR-TENDER RECOVERED; RELIEF CARGO CLAIM FILED BY INDEPENDENT PILOT.' },
@@ -400,8 +425,10 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'SILVER-DRAFT LEDGER CLAIM', prompt: 'Choose whether the ledger leaves with you or the cleaner.',
       claimLabel: 'CLAIM LEDGER + TRUESIGHT', claimConsequence: 'Keep the evidence and scanner; three buyers will ask what truth costs.',
       claimTitle: 'LOST LEDGER CLAIMED', claimDetail: 'The ledger and Truesight scanner entered your manifest.',
+      claimStamp: 'CLAIMED BEFORE THE DEADLINE',
       handoverLabel: 'LET THE CLEANER FILE IT', handoverConsequence: 'Surrender the courier record before its deadline.',
       handoverTitle: 'LEDGER SANITIZED', handoverDetail: 'Meridian paid for a record it now denies existed.',
+      handoverStamp: 'FILED BY THE CLEANER',
       handoverCredits: 8400, handoverRepDelta: 12,
     }),
     followup: { id: 'silver_draft_recovered', text: 'SILVER-DRAFT LEDGER MISSED SANITIZATION; THREE BUYERS DENY INTEREST.' },
@@ -433,15 +460,144 @@ const RAW_UNIQUE_WRECKS = [
       headline: 'CASSANDRA TREATY CLAIM', prompt: 'Choose whether the peace draft travels or disappears.',
       claimLabel: 'CLAIM TREATY + QUIETCLOAK', claimConsequence: 'Keep the proof and unlock a Choir–Vael cross-reputation path; hardliners will follow.',
       claimTitle: 'CASSANDRA TREATY CLAIMED', claimDetail: 'The draft and cloak telemetry survived together.',
+      claimStamp: 'CLAIMED INTO YOUR CUSTODY',
       handoverLabel: 'RETURN DIPLOMATIC CUSTODY', handoverConsequence: 'Surrender the draft before either hardline wing can burn it.',
       handoverTitle: 'TREATY RETURNED', handoverDetail: 'Diplomatic custody accepted a peace neither side admits drafting.',
+      handoverStamp: 'RETURNED TO DIPLOMATIC CUSTODY',
       handoverCredits: 11000, handoverRepDelta: 16,
     }),
     followup: { id: 'cassandra_recovered', text: 'CASSANDRA TREATY SURVIVES; CHOIR AND VAEL HARDLINERS DENY THE DRAFT.' },
   }),
+  // ── D13-D16: the four remaining SP1 story chains' authored wrecks. Each chain's opening stage
+  // is bound to its wreck (data/missions.js SET_PIECE_MISSIONS[n].wreckId): the chain offer is the
+  // wreck's live `mission`-channel rumor carrier, the placed hull is the scan target, and the
+  // recovery stage requires THIS hull. `wreckChainId` names the owning SP1 archetype.
+  wreck({
+    id: 'wreck_mts_quadrille', programSlot: 'D13', name: 'Courier MTS Quadrille', victimLabel: 'MTS Quadrille',
+    wreckChainId: 'investigation_chain',
+    wreckClass: 'fresh', sectorId: 'sector_io_reach', factionId: 'faction_mts',
+    scanLabel: 'MTS QUADRILLE · SILENT COURIER WRECK · SEAL LOG PINGING',
+    uniqueDropId: 'unique_quadrille_box_reader',
+    uniqueDrops: [
+      { id: 'unique_quadrille_box_reader', kind: 'module', baseId: 'mod_cargo_scanner_s' },
+      {
+        id: 'unique_quadrille_seal_log', kind: 'story_commodity', name: 'Quadrille Seal-Log',
+        flagKey: 'uniqueWreck.quadrilleSealLog', qty: 1, choices: ['file_public', 'sell_quiet'],
+      },
+    ],
+    bearingSourceRef: 'mission.sp1.investigation_chain.quadrille',
+    rumorSources: [{ id: 'sp1_quadrille_assignment', sourceRef: 'mission.sp1.investigation_chain.quadrille', channelId: 'mission' }],
+    provenance: { lossId: 'loss_mts_quadrille', incidentId: 'incident_quadrille_silent_reach', sourceRef: 'mission.sp1.investigation_chain.quadrille', recordType: 'courier_loss' },
+    hazardContext: { label: 'Io Reach derelict shelf', anchorType: 'sector', anchorId: 'sector_io_reach', zoneId: null, hazardTypes: [], placementRule: 'derelict_shelf', approachGate: null },
+    complications: [{ id: 'quadrille_reactor_leak', kind: 'reactor', trigger: 'wreck_fixed', gentle: true }],
+    reactor: { timerS: 75, damage: 10 },
+    salvagePool: { cmdty_scrap_metal: 2 },
+    bonusCargo: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }],
+    placement: { anchorLocal: { x: 900, z: -800 }, minRadius: 140, maxRadius: 420, bearingRadiusMin: 280, bearingRadiusMax: 500 },
+    decision: salvageDecision({
+      headline: 'QUADRILLE SEAL-LOG CLAIM', prompt: 'Choose who first reads the corridor count the Quadrille died carrying.',
+      claimLabel: 'KEEP THE SEAL-LOG', claimConsequence: 'Keep the log and the box; the names stay yours to price.',
+      claimTitle: 'QUADRILLE SEAL-LOG CLAIMED', claimDetail: 'The silent courier’s seal-log entered your manifest.',
+      claimStamp: 'CLAIMED UNDER YOUR NAME',
+      handoverLabel: 'FILE THE BOX WITH CONCORD', handoverConsequence: 'Surrender the log for a lawful recovery award and a public docket.',
+      handoverTitle: 'QUADRILLE BOX FILED', handoverDetail: 'Concord accepted the Quadrille seal-log as corridor evidence.',
+      handoverStamp: 'FILED AS CONCORD EVIDENCE',
+      handoverCredits: 6400, claimRepDelta: -8, handoverRepDelta: 12,
+    }),
+    followup: { id: 'quadrille_recovered', text: 'QUADRILLE SEAL-LOG RECOVERED; THE CORRIDOR COUNT NOW HAS A READER.' },
+  }),
+  wreck({
+    id: 'wreck_isc_double_entry', programSlot: 'D14', name: 'ISC Double-Entry', victimLabel: 'ISC Double-Entry',
+    wreckChainId: 'witness_run',
+    wreckClass: 'military', sectorId: 'sector_tethys_junction', factionId: 'faction_scn',
+    scanLabel: 'ISC DOUBLE-ENTRY · DUAL-REGISTRY CUSTOMS WRECK',
+    uniqueDropId: 'unique_double_entry_mask',
+    uniqueDrops: [{ id: 'unique_double_entry_mask', kind: 'module', baseId: 'mod_sensor_scrambler_m' }],
+    bearingSourceRef: 'mission.sp1.witness_run.double_entry',
+    rumorSources: [{ id: 'sp1_double_entry_assignment', sourceRef: 'mission.sp1.witness_run.double_entry', channelId: 'mission' }],
+    provenance: { lossId: 'loss_isc_double_entry', incidentId: 'incident_double_entry_alias_wreck', sourceRef: 'mission.sp1.witness_run.double_entry', recordType: 'dual_registry_loss' },
+    hazardContext: { label: 'Driftmark survey anomaly', anchorType: 'zone', anchorId: null, zoneId: 'zone_tethys_driftmark', hazardTypes: ['anomaly_deep'], placementRule: 'near_driftmark_anomaly', approachGate: null },
+    complications: [{ id: 'double_entry_alias_interference', kind: 'ambient_zone', trigger: 'approach', zoneId: 'zone_tethys_driftmark' }],
+    salvageLaw: CONCORD_RESTRICTED_SALVAGE,
+    salvagePool: { cmdty_scrap_metal: 1 },
+    placement: { anchorLocal: { x: -2050, z: -1370 }, minRadius: 220, maxRadius: 560, bearingRadiusMin: 280, bearingRadiusMax: 500 },
+    decision: salvageDecision({
+      headline: 'DOUBLE-ENTRY REGISTRY CLAIM', prompt: 'Choose whether the second registry stays on your hull or returns to the file.',
+      claimLabel: 'KEEP THE ALIAS MASK', claimConsequence: 'Keep the scrambler that held one hull under two names.',
+      claimTitle: 'DOUBLE-ENTRY MASK CLAIMED', claimDetail: 'The dual-registry mask entered your module inventory.',
+      claimStamp: 'CLAIMED UNDER YOUR NAME',
+      handoverLabel: 'RETURN THE REGISTRY', handoverConsequence: 'File both registries with Concord for the honest finder award.',
+      handoverTitle: 'DOUBLE-ENTRY FILED', handoverDetail: 'Concord reconciled the second registry over your signature.',
+      handoverStamp: 'FILED AS CONCORD EVIDENCE',
+      handoverCredits: 5800, claimRepDelta: -6, handoverRepDelta: 10,
+    }),
+    followup: { id: 'double_entry_recovered', text: 'DOUBLE-ENTRY REGISTRY RECONCILED; THE ALIAS HULL NOW FILES UNDER ONE NAME.' },
+  }),
+  wreck({
+    id: 'wreck_dmc_first_notch', programSlot: 'D15', name: 'DMC First-Notch', victimLabel: 'DMC First-Notch',
+    wreckChainId: 'hearing',
+    wreckClass: 'fresh', sectorId: 'sector_vesta_forge', factionId: 'faction_dmc',
+    scanLabel: 'DMC FIRST-NOTCH · SIEGE EVIDENCE WRECK',
+    uniqueDropId: 'unique_first_notch_marker',
+    uniqueDrops: [{ id: 'unique_first_notch_marker', kind: 'module', baseId: 'mod_triangulation_suite_s' }],
+    bearingSourceRef: 'mission.sp1.hearing.first_notch',
+    rumorSources: [{ id: 'sp1_first_notch_assignment', sourceRef: 'mission.sp1.hearing.first_notch', channelId: 'mission' }],
+    provenance: { lossId: 'loss_dmc_first_notch', incidentId: 'incident_first_notch_siege_evidence', sourceRef: 'mission.sp1.hearing.first_notch', recordType: 'siege_evidence_loss' },
+    hazardContext: { label: 'Vesta siege approach', anchorType: 'zone', anchorId: null, zoneId: 'zone_vesta_forge', hazardTypes: [], placementRule: 'inside_siege_approach', approachGate: null },
+    complications: [{ id: 'first_notch_reactor_leak', kind: 'reactor', trigger: 'wreck_fixed', gentle: true }],
+    reactor: { timerS: 60, damage: 10 },
+    salvagePool: { cmdty_scrap_metal: 1 },
+    placement: { anchorLocal: { x: 400, z: -900 }, minRadius: 160, maxRadius: 440, bearingRadiusMin: 260, bearingRadiusMax: 460 },
+    decision: salvageDecision({
+      headline: 'FIRST-NOTCH EVIDENCE CLAIM', prompt: 'Choose whether the siege’s first kill testifies or goes quietly to the torch.',
+      claimLabel: 'KEEP THE MARKER SUITE', claimConsequence: 'Keep the rangefinders that held the first notch on the hull.',
+      claimTitle: 'FIRST-NOTCH MARKER CLAIMED', claimDetail: 'The siege-evidence rangefinders entered your inventory.',
+      claimStamp: 'TAKEN FROM THE EVIDENCE',
+      handoverLabel: 'ENTER IT INTO EVIDENCE', handoverConsequence: 'File the hull with the hearing for the finder’s award.',
+      handoverTitle: 'FIRST-NOTCH FILED', handoverDetail: 'The hearing accepted the First-Notch as its opening exhibit.',
+      handoverStamp: 'FILED AS HEARING EVIDENCE',
+      handoverCredits: 6800, claimRepDelta: -6, handoverRepDelta: 12,
+    }),
+    followup: { id: 'first_notch_recovered', text: 'FIRST-NOTCH RECOVERED; THE SIEGE’S FIRST KILL NOW HAS A NAMED READER.' },
+  }),
+  wreck({
+    id: 'wreck_mts_regular', programSlot: 'D16', name: 'Liner MTS Regular', victimLabel: 'MTS Regular',
+    wreckChainId: 'blockade_run',
+    wreckClass: 'battlefield', sectorId: 'sector_pallas_drift', factionId: 'faction_mts',
+    scanLabel: 'MTS REGULAR · BLOCKADE GRAVEYARD WRECK',
+    uniqueDropId: 'unique_regular_mass_shifter',
+    uniqueDrops: [{ id: 'unique_regular_mass_shifter', kind: 'module', baseId: 'mod_cargo_compactor_l' }],
+    bearingSourceRef: 'mission.sp1.blockade_run.regular',
+    rumorSources: [{ id: 'sp1_regular_assignment', sourceRef: 'mission.sp1.blockade_run.regular', channelId: 'mission' }],
+    provenance: { lossId: 'loss_mts_regular', incidentId: 'incident_regular_cordon_run', sourceRef: 'mission.sp1.blockade_run.regular', recordType: 'blockade_loss' },
+    hazardContext: { label: 'Drift approach graveyard', anchorType: 'sector', anchorId: 'sector_pallas_drift', zoneId: null, hazardTypes: ['debris'], placementRule: 'drift_approach_graveyard', approachGate: null },
+    salvagePool: { cmdty_scrap_metal: 2 },
+    placement: { anchorLocal: { x: -600, z: -400 }, minRadius: 180, maxRadius: 480, bearingRadiusMin: 280, bearingRadiusMax: 500 },
+    decision: salvageDecision({
+      headline: 'REGULAR GRAVEYARD CLAIM', prompt: 'Choose whether the liner’s mass-shifter finishes the run she started.',
+      claimLabel: 'FINISH THE RUN', claimConsequence: 'Keep the compactor hold that once shifted mass past a cordon.',
+      claimTitle: 'REGULAR HOLD CLAIMED', claimDetail: 'The liner’s mass-shifter entered your inventory mid-run.',
+      claimStamp: 'FINISHED UNDER YOUR NAME',
+      handoverLabel: 'LET DRIFT TOW HER', handoverConsequence: 'Leave the hull to Drift’s recovery crews for a salvage award.',
+      handoverTitle: 'REGULAR TOWED', handoverDetail: 'Drift recovery took the Regular’s hull under your finding name.',
+      handoverStamp: 'FILED WITH DRIFT RECOVERY',
+      handoverCredits: 7200, claimRepDelta: -4, handoverRepDelta: 10,
+    }),
+    followup: { id: 'regular_recovered', text: 'REGULAR GRAVEYARD OPENED; THE CORDON’S LATEST KILL FINISHED HER RUN UNDER A NEW FLAG.' },
+  }),
 ];
 
 export const UNIQUE_WRECKS = deepFreeze(RAW_UNIQUE_WRECKS);
+
+// PQ-133.11 — reserved uniques that never ride a wreck: artifacts recovered at authored sites.
+// The Mirrorjaw Pulse is the Forge's own salvage relic (zone_vesta_forge): the ricochet room's
+// bank-and-relay trick baked into one pulse gun. The loot audit folds these into its non-wreck
+// reservation set alongside the ace trophy lineage, so a unique cannot leak into normal loot or
+// station stock merely because no wreck carries it.
+export const SITE_RECOVERED_UNIQUE_IDS = Object.freeze([
+  'unique_mirrorjaw_pulse',
+]);
+
 const UNIQUE_WRECK_BY_ID = new Map(UNIQUE_WRECKS.map((entry) => [entry.id, entry]));
 const UNIQUE_WRECK_BY_SOURCE = new Map();
 const UNIQUE_WRECK_BY_DROP = new Map();
@@ -542,7 +698,7 @@ export function validateUniqueWreckRegistry() {
   const channels = new Set();
   for (const def of UNIQUE_WRECKS) {
     if (!def.id || ids.has(def.id)) errors.push(`duplicate/missing wreck id ${def.id || '<empty>'}`);
-    if (!/^D(?:[1-9]|1[0-2])$/.test(def.programSlot || '') || slots.has(def.programSlot)) errors.push(`duplicate/invalid program slot ${def.programSlot || '<empty>'}`);
+    if (!/^D(?:[1-9]|1[0-6])$/.test(def.programSlot || '') || slots.has(def.programSlot)) errors.push(`duplicate/invalid program slot ${def.programSlot || '<empty>'}`);
     ids.add(def.id);
     slots.add(def.programSlot);
     if (!def.sectorId || !def.wreckClass || !def.uniqueDropId) errors.push(`${def.id}: incomplete authored identity`);
@@ -563,7 +719,7 @@ export function validateUniqueWreckRegistry() {
       for (const choice of def.decision.choices) {
         if (!choice.id || choiceIds.has(choice.id)) errors.push(`${def.id}: duplicate/missing decision id ${choice.id || '<empty>'}`);
         choiceIds.add(choice.id);
-        if (!choice.label || !choice.consequence || !choice.outcome || !choice.receiptTitle || !choice.receiptDetail) errors.push(`${def.id}.${choice.id}: incomplete decision language`);
+        if (!choice.label || !choice.consequence || !choice.outcome || !choice.receiptTitle || !choice.receiptDetail || !choice.siteStamp) errors.push(`${def.id}.${choice.id}: incomplete decision language`);
       }
     }
     if (!Array.isArray(def.rumorSources) || !def.rumorSources.length) errors.push(`${def.id}: no rumor sources`);
@@ -579,7 +735,7 @@ export function validateUniqueWreckRegistry() {
     if (!placement.anchorLocal || !Number.isFinite(placement.anchorLocal.x) || !Number.isFinite(placement.anchorLocal.z)) errors.push(`${def.id}: invalid placement anchor`);
     if (!def.followup || !def.followup.id || !def.followup.text) errors.push(`${def.id}: missing recovery followup`);
   }
-  if (slots.size !== 12) errors.push(`expected D1-D12, found ${slots.size} slots`);
+  if (slots.size !== 16) errors.push(`expected D1-D16, found ${slots.size} slots`);
   for (const channel of REQUIRED_RUMOR_CHANNELS) if (!channels.has(channel)) errors.push(`missing rumor channel ${channel}`);
   return { ok: errors.length === 0, errors };
 }

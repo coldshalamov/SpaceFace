@@ -1384,6 +1384,14 @@ export const encounterDirector = {
     });
   },
 
+  /** A loose physical cargo pod on the field — the same jettisoned-cargo path the player
+   * produces by jettisoning, so volatile classes keep their lamps, cook-off, and salvage rules.
+   * Encounters shed volatile freight through this so the spilled lot is a real colliding body. */
+  spawnCargoPod(live, spec) {
+    if (!live || !spec || !spec.commodityId) return null;
+    return spawnJettisonedCargoPod(this.state, spec, this.helpers);
+  },
+
   /** Physical manifest cargo uses the ordinary pickup contract. Cargo remains the sole player-hold
    * writer; the director only owns the encounter annotation and observes pickup:collected. */
   spawnFreightPickup(live, opts) {
@@ -3955,6 +3963,15 @@ function ensureDirectorState(state) {
   if (!Number.isFinite(d.ambientPredation.nextEvalAt)) d.ambientPredation.nextEvalAt = -Infinity;
   if (!Number.isInteger(d.ambientPredation.seq)) d.ambientPredation.seq = 0;
   if (!Number.isFinite(d._accum)) d._accum = 0;
+  // The 1 Hz accumulator measures real sim-time between update calls, so its baseline is the
+  // moment this ledger was created/ensured — not the first update call. Falling back to `now`
+  // inside update silently eats every second elapsed between boot (or a requestAuthoredEncounter
+  // that ran ahead of the first tick) and that call, and a harness advancing ≥1 s in one step
+  // then starves _tickLive exactly once. Old saves lack the field: stamping the current simTime
+  // at ensure keeps their first post-load call a baseline, not a catch-up burst.
+  if (!Number.isFinite(d._lastUpdateNow)) {
+    d._lastUpdateNow = Number.isFinite(state.simTime) ? state.simTime : 0;
+  }
   if (d.sessionRhythm != null && (typeof d.sessionRhythm !== 'object' || Array.isArray(d.sessionRhythm)
     || !SESSION_RHYTHM_PHASES.includes(d.sessionRhythm.phase))) {
     d.sessionRhythm = null;

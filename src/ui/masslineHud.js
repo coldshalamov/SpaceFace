@@ -49,6 +49,44 @@ const MARK_PREDICTION_S = 1 / 120;
 // to outlive the next attempt.
 const MASSLINE_DENIAL_PILL_S = 1.2;
 
+// CV-THROW-1: a deliberate release gets a 1.8 s verdict pill anchored where the payload left —
+// the grade (razor/clean/good/messy) plus the one cause the cadence law measured, so the next
+// cut is a choice the player understands. Breaks and target loss are not graded aloud.
+const MASSLINE_VERDICT_PILL_S = 1.8;
+const VERDICT_GRADE_COPY = Object.freeze({
+  razor: 'RAZOR',
+  clean: 'CLEAN',
+  good: 'GOOD',
+  messy: 'MESSY',
+});
+const VERDICT_CAUSE_COPY = Object.freeze({
+  tow: 'NEVER SWUNG',
+  radial: 'OFF THE ARC',
+  slack: 'LINE NOT LOADED',
+  swing: 'NEEDED MORE SPEED',
+  unobserved: 'UNGRADED',
+});
+export function releaseVerdictCopy(rating) {
+  if (!rating || typeof rating !== 'object') return '';
+  const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+  if (rating.releasedAtApex) return `${grade} · AT THE APEX`;
+  const cause = rating.classification === 'razor' || rating.classification === 'clean'
+    ? 'CREST RELEASE'
+    : VERDICT_CAUSE_COPY[rating.technique] || 'OFF THE SWING';
+  return `${grade} · ${cause}`;
+}
+// The verdict reuses the shared preview pill/mark — every renderer that takes the slot next
+// must clear these classes so a stale grade never leaks onto a denial or acquisition frame.
+const VERDICT_GRADE_CLASSES = Object.freeze(['razor', 'clean', 'good', 'messy']);
+function clearVerdictClasses(dom) {
+  if (!dom) return;
+  setClass(dom.previewEl, 'ml2-preview-verdict', false);
+  for (const g of VERDICT_GRADE_CLASSES) {
+    setClass(dom.previewEl, `ml2-verdict-${g}`, false);
+    setClass(dom.previewMark, `ml2-verdict-${g}`, false);
+  }
+}
+
 // INF-015 — each denial names the condition plus one useful next action. Keys are the
 // normalized copy previewStatusCopy emits, so the pill and the acquisition caption agree.
 const DENIAL_NEXT_ACTION = Object.freeze({
@@ -267,6 +305,17 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview.ml2-preview-out-of-range,
 #sf-ml2 .ml2-preview.ml2-preview-invalid { border-style:dashed; color:#ffd08a; }
 #sf-ml2 .ml2-preview.ml2-preview-offscreen { border-style:dashed; }
+/* CV-THROW-1 — a release verdict is a result, not a prompt: steady (no attention pulse),
+   solid frame. Earned grades take the cadence mint; a messy cut stays warn-amber. */
+#sf-ml2 .ml2-preview.ml2-preview-verdict { border-style:solid; animation:none; }
+#sf-ml2 .ml2-preview.ml2-verdict-razor { color:#85e9ca; border-color:rgba(133,233,202,0.8); }
+#sf-ml2 .ml2-preview.ml2-verdict-clean { color:#a9e8d0; }
+#sf-ml2 .ml2-preview.ml2-verdict-good { color:var(--dp-ink, #e8e2d4); }
+#sf-ml2 .ml2-preview.ml2-verdict-messy { color:#ffd08a; border-style:dashed; }
+#sf-ml2 .ml2-preview-mark.ml2-verdict-razor { color:#85e9ca; }
+#sf-ml2 .ml2-preview-mark.ml2-verdict-clean { color:#a9e8d0; }
+#sf-ml2 .ml2-preview-mark.ml2-verdict-good { color:var(--dp-ink, #e8e2d4); }
+#sf-ml2 .ml2-preview-mark.ml2-verdict-messy { color:#ffd08a; }
 @keyframes ml2preview { 0%,100% { opacity:0.78; } 50% { opacity:1; } }
 /* §22 F1 — the release ghost: a thin predicted arc of the payload's own post-release path,
    drawn from the same solution the diamond reads. Cooler and thinner than the intercept mark —
@@ -550,6 +599,9 @@ function writeMasslineHudFields(fields, state, player) {
   // churn cannot move a pixel — don't pay ~60 field writes to rediscover that.
   // Only settings-level scalars and always-on meters can still change the DOM.
   const denial0 = state.masslineDenial;
+  // CV-THROW-1: a live release verdict is world-anchored DOM work — it must leave the
+  // quiescent path or the grade would never paint (post-release IS the idle case).
+  const verdict0 = state.masslineReleaseVerdict;
   const quiescent = !throwState.armed && !solution.valid && !solution.onSolution
     && !selfSolution.onSolution && selfSolution.targetId == null
     && throwState.payloadId == null && throwState.aimTargetId == null
@@ -560,7 +612,7 @@ function writeMasslineHudFields(fields, state, player) {
     && !(playerState.remoteMassline && playerState.remoteMassline.active)
     && !(playerState.tether && playerState.tether.active)
     && !cloak.active && !bulletTime.active
-    && denial0 == null;
+    && denial0 == null && verdict0 == null;
   if (quiescent) {
     fields[index++] = 'idle';
     fields[index++] = video.fov;
@@ -651,6 +703,14 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = denial ? denial.reason : null;
   fields[index++] = denial ? denial.targetId : null;
   fields[index++] = denial ? Math.max(0, Math.ceil((finite(denial.untilSimTime) - finite(state.simTime)) * 4)) : 0;
+  // CV-THROW-1 verdict pill: the same quantized expiry keeps a stale grade from surviving
+  // its floor because inputs "didn't change".
+  const verdict = state.masslineReleaseVerdict;
+  fields[index++] = verdict ? verdict.classification : null;
+  fields[index++] = verdict ? verdict.technique : null;
+  fields[index++] = verdict ? verdict.targetId : null;
+  fields[index++] = verdict ? (verdict.releasedAtApex === true) : false;
+  fields[index++] = verdict ? Math.max(0, Math.ceil((finite(verdict.untilSimTime) - finite(state.simTime)) * 4)) : 0;
   fields[index++] = selected.status;
   fields[index++] = selected.reason;
   fields[index++] = selected.targetId;
@@ -738,6 +798,26 @@ export const masslineHud = {
       ctx.bus.on('tether:latched', () => {
         if (!this.state) return;
         this.state.masslineDenial = null;
+        this.state.masslineReleaseVerdict = null;
+      });
+      // CV-THROW-1: the deliberate-release verdict joins the same signature/pill grammar the
+      // denial uses — a grade is a fact/result, anchored at the body it graded. Only
+      // `deliberate` ratings speak; a snapped line is a consequence, not a lesson.
+      ctx.bus.on('tether:releaseRated', (p) => {
+        if (!this.state || !p || p.deliberate !== true) return;
+        const now = finite(this.state.simTime);
+        const target = p.targetId != null && this.state.entities
+          && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(p.targetId) : null;
+        this.state.masslineReleaseVerdict = {
+          classification: p.classification,
+          technique: p.technique,
+          releasedAtApex: p.releasedAtApex === true,
+          targetId: p.targetId != null ? p.targetId : null,
+          atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
+          atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
+          untilSimTime: now + MASSLINE_VERDICT_PILL_S,
+        };
       });
     }
   },
@@ -751,7 +831,10 @@ export const masslineHud = {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
     this._dom = null;
-    if (this.state) this.state.masslineDenial = null;
+    if (this.state) {
+      this.state.masslineDenial = null;
+      this.state.masslineReleaseVerdict = null;
+    }
     clearHudSignatures(this.state);
   },
 
@@ -800,6 +883,16 @@ export const masslineHud = {
     if (denial && finite(state.simTime) < finite(denial.untilSimTime)) {
       return this._renderDenialPill(dom, state, player, w2s, denial);
     }
+    // CV-THROW-1: a fresh release verdict owns the slot while it lives — the grade lands at
+    // the body that was let go, which is where the pilot's eye already is.
+    if (state.masslineReleaseVerdict && state.player && state.player.tether && state.player.tether.active) {
+      state.masslineReleaseVerdict = null;
+    }
+    const verdict = state.masslineReleaseVerdict;
+    if (verdict && finite(state.simTime) < finite(verdict.untilSimTime)) {
+      return this._renderVerdictPill(dom, state, player, w2s, verdict);
+    }
+    if (verdict) state.masslineReleaseVerdict = null;   // expired — free the quiescent path
     const snarePreview = state.player && state.player.masslineSnarePreview;
     const remoteActive = !!(state.player && state.player.remoteMassline && state.player.remoteMassline.active);
     const bridleSetup = state.masslineBridle;
@@ -851,6 +944,7 @@ export const masslineHud = {
     setClass(dom.previewMark, 'ml2-offscreen', offscreen);
     setClass(dom.previewMark, 'ml2-mark-protected', selected.status === 'protected');
     setClass(dom.previewMark, 'ml2-mark-unavailable', !ready && selected.status !== 'protected');
+    clearVerdictClasses(dom);
     setBracketShape(dom.previewMark, bracketShapeId(read));
     setAttr(dom.previewMark, 'aria-hidden', 'false');
     setAttr(dom.previewMark, 'role', 'img');
@@ -918,6 +1012,7 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'display', 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
+    clearVerdictClasses(dom);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== paint) dom.previewEl.textContent = paint;
     setAttr(dom.previewEl, 'data-bracket-state', read.state);
@@ -927,6 +1022,68 @@ export const masslineHud = {
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, name === 'invalid');
+    }
+  },
+
+  // CV-THROW-1 — the grade verdict: a world-anchored pill on the released body naming the
+  // grade and the measured cause ("RAZOR · AT THE APEX", "MESSY · NEVER SWUNG"). It is a
+  // result, not a denial — earned grades keep the solid 'can' diamond, weaker ones the
+  // broken ring; the copy is the teaching.
+  _renderVerdictPill(dom, state, player, w2s, verdict) {
+    const graded = verdict.targetId != null && state.entities && state.entities.get
+      ? state.entities.get(verdict.targetId) : null;
+    const anchor = graded && graded.pos ? graded.pos
+      : (Number.isFinite(verdict.atX) && Number.isFinite(verdict.atZ)
+        ? { x: verdict.atX, z: verdict.atZ } : player.pos);
+    const screen = projectWorld(w2s, anchor.x, anchor.z);
+    if (!finiteProjection(screen)) return this._hideAcquisitionPreview(dom);
+    const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
+    const offscreen = !screen.onScreen
+      || screen.x < 0 || screen.x > viewportWidth
+      || screen.y < 0 || screen.y > viewportHeight;
+    const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
+    const cueX = pinned ? pinned.x : screen.x;
+    const cueY = pinned ? pinned.y : screen.y;
+    const grade = VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy';
+    const earned = grade === 'razor' || grade === 'clean';
+    const text = releaseVerdictCopy(verdict);
+    const captionWidth = estimateCaptionWidth(text);
+    const placed = placeBracketWords(
+      { x: cueX, y: cueY },
+      playerHullScreenRect(player, w2s),
+      { w: captionWidth, h: 18 },
+      { w: viewportWidth, h: viewportHeight },
+    );
+    setStyle(dom.previewMark, 'display', 'block');
+    setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
+    setClass(dom.previewMark, 'ml2-bridle-target', false);
+    setClass(dom.previewMark, 'ml2-offscreen', offscreen);
+    setClass(dom.previewMark, 'ml2-mark-protected', false);
+    setClass(dom.previewMark, 'ml2-mark-unavailable', false);
+    setClass(dom.previewMark, `ml2-verdict-${grade}`, true);
+    setBracketShape(dom.previewMark, earned ? 'can' : 'range');
+    setAttr(dom.previewMark, 'aria-hidden', 'false');
+    setAttr(dom.previewMark, 'role', 'img');
+    setAttr(dom.previewMark, 'aria-label', text);
+    setStyle(dom.previewSourceMark, 'display', 'none');
+    setStyle(dom.previewSvg, 'display', 'none');
+    setStyle(dom.previewEl, 'display', 'block');
+    setClass(dom.previewEl, 'ml2-preview-snare', false);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(placed.x)}px, ${Math.round(placed.y)}px, 0)`);
+    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    setAttr(dom.previewEl, 'data-bracket-state', 'verdict');
+    setAttr(dom.previewEl, 'aria-label', text);
+    setAttr(dom.previewEl, 'data-receipt-id', '');
+    setAttr(dom.previewEl, 'data-target-id', String(verdict.targetId ?? ''));
+    setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
+    setClass(dom.previewEl, 'ml2-preview-verdict', true);
+    setClass(dom.previewEl, `ml2-verdict-${grade}`, true);
+    for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
+      setClass(dom.previewEl, `ml2-preview-${name}`, false);
+    }
+    for (const g of ['razor', 'clean', 'good', 'messy']) {
+      if (g !== grade) setClass(dom.previewEl, `ml2-verdict-${g}`, false);
     }
   },
 
@@ -941,6 +1098,7 @@ export const masslineHud = {
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
+    clearVerdictClasses(dom);
   },
 
   _updateSnarePreview(dom, preview, w2s) {
@@ -979,6 +1137,7 @@ export const masslineHud = {
     setAttr(dom.previewEl, 'data-receipt-id', String(preview.receiptId || ''));
     setAttr(dom.previewEl, 'data-target-id', 'free-target-line');
     setClass(dom.previewEl, 'ml2-preview-snare', true);
+    clearVerdictClasses(dom);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, false);
     }
@@ -1072,6 +1231,7 @@ export const masslineHud = {
     setAttr(dom.previewEl, 'data-receipt-id', String((selected && receipt.id) || setup.sourceReceiptId || ''));
     setAttr(dom.previewEl, 'data-target-id', String((selected && selected.targetId) || ''));
     const visualStatus = pairDenial ? 'invalid' : selected?.status;
+    clearVerdictClasses(dom);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, visualStatus === name);
     }

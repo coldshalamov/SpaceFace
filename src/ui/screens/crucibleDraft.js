@@ -192,6 +192,31 @@ const SLOT_WORD = Object.freeze({
   weapon: 'Weapon', shield: 'Shield', engine: 'Engine', utility: 'Utility', thruster: 'Thruster',
 });
 
+/**
+ * The rail's compact voice: at 1500px and under the verb column holds short words, so long verbs
+ * abbreviate by dictionary instead of mid-word ellipsis. Verbs of six letters or fewer ("Screen",
+ * "Volume") still fit and stay whole; the card's aria-label keeps the full verb either way.
+ */
+const RAIL_VERB_SHORT = Object.freeze({
+  SIDEARM: 'SID', CHARGES: 'CHG', SCRAMBLE: 'SRM', UNSTEER: 'UNS', SUSTAIN: 'SUS', CADENCE: 'CAD',
+});
+
+function railCompact() {
+  try {
+    return typeof matchMedia === 'function' && matchMedia('(max-width: 1500px)').matches;
+  } catch {
+    return false;
+  }
+}
+
+function railVerbDisplay(verb, compact) {
+  const full = String(verb || '');
+  if (!compact || full.length < 7) return full;
+  const known = RAIL_VERB_SHORT[full.toUpperCase()];
+  if (known) return known;
+  return full.slice(0, 3).toUpperCase();
+}
+
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
   if (!offer) return null;
@@ -649,7 +674,25 @@ export const crucibleDraftScreen = {
       railScale.append(track, el('p', 'orr-rail-scale__words', ''));
       stage.appendChild(railScale);
       this._railScale = railScale;
-      cards.addEventListener('scroll', () => this._syncRailScale(), { passive: true });
+      cards.addEventListener('scroll', () => { this._syncRailScale(); this._syncRailClipFade(); }, { passive: true });
+    }
+    // The rail's compact voice follows the same breakpoint as its stylesheet: crossing it
+    // re-reads the verbs (dictionary or full), and any resize re-clips the fold to whole rows.
+    if (typeof matchMedia === 'function') {
+      try {
+        const railMq = matchMedia('(max-width: 1500px)');
+        if (railMq && typeof railMq.addEventListener === 'function') {
+          railMq.addEventListener('change', () => this.refresh(this._ctx));
+        }
+      } catch { /* full verbs on a box without media queries */ }
+    }
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', () => this._clipRailToWholeRows());
+    }
+    // Row heights settle with the display face: re-clip once it arrives, or the fold lands mid-row.
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.ready
+      && typeof document.fonts.ready.then === 'function') {
+      document.fonts.ready.then(() => this._clipRailToWholeRows());
     }
 
     // .k-foot — Keep current loadout, Re-roll (with the wallet beside it), the keys in fine print.
@@ -893,6 +936,7 @@ export const crucibleDraftScreen = {
       this._hint.append(cap('1'), cap('2'), cap('3'), el('span', 'orr-armory-hintword', 'Buy'), cap('Tab'), el('span', 'orr-armory-hintword', 'Browse'));
     }
     if (this._flash && this._flash.until > Date.now() && !notice) this._note.textContent = this._flash.text;
+    this._clipRailToWholeRows();
 
     // Only claim focus when it is not already inside this surface, and when the rebuild did not
     // just restore the player's place. A refused re-roll must not yank the player off the
@@ -921,6 +965,17 @@ export const crucibleDraftScreen = {
     if (r.offerId === offer.id && r.credits === context.state?.run?.credits) return;
     r.offerId = offer.id;
     r.credits = context.state?.run?.credits;
+    // The row being read lights its hardpoint: one ice pass along the leader beam and a pulse
+    // of the node ring. Re-armed per row change; reduced motion leaves it off (bone at rest).
+    const jigHost = r.parts && r.parts.jig;
+    if (jigHost && jigHost.classList && typeof document !== 'undefined' && document.documentElement
+      && !document.documentElement.classList.contains('sf-reduce-motion')) {
+      jigHost.classList.remove('is-pulse');
+      void jigHost.offsetWidth;
+      jigHost.classList.add('is-pulse');
+      if (this._pulseTimer) clearTimeout(this._pulseTimer);
+      this._pulseTimer = setTimeout(() => jigHost.classList.remove('is-pulse'), 700);
+    }
     const lines = offerCardLines(offer, context.state);
     const { parts } = r;
     parts.verb.textContent = lines.verb;
@@ -983,6 +1038,50 @@ export const crucibleDraftScreen = {
     this._syncRailScale();
   },
 
+  /**
+   * The fold clips to whole rows: the rail's height rounds down to the last offer (or divider)
+   * that fits entire, so a half-cut row never sits at the bottom edge. No-op without layout.
+   * While clipped at the top, the rail's bottom fade retires (is-clipped): its job was softening
+   * the cut, and with whole rows it would only ghost the last one. Scrolling restores it.
+   */
+  _clipRailToWholeRows() {
+    const cards = this._cards;
+    if (!cards || !cards.children || !cards.children.length) return;
+    if (typeof cards.getBoundingClientRect !== 'function' || !cards.style) return;
+    // Important: the composition sheet pins max-height:none !important on this box, so a plain
+    // inline value would lose to it. Border-box, measured from the container's own top: the first
+    // row sits a padding plus a divider margin below it, and measuring from the row would land
+    // the fold that far inside the last row.
+    cards.style.removeProperty('max-height');
+    cards.style.setProperty('box-sizing', 'border-box');
+    const avail = cards.clientHeight;
+    if (!avail || cards.scrollHeight <= avail + 2) {
+      this._railClipped = false;
+      if (cards.classList) cards.classList.remove('is-clipped');
+      return;
+    }
+    const origin = cards.getBoundingClientRect().top;
+    let edge = 0;
+    for (const child of cards.children) {
+      if (typeof child.getBoundingClientRect !== 'function') continue;
+      const bottom = child.getBoundingClientRect().bottom - origin;
+      if (bottom <= avail - 4) edge = bottom;
+      else break;
+    }
+    if (edge > 0) cards.style.setProperty('max-height', `${Math.ceil(edge)}px`, 'important');
+    this._railClipped = edge > 0;
+    this._syncRailClipFade();
+    // The fold moved: the rail's thumb and first–last count re-read the new box.
+    this._syncRailScale();
+  },
+
+  /** The bottom fade retires only while the clipped rail sits at the top. */
+  _syncRailClipFade() {
+    const cards = this._cards;
+    if (!cards || !cards.classList) return;
+    cards.classList.toggle('is-clipped', this._railClipped === true && cards.scrollTop <= 0);
+  },
+
   /** Where the rail is: a thin scale beside it with its thumb, and 'first-last of all'. */
   _syncRailScale() {
     const cards = this._cards;
@@ -1019,7 +1118,7 @@ export const crucibleDraftScreen = {
     const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
     key.setAttribute('aria-hidden', 'true');
     head.appendChild(key);
-    head.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
+    head.appendChild(el('p', 'k-caps sf-cru-verb', railVerbDisplay(lines.verb, railCompact())));
     card.appendChild(head);
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
     card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
@@ -1255,6 +1354,22 @@ export const crucibleRefitScreen = {
         if (t && typeof t.scrollIntoView === 'function') t.scrollIntoView({ block: 'nearest' });
       });
     }
+    // r2 dressing the jig cannot do itself: empty leaders dash, nose numerals part, and the
+    // fitted count reads inline when the dial drops its arc. The jig rebuilds its layer on every
+    // relayout, so an observer re-applies after each build; it writes attributes only, never
+    // classes, so it cannot retrigger itself. (The first refresh already ran above and filed the
+    // states — only initialize here, never reset.)
+    if (!Array.isArray(this._jigStates)) this._jigStates = [];
+    this._fitCount = el('p', 'orr-hull-fitcount', '');
+    this._fitCount.hidden = true;
+    if (this._stageEl) this._stageEl.appendChild(this._fitCount);
+    this._hullWatch = null;
+    if (typeof MutationObserver === 'function' && this._stageEl
+      && typeof this._stageEl.querySelectorAll === 'function') {
+      this._hullWatch = new MutationObserver(() => this._dressHull());
+      this._hullWatch.observe(this._stageEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+    this._dressHull();
 
     this._regions = { title: h, stage, foot };
     rootEl.dataset.kReady = '1';
@@ -1310,6 +1425,7 @@ export const crucibleRefitScreen = {
   dispose() {
     if (this._jig) this._jig.dispose();
     this._jig = null;
+    if (this._hullWatch) { this._hullWatch.disconnect(); this._hullWatch = null; }
     if (this._doneHold) { this._doneHold.dispose(); this._doneHold = null; }
     if (this._extractHold) { this._extractHold.dispose(); this._extractHold = null; }
   },
@@ -1327,6 +1443,9 @@ export const crucibleRefitScreen = {
     // run-ending word (the win or the walk-away) to a 0.6 s hold of F / pad X — the ring on the
     // word is the hold's progress, so the cap is what fires it, not a tooltip.
     setKeyLabel(this._done, lines.primary, lines.finishes ? 'hold F·X' : 'Esc', lines.finishes ? 'f' : 'Escape');
+    // The run-ending commit takes the Lamp; every other key rests in bone. (The first refresh
+    // runs before the foot exists, like every other word here.)
+    if (this._done) this._done.classList.toggle('is-lamp', !!lines.finishes);
     setNote(this._doneNote, lines.primaryNote);
     if (this._done && this._done.title !== lines.primaryNote) this._done.title = lines.primaryNote;
     if (this._done && this._done.dataset) {
@@ -1484,6 +1603,7 @@ export const crucibleRefitScreen = {
       jigNodes.push({ el: item, slotType: row.slotType, state, num: String((row.slotIndex || 0) + 1).padStart(2, '0') });
     }
 
+    this._jigStates = jigNodes.map((node) => node.state);
     if (this._jig) {
       const hullId = activeLoadout(context).hullId;
       const fitted = jigNodes.filter((n) => n.state === 'fitted').length;
@@ -1508,6 +1628,75 @@ export const crucibleRefitScreen = {
     const owner = draftOwner(context);
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
     if (this._note) this._note.textContent = notice || '';
+    this._dressHull();
+  },
+
+  /**
+   * r2 dressing over the jig's own drawing: empty hardpoints dash their whole connector so
+   * emptiness reads at a glance (the lit arm stays solid), nose numerals part to a 12px edge
+   * gap, and the fitted count reads inline under the hull when the dial drops its arc.
+   * Idempotent; the mount observer re-applies it after every jig rebuild.
+   */
+  _dressHull() {
+    const stage = this._stageEl;
+    const jig = this._jig;
+    const states = this._jigStates;
+    if (!stage || !jig || !states || !states.length) return;
+    if (typeof jig.active !== 'function' || !jig.active()) {
+      if (this._fitCount) this._fitCount.hidden = true;
+      return;
+    }
+    if (typeof stage.querySelectorAll !== 'function') return;
+    const n = states.length;
+    const lit = typeof jig.lit === 'function' ? jig.lit() : -1;
+    // The layer holds each hardpoint's open runs first, then its hidden runs; the hidden runs
+    // dash already. Guard the count: a rebuild mid-refresh is the observer's next turn, not this.
+    const leaders = stage.querySelectorAll('.orr-hull__leader');
+    if (leaders.length === 3 * n && typeof leaders.forEach === 'function') {
+      leaders.forEach((path, k) => {
+        if (k >= 2 * n || !path.getAttribute) return;
+        const idx = Math.floor(k / 2);
+        const empty = states[idx] !== 'fitted' && idx !== lit;
+        const has = path.getAttribute('stroke-dasharray');
+        if (empty && has !== '5 4') path.setAttribute('stroke-dasharray', '5 4');
+        else if (!empty && has) path.removeAttribute('stroke-dasharray');
+      });
+    }
+    // Numerals part along x to a 12px edge gap, two relaxation passes, capped travel.
+    const nums = [...stage.querySelectorAll('.orr-hull__num')];
+    const boxes = nums.map((t) => ({
+      el: t,
+      x: Number(t.getAttribute('x')) || 0,
+      y: Number(t.getAttribute('y')) || 0,
+      hw: (t.textContent ? t.textContent.length : 2) * 4.6,
+      hh: 7,
+    }));
+    for (let pass = 0; pass < 2; pass += 1) {
+      for (let i = 0; i < boxes.length; i += 1) {
+        for (let j = i + 1; j < boxes.length; j += 1) {
+          const a = boxes[i];
+          const b = boxes[j];
+          if (Math.abs(a.y - b.y) >= a.hh + b.hh) continue;
+          const need = a.hw + b.hw + 12 - Math.abs(a.x - b.x);
+          if (need <= 0) continue;
+          const push = Math.min(need / 2, 15);
+          const dir = (b.x - a.x) >= 0 ? 1 : -1;
+          a.x -= dir * push;
+          b.x += dir * push;
+        }
+      }
+    }
+    for (const box of boxes) {
+      const want = box.x.toFixed(1);
+      if (box.el.getAttribute('x') !== want) box.el.setAttribute('x', want);
+    }
+    // The fitted count, inline under the hull only while the arc is gone.
+    if (this._fitCount) {
+      const fitted = states.filter((s) => s === 'fitted').length;
+      const text = `${fitted} of ${n} fitted`;
+      if (this._fitCount.textContent !== text) this._fitCount.textContent = text;
+      this._fitCount.hidden = stage.querySelectorAll('.orr-hull__fitted').length !== 0;
+    }
   },
 
   /** Match the select back to the owner's own row data, so no id is retyped through a string. */

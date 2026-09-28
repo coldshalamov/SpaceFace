@@ -1,0 +1,312 @@
+STATION INDUSTRY TAB — ROUND 15 CRITIC (owner criteria gate: (a) weight >= 2:1 measured, (b) one signature interaction)
+
+Stills read (copied to crit15-* before opening; crops are crops/i15-*):
+- crit15-1920.png (arrival 1920, = gate-ind-1920e)
+- crit15-1280.png (arrival 1280, = gate-ind-1280c)
+- crit15-ghost.png (ghost preview, early: 1 iron pulse mid-beam + arc started)
+- crit15-ghost2.png (ghost preview, ~87%: bezel arc nearly full, pulses arrived)
+Commits: ab0c77c20 (r15: hold-to-run, product/key/pictogram weight, ghost preview,
+true durations, hover segment, 1280 wrap) + 10d4692b2 (shell rail margin).
+
+Method: every figure from sharp .raw(). L = Rec.709 luma, WCAG ratios against the
+glass directly behind the element. Ring centre (1164,596); product centre (1652,604).
+DOM evidence cited from the bench (host 'orr-ind-chain orr-chain is-blocked
+is-running is-ghost', real holdarc path r122). Source read only to verify wiring.
+
+1. VERDICT: NOT PASSED. Overall 8.3 (r14 letter 8.0); no axis under 7.
+   (a) weight: FAIL on ONE element. Seven of eight parts carry body at 2.2-6.1:1.
+   The disabled FABRICATE field sits at 1.5-1.9:1 against its local floor (worse at
+   1280: ~1.3-1.6:1). One paired value change fixes it (fix 1).
+   (b) signature: PASS. "Hold FABRICATE and the bezel fills as the chain runs" exists
+   in code, in DOM, and in the ghost stills. A live-hold landing still was never shot
+   (noted as the closing check, not a defect).
+
+2. AXES (r14 in brackets)
+  Composition          8.3  [8.1]
+     - The right third is fixed: the product has a body, the key is a slab, the
+       glyphs are objects. The node/2/key stack anchors the column now.
+  Hierarchy            8.2  [7.9]
+     - The product leads the bodies for the first time (core L148, 6.1:1).
+     - The key field (L59-65 over dark glass) is now the dimmest body, so the verb
+       floats on a slab that thins out to its left.
+  Legibility           8.2  [8.2]  Unchanged at 1920; 1280 headers wrap instead of
+     truncating, which reads better than r14's nowrap row.
+  ORRERY fidelity      8.5  [8.2]
+     - Bands-as-bodies everywhere it counts; ice only for motion (the pulses — the
+       arc is bone progress, correct); the bezel IS the hold ring, the most ORRERY
+       thing this tab has done; the ghost preview is a teaching instrument, not chrome.
+  Craft / detail       8.3  [8.0]
+     - The mixed-weight family is cured: 5px product band with dashes on the edge
+       only, filled two-tone glyphs, clean scale cut, 1280 wrap.
+     - One craft miss left: the key field gradient straddles the bar (fix 1).
+  Interaction clarity  8.5  [7.7]
+     - The signature exists end to end: hold fills the bezel, per-unit pulses run,
+       stocks drain (code), the output pulse fires, the product lights and its count
+       rolls, early release falls back twice as fast, pointer/key/pad/AT paths all
+       wired, ambient animateMotion deleted, durations true, run track never disagrees.
+     - Held below 9 because the landing (lit product + rolled qty) and the drain are
+       code-only — no live-hold still proves them — and the pulse staging front-loads
+       1-unit inputs (fix 2).
+
+3. R14 BLOCKERS, ITEM BY ITEM
+  1. (b) Build the signature. DONE.
+     - industry.js: hold:true on the key, build moved from click to hold completion,
+       chain.run(frac) drives the bezel arc, cancel reverses (dir -1, 2x fallback),
+       refused builds fall back, reduced motion shows the end state.
+     - Ghost stills prove the choreography: g1 shows an ice pulse (RGB 103/118/130)
+       at x855-859,y521 on the iron beam; g2's bezel reads L129-133 at every sampled
+       angle except 240/270 deg — an 87% clockwise sweep from the REFINE window,
+       exactly matching a hold frac of ~0.87 from the top.
+     - Caveat (not a fail): no still shows a REAL hold-run; drain, output pulse and
+       product lighting are verified in code + DOM only.
+  2. (a) Product node body. DONE.
+     - Band 4-5px at L89-150 all the way round (0/45/90/135/180/225/270/315 deg);
+       dash gaps still read L97-98 — dashes on the edge only, over a whole band.
+     - Interior L33-36 (check: >= L20). Band 3.1:1, core 6.1:1 vs glass L20.
+     - 1280: band L74-119, core L119, interior L33-36. Headroom everywhere.
+  3. (a) Disabled key as unlit lamp. HALF.
+     - Slab landed, rim gone, verb bone/.76 at L189-193 for 4.55-5.93:1 on the field.
+     - But the field (bone/.23) measures L59-65 over dark glass and L70-81 over the
+       bright floor: the L68 check passes on barely half the key, and WCAG vs the
+       local floor is 1.51-1.94:1 — under the 2:1 bar. At 1280 the field is L48-66.
+     - Fix 1 (field .30 + verb .90) closes it; note the verb must rise WITH the field
+       or its contrast breaks the other way (4.0:1 at field L92 / verb L190).
+  4. (a) Pictograms as produced art. DONE.
+     - Iron/titanium cubes: filled faces, lit L217 / mid L160 / shade L80, ~15x14px.
+       Product ingot: lit L210 / L193 / L158 / side L140, ~20x10px. No strokes
+       anywhere; lit faces >= L150 with margin.
+  5. True durations. DONE (code). buildDuration used for the ring timeLabel and the
+     hero; timeFrac pinned 0 at rest. Not pixel-provable here — the refine job shown
+     is truly instant and the blocked heart reads "-" — but it is a two-line change.
+  6. Hover says where the hand is. DONE (code). Name lifts to bone/.9, 3px bone/.7
+     focus segment stands on the spine, and the old whole-spine brightening rule is
+     deleted. No hover still was shot this round, so this is unverified in pixels.
+  7. Blocked arrival teaches. DONE. Ring hover/press runs preview(): a 1500ms ghost
+     run at .28 opacity (measured arc L129-133 over bezel L81 = quarter light),
+     landing on the reason (.is-told). Run track provably untouched (fix 8's proof).
+  8. Fixture double-fraction. DONE. Run track pixels identical in arrival vs g2 at
+     all sampled angles; timeFrac:0 removes the resting timearc, so bezel-hold and
+     run-track can never disagree again.
+  No regressions: bezel band L79-103 (r14: L71-78), spine band L75-77 + core L191
+  (r14: L67/L156), stock bands L80 + cores L151 (r14: L70/L118-170), iron beam core
+  L85 + bloom L24, output beam core L87, tab rail band L92 + core L179 — all hold or
+  improve. Shell rail commit shows no displacement (rail still y1053-1059).
+
+4. RANKED FIXES (the gate first, then craft; no structural change is needed — r15
+   landed the structure, and the one gate miss is a measured value, not a design)
+  1. (GATE, key field+verb values) lampKey.js disabled rule + the sx-fab-foot
+     override (key at 1565-1730 x 743-787): raise the field fill bone/.23 -> .30
+     and the verb bone/.76 -> .90 together. Why paired: .30 fill over the L9-38
+     glass reads L74-92 (>= 2.2:1 everywhere); the verb must reach ~L210 to hold
+     4.5:1 on L92 (else it sinks to ~4.0:1). Blast radius: the lampKey.js rule is
+     library code — either scope the raise to the Industry override or walk every
+     disabled Lamp Key on every tab. Check: field >= L72 across, verb >= 4.5:1,
+     at 1920 AND 1280 (1280 field is L48-66 today).
+  2. (craft, pulse staging) chainBeam.js unitStart/TRAVEL: a 1-unit input's pulse
+     arrives by frac .38 while a 3-unit input's last unit launches at .46, so the
+     two inputs never visibly flow together — g1 shows iron only, Ti already home.
+     Spread each input's window across the hold (e.g. starts 0.06-0.62 by unit
+     index over ALL inputs, travel 0.32) so every beam carries light through the
+     middle of the hold. Check: a ghost still at ~50% shows a pulse on EACH input.
+  3. (craft, keyboard path to the teacher) chainBeam.js ringhit: the ghost preview
+     answers pointerenter/pointerdown only, and the ring is an aria-hidden div, so
+     keyboard players never get the lesson blocker 7 exists to teach. Make the ring
+     focusable (tabindex 0 + role) with focus -> preview(), blur -> reset().
+  4. (verification, closes (b) beyond code) Shoot ONE live hold: bench with refinery
+     + stocked hold, hold FABRICATE to full, catch the output pulse mid-beam and the
+     lit product (is-made ring + bead) with the rolled qty. No code change implied;
+     this is the receipt that the landing plays as written.
+
+5. MEMORABLE (what nothing here attempts yet): the ghost run ends at words — it
+   should end ON the missing thing: pulse the short input's node, or stamp the
+   absent facility's mark into the bezel window, so the player sees what to go get.
+
+6. LANDMARKS (r15, 1920 arrival unless noted)
+  - Ring centre (1164,596). Bezel r116-128, L79-103 (blocked). Run track r138-146:
+    band L66-77, core L106-162. Glass inside L10-22, outside L13-19.
+  - Ghost arc (g2 ~87%): L129-133 bone at 0/30/60/120/150/180/210/300/330 deg,
+    absent at 240/270 (window) — clockwise sweep from the window confirmed.
+  - Iron node (y500): bands x686-687 / x752-753 at L80-81, cores L144-154. Ti (y700):
+    same build. Glyphs ~15x14, L217/L160/L80.
+  - Product (1652,604,r~40): band r37-41 L89-150 all round (dash gaps L97-98),
+    interior L33-36, glass L19-24. Glyph x1643-1663 y599-608, lit L210.
+  - Beams: iron x880 core y528-529 L85; output x1450 core y603-604 L87.
+  - Spine x36-42: band L75-77, core x38-41 L174-205 (L128 shoulders at tick rows).
+  - Key 1565-1730 x 743-787: field L59-81 (gradient = glass showing through),
+    verb L189-193, floor L25-38 (dark glass L8-9 left of key).
+  - Tab rail: band y1053-1059 L92-105, core L179-182.
+  - 1280: ring ~(743,437) r~85, bezel L81-114 + core L148-157; product (966,430)
+    band L74-119; key x~907-1045 y~566-592, field L48-66, verb L147-193; headers
+    wrap to two lines; rail single row (band L92, core L178 at y693-697).
+
+7. OWNER CRITERIA
+  (a) "no super thin wireframe looks, no generic elements" (measured bar >= 2:1):
+  - Product node: PASS with headroom (band 3.1:1, core 6.1:1).
+  - Pictograms: PASS (filled two-tone objects, lit L210-217).
+  - Bezel 2.4:1, run track, stock bands, spine, tab rail: PASS (all hold or improve).
+  - Disabled key: FAIL, narrowly — field 1.5-1.9:1 (1.3-1.6:1 at 1280) vs the 2:1
+    bar. It reads as a deliberate dim slab, not a wire or a generic ghost button,
+    but the measured law is explicit and it misses on most of its area. Fix 1.
+  (a) overall: FAIL on this one element.
+  (b) "every screen a mini app with a creative, distinct signature interaction":
+  - Signature: hold FABRICATE and the instrument itself runs — the bezel fills as
+    the hold ring, one ice pulse per unit leaves each input, stocks drain, the
+    output pulse fires, the product lights and its count rolls in; let go and it
+    falls back; on a chain that cannot run, resting on the ring plays the same run
+    as a ghost and lands on the reason. No other screen fills its own instrument
+    with the materials you spent. It is strong, memorable, and Industry's own.
+  (b): PASS.
+
+================================================================================
+STATION INDUSTRY TAB — ROUND 16 CRITIC (r15 above kept as previous; r15 verdict:
+NOT PASSED 8.3, (b) PASS, (a) FAIL on the disabled key field only)
+================================================================================
+
+Stills read (copied to crit16-* before opening; measurements + crops in /tmp crit16):
+- crit16-1920.png (arrival 1920, = gate-ind-1920f)
+- crit16-1280.png (arrival 1280, = gate-ind-1280d)
+- crit16-ghost3.png (= gate-ind-ghost3, billed ~50%)
+Commit: a7907d754 (r16: key field bone/.30 + verb bone/.90 in lampKey.js AND the
+sx-fab-foot override; chainBeam.js global pulse staging + same for drain; blocked
+ring focusable with :focus-visible ring; live-hold receipt still acknowledged open).
+
+Method: sharp .raw(), Rec.709 L, WCAG via linearized sRGB. HEADLINE: ghost3 is
+NOT ~50%. Its arc spans 235 deg (edges at math-167.5 and math-292.5, radial-max
+lift +47-49; trailing edge = win 22.5 deg exactly), so p ~= 0.74. At p ~= 0.74
+new staging predicts exactly ONE pulse (Ti, q ~= 0.81) and old staging predicts
+exactly ONE pulse (iron k2, q ~= 0.89): the pixels decide cleanly (see fix 2).
+
+Builder-claim check: 1920 field y=750 min 83.3 avg 87.4 (claimed 83/87: EXACT);
+verb max 216.5 (claimed 216: EXACT). "1280 field min 74" is TRUE only for the top
+row (y=570 min 74.1) — full-field min is 70 at the bottom rows; the builder
+measured one row. "3 visible upulse" is the DOM count at the p ~= 0.5 frame (code:
+exactly 3 displayed iff p in (0.48, 0.52)); the SHOT is p ~= 0.74 with 1. Count
+and shot are different moments of the 1500 ms preview.
+
+1. VERDICT: PASSED. Overall 8.5 (r15 8.3); no axis under 7.
+   (a) weight: PASS. The disabled key carries 2.15-2.86:1 at both sizes, verb at
+   5.4-6.0:1. One 60x6px bottom-edge stretch at 1280 softens to 1.45-1.76 against
+   the bright floor wedge — a regional-comparator edge effect across a dark seam
+   the eye reads as crisp (verified at 3x): craft fix 1, not a gate. r15 failed
+   this element because it missed on MOST of its area at BOTH sizes with
+   hierarchy damage; r16 misses on ~4% at one size with none.
+   (b) signature: PASS (strengthened: the blocked ring now teaches keyboard
+   players too). The live-hold receipt is still unshot (carried, not a defect).
+
+2. AXES (r15 in brackets)
+  Composition          8.4  [8.3]
+     - The key slab finally anchors the right column (field L75-94, no thin-out).
+       Nothing else moved.
+  Hierarchy            8.4  [8.2]
+     - The verb (L216, 5.4:1) leads its slab instead of floating; the key field
+       now sits in the bezel's weight class instead of below every other body.
+  Legibility           8.3  [8.2]
+     - Brighter verb at both sizes (5.4/6.0:1); 1280 two-line headers unchanged.
+  ORRERY fidelity      8.6  [8.5]
+     - The unlit lamp is now the LIBRARY's disabled state (.30/.90 in lampKey.js,
+       override mirrors it), not an Industry hack; ice pulse (B>R confirmed) vs
+       bone arc holds; lampKey brightening touches every tab's disabled keys (no
+       other disabled key is visible in these stills — other tabs' critics own it).
+  Craft / detail       8.4  [8.3]
+     - The field gradient is cured (75-94 across, was 59-81); cut corner clean.
+       Residual: the 1280 bottom-edge stretch (fix 1).
+  Interaction clarity  8.6  [8.5]
+     - Global staging landed and its signature is pixel-proven (late Ti at
+       p ~= 0.74, iron home — impossible under old staging); blocked ring answers
+       keyboard focus with a visible ring. Capped below 9: landing/drain still
+       code-only, and no 50% still shows both inputs lit at once.
+
+3. R15 FIXES, ITEM BY ITEM
+  1. GATE key field+verb values. DONE.
+     - Library rule + override both raised together (diff verified).
+     - 1920: full field (verb/edge-AA excluded) L75-94, mean 85; bottom edge vs
+       floor-below 2.22-2.38 at all 8 columns (x1580-1720); left edge vs glass
+       2.27-2.40; verb:field 5.39:1 (verb p90 L215.5, field med L82.8).
+     - 1280: field L70-88; verb:field 5.99:1; vs side/dark glass 2.15-2.27.
+       Residual: bottom edge x958-1018 vs the bright wedge 1.45-1.76 (fix 1).
+  2. Pulse staging. DONE.
+     - Code: unitStartG(g,total) = 0.06+0.56*g/total, TRAVEL .32, drain uses the
+       same staging (read at HEAD).
+     - Pixels: ghost3 arc 235 deg => p ~= 0.74; Ti pulse = a 132px ice blob
+       (peak +48, RGB 56,72,87, B>R) centred (986,640), q ~= 0.8 — exactly the
+       new-staging prediction (launch 0.48, q = (0.74-0.48)/.32 = 0.81). Iron
+       corridor: ZERO added pixels (k2 q = 1.27, home, correct). Old staging
+       predicts the exact reverse (iron flying, Ti home) — refuted in pixels.
+     - The literal check (one 50% still, EACH input lit) has no still: ghost3 is
+       p ~= 0.74, and the bench's DOM count of 3 belongs to the p ~= 0.5 frame.
+       Verification fix 2 (a receipt, not a defect — r15 fix-4 precedent).
+  3. Keyboard path to the teacher. DONE (code).
+     - Blocked ring: role=button, tabindex=0, aria-label, focus -> preview(),
+       blur -> reset() iff previewing; :focus-visible 2px bone/.6 + 5px offset;
+       live chains stay aria-hidden (line 543). No focused still exists, so the
+       ring itself is code-verified only. Path reviewed: preview guards
+       (live/driven/previewing) hold, reduced-motion lands on the reason at once,
+       pointer path untouched.
+  4. Live-hold receipt. OPEN. No stocked-refinery bench exists (round brief
+     acknowledges it); landing and drain stay code-verified only. Carried as
+     verification fix 3, not a defect.
+  No regressions: product band L91-150 all round + interior L31-35; bezel
+  L81-84; stock bands L80 + cores L144-154 (identical to r15); spine core L204;
+  rail core L178/band L93; beams L84-86; arc bone (132,129,123), pulse ice.
+
+4. RANKED FIXES (no structural change — the tab passes; 5 craft/verification
+   follow-ups, most valuable first)
+  1. (craft, 1280 key bottom edge) sx-fab-foot disabled override (key x888-1044
+     y558-594): bottom ~6px at x958-1018 sits at 1.45-1.76 vs the bright floor
+     wedge (field L70-74 vs floor L30-48 just below the edge). Smallest
+     deterministic cure: a 2px dark under-shadow following the cut shape (a
+     behind-layer duplicate of ::before, offset +2px, glass-dark), so the slab
+     always borders dark. Check: field-vs-immediate-below >= 2:1 across.
+     (Eye-check at 3x: the slab reads whole today via the existing seam — polish.)
+  2. (verification) One true-50% ghost still: drive run(0.5,{ghost:true}) and
+     shoot. Code predicts iron x2 (q 0.94/0.50) + Ti x1 just out (q 0.06, ~18px
+     off the rim); bench DOM count 3 corroborates. No code change.
+  3. (verification, carried) Live-hold receipt: stocked-refinery bench, hold to
+     full, catch the output pulse mid-beam + lit product + rolled qty. Still no
+     bench; still not a defect.
+  4. (bench craft) Pin ghost stills to driven fracs: ghost3 was billed ~50% but
+     measures p ~= 0.74 (arc 235/316 deg). Wall-clock catches of a 1500 ms
+     preview will keep missing; drive run(frac), then shoot.
+  5. (craft, optional) 1280 field striping: a floor panel line shows through the
+     .30 fill as a faint stripe across the slab's lower third (seen at 3x,
+     invisible at 1x). Fix 1's shadow (or .30 -> .34 at 1280) cures it; accept
+     is defensible.
+
+5. MEMORABLE (what nothing here attempts yet): r15's stands — the ghost run ends
+   at words, it should end ON the missing thing: park the short input's last
+   pulse on its node, or stamp the absent facility's mark into the REFINE window.
+   The new staging makes the parked-pulse version easy (hold Ti at q ~= 0.95
+   instead of vanishing it at 1.0).
+
+6. LANDMARKS (r16, 1920 arrival unless noted)
+  - Ring (1164,596). Bezel r ~122: arrival L81-84; ghost3 arc +47-49 bone
+    (L129-132) over 235 deg (math 292.5 -> 167.5 through 0; win 22.5 both
+    edges) => p ~= 0.74.
+  - Ti pulse (ghost3): 132px ice blob at (986,640), peak +48 RGB 56,72,87 at
+    (986,642); on-beam (Ti beam x1000 -> y637). Iron corridor: 0 added px.
+  - Key 1920: x1565-1739 (cut-corner AA from x1730 up top), y744-788; field
+    L75-94 mean 85; verb max L216.5, verb:field 5.39:1; dark glass L9 left,
+    floor L9-38 below/right.
+  - Key 1280: x888-1044, y558-594; field L70-88; verb:field 5.99:1; bright
+    wedge L30-53 right/below (x1052 top rows L41-45; y598+ L36-49); dark seam
+    L9-29 along most of the bottom edge.
+  - Product (1652,604,r40): band L91-150 all round; interior L31-35; glyph lit.
+  - Nodes (719,500)/(719,700): bands L80, inner L144-154, glyph cores L216-217.
+  - Spine x36-42: band L75, core L204. Rail: core L178, band L93 (y1055-1057).
+    Beams: iron L84-86, output L86.
+
+7. OWNER CRITERIA
+  (a) "no super thin wireframe looks, no generic elements" (measured bar >= 2:1):
+  - Product band 3:1+/core 6:1, pictogram lit faces L216+, bezel/run-track/
+    stocks/spine/rail all hold r15 values: PASS.
+  - Disabled key: PASS. Field 2.15-2.86:1 with verb 5.4-6.0:1 at both sizes; the
+    one soft stretch (1280 bottom edge, 1.45-1.76 over ~60x6px) is an edge effect
+    across a dark seam the eye reads as crisp — fix 1, not a wire. Nothing here
+    is hairline-only or generic.
+  (a) overall: PASS.
+  (b) "every screen a mini app with a creative, distinct signature interaction":
+  - Signature unchanged from r15 (hold FABRICATE and the instrument itself runs;
+    the blocked ring teaches the run as a ghost) and extended to keyboard
+    players through focus. No other screen fills its own instrument with the
+    materials you spent.
+  (b): PASS.

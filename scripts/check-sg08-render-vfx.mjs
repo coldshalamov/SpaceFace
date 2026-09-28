@@ -361,16 +361,26 @@ function makeHarness(overrides = {}) {
   assert(vector && vector.group.visible && vector.pool.activeCount > 0,
     'near NPC vector family must be live simultaneously (stronger multi-ship assertion)');
   assert.ok(ion.getActiveGeometryStats().vertexCount > 4, 'production geometry must be segmented');
-  const streak = system._trailStreakPool.mesh.count > 0 ? system._trailStreakPool.mesh : null;
-  assert(streak, 'fleet overflow ships should show procedural streak mesh');
-  assert(streak.isInstancedMesh, 'streak pool should submit one instanced draw');
-  assert.equal(streak.material.type, 'ShaderMaterial', 'streak must be ShaderMaterial not SpriteMaterial');
-  assert(streak.material.fragmentShader.includes('trailSampleProcedural'),
-    'streak fragment must use live procedural sampler');
-  assert(streak.material.uniforms.uTrailTime, 'streak must animate warp via uTrailTime');
+  // 94e336133 (2026-09-24, "Draw overflow thrust as short ribbon jets, not sprite needles")
+  // moved fleet-overflow thrust off the retired instanced-streak substrate onto
+  // OverflowRibbonJets — the same swept-ribbon PlasmaRibbonPlume sheet as the player plume,
+  // claimed per ship per emit tick (nearest claimants win, hold ~0.12s). Same contract this
+  // block always pinned: an overflow ship still shows a live procedural plasma sheet, one
+  // mesh per held slot — never a point-particle bead chain or a sprite needle.
+  const overflowJets = system._overflowJets;
+  assert(overflowJets, 'overflow ribbon jet pool must be initialized');
+  const overflowSlots = overflowJets.driveSlots.filter((slot) => slot.entityId != null && slot.hold > 0);
+  assert(overflowSlots.length >= 1, 'fleet overflow ships should claim live ribbon-jet slots');
+  const jetPlume = overflowSlots[0].plume;
+  assert(jetPlume.mesh && jetPlume.mesh.isMesh && !jetPlume.mesh.isPoints && !jetPlume.mesh.isSprite,
+    'overflow jet must draw as a mesh, not points or a sprite');
+  assert.equal(jetPlume.material.type, 'ShaderMaterial',
+    'overflow jet must be ShaderMaterial not SpriteMaterial');
+  assert(jetPlume.material.uniforms.uFlowRate && jetPlume.material.uniforms.uTime,
+    'overflow jet shader must procedurally animate jet flow');
+  assert(overflowJets.group.visible, 'overflow jet group should be visible while slots are held');
+  assert(overflowJets.admitted >= 1, 'overflow pool should record live slot admissions');
   const inspect = system.inspect();
-  assert(inspect.trails.trailStreaksSpawned >= 1, 'overflow ships should spawn a procedural streak layer');
-  assert(system._liveTrailStreakCount > 0, 'dedicated streak pool should retain live meshes after thrust frames');
   assert.equal(inspect.trails.trailParticlesSpawned, 0,
     'thrusting ships should not spawn axis-aligned point-particle beads');
   let ribbonProcedural = false;
@@ -386,15 +396,14 @@ function makeHarness(overrides = {}) {
     particleProcedural: system._particleMat.fragmentShader.includes('trailSampleProcedural'),
     particleTrailTime: !!system._particleMat.uniforms.uTrailTime,
     streakPoolCap: system._trailStreakPool.capacity,
-    liveTrailStreakMeshes: system._liveTrailStreakCount,
     productionPlume: true,
     productionFamilies: [ion.group.visible, vector.group.visible],
     engineProfileId: system._energy && system._energy.engineProfileId,
-    streakShader: streak.material.type,
-    streakProcedural: streak.material.fragmentShader.includes('trailSampleProcedural'),
-    streakTrailTime: !!streak.material.uniforms.uTrailTime,
+    overflowJetSlots: overflowSlots.length,
+    overflowJetShader: jetPlume.material.type,
+    overflowJetGroupVisible: overflowJets.group.visible,
+    overflowJetAdmitted: overflowJets.admitted,
     ribbonProcedural,
-    trailStreaksSpawned: inspect.trails.trailStreaksSpawned,
     trailParticlesSpawned: inspect.trails.trailParticlesSpawned,
     segmentedVerts: ion.getActiveGeometryStats().vertexCount,
   }));

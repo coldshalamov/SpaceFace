@@ -1128,8 +1128,18 @@ export const input = {
     const kbdBoost = pilotProjection ? pilotProjection.boost : kbdBoostHeld;
     const kbdFire = this._m0 || this._held(state, 'fire');
 
-    // --- gamepad merge (left stick = yaw/throttle, right stick = aim, RT/LT/RB fire/mine/boost) ---
+    // --- gamepad merge (drive: left stick = yaw/throttle; twinstick: left = world-frame
+    //     drive vector; right stick = aim, RT/LT/RB fire/mine/boost) ---
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    // PQ-164.04: pad flight scheme is its own axis — 'drive' keeps the wheel map;
+    // 'twinstick' turns the left stick into a screen-frame drive vector while the right
+    // stick aims and steers the nose (the chase runs below once aimAngle exists).
+    const padScheme = (state.settings && state.settings.controls && state.settings.controls.gamepad
+      && state.settings.controls.gamepad.scheme) === 'twinstick' ? 'twinstick' : 'drive';
     let gpTurn = 0;
+    let gpMoveX = 0;
     let gpMoveZ = 0;
     let gpBoost = false;
     let gpFire = false;
@@ -1138,8 +1148,19 @@ export const input = {
     let gpCountermeasure = false;
     let gpAimActive = false;
     if (gp && gp.isConnected()) {
-      gpTurn = gp.axes.leftX;
-      gpMoveZ = -gp.axes.leftY; // stick up = forward
+      if (padScheme === 'twinstick' && p && p.pos) {
+        // The stick points where the ship pushes on screen — decomposed into the hull's
+        // forward/strafe axes the same way helm-assist decomposes a brake vector.
+        const wx = gp.axes.leftX;
+        const wz = -gp.axes.leftY;
+        const cf = Math.cos(p.rot || 0);
+        const sf = Math.sin(p.rot || 0);
+        gpMoveZ = wx * cf + wz * sf;
+        gpMoveX = wx * -sf + wz * cf;
+      } else {
+        gpTurn = gp.axes.leftX;
+        gpMoveZ = -gp.axes.leftY; // stick up = forward
+      }
       gpBoost = gp.actions.boost && gp.actions.boost.held;
       gpFire = gp.actions.fire && gp.actions.fire.held;
       gpMine = gp.actions.mine && gp.actions.mine.held;
@@ -1175,19 +1196,22 @@ export const input = {
       && activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, tpTick, tpSeq);
 
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
-    inp.moveX = kbdMoveX || tpMoveX;
-    inp.moveZ = kbdMoveZ || (gpBrake ? -1 : gpMoveZ) || tpMoveZ;
+    inp.moveX = kbdMoveX || gpMoveX || tpMoveX;
+    // Twin-stick keeps the authored drive vector under the brake — LB decomposes counter-
+    // velocity below rather than forcing a flat reverse, and hard stick-down is a legit
+    // drive direction, not the drive scheme's brake gesture.
+    inp.moveZ = kbdMoveZ || (gpBrake && padScheme !== 'twinstick' ? -1 : gpMoveZ) || tpMoveZ;
     inp.boost = kbdBoost || gpBoost || tpBoost;
     inp.brake = (helm || pilot)
       ? ((pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld)) || gpBrake)
-      : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
+      : (down || gpBrake || (padScheme !== 'twinstick' && gpMoveZ < -0.55) || tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
     // Explicit device input interrupts the drawn route without switching off gun targeting.
     // Do not infer this from the auto pilot's axes one system later: those include reverse
     // components while turning and used to silently press the player's brake.
     if (inp.autoFire || Object.prototype.hasOwnProperty.call(inp, 'drawFlightManual')) {
       inp.drawFlightManual = !!(inp.brake || kbdTurn || kbdMoveX || kbdMoveZ
-        || gpTurn || gpMoveZ || tpTurn || tpMoveX || tpMoveZ);
+        || gpTurn || gpMoveZ || gpMoveX || tpTurn || tpMoveX || tpMoveZ);
     }
     // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
     // (hostile ship/drone, fracture chunk, cargo mass), RMB is throwArm — mining yields and
@@ -1216,9 +1240,6 @@ export const input = {
     // logic + AI auto-deploy in one place.
     this._updateCountermeasureHold(this._held(state, 'countermeasure') || gpCountermeasure, inp);
 
-    const p = state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(state.playerId)
-      : null;
     const gpOrTouchAim = gpAimActive || tpAimActive;
     const aimAxes = tpAimActive ? tp.axes : (gpAimActive ? gp.axes : null);
     const aimWorld = inp.aimWorld || (inp.aimWorld = { x: 0, z: 0 });
@@ -1287,7 +1308,8 @@ export const input = {
     ));
     const dedicatedLineLength = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
     const rawLineLength = dedicatedLineLength || -inp.moveZ;
-    const rawOrbitDirection = kbdLineOrbit || gpTurn || tpTurn;
+    // In twin-stick, strafe is the orbit direction analog of the drive scheme's yaw stick.
+    const rawOrbitDirection = kbdLineOrbit || gpTurn || gpMoveX || tpTurn;
     const masslineCommand = masslineGrammar.step(dt, {
         attached: tetherActive,
         held: masslineHeld,
@@ -1369,6 +1391,32 @@ export const input = {
         // Brake-to-stop: decompose the counter-velocity direction into the SAME ship axes
         // stepTranslation uses (forward = cos/sin rot, right = -sin/cos rot) and feed it through
         // the normal thrust pipeline — so braking respects per-class accel and reads as mass.
+        const speed = Math.hypot(p.vel.x, p.vel.z);
+        if (speed > 0.5) {
+          const nx = -p.vel.x / speed, nz = -p.vel.z / speed;
+          const cf = Math.cos(p.rot), sf = Math.sin(p.rot);
+          const k = Math.min(1, Math.max(0.4, speed / BRAKE_SOFT_SPEED));
+          inp.moveZ = (nx * cf + nz * sf) * k;
+          inp.moveX = (nx * -sf + nz * cf) * k;
+        } else {
+          inp.moveZ = 0; inp.moveX = 0;
+        }
+      }
+    }
+
+    // --- Twin-stick steering (PQ-164.04): in the pad's twin-stick scheme the right stick is
+    // facing too — the nose chases the aim at the helm scheme's soft-band gain so forward
+    // thrust and visuals follow the fight, while the left stick's world-frame drive vector
+    // (already written into moveX/moveZ above) keeps translation free. The brake decomposes
+    // counter-velocity through the same ship axes helm-assist uses.
+    if (padScheme === 'twinstick' && p && p.pos && gp && gp.isConnected()) {
+      if (gpAimActive && !tpAimActive && !kbmRecent && Number.isFinite(inp.aimAngle)) {
+        const err = wrapAngle(inp.aimAngle - (p.rot || 0));
+        inp.turnIntent = Math.abs(err) < HELM_DEADBAND
+          ? 0
+          : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+      }
+      if (inp.brake && p.vel) {
         const speed = Math.hypot(p.vel.x, p.vel.z);
         if (speed > 0.5) {
           const nx = -p.vel.x / speed, nz = -p.vel.z / speed;

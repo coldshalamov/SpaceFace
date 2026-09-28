@@ -564,6 +564,31 @@ const SHIPPED_MODULES = [
     mods: { weaponHeatDissipPct: 0.65, weaponDmgPct: 0.05 },
     variantBonuses: { weaponHeatDissipPct: 0.65, weaponDmgPct: 0.05 },
   },
+  // SP1 chain wrecks (D13-D16, uniqueWrecks.js): one authored salvage-only unique per hull.
+  {
+    id: 'unique_quadrille_box_reader', baseId: 'mod_cargo_scanner_s', name: 'Quadrille Box-Reader', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 0,
+    energyDraw: 1, purchasable: false, unique: true, salvageOnly: true,
+    mods: { revealCargo: true, scanRangeMult: 1.40 },
+    variantBonuses: { scanRangePct: 0.40 },
+  },
+  {
+    id: 'unique_double_entry_mask', baseId: 'mod_sensor_scrambler_m', name: 'Double-Entry Mask', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 0,
+    energyDraw: 4, purchasable: false, unique: true, salvageOnly: true,
+    mods: { scannerCloak: 0.62, scanRangeMult: 1.10 },
+    variantBonuses: { scannerCloakPct: 0.24 },
+  },
+  {
+    id: 'unique_first_notch_marker', baseId: 'mod_triangulation_suite_s', name: 'First-Notch Marker', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 0,
+    energyDraw: 2, purchasable: false, unique: true, salvageOnly: true,
+    mods: { anomalyPingReduction: 2, scannerRadiusMult: 1.25 },
+    variantBonuses: { scannerRadiusPct: 0.25 },
+  },
+  {
+    id: 'unique_regular_mass_shifter', baseId: 'mod_cargo_compactor_l', name: 'Regular Mass-Shifter', slotType: 'cargo', size: 'L', tier: 3, mass: 6, price: 0,
+    energyDraw: 0, purchasable: false, unique: true, salvageOnly: true,
+    mods: { cargoFlat: 132, cargoCapPct: 0.18 },
+    variantBonuses: { cargoCapPct: 0.20 },
+  },
 
   // ===================== CRUCIBLE GRAMMAR RIGS (PQ-133.11) =====================
   // Ids match landed attack traits so a fitted slot is the same grammar the compiler already knows.

@@ -27,6 +27,12 @@ const CANON = Object.freeze([
   { slot: 'D10', id: 'wreck_choir_tender', cls: 'fresh', sector: 'sector_helios_prime', source: 'news.tragedy_at_helios', channel: 'news' },
   { slot: 'D11', id: 'wreck_mts_silver_draft', cls: 'fresh', sector: 'sector_helios_prime', source: 'bar.helios_meridian.silver_draft', channel: 'bar' },
   { slot: 'D12', id: 'wreck_choir_cassandra', cls: 'fresh', sector: 'sector_haumea_rift', source: 'campaign.cassandra_reveal', channel: 'campaign' },
+  // D13-D16: the four SP1 story chains' dedicated hulls — each chain's own accept is the
+  // `mission`-channel rumor carrier (data/missions.js SET_PIECE_MISSIONS[n].wreckId).
+  { slot: 'D13', id: 'wreck_mts_quadrille', cls: 'fresh', sector: 'sector_io_reach', source: 'mission.sp1.investigation_chain.quadrille', channel: 'mission' },
+  { slot: 'D14', id: 'wreck_isc_double_entry', cls: 'military', sector: 'sector_tethys_junction', source: 'mission.sp1.witness_run.double_entry', channel: 'mission' },
+  { slot: 'D15', id: 'wreck_dmc_first_notch', cls: 'fresh', sector: 'sector_vesta_forge', source: 'mission.sp1.hearing.first_notch', channel: 'mission' },
+  { slot: 'D16', id: 'wreck_mts_regular', cls: 'battlefield', sector: 'sector_pallas_drift', source: 'mission.sp1.blockade_run.regular', channel: 'mission' },
 ]);
 
 const EXPECTED_PRIMARY_CHANNEL_SPREAD = Object.freeze({
@@ -34,7 +40,7 @@ const EXPECTED_PRIMARY_CHANNEL_SPREAD = Object.freeze({
   news: 2,
   comms_intercept: 1,
   bark: 1,
-  mission: 1,
+  mission: 5,
   campaign: 2,
   loss_investigation: 1,
 });
@@ -51,8 +57,8 @@ function refId(value) {
   return typeof value === 'string' ? value : value?.id;
 }
 
-test('R2 registry carries all twelve canon identities and all seven primary rumor channels', () => {
-  assert.equal(UNIQUE_WRECKS.length, 12, 'R2 is not a partial registry');
+test('R2 registry carries all sixteen canon identities and all seven primary rumor channels', () => {
+  assert.equal(UNIQUE_WRECKS.length, 16, 'R2 is not a partial registry');
   assert.deepEqual(validateUniqueWreckRegistry(), { ok: true, errors: [] });
   assert.deepEqual(UNIQUE_WRECKS.map((wreck) => wreck.programSlot), CANON.map((row) => row.slot));
 
@@ -81,7 +87,7 @@ test('R2 registry carries all twelve canon identities and all seven primary rumo
   assert.deepEqual(spread, EXPECTED_PRIMARY_CHANNEL_SPREAD);
 });
 
-test('all twelve placements are deterministic, order-independent, fuzzy, and seed-sensitive', () => {
+test('all sixteen placements are deterministic, order-independent, fuzzy, and seed-sensitive', () => {
   const seed = programSeedFor(0x47a2d00d);
   for (const row of CANON) assert.ok(uniqueWreckById(row.id), `${row.slot} must exist before placement can be audited`);
   if (UNIQUE_WRECKS.length !== CANON.length) return;
@@ -143,7 +149,7 @@ test('R2 hazard and complication metadata preserves the named canon gates', () =
 
 test('military wrecks use the existing restricted salvage path and authored provenance', () => {
   const restrictedSlots = CANON.filter((row) => row.cls === 'military').map((row) => row.slot);
-  assert.deepEqual(restrictedSlots, ['D1', 'D2', 'D3']);
+  assert.deepEqual(restrictedSlots, ['D1', 'D2', 'D3', 'D14']);
   for (const slot of restrictedSlots) {
     const wreck = bySlot(slot);
     assert.ok(wreck, `${slot} is registered`);
@@ -192,6 +198,6 @@ test('every equippable unique is a base-family salvage-only variant with no purc
     assert.equal(wreck.uniqueDropId, equippable[0]?.id || null, `${wreck.programSlot} primary grant is its first equippable variant`);
   }
 
-  assert.equal(uniqueIds.size, 14, 'the set contains every reserved equippable unique exactly once');
-  assert.equal(storyRewardCount, 2, 'Lost Ledger and Cassandra Treaty are durable story rewards');
+  assert.equal(uniqueIds.size, 18, 'the set contains every reserved equippable unique exactly once');
+  assert.equal(storyRewardCount, 3, 'Lost Ledger, Cassandra Treaty, and Quadrille Seal-Log are durable story rewards');
 });

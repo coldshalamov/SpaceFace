@@ -353,6 +353,8 @@ Current save version: `14`
 | `$.settings.controls.gamepad.deadzone` | number | 0.12 |
 | `$.settings.controls.gamepad.enabled` | boolean | true |
 | `$.settings.controls.gamepad.invertY` | boolean | false |
+| `$.settings.controls.gamepad.scheme` | string | drive |
+| `$.settings.controls.gamepad.schemeSuggested` | boolean | false |
 | `$.settings.controls.masslineBindingProfile` | string | space-v1 |
 | `$.settings.gameplay` | object | {} |
 | `$.settings.gameplay.aiBackend` | string | sg06-tactical |
@@ -371,6 +373,7 @@ Current save version: `14`
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
 | `$.settings.video.bloom` | boolean | true |
+| `$.settings.video.bloomLevels` | number | 2 |
 | `$.settings.video.bloomStrength` | number | 0.52 |
 | `$.settings.video.bloomThreshold` | number | 1 |
 | `$.settings.video.chaseClose` | boolean | false |
@@ -382,11 +385,13 @@ Current save version: `14`
 | `$.settings.video.motionReduce` | boolean | false |
 | `$.settings.video.particleQuality` | string | medium |
 | `$.settings.video.pixelRatioCap` | number | 2 |
+| `$.settings.video.postFx` | boolean | true |
 | `$.settings.video.qualityPreset` | string | medium |
 | `$.settings.video.renderGraph` | boolean | false |
 | `$.settings.video.renderScale` | number | 1 |
 | `$.settings.video.shadows` | boolean | false |
 | `$.settings.video.shadowsDefaultVersion` | number | 1 |
+| `$.settings.video.sharpen` | boolean | false |
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |

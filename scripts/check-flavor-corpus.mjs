@@ -90,10 +90,14 @@ function validateCorpus() {
       if (actual[field] !== expected[field]) add('flavor.source-mismatch', `${expected.sourceRef}.${field}`, `Expected ${expected[field]}, found ${actual[field]}.`);
     }
   }
+  // The wreck_rumors pack covers the D1-D12 reservations exactly; SP1 chain rumors (D13-D16)
+  // resolve into the set_piece_missions pack instead, so the parity count is per-pack.
   const wreckSourceCount = Object.values(FLAVOR_SOURCE_BY_REF)
     .filter((source) => source.packId === 'wreck_rumors').length;
-  if (wreckSourceCount !== manifestSources.length) {
-    add('flavor.source-count', 'FLAVOR_SOURCE_BY_REF', `Expected ${manifestSources.length} exact wreck reservation refs, found ${wreckSourceCount}.`);
+  const wreckRumorManifestCount = manifestSources
+    .filter((expected) => FLAVOR_SOURCE_BY_REF[expected.sourceRef]?.packId === 'wreck_rumors').length;
+  if (wreckSourceCount !== wreckRumorManifestCount) {
+    add('flavor.source-count', 'FLAVOR_SOURCE_BY_REF', `Expected ${wreckRumorManifestCount} exact wreck reservation refs, found ${wreckSourceCount}.`);
   }
 
   found.push(...validateBlurbEntries(FLAVOR_TEXT_ENTRIES.map((entry) => ({ id: entry.key, text: entry.text }))));

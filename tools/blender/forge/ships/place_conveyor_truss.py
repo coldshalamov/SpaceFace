@@ -34,10 +34,10 @@ def build():
     F.box(s, 'FeedChute', (-11.5, 0, 1.6), (3.0, 2.6, 2.0), material='dark', bevel=0.1)
 
     # --- the span: lattice truss + enclosed belt gallery on top --------------------------------
-    F.truss(s, 'Span', (-9.2, 0, 3.0), (9.2, 0, 4.4), 3.2, 8, material='paint',
+    F.truss(s, 'Span', (-9.2, 0, 3.0), (9.2, 0, 4.4), 3.2, 8, material='paint2',
             chord=0.35, web=0.2)
-    F.box(s, 'Gallery', (0.0, 0, 5.6), (19.0, 2.4, 1.7), material='paint.aged', bevel=0.1)
-    F.box(s, 'GalleryRoof', (0.0, 0, 6.6), (19.0, 2.8, 0.3), material='paint', bevel=0.02)
+    F.box(s, 'Gallery', (0.0, 0, 5.6), (19.0, 2.4, 1.7), material='paint2', bevel=0.1)
+    F.box(s, 'GalleryRoof', (0.0, 0, 6.6), (19.0, 2.8, 0.3), material='dark', bevel=0.02)
     # return strand under the truss
     F.box(s, 'Return', (0.0, 0, 2.6), (18.6, 1.2, 0.5), material='dark', bevel=0.02)
 
@@ -48,7 +48,7 @@ def build():
                                          ((lx + 1.2, e * 3.4, 0.2), (lx, e * 1.4, 3.4))],
                     0.4, material='paint2')
             F.box(s, f'Foot{k}{e:+d}', (lx, e * 3.5, 0.4), (3.2, 1.4, 0.7),
-                  material='paint.aged', bevel=0.06)
+                  material='paint2', bevel=0.06)
         F.beams(s, f'LegBar{k}', [((lx, -3.4, 1.0), (lx, 3.4, 1.0))], 0.3,
                 material='paint2')
 

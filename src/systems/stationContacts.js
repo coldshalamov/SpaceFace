@@ -10,6 +10,7 @@ import {
   normalizeStationContactRecord,
 } from '../data/stationContacts.js';
 import { SECTORS } from '../data/sectors.js';
+import { syncWitnessSeamVoice } from '../data/barks.js';
 import {
   VONN_FREIGHT_CASE_VERSION,
   VONN_FREIGHT_CONTACT_ID,
@@ -214,6 +215,7 @@ export const stationContacts = {
       this._reconcileDossArchive('save-loaded');
       this._normalizeVonnFreightLoss('save-loaded');
       this._normalizeRescueNotices();
+      this._syncWitnessSeamVoice();
     });
     this._reconcileDossArchive('init');
   },
@@ -224,6 +226,7 @@ export const stationContacts = {
     this.state.player.stationContactCounters = createInitialStationContactCounters();
     this.state.stationLife = { traffic: [], rescueNotices: {} };
     this._clearVonnFreightReceipts();
+    this._syncWitnessSeamVoice();
   },
 
   _recordCounterDelta(payload) {
@@ -237,6 +240,8 @@ export const stationContacts = {
       [trackerId]: previous[trackerId] + delta,
     });
     this.state.player.stationContactCounters = next;
+    // G2 witness seam: the bar voice for Dorin/Kell re-derives from the persisted counter bag.
+    this._syncWitnessSeamVoice();
     this.bus.emit('stationContact:counterChanged', {
       trackerId,
       contactId: def.contactId,
@@ -244,6 +249,13 @@ export const stationContacts = {
       value: next[trackerId],
       reason: String(payload.reason || '').slice(0, 96) || null,
     });
+  },
+
+  /** G2: keep the witness-run seam voice a pure function of the persisted counters. */
+  _syncWitnessSeamVoice() {
+    if (!this.state || !this.state.player) return;
+    syncWitnessSeamVoice(this.state.player.stationContactCounters
+      || createInitialStationContactCounters());
   },
 
   _recordTalk(payload) {

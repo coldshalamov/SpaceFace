@@ -6,383 +6,258 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9c31143d3c6dcc342ddd9365d4a534f4fd2e3d5361f72493145c73c3b9686c43",
+  "contentHash": "60769d8669e64343fde57feeb735c88b99f40121895cbb9621ae6a17b5ca0383",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          5.5,
-          2.269763708114624,
-          4.9998016357421875
+          -2.27463960647583,
+          3.14058780670166,
+          4.7785162925720215
         ],
         "min": [
-          -5.5,
-          1.7702367305755615,
-          -4.9998016357421875
+          -5.215820789337158,
+          0.09839296340942383,
+          1.8711297512054443
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2571d51177ada5657820ae22e34c1bed65bcccf963524f45cfe3cbd7906d692",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-deck.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "dbf6b9c3ef9a3ec9ff8d67c95806ec4a6d28a7cae860b151f7ac8c6c380446d4",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib0.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "b48e82aeb2b405ad07a775391fb40e42e04ed4e9516f5ebf60081dbc110e968f",
+      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-deck",
+      "meshName": "barbRim_rib0",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          4.094893932342529,
-          5.219808101654053,
-          4.199999809265137
+          5.215857982635498,
+          3.5745973587036133,
+          5.500001907348633
         ],
         "min": [
-          -4.094893932342529,
-          2.2201926708221436,
-          -4.199999809265137
+          1.7882026433944702,
+          -0.011990070343017578,
+          2.032503843307495
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad82c12b7009c6bc633f5e691b0b0f1233e135e625c92b57dd7e2511067110f7",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-drum.primitive.0",
-      "indexCount": 156,
+      "geometryHash": "617be775db814005bbd27d7f0871679f28738d1fc09613e56b3b31fbabf2bba6",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib1.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "274ecadf5d0c83c2764165ffc1c69253de9e1491067770da685411dc1310702b",
+      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-drum",
+      "meshName": "barbRim_rib1",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib1",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          4.387386798858643,
-          5.719871997833252,
-          4.5
+          5.106235504150391,
+          2.923582077026367,
+          -2.1394271850585938
         ],
         "min": [
-          -4.387386798858643,
-          4.5201287269592285,
-          -4.5
+          2.4282121658325195,
+          0.15358352661132812,
+          -4.786679267883301
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3ceab5a8c8662b580d7230d94d6e1b14f1c05b63bf14eedee57fcc0241c3e8c",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-ring.primitive.0",
-      "indexCount": 84,
+      "geometryHash": "927ee4b113bf2f068aa6c4fbfe114367865a4525b19a7d1f2608d3eec65bc10f",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib2.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-ring",
+      "meshName": "barbRim_rib2",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib2",
       "primitiveIndex": 0,
-      "vertexCount": 56
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          5.5,
-          2.069763660430908,
-          5.100039482116699
+          -1.8271112442016602,
+          3.3575925827026367,
+          -2.295661449432373
         ],
         "min": [
-          -5.5,
-          1.5702368021011353,
-          4.899960517883301
+          -4.994633197784424,
+          0.04320049285888672,
+          -5.500001907348633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3b59056d5ef26b8cbb2c853979d6d30037e866b54b05e2f0ea78d609d7524fa",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-0.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "d2218bc28538e15e0fd486bcd5b9d2b139097448118283cd4de596a7b79d860c",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib3.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-0",
+      "meshName": "barbRim_rib3",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib3",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          5.5,
-          2.069763660430908,
-          -4.899960517883301
+          4.850791931152344,
+          0.9868247509002686,
+          3.833479881286621
         ],
         "min": [
-          -5.5,
-          1.5702368021011353,
-          -5.100039482116699
+          -3.7163050174713135,
+          -3.5745198726654053,
+          -1.9347411394119263
         ]
       },
       "drawMode": 4,
-      "geometryHash": "97687b3958a65f6f9add16e525c1f4b2912f17e1c6289272717219301280eaf4",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-1.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "188eb2b5acd1f42522fe931ce1ef99ed8d907f6760338f2f8717a9c623fe31b5",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1a.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-1",
+      "meshName": "TurretBBarbette_xrib1a",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1a",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          -5.399899005889893,
-          2.0702521800994873,
-          5.000000476837158
+          2.4657273292541504,
+          0.8238542079925537,
+          4.365145683288574
         ],
         "min": [
-          -5.600100994110107,
-          1.5697485208511353,
-          -5.000000476837158
+          0.36739397048950195,
+          -1.4852240085601807,
+          0.7230178713798523
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0432d40d7f1d48af4923f839140c550f67bb50be7666c59c47e40e0bf6b1a998",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-2.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "7f196fc97b77044546d9a3054eac2cea8094eca90c4c6265795213b73f6d4699",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1b.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-2",
+      "meshName": "TurretBBarbette_xrib1b",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1b",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          5.600100994110107,
-          2.0702521800994873,
-          5.000000476837158
+          4.80707311630249,
+          0.5243675112724304,
+          4.692580223083496
         ],
         "min": [
-          5.399899005889893,
-          1.5697485208511353,
-          -5.000000476837158
+          -3.3479251861572266,
+          -3.1068475246429443,
+          -4.862067222595215
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2882ad3ff6e37c0bbe587ba83686eed6d53ee49fbb0b37bd9ee57b89a2550459",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-3.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "e1fdfa063c1f8ef5728e36291067d60b607963be0c3d964835f19e3723b2986a",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette.primitive.0",
+      "indexCount": 162,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "bb214da1a961e9e1a335e7118af24d3f52311c4228ed2864f8c495c467ab71f4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-3",
+      "meshName": "TurretBBarbette",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 62
     },
     {
       "bounds": {
         "max": [
-          1.5275077819824219,
-          1.820000171661377,
-          1.8832850456237793
+          3.9330244064331055,
+          1.7185702323913574,
+          3.8183298110961914
         ],
         "min": [
-          1.2075762748718262,
-          -0.2799997329711914,
-          1.5633535385131836
+          -3.873122453689575,
+          1.4317388534545898,
+          -3.98781681060791
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cb12f28d307aff101bf165894119db80b6870377f27276a0722ff73c05dd043",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0a.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "fda4a0269f94505d256329db618c6f134e2379ed3a10bc0bcfbcc647d9aa593f",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbrace.primitive.0",
+      "indexCount": 1908,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "dc87b98e7d29b084c8950e1a475bdecbf32d49ad7aeaa125b71ee1f234246acf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0a",
+      "meshName": "TurretBRace",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbrace",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 584
     },
     {
       "bounds": {
         "max": [
-          1.497514247894287,
-          -0.2799997329711914,
-          1.8532915115356445
+          4.568408012390137,
+          1.3958992958068848,
+          4.453713893890381
         ],
         "min": [
-          1.237569808959961,
-          -2.619999885559082,
-          1.5933470726013184
+          -4.508506774902344,
+          0.2734389007091522,
+          -4.6232008934021
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00f0d8e341c88eea3f0454159e8edaedfae235ba1477efc2d2893e9962de945a",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0b.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "6fd151da489d2fdd6f5327d18e3abc9cf6383b57d63ce48527e03ad3612f389c",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring.primitive.0",
+      "indexCount": 720,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "0d7fc7f1b7de26b64c0f2607ca9e375141a4484e54c712460ca546237e03e998",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0b",
+      "meshName": "TurretBRing",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 264
     },
     {
       "bounds": {
         "max": [
-          -1.5632436275482178,
-          1.820000171661377,
-          1.5276176929473877
+          4.558989524841309,
+          1.4319111108779907,
+          4.444295406341553
         ],
         "min": [
-          -1.8833949565887451,
-          -1.2799997329711914,
-          1.2074663639068604
+          -4.499088287353516,
+          0.23742708563804626,
+          -4.6137824058532715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5917bbe3586a2f4fd838ad6af204135daf8e090d9df15afc2a993966b4d404e2",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1a.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "e0efd11c2b27e0002b7b2f40f8984ba587c80c03d016fa3e8cb51df86a8a6d84",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring.primitive.1",
+      "indexCount": 1188,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "dc87b98e7d29b084c8950e1a475bdecbf32d49ad7aeaa125b71ee1f234246acf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.5932371616363525,
-          -1.2799997329711914,
-          1.497624158859253
-        ],
-        "min": [
-          -1.8534014225006104,
-          -5.720000267028809,
-          1.2374598979949951
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "7f8ba09725a7e767f3001bc5c64d2e072eb2815458f640f781a6ee14208cad5a",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.2075761556625366,
-          1.820000171661377,
-          -1.563353419303894
-        ],
-        "min": [
-          -1.5275079011917114,
-          -0.7799997329711914,
-          -1.8832851648330688
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ef2ac5ac0879a26858c3d9c247e0b7b4207c7225b8351cdb08c2eba54f2d1ac0",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.2375991344451904,
-          -0.7799994945526123,
-          -1.5933763980865479
-        ],
-        "min": [
-          -1.4974849224090576,
-          -4.169999122619629,
-          -1.853262186050415
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d39e8e215f8b0972bc5cae321887fdf70a546e82440de14228faed464b116c35",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8832850456237793,
-          1.820000171661377,
-          -1.2075762748718262
-        ],
-        "min": [
-          1.5633535385131836,
-          -0.2799997329711914,
-          -1.5275077819824219
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "14f9f9eb1bff05a884204296c89f8f3ac1ecdb8652c6c7613d853bc1a2a475c4",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8532915115356445,
-          -0.2799997329711914,
-          -1.237569808959961
-        ],
-        "min": [
-          1.5933470726013184,
-          -2.619999885559082,
-          -1.497514247894287
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "df8a07deddda69317de6b9ccd0dfb4261b7171113351907dc24f388b2e1f8178",
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
-      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "meshName": "TurretBRing",
+      "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring",
+      "primitiveIndex": 1,
+      "vertexCount": 320
     }
   ],
   "hlods": [],
@@ -390,44 +265,169 @@
   "lods": [],
   "materials": [
     {
-      "hash": "274ecadf5d0c83c2764165ffc1c69253de9e1491067770da685411dc1310702b",
-      "id": "material:274ecadf5d0c83c2764165ff",
-      "name": "wrk_armor",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "0d7fc7f1b7de26b64c0f2607ca9e375141a4484e54c712460ca546237e03e998",
+      "id": "material:0d7fc7f1b7de26b64c0f2607",
+      "name": "Forge_bastion_gunmetal__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "id": "material:5aaf41e5bfb89546b316c457",
-      "name": "wrk_cable",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
+      "id": "material:6e405ab1041812afcb8616f6",
+      "name": "Forge_bastion_wk_frame",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "b48e82aeb2b405ad07a775391fb40e42e04ed4e9516f5ebf60081dbc110e968f",
-      "id": "material:b48e82aeb2b405ad07a77539",
-      "name": "wrk_paint_navy_concord",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
+      "id": "material:73beef5ea93f63ee6d218988",
+      "name": "Forge_bastion_wk_frame__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "id": "material:cd6123b380f546013af23403",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "bb214da1a961e9e1a335e7118af24d3f52311c4228ed2864f8c495c467ab71f4",
+      "id": "material:bb214da1a961e9e1a335e711",
+      "name": "Forge_bastion_paint2__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
-      "id": "material:f7df8b61adf293d3c6c14176",
-      "name": "wrk_cut_edge",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "dc87b98e7d29b084c8950e1a475bdecbf32d49ad7aeaa125b71ee1f234246acf",
+      "id": "material:dc87b98e7d29b084c8950e1a",
+      "name": "Forge_bastion_dark__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-deck",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib0",
       "localTransform": [
         1,
         0,
@@ -447,8 +447,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "barb_deck",
-      "nodeName": "barb_deck",
+      "mergeBoundary": "barbRim_rib0",
+      "nodeName": "barbRim_rib0",
       "nodePath": [
         0,
         0
@@ -476,7 +476,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-drum",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib1",
       "localTransform": [
         1,
         0,
@@ -496,8 +496,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "barb_drum",
-      "nodeName": "barb_drum",
+      "mergeBoundary": "barbRim_rib1",
+      "nodeName": "barbRim_rib1",
       "nodePath": [
         0,
         1
@@ -525,7 +525,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-ring",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib2",
       "localTransform": [
         1,
         0,
@@ -545,8 +545,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "barb_ring",
-      "nodeName": "barb_ring",
+      "mergeBoundary": "barbRim_rib2",
+      "nodeName": "barbRim_rib2",
       "nodePath": [
         0,
         2
@@ -574,7 +574,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-0",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib3",
       "localTransform": [
         1,
         0,
@@ -594,8 +594,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_deck_cut_0",
-      "nodeName": "cut_deck_cut_0",
+      "mergeBoundary": "barbRim_rib3",
+      "nodeName": "barbRim_rib3",
       "nodePath": [
         0,
         3
@@ -623,7 +623,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-1",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette",
       "localTransform": [
         1,
         0,
@@ -643,8 +643,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_deck_cut_1",
-      "nodeName": "cut_deck_cut_1",
+      "mergeBoundary": "TurretBBarbette",
+      "nodeName": "TurretBBarbette",
       "nodePath": [
         0,
         4
@@ -672,7 +672,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-2",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1a",
       "localTransform": [
         1,
         0,
@@ -692,8 +692,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_deck_cut_2",
-      "nodeName": "cut_deck_cut_2",
+      "mergeBoundary": "TurretBBarbette_xrib1a",
+      "nodeName": "TurretBBarbette_xrib1a",
       "nodePath": [
         0,
         5
@@ -721,7 +721,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-3",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1b",
       "localTransform": [
         1,
         0,
@@ -741,8 +741,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_deck_cut_3",
-      "nodeName": "cut_deck_cut_3",
+      "mergeBoundary": "TurretBBarbette_xrib1b",
+      "nodeName": "TurretBBarbette_xrib1b",
       "nodePath": [
         0,
         6
@@ -770,7 +770,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0a",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbrace",
       "localTransform": [
         1,
         0,
@@ -790,8 +790,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_0a",
-      "nodeName": "stub_feed_cbl_0a",
+      "mergeBoundary": "TurretBRace",
+      "nodeName": "TurretBRace",
       "nodePath": [
         0,
         7
@@ -819,7 +819,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0b",
+      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring",
       "localTransform": [
         1,
         0,
@@ -839,305 +839,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_0b",
-      "nodeName": "stub_feed_cbl_0b",
+      "mergeBoundary": "TurretBRing",
+      "nodeName": "TurretBRing",
       "nodePath": [
         0,
         8
-      ],
-      "parentId": "sf.render.aftermath-deb-corvette-barbette-ring.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1a",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_1a",
-      "nodeName": "stub_feed_cbl_1a",
-      "nodePath": [
-        0,
-        9
-      ],
-      "parentId": "sf.render.aftermath-deb-corvette-barbette-ring.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1b",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_1b",
-      "nodeName": "stub_feed_cbl_1b",
-      "nodePath": [
-        0,
-        10
-      ],
-      "parentId": "sf.render.aftermath-deb-corvette-barbette-ring.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2a",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_2a",
-      "nodeName": "stub_feed_cbl_2a",
-      "nodePath": [
-        0,
-        11
-      ],
-      "parentId": "sf.render.aftermath-deb-corvette-barbette-ring.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2b",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_2b",
-      "nodeName": "stub_feed_cbl_2b",
-      "nodePath": [
-        0,
-        12
-      ],
-      "parentId": "sf.render.aftermath-deb-corvette-barbette-ring.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3a",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_3a",
-      "nodeName": "stub_feed_cbl_3a",
-      "nodePath": [
-        0,
-        13
-      ],
-      "parentId": "sf.render.aftermath-deb-corvette-barbette-ring.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3b",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_feed_cbl_3b",
-      "nodeName": "stub_feed_cbl_3b",
-      "nodePath": [
-        0,
-        14
       ],
       "parentId": "sf.render.aftermath-deb-corvette-barbette-ring.root",
       "role": "immutable",
@@ -1212,73 +918,74 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "74de9c12fa4c13dd4a80014bf33f87525f0cb46e187342be161fa3208f233d63"
+      "sha256": "e5b0a7dea6c99cd8563f8142672263e58b96c3959b81857acd1db18aaeadb7f4"
     },
     "sourceGlb": {
-      "bytes": 20516,
-      "sha256": "c4201e58cab83ebcf97fe36c7553f0ece5edea63903695513be1ce188df70480",
+      "bytes": 146876,
+      "sha256": "69d7ff4da08aca892e5df5d86a77239943393facbbd95ec4d3b612cf22acd89b",
       "uri": "place_aftermath_deb_corvette_barbette_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 37684,
-    "sha256": "5819e3d80334c834603f18f66e27c813b7cf9d1e115337d5c99a9ac7e0db7592",
+    "bytes": 162528,
+    "sha256": "234eab09e5e6ed05d07f216937c093348b1511a34c5ad5bb39289af0552adbd3",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0,
-        -0.00006413459777832031,
+        0.000018596649169921875,
+        0.000038743019104003906,
         0
       ],
       "max": [
-        5.600100994110107,
-        5.719871997833252,
-        5.100039482116699
+        5.215857982635498,
+        3.5745973587036133,
+        5.500001907348633
       ],
       "min": [
-        -5.600100994110107,
-        -5.720000267028809,
-        -5.100039482116699
+        -5.215820789337158,
+        -3.5745198726654053,
+        -5.500001907348633
       ],
       "size": [
-        11.200201988220215,
-        11.43987226486206,
-        10.200078964233398
+        10.431678771972656,
+        7.1491172313690186,
+        11.000003814697266
       ]
     },
     "hidden": [],
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 15
+      "hull": 1,
+      "mechanical": 9
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -1288,55 +995,30 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "hull"
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 17,
+    "nodeCount": 13,
     "primitives": [
       {
         "canopy": false,
@@ -1358,7 +1040,7 @@
           0,
           1
         ],
-        "name": "barb_deck",
+        "name": "barbRim_rib0",
         "planIndex": 2,
         "tags": {
           "canopy": false,
@@ -1385,7 +1067,7 @@
           0,
           1
         ],
-        "name": "barb_drum",
+        "name": "barbRim_rib1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1412,7 +1094,7 @@
           0,
           1
         ],
-        "name": "barb_ring",
+        "name": "barbRim_rib2",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1439,7 +1121,7 @@
           0,
           1
         ],
-        "name": "cut_deck_cut_0",
+        "name": "barbRim_rib3",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1466,7 +1148,7 @@
           0,
           1
         ],
-        "name": "cut_deck_cut_1",
+        "name": "TurretBBarbette",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1493,7 +1175,7 @@
           0,
           1
         ],
-        "name": "cut_deck_cut_2",
+        "name": "TurretBBarbette_xrib1a",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1520,7 +1202,7 @@
           0,
           1
         ],
-        "name": "cut_deck_cut_3",
+        "name": "TurretBBarbette_xrib1b",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -1547,7 +1229,7 @@
           0,
           1
         ],
-        "name": "stub_feed_cbl_0a",
+        "name": "TurretBRace",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1574,34 +1256,7 @@
           0,
           1
         ],
-        "name": "stub_feed_cbl_0b",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "stub_feed_cbl_1a",
+        "name": "TurretBRing_1",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -1628,116 +1283,8 @@
           0,
           1
         ],
-        "name": "stub_feed_cbl_1b",
+        "name": "TurretBRing_2",
         "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "stub_feed_cbl_2a",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "stub_feed_cbl_2b",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "stub_feed_cbl_3a",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "stub_feed_cbl_3b",
-        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1748,39 +1295,33 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb"
   },
-  "runtimeHash": "2fc34d0c31f67664dbb385ac0647a592ef140ec62298ee9ea95431a4c848e9ca",
+  "runtimeHash": "2f71b8b9c7ed1b75906b99a8dcb8395aad9bad74501090255e9f2e2fbb76ac90",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          5.600100994110107,
-          5.719871997833252,
-          5.100039482116699
+          5.215857982635498,
+          3.5745973587036133,
+          5.500001907348633
         ],
         "min": [
-          -5.600100994110107,
-          -5.720000267028809,
-          -5.100039482116699
+          -5.215820789337158,
+          -3.5745198726654053,
+          -5.500001907348633
         ]
       },
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "nodeIds": [
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-deck",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-drum",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-ring",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-0",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-1",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-2",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-3",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0a",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0b",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1a",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1b",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2a",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2b",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3a",
-        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3b",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib0",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib1",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib2",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib3",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1a",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1b",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbrace",
+        "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring",
         "sf.render.aftermath-deb-corvette-barbette-ring.root"
       ]
     }

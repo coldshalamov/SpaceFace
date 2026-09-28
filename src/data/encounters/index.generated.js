@@ -62,6 +62,16 @@ import * as encounter058 from './345-belt-claim-jumpers.js';
 import * as encounter059 from './346-yard-towout.js';
 import * as encounter060 from './347-archive-dive.js';
 import * as encounter061 from './348-liner-toll-run.js';
+import * as encounter062 from './349-dart-shepherd.js';
+import * as encounter063 from './350-the-long-tail.js';
+import * as encounter064 from './351-the-chord.js';
+import * as encounter065 from './352-the-slot.js';
+import * as encounter066 from './353-the-wake.js';
+import * as encounter067 from './354-the-sweep.js';
+import * as encounter068 from './355-the-winnow-throw.js';
+import * as encounter069 from './356-the-surge-line.js';
+import * as encounter070 from './357-the-handoff.js';
+import * as encounter071 from './358-the-press-camp.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -125,5 +135,15 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter059,
   encounter060,
   encounter061,
+  encounter062,
+  encounter063,
+  encounter064,
+  encounter065,
+  encounter066,
+  encounter067,
+  encounter068,
+  encounter069,
+  encounter070,
+  encounter071,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

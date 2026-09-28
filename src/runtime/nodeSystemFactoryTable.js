@@ -66,6 +66,7 @@ import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
 import { fieldHud } from '../ui/fieldHud.js';
 import { planetHud } from '../ui/planetHud.js';
+import { miningHud } from '../ui/miningHud.js';
 import { survivalHud } from '../ui/survivalHud.js';
 import { crucibleFocus } from '../ui/crucibleFocus.js';
 import { masslineThrow } from '../systems/masslineThrow.js';
@@ -325,6 +326,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
     ['planetHud', planetHud],
+    ['miningHud', miningHud],
     ['survivalHud', survivalHud],
     ['crucibleFocus', crucibleFocus],
     ['sectorPostcard', sectorPostcard],

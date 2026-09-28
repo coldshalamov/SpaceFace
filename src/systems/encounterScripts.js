@@ -456,8 +456,9 @@ const patrolScan = {
 
   event(d, live, state, name, p) {
     // routed only while this scan is live; a berth-sourced bust belongs to the checkpoint
-    // that docked the player, not to this patrol's open scan script.
-    if (name === 'contrabandScanned' && !(p && p.source === 'dock')) live.data.scan = p;
+    // that docked the player, a weir-bolt bust belongs to the gate that flagged the runner,
+    // and a jump-gate bust belongs to the jump — none is this patrol's own scan result.
+    if (name === 'contrabandScanned' && !(p && (p.source === 'dock' || p.source === 'customs_weir_bolt' || p.source === 'jump'))) live.data.scan = p;
   },
 };
 
@@ -644,7 +645,9 @@ const ambush = {
       const tithe = d.takeTithe(amount);
       d.rep('faction_reach', 1, 'wake_tithe_paid');        // pirates respect a payer, slightly
       d.dangerImpulse(live, 'wake_tithe_paid', -0.01);
-      d.say(live, 'bark', 'wake_tithe_paid');
+      // A shape may voice its own paid ack (dart shepherd weighs off bombs, not mines);
+      // undeclared, the wake-tithe line stays the house default.
+      d.say(live, 'bark', ack.paid || 'wake_tithe_paid');
       d.despawnAll(live, 22);                              // they peel off to scoop the tithe
       return d.resolve(live, 'paid', { vars: { ...live.vars, tithe: tithe.label } });
     }

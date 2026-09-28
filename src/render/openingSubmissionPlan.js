@@ -1091,19 +1091,27 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
     ? plan.firstPlayablePipelineSet.admittedProgramKeys.map((entry) => String(entry.key || '')).filter(Boolean)
     : [];
   const pooled = plan && plan.pooledResourceIdentitySets || {};
+  // Live walk at receipt time: loading admission can attach textures/geometries after the
+  // plan's frozen resourceIdentitySets were captured. Validation re-walks the live scene, so
+  // `before` must name those already-resident identities or the first-draw gate reports
+  // uncaptured-first-draw-resource and fail-opens. Required stays plan-bound (exact leaves).
+  const liveResources = currentPlanResourceIdentitySets(plan);
   const before = {
     programCacheKeys: rendererProgramKeys(renderer),
     geometryBufferIds: [...unionSet(
       resourceIdentitySets.geometryBufferIds,
       pooled.geometryBufferIds,
+      liveResources.geometryBufferIds,
     )].sort(),
     blockingTextureIds: [...unionSet(
       resourceIdentitySets.blockingTextureIds,
       pooled.blockingTextureIds,
+      liveResources.blockingTextureIds,
     )].sort(),
     shadowResourceIds: [...unionSet(
       resourceIdentitySets.shadowResourceIds,
       pooled.shadowResourceIds,
+      liveResources.shadowResourceIds,
     )].sort(),
   };
   const programBindings = requiredProgramBindings(renderer, plan, options);
@@ -1181,6 +1189,7 @@ function currentPlanResourceIdentitySets(plan) {
   const explicitTextures = [
     plan && plan.scene && plan.scene.background,
     plan && plan.scene && plan.scene.environment,
+    ...(Array.isArray(plan && plan.textureRefs) ? plan.textureRefs : []),
   ].filter((texture) => texture && texture.isTexture === true);
   return collectResourceIdentitySets([...leaves], plan && plan.route || {}, explicitTextures);
 }

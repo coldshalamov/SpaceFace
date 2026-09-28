@@ -148,14 +148,15 @@ function routeHarness(stationId, epoch) {
   return { sim, state };
 }
 
-test('seed 4242 live route: accepted trapped contracts reveal on undock and carry the witnessed line', () => {
+test('seed 4242 live route: accepted trapped contracts reveal mid-run on their route cue', () => {
   let boardsScanned = 0;
   let offersScanned = 0;
   let accepted = 0;
   let refused = 0;
+  let revealedMidrun = 0;
   let revealedOnUndock = 0;
   for (const stationId of NON_HELIOS_STATIONS) {
-    for (let epoch = 0; epoch < 8; epoch += 1) {
+    for (let epoch = 0; epoch < 16; epoch += 1) {
       const { sim, state } = routeHarness(stationId, epoch);
       const board = sim.registry.get('missions').ensureBoard(stationId);
       const slots = (board && Array.isArray(board.slots)) ? board.slots : [];
@@ -172,15 +173,25 @@ test('seed 4242 live route: accepted trapped contracts reveal on undock and carr
       assert.equal(typeof mission.trap.patrolRevealLine, 'string',
         'procedural overlays carry the witnessed line');
       assert.ok(mission.trap.patrolRevealLine.length > 0);
-      // The short-haul case: the job completes inside one sector. Only undock fires.
+      // Same-sector runs keep undock — a short sim interval after the umbilical (the fork lands
+      // mid-lane, not at the dock door), so advance past the stamped delay and pump the drive.
+      // Cross-sector runs reveal at their destination-sector crossing instead.
       sim.bus.emit('dock:undocked', {});
+      state.simTime += 120;
+      sim.registry.get('moralTrap').update(0.5, state);
       if (mission._trapRevealed) revealedOnUndock += 1;
+      if (!mission._trapRevealed && mission.destSectorId) {
+        sim.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+      }
+      if (mission._trapRevealed) revealedMidrun += 1;
     }
   }
   assert.ok(accepted > 0, 'the route must actually accept trapped contracts');
-  assert.equal(revealedOnUndock, accepted,
-    'every accepted trapped contract now reveals on the guaranteed mid-run cue');
+  assert.equal(revealedMidrun, accepted,
+    'every accepted trapped contract now reveals mid-run on its route cue — '
+    + 'never at the doorstep, never never');
   console.log(`[moral-trap-midrun-reveal] seed ${SEED}: ${boardsScanned} boards, ` +
     `${offersScanned} offers, ${accepted} accepted (${refused} refused by board gates) — ` +
-    `${revealedOnUndock}/${accepted} reveal on undock alone (no sector crossing)`);
+    `${revealedOnUndock}/${accepted} on the delayed undock, ` +
+    `${revealedMidrun - revealedOnUndock}/${accepted} at the sector crossing`);
 });

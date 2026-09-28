@@ -145,7 +145,7 @@ function sweepOne(def, index) {
   }
 }
 
-assert.equal(UNIQUE_WRECKS.length, 12, 'R2 sweep remains a twelve-wreck contract');
+assert.equal(UNIQUE_WRECKS.length, 16, 'R2 sweep covers the full sixteen-wreck registry');
 const rows = UNIQUE_WRECKS.map(sweepOne);
 assert.equal(rows.every((row) => row.result === 'salvaged'), true);
 assert.equal(rows.find((row) => row.slot === 'D10')?.gentleNoCombat, true,
@@ -162,5 +162,5 @@ const report = {
 };
 mkdirSync(dirname(OUTPUT), { recursive: true });
 writeFileSync(OUTPUT, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-console.log(`R2 sweep OK: ${rows.length}/12 wrecks reached, fixed, salvaged, and claimed.`);
+console.log(`R2 sweep OK: ${rows.length}/16 wrecks reached, fixed, salvaged, and claimed.`);
 console.log(`Evidence: ${OUTPUT}`);

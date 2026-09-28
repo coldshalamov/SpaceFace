@@ -2,7 +2,8 @@
 //
 // "The story is in the paperwork." Each of the 8 code factions speaks in a DISTINCT
 // register so a scan/warn/attack line instantly reads as who is talking, without an
-// IFF tag. This is PURE DATA — no imports, no state, no DOM, no Math.random.
+// IFF tag. This is PURE DATA — no imports, no DOM, no Math.random; the one witness-run
+// seam below stays a pure function of the counter values passed into it.
 //
 // The selector barkFor(factionId, situation, rng) is deterministic: it takes either a
 // seeded rng function (mulberry32-style, returns [0,1)) OR a numeric index. Given the
@@ -1287,6 +1288,84 @@ const contactVoice = (register, lines, choices, dialogueComplete = false) => Obj
   dialogueComplete,
 });
 
+// ── G2 witness-run seam ──────────────────────────────────────────────────────────────────────
+// The Witness Run's terminal settlements move two durable station-contact counters
+// (`dorin.trust` -1..1, `kell.cover` 0..6; written only by the stationContacts system from
+// canonical stationContact:counterDelta intents). The bar voice for those two contacts reacts:
+// one authored seam slot per register is swapped for the band line matching the persisted
+// counter. Selection is a pure function of the counter value — syncWitnessSeamVoice is called
+// by the stationContacts system on counter change, save load, and new game, so a fresh session
+// re-derives the identical voice from the save. No imports, no state reads: pure data + pure fn.
+
+const WITNESS_SEAM_SLOTS = Object.freeze({
+  'dorin.trust': { contactId: 'contact_filecleaver_dorin', slotIndex: 5 },
+  'kell.cover': { contactId: 'contact_wraith_kell', slotIndex: 4 },
+});
+
+// Bands over each counter's full range. `line: null` keeps the authored original. Cover BUILDS
+// from its authored initial 0 through sheltered runs and erodes through public/burned ones, so
+// every seam state is reachable and reversible within the counter's bounds.
+const WITNESS_SEAM_BANDS = Object.freeze({
+  'dorin.trust': Object.freeze([
+    { min: 1, max: 1, line: 'You filed the log. The massacre has a record. I breathe.' },
+    { min: 0, max: 0, line: null },
+    { min: -1, max: -1, line: 'The log stays buried. I counted who watched you choose the shelf.' },
+  ]),
+  'kell.cover': Object.freeze([
+    { min: 0, max: 0, line: null },
+    { min: 1, max: 2, line: 'Hale asked the desk two questions today. I answered one, smiling.' },
+    { min: 3, max: 4, line: 'My day-files stopped matching my night-files. Somebody noticed.' },
+    { min: 5, max: 6, line: 'Six years of quiet handoffs. The desk would swear I was never there.' },
+  ]),
+});
+
+const witnessSeamLines = {
+  'dorin.trust': null,
+  'kell.cover': null,
+};
+
+/** Pure band pick: the seam line a counter value speaks (null keeps the authored original). */
+export function witnessSeamLineFor(trackerId, value) {
+  const bands = WITNESS_SEAM_BANDS[trackerId];
+  if (!bands) return null;
+  const row = bands.find((band) => value >= band.min && value <= band.max);
+  return row ? row.line : null;
+}
+
+/**
+ * Re-derive both seam voices from the persisted counter bag. Called by the stationContacts
+ * system (counter change / save load / new game); safe to call with partial or empty counters —
+ * missing counters fall back to their authored initial (0), which keeps the original lines.
+ */
+export function syncWitnessSeamVoice(counters = {}) {
+  for (const trackerId of Object.keys(WITNESS_SEAM_SLOTS)) {
+    const value = Number.isFinite(Number(counters && counters[trackerId]))
+      ? Math.trunc(Number(counters[trackerId]))
+      : 0;
+    witnessSeamLines[trackerId] = witnessSeamLineFor(trackerId, value);
+  }
+}
+
+const contactVoiceWithSeam = (register, lines, choices, trackerId) => {
+  const base = Object.freeze(lines.slice());
+  const firstContact = Object.freeze({ choices: Object.freeze(choices.slice()) });
+  return Object.freeze({
+    register,
+    // Live seam: the swapped array is computed per read so the bar always voices the current
+    // persisted counter without any second copy of the corpus.
+    get lines() {
+      const seam = witnessSeamLines[trackerId];
+      const slot = WITNESS_SEAM_SLOTS[trackerId] && WITNESS_SEAM_SLOTS[trackerId].slotIndex;
+      if (seam == null || !Number.isInteger(slot)) return base;
+      const out = base.slice();
+      out[slot] = seam;
+      return out;
+    },
+    firstContact,
+    dialogueComplete: false,
+  });
+};
+
 // Dock conversations do not consume the one-voice overlay budget. Mission chains may unlock
 // later lines, but every named register is authored now so no contact falls back to generic copy.
 export const CONTACT_VOICE_REGISTERS = Object.freeze({
@@ -1386,7 +1465,7 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
     contactChoice('ledger', 'Present the Kurtz ledger', [2, 3]),
     contactChoice('navigation', 'Present navigational data', [4, 5]),
   ], true),
-  contact_filecleaver_dorin: contactVoice('bureaucratic-panic', [
+  contact_filecleaver_dorin: contactVoiceWithSeam('bureaucratic-panic', [
     'I stole the seal log. It proves a massacre.',
     'Bounty says pirate. Transponder says Concord. Scan before shooting.',
     'REF 44-C. Corridor count attached. Please keep moving.',
@@ -1397,7 +1476,7 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
     contactChoice('transponder', 'Scan his transponder', [1, 2]),
     contactChoice('bounty', 'Invoke the bounty', [0, 3]),
     contactChoice('cover', 'Offer him cover', [4, 5]),
-  ]),
+  ], 'dorin.trust'),
   contact_lira_vonn: contactVoice('plain-sourcework', [
     'I print what happened. You happened. Talk.',
     'You are a source, not a hero. Better for print.',
@@ -1434,7 +1513,7 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
     contactChoice('escort', 'Offer an escort', [2, 3]),
     contactChoice('otherwise', 'Ask what happens otherwise', [4, 5]),
   ]),
-  contact_wraith_kell: contactVoice('split-clerk', [
+  contact_wraith_kell: contactVoiceWithSeam('split-clerk', [
     'I file manifests by day, copy them by night. Burn?',
     'Manifest accepted. Clerk present. Nothing unusual to report.',
     'Off duty: the second fine is policy. Hale is the instrument.',
@@ -1445,7 +1524,7 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
     contactChoice('clerk', 'Address the clerk', [0, 1]),
     contactChoice('fine', 'Ask about the second fine', [2, 4]),
     contactChoice('burn', 'Say “burn”', [3, 5]),
-  ]),
+  ], 'kell.cover'),
   contact_halev_doss: contactVoice('precise-warm', [
     'The sector has a paper trail. I walk it daily.',
     'Primary sources, please. Memory is useful, but difficult to cite.',
@@ -2131,6 +2210,87 @@ export function escapeTauntBarkFor(factionId, rng) {
   return typeof line === 'string' && line.length ? line : '...';
 }
 
+// ── Passengers are people — the person a contract is about ───────────────────────────────────
+//
+// A passenger job used to be one sentence: a seat count with a fee. These corpora make the fare a
+// person — a name minted per offer from (seed, offerId), one "why I'm traveling" line printed on
+// the board, and three beats spoken on the existing comms seams (boarding on undock, a mid-run
+// line at the route midpoint, an arrival line quoted in the settlement receipt). Register is the
+// Frontier's: plainspoken, live-and-let-live — a fare talks like a person, not like a faction.
+// Pure data + index selectors, same as every corpus above: the CALLER derives the index from
+// hash32(state seed, mission/offer id) so lines are stable across save/load with no rng spend.
+//
+// Tokens: {name} the passenger (resolved by the caller), {dest} the destination station name.
+export const FRONTIER_FIRST_NAMES = Object.freeze([
+  'Orion', 'Kael', 'Voss', 'Mira', 'Juno', 'Sable', 'Ren', 'Thane', 'Lyra', 'Dax',
+  'Cira', 'Nev', 'Soren', 'Tova', 'Zara', 'Calder', 'Rhea', 'Vek', 'Inara', 'Koda',
+  'Maeve', 'Cassius', 'Lira', 'Draven', 'Ember', 'Tycho', 'Neve', 'Ash', 'Selene', 'Rook',
+  'Brynn', 'Orin', 'Callum', 'Vesper', 'Idris', 'Sully', 'Kira', 'Jace', 'Nova', 'Petra',
+]);
+
+export const FRONTIER_LAST_NAMES = Object.freeze([
+  'Vance', 'Ashford', 'Kellan', 'Revik', 'Solari', 'Morrow', 'Quade', 'Theron',
+  'Aldric', 'Craine', 'Falken', 'Stroud', 'Varek', 'Holden', 'Rennick', 'Deckard',
+  'Torren', 'Briggs', 'Calloway', 'Sagan', 'Tull', 'Graves', 'Huxley', 'Kepler',
+  'Madsen', 'Oakes', 'Stark', 'Merrik', 'Calder', 'Voss',
+]);
+
+// The one-line "why I'm traveling" printed under the board row. {dest} always resolves.
+export const PASSENGER_WHY_LINES = Object.freeze([
+  'Work at {dest} starts when I sign in, and I am already late.',
+  'Family question at {dest}. Thirty cycles of silence, one answer owed.',
+  '{dest} has a med wing that still owes me a scan.',
+  'A name at {dest} remembers me. That is the whole plan.',
+  'Bought a berth at {dest} sight unseen. Sight stays unseen.',
+  'Everything I own is one case, and {dest} is where the case is going.',
+  'The lanes I ran are closed. {dest} is the road that is left.',
+  'I heard {dest} pays debt collectors. I am one, and I am owed.',
+  'Contract at {dest}, three cycles, no extensions. Same as anyone.',
+  'Not running from anything. Ask me again at {dest} and I may answer.',
+]);
+
+// The three riding beats. board: spoken as the umbilical clears. midrun: once, at the route
+// midpoint (or on the destination-sector crossing, whichever lands first). arrive: quoted in
+// the settlement receipt, so the job closes in the fare's words, not the board's.
+export const PASSENGER_BEATS = Object.freeze({
+  board: Object.freeze([
+    'Thanks for the seat. I travel quiet — no stops unless the hull complains.',
+    'I will be in the back with my case. Wake me when the marker turns.',
+    'Paid in full, so the trip stays boring. Boring is the point.',
+    'If anyone hails us, I am cargo. Boring, lawful cargo.',
+    'First lift off this rock in three cycles. Try not to die, hm?',
+    'Couch is fine, the case stays on my knees. Punch it when you are ready.',
+    'You fly, I nap. Wake me for anything louder than a customs ping.',
+    'No stops, no questions, and nobody looks in the case. Deal and deal.',
+  ]),
+  midrun: Object.freeze([
+    'Halfway, by my count. The seat still beats walking.',
+    'You fly steady. That is the whole review.',
+    'I keep watching the marker like it moves. It does not. Keep going.',
+    'Something shifted in the hold. Probably mine. Probably.',
+    'When we land, leave the manifest to me. It is simpler that way.',
+    'Quiet run so far. Do not jinx it by agreeing.',
+    'The old pilot I rode with said lanes feel shorter talking. Talk.',
+  ]),
+  arrive: Object.freeze([
+    'You got me here in one piece. That puts you ahead of my last pilot.',
+    'Keep the hatch quiet and open — I was never on your manifest.',
+    'If anyone asks who flew me: nobody. But it was you, and I am grateful.',
+    'Here is fine. Here is finally fine.',
+    'Tell the board the trip was boring. Best thing a trip can be.',
+    'Good hull, good hands. I will ask for you by name — not mine.',
+  ]),
+});
+
+/** One line from a passenger corpus by numeric index (0..2^32). Deterministic; never empty. */
+export function passengerBeatLine(kind, index) {
+  const pool = PASSENGER_BEATS[kind];
+  if (!Array.isArray(pool) || !pool.length) return '';
+  const i = (Number.isFinite(index) ? Math.abs(Math.trunc(index)) : 0) % pool.length;
+  const line = pool[i];
+  return typeof line === 'string' && line.length ? line : pool[0];
+}
+
 export default {
   BARKS,
   BARK_FACTIONS,
@@ -2142,6 +2302,10 @@ export default {
   PURSUIT_BARKS,
   SURRENDER_BARKS,
   ESCAPE_TAUNT_BARKS,
+  FRONTIER_FIRST_NAMES,
+  FRONTIER_LAST_NAMES,
+  PASSENGER_WHY_LINES,
+  PASSENGER_BEATS,
   barkFor,
   hullRecognitionBarkFor,
   historyBarkFor,
@@ -2149,4 +2313,7 @@ export default {
   pursuitBarkFor,
   surrenderBarkFor,
   escapeTauntBarkFor,
+  passengerBeatLine,
+  witnessSeamLineFor,
+  syncWitnessSeamVoice,
 };

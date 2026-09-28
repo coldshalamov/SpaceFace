@@ -1,9 +1,10 @@
 """Shared kit for the player-built claim outpost family (place_claim_outpost_*).
 
-One design language across all six bodies: a claimed rock wrapped by a work-fleet service
-ring — ivory deck plates over graphite structure, safety-yellow hazard bands, one role accent
-colour per specialisation — with a dock arm reaching +X and four module pads at the ring's
-corner stations.
+One design language across all six bodies: a claimed rock wrapped by a work-fleet clamp-foot
+deck — an OPEN octagonal truss frame over graphite spokes (no slab: the plan read is modules +
+dark gaps), safety-yellow hazard bands kept thin and mid-value, one role accent colour per
+specialisation — with a dock arm reaching +X and four open module pads at the frame's corner
+stations.
 
 AUTHORING FRAME (do not "fix"): the live bodies are a VERTICAL wheel — the collision hull is
 x +-46, y +-42, z +-14 in glTF (tall in Y, thin in Z): the wheel stands upright in the glTF
@@ -27,7 +28,7 @@ COLORS = {
     'paint2': '#23282e',      # graphite structure
     'paint.aged': '#6e685c',  # worn ivory, patch plates
     'stripe': '#8a5a1c',      # ochre fleet identity band
-    'hazard': '#b0841f',      # safety yellow
+    'hazard': '#8a7418',      # safety yellow — MID VALUE: thin bands only, never bright
     'dark': '#16191d',
     'stone': '#3f3a34',       # claim rock — dark enough to sit back inside the wheel
     'glow_warm': '#ffc27a',
@@ -37,7 +38,8 @@ COLORS = {
     'glow_green': '#3dff7a',
 }
 
-RING_R0, RING_R1 = 30.0, 44.0     # service ring inner/outer radius (plan)
+RING_R0, RING_R1 = 30.0, 44.0     # live bound reference radii (the old slab ring)
+FRAME_R = RING_R1 - 4.0           # open clamp-foot frame vertex radius (~40)
 DECK_D = 1.2                      # ring deck thickness centreline (d = 0 plane)
 MODULE_PADS = ((20.0, -20.0), (-20.0, -20.0), (-20.0, 20.0), (20.0, 20.0))  # plan (u, v)
 
@@ -134,85 +136,88 @@ def placed_rock(s, name, u, v, d, r, seed, material='stone', scale_y=None):
 
 
 def build_platform(s, opts=None):
-    """The shared claim-anchor platform: rock + service ring + module pads + dock arm +
-    ops pod + emissive bay. Returns nothing; spec files add their module structure on top."""
+    """The shared claim-anchor platform: open clamp-foot frame + module pads + dock arm +
+    ops pod + emissive bay. Returns nothing; spec files add their module structure on top.
+    No rock: the claimed asteroid is its own runtime entity — deck boulders read as blobs.
+    opts['hab']=(u,v) recentres the hab pod (specs move it aft so their function block owns
+    the centre); opts['hab_scale'] shrinks it; the Structure_Core collar + bay stay at the
+    origin where the live sockets sit."""
     opts = opts or {}
-    # --- claim rock: the boulder the outpost is bolted onto. Behind the wheel face
-    # (blender -Y), flattened through the plane so it fills the ring's mouth without
-    # swallowing the front-face structures; inside the live depth contract (~+-18 m).
-    rock = placed_rock(s, 'ClaimRock', 0.0, 0.0, -4.0, 22.0, seed=opts.get('seed', 7),
-                       scale_y=0.5)
-    rock2 = placed_rock(s, 'ClaimRockB', -18.0, 16.0, -8.0, 12.0,
-                        seed=opts.get('seed', 7) + 3, scale_y=0.6)
-    # --- service ring ------------------------------------------------------------------
-    ring_slab(s, 'RingDeck', RING_R0, RING_R1, -1.6, 1.6, material='paint')
-    ring_slab(s, 'RingRim', RING_R1 - 1.2, RING_R1, -2.2, 2.2, material='hazard')
-    ring_slab(s, 'RingInner', RING_R0, RING_R0 + 0.9, -2.0, 2.0, material='paint2')
-    # deck plates over the slab: raised quadrant plates with recessed seams
+    hu, hv = opts.get('hab', (0.0, 0.0))
+    hs = opts.get('hab_scale', 1.0)
+    # --- clamp-foot deck frame: an OPEN octagonal truss ring, not a slab. The plan read is
+    # the modules + the dark gaps between them — the rock shows through the frame.
+    frame_verts = [polar_plan(FRAME_R, k * 45.0) for k in range(8)]
     for k in range(8):
-        a0 = k * 45.0 + 3.0
-        ring_slab(s, f'DeckPlate{k}', RING_R0 + 3.0, RING_R1 - 3.0, 1.6, 2.1,
-                  material='paint.aged' if k % 3 == 0 else 'paint', arc=(a0, a0 + 39.0),
-                  segments=8)
-    # --- X-bridges: two trussed deck arms crossing the wheel mouth diagonally. They carry
-    # the four module pads and the ops pod — the family's plan signature is the X across
-    # the ring, and every pad visibly stands on a bridge, never floats in the hole.
-    for k, ((au, av), (bu, bv)) in enumerate((((-20.0, -20.0), (20.0, 20.0)),
-                                             ((-20.0, 20.0), (20.0, -20.0)))):
-        plan_box(s, f'Bridge{k}Deck', (au + bu) / 2, (av + bv) / 2, 0.6, 58.0, 9.0, 1.4,
-                 material='paint.aged', rot=math.radians(45.0 if k == 0 else -45.0),
-                 bevel=0.06)
-        plan_truss(s, f'Bridge{k}Truss', (au, av, -0.4), (bu, bv, -0.4), 5.0, 10,
-                   material='paint2', chord=0.4, web=0.24)
-        # hazard kerb lines down each bridge edge
-        for e in (-1, 1):
-            a = math.radians(45.0 if k == 0 else -45.0)
-            ex, ev = math.cos(a + math.pi / 2), math.sin(a + math.pi / 2)
-            plan_box(s, f'Bridge{k}Kerb{e:+d}', e * ex * 4.7, e * ev * 4.7, 1.5,
-                     57.0, 0.4, 0.4, material='hazard',
-                     rot=a, bevel=0.0)
-    # radial trusses tying ring to the rock collar
+        au, av, _ = frame_verts[k]
+        bu, bv, _ = frame_verts[(k + 1) % 8]
+        plan_truss(s, f'Frame{k}', (au, av, 0.0), (bu, bv, 0.0), 2.6, 4,
+                   material='paint2', chord=0.55, web=0.28)
+    # vertex clamp feet: a stub post at each corner + two jaw struts reaching back onto the
+    # rock so the deck visibly CLAMPS the claim instead of floating beside it
     for k in range(8):
-        a = k * 45.0 + 22.5
-        u, v, _ = polar_plan(RING_R0 - 1.5, a)
-        u2, v2, _ = polar_plan(14.0, a)
-        plan_beams(s, f'RingSpoke{k}', [((u2, v2, -1.0), (u, v, -1.0))], 0.9,
-                   material='paint2')
-    # --- module pads: four square pad decks at the ring corner stations -------------------
+        a = k * 45.0
+        u, v, _ = frame_verts[k]
+        plan_box(s, f'FootPost{k}', u, v, 1.6, 3.2, 3.2, 3.0, material='paint2', bevel=0.08)
+        plan_box(s, f'FootCap{k}', u, v, 3.25, 3.4, 3.4, 0.4, material='hazard', bevel=0.02)
+        ju, jv, _ = polar_plan(18.0, a + 6.0)
+        ku, kv, _ = polar_plan(18.0, a - 6.0)
+        plan_beams(s, f'Clamp{k}A', [((u, v, -0.6), (ju, jv, -8.0))], 0.85, material='dark')
+        plan_beams(s, f'Clamp{k}B', [((u, v, -0.6), (ku, kv, -8.0))], 0.85, material='dark')
+    # spokes: ring verts -> the ops collar, two rails each so the webbing reads
+    for k in range(8):
+        u, v, _ = frame_verts[k]
+        hu, hv, _ = polar_plan(13.5, k * 45.0)
+        plan_beams(s, f'Spoke{k}A', [((u, v, 0.9), (hu, hv, 1.7))], 0.7, material='paint2')
+        plan_beams(s, f'Spoke{k}B', [((u, v, -0.9), (hu, hv, 1.0))], 0.55, material='dark')
+    # --- module pads: open frames at the corner stations — a thin dark grating sheet on a
+    # beam square, not an ivory slab (specialisation blocks stand on these).
     for k, (mu, mv) in enumerate(MODULE_PADS):
-        plan_box(s, f'Pad{k}', mu, mv, 2.0, 15.0, 15.0, 1.6, material='paint2', bevel=0.1)
-        plan_box(s, f'Pad{k}Top', mu, mv, 2.9, 13.0, 13.0, 0.35, material='paint.aged',
-                 bevel=0.03)
-        # hazard kerb round the pad lip
         for e in (-1, 1):
-            plan_box(s, f'Pad{k}KerbU{e}', mu + e * 6.4, mv, 3.0, 0.8, 13.0, 0.5,
-                     material='hazard', bevel=0.0)
-            plan_box(s, f'Pad{k}KerbV{e}', mu, mv + e * 6.4, 3.0, 13.0, 0.8, 0.5,
-                     material='hazard', bevel=0.0)
-        F.light(s, f'Pad{k}Lamp', P(mu + 6.0, mv + 6.0, 3.3), 'glow_amber', size=0.35)
-        # struts from pad to ring face so nothing floats
-        ru, rv, _ = polar_plan(RING_R1 - 6.0, math.degrees(math.atan2(mv, mu)))
-        plan_beams(s, f'Pad{k}Strut', [((ru, rv, 0.4), (mu, mv, 1.4))], 1.2, material='paint2')
-    # --- central ops pod (structure core): lived-in block on the wheel face --------------
-    plan_box(s, 'OpsPod', 0.0, 0.0, 6.0, 20.0, 14.0, 9.0, material='paint', bevel=0.3)
-    plan_box(s, 'OpsPodBrow', 0.0, 0.0, 11.0, 13.0, 9.0, 2.0, material='paint2', bevel=0.15)
-    plan_box(s, 'OpsCollar', 0.0, 0.0, 2.2, 24.0, 18.0, 2.4, material='dark', bevel=0.1)
+            plan_box(s, f'Pad{k}RailU{e}', mu + e * 6.0, mv, 1.2, 0.8, 13.0, 1.2,
+                     material='paint2', bevel=0.04)
+            plan_box(s, f'Pad{k}RailV{e}', mu, mv + e * 6.0, 1.2, 13.0, 0.8, 1.2,
+                     material='paint2', bevel=0.04)
+        plan_box(s, f'Pad{k}Grate', mu, mv, 1.9, 12.2, 12.2, 0.45, material='dark',
+                 bevel=0.02)
+        # narrow hazard kerb ticks on two pad corners only
+        plan_box(s, f'Pad{k}KerbA', mu + 6.0, mv + 6.0, 1.9, 0.9, 0.9, 0.5,
+                 material='hazard', bevel=0.0)
+        plan_box(s, f'Pad{k}KerbB', mu - 6.0, mv - 6.0, 1.9, 0.9, 0.9, 0.5,
+                 material='hazard', bevel=0.0)
+        F.light(s, f'Pad{k}Lamp', P(mu + 5.4, mv + 5.4, 2.6), 'glow_amber', size=0.35)
+        # struts from pad to frame verts so nothing floats
+        ru, rv, _ = polar_plan(FRAME_R - 2.0, math.degrees(math.atan2(mv, mu)))
+        plan_beams(s, f'Pad{k}Strut', [((ru, rv, 0.2), (mu, mv, 1.0))], 1.1,
+                   material='paint2')
+    # --- ops pod (crewed hab): lived-in block on the wheel face. Spec bodies shrink it and
+    # push it to the aft rim (opts['hab']) so the specialization block owns the centre; the
+    # Structure_Core collar + emissive bay stay at the origin where the live sockets sit.
+    pw, ph, pd = 20.0 * hs, 14.0 * hs, 9.0 * hs
+    plan_box(s, 'OpsPod', hu, hv, 2.0 + pd * 0.55, pw, ph, pd, material='paint', bevel=0.3)
+    plan_box(s, 'OpsPodBrow', hu, hv, 2.0 + pd + 0.8, pw * 0.65, ph * 0.65, 1.6 * hs,
+             material='paint2', bevel=0.15)
+    plan_box(s, 'OpsCollar', 0.0, 0.0, 2.2, 18.0, 13.0, 2.4, material='dark', bevel=0.1)
     # lit window rows on the pod's front face — the crew deck
     s.detail = 1
-    for i in range(9):
-        u = -7.2 + i * 1.8
-        plan_box(s, f'OpsWin{i}', u, -3.2, 10.55, 1.1, 0.7, 0.14, material='glow_warm',
-                 bevel=0.0)
-        plan_box(s, f'OpsWinB{i}', u, 3.2, 10.55, 1.1, 0.7, 0.14, material='glow_warm',
-                 bevel=0.0)
+    nw = max(4, int(round(9 * hs)))
+    for i in range(nw):
+        u = hu + (-(nw - 1) / 2.0 + i) * 1.8 * hs
+        plan_box(s, f'OpsWin{i}', u, hv - 3.2 * hs, 2.0 + pd + 0.15, 1.1 * hs, 0.7 * hs,
+                 0.14, material='glow_warm', bevel=0.0)
+        plan_box(s, f'OpsWinB{i}', u, hv + 3.2 * hs, 2.0 + pd + 0.15, 1.1 * hs, 0.7 * hs,
+                 0.14, material='glow_warm', bevel=0.0)
     s.detail = 0
-    plan_box(s, 'OpsBand', 0.0, 6.4, 6.0, 20.4, 1.2, 8.4, material='stripe', bevel=0.0)
+    plan_box(s, 'OpsBand', hu, hv + ph * 0.46, 2.0 + pd * 0.55, pw + 0.4, 1.2, pd * 0.93,
+             material='stripe', bevel=0.0)
     # comm antenna + beacon over the pod roof — kept inside the live depth bound (~d<13.6)
-    plan_cyl(s, 'OpsMast', -6.0, 5.0, 10.8, -6.0, 5.0, 12.6, 0.35, material='paint2',
+    plan_cyl(s, 'OpsMast', hu - 6.0 * hs, hv + 5.0 * hs, 2.0 + pd,
+             hu - 6.0 * hs, hv + 5.0 * hs, 2.0 + pd + 1.8 * hs, 0.35, material='paint2',
              segments=10)
-    F.beacon(s, 'OpsBeacon', P(-6.0, 5.0, 13.0), finish='glow_amber', size=0.5)
+    F.beacon(s, 'OpsBeacon', P(hu - 6.0 * hs, hv + 5.0 * hs, 2.0 + pd + 2.2 * hs),
+             finish='glow_amber', size=0.5)
     # --- dock arm: approach gantry out to +X (tip kept inside the live +55.5 bound) ------
-    plan_truss(s, 'DockArm', (RING_R1 - 4, 0.0, 1.2), (51.5, 0.0, 1.2), 4.4, 6,
+    plan_truss(s, 'DockArm', (FRAME_R, 0.0, 1.2), (51.5, 0.0, 1.2), 4.4, 6,
                material='paint2', chord=0.6, web=0.3)
     plan_box(s, 'DockDeck', 47.5, 0.0, 1.8, 18.0, 8.0, 0.8, material='paint.aged', bevel=0.05)
     plan_box(s, 'DockHead', 51.0, 0.0, 4.6, 7.0, 10.0, 5.0, material='paint', bevel=0.2)
@@ -222,23 +227,31 @@ def build_platform(s, opts=None):
                 'glow_green' if e > 0 else 'glow_red', size=0.4)
         plan_box(s, f'DockRail{e}', 46.5, e * 3.8, 2.6, 12.0, 0.35, 0.9, material='hazard',
                  bevel=0.0)
-    # --- emissive bay: the reactor grate on the ops pod's front face (socket station
-    # plan (0,0) d ~ +8): a glowing grate between the window rows.
-    ring_slab(s, 'BayRing', 2.6, 3.4, 10.4, 10.9, material='paint2', segments=24)
+    # --- emissive bay: the reactor grate at the origin socket station (plan (0,0), d ~ +8).
+    # On the base body it sits on the pod's front face; on spec bodies the pod moves aft and
+    # a squat core block carries the grate between/under the function block.
+    if (hu, hv) != (0.0, 0.0):
+        plan_box(s, 'CoreBlock', 0.0, 0.0, 4.9, 14.0, 10.0, 7.0, material='paint.aged',
+                 bevel=0.2)
+        bay_d = 8.5
+    else:
+        bay_d = 10.55
+    ring_slab(s, 'BayRing', 2.6, 3.4, bay_d - 0.15, bay_d + 0.35, material='paint2',
+              segments=24)
     s.detail = 1
     for k in range(6):
-        plan_box(s, f'BayBar{k}', -1.9 + k * 0.76, 0.0, 10.62, 0.4, 4.6, 0.18,
+        plan_box(s, f'BayBar{k}', -1.9 + k * 0.76, 0.0, bay_d + 0.07, 0.4, 4.6, 0.18,
                  material='glow_amber', bevel=0.0)
     s.detail = 0
-    # --- perimeter work lamps --------------------------------------------------------------
+    # --- perimeter work lamps on the frame verts --------------------------------------------
     for k in range(8):
         a = k * 45.0
-        u, v, _ = polar_plan(RING_R1 + 0.4, a, 2.6)
+        u, v, _ = polar_plan(FRAME_R + 0.4, a, 2.6)
         F.work_lamp(s, f'WorkLamp{k}', P(u, v, 2.6),
                     aim=(-math.cos(math.radians(a)), -0.4, -math.sin(math.radians(a))),
                     size=0.5, lens='glow_warm')
-    # nav markers on the ring rim
+    # nav markers on the frame verts
     for k, a in enumerate((0.0, 90.0, 180.0, 270.0)):
-        u, v, _ = polar_plan(RING_R1, a, 0.0)
+        u, v, _ = polar_plan(FRAME_R, a, 0.0)
         F.light(s, f'Nav{k}', P(u, v, 2.5),
                 'glow_red' if a in (90.0, 270.0) else 'glow_green', size=0.4)

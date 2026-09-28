@@ -32,6 +32,7 @@ import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
+import { starvedIndustryNeedFor } from './economy.js';
 import {
   selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
   FIRST_TRADE_CONTRACT_STATION_ID,
@@ -333,6 +334,14 @@ export const economyContracts = {
    */
   planOffer(info, epoch) {
     const state = this.state;
+    // A live stock deficit outranks the rolled field contract: a neighbor yard whose industry
+    // book is starving posts an inbound relief run for its hungriest input leg — the shortage is
+    // the real hopper, and the delivery lands in its market through cargo:delivered → stock.
+    const starved = this._starvedNeighborNeed(info);
+    if (starved) {
+      const offer = this._starvedIndustryOffer(info, starved, epoch);
+      if (offer) return offer;
+    }
     let local = sectorSignalFor(state, info.sectorId);
     let selected = local ? selectEconContract(local) : null;
     // Relief is a sealed OUTBOUND shipment from this supplier to a distressed neighbor.
@@ -467,6 +476,76 @@ export const economyContracts = {
       title,
       summary: causeLine,
       cause: { tag: selected.causeTag, axis: selected.template.causeAxis, line: causeLine },
+      expiresAtEpoch: epoch + 1,
+      storyTag: null,
+    };
+  },
+
+  /**
+   * Neighbor-scan starvation read: the hungriest tier-eligible industry input across the sectors
+   * this station can see. The need is the live hopper fill — a posted shortage names real stock.
+   */
+  _starvedNeighborNeed(info) {
+    const markets = this.state && this.state.economy && this.state.economy.markets;
+    if (!markets) return null;
+    const neighbors = (SECTOR_BY_ID.get(info.sectorId)?.neighbors || []).slice().sort();
+    let worst = null;
+    for (const nId of neighbors) {
+      const nSec = SECTOR_BY_ID.get(nId);
+      for (const st of (nSec?.stations || [])) {
+        const need = starvedIndustryNeedFor(st.type, nSec.tier || 0, markets[st.id]);
+        if (need && (!worst || need.fill < worst.need.fill)) {
+          worst = { need, stationId: st.id, sectorId: nId };
+        }
+      }
+    }
+    return worst;
+  },
+
+  /**
+   * Board-shaped relief run into a starving yard — same cargo_delivery/relief shape as the
+   * signal templates so accept/settle paths are unchanged. Delivery lands via cargo:delivered →
+   * stock, so fulfilling the contract physically re-feeds the line it claims to help.
+   */
+  _starvedIndustryOffer(info, starved, epoch) {
+    const destStationId = starved.stationId;
+    const destSectorId = starved.sectorId;
+    const cmdtyId = starved.need.inputId;
+    const cargo = this.state.player?.cargo || {};
+    const cargoDef = CMDTY_BY_ID.get(cmdtyId);
+    const qty = affordableContractQuantity({
+      desired: Math.min(20, starved.need.deficitUnits),
+      freeVolume: (cargo.capVolume || 0) - (cargo.usedVolume || 0),
+      volumePerUnit: cargoDef?.volPerU || 1,
+    });
+    if (qty < 1) return null;
+    const distance = sectorDistanceWu(info.sectorId, destSectorId);
+    const riskTier = clamp(effectiveDangerTierFor(this.state, destSectorId), 0, 4);
+    const unitVal = (cargoDef && cargoDef.basePrice) || 50;
+    const cargoValue = unitVal * qty;
+    const params = { cmdtyId, qty, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 20, passengers: 0 };
+    const economyTerms = quoteMissionEconomics({
+      type: 'cargo_delivery',
+      tier: Math.max(info.tier || 0, STATION_INFO.get(destStationId)?.tier || 0, riskTier),
+      riskTier, distance, params, preloadedCargo: true, fieldPressure: 0.5,
+    });
+    const destName = STATION_INFO.get(destStationId)?.name || destSectorId;
+    const commodity = cmdtyName(cmdtyId);
+    const causeLine = `${destName}'s yard is starving for ${commodity} — its line is idling on an empty hopper. Run feedstock in and the berth pays the scarcity premium while it lasts.`;
+    return {
+      id: stableFieldOfferId(info.id, epoch),
+      source: 'economyContract',
+      type: 'cargo_delivery',
+      stationId: info.id,
+      factionId: info.factionId,
+      reward_cr: economyTerms.rewardCr, time_limit_s: economyTerms.deadlineS,
+      duration_s: economyTerms.deadlineS, collateral_cr: 0, riskTier, preloadedCargo: true,
+      economyTerms,
+      destStationId, destSectorId, distance,
+      params,
+      title: `Yard feed run: ${qty}u ${commodity} into ${destName} (line starved)`,
+      summary: causeLine,
+      cause: { tag: 'industry_starved', axis: 'pricePressure', line: causeLine },
       expiresAtEpoch: epoch + 1,
       storyTag: null,
     };

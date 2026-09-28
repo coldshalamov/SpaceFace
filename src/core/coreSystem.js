@@ -701,7 +701,7 @@ function appendEntityIndex(index, e) {
       index.damageables.push(e);
       const data = e.data || {};
       if (data.isGate) index.gates.push(e);
-      else index.dockStations.push(e);
+      else if (data.dockless !== true) index.dockStations.push(e);
       if (data.stationId && !index.byStationId.has(data.stationId)) index.byStationId.set(data.stationId, e);
       break;
     }
@@ -957,8 +957,9 @@ function markEntityIndexSourceSynced(index, list) {
 // Mid-life ai/weapons attach without a spawn/despawn is rare. append/remove already keep
 // aiShips/weaponShips correct for membership. Rebuilding every preStep was O(ships) on the
 // quiet registry pole; catch up on a fixed cadence so a hot attach still lands within a few
-// ticks without paying the walk 60 Hz.
-const VOLATILE_INDEX_PERIOD_TICKS = 8;
+// ticks without paying the walk 60 Hz. Exported so contract checks (check-gameplay-core)
+// bound their wait by the real window instead of a stale constant.
+export const VOLATILE_INDEX_PERIOD_TICKS = 8;
 
 function refreshVolatileEntityIndex(index, stateOrTick = 0) {
   if (!index || !index.__spacefaceEntityIndexV1) return false;

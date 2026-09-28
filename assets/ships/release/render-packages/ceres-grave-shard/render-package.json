@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Salvage_Core",
       "nodePath": [
         0,
-        3
+        40
       ],
       "parentNodeId": "sf.render.ceres-grave-shard.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        4
+        41
       ],
       "parentNodeId": "sf.render.ceres-grave-shard.root",
       "worldTransform": [
@@ -94,363 +94,1035 @@
     }
   ],
   "assetId": "sf.render.ceres-grave-shard",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.ceres-grave-shard.collision",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b941b0feb1eb28e2351ecca6bbf24bec83a92f072c89d1f506d940009185583a",
-  "dynamicGroups": [],
+  "contentHash": "71b226787cf843da362d0dd966da0a7a2601c7929c5f6bc218d52ecbe2ec9b5d",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-hook-nav-port"
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-hook-nav-port"
+    }
+  ],
   "geometry": [
     {
       "bounds": {
         "max": [
-          7.612636566162109,
-          0.5301790237426758,
-          0.9131884574890137
+          12.464390754699707,
+          10.121824264526367,
+          6.4546380043029785
         ],
         "min": [
-          -8.38736343383789,
-          -0.18273338675498962,
-          -0.8212394714355469
+          -13.1315336227417,
+          -1.5993236303329468,
+          -6.4546380043029785
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e28da85f493ca60174f30b3f2cffa7ea8906083e1536649fff326c6985d18cc",
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-glass.primitive.0",
+      "geometryHash": "0e9aeabe0508a24f01c31b2e97513cdff2fd027457532b2832dc34c5a017cf70",
+      "id": "sf.render.ceres-grave-shard.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 762
+    },
+    {
+      "bounds": {
+        "max": [
+          10.685409545898438,
+          9.600000381469727,
+          2.4968841075897217
+        ],
+        "min": [
+          10.114590644836426,
+          5.599999904632568,
+          1.90311598777771
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b1976f10db31d1f83a86f60903da424fd0c0512c5898e3428b8c83887d81f47",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-armor.primitive.0",
+      "indexCount": 1428,
+      "indexed": true,
+      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 414
+    },
+    {
+      "bounds": {
+        "max": [
+          10.574999809265137,
+          10.12267017364502,
+          2.3748111724853516
+        ],
+        "min": [
+          -3.049999952316284,
+          6.424829959869385,
+          -0.24981118738651276
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72c974de29f14824705fe492d7cff671df02bd47e61185a0f53c9f8c62a6bcfa",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          8.006121635437012,
+          8.810608863830566,
+          5.777156352996826
+        ],
+        "min": [
+          -9.300000190734863,
+          1.1518032550811768,
+          -5.858143329620361
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4b4bbdf50c4152e61b2ada551ac552c3e904c553f32794ad9150665d6ad5f341",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 4380,
+      "indexed": true,
+      "materialHash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1532
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3255860805511475,
+          8.724985122680664,
+          4.326162815093994
+        ],
+        "min": [
+          -7.125586032867432,
+          3.675013780593872,
+          -5.126163005828857
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9007ab3e9fd468feab055ad956a6ec3ac1a4ef39682ccad2f89a47a9af21ecb3",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-ceramic.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "c2ecd5975c8bef1810afb2e45a6671f5cf7791fc0a7dffffb386f4cd0fad2346",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Ceramic",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          12.464390754699707,
+          -0.5000708103179932,
+          -0.2826218903064728
+        ],
+        "min": [
+          -13.1315336227417,
+          -1.5999292135238647,
+          -4.691429615020752
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "df67162a3985f5e79db85499468f1b971974e17cb3f8daaff1c6daef6c54bec9",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-deep.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_deep",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    },
+    {
+      "bounds": {
+        "max": [
+          7.532663345336914,
+          7.479251384735107,
+          -0.31049710512161255
+        ],
+        "min": [
+          3.267336845397949,
+          5.320748805999756,
+          -4.089503288269043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0eba9a6fa3905690321b846e988ec6e995a83e697764b0b850d804461faedd31",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-faded.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_faded",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          10.879939079284668,
+          -0.1498461216688156,
+          5.302122116088867
+        ],
+        "min": [
+          5.45149040222168,
+          -1.0751538276672363,
+          -6.217466354370117
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "773f858a3b0e8cce0ba5eb033f7238307bb711c542d7b2b8ce271bacd75126e8",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-rust.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_rust",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    },
+    {
+      "bounds": {
+        "max": [
+          8.246898651123047,
+          8.36166763305664,
+          6.453949451446533
+        ],
+        "min": [
+          -10.246898651123047,
+          -1.5616681575775146,
+          -6.453949451446533
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "618af43073dd06a49af1d6ebae49da04ef73a5409f7b5854e90f1742f2dc0fbe",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          4.550000190734863,
+          1.5050050784726092,
+          4.150000095367432
+        ],
+        "min": [
+          4.25,
+          1.294994873843675,
+          3.8499999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5b7de9fa8594ceeadc57c8432b6bb1a0461391d2e6813a33514f37df7ac777ad",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "4603d76e50c3c9aa86ce4bd5575b3b65325b17cdcdc0d2513510752e9edc488f",
-      "materialPipelineKey": "blend",
-      "meshName": "LOD0_place_ceres_grave_shard_Material_Glass_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-glass",
+      "materialHash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          2.1416969299316406,
-          9.337240219116211,
-          1.5411990880966187
+          7.310848236083984,
+          7.521421432495117,
+          0.1493052840232849
         ],
         "min": [
-          -13.69830322265625,
-          -1.4419068098068237,
-          1.4503175020217896
+          3.489152193069458,
+          5.278578758239746,
+          -1.3493053913116455
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db13d1aa9cec8a82cab52f6d7e966d54d4313b07735ef69807434b81627d51a0",
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-heat.primitive.0",
+      "geometryHash": "c71b11a8df89ef8251eb7365a437484cb2639066231b02a965f4e95443c0d73c",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-livery.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.800520896911621,
+          6.450347900390625,
+          2.799443483352661
+        ],
+        "min": [
+          9.300373077392578,
+          -1.4503477811813354,
+          1.2013170719146729
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6fda3638d5f7c0df7beb2c6f20bcea63f87f1035c3e6e44adb7286e9cfc9c0ec",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-mechanical.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_place_ceres_grave_shard_Material_Heat_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-heat",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          10.221696853637695,
-          10.419666290283203,
-          4.015364646911621
+          -0.3359091877937317,
+          8.571067810058594,
+          3.2371697425842285
         ],
         "min": [
-          -15.778303146362305,
-          -6.524332523345947,
-          -3.923415422439575
+          -6.064091682434082,
+          5.4289326667785645,
+          -2.4371695518493652
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69d1dc95f9d1a80b9a98b634ba49348aded67599ad37e32d851101dffdb944de",
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-hull.primitive.0",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_place_ceres_grave_shard_Material_Hull_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-hull",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          15.778303146362305,
-          7.71267557144165,
-          8.187820434570312
-        ],
-        "min": [
-          -14.349752426147461,
-          -11.097705841064453,
-          -8.187820434570312
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "16a9874095eb02e822779d1de6f8b27ecf99e7bea669de037d697d91afcf95a3",
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-insulation.primitive.0",
-      "indexCount": 1188,
-      "indexed": true,
-      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_place_ceres_grave_shard_Material_Insulation_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-insulation",
-      "primitiveIndex": 0,
-      "vertexCount": 792
-    },
-    {
-      "bounds": {
-        "max": [
-          10.221696853637695,
-          11.097721099853516,
-          3.852813959121704
-        ],
-        "min": [
-          -15.778303146362305,
-          -6.131930351257324,
-          -3.920921564102173
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "92bbb1492ddfb3948d578d2f0933722c9ca7f26bbdc6990325b3932b3eeb482f",
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-structural.primitive.0",
-      "indexCount": 420,
-      "indexed": true,
-      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_place_ceres_grave_shard_Material_Structural_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-structural",
-      "primitiveIndex": 0,
-      "vertexCount": 276
-    },
-    {
-      "bounds": {
-        "max": [
-          7.612636566162109,
-          0.5301790237426758,
-          0.9131884574890137
-        ],
-        "min": [
-          -8.38736343383789,
-          -0.18273338675498962,
-          -0.8212394714355469
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c9b8a80aa31cdf269e0a2dc24c93f43e0fbee06e0ce6dd7b036696964d32dbd2",
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-glass.primitive.0",
-      "indexCount": 15,
-      "indexed": true,
-      "materialHash": "4603d76e50c3c9aa86ce4bd5575b3b65325b17cdcdc0d2513510752e9edc488f",
-      "materialPipelineKey": "blend",
-      "meshName": "LOD1_place_ceres_grave_shard_Material_Glass_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-glass",
-      "primitiveIndex": 0,
-      "vertexCount": 11
-    },
-    {
-      "bounds": {
-        "max": [
-          2.1416969299316406,
-          9.337240219116211,
-          1.5411990880966187
-        ],
-        "min": [
-          -13.69830322265625,
-          -1.4419068098068237,
-          1.4503175020217896
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c7979d222421baa264d209cdac96dd237a10b1e97af47511318a0e3b8f610447",
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-heat.primitive.0",
-      "indexCount": 33,
-      "indexed": true,
-      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_place_ceres_grave_shard_Material_Heat_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-heat",
-      "primitiveIndex": 0,
-      "vertexCount": 23
-    },
-    {
-      "bounds": {
-        "max": [
-          10.221696853637695,
-          10.419666290283203,
-          4.015364646911621
-        ],
-        "min": [
-          -15.778303146362305,
-          -6.524332523345947,
-          -3.923415422439575
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "13b6de1481101edf891b5d093937ecab2434466f43a7673fd47f7c4dbc77fedd",
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-hull.primitive.0",
-      "indexCount": 30,
-      "indexed": true,
-      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_place_ceres_grave_shard_Material_Hull_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-hull",
-      "primitiveIndex": 0,
-      "vertexCount": 22
-    },
-    {
-      "bounds": {
-        "max": [
-          15.778303146362305,
-          7.71267557144165,
-          8.187820434570312
-        ],
-        "min": [
-          -14.349752426147461,
-          -11.097705841064453,
-          -8.187820434570312
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f8784fef066f0776433bb0b1f5bb48252b07ff3e7bdc5d7ee384027b6e5acd02",
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-insulation.primitive.0",
+      "geometryHash": "e77391ea2050f3bd0b362327d2d83ef10af97c271edaf25a94c0cf4773de4d3d",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "materialHash": "343ab013389558a8144411a711b3bea737e92484e4d9b1bc0e18050a258a8db4",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_place_ceres_grave_shard_Material_Insulation_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-insulation",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 398
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
-          10.221696853637695,
-          11.043242454528809,
-          3.852813959121704
+          11.293985366821289,
+          9.833108901977539,
+          3.140000104904175
         ],
         "min": [
-          -15.778303146362305,
-          -6.132452011108398,
-          -3.920921564102173
+          9.506013870239258,
+          9.566890716552734,
+          1.2599999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "139352b6fcdf8015af61b9b121937c8101f34ec743e955b992b5b26bea42f489",
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-structural.primitive.0",
-      "indexCount": 198,
+      "geometryHash": "049830379f69a19939104bb205c73aadbe8fc4c4359baa415bda3783948205d6",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-warning.primitive.0",
+      "indexCount": 300,
       "indexed": true,
-      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "materialHash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_place_ceres_grave_shard_Material_Structural_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-structural",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 136
+      "vertexCount": 110
     },
     {
       "bounds": {
         "max": [
-          2.1416969299316406,
-          9.337240219116211,
-          1.5228294134140015
+          10.68275260925293,
+          9.598689079284668,
+          2.496187210083008
         ],
         "min": [
-          -13.69830322265625,
-          -1.4419068098068237,
-          1.4686871767044067
+          10.117189407348633,
+          5.601314544677734,
+          1.9028087854385376
         ]
       },
       "drawMode": 4,
-      "geometryHash": "328e822300bc107e99a919d6541774405019b584ebd528f39539a62ca52f9a37",
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-heat.primitive.0",
-      "indexCount": 12,
+      "geometryHash": "20c0a4a553b7bc55836d9e9e01d471f385bc25d5b68f7f955a4cbdf5c7241af1",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-armor.primitive.0",
+      "indexCount": 180,
       "indexed": true,
-      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_place_ceres_grave_shard_Material_Heat_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-heat",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 8
+      "vertexCount": 80
     },
     {
       "bounds": {
         "max": [
-          10.221696853637695,
-          10.419666290283203,
-          4.015364646911621
+          10.574999809265137,
+          10.12267017364502,
+          2.3748111724853516
         ],
         "min": [
-          -15.778303146362305,
-          -6.524332523345947,
-          -3.923415422439575
+          -3.049999952316284,
+          6.424829959869385,
+          -0.24981118738651276
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7784dbafa7106493b5e3e5bab0c4412c1e5b5649252b2945ef49137cee2049b",
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-hull.primitive.0",
-      "indexCount": 12,
+      "geometryHash": "4aac35cde8978fe22f15eec3203b18adc3c843220d501f3f52e35f4e723c9ad2",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-beacon-amber.primitive.0",
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_place_ceres_grave_shard_Material_Hull_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-hull",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 12
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          15.778303146362305,
-          6.76039457321167,
-          6.984724521636963
+          8.005790710449219,
+          8.81031322479248,
+          5.776078224182129
         ],
         "min": [
-          -13.903972625732422,
-          -11.097705841064453,
-          -8.188410758972168
+          -9.300000190734863,
+          1.1516543626785278,
+          -5.856886386871338
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0c09420dfe8de6ffccf0e8afd1ba881ac49d244750e5490e4dae2e0587403ce",
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-insulation.primitive.0",
-      "indexCount": 234,
+      "geometryHash": "f3a192b2cf9aaca62835af4c3caa8e6706e5bb0ad8ef4fa77f347af8b1ee40c6",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 1356,
       "indexed": true,
-      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "materialHash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_place_ceres_grave_shard_Material_Insulation_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-insulation",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 158
+      "vertexCount": 661
     },
     {
       "bounds": {
         "max": [
-          6.462637901306152,
-          10.02695083618164,
-          3.852499008178711
+          2.3253941535949707,
+          8.725579261779785,
+          4.322147846221924
         ],
         "min": [
-          -11.828303337097168,
-          -6.131618976593018,
-          -3.9206066131591797
+          -7.125393867492676,
+          3.674121379852295,
+          -5.1228718757629395
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99466e669831227688fd9b7bfd77052338202ab4732bc63f57cbe2c9ffd023ac",
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-structural.primitive.0",
-      "indexCount": 81,
+      "geometryHash": "de247ed735423c5c3a99b37e74f4d9c7ce35d782c86b99c0f7db3d0849ab2fcd",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-ceramic.primitive.0",
+      "indexCount": 324,
       "indexed": true,
-      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "materialHash": "c2ecd5975c8bef1810afb2e45a6671f5cf7791fc0a7dffffb386f4cd0fad2346",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_place_ceres_grave_shard_Material_Structural_mesh",
-      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-structural",
+      "meshName": "LOD1_Ceramic",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-ceramic",
       "primitiveIndex": 0,
-      "vertexCount": 59
+      "vertexCount": 117
+    },
+    {
+      "bounds": {
+        "max": [
+          12.46419906616211,
+          -0.5031006932258606,
+          -0.28322529792785645
+        ],
+        "min": [
+          -13.131738662719727,
+          -1.5967105627059937,
+          -4.688910961151123
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d7c5ba7a738e8baacac185259e6639bc9a1ae7f253279cf09b40a465138e4ba1",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_deep",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 187
+    },
+    {
+      "bounds": {
+        "max": [
+          7.534539699554443,
+          7.477594375610352,
+          -0.3098874092102051
+        ],
+        "min": [
+          3.2660865783691406,
+          5.32219934463501,
+          -4.0890583992004395
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2c55cda22d85935636a22d78c0b6c42b853193f57431d127033841462b3f9d38",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-faded.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_faded",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          10.88119888305664,
+          -0.15273702144622803,
+          5.303847789764404
+        ],
+        "min": [
+          5.452269554138184,
+          -1.0722630023956299,
+          -6.213778018951416
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b4d9f32949b6f05d269032274bca30f3b809d01e405402c2e937b4bb38d66f39",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_rust",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 194
+    },
+    {
+      "bounds": {
+        "max": [
+          8.246898651123047,
+          8.36166763305664,
+          6.453949451446533
+        ],
+        "min": [
+          -10.246898651123047,
+          -1.5616681575775146,
+          -6.453949451446533
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "01f7b0d8e87c28257211145a71845edcfa0744a9ab890320fda6b5515bf549b4",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          4.550000190734863,
+          1.5050050784726092,
+          4.150000095367432
+        ],
+        "min": [
+          4.25,
+          1.294994873843675,
+          3.8499999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bcf94dd273049568eb29973c8d9f996e2c831b95b534330e22272910b413428b",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.310848236083984,
+          7.521421432495117,
+          0.1493052840232849
+        ],
+        "min": [
+          3.489152193069458,
+          5.278578758239746,
+          -1.3493053913116455
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa845ff47eefef18ec42d7d88651af7fd4993fcf4ec3296eac12d4c816f8ac47",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-livery.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.800520896911621,
+          6.450347900390625,
+          2.799443483352661
+        ],
+        "min": [
+          9.300373077392578,
+          -1.4503477811813354,
+          1.2013170719146729
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba553875aee1fb9cc0542789aeea2a225b8c80aa18a07348223b56176d047d20",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.33580026030540466,
+          8.571307182312012,
+          3.233795642852783
+        ],
+        "min": [
+          -6.064608573913574,
+          5.43232536315918,
+          -2.4355688095092773
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "66b12a94d0c86abba089ba1397ac5c8a18f37b27cc9e05347c951a92ec49cce1",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "343ab013389558a8144411a711b3bea737e92484e4d9b1bc0e18050a258a8db4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 71
+    },
+    {
+      "bounds": {
+        "max": [
+          11.293985366821289,
+          9.833108901977539,
+          3.140000104904175
+        ],
+        "min": [
+          9.506013870239258,
+          9.566890716552734,
+          1.2599999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "319fcf7d2c940c1b5980730379734e04ee17d46c745c33350a49e4f8ee931514",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-warning.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 110
+    },
+    {
+      "bounds": {
+        "max": [
+          10.681600570678711,
+          9.595921516418457,
+          2.496279001235962
+        ],
+        "min": [
+          10.118281364440918,
+          5.604080677032471,
+          1.9037220478057861
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "299cb316d5dba0ac122ed59aea8009b77b621a3f34c27ad136133b932459d13e",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-armor.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          10.574999809265137,
+          10.12267017364502,
+          2.3748111724853516
+        ],
+        "min": [
+          -3.049999952316284,
+          6.424829959869385,
+          -0.24981118738651276
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4aac35cde8978fe22f15eec3203b18adc3c843220d501f3f52e35f4e723c9ad2",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-beacon-amber.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          3.194028377532959,
+          7.800293445587158,
+          4.800365447998047
+        ],
+        "min": [
+          -9.300000190734863,
+          1.151199460029602,
+          -4.800365447998047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa3491e4323a943e2a34b0d40dd455b6e3eac2da3b64a435b2e3b3d5d1d0b440",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    },
+    {
+      "bounds": {
+        "max": [
+          2.322117567062378,
+          8.719365119934082,
+          4.308281898498535
+        ],
+        "min": [
+          -7.122117042541504,
+          3.6806342601776123,
+          -5.108282566070557
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "697cde1c120b14b03e25edbc715bd871ad34abf828c21380c12c409b6d763435",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-ceramic.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c2ecd5975c8bef1810afb2e45a6671f5cf7791fc0a7dffffb386f4cd0fad2346",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Ceramic",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.461333274841309,
+          -0.5159900784492493,
+          -0.2861047387123108
+        ],
+        "min": [
+          -13.120400428771973,
+          -1.584010124206543,
+          -4.679976463317871
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "463d4f88bfc0732fd16ad808a211ba728df12dc18f3eb5a141c624e474b5aeb5",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-deep.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_deep",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          7.53508186340332,
+          7.475734710693359,
+          -0.31440025568008423
+        ],
+        "min": [
+          3.264547824859619,
+          5.324501991271973,
+          -4.084987163543701
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "317d793616c5bebe7102130655bc3074817839e780212a9fe7d64e7ad4ede199",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-faded.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_faded",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.873695373535156,
+          -0.16637983918190002,
+          5.295353412628174
+        ],
+        "min": [
+          5.453862190246582,
+          -1.0586202144622803,
+          -6.214898586273193
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2845aa99a0263e978b18c6b6f6ecd5e616b0248eaf52cd8880f1883fd95d4f22",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-rust.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_rust",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          8.240345001220703,
+          8.350603103637695,
+          6.419497489929199
+        ],
+        "min": [
+          -10.240777015686035,
+          -1.55013906955719,
+          -6.418642044067383
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "47e3b8daf8c9b80878a4c50da1f5d0e71fadc4d4837747191c5c6af40729c7f8",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.550000429153442,
+          1.5050052453736185,
+          4.15000057220459
+        ],
+        "min": [
+          4.249999761581421,
+          1.2949947069426657,
+          3.8499999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25eeb7e0c0c0be75db64e420ebbc744b52377e9c3a693c6bfda6ffb151b2764f",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-hook-nav-port.primitive.0",
+      "indexCount": 18,
+      "indexed": true,
+      "materialHash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 14
+    },
+    {
+      "bounds": {
+        "max": [
+          7.310848236083984,
+          7.521421432495117,
+          0.1493052840232849
+        ],
+        "min": [
+          3.489152193069458,
+          5.278578758239746,
+          -1.3493053913116455
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa845ff47eefef18ec42d7d88651af7fd4993fcf4ec3296eac12d4c816f8ac47",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-livery.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.800520896911621,
+          6.450347900390625,
+          2.799443483352661
+        ],
+        "min": [
+          9.300373077392578,
+          -1.4503477811813354,
+          1.2013170719146729
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba553875aee1fb9cc0542789aeea2a225b8c80aa18a07348223b56176d047d20",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.3385680019855499,
+          8.56719970703125,
+          3.2250821590423584
+        ],
+        "min": [
+          -6.0615620613098145,
+          5.432801246643066,
+          -2.4259533882141113
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff3abd3d885c5bdbc352caf861867364bde873489555743dcd44c39bdf0e3a06",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "343ab013389558a8144411a711b3bea737e92484e4d9b1bc0e18050a258a8db4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.293980598449707,
+          9.833159446716309,
+          3.140000104904175
+        ],
+        "min": [
+          9.50601863861084,
+          9.566840171813965,
+          1.3036154508590698
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e5809ff68d06174b2af9981c8835e64e110ec0a6a56041d365c9cc754df7695b",
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-warning.primitive.0",
+      "indexCount": 210,
+      "indexed": true,
+      "materialHash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 97
     }
   ],
   "hlods": [],
@@ -458,169 +1130,375 @@
   "lods": [],
   "materials": [
     {
-      "hash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
-      "id": "material:13ad3b2a75af6f212673762d",
-      "name": "Material_Heat",
+      "hash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "id": "material:2d4cf91d4ec5ece80aa6afc8",
+      "name": "Material_Hull_deep",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_heat_affected_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_heat_affected_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_heat_affected_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_heat_affected_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
-      "id": "material:24f30cbfe23e02dc19ae4afc",
-      "name": "Material_Structural",
+      "hash": "343ab013389558a8144411a711b3bea737e92484e4d9b1bc0e18050a258a8db4",
+      "id": "material:343ab013389558a8144411a7",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_structural_alloy_basecolor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_structural_alloy_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
-      "id": "material:35b85f4e71e79d43154f62ec",
-      "name": "Material_Insulation",
+      "hash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
+      "id": "material:35e415dc0d6bc316715e2eda",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_rupture_insulation_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_rupture_insulation_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_rupture_insulation_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_rupture_insulation_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "4603d76e50c3c9aa86ce4bd5575b3b65325b17cdcdc0d2513510752e9edc488f",
-      "id": "material:4603d76e50c3c9aa86ce4bd5",
-      "name": "Material_Glass",
+      "hash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "id": "material:3a3b2f67d6688939e22c4df2",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_dead_glass_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_dead_glass_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_dead_glass_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_dead_glass_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
-      "id": "material:d999803161e25ecce4ad46f8",
+      "hash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "id": "material:486547a174710d4494bcbd4e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "id": "material:519c02f683125e22ef810336",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_painted_hull_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
+      "id": "material:8434fd67f6dfc91ad0b29fd3",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
+      "id": "material:9efdd0772bd3e276fe5e707b",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
+      "id": "material:a6c26684193e200a7bc1fe46",
+      "name": "Material_Hull_faded",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c2ecd5975c8bef1810afb2e45a6671f5cf7791fc0a7dffffb386f4cd0fad2346",
+      "id": "material:c2ecd5975c8bef1810afb2e4",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
+      "id": "material:dd766116a4799c6c906e9248",
+      "name": "Material_Hull_rust",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "id": "material:e50885d48893fb4dc64a02a0",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "id": "material:fab3eefb927c4e588f15130e",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-glass",
+      "id": "sf.render.ceres-grave-shard.mesh.collision-hull",
       "localTransform": [
         1,
         0,
@@ -639,11 +1517,10 @@
         0,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD0_place_ceres_grave_shard_Material_Glass",
-      "nodeName": "LOD0_place_ceres_grave_shard_Material_Glass",
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
       "nodePath": [
-        0,
         0,
         0
       ],
@@ -670,7 +1547,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-heat",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-armor",
       "localTransform": [
         1,
         0,
@@ -690,10 +1567,9 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_place_ceres_grave_shard_Material_Heat",
-      "nodeName": "LOD0_place_ceres_grave_shard_Material_Heat",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
       "nodePath": [
-        0,
         0,
         1
       ],
@@ -720,7 +1596,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-hull",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-beacon-amber",
       "localTransform": [
         1,
         0,
@@ -740,10 +1616,9 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_place_ceres_grave_shard_Material_Hull",
-      "nodeName": "LOD0_place_ceres_grave_shard_Material_Hull",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
-        0,
         0,
         2
       ],
@@ -770,7 +1645,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-insulation",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-brushedmetal",
       "localTransform": [
         1,
         0,
@@ -790,10 +1665,9 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_place_ceres_grave_shard_Material_Insulation",
-      "nodeName": "LOD0_place_ceres_grave_shard_Material_Insulation",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
       "nodePath": [
-        0,
         0,
         3
       ],
@@ -820,7 +1694,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-structural",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-ceramic",
       "localTransform": [
         1,
         0,
@@ -840,10 +1714,9 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_place_ceres_grave_shard_Material_Structural",
-      "nodeName": "LOD0_place_ceres_grave_shard_Material_Structural",
+      "mergeBoundary": "LOD0_Ceramic",
+      "nodeName": "LOD0_Ceramic",
       "nodePath": [
-        0,
         0,
         4
       ],
@@ -870,7 +1743,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-glass",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal",
       "localTransform": [
         1,
         0,
@@ -889,13 +1762,12 @@
         0,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD1_place_ceres_grave_shard_Material_Glass",
-      "nodeName": "LOD1_place_ceres_grave_shard_Material_Glass",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal",
+      "nodeName": "LOD0_deadmetal",
       "nodePath": [
         0,
-        1,
-        0
+        5
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -920,7 +1792,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-heat",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-deep",
       "localTransform": [
         1,
         0,
@@ -940,12 +1812,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_place_ceres_grave_shard_Material_Heat",
-      "nodeName": "LOD1_place_ceres_grave_shard_Material_Heat",
+      "mergeBoundary": "LOD0_deadmetal_deep",
+      "nodeName": "LOD0_deadmetal_deep",
       "nodePath": [
         0,
-        1,
-        1
+        6
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -970,7 +1841,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-hull",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-faded",
       "localTransform": [
         1,
         0,
@@ -990,12 +1861,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_place_ceres_grave_shard_Material_Hull",
-      "nodeName": "LOD1_place_ceres_grave_shard_Material_Hull",
+      "mergeBoundary": "LOD0_deadmetal_faded",
+      "nodeName": "LOD0_deadmetal_faded",
       "nodePath": [
         0,
-        1,
-        2
+        7
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -1020,7 +1890,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-insulation",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-rust",
       "localTransform": [
         1,
         0,
@@ -1040,12 +1910,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_place_ceres_grave_shard_Material_Insulation",
-      "nodeName": "LOD1_place_ceres_grave_shard_Material_Insulation",
+      "mergeBoundary": "LOD0_deadmetal_rust",
+      "nodeName": "LOD0_deadmetal_rust",
       "nodePath": [
         0,
-        1,
-        3
+        8
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -1070,7 +1939,56 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-structural",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        4.400000095367432,
+        1.399999976158142,
+        4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        4.400000095367432,
+        1.399999976158142,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-livery",
       "localTransform": [
         1,
         0,
@@ -1090,12 +2008,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_place_ceres_grave_shard_Material_Structural",
-      "nodeName": "LOD1_place_ceres_grave_shard_Material_Structural",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        1,
-        4
+        10
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -1120,7 +2037,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-heat",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-mechanical",
       "localTransform": [
         1,
         0,
@@ -1140,12 +2057,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_place_ceres_grave_shard_Material_Heat",
-      "nodeName": "LOD2_place_ceres_grave_shard_Material_Heat",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        2,
-        0
+        11
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -1170,7 +2086,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-hull",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-mechanicaldark",
       "localTransform": [
         1,
         0,
@@ -1190,12 +2106,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_place_ceres_grave_shard_Material_Hull",
-      "nodeName": "LOD2_place_ceres_grave_shard_Material_Hull",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        2,
-        1
+        12
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -1220,7 +2135,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-insulation",
+      "id": "sf.render.ceres-grave-shard.mesh.lod0-warning",
       "localTransform": [
         1,
         0,
@@ -1240,12 +2155,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_place_ceres_grave_shard_Material_Insulation",
-      "nodeName": "LOD2_place_ceres_grave_shard_Material_Insulation",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        2,
-        2
+        13
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -1270,7 +2184,7 @@
       ]
     },
     {
-      "id": "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-structural",
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-armor",
       "localTransform": [
         1,
         0,
@@ -1290,12 +2204,1236 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_place_ceres_grave_shard_Material_Structural",
-      "nodeName": "LOD2_place_ceres_grave_shard_Material_Structural",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        2,
-        3
+        14
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic",
+      "nodeName": "LOD1_Ceramic",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal",
+      "nodeName": "LOD1_deadmetal",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_deep",
+      "nodeName": "LOD1_deadmetal_deep",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_faded",
+      "nodeName": "LOD1_deadmetal_faded",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_rust",
+      "nodeName": "LOD1_deadmetal_rust",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-hook-nav-port",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        4.400000095367432,
+        1.399999976158142,
+        4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        4.400000095367432,
+        1.399999976158142,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Ceramic",
+      "nodeName": "LOD2_Ceramic",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal",
+      "nodeName": "LOD2_deadmetal",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_deep",
+      "nodeName": "LOD2_deadmetal_deep",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_faded",
+      "nodeName": "LOD2_deadmetal_faded",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_rust",
+      "nodeName": "LOD2_deadmetal_rust",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-hook-nav-port",
+      "localTransform": [
+        0.15000033378601074,
+        0,
+        0,
+        0,
+        0,
+        0.15000033378601074,
+        0,
+        0,
+        0,
+        0,
+        0.15000033378601074,
+        0,
+        4.400000095367432,
+        1.399999976158142,
+        4.000000238418579,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        0.15000033378601074,
+        0,
+        0,
+        0,
+        0,
+        0.15000033378601074,
+        0,
+        0,
+        0,
+        0,
+        0.15000033378601074,
+        0,
+        4.400000095367432,
+        1.399999976158142,
+        4.000000238418579,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.ceres-grave-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-grave-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-grave-shard.mesh.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        39
       ],
       "parentId": "sf.render.ceres-grave-shard.root",
       "role": "immutable",
@@ -1341,7 +3479,7 @@
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "asset-root",
-      "nodeName": "place_ceres_grave_shard",
+      "nodeName": "SF_PLACE_CERES_GRAVE_SHARD_ROOT",
       "nodePath": [
         0
       ],
@@ -1370,48 +3508,50 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "1a4b698c872a9d8eb6ab97646c5fb4f318f2ca51037ceaab21e1a86f32db02f8"
+      "sha256": "da6c99ca284b1f52dda6ab2003aaec7b45cc778024420ec8d70e95f967964c96"
     },
     "sourceGlb": {
-      "bytes": 1205792,
-      "sha256": "c84defadb592976380c590a9790a4b1150b6ddb34c0832cb317e1cd6f0e3a005",
+      "bytes": 452916,
+      "sha256": "addbfad4e88c139b0b9e68b4696f6f8cef8a389c27124789551db92491400118",
       "uri": "place_ceres_grave_shard.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1226148,
-    "sha256": "71b62751597d4e35b948665402fc654402c34c5e488d1f279ada94b9e6d182b6",
+    "bytes": 587528,
+    "sha256": "b21b75bc87fff97815eddfdfbff114daae72aaf9318e4939300636efff4306af",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0,
-        0.00000762939453125,
-        -0.0002951622009277344
+        -0.33367395401000977,
+        4.261370480060577,
+        0
       ],
       "max": [
-        15.778303146362305,
-        11.097721099853516,
-        8.187820434570312
+        12.464390754699707,
+        10.12267017364502,
+        6.4546380043029785
       ],
       "min": [
-        -15.778303146362305,
-        -11.097705841064453,
-        -8.188410758972168
+        -13.131738662719727,
+        -1.5999292135238647,
+        -6.4546380043029785
       ],
       "size": [
-        31.55660629272461,
-        22.19542694091797,
-        16.37623119354248
+        25.596129417419434,
+        11.722599387168884,
+        12.909276008605957
       ]
     },
-    "hidden": [],
+    "hidden": [
+      2
+    ],
     "legacyPart": false,
     "markers": [
       {
@@ -1434,7 +3574,7 @@
           1
         ],
         "name": "SOCKET_Salvage_Core",
-        "planIndex": 19,
+        "planIndex": 42,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1470,7 +3610,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 20,
+        "planIndex": 43,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1488,29 +3628,38 @@
       }
     ],
     "materialProfileRoles": {
-      "glass": 2,
-      "hull": 12
+      "accent": 3,
+      "ceramic": 3,
+      "hull": 16,
+      "mechanical": 9,
+      "signal": 6,
+      "warning": 3
     },
     "materialProfiles": [
       {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -1519,8 +3668,13 @@
       },
       {
         "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 9,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1530,22 +3684,27 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -1555,15 +3714,130 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "warning"
       }
     ],
-    "nodeCount": 21,
+    "nodeCount": 44,
     "primitives": [
       {
         "canopy": false,
@@ -1585,13 +3859,11 @@
           0,
           1
         ],
-        "name": "LOD0_place_ceres_grave_shard_Material_Glass",
+        "name": "LOD0_Armor",
         "planIndex": 3,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
+          "lod": "lod0"
         }
       },
       {
@@ -1614,13 +3886,11 @@
           0,
           1
         ],
-        "name": "LOD0_place_ceres_grave_shard_Material_Heat",
+        "name": "LOD0_Beacon_Amber",
         "planIndex": 4,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
+          "lod": "lod0"
         }
       },
       {
@@ -1643,13 +3913,11 @@
           0,
           1
         ],
-        "name": "LOD0_place_ceres_grave_shard_Material_Hull",
+        "name": "LOD0_BrushedMetal",
         "planIndex": 5,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
+          "lod": "lod0"
         }
       },
       {
@@ -1672,13 +3940,11 @@
           0,
           1
         ],
-        "name": "LOD0_place_ceres_grave_shard_Material_Insulation",
+        "name": "LOD0_Ceramic",
         "planIndex": 6,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
+          "lod": "lod0"
         }
       },
       {
@@ -1701,13 +3967,11 @@
           0,
           1
         ],
-        "name": "LOD0_place_ceres_grave_shard_Material_Structural",
+        "name": "LOD0_deadmetal",
         "planIndex": 7,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
+          "lod": "lod0"
         }
       },
       {
@@ -1730,11 +3994,38 @@
           0,
           1
         ],
-        "name": "LOD1_place_ceres_grave_shard_Material_Glass",
+        "name": "LOD0_deadmetal_deep",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_faded",
         "planIndex": 9,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -1757,38 +4048,39 @@
           0,
           1
         ],
-        "name": "LOD1_place_ceres_grave_shard_Material_Heat",
+        "name": "LOD0_deadmetal_rust",
         "planIndex": 10,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.15000009536743164,
           0,
           0,
           0,
           0,
-          1,
+          0.15000009536743164,
           0,
           0,
           0,
           0,
-          1,
+          0.15000009536743164,
           0,
-          0,
-          0,
-          0,
+          4.400000095367432,
+          1.399999976158142,
+          4,
           1
         ],
-        "name": "LOD1_place_ceres_grave_shard_Material_Hull",
+        "name": "LOD0_HOOK_NAV_PORT",
         "planIndex": 11,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "damageRole": "navLight",
+          "lod": "lod0"
         }
       },
       {
@@ -1811,11 +4103,11 @@
           0,
           1
         ],
-        "name": "LOD1_place_ceres_grave_shard_Material_Insulation",
+        "name": "LOD0_Livery",
         "planIndex": 12,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -1838,10 +4130,91 @@
           0,
           1
         ],
-        "name": "LOD1_place_ceres_grave_shard_Material_Structural",
+        "name": "LOD0_Mechanical",
         "planIndex": 13,
         "tags": {
           "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
           "lod": "lod1"
         }
       },
@@ -1865,64 +4238,335 @@
           0,
           1
         ],
-        "name": "LOD2_place_ceres_grave_shard_Material_Heat",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_place_ceres_grave_shard_Material_Hull",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_place_ceres_grave_shard_Material_Insulation",
+        "name": "LOD1_Beacon_Amber",
         "planIndex": 17,
         "tags": {
           "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Ceramic",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_deep",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_faded",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_rust",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          4.400000095367432,
+          1.399999976158142,
+          4,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
           "lod": "lod2"
         }
       },
@@ -1946,8 +4590,306 @@
           0,
           1
         ],
-        "name": "LOD2_place_ceres_grave_shard_Material_Structural",
-        "planIndex": 18,
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Ceramic",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_deep",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_faded",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_rust",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000033378601074,
+          0,
+          0,
+          0,
+          0,
+          0.15000033378601074,
+          0,
+          0,
+          0,
+          0,
+          0.15000033378601074,
+          0,
+          4.400000095367432,
+          1.399999976158142,
+          4.000000238418579,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -1958,38 +4900,64 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb"
   },
-  "runtimeHash": "68c10caeb43f220aade7a96b67f0e629b8692a19d73c002cad8975ee0ec99bcd",
+  "runtimeHash": "25d90602997dcd2d69b9646cf6f95fb2dcaa026b768c0bcd24bebdfb124a4f08",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          15.778303146362305,
-          11.097721099853516,
-          8.187820434570312
+          12.464390754699707,
+          10.12267017364502,
+          6.4546380043029785
         ],
         "min": [
-          -15.778303146362305,
-          -11.097705841064453,
-          -8.188410758972168
+          -13.131738662719727,
+          -1.5999292135238647,
+          -6.4546380043029785
         ]
       },
       "id": "sf.render.ceres-grave-shard.body",
       "nodeIds": [
-        "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-glass",
-        "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-heat",
-        "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-hull",
-        "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-insulation",
-        "sf.render.ceres-grave-shard.mesh.lod0-place-ceres-grave-shard-material-structural",
-        "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-glass",
-        "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-heat",
-        "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-hull",
-        "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-insulation",
-        "sf.render.ceres-grave-shard.mesh.lod1-place-ceres-grave-shard-material-structural",
-        "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-heat",
-        "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-hull",
-        "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-insulation",
-        "sf.render.ceres-grave-shard.mesh.lod2-place-ceres-grave-shard-material-structural",
+        "sf.render.ceres-grave-shard.mesh.collision-hull",
+        "sf.render.ceres-grave-shard.mesh.lod0-armor",
+        "sf.render.ceres-grave-shard.mesh.lod0-beacon-amber",
+        "sf.render.ceres-grave-shard.mesh.lod0-brushedmetal",
+        "sf.render.ceres-grave-shard.mesh.lod0-ceramic",
+        "sf.render.ceres-grave-shard.mesh.lod0-deadmetal",
+        "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-deep",
+        "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-faded",
+        "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-rust",
+        "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port",
+        "sf.render.ceres-grave-shard.mesh.lod0-livery",
+        "sf.render.ceres-grave-shard.mesh.lod0-mechanical",
+        "sf.render.ceres-grave-shard.mesh.lod0-mechanicaldark",
+        "sf.render.ceres-grave-shard.mesh.lod0-warning",
+        "sf.render.ceres-grave-shard.mesh.lod1-armor",
+        "sf.render.ceres-grave-shard.mesh.lod1-beacon-amber",
+        "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal",
+        "sf.render.ceres-grave-shard.mesh.lod1-ceramic",
+        "sf.render.ceres-grave-shard.mesh.lod1-deadmetal",
+        "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep",
+        "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-faded",
+        "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust",
+        "sf.render.ceres-grave-shard.mesh.lod1-hook-nav-port",
+        "sf.render.ceres-grave-shard.mesh.lod1-livery",
+        "sf.render.ceres-grave-shard.mesh.lod1-mechanical",
+        "sf.render.ceres-grave-shard.mesh.lod1-mechanicaldark",
+        "sf.render.ceres-grave-shard.mesh.lod1-warning",
+        "sf.render.ceres-grave-shard.mesh.lod2-armor",
+        "sf.render.ceres-grave-shard.mesh.lod2-beacon-amber",
+        "sf.render.ceres-grave-shard.mesh.lod2-brushedmetal",
+        "sf.render.ceres-grave-shard.mesh.lod2-ceramic",
+        "sf.render.ceres-grave-shard.mesh.lod2-deadmetal",
+        "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-deep",
+        "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-faded",
+        "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-rust",
+        "sf.render.ceres-grave-shard.mesh.lod2-hook-nav-port",
+        "sf.render.ceres-grave-shard.mesh.lod2-livery",
+        "sf.render.ceres-grave-shard.mesh.lod2-mechanical",
+        "sf.render.ceres-grave-shard.mesh.lod2-mechanicaldark",
+        "sf.render.ceres-grave-shard.mesh.lod2-warning",
         "sf.render.ceres-grave-shard.root"
       ]
     }

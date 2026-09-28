@@ -228,7 +228,7 @@ export const tetherGameplay = {
     try { this._updateTetherGameplay(dt, state); }
     finally { this._insideTetherUpdate = false; }
     // The line's own phase was just mirrored. Hull climbs only while that line is taut.
-    if (state && state.mode === 'flight') stepLatchRepair(state, dt);
+    if (state && state.mode === 'flight') stepLatchRepair(state, dt, this.bus);
   },
 
   _updateTetherGameplay(dt, state) {
@@ -2644,6 +2644,9 @@ export function rateRelease(state, targetId, opts) {
   const omegaNow = Math.abs(finite(pair.omega));
   return {
     targetId, sourceId: state && state.playerId != null ? state.playerId : null,
+    // CV-THROW-1: deliberate marks a player release — the grade verdict teaches only
+    // intentional cuts; breaks and target loss emit the rating for evidence, not coaching.
+    deliberate: !!(opts && opts.deliberate === true),
     ...rating, scoringVersion: 'cadence.v1', observedTick: state && state.tick,
     radialSpeed: pair.radialSpeed, tangentialSpeed: pair.tangentialSpeed,
     angularSpeed: pair.omega, distance: pair.distance, restLength,

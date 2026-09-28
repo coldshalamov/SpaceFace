@@ -103,6 +103,7 @@ function actor({
   lawful = false,
   passive = true,
   binding = null,
+  namespace = 'ceres',
 }) {
   assertDistanceInBand(spawnOffset, CERES_ACTIVITY_BANDS.immediate, `actor ${id} spawn`);
   return Object.freeze({
@@ -117,7 +118,7 @@ function actor({
     spawnOffset,
     route: jobRoute,
     binding,
-    worldRecordSlotId: `ceres:activity:${id}`,
+    worldRecordSlotId: `${namespace}:activity:${id}`,
     tombstonePolicy: 'no_refill_or_reassign',
     countsTowardPocketActorCensus: true,
     countsTowardAuthoredCapacity: true,
@@ -182,11 +183,12 @@ function pocket({
   collisionAnchorSlots = [],
   serviceSlotIds = [],
   externalSiteRefs = [],
+  sectorId = CERES_ACTIVITY_SECTOR_ID,
 }) {
   if (actorSlots.length !== 2) throw new Error(`${id} must declare exactly two pocket actors`);
   return Object.freeze({
     id,
-    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    sectorId,
     label,
     pq020Identity: identity,
     activityAnchor: anchor,
@@ -624,9 +626,37 @@ export function ceresRouteTopologyClass(row) {
   return `${row.sweepClassDeg}deg/${row.spanClassWU}wu`;
 }
 
-// Ceres is the propagation template for every other sector, so it has to satisfy the
-// no-two-places-share-a-topology rule against ITSELF first. This runs at module load, which means
-// the required gates enforce it: check:pq020:ceres-topology imports world, world imports this file.
+/** Sector-agnostic form of the same coarse shape class. */
+export function routeTopologyClass(row) {
+  return `${row.sweepClassDeg}deg/${row.spanClassWU}wu`;
+}
+
+/**
+ * Every sector's pockets must satisfy the no-two-places-share-a-topology rule against THEMSELVES.
+ * Ceres runs first because it is the propagation template for every other sector. This runs at
+ * module load, which means the required gates enforce it: check:pq020:ceres-topology imports
+ * world, world imports this file.
+ */
+function assertDistinctRouteTopology(pockets, rows, label) {
+  const classes = rows.map(routeTopologyClass);
+  if (new Set(classes).size !== classes.length) {
+    throw new Error(`${label} routes share a topology class: ${rows
+      .map((row) => `${row.routeId}=${routeTopologyClass(row)}`).join(', ')}`);
+  }
+  const pocketClasses = pockets.map((entry) => rows
+    .filter((row) => row.pocketId === entry.id)
+    .map(routeTopologyClass)
+    .sort()
+    .join('+'));
+  if (new Set(pocketClasses).size !== pocketClasses.length) {
+    throw new Error(`${label} pockets share a route topology: ${pocketClasses.join(', ')}`);
+  }
+  const actorSlotCount = pockets.reduce((total, entry) => total + entry.actorSlots.length, 0);
+  if (rows.length !== actorSlotCount) {
+    throw new Error(`every ${label} pocket actor must contribute exactly one measured route topology`);
+  }
+}
+
 const routeTopologyClasses = CERES_ROUTE_TOPOLOGY.map(ceresRouteTopologyClass);
 if (new Set(routeTopologyClasses).size !== routeTopologyClasses.length) {
   throw new Error(`Ceres routes share a topology class: ${CERES_ROUTE_TOPOLOGY
@@ -643,6 +673,8 @@ if (new Set(pocketTopologyClasses).size !== pocketTopologyClasses.length) {
 if (CERES_ROUTE_TOPOLOGY.length !== CERES_POCKET_ACTOR_SLOT_ORDER.length) {
   throw new Error('every Ceres pocket actor must contribute exactly one measured route topology');
 }
+
+// The same rule, applied per sector, is what lets a second sector join this module at all.
 
 /** Sandbox acceptance entry; production pockets remain ship-agnostic and acceptance remains open. */
 export const CERES_REFERENCE_ACCEPTANCE_ENTRY = Object.freeze({
@@ -736,4 +768,238 @@ function assertSamePoint(a, b, label) {
   if (!a || !b || a.x !== b.x || a.z !== b.z) {
     throw new Error(`${label} canonical anchors disagree`);
   }
+}
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// CV-DAY — the module stops being Ceres-only. Ceres stays the reference pocket set; a named sector
+// may now declare its own pockets against the same band, route-topology and slot laws. The fiction
+// is per sector: a sector's pockets describe what its JOB is, never a density slider over Ceres.
+//
+// Helios Prime is the starter harbour, and its job is the one the CV-DAY brief names: a miner is on
+// a seam, material is coming off it, a hauler is coming or going with it, somebody wants that cargo,
+// and a patrol has a route. That is one causal chain in one neighbourhood, present with no accept.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const HELIOS_ACTIVITY_SECTOR_ID = 'sector_helios_prime';
+/** Four pocket actors across two pockets: the work, and the movement. */
+export const HELIOS_AUTHORED_ACTIVITY_CAPACITY = 4;
+
+const heliosAnchors = requireRecord(SECTOR_ANCHORS[HELIOS_ACTIVITY_SECTOR_ID], 'Helios sector anchors');
+const heliosZones = requireArray(SECTOR_ZONES[HELIOS_ACTIVITY_SECTOR_ID], 'Helios sector zones');
+const heliosClaimZone = findById(heliosZones, 'zone_helios_claim', 'Helios claim zone');
+const heliosClaimMarkPoi = findById(heliosAnchors.pois, 'poi_helios_claim_mark', 'Helios claim mark POI');
+
+const heliosSeamId = 'helios_starter_seam';
+const heliosLegId = 'helios_freight_leg';
+
+const heliosSeamObjects = Object.freeze([
+  objectSlot({
+    id: 'helios_seam_ore_face',
+    pocketId: heliosSeamId,
+    kind: 'world_owned_asteroid_slot',
+    offset: point(-62, 24),
+    runtimeOwner: 'world',
+    targetRef: 'field:f_helios_starter',
+  }),
+]);
+
+const heliosLegObjects = Object.freeze([
+  objectSlot({
+    id: 'helios_freight_staging_pod',
+    pocketId: heliosLegId,
+    kind: 'cargo_staging_pod',
+    offset: point(48, -22),
+    runtimeOwner: 'world',
+    targetRef: 'object:helios_freight_staging_pod',
+  }),
+]);
+
+const heliosSeamActors = Object.freeze([
+  actor({
+    id: 'helios_seam_miner',
+    pocketId: heliosSeamId,
+    namespace: 'helios',
+    presentationRole: 'miner',
+    jobKind: 'miner',
+    spawnOffset: point(30, -20),
+    route: route({
+      id: 'helios_seam_extraction_loop',
+      jobKind: 'miner',
+      durationS: 20,
+      receiptType: 'mining:npcExtraction',
+      // Tight wedge, 76.7 deg / 124.4 WU - the close, repetitive extraction family. The ore-face
+      // mark resolves to the starter field's live rocks; the pad mark resolves to the real Helios
+      // berth, so the transport leg off the seam is physical rather than a mark that happens to
+      // point at the station on paper.
+      marks: [
+        mark('helios_seam_pad', 3, -100, 'dest:station_helios'),
+        mark('helios_seam_ore_face', -97, -26, 'field:slot:helios_seam_ore_face'),
+      ],
+    }),
+  }),
+  actor({
+    id: 'helios_seam_fence',
+    pocketId: heliosSeamId,
+    namespace: 'helios',
+    // Not a second miner and not a hostile: the party who WANTS that cargo. It hangs on the same
+    // claim, passive, unlicensed, and shadows the loaded run instead of cutting rock of its own.
+    presentationRole: 'salvor',
+    jobKind: 'salvor',
+    passive: true,
+    spawnOffset: point(-38, 26),
+    route: route({
+      id: 'helios_seam_fence_run',
+      jobKind: 'salvor',
+      durationS: 26,
+      // Wide oblique, 149.9 deg / 227.7 WU - a long swing across the claim that crosses the miner's
+      // close wedge rather than repeating it. The shadow mark tracks the miner's live hull; the
+      // offload mark resolves to Helios, which is where that cargo is going whether or not the
+      // fence is the one carrying it.
+      marks: [
+        mark('helios_fence_shadow', -111, 40, 'actor:helios_seam_miner'),
+        mark('helios_fence_offload', 76, -90, 'dest:station_helios'),
+      ],
+    }),
+  }),
+]);
+
+const heliosLegActors = Object.freeze([
+  actor({
+    id: 'helios_freight_hauler',
+    pocketId: heliosLegId,
+    namespace: 'helios',
+    presentationRole: 'hauler',
+    jobKind: 'hauler',
+    spawnOffset: point(34, 18),
+    route: route({
+      id: 'helios_freight_inbound_run',
+      jobKind: 'hauler',
+      durationS: 22,
+      receiptType: 'freight:arrival',
+      // Transit lane, 180.0 deg / 223.3 WU - the only Helios route that runs straight through its
+      // anchor, because the freight leg IS the fiction. Inbound resolves to the real Helios berth
+      // (it is coming); outbound resolves to the authored spine mark (it is going).
+      marks: [
+        mark('helios_freight_inbound', -105, -38, 'dest:station_helios'),
+        mark('helios_freight_outbound', 105, 38, 'activity:helios-freight-outbound'),
+      ],
+    }),
+  }),
+  actor({
+    id: 'helios_customs_patrol',
+    pocketId: heliosLegId,
+    namespace: 'helios',
+    presentationRole: 'patrol',
+    jobKind: 'patrol',
+    lawful: true,
+    spawnOffset: point(-28, -30),
+    route: route({
+      id: 'helios_claim_perimeter',
+      jobKind: 'patrol',
+      durationS: 28,
+      // Quarter arc, 104.9 deg / 182.5 WU - the Concord keeps the Sanctioned Claim clear so green
+      // pilots can learn to mine, so the beat goes AROUND the work instead of through it. The only
+      // lawful body in the neighbourhood, and the only one whose route never resolves to a cargo.
+      marks: [
+        mark('helios_claim_beat_a', -58, 100, 'activity:helios-claim-beat-a'),
+        mark('helios_claim_beat_b', -81, -81, 'activity:helios-claim-beat-b'),
+      ],
+    }),
+  }),
+]);
+
+export const HELIOS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: heliosSeamId,
+    label: 'Sanctioned Claim',
+    identity: Object.freeze({ zoneId: heliosClaimZone.id, fieldId: 'f_helios_starter' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: heliosClaimZone.id, zoneId: heliosClaimZone.id,
+      placeId: null, localPos: heliosClaimZone.center,
+    }),
+    actorSlots: heliosSeamActors,
+    objectSlots: heliosSeamObjects,
+    sectorId: HELIOS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: heliosLegId,
+    label: 'Freight Leg',
+    identity: Object.freeze({ zoneId: heliosClaimZone.id, placeId: heliosClaimMarkPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: heliosClaimMarkPoi.id, zoneId: heliosClaimZone.id,
+      placeId: heliosClaimMarkPoi.id, localPos: heliosClaimMarkPoi.pos,
+    }),
+    actorSlots: heliosLegActors,
+    objectSlots: heliosLegObjects,
+    sectorId: HELIOS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const HELIOS_ACTIVITY_POCKET_ORDER = Object.freeze(HELIOS_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const HELIOS_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  HELIOS_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const HELIOS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(HELIOS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const HELIOS_ROUTE_TOPOLOGY = Object.freeze(HELIOS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (HELIOS_POCKET_ACTOR_SLOT_ORDER.length !== HELIOS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Helios authored capacity mismatch: ${HELIOS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(HELIOS_POCKET_ACTOR_SLOT_ORDER).size !== HELIOS_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Helios authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(HELIOS_ACTIVITY_POCKETS, HELIOS_ROUTE_TOPOLOGY, 'Helios');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
+// reason a second sector can exist here at all.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+const EMPTY_POCKETS = Object.freeze([]);
+
+export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
+  [CERES_ACTIVITY_SECTOR_ID]: CERES_ACTIVITY_POCKETS,
+  [HELIOS_ACTIVITY_SECTOR_ID]: HELIOS_ACTIVITY_POCKETS,
+});
+
+export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));
+
+export const ACTIVITY_POCKETS = Object.freeze(ACTIVITY_POCKET_SECTOR_IDS.flatMap(
+  (sectorId) => ACTIVITY_POCKETS_BY_SECTOR[sectorId],
+));
+
+export const ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+
+/** Authored activity pockets declared for `sectorId`, or an empty list. */
+export function activityPocketsForSector(sectorId) {
+  return Object.prototype.hasOwnProperty.call(ACTIVITY_POCKETS_BY_SECTOR, sectorId)
+    ? ACTIVITY_POCKETS_BY_SECTOR[sectorId]
+    : EMPTY_POCKETS;
+}
+
+/** The pocket with this id in any sector, or null. */
+export function activityPocketById(id) {
+  return Object.prototype.hasOwnProperty.call(ACTIVITY_POCKETS_BY_ID, id)
+    ? ACTIVITY_POCKETS_BY_ID[id]
+    : null;
+}
+
+/** The actor slot with this id in any sector, or null. */
+export function activityActorSlotById(id) {
+  for (const pocketEntry of ACTIVITY_POCKETS) {
+    const slot = pocketEntry.actorSlots.find((candidate) => candidate.id === id);
+    if (slot) return slot;
+  }
+  return null;
+}
+
+/** Measured route shapes for every sector, keyed by pocket id. */
+export function activityRouteTopologyForSector(sectorId) {
+  return activityPocketsForSector(sectorId).flatMap((entry) => entry.actorSlots.map((slot) => routeTopology(slot)));
 }

@@ -164,6 +164,14 @@ export const salvageActions = {
       if (!data.salvagePool || typeof data.salvagePool !== 'object') {
         data.salvagePool = salvagePoolForWreck(entity, data.authoredSalvagePool);
       }
+    } else if (data.markerId && data.salvagePool && typeof data.salvagePool === 'object'
+        && Object.keys(data.salvagePool).length > 0) {
+      // The durable aftermath marker owns this pool by reference — overwriting the field would
+      // detach live salvage from the persistent record and lose the victim's manifest residue.
+      // The only adjustment allowed is the legality remap, and it must land in place.
+      const remapped = salvagePoolForWreck(entity, data.salvagePool);
+      for (const key of Object.keys(data.salvagePool)) delete data.salvagePool[key];
+      Object.assign(data.salvagePool, remapped);
     } else {
       data.salvagePool = salvagePoolForWreck(entity, poolForAction(action));
     }

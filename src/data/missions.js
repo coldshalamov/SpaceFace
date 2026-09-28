@@ -325,6 +325,30 @@ function setPieceCopyRefs(archetypeId, stageId) {
   };
 }
 
+/**
+ * G1: set-piece scan stages whose world target is an authored unique wreck. A generic sector
+ * pulse must never complete these — only a scan that fixes the placed wreck's bearing does
+ * (missions.js routes `uniqueWreck:bearingFixed` into them). `long_read_rumor_survey` is the
+ * dynamic-target precedent; the other four name their chain's dedicated wreck.
+ */
+export const WRECK_BOUND_SET_PIECE_OBJECTIVES = new Set([
+  'long_read_rumor_survey',
+  'investigation_scan_wreck',
+  'blockade_map_cordon',
+  'witness_compare_aliases',
+  'hearing_open_hearing',
+]);
+
+// G1: home sector of each chain-dedicated authored wreck (D13-D16 in uniqueWrecks.js). Kept as
+// pure data here so the catalog validator can require the opening stage to run in the wreck's
+// home sector; the focused G1 test cross-checks this table against the wreck registry itself.
+export const SET_PIECE_WRECK_SECTORS = Object.freeze({
+  wreck_mts_quadrille: 'sector_io_reach',
+  wreck_isc_double_entry: 'sector_tethys_junction',
+  wreck_dmc_first_notch: 'sector_vesta_forge',
+  wreck_mts_regular: 'sector_pallas_drift',
+});
+
 export const SET_PIECE_MISSIONS = [
   {
     id: 'long_read',
@@ -435,6 +459,8 @@ export const SET_PIECE_MISSIONS = [
     title: 'The Witness Run',
     startStationId: 'station_customs',
     repeatable: true,
+    // D14: the alias comparison happens ON the dual-registry hull itself.
+    wreckId: 'wreck_isc_double_entry',
     witnesses: [
       {
         id: 'dorin',
@@ -469,7 +495,7 @@ export const SET_PIECE_MISSIONS = [
         rewardCr: 560,
         collateralCr: 0,
         distance: 700,
-        params: { scanTargets: 3 },
+        params: { scanTargets: 3, setPieceObjective: 'witness_compare_aliases' },
         clauseIds: [],
         ...setPieceCopyRefs('witness_run', 'compare_aliases'),
       },
@@ -577,6 +603,8 @@ export const SET_PIECE_MISSIONS = [
     title: 'The Hearing',
     startStationId: 'station_forge',
     repeatable: true,
+    // D15: the hearing opens over the siege's first kill, held as evidence in the approach.
+    wreckId: 'wreck_dmc_first_notch',
     commonStages: [
       {
         id: 'open_the_hearing',
@@ -589,7 +617,7 @@ export const SET_PIECE_MISSIONS = [
         rewardCr: 880,
         collateralCr: 220,
         distance: 800,
-        params: { scanTargets: 3 },
+        params: { scanTargets: 3, setPieceObjective: 'hearing_open_hearing' },
         clauseIds: [],
         ...setPieceCopyRefs('hearing', 'open_the_hearing'),
       },
@@ -680,19 +708,22 @@ export const SET_PIECE_MISSIONS = [
     title: 'The Blockade Run',
     startStationId: 'station_customs',
     repeatable: true,
+    // D16: mapping the cordon means reading its latest kill — the Regular's graveyard on the
+    // Drift approach, where both blockade_run routes terminate.
+    wreckId: 'wreck_mts_regular',
     commonStages: [
       {
         id: 'map_the_cordon',
         title: 'Map the Cordon',
         type: 'recon_scan',
         boardStationId: 'station_customs',
-        destSectorId: 'sector_tethys_junction',
+        destSectorId: 'sector_pallas_drift',
         factionId: 'faction_scn',
         riskTier: 2,
         rewardCr: 720,
         collateralCr: 0,
         durationS: 1500,
-        distance: 900,
+        distance: 2400,
         params: {
           scanTargets: 3,
           setPieceObjective: 'blockade_map_cordon',
@@ -809,6 +840,8 @@ export const SET_PIECE_MISSIONS = [
     title: 'The Investigation Chain',
     startStationId: 'station_reach',
     repeatable: true,
+    // D13: the silent wreck is the Quadrille herself — scanned, then boarded for the box.
+    wreckId: 'wreck_mts_quadrille',
     commonStages: [
       {
         id: 'scan_the_silent_wreck',
@@ -1039,7 +1072,7 @@ export function validateSetPieceMissionCatalog(catalog = SET_PIECE_MISSIONS) {
       for (const witness of definition.witnesses || []) {
         if (!witness.id || !witness.displayName || !Array.isArray(witness.travelLineRefs)
             || witness.travelLineRefs.length < 3) {
-          errors.push(`${root}: each witness requires identity and transit lines.`);
+          errors.push(`${root}/${witness.id}: each witness requires identity and transit lines.`);
           continue;
         }
         for (const ref of witness.travelLineRefs) {
@@ -1047,6 +1080,22 @@ export function validateSetPieceMissionCatalog(catalog = SET_PIECE_MISSIONS) {
             errors.push(`${root}/${witness.id}: invalid travel-line ref.`);
           }
         }
+      }
+    }
+
+    // G1: a chain bound to an authored wreck must open on its wreck-bound scan stage, and that
+    // stage must run in the wreck's home sector so the placed hull is reachable from the board.
+    if (definition.wreckId != null) {
+      const opening = commonStages[0];
+      const openingObjective = opening && opening.params && opening.params.setPieceObjective;
+      if (!WRECK_BOUND_SET_PIECE_OBJECTIVES.has(openingObjective)) {
+        errors.push(`${root}: wreck-bound chain must open on a wreck-bound scan stage.`);
+      }
+      const wreckSector = SET_PIECE_WRECK_SECTORS[definition.wreckId];
+      if (!wreckSector) {
+        errors.push(`${root}: wreckId ${definition.wreckId} is not an authored unique wreck.`);
+      } else if (opening && opening.destSectorId !== wreckSector) {
+        errors.push(`${root}: opening stage sector ${opening.destSectorId} must match wreck sector ${wreckSector}.`);
       }
     }
   }

@@ -91,6 +91,7 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
   CERES_ACTIVITY_SERVICE_SLOTS,
+  activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
@@ -1050,6 +1051,7 @@ function ceresActivityJobSpec(entry) {
   if (!entry || entry.service || !entry.pocket || !entry.slot) return null;
   const { pocket, slot } = entry;
   const route = slot.route;
+  const sectorId = pocket.sectorId || CERES_ACTIVITY_SECTOR_ID;
   const anchor = pocket.activityAnchor && pocket.activityAnchor.localPos;
   if (!CERES_ACTIVITY_JOB_KINDS.has(slot.jobKind)
     || !anchor || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.z)
@@ -1062,7 +1064,7 @@ function ceresActivityJobSpec(entry) {
     const pos = sectorLocalToGlobalForSector({
       x: anchor.x + mark.offset.x,
       z: anchor.z + mark.offset.z,
-    }, CERES_ACTIVITY_SECTOR_ID);
+    }, sectorId);
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
     waypoints.push({
       id: mark.id,
@@ -1080,11 +1082,14 @@ function ceresActivityJobSpec(entry) {
   if (!Number.isFinite(speed) || speed <= 0) return null;
   return {
     kind: slot.jobKind,
-    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    sectorId,
     route: waypoints,
     speed,
   };
 }
+
+/** Sector-agnostic name for the same descriptor-to-job translation (CV-DAY: any authored sector). */
+const activityJobSpec = ceresActivityJobSpec;
 
 function exactCeresRouteTargetRefMode(route, canonicalRoute, legacyTargetRefs = null) {
   if (!Array.isArray(route) || !Array.isArray(canonicalRoute)
@@ -1507,7 +1512,9 @@ export const traffic = {
     }
     const sectorId = (p && p.sectorId)
       || (this.state.world && this.state.world.currentSectorId);
-    if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._captureCeresActivityCast();
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID || activityPocketsForSector(sectorId).length) {
+      this._captureCeresActivityCast();
+    }
     this._captureSourceBoundGeneralSalvors();
     this._cleanup();
   },
@@ -1545,6 +1552,12 @@ export const traffic = {
       return;
     }
     this._resetRngForSector(sectorId);
+    // CV-DAY: an authored pocket set is a shift already in progress, not an ambient density. Cast
+    // it first so the neighbourhood reads as work before the ambient top-up fills around it.
+    const authoredPockets = activityPocketsForSector(sectorId);
+    if (authoredPockets.length) {
+      this._materializeAuthoredActivityCast(sector, authoredPockets);
+    }
     // Density from trafficPerMin; high-sec cores floor at CORE_MIN_TRAFFIC (spec2/04 core pocket).
     // Explicit trafficPerMin:0 still means "hollow" (frontier silence).
     const count = ambientCountForSector(sector, this.state);
@@ -2103,10 +2116,141 @@ export const traffic = {
     let captured = 0;
     for (const record of this.state.traffic && this.state.traffic.freighters || []) {
       const entity = record && liveEntity(this.state, record.id);
-      if (!entity || !entity.data || entity.data.ceresActivityCast !== true) continue;
+      if (!entity || !entity.data) continue;
+      if (entity.data.ceresActivityCast !== true && entity.data.authoredActivityCast !== true) continue;
       if (worldOwner.upsertWorldRecord(entity)) captured += 1;
     }
     return captured;
+  },
+
+  /**
+   * CV-DAY: authored activity pockets for a sector other than Ceres. Same descriptor-to-body
+   * translation the Ceres cast uses - authored spawn inside the pocket's immediate band, durable
+   * identity under the sector's own slot namespace, and an npcJobs route built from the pocket's
+   * measured marks - minus Ceres's causal choreography, which is Ceres's fiction and not the rule.
+   * The chain is present with no accept: you arrive and the shift is already under way.
+   */
+  _materializeAuthoredActivityCast(sector, pockets) {
+    if (!sector || !Array.isArray(pockets) || pockets.length === 0) return 0;
+    if (!this.helpers || !this.helpers.spawnEntity) return 0;
+    this._ensureState();
+    const sectorId = sector.id;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const prior = this.state.traffic.freighters || [];
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId
+      ? this.state.world.records.byId
+      : {};
+    const authored = [];
+    const authoredSlotIds = new Set();
+    let spawned = 0;
+
+    for (const pocketEntry of pockets) {
+      for (const slot of pocketEntry.actorSlots) {
+        authoredSlotIds.add(slot.id);
+        const entry = { pocket: pocketEntry, slot, service: false };
+        const recordId = stableRecordId(
+          seed,
+          sectorId,
+          RECORD_KIND.CONVOY,
+          slot.worldRecordSlotId,
+        );
+        let entity = entityWithWorldRecord(this.state, recordId);
+        const record = records[recordId] || null;
+        if (terminalWorldRecord(record)) continue;
+        // An active durable record without a live body belongs to world residency. Never
+        // additive-spawn over it; the world owner rematerializes it when the sector reaches FULL.
+        if (record && !entity) continue;
+
+        const role = slot.presentationRole || 'hauler';
+        const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
+        const localPos = {
+          x: pocketEntry.activityAnchor.localPos.x + slot.spawnOffset.x,
+          z: pocketEntry.activityAnchor.localPos.z + slot.spawnOffset.z,
+        };
+        const pos = sectorLocalToGlobalForSector(localPos, sectorId);
+        if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) continue;
+        const lawful = slot.lawful === true || lawPresenceRole(role);
+        const aiSpec = {
+          archetype: def.archetype,
+          passive: slot.passive !== false,
+          spawnContext: lawful ? 'patrol' : 'convoy_civilian',
+          ...(lawful ? { lawful: true } : {}),
+        };
+        const canonicalSpec = makeShipEntitySpec(def.ship, {
+          team: def.team,
+          factionId: (sector && sector.factionId) || 'faction_free',
+          pos,
+          ai: aiSpec,
+        });
+        canonicalSpec.homeSectorId = sectorId;
+
+        const wasFresh = !entity;
+        if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
+        if (!entity) continue;
+        if (wasFresh) spawned += 1;
+        this._stampAuthoredActivityEntity(entity, canonicalSpec.data, entry, sectorId, recordId);
+        this._assignActivityJob(entity, entry);
+
+        let trafficRecord = prior.find((candidate) => candidate && candidate.id === entity.id);
+        if (!trafficRecord) trafficRecord = {};
+        trafficRecord.id = entity.id;
+        trafficRecord.role = role;
+        trafficRecord.targetId = null;
+        trafficRecord.waitT = Number.isFinite(trafficRecord.waitT) ? trafficRecord.waitT : 0;
+        trafficRecord.nextTradeT = Number.POSITIVE_INFINITY;
+        trafficRecord.orbitPhase = Number.isFinite(trafficRecord.orbitPhase) ? trafficRecord.orbitPhase : 0;
+        trafficRecord.dockSeq = Number.isFinite(entity.data && entity.data.freightDockSeq)
+          ? entity.data.freightDockSeq | 0
+          : (trafficRecord.dockSeq | 0);
+        trafficRecord.manifest = (entity.data && entity.data.cargoManifest) || trafficRecord.manifest || null;
+        trafficRecord.activityActorSlotId = slot.id;
+        trafficRecord.authoredActivityCast = true;
+        trafficRecord.worldRecordId = recordId;
+        authored.push(trafficRecord);
+      }
+    }
+
+    // Keep the ambient population the authored cast displaced: anything not one of our slots stays.
+    const legacy = prior.filter((record) => {
+      const entity = record && liveEntity(this.state, record.id);
+      const slotId = (record && record.activityActorSlotId)
+        || (entity && entity.data && entity.data.activityActorSlotId);
+      return !authoredSlotIds.has(slotId);
+    });
+    this.state.traffic.freighters = [...legacy, ...authored];
+    const liveIds = this.state.traffic.freighters
+      .map((record) => record && record.id)
+      .filter((id) => liveEntity(this.state, id));
+    this._active = [...new Set(liveIds)];
+    return spawned;
+  },
+
+  _stampAuthoredActivityEntity(entity, canonicalData, entry, sectorId, recordId) {
+    const data = entity.data || (entity.data = {});
+    data.factionId = canonicalData.factionId;
+    data.team = canonicalData.team;
+    data.trafficRole = entry.slot.presentationRole || 'hauler';
+    data.trafficLabel = (TRAFFIC_ROLES[data.trafficRole] || TRAFFIC_ROLES.hauler).label;
+    data.role = data.trafficRole;
+    data.worldRecordId = recordId;
+    data.identityKey = entry.slot.worldRecordSlotId;
+    data.durable = true;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    data.activityActorSlotId = entry.slot.id;
+    data.authoredActivityCast = true;
+    data.authoredActivityJobOwned = true;
+    data.intent = null;
+    entity.homeSectorId = sectorId;
+    data.homeSectorId = sectorId;
+    data.sectorId = sectorId;
+  },
+
+  _assignActivityJob(entity, entry) {
+    if (!entity || entity.alive === false || !entity.data || !entry || entry.service) return null;
+    const spec = activityJobSpec(entry);
+    const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    if (!spec || typeof assign !== 'function') return null;
+    return assign(entity, spec);
   },
 
   _captureSourceBoundGeneralSalvors() {

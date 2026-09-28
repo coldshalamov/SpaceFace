@@ -151,8 +151,13 @@ test('an unresolved decision survives player save/load and re-publishes its acti
       const restored = b.state.player.uniqueWrecks.bearings[WRECK_ID];
       assert.equal(restored.phase, 'decision');
       assert.equal(restored.choiceId, null);
-      assert.equal(b.state.entityList.some((entity) => entity.data?.uniqueWreckId === WRECK_ID), false,
-        'Continue cannot respawn the dismantled physical wreck while settlement is pending');
+      // Settlement is pending, so the salvageable wreck stays dismantled — but the site itself
+      // persists as an inert claim-pending husk instead of the map pointing at empty space.
+      const site = b.state.entityList.find((entity) => entity.data?.uniqueWreckId === WRECK_ID);
+      assert.ok(site, 'Continue keeps the pending-settlement site physical');
+      assert.equal(site.data._salvaged, true);
+      assert.match(site.data.scanLabel, /RECOVERY CLAIM PENDING/);
+      assert.deepEqual(site.data.salvagePool, {}, 'the pending site carries no salvageable pool');
       assert.equal(b.events.filter((entry) => entry.name === 'uniqueWreck:decisionReady').length, 1);
 
       b.bus.emit('uniqueWreck:decisionRequest', { source: 'priority-alert-cleared' });

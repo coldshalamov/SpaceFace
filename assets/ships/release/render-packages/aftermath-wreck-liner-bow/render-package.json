@@ -16,15 +16,15 @@
         0,
         1,
         0,
-        15.475814819335938,
-        8.214347839355469,
-        -4.810021877288818,
+        -9.911733627319336,
+        17.95679473876953,
+        -12.983580589294434,
         1
       ],
       "nodeName": "SOCKET_BlackBox",
       "nodePath": [
         0,
-        36
+        31
       ],
       "parentNodeId": "sf.render.aftermath-wreck-liner-bow.root",
       "worldTransform": [
@@ -40,9 +40,9 @@
         0,
         1,
         0,
-        15.475814819335938,
-        8.214347839355469,
-        -4.810021877288818,
+        -9.911733627319336,
+        17.95679473876953,
+        -12.983580589294434,
         1
       ]
     },
@@ -62,15 +62,15 @@
         0,
         1,
         0,
-        15.475814819335938,
-        12.214347839355469,
-        -1.8100218772888184,
+        15.093189239501953,
+        9.746221542358398,
+        -1.7873458862304688,
         1
       ],
       "nodeName": "SOCKET_Salvage_Bridge",
       "nodePath": [
         0,
-        37
+        32
       ],
       "parentNodeId": "sf.render.aftermath-wreck-liner-bow.root",
       "worldTransform": [
@@ -86,9 +86,9 @@
         0,
         1,
         0,
-        15.475814819335938,
-        12.214347839355469,
-        -1.8100218772888184,
+        15.093189239501953,
+        9.746221542358398,
+        -1.7873458862304688,
         1
       ]
     }
@@ -99,906 +99,1756 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2bb26eebc938e96e89f13a975f06cdc641a353bd4ee785706946d6d482a81208",
+  "contentHash": "c8b0837535c2ec3ae9069d4b777ee48702ac48bc263c4d47afc9316ef7733f22",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -17.283973693847656,
-          1.8882272243499756,
-          -2.789975881576538
+          -17.357189178466797,
+          -2.532315969467163,
+          30.476511001586914
         ],
         "min": [
-          -24.9509220123291,
-          -3.9162960052490234,
-          -10.2341890335083
+          -18.924741744995117,
+          -4.472996711730957,
+          30.289827346801758
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d148069e99c3513bbde88d7dab50ecb39750bb4e8c8d09110182c4aac3bb8aa",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-0.primitive.0",
+      "geometryHash": "66198b2f7848a1850c68c1d53937fde663df99932698b8887ab9406381ba4521",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19-m.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
+      "materialPipelineKey": "opaque",
+      "meshName": "Deck-0.55_19_M",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19-m",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.357189178466797,
+          -2.532315969467163,
+          -33.86452102661133
+        ],
+        "min": [
+          -18.924741744995117,
+          -4.472996711730957,
+          -34.05120086669922
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54070db33e595ddfc44cb2827fc0c4308eadfa6a622946cfe69f41b6553a3a51",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
+      "materialPipelineKey": "opaque",
+      "meshName": "Deck-0.55_19",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.357189178466797,
+          4.558632850646973,
+          30.476511001586914
+        ],
+        "min": [
+          -18.924741744995117,
+          2.617952346801758,
+          30.289827346801758
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a84c81739dedad855fa78720a1e8ec7b57ea164c78e0feddd784c0a476fa16c1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19-m.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
+      "materialPipelineKey": "opaque",
+      "meshName": "Deck1.35_19_M",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19-m",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.357189178466797,
+          4.558632850646973,
+          -33.86452102661133
+        ],
+        "min": [
+          -18.924741744995117,
+          2.617952346801758,
+          -34.05120086669922
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a84732b44030d2ca7d9b9b2d2892193baa8ee51e37ba74acdcc4e6e4a3552944",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
+      "materialPipelineKey": "opaque",
+      "meshName": "Deck1.35_19",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.821632385253906,
+          3.9328012466430664,
+          33.68656921386719
+        ],
+        "min": [
+          -19.44306182861328,
+          -4.037538528442383,
+          29.110685348510742
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "372d9d99f90a647db1c77001f10ca7bf82e5a56cffc41fd074461c47b37ebaa3",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar.primitive.0",
+      "indexCount": 402,
+      "indexed": true,
+      "materialHash": "9298fcfc7c081d69e38949531d83cb8811ebc7cf1e286c15665e626113acbefb",
+      "materialPipelineKey": "opaque",
+      "meshName": "DockCollar",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar",
+      "primitiveIndex": 0,
+      "vertexCount": 170
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.824552536010742,
+          3.929882526397705,
+          33.7026252746582
+        ],
+        "min": [
+          -19.442089080810547,
+          -4.033646583557129,
+          29.110685348510742
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f14bb054b96c6b749942bcd73214665ee407fe90dd7da73f7902128813f80bb6",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar.primitive.1",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "DockCollar",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar",
+      "primitiveIndex": 1,
+      "vertexCount": 186
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.778400421142578,
+          3.878314733505249,
+          33.518245697021484
+        ],
+        "min": [
+          -19.44695281982422,
+          -4.027322769165039,
+          29.37582015991211
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e29bbb15dddcc35c3295230975a034747d576f7a15b416c0f3c0614b12440995",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar.primitive.2",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "materialPipelineKey": "opaque",
+      "meshName": "DockCollar",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar",
+      "primitiveIndex": 2,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.66704750061035,
+          4.532157897949219,
+          34.0537109375
+        ],
+        "min": [
+          -19.936513900756836,
+          -4.4365034103393555,
+          32.86909103393555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a8270024ad19e02254bd62883601d3c607507c2c5ae110e7a84fecbf58c0e4cf",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockring.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
+      "materialPipelineKey": "opaque",
+      "meshName": "DockRing",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.dockring",
+      "primitiveIndex": 0,
+      "vertexCount": 224
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.660888671875,
+          4.532157897949219,
+          34.0537109375
+        ],
+        "min": [
+          -19.936513900756836,
+          -4.4365034103393555,
+          32.86909103393555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bff8297da9afb823c21a5f5c41305ec3b0dd9be582987ea84397597dcf884993",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockring.primitive.1",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-0",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "meshName": "DockRing",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.dockring",
+      "primitiveIndex": 1,
+      "vertexCount": 38
     },
     {
       "bounds": {
         "max": [
-          -16.502979278564453,
-          0.7229947447776794,
-          2.453902006149292
+          -0.5812028646469116,
+          19.282800674438477,
+          30.411975860595703
         ],
         "min": [
-          -30.28352165222168,
-          -12.214250564575195,
-          -6.1307525634765625
+          -19.895124435424805,
+          -16.003419876098633,
+          -34.05366897583008
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a626676c07473f7bc0e159f47b9fe1f2d931ccb770c72d06a7d333597f083234",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-1.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "79d67b203ce860d0d5314afe4f755aee504bc4692ed57651e6c802eb74902c9a",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.0",
+      "indexCount": 4104,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-1",
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
       "primitiveIndex": 0,
-      "vertexCount": 30
+      "vertexCount": 1267
     },
     {
       "bounds": {
         "max": [
-          -16.85400390625,
-          2.7458670139312744,
-          12.878840446472168
+          -0.616615891456604,
+          -10.1209077835083,
+          28.507537841796875
         ],
         "min": [
-          -34.1109504699707,
-          -6.507402420043945,
-          -1.5211080312728882
+          -19.85184097290039,
+          -19.84869384765625,
+          -32.03905487060547
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1de6f4ae6f35ecc3e9a0a2672ae2231cd9bca24e8ef4cc5eca62984d41d8007",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-2.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "af285c2bce20c7d9760329b3919c0870ce5a71a896ef9b542ad59f3d89569b8b",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.1",
+      "indexCount": 1716,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-2",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
+      "primitiveIndex": 1,
+      "vertexCount": 577
     },
     {
       "bounds": {
         "max": [
-          -16.81761360168457,
-          9.841691017150879,
-          5.891870975494385
+          -8.04648494720459,
+          18.93260383605957,
+          30.014562606811523
         ],
         "min": [
-          -27.610492706298828,
-          0.21862302720546722,
-          -3.264066457748413
+          -14.047040939331055,
+          -19.592933654785156,
+          -33.58936309814453
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d852cba948f83f70a19593834dc6f877909ad146a15f6fbc9279e2ec3ce67a1",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-3.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "44df5620ba5310446b61908cf8735b61fc10ce4ef42d48625e08a1a5a57867b9",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.2",
+      "indexCount": 5544,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-3",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
+      "primitiveIndex": 2,
+      "vertexCount": 1588
     },
     {
       "bounds": {
         "max": [
-          -17.242755889892578,
-          11.4331636428833,
-          -1.1744250059127808
+          -15.286499977111816,
+          19.07819175720215,
+          30.301801681518555
         ],
         "min": [
-          -31.445556640625,
-          0.8927028775215149,
-          -10.409961700439453
+          -16.104936599731445,
+          -19.7385196685791,
+          -33.87660217285156
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccffab6f96c9283cf30ae4ae9ecf75469b259b22268acc8078b9a02b486e5fe2",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-4.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "e981399a2e3bb785dc2d80f3f8f7205a235187dbf7f146e002ed5e69e7c9b098",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.3",
+      "indexCount": 462,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-4",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
+      "primitiveIndex": 3,
+      "vertexCount": 162
     },
     {
       "bounds": {
         "max": [
-          -18.324321746826172,
-          8.494348526000977,
-          6.469977855682373
+          -18.443185806274414,
+          19.259191513061523,
+          30.388368606567383
         ],
         "min": [
-          -19.42404556274414,
-          -8.065653800964355,
-          -10.090021133422852
+          -19.91086196899414,
+          -19.817214965820312,
+          -34.02219009399414
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f92e34f655572aa591b946d1b1d3053368f9dcee8b61ddc1d17cc7036c1ead2",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotcore.primitive.0",
-      "indexCount": 72,
+      "geometryHash": "e889e0f6f763fad9fc4e1d064e360c3af5bbc13a3b1263490663f8cb07dd48a6",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.4",
+      "indexCount": 690,
       "indexed": true,
-      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotcore",
-      "primitiveIndex": 0,
-      "vertexCount": 48
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
+      "primitiveIndex": 4,
+      "vertexCount": 341
     },
     {
       "bounds": {
         "max": [
-          -23.08916664123535,
-          -1.2124325037002563,
-          -7.431143283843994
+          -16.045392990112305,
+          19.277719497680664,
+          12.8788480758667
         ],
         "min": [
-          -23.85920524597168,
-          -2.3124327659606934,
-          -8.531143188476562
+          -19.625917434692383,
+          16.67661476135254,
+          6.665362358093262
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab86229654a131f4ad096c34a07abc5071ed51ee1977ec72be8c85bcda66e645",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-0.primitive.0",
-      "indexCount": 84,
+      "geometryHash": "502c81a6a9a8f1f4db58e7550b303ca930fe249d077d287db4a93462ae8e4a39",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1.primitive.0",
+      "indexCount": 330,
       "indexed": true,
-      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-0",
+      "meshName": "Gallery-3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 118
     },
     {
       "bounds": {
         "max": [
-          -31.72916603088379,
-          -3.0889391899108887,
-          10.433459281921387
+          -18.70575523376465,
+          19.277719497680664,
+          12.73283576965332
         ],
         "min": [
-          -32.499202728271484,
-          -4.188939571380615,
-          9.33345890045166
+          -19.625917434692383,
+          16.960674285888672,
+          6.829578876495361
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6bb05f8603fbfa595eaaf9a690b0b83449a26b73f2f92280c3ff81f7bf551546",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-2.primitive.0",
-      "indexCount": 84,
+      "geometryHash": "8de37e837980f585acf0e9278e5521d5c0cc6962b1629776cc2cad61c5cce437",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1.primitive.1",
+      "indexCount": 90,
       "indexed": true,
-      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-2",
-      "primitiveIndex": 0,
-      "vertexCount": 48
+      "meshName": "Gallery-3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1",
+      "primitiveIndex": 1,
+      "vertexCount": 38
     },
     {
       "bounds": {
         "max": [
-          -29.56916618347168,
-          9.571877479553223,
-          -7.603264808654785
+          -16.044153213500977,
+          18.94524574279785,
+          -10.083901405334473
         ],
         "min": [
-          -30.339204788208008,
-          8.471877098083496,
-          -8.703265190124512
+          -19.8179874420166,
+          16.474355697631836,
+          -16.695880889892578
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b90daf07cb823faf0660d038326b9b1cb077df6d23400cfafd2d12f645f0a1b2",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-4.primitive.0",
-      "indexCount": 84,
+      "geometryHash": "af8202eca31e2e2f3419ce759b5f7516cf47eb8f1d6f5d0b79a204f44de4e5f0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1.primitive.0",
+      "indexCount": 330,
       "indexed": true,
-      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-4",
+      "meshName": "Gallery3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 113
     },
     {
       "bounds": {
         "max": [
-          -18.23659324645996,
-          -2.714970827102661,
-          -4.135839462280273
+          -18.617956161499023,
+          18.94524574279785,
+          -10.131926536560059
         ],
         "min": [
-          -23.611780166625977,
-          -7.619246959686279,
-          -8.025125503540039
+          -19.8179874420166,
+          16.503009796142578,
+          -16.66036605834961
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b3d6e85be2718aa8c35c84e7eee7faa513b8f072cd428e5890117fa3ef0c215",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-0.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "42258b353db17ac5386af646e9089b090d539066c96ad364e66681c3b72c08b7",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1.primitive.1",
+      "indexCount": 90,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "meshName": "Gallery3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1",
+      "primitiveIndex": 1,
+      "vertexCount": 38
     },
     {
       "bounds": {
         "max": [
-          -17.92899513244629,
-          -1.9859228134155273,
-          6.346286296844482
+          -17.002771377563477,
+          19.84749984741211,
+          12.176610946655273
         ],
         "min": [
-          -28.71937370300293,
-          -6.126303672790527,
-          0.7965826988220215
+          -19.55994987487793,
+          19.225677490234375,
+          7.503379821777344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e704605bc37d173a2a9da5c958f8bf348c0e80d87fd6e26ea0802711433c137",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-1.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "366cb6fe6af48471f3bc105582e2c53a16b93fa98175e706122f7bf58c202c1f",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1.primitive.0",
+      "indexCount": 30,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -17.931894302368164,
-          7.143529891967773,
-          5.628925323486328
-        ],
-        "min": [
-          -26.31647300720215,
-          4.048077583312988,
-          -0.70804762840271
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d8173cf25fe9575c07415439fa9b125a5563a79d4567167fddd7a9148662e422",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.05063819885254,
-          6.14994478225708,
-          -4.64071798324585
-        ],
-        "min": [
-          -23.7977352142334,
-          2.819671154022217,
-          -9.74223804473877
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f5cc19dadbbc784621a67c6d4e64649b0ea7d9da963d8ebd8310b26289c3375b",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.449798583984375,
-          -1.8858466148376465,
-          -9.099654197692871
-        ],
-        "min": [
-          -20.798568725585938,
-          -4.060738563537598,
-          -10.957322120666504
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fda848de28c8d1bd5363d7ac5ada0c80c231158518760c80ea017e4ef0db2330",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.012",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.205711364746094,
-          -5.536984443664551,
-          -4.4606428146362305
-        ],
-        "min": [
-          -24.562660217285156,
-          -7.817844390869141,
-          -8.04246711730957
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "69ede1c58331ba0419ef8526f22e12c630f5ab43eb7e690f701e473dfe1b12b3",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.013",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.177223205566406,
-          -6.967438697814941,
-          -0.04276607930660248
-        ],
-        "min": [
-          -21.951148986816406,
-          -9.8988676071167,
-          -2.610507011413574
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c7920068bfee0f6b106e53977f459fcb3d41fb280265e3d0062d064b1cdf5abf",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.014",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.440824508666992,
-          -4.0904059410095215,
-          5.51398229598999
-        ],
-        "min": [
-          -25.207544326782227,
-          -7.949855327606201,
-          1.035203456878662
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e2b839b98a38c8d2928228ed0026ce0e6e6fced0d9394d3f79545f52bd731e00",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.015",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.177011489868164,
-          -1.4746160507202148,
-          8.06351375579834
-        ],
-        "min": [
-          -22.831357955932617,
-          -2.443004608154297,
-          4.765933513641357
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8216595d962f9cc6b3995b67b214c232eddd5b3bb1703c400b06143580111012",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.016",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.437971115112305,
-          4.69873046875,
-          7.454651355743408
-        ],
-        "min": [
-          -26.090394973754883,
-          1.4369786977767944,
-          3.6392951011657715
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "46e51ab36e9a0f4893ab3bdbea3bd088870603d92b03b1d43a78924a4355bd15",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-5.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.017",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-5",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.1494083404541,
-          8.29011344909668,
-          4.651849746704102
-        ],
-        "min": [
-          -23.73895835876465,
-          6.180997371673584,
-          0.7780219316482544
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "42436fc32a7ff6fe5a51f0c9fc68e1050b8e2a1b1220cbf0718de12ce56b545b",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-6.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.018",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-6",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.125572204589844,
-          10.464865684509277,
-          -0.8367145657539368
-        ],
-        "min": [
-          -21.12279510498047,
-          7.566349506378174,
-          -3.767289876937866
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9e9c695eff356503085960b36f45c2ac0cfe983110f5938fad86b6244fe6a482",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-7.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.019",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-7",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.46541404724121,
-          7.980045318603516,
-          -5.449531078338623
-        ],
-        "min": [
-          -24.30295753479004,
-          5.1562910079956055,
-          -8.534403800964355
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "aefdf2e0a2ea014bf5787aaaf625edba7d251bb5cc789e633be43da334dad9f3",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-8.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.020",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-8",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -18.097753524780273,
-          2.926391839981079,
-          -8.463985443115234
-        ],
-        "min": [
-          -22.03061866760254,
-          1.9272983074188232,
-          -11.903331756591797
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "563348d5f5469fb6b0060ceb8a53e28e20747f6ecdcbd0b950440f0f544fdd1e",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-9.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.021",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-9",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          20.925762176513672,
-          11.714156150817871,
-          4.689978122711182
-        ],
-        "min": [
-          20.42586898803711,
-          9.91454029083252,
-          -8.310022354125977
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "30dd30947d4bc08b568b91f16a52b8fe23a98359ad56ffef3b86c2769816e729",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge-glass.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialHash": "6bfbcd6a0a3aa67f85343167cec4416855cd086023cf45d2069ee4d1f875a4dc",
       "materialPipelineKey": "blend",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge-glass",
+      "meshName": "GalleryGlass-3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          -19.012786865234375,
+          19.84749984741211,
+          12.176610946655273
+        ],
+        "min": [
+          -19.55994987487793,
+          19.36087989807129,
+          7.503379821777344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "33940a4ff7449a9d1c595c3aac78d01449218a6677e967742628fff435b04056",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1.primitive.1",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "materialPipelineKey": "blend",
+      "meshName": "GalleryGlass-3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1",
+      "primitiveIndex": 1,
+      "vertexCount": 4
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.002578735351562,
+          19.70416831970215,
+          -10.80358600616455
+        ],
+        "min": [
+          -19.694793701171875,
+          19.225858688354492,
+          -15.918731689453125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "96c7d1d6b187602e49201b0f0598b7428082e2879ebe5f2ac724f492cd2dd2b7",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": "6bfbcd6a0a3aa67f85343167cec4416855cd086023cf45d2069ee4d1f875a4dc",
+      "materialPipelineKey": "blend",
+      "meshName": "GalleryGlass3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.604389190673828,
+          19.70416831970215,
+          -10.80358600616455
+        ],
+        "min": [
+          -19.694793701171875,
+          19.306720733642578,
+          -15.918731689453125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f73a33482cdaa97d28f893fd7beb51e3ea87387ead6493ee6e2791d0b2f2f49d",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1.primitive.1",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "materialPipelineKey": "blend",
+      "meshName": "GalleryGlass3.1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1",
+      "primitiveIndex": 1,
+      "vertexCount": 4
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.935699462890625,
+          18.75725555419922,
+          13.122288703918457
+        ],
+        "min": [
+          -19.576147079467773,
+          17.34089469909668,
+          12.817098617553711
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67b5d644245464d222d58f8b88a7d8ee8d02b66df5ef7e25cf840dfefcf954b4",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
+      "materialPipelineKey": "opaque",
+      "meshName": "GalleryLit-3.1_11",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.749114990234375,
+          18.75725555419922,
+          13.121487617492676
+        ],
+        "min": [
+          -19.576147079467773,
+          17.34089469909668,
+          12.817098617553711
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "afe86b3ce7a629270612c388c916967d0e53ee53674233777fb26ccda79cf424",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11.primitive.1",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "materialPipelineKey": "opaque",
+      "meshName": "GalleryLit-3.1_11",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11",
+      "primitiveIndex": 1,
+      "vertexCount": 4
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.935699462890625,
+          18.818950653076172,
+          -16.185182571411133
+        ],
+        "min": [
+          -19.78680992126465,
+          17.396963119506836,
+          -16.989023208618164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c084732a8cab4b5b3e938f251c8589202e43416a6b554d6fa66eb2b5b0f7db06",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
+      "materialPipelineKey": "opaque",
+      "meshName": "GalleryLit3.1_11",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.53277587890625,
+          18.818950653076172,
+          -16.185182571411133
+        ],
+        "min": [
+          -19.78680992126465,
+          17.64217185974121,
+          -16.989023208618164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d0f4fad833e21b27ef03f385d63000aa6a2a99f8a9f6f9c1dafe7911f415e531",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11.primitive.1",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "materialPipelineKey": "opaque",
+      "meshName": "GalleryLit3.1_11",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11",
+      "primitiveIndex": 1,
+      "vertexCount": 4
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.525236129760742,
+          19.710830688476562,
+          12.207947731018066
+        ],
+        "min": [
+          -18.122241973876953,
+          19.337703704833984,
+          7.356245040893555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5f7fd3284a7a45e259f7d6b4114b6a35a3e65e959d722e1790e46daf5772179",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib-3-16.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialPipelineKey": "opaque",
+      "meshName": "GalleryRib-3.16",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib-3-16",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          20.476119995117188,
-          12.214149475097656,
-          5.689978122711182
+          -17.525236129760742,
+          19.710830688476562,
+          -10.930936813354492
         ],
         "min": [
-          10.475509643554688,
-          8.214546203613281,
-          -9.310022354125977
+          -18.122241973876953,
+          19.337703704833984,
+          -15.782639503479004
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7274f9eddc325639b12417181982c8af11c1f0922a2e06205b8422b0811a6144",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge.primitive.0",
+      "geometryHash": "5f0cad6869ed09b02d97888819aee5ce34288fb6352bb1beb857856f3c9e8c92",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib3-16.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge",
+      "meshName": "GalleryRib3.16",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib3-16",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          14.141548156738281,
-          5.914347171783447,
-          9.455711364746094
+          20.688552856445312,
+          10.309624671936035,
+          0.48905158042907715
         ],
         "min": [
-          12.810081481933594,
-          4.514347553253174,
-          8.124244689941406
+          10.61745834350586,
+          5.443276405334473,
+          0.04154300317168236
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74e6b91569d562636a335761a5191b0938be960b0119e2a01ad453487d4553a7",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-emerg.primitive.0",
-      "indexCount": 192,
+      "geometryHash": "9e45c9dd03c49fec4933e7e5d19b7322549d9ce3f0edc883a8feb65d0d3ca63c",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-0-55.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "8310f17844d10d11af7e262e70ff5f8a8a9d4d5d44474b17cd1f5bf36cd73bbc",
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-emerg",
+      "meshName": "Mullion-0.55",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-0-55",
       "primitiveIndex": 0,
-      "vertexCount": 144
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
-          20.475236892700195,
-          10.939072608947754,
-          9.189977645874023
+          20.688552856445312,
+          9.447514533996582,
+          4.407733917236328
         ],
         "min": [
-          6.4763922691345215,
-          -10.510377883911133,
-          -12.810022354125977
+          10.61745834350586,
+          4.5811662673950195,
+          3.9602251052856445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d69bcb13a587a1442f4cd2dfc00f98f39c273dc235f3191725fb24e4b89b2c6",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-0.primitive.0",
-      "indexCount": 156,
+      "geometryHash": "c51c33100c343c93a48b8fdfa5b5beebad007673c009b3f0db65a117d59f6ff2",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-1-6.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-0",
+      "meshName": "Mullion-1.6",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-1-6",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
-          6.47611665725708,
-          9.769103050231934,
-          7.989978313446045
+          20.688552856445312,
+          10.309624671936035,
+          -3.61623477935791
         ],
         "min": [
-          -7.524487018585205,
-          -9.340408325195312,
-          -11.610021591186523
+          10.61745834350586,
+          5.443276405334473,
+          -4.063743591308594
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aba100dffe64bcc9267cf7bdf10f0cbaf183380b9bc6f665b4e783656a09535e",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-1.primitive.0",
-      "indexCount": 156,
+      "geometryHash": "2448e0ee7fec533bdbf5e911e4c1f75555196c79e1e8bc421c64180a9ba231cd",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion0-55.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-1",
+      "meshName": "Mullion0.55",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion0-55",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
-          -7.524133682250977,
-          8.599133491516113,
-          6.789978504180908
+          20.688552856445312,
+          9.447514533996582,
+          -7.534916877746582
         ],
         "min": [
-          -21.52423667907715,
-          -8.170438766479492,
-          -10.410022735595703
+          10.61745834350586,
+          4.5811662673950195,
+          -7.982425689697266
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed0c71e36dc384a75238148a4309c8f86484b66d554e2373de57be09300d82c6",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-2.primitive.0",
-      "indexCount": 156,
+      "geometryHash": "92d2ffcaa3b9140adbd3bb3c5ab61e981249eed79979d9f45bb1453e9b21f2bc",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion1-6.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-2",
+      "meshName": "Mullion1.6",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion1-6",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
-          34.47523498535156,
-          10.939072608947754,
-          9.189977645874023
+          -0.2083282470703125,
+          2.506027936935425,
+          25.1209774017334
         ],
         "min": [
-          20.47639274597168,
-          -10.5103759765625,
-          -12.810022354125977
+          -2.4475765228271484,
+          0.9384791254997253,
+          23.55342674255371
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5c1d544aa0ad27dff424d3476f4957cab20017006143995f9dd277897c7de9f",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-prow.primitive.0",
-      "indexCount": 156,
+      "geometryHash": "37d9d8a69d1337809ba392391c1176978d348eb17cd74b2c3933e5cb3f4c031a",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-m.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialHash": "9298fcfc7c081d69e38949531d83cb8811ebc7cf1e286c15665e626113acbefb",
       "materialPipelineKey": "opaque",
-      "meshName": "Cone",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-prow",
+      "meshName": "RCSFwd_M",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-m",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 180
     },
     {
       "bounds": {
         "max": [
-          18.975814819335938,
-          2.0144267082214355,
-          9.489663124084473
+          -1.6414451599121094,
+          1.534346580505371,
+          25.300071716308594
         ],
         "min": [
-          7.9758148193359375,
-          1.6142680644989014,
-          7.690291404724121
+          -1.9997291564941406,
+          1.193601131439209,
+          25.07615852355957
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4330ae821c5d13e4c2797e66ce049d49edbe4c98158b992d9c0b0247613a4a15",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-0.primitive.0",
+      "geometryHash": "ce1bfd49b25bca5173457c35e5fd664d2b8becf76b6fb4d360ed602826733a7a",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10-m.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N-0.13-0.10_M",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10-m",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6414451599121094,
+          1.534346580505371,
+          -28.650850296020508
+        ],
+        "min": [
+          -1.9997291564941406,
+          1.193601131439209,
+          -28.87476348876953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22fe3a47fe5efdb9dc9d1ff46be40f5854f8c65db7b28ca314dfbedf63223db3",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N-0.13-0.10",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6414451599121094,
+          2.2509055137634277,
+          25.300071716308594
+        ],
+        "min": [
+          -1.9997291564941406,
+          1.9101600646972656,
+          25.07615852355957
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b21155d467f60225a85cbd781cc98489956d659783a4d81418abeb81211fbbb",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10-m.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N-0.130.10_M",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10-m",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6414451599121094,
+          2.2509055137634277,
+          -28.650850296020508
+        ],
+        "min": [
+          -1.9997291564941406,
+          1.9101600646972656,
+          -28.87476348876953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c290207bf9f451261b9b4e044ab90d538706bfa303a91e1a2c7a56452f10ffe",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N-0.130.10",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6561775207519531,
+          1.5343447923660278,
+          25.30006980895996
+        ],
+        "min": [
+          -1.0144577026367188,
+          1.1936029195785522,
+          25.076160430908203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "39ac58f2a79210e2782106c9fe5ba6a8a7dfe683d749444d50082db448a32b9a",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10-m.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N0.13-0.10_M",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10-m",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6561775207519531,
+          1.5343447923660278,
+          -28.65085220336914
+        ],
+        "min": [
+          -1.0144577026367188,
+          1.1936029195785522,
+          -28.8747615814209
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7a10c5bac6e76fb96e3395a221aa487e50b13579409815e04223ac123eee9ccc",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N0.13-0.10",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6561775207519531,
+          2.250903606414795,
+          25.30006980895996
+        ],
+        "min": [
+          -1.0144577026367188,
+          1.9101618528366089,
+          25.076160430908203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "87399ba9015f7da6ceaf31833624963a1eecf006995e2c403d7cb4cf76319159",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10-m.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N0.130.10_M",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10-m",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6561775207519531,
+          2.250903606414795,
+          -28.65085220336914
+        ],
+        "min": [
+          -1.0144577026367188,
+          1.9101618528366089,
+          -28.8747615814209
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f3f53282fe2c449d2844f5caf2070715603e85343481f65f6d22a3c82c355b16",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd_N0.130.10",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2083282470703125,
+          2.506027936935425,
+          -27.12811851501465
+        ],
+        "min": [
+          -2.4475765228271484,
+          0.9384791254997253,
+          -28.695669174194336
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19f7cd43141c1441960261baf275e589f6d724b0a9285d63f768488b2f6cd53c",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "9298fcfc7c081d69e38949531d83cb8811ebc7cf1e286c15665e626113acbefb",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCSFwd",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd",
+      "primitiveIndex": 0,
+      "vertexCount": 180
+    },
+    {
+      "bounds": {
+        "max": [
+          -12.150979995727539,
+          19.617570877075195,
+          -0.8543890118598938
+        ],
+        "min": [
+          -15.136642456054688,
+          19.43096160888672,
+          -2.7203028202056885
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "666350b103873d841820323c364538539df385fd2074680e095a625078eda746",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-10.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-0",
+      "meshName": "SkyLights_10",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-10",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          4.9758148193359375,
-          2.0144267082214355,
-          9.489663124084473
+          -4.686822891235352,
+          19.617570877075195,
+          -0.854388415813446
         ],
         "min": [
-          -6.0241851806640625,
-          1.6142680644989014,
-          7.690291404724121
+          -7.672487258911133,
+          19.43096160888672,
+          -2.7203032970428467
         ]
       },
       "drawMode": 4,
-      "geometryHash": "611fa484d02f023522f947c94f60dd5eb83f195a34826cb4b7a73f41bd65403d",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-1.primitive.0",
+      "geometryHash": "a2f337c39653572169417d3ca74c2f3f2b2bd151695cf6d4a0d84714e9cd58d1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-11.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialHash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-1",
+      "meshName": "SkyLights_11",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-11",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -9.024185180664062,
-          2.0144267082214355,
-          9.489663124084473
+          1.6577110290527344,
+          19.448139190673828,
+          1.1422119140625
         ],
         "min": [
-          -20.024185180664062,
-          1.6142680644989014,
-          7.690291404724121
+          -19.494754791259766,
+          17.397897720336914,
+          -4.681220054626465
         ]
       },
       "drawMode": 4,
-      "geometryHash": "050033fe76829872b8441e758a44716c11118c0beb169a5cb2af0962eed86b34",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-2.primitive.0",
+      "geometryHash": "8775b4365947a693b7b2af6718850a650c05857761816fbece03f1ca0c8e8c61",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.spine.primitive.0",
+      "indexCount": 696,
+      "indexed": true,
+      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialPipelineKey": "opaque",
+      "meshName": "Spine",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.spine",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.561302185058594,
+          19.1344051361084,
+          1.1318832635879517
+        ],
+        "min": [
+          -19.494754791259766,
+          17.397897720336914,
+          -4.670891284942627
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d7cbf8bd536b024ac3fd02ae1e374d1a6bd3b948acdc4304bb134ce2adb819d",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.spine.primitive.1",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "materialPipelineKey": "opaque",
+      "meshName": "Spine",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.spine",
+      "primitiveIndex": 1,
+      "vertexCount": 58
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.127209663391113,
+          18.983232498168945,
+          3.0643558502197266
+        ],
+        "min": [
+          -5.992850303649902,
+          17.303564071655273,
+          -6.639047622680664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "773840c1b93bfffd703b4b3f532f7c26e6dac048f0fedc6ed8ea1b18a05bc03b",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.spinesaddle5.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialPipelineKey": "opaque",
+      "meshName": "SpineSaddle5",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.spinesaddle5",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          34.49885559082031,
+          14.194814682006836,
+          23.92626953125
+        ],
+        "min": [
+          -2.073223352432251,
+          -16.353591918945312,
+          -27.500961303710938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ef99f306786a295cef1f84f896d402a18749c175646dab7f4f1bee954a8cead",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.0",
+      "indexCount": 4446,
+      "indexed": true,
+      "materialHash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wedge",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
+      "primitiveIndex": 0,
+      "vertexCount": 1297
+    },
+    {
+      "bounds": {
+        "max": [
+          34.464324951171875,
+          -3.5419063568115234,
+          22.199838638305664
+        ],
+        "min": [
+          -2.0230000019073486,
+          -16.35672950744629,
+          -25.7745304107666
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85744c3cb28c57366601c0be72258b113aed4ba80d52fc7a100c3936baa3ce98",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.1",
+      "indexCount": 996,
+      "indexed": true,
+      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wedge",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
+      "primitiveIndex": 1,
+      "vertexCount": 300
+    },
+    {
+      "bounds": {
+        "max": [
+          20.776870727539062,
+          10.345659255981445,
+          17.742509841918945
+        ],
+        "min": [
+          10.889131546020508,
+          0.17462804913520813,
+          -21.29522705078125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0a41f719b9871deb728ea8774f5c1f3595840bca65735181eae7b055a56bb85",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.2",
+      "indexCount": 2166,
+      "indexed": true,
+      "materialHash": "6bfbcd6a0a3aa67f85343167cec4416855cd086023cf45d2069ee4d1f875a4dc",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wedge",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
+      "primitiveIndex": 2,
+      "vertexCount": 649
+    },
+    {
+      "bounds": {
+        "max": [
+          8.935911178588867,
+          11.53532600402832,
+          19.93036651611328
+        ],
+        "min": [
+          7.0682268142700195,
+          -14.49532413482666,
+          -23.50505828857422
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa1076e3e237c8c0b4e57eeafd6185bf93005ad11688090cbb82571a20b5f7cc",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.3",
+      "indexCount": 336,
+      "indexed": true,
+      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wedge",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
+      "primitiveIndex": 3,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          28.063194274902344,
+          3.385789155960083,
+          7.018235683441162
+        ],
+        "min": [
+          26.75424575805664,
+          -9.211661338806152,
+          -10.592926979064941
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "29126a44fa9f925cad4d252656593ffa1b84726f48fe329ca649fb944e2fab55",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.4",
+      "indexCount": 336,
+      "indexed": true,
+      "materialHash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wedge",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
+      "primitiveIndex": 4,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.788936614990234,
+          15.690993309020996,
+          6.057210922241211
+        ],
+        "min": [
+          -21.552900314331055,
+          13.249253273010254,
+          4.085565567016602
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1d01a7fb8fed44bbeee38e8404de4209d281915ab191c122ce49e3caf94d1646",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib0",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.743999481201172,
+          15.1486177444458,
+          -11.147858619689941
+        ],
+        "min": [
+          -21.98410415649414,
+          12.311957359313965,
+          -13.627354621887207
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0ecb30393229d26019d6f4e52b169dbe451ba297e68fbb34462ac23ec66f845",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.810619354248047,
+          7.003368854522705,
+          -23.876008987426758
+        ],
+        "min": [
+          -21.313711166381836,
+          5.161896228790283,
+          -26.142900466918945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1baca0ad9bfd5bc80f3a533cffdd6c6fb70d6a854d6c75d067c01028c1efcee6",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib2",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.79659080505371,
+          -3.4148294925689697,
+          -25.477954864501953
+        ],
+        "min": [
+          -21.77896499633789,
+          -5.471646308898926,
+          -28.233877182006836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf8054542a021a17f2b20b17bdb26d77478fd0f2a74fa69d0c8eefe2695feccc",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib3.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib3",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib3",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.85223388671875,
+          -12.332716941833496,
+          -15.853828430175781
+        ],
+        "min": [
+          -21.105464935302734,
+          -14.27953052520752,
+          -17.686216354370117
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8290a8ac1ce89314fcccd18d1dc9a08bdbb156b863e5fdd2c0c9ad9d1b77bc3c",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib4.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib4",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib4",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.834449768066406,
+          -15.013381958007812,
+          1.1061793565750122
+        ],
+        "min": [
+          -21.570789337158203,
+          -17.51088523864746,
+          -0.7806231379508972
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ca97cffc5077df6d1bcd168f254cecd03b9fc9946a84d178255327cc767723da",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib5.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "9dfd8e671ab9b95b1b24da2a5708eda6faf18a4159861c528db95f69254de385",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib5",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib5",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.69397735595703,
+          -10.484363555908203,
+          17.711219787597656
+        ],
+        "min": [
+          -21.95085334777832,
+          -13.19178295135498,
+          14.97080135345459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "59b8099ee40ad6bbb94b68c1ca975f14424b569854d6eb3c45d73f71c28308dc",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib6.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib6",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib6",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.843280792236328,
+          -1.2883727550506592,
+          25.042665481567383
+        ],
+        "min": [
+          -21.354759216308594,
+          -2.9217114448547363,
+          22.72004508972168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "534fbd487a522aac2df52ef148960f04d286c20d1267b8450855a0b0099a0dc1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib7.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib7",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib7",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.7373046875,
+          9.385148048400879,
+          20.83119773864746
+        ],
+        "min": [
+          -21.747814178466797,
+          7.055258750915527,
+          18.179004669189453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8aed7b35324ad09dd4a7754feae4e4cfec7ee1cd9cfc048498a5935070161dcc",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib8.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_f_rib8",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib8",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.568920135498047,
+          -12.269786834716797,
+          1.8597086668014526
+        ],
+        "min": [
+          -25.777286529541016,
+          -18.01479148864746,
+          -0.6677410006523132
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "daf6fd313fcf367eecd2fbd160761a42de7a4d495323c28b1469d9c573f55477",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialHash": "9dfd8e671ab9b95b1b24da2a5708eda6faf18a4159861c528db95f69254de385",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-2",
+      "meshName": "woundAft_t_tear0",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          18.975814819335938,
-          2.0144267082214355,
-          -11.310336112976074
+          -18.561594009399414,
+          -6.114248752593994,
+          22.422679901123047
         ],
         "min": [
-          7.9758148193359375,
-          1.6142680644989014,
-          -13.109707832336426
+          -32.484439849853516,
+          -9.843635559082031,
+          13.702789306640625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a8a8c0f37c2a5e5d4e826f63cb1d7cb46cfc41587eb3d4700e39fef8ec4cc08",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t0.primitive.0",
+      "geometryHash": "6bca2fa257b13148b0d08ec26422a7e3d07f9b0a01adf443482c35a2a51aa4df",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t0",
+      "meshName": "woundAft_t_tear1",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          4.9758148193359375,
-          2.0144267082214355,
-          -11.310336112976074
+          -18.598358154296875,
+          6.207604885101318,
+          25.290544509887695
         ],
         "min": [
-          -6.0241851806640625,
-          1.6142680644989014,
-          -13.109707832336426
+          -27.422805786132812,
+          1.3379589319229126,
+          17.767398834228516
         ]
       },
       "drawMode": 4,
-      "geometryHash": "528b88aefdfa239b49ce84c260371e8fa927cbab145eb14bd1a44e853135ae16",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t1.primitive.0",
+      "geometryHash": "8f6f3477d0d6244d88ccd28a67c6cf3620da4caa24395cb9c8f11b7d98a24468",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t1",
+      "meshName": "woundAft_t_tear2",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -9.024185180664062,
-          2.0144267082214355,
-          -11.310336112976074
+          -18.220993041992188,
+          15.972273826599121,
+          10.117265701293945
         ],
         "min": [
-          -20.024185180664062,
-          1.6142680644989014,
-          -13.109707832336426
+          -34.499996185302734,
+          7.094262599945068,
+          2.4738292694091797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "816679ca0e88fd31ea5d442b5bf3b28eb3fa0793a031af4dac81b12a37d24a3c",
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t2.primitive.0",
+      "geometryHash": "7e9d84e2430e5b8ff835a0451b855a286e1afd65adc4f1cebfb5abcee77d0cf6",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_t_tear3",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.220993041992188,
+          12.061874389648438,
+          4.418595790863037
+        ],
+        "min": [
+          -32.52666473388672,
+          7.094262599945068,
+          2.4738292694091797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98198ea65c2c06d9601a4639a41c64f2b9a44808ac7fa7634e7b22e6d886a54b",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3.primitive.1",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "9dfd8e671ab9b95b1b24da2a5708eda6faf18a4159861c528db95f69254de385",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_t_tear3",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3",
+      "primitiveIndex": 1,
+      "vertexCount": 4
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.693103790283203,
+          13.22126579284668,
+          -11.463558197021484
+        ],
+        "min": [
+          -29.003015518188477,
+          9.17967414855957,
+          -17.271242141723633
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9381901b30793ded91a297557f284bb64a3f1c62971bff147fa276c630f3f576",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_t_tear4",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.693103790283203,
+          12.285359382629395,
+          -11.463558197021484
+        ],
+        "min": [
+          -27.99112319946289,
+          9.17967414855957,
+          -13.236572265625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d1c407f2f01c527c7ac2da7def682c8016e3507206d683c0897dfd22a291ed0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4.primitive.1",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "9dfd8e671ab9b95b1b24da2a5708eda6faf18a4159861c528db95f69254de385",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_t_tear4",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4",
+      "primitiveIndex": 1,
+      "vertexCount": 4
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.688215255737305,
+          3.6707303524017334,
+          -24.696327209472656
+        ],
+        "min": [
+          -23.9830322265625,
+          -1.2886269092559814,
+          -28.770172119140625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a64b706a78b333550b1e5d5e32b3bb79ac28061c24fa8c6799c63243d94f67ec",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t2",
+      "meshName": "woundAft_t_tear5",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.335453033447266,
+          -8.10932731628418,
+          -14.677149772644043
+        ],
+        "min": [
+          -31.035625457763672,
+          -12.253829956054688,
+          -23.355297088623047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "227db45e244641f3d03eca5ae6a9328e434323320ba7f083c770b3f84b1c57a4",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialPipelineKey": "opaque",
+      "meshName": "woundAft_t_tear6",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear6",
       "primitiveIndex": 0,
       "vertexCount": 24
     }
@@ -1008,58 +1858,343 @@
   "lods": [],
   "materials": [
     {
-      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "id": "material:3d43233b1e4b6f8b5f438e39",
-      "name": "wrk_torn_edge",
+      "hash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
+      "id": "material:26f0260af55f95f62389669d",
+      "name": "Forge_massline_express_liner_hazard",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
+      "id": "material:436e825fb4214a10ba93e7b7",
+      "name": "Forge_massline_express_liner_paint",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6bfbcd6a0a3aa67f85343167cec4416855cd086023cf45d2069ee4d1f875a4dc",
+      "id": "material:6bfbcd6a0a3aa67f85343167",
+      "name": "Forge_massline_express_liner_glass",
       "pipelineKey": "opaque:double",
       "textures": []
     },
     {
-      "hash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
-      "id": "material:6ba64bc230e8b6c479bb16ed",
-      "name": "wrk_hot_deep_red",
+      "hash": "6cb4a3ba41784e4989988a7c450d77939ac21c21b5434e3dba97b9bbd1455458",
+      "id": "material:6cb4a3ba41784e4989988a7c",
+      "name": "Forge_massline_express_liner_glow_warm",
       "pipelineKey": "opaque:double",
       "textures": []
     },
     {
-      "hash": "8310f17844d10d11af7e262e70ff5f8a8a9d4d5d44474b17cd1f5bf36cd73bbc",
-      "id": "material:8310f17844d10d11af7e262e",
-      "name": "wrk_emerg_amber",
+      "hash": "9298fcfc7c081d69e38949531d83cb8811ebc7cf1e286c15665e626113acbefb",
+      "id": "material:9298fcfc7c081d69e3894953",
+      "name": "Forge_massline_express_liner_gunmetal",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
-      "id": "material:acad180edd387403bb113453",
-      "name": "wrk_scorch",
+      "hash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "id": "material:987e4aefae13e344c4e3752c",
+      "name": "Forge_massline_express_liner_wk_torn",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
-      "id": "material:e4ff96995aa92d7316acce8e",
-      "name": "wrk_scorch_edge",
+      "hash": "9dfd8e671ab9b95b1b24da2a5708eda6faf18a4159861c528db95f69254de385",
+      "id": "material:9dfd8e671ab9b95b1b24da2a",
+      "name": "Forge_massline_express_liner_wk_scorch_edge",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
-      "id": "material:ed8cd23072a107915b0ddafd",
-      "name": "wrk_paint_liner_bone",
+      "hash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "id": "material:a960ad704f56f0f9ba951b08",
+      "name": "Forge_massline_express_liner_paint2.frame",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
-      "id": "material:fabcdc1eca2d9ec5b43cae27",
-      "name": "wrk_glass_shattered",
+      "hash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "id": "material:bd2c5bccc203471f40a56c83",
+      "name": "Forge_massline_express_liner_wk_frame",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c2ff3b4d4b0ec04b306b6e5d9132b06d11275d7ec28c7b617c9e6acf042d03aa",
+      "id": "material:c2ff3b4d4b0ec04b306b6e5d",
+      "name": "Forge_massline_express_liner_dark",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "id": "material:cdf5689d187192f2094a2dce",
+      "name": "Forge_massline_express_liner_wk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "id": "material:e66d36dfe14331faea5f2c95",
+      "name": "Forge_massline_express_liner_paint2",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19",
       "localTransform": [
         1,
         0,
@@ -1079,8 +2214,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_fray_0",
-      "nodeName": "break_aft_fray_0",
+      "mergeBoundary": "Deck-0.55_19",
+      "nodeName": "Deck-0.55_19",
       "nodePath": [
         0,
         0
@@ -1108,7 +2243,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19-m",
       "localTransform": [
         1,
         0,
@@ -1128,8 +2263,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_fray_1",
-      "nodeName": "break_aft_fray_1",
+      "mergeBoundary": "Deck-0.55_19_M",
+      "nodeName": "Deck-0.55_19_M",
       "nodePath": [
         0,
         1
@@ -1157,7 +2292,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-2",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19",
       "localTransform": [
         1,
         0,
@@ -1177,8 +2312,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_fray_2",
-      "nodeName": "break_aft_fray_2",
+      "mergeBoundary": "Deck1.35_19",
+      "nodeName": "Deck1.35_19",
       "nodePath": [
         0,
         2
@@ -1206,7 +2341,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-3",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19-m",
       "localTransform": [
         1,
         0,
@@ -1226,8 +2361,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_fray_3",
-      "nodeName": "break_aft_fray_3",
+      "mergeBoundary": "Deck1.35_19_M",
+      "nodeName": "Deck1.35_19_M",
       "nodePath": [
         0,
         3
@@ -1255,7 +2390,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-4",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar",
       "localTransform": [
         1,
         0,
@@ -1275,8 +2410,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_fray_4",
-      "nodeName": "break_aft_fray_4",
+      "mergeBoundary": "DockCollar",
+      "nodeName": "DockCollar",
       "nodePath": [
         0,
         4
@@ -1304,7 +2439,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotcore",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockring",
       "localTransform": [
         1,
         0,
@@ -1324,8 +2459,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_hotcore",
-      "nodeName": "break_aft_hotcore",
+      "mergeBoundary": "DockRing",
+      "nodeName": "DockRing",
       "nodePath": [
         0,
         5
@@ -1353,7 +2488,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
       "localTransform": [
         1,
         0,
@@ -1373,8 +2508,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_hotfray_0",
-      "nodeName": "break_aft_hotfray_0",
+      "mergeBoundary": "Drum",
+      "nodeName": "Drum",
       "nodePath": [
         0,
         6
@@ -1402,7 +2537,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-2",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1",
       "localTransform": [
         1,
         0,
@@ -1422,8 +2557,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_hotfray_2",
-      "nodeName": "break_aft_hotfray_2",
+      "mergeBoundary": "Gallery-3.1",
+      "nodeName": "Gallery-3.1",
       "nodePath": [
         0,
         7
@@ -1451,7 +2586,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-4",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1",
       "localTransform": [
         1,
         0,
@@ -1471,8 +2606,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_hotfray_4",
-      "nodeName": "break_aft_hotfray_4",
+      "mergeBoundary": "Gallery3.1",
+      "nodeName": "Gallery3.1",
       "nodePath": [
         0,
         8
@@ -1500,7 +2635,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1",
       "localTransform": [
         1,
         0,
@@ -1519,9 +2654,9 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_peel_0",
-      "nodeName": "break_aft_peel_0",
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "GalleryGlass-3.1",
+      "nodeName": "GalleryGlass-3.1",
       "nodePath": [
         0,
         9
@@ -1549,7 +2684,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1",
       "localTransform": [
         1,
         0,
@@ -1568,9 +2703,9 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_peel_1",
-      "nodeName": "break_aft_peel_1",
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "GalleryGlass3.1",
+      "nodeName": "GalleryGlass3.1",
       "nodePath": [
         0,
         10
@@ -1598,7 +2733,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-2",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11",
       "localTransform": [
         1,
         0,
@@ -1618,8 +2753,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_peel_2",
-      "nodeName": "break_aft_peel_2",
+      "mergeBoundary": "GalleryLit-3.1_11",
+      "nodeName": "GalleryLit-3.1_11",
       "nodePath": [
         0,
         11
@@ -1647,7 +2782,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-3",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11",
       "localTransform": [
         1,
         0,
@@ -1667,8 +2802,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_peel_3",
-      "nodeName": "break_aft_peel_3",
+      "mergeBoundary": "GalleryLit3.1_11",
+      "nodeName": "GalleryLit3.1_11",
       "nodePath": [
         0,
         12
@@ -1696,7 +2831,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib-3-16",
       "localTransform": [
         1,
         0,
@@ -1716,8 +2851,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_0",
-      "nodeName": "break_aft_tear_0",
+      "mergeBoundary": "GalleryRib-3.16",
+      "nodeName": "GalleryRib-3.16",
       "nodePath": [
         0,
         13
@@ -1745,7 +2880,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib3-16",
       "localTransform": [
         1,
         0,
@@ -1765,8 +2900,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_1",
-      "nodeName": "break_aft_tear_1",
+      "mergeBoundary": "GalleryRib3.16",
+      "nodeName": "GalleryRib3.16",
       "nodePath": [
         0,
         14
@@ -1794,7 +2929,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-2",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-0-55",
       "localTransform": [
         1,
         0,
@@ -1814,8 +2949,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_2",
-      "nodeName": "break_aft_tear_2",
+      "mergeBoundary": "Mullion-0.55",
+      "nodeName": "Mullion-0.55",
       "nodePath": [
         0,
         15
@@ -1843,7 +2978,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-3",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-1-6",
       "localTransform": [
         1,
         0,
@@ -1863,8 +2998,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_3",
-      "nodeName": "break_aft_tear_3",
+      "mergeBoundary": "Mullion-1.6",
+      "nodeName": "Mullion-1.6",
       "nodePath": [
         0,
         16
@@ -1892,7 +3027,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-4",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion0-55",
       "localTransform": [
         1,
         0,
@@ -1912,8 +3047,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_4",
-      "nodeName": "break_aft_tear_4",
+      "mergeBoundary": "Mullion0.55",
+      "nodeName": "Mullion0.55",
       "nodePath": [
         0,
         17
@@ -1941,7 +3076,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-5",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion1-6",
       "localTransform": [
         1,
         0,
@@ -1961,8 +3096,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_5",
-      "nodeName": "break_aft_tear_5",
+      "mergeBoundary": "Mullion1.6",
+      "nodeName": "Mullion1.6",
       "nodePath": [
         0,
         18
@@ -1990,7 +3125,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-6",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd",
       "localTransform": [
         1,
         0,
@@ -2010,8 +3145,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_6",
-      "nodeName": "break_aft_tear_6",
+      "mergeBoundary": "RCSFwd",
+      "nodeName": "RCSFwd",
       "nodePath": [
         0,
         19
@@ -2039,7 +3174,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-7",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-m",
       "localTransform": [
         1,
         0,
@@ -2059,8 +3194,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_7",
-      "nodeName": "break_aft_tear_7",
+      "mergeBoundary": "RCSFwd_M",
+      "nodeName": "RCSFwd_M",
       "nodePath": [
         0,
         20
@@ -2088,7 +3223,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-8",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10",
       "localTransform": [
         1,
         0,
@@ -2108,8 +3243,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_8",
-      "nodeName": "break_aft_tear_8",
+      "mergeBoundary": "RCSFwd_N-0.13-0.10",
+      "nodeName": "RCSFwd_N-0.13-0.10",
       "nodePath": [
         0,
         21
@@ -2137,7 +3272,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-9",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10-m",
       "localTransform": [
         1,
         0,
@@ -2157,8 +3292,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_aft_tear_9",
-      "nodeName": "break_aft_tear_9",
+      "mergeBoundary": "RCSFwd_N-0.13-0.10_M",
+      "nodeName": "RCSFwd_N-0.13-0.10_M",
       "nodePath": [
         0,
         22
@@ -2186,7 +3321,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10",
       "localTransform": [
         1,
         0,
@@ -2206,8 +3341,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_bridge",
-      "nodeName": "lnb_bridge",
+      "mergeBoundary": "RCSFwd_N-0.130.10",
+      "nodeName": "RCSFwd_N-0.130.10",
       "nodePath": [
         0,
         23
@@ -2235,7 +3370,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge-glass",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10-m",
       "localTransform": [
         1,
         0,
@@ -2254,9 +3389,9 @@
         0,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "lnb_bridge_glass",
-      "nodeName": "lnb_bridge_glass",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RCSFwd_N-0.130.10_M",
+      "nodeName": "RCSFwd_N-0.130.10_M",
       "nodePath": [
         0,
         24
@@ -2284,7 +3419,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-emerg",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10",
       "localTransform": [
         1,
         0,
@@ -2304,8 +3439,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_emerg",
-      "nodeName": "lnb_emerg",
+      "mergeBoundary": "RCSFwd_N0.13-0.10",
+      "nodeName": "RCSFwd_N0.13-0.10",
       "nodePath": [
         0,
         25
@@ -2333,7 +3468,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10-m",
       "localTransform": [
         1,
         0,
@@ -2353,8 +3488,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_hull_0",
-      "nodeName": "lnb_hull_0",
+      "mergeBoundary": "RCSFwd_N0.13-0.10_M",
+      "nodeName": "RCSFwd_N0.13-0.10_M",
       "nodePath": [
         0,
         26
@@ -2382,7 +3517,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10",
       "localTransform": [
         1,
         0,
@@ -2402,8 +3537,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_hull_1",
-      "nodeName": "lnb_hull_1",
+      "mergeBoundary": "RCSFwd_N0.130.10",
+      "nodeName": "RCSFwd_N0.130.10",
       "nodePath": [
         0,
         27
@@ -2431,7 +3566,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-2",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10-m",
       "localTransform": [
         1,
         0,
@@ -2451,8 +3586,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_hull_2",
-      "nodeName": "lnb_hull_2",
+      "mergeBoundary": "RCSFwd_N0.130.10_M",
+      "nodeName": "RCSFwd_N0.130.10_M",
       "nodePath": [
         0,
         28
@@ -2480,7 +3615,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-prow",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-10",
       "localTransform": [
         1,
         0,
@@ -2500,8 +3635,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_prow",
-      "nodeName": "lnb_prow",
+      "mergeBoundary": "SkyLights_10",
+      "nodeName": "SkyLights_10",
       "nodePath": [
         0,
         29
@@ -2529,7 +3664,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-0",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-11",
       "localTransform": [
         1,
         0,
@@ -2549,8 +3684,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_win_0",
-      "nodeName": "lnb_win_0",
+      "mergeBoundary": "SkyLights_11",
+      "nodeName": "SkyLights_11",
       "nodePath": [
         0,
         30
@@ -2578,7 +3713,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.spine",
       "localTransform": [
         1,
         0,
@@ -2598,106 +3733,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_win_1",
-      "nodeName": "lnb_win_1",
-      "nodePath": [
-        0,
-        31
-      ],
-      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_win_2",
-      "nodeName": "lnb_win_2",
-      "nodePath": [
-        0,
-        32
-      ],
-      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_win_t0",
-      "nodeName": "lnb_win_t0",
+      "mergeBoundary": "Spine",
+      "nodeName": "Spine",
       "nodePath": [
         0,
         33
@@ -2725,7 +3762,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t1",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.spinesaddle5",
       "localTransform": [
         1,
         0,
@@ -2745,8 +3782,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_win_t1",
-      "nodeName": "lnb_win_t1",
+      "mergeBoundary": "SpineSaddle5",
+      "nodeName": "SpineSaddle5",
       "nodePath": [
         0,
         34
@@ -2774,7 +3811,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t2",
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
       "localTransform": [
         1,
         0,
@@ -2794,11 +3831,795 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnb_win_t2",
-      "nodeName": "lnb_win_t2",
+      "mergeBoundary": "Wedge",
+      "nodeName": "Wedge",
       "nodePath": [
         0,
         35
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib0",
+      "nodeName": "woundAft_f_rib0",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib1",
+      "nodeName": "woundAft_f_rib1",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib2",
+      "nodeName": "woundAft_f_rib2",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib3",
+      "nodeName": "woundAft_f_rib3",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib4",
+      "nodeName": "woundAft_f_rib4",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib5",
+      "nodeName": "woundAft_f_rib5",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib6",
+      "nodeName": "woundAft_f_rib6",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib7",
+      "nodeName": "woundAft_f_rib7",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_f_rib8",
+      "nodeName": "woundAft_f_rib8",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_t_tear0",
+      "nodeName": "woundAft_t_tear0",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_t_tear1",
+      "nodeName": "woundAft_t_tear1",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_t_tear2",
+      "nodeName": "woundAft_t_tear2",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_t_tear3",
+      "nodeName": "woundAft_t_tear3",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_t_tear4",
+      "nodeName": "woundAft_t_tear4",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_t_tear5",
+      "nodeName": "woundAft_t_tear5",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "woundAft_t_tear6",
+      "nodeName": "woundAft_t_tear6",
+      "nodePath": [
+        0,
+        51
       ],
       "parentId": "sf.render.aftermath-wreck-liner-bow.root",
       "role": "immutable",
@@ -2873,45 +4694,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "670f050154612f7ecdfb87aafe54a168d382a0482bb5341065ae6a61c9d63e90"
+      "sha256": "92394bb99860fc9278d3651f4306a4c82f4e30753dcdd3a1541584f6f7e30948"
     },
     "sourceGlb": {
-      "bytes": 43320,
-      "sha256": "bca343502cb5ce696c386f13101edc08337a645f034b6cece336b06ea30bb685",
+      "bytes": 338656,
+      "sha256": "1c45dd91f7e886f924b654f0bb69aba64e361a7a84595bec9023b6017e050b1f",
       "uri": "place_aftermath_wreck_liner_bow.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 90564,
-    "sha256": "7aafa2e63e2883e3b01ec0e6c7b237f8c28312d8f5abad10df82db74862136a1",
+    "bytes": 477936,
+    "sha256": "390fc205c7ed2083e255788a3683629d83e90672f71031ca3b74e204b87c13f4",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.1821422576904297,
-        -0.00005054473876953125,
-        -0.1154336929321289
+        -0.0005702972412109375,
+        -0.0005970001220703125,
+        0.0000209808349609375
       ],
       "max": [
-        34.47523498535156,
-        12.214149475097656,
-        12.878840446472168
+        34.49885559082031,
+        19.84749984741211,
+        34.0537109375
       ],
       "min": [
-        -34.1109504699707,
-        -12.214250564575195,
-        -13.109707832336426
+        -34.499996185302734,
+        -19.84869384765625,
+        -34.05366897583008
       ],
       "size": [
-        68.58618545532227,
-        24.42840003967285,
-        25.988548278808594
+        68.99885177612305,
+        39.69619369506836,
+        68.10737991333008
       ]
     },
     "hidden": [],
@@ -2931,13 +4752,13 @@
           0,
           1,
           0,
-          15.475814819335938,
-          8.214347839355469,
-          -4.810021877288818,
+          -9.911733627319336,
+          17.95679473876953,
+          -12.983580589294434,
           1
         ],
         "name": "SOCKET_BlackBox",
-        "planIndex": 38,
+        "planIndex": 55,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2968,13 +4789,13 @@
           0,
           1,
           0,
-          15.475814819335938,
-          12.214347839355469,
-          -1.8100218772888184,
+          15.093189239501953,
+          9.746221542358398,
+          -1.7873458862304688,
           1
         ],
         "name": "SOCKET_Salvage_Bridge",
-        "planIndex": 39,
+        "planIndex": 56,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2993,36 +4814,33 @@
       }
     ],
     "materialProfileRoles": {
-      "glass": 7,
-      "hull": 3,
-      "mechanical": 24,
-      "rubber": 2
+      "ceramic": 14,
+      "glass": 3,
+      "hull": 16,
+      "mechanical": 26,
+      "signal": 8,
+      "warning": 3
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3037,87 +4855,62 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "mechanical"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
-        "role": "mechanical"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "mechanical"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "mechanical"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -3127,60 +4920,260 @@
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "rubber"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "glass"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "glass"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
         "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 74,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 75,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 76,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 77,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 80,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 81,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 83,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 84,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 85,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 86,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 40,
+    "nodeCount": 87,
     "primitives": [
       {
         "canopy": false,
@@ -3202,7 +5195,7 @@
           0,
           1
         ],
-        "name": "break_aft_fray_0",
+        "name": "Deck-055_19",
         "planIndex": 2,
         "tags": {
           "canopy": false,
@@ -3229,7 +5222,7 @@
           0,
           1
         ],
-        "name": "break_aft_fray_1",
+        "name": "Deck-055_19_M",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -3256,7 +5249,7 @@
           0,
           1
         ],
-        "name": "break_aft_fray_2",
+        "name": "Deck135_19",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -3283,7 +5276,7 @@
           0,
           1
         ],
-        "name": "break_aft_fray_3",
+        "name": "Deck135_19_M",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -3310,34 +5303,7 @@
           0,
           1
         ],
-        "name": "break_aft_fray_4",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_aft_hotcore",
+        "name": "DockCollar_1",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -3364,7 +5330,7 @@
           0,
           1
         ],
-        "name": "break_aft_hotfray_0",
+        "name": "DockCollar_2",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -3391,7 +5357,7 @@
           0,
           1
         ],
-        "name": "break_aft_hotfray_2",
+        "name": "DockCollar_3",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -3418,34 +5384,7 @@
           0,
           1
         ],
-        "name": "break_aft_hotfray_4",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_aft_peel_0",
+        "name": "DockRing_1",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -3472,7 +5411,7 @@
           0,
           1
         ],
-        "name": "break_aft_peel_1",
+        "name": "DockRing_2",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -3499,34 +5438,7 @@
           0,
           1
         ],
-        "name": "break_aft_peel_2",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_aft_peel_3",
+        "name": "Drum_1",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -3553,7 +5465,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_0",
+        "name": "Drum_2",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -3580,7 +5492,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_1",
+        "name": "Drum_3",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -3607,7 +5519,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_2",
+        "name": "Drum_4",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -3634,7 +5546,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_3",
+        "name": "Drum_5",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -3661,34 +5573,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_4",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_aft_tear_5",
+        "name": "Gallery-31_1",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -3715,7 +5600,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_6",
+        "name": "Gallery-31_2",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -3742,34 +5627,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_7",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_aft_tear_8",
+        "name": "Gallery31_1",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -3796,7 +5654,7 @@
           0,
           1
         ],
-        "name": "break_aft_tear_9",
+        "name": "Gallery31_2",
         "planIndex": 24,
         "tags": {
           "canopy": false,
@@ -3823,34 +5681,7 @@
           0,
           1
         ],
-        "name": "lnb_bridge",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "lnb_bridge_glass",
+        "name": "GalleryGlass-31_1",
         "planIndex": 26,
         "tags": {
           "canopy": false,
@@ -3877,7 +5708,7 @@
           0,
           1
         ],
-        "name": "lnb_emerg",
+        "name": "GalleryGlass-31_2",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -3904,34 +5735,7 @@
           0,
           1
         ],
-        "name": "lnb_hull_0",
-        "planIndex": 28,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "lnb_hull_1",
+        "name": "GalleryGlass31_1",
         "planIndex": 29,
         "tags": {
           "canopy": false,
@@ -3958,7 +5762,7 @@
           0,
           1
         ],
-        "name": "lnb_hull_2",
+        "name": "GalleryGlass31_2",
         "planIndex": 30,
         "tags": {
           "canopy": false,
@@ -3985,34 +5789,7 @@
           0,
           1
         ],
-        "name": "lnb_prow",
-        "planIndex": 31,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "lnb_win_0",
+        "name": "GalleryLit-31_11_1",
         "planIndex": 32,
         "tags": {
           "canopy": false,
@@ -4039,7 +5816,7 @@
           0,
           1
         ],
-        "name": "lnb_win_1",
+        "name": "GalleryLit-31_11_2",
         "planIndex": 33,
         "tags": {
           "canopy": false,
@@ -4066,34 +5843,7 @@
           0,
           1
         ],
-        "name": "lnb_win_2",
-        "planIndex": 34,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "lnb_win_t0",
+        "name": "GalleryLit31_11_1",
         "planIndex": 35,
         "tags": {
           "canopy": false,
@@ -4120,7 +5870,7 @@
           0,
           1
         ],
-        "name": "lnb_win_t1",
+        "name": "GalleryLit31_11_2",
         "planIndex": 36,
         "tags": {
           "canopy": false,
@@ -4147,8 +5897,1169 @@
           0,
           1
         ],
-        "name": "lnb_win_t2",
+        "name": "GalleryRib-316",
         "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "GalleryRib316",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Mullion-055",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Mullion-16",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Mullion055",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Mullion16",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_M",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N-013-010",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N-013-010_M",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N-013010",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N-013010_M",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N013-010",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N013-010_M",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N013010",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RCSFwd_N013010_M",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SkyLights_10",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SkyLights_11",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Spine_1",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Spine_2",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SpineSaddle5",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wedge_1",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wedge_2",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wedge_3",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wedge_4",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wedge_5",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib0",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib1",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib2",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib3",
+        "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib4",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib5",
+        "planIndex": 72,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib6",
+        "planIndex": 73,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib7",
+        "planIndex": 74,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_f_rib8",
+        "planIndex": 75,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear0",
+        "planIndex": 76,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear1",
+        "planIndex": 77,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear2",
+        "planIndex": 78,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear3_1",
+        "planIndex": 80,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear3_2",
+        "planIndex": 81,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear4_1",
+        "planIndex": 83,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear4_2",
+        "planIndex": 84,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear5",
+        "planIndex": 85,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "woundAft_t_tear6",
+        "planIndex": 86,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4159,60 +7070,74 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_bow.glb"
   },
-  "runtimeHash": "b629dc0a7b3d6cde3de7d8c5dc02e48ec2e6384af7c47e02f7231b307e9187ce",
+  "runtimeHash": "c8c0469de5430dd618875f49289d87a24232228799fa51a1eed2a0e404308ea5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          34.47523498535156,
-          12.214149475097656,
-          12.878840446472168
+          34.49885559082031,
+          19.84749984741211,
+          34.0537109375
         ],
         "min": [
-          -34.1109504699707,
-          -12.214250564575195,
-          -13.109707832336426
+          -34.499996185302734,
+          -19.84869384765625,
+          -34.05366897583008
         ]
       },
       "id": "sf.render.aftermath-wreck-liner-bow.body",
       "nodeIds": [
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-0",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-1",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-2",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-3",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-fray-4",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotcore",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-0",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-2",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-hotfray-4",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-0",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-1",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-2",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-peel-3",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-0",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-1",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-2",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-3",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-4",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-5",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-6",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-7",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-8",
-        "sf.render.aftermath-wreck-liner-bow.mesh.break-aft-tear-9",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-bridge-glass",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-emerg",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-0",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-1",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-hull-2",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-prow",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-0",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-1",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-2",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t0",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t1",
-        "sf.render.aftermath-wreck-liner-bow.mesh.lnb-win-t2",
+        "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19",
+        "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19-m",
+        "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19",
+        "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19-m",
+        "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar",
+        "sf.render.aftermath-wreck-liner-bow.mesh.dockring",
+        "sf.render.aftermath-wreck-liner-bow.mesh.drum",
+        "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1",
+        "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1",
+        "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1",
+        "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1",
+        "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11",
+        "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11",
+        "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib-3-16",
+        "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib3-16",
+        "sf.render.aftermath-wreck-liner-bow.mesh.mullion-0-55",
+        "sf.render.aftermath-wreck-liner-bow.mesh.mullion-1-6",
+        "sf.render.aftermath-wreck-liner-bow.mesh.mullion0-55",
+        "sf.render.aftermath-wreck-liner-bow.mesh.mullion1-6",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-m",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10-m",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10-m",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10-m",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10",
+        "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10-m",
+        "sf.render.aftermath-wreck-liner-bow.mesh.skylights-10",
+        "sf.render.aftermath-wreck-liner-bow.mesh.skylights-11",
+        "sf.render.aftermath-wreck-liner-bow.mesh.spine",
+        "sf.render.aftermath-wreck-liner-bow.mesh.spinesaddle5",
+        "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib0",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib1",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib2",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib3",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib4",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib5",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib6",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib7",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib8",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear0",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear1",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear2",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear5",
+        "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear6",
         "sf.render.aftermath-wreck-liner-bow.root"
       ]
     }

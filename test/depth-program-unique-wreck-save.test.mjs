@@ -73,8 +73,13 @@ test('player save blob round-trips the bounded sidecar before sector remateriali
       b.bus.emit('sector:enter', { sectorId: 'sector_helios_prime' });
       const restored = b.state.player.uniqueWrecks.bearings[WRECK_ID];
       assert.equal(restored.phase, 'salvaged');
-      assert.equal(b.state.entityList.some((entry) => entry.data && entry.data.uniqueWreckId === WRECK_ID), false,
-        'Continue cannot respawn a recovered one-per-save wreck');
+      // Continue restores the site as an inert, choice-stamped husk — the one-per-save wreck and
+      // its payouts never respawn, but the map bearing keeps pointing at a real place with a past.
+      const site = b.state.entityList.find((entry) => entry.data && entry.data.uniqueWreckId === WRECK_ID);
+      assert.ok(site, 'Continue restores the salvaged site as a legible husk');
+      assert.equal(site.data._salvaged, true);
+      assert.match(site.data.scanLabel, /CLAIMED AS SALVAGE/);
+      assert.equal(site.data.scanDescription.includes('SALVAGE TO OPEN RECOVERY CLAIM'), false);
       const medicalBefore = b.state.player.cargo.items.cmdty_medical || 0;
       const modulesBefore = b.state.player.moduleInventory.filter((entry) => entry.defId === 'unique_knitbots').length;
       b.bus.emit('salvage:completed', { wreckId: 999999, loot: {} });

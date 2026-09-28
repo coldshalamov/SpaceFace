@@ -64,6 +64,7 @@ import {
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
   SET_PIECE_MISSIONS,
+  WRECK_BOUND_SET_PIECE_OBJECTIVES,
   offerMixWeight,
   offerHistoryTierFor,
   offerHistoryMultiplier,
@@ -107,6 +108,14 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
 import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
+// A1 "passengers are people": the passenger corpora (names, why-lines, riding beats) are data;
+// this system mints the per-offer identity and speaks the beats on the existing comms seams.
+import {
+  FRONTIER_FIRST_NAMES,
+  FRONTIER_LAST_NAMES,
+  PASSENGER_WHY_LINES,
+  passengerBeatLine,
+} from '../data/barks.js';
 // PQ-019C — the authored physical capsule heist. The offer and its tuned scalars are data; the run
 // itself is driven by the runtime module below, which consumes PQ-019B's pure arbiter. Both are
 // inert unless an active mission actually carries a `heist` subrecord.
@@ -167,7 +176,8 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
@@ -241,6 +251,23 @@ function stationInfoFor(state, stationId) {
     }
   }
   return STATION_INFO.get(stationId) || null;
+}
+
+/**
+ * A1 "passengers are people": mint one offer's passenger from (world seed, offer id) — a name
+ * and a one-line "why I'm traveling". Never an rng draw and never ambient randomness: the same
+ * offer reproduces the same person across board refresh, save/load, and the fugitive reveal.
+ */
+function passengerIdentityFor(seed, offerId, destName) {
+  const seedU = (Number(seed) || 0) >>> 0;
+  const idStr = String(offerId || '');
+  const nameHash = hash32(seedU, idStr, 'pax-name');
+  const first = FRONTIER_FIRST_NAMES[nameHash % FRONTIER_FIRST_NAMES.length];
+  const last = FRONTIER_LAST_NAMES[(nameHash >>> 8) % FRONTIER_LAST_NAMES.length];
+  const whyHash = hash32(seedU, idStr, 'pax-why');
+  const why = String(PASSENGER_WHY_LINES[whyHash % PASSENGER_WHY_LINES.length])
+    .replace(/\{dest\}/g, destName || 'the destination');
+  return { name: `${first} ${last}`, why };
 }
 
 // Commodities a player can plausibly haul for delivery / be asked to mine / smuggle.
@@ -387,6 +414,25 @@ const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
 const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
+
+// ── Contract claim-stake salvage (WF-08) ───────────────────────────────────────────
+// An ordinary board salvage_retrieval is a promised dead hull on the destination's
+// approach lane, not a cargo fetch: the wreck drifts outside port safety with the
+// contract manifest in its salvagePool, a filed field-claim (mining's own
+// `salvorClaimedBy` → `salvage:claimJumped` → lawSecurity.reportIncident protest
+// path), and a passive working crew — a hauler lead that physically siphons the
+// pool into its cargoManifest while the player watches, plus cutter escorts that
+// hold fire until the claim is touched. Every approach stays open: strip it under
+// protest (law judges the theft where witnessed), gun the crew down first (the
+// claim lapses when nobody holds it), drag the whole hull off on a tether, or let
+// the crew finish and take the goods off the hauler the hard way — the manifest
+// drops as a real takeable body through lootShards' civilian-payload path.
+const CONTRACT_CLAIM_PLAYER_RANGE_WU = 900;   // the crew only works while the player is on scene
+const CONTRACT_CLAIM_WORK_RANGE_WU = 240;     // the hauler must stay on the hull to cut it
+const CONTRACT_CLAIM_CUT_PERIOD_S = 10;       // one manifest unit siphoned per this many seconds
+const CONTRACT_CLAIM_FLEE_RANGE_WU = 1500;    // a sprung hauler runs this far off the hull
+const CONTRACT_CLAIM_ORBIT_RAD_PER_S = 0.11;  // slow visible mill around the wreck
+const CONTRACT_CLAIM_SCAN_LABEL = 'DEAD HAULER — FILED CLAIM';
 
 // ── PQ-138.04 failure mutation ("failure should usually mutate the situation") ───────────────
 // A broken contract must not dead-end in a red toast: the situation the player is standing in
@@ -1162,6 +1208,7 @@ export const missions = {
       this._activateContract47aB1OnDeparture();
       this._activateContract47aB2OnDeparture();
       this._activateContract47aB3OnDeparture();
+      this._onPassengerUndock();
     });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
@@ -1281,6 +1328,20 @@ export const missions = {
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
 
+    // ── WF-08 claim-stake salvage: the contested wreck's own listeners. Every row below is a
+    // strict no-op unless an active contract owns the touched entity, so ordinary wrecks,
+    // ambient salvor claims, and authored sites never see these paths. ────────────────────────
+    bus.on('mining:start', (p) => this._onContractClaimBeamStart(p));
+    bus.on('salvage:claimJumped', (p) => this._onContractClaimJumped(p));
+    bus.on('salvage:completed', (p) => this._onContractClaimSalvageCompleted(p));
+    bus.on('tether:latched', (p) => this._onContractClaimLatch(p));
+    bus.on('combat:damage', (p) => this._onContractClaimDamage(p));
+    bus.on('entity:killed', (p) => this._onContractClaimKill(p));
+    bus.on('entity:destroyed', (p) => this._onContractClaimDestroyed(p));
+    // The hauler's manifest pod spawns inside lootShards' own kill listener — possibly after
+    // this system's kill handler ran. Its spill event is the honest moment to move the marker.
+    bus.on('loot:manifestPayload', (p) => this._onContractClaimPodSpilled(p));
+
     // ── Story-beat triggers from other systems ───────────────────────────────────────────────
     bus.on('ship:purchased', (p) => this._onContract47aB3ShipPurchased(p || {}));
     bus.on('asset:deployed', (p) => this._onContract47aB6AssetDeployed(p || {}));
@@ -1326,6 +1387,11 @@ export const missions = {
       if (m.type === 'bounty_hunt' && m.storyTarget) {
         this._maybeMarkHail(m, state);
       }
+      // WF-08: the contested salvage site is a live scene — the crew mills the hull, siphons
+      // units while the player watches, and the claim lapses when nobody is left to hold it.
+      if (m.type === 'salvage_retrieval' && m.needsTargets) {
+        this._driveContractClaimSite(m, state, dt);
+      }
     }
     // A saturated cap defers authored targets; retry in stable mission order at a bounded cadence.
     // This is also the Continue top-up path after world adopted only part of a target group.
@@ -1338,6 +1404,7 @@ export const missions = {
     // why a mission could only ever say "counter >= N" or "docked at station X". This is the hook
     // that lets a contract term be a physical state — speed held, line under tension, alongside the
     // berth — instead of an event count.
+    this._drivePassengerBeats(state);
     this._evaluateMissionConditions(dt, state);
     // Story credit/net-worth gates are checked opportunistically (cheap, no per-frame DOM).
     this._checkStoryGates();
@@ -2503,6 +2570,14 @@ export const missions = {
     // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
     const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
 
+    // A1 "passengers are people": the board names the fare, not a seat count. Minted from
+    // (world seed, offer id) — never an rng draw — so every other rolled field stays
+    // bit-identical, the same offer reproduces the same person across save/load, and the
+    // passenger_is_fugitive trap can interpolate this exact name at attach time.
+    if (typeId === 'passenger_transport') {
+      params.passenger = passengerIdentityFor(this.state.meta.seed, offerId, dest && dest.name);
+    }
+
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
     const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
@@ -2785,7 +2860,9 @@ export const missions = {
       case 'escort': return `Escort a convoy to ${destName}`;
       case 'patrol_clear': return `Clear ${p.clearCount} hostiles near ${destName}`;
       case 'recon_scan': return `Scan ${p.scanTargets} site(s) near ${destName}`;
-      case 'passenger_transport': return `Transport a passenger to ${destName}`;
+      case 'passenger_transport': return p.passenger
+        ? `Take ${p.passenger.name} to ${destName}`
+        : `Transport a passenger to ${destName}`;
       case 'tow_recovery': return `Tow the slag core to ${destName}`;
       case 'demolition': return `Knock down the tower near ${destName}`;
       case 'rescue_under_fire': return `Pull the pods out of ${destName}`;
@@ -2818,7 +2895,7 @@ export const missions = {
         line = `${p.qty}u ${cName(p.cmdtyId)} out of the rock. Nobody asks which rock.`;
         break;
       case 'salvage_retrieval':
-        line = `${p.qty}u ${cName(p.cmdtyId)} off a dead hull. ${destName} wants it back on the books.`;
+        line = `${p.qty}u ${cName(p.cmdtyId)} off a dead hull on the ${destName} drift. ${destName} wants it back on the books.`;
         break;
       case 'smuggling_run':
         line = `${p.qty}u ${cName(p.cmdtyId)} into ${destName}. Customs is the whole job.`;
@@ -2838,7 +2915,9 @@ export const missions = {
         line = `${p.scanTargets} site(s) near ${destName} need a real reading, not a rumor.`;
         break;
       case 'passenger_transport':
-        line = `One passenger to ${destName}. Quiet trip, quiet fee.`;
+        line = p.passenger
+          ? `${p.passenger.name} to ${destName}. ${p.passenger.why}`
+          : `One passenger to ${destName}. Quiet trip, quiet fee.`;
         break;
       case 'tow_recovery':
         line = `Tow the slag core into ${destName}, or sling it in on a clean release.`;
@@ -2997,6 +3076,7 @@ export const missions = {
     // B4 branch: accepting a faction intro contract sets the story branch.
     this._maybeSetBranch(inst);
     this._startLongReadObjective(inst);
+    this._startWreckBoundStageObjective(inst);
     return true;
   },
 
@@ -3165,7 +3245,7 @@ export const missions = {
       destStationId: offer.destStationId, destSectorId: offer.destSectorId,
       distance: offer.distance,
       targetEntityIds: [],          // runtime entity ids (NOT serialized — re-spawned on load)
-      needsTargets: !!(def && this._typeSpawnsTargets(offer.type, offer.params)),
+      needsTargets: !!(def && this._typeSpawnsTargets(offer.type, offer)),
       status: 'active',
       storyTag: offer.storyTag || null,
       storyContractId: offer.storyContractId || null,
@@ -3257,10 +3337,14 @@ export const missions = {
     }
   },
 
-  _typeSpawnsTargets(typeId, params = null) {
+  _typeSpawnsTargets(typeId, offer = null, params = null) {
+    // WF-08 claim-stake salvage: a board salvage row materializes a contested wreck site
+    // on arrival, so it needs the deferred spawn lifecycle like every other placed contract.
+    if (typeId === 'salvage_retrieval' && contractClaimSiteOffer(offer)) return true;
+    const p = params || (offer && offer.params) || null;
     return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
       || PHYSICAL_TYPE_SET.has(typeId)
-      || !!(params && params.poiSignalFollowup);
+      || !!(p && p.poiSignalFollowup);
   },
 
   _chainSeed(offer) {
@@ -3635,6 +3719,63 @@ export const missions = {
           pos: { x: routing.wreckPos.x, z: routing.wreckPos.z },
           reason: `Recover the convoy wreck, then deliver to ${home}`,
         };
+      }
+    }
+
+    // WF-08 claim-stake salvage: while the player is in the destination sector the marker
+    // follows the contract goods physically — the contested hull first, then the claim
+    // hauler if the crew already loaded it out, then the drop pod a dead hauler spilled.
+    // Once the goods are unrecoverable the marker falls through to ordinary delivery.
+    if (contractClaimSiteMission(m)) {
+      const sectorNow = this.state.world && this.state.world.currentSectorId;
+      if (sectorNow === m.destSectorId) {
+        const wreck = this._contractClaimWreck(m);
+        const wreckUnits = wreck ? salvagePoolUnits(wreck.data && wreck.data.salvagePool) : 0;
+        if (wreck && wreckUnits > 0) {
+          return {
+            ...base,
+            stationId: null,
+            sectorId: sectorNow,
+            targetEntityId: wreck.id,
+            pos: { x: wreck.pos.x, z: wreck.pos.z },
+            reason: m.params && m.params.contractClaimWarned
+              ? 'Strip the filed hull, or take the goods off the crew'
+              : 'Recover the manifest — a claim crew is already on the hull',
+          };
+        }
+        const lead = this._contractClaimLead(m);
+        if (lead && this._contractClaimManifestUnits(lead) > 0) {
+          return {
+            ...base,
+            stationId: null,
+            sectorId: sectorNow,
+            targetEntityId: lead.id,
+            pos: { x: lead.pos.x, z: lead.pos.z },
+            reason: 'The manifest is aboard the claim hauler — take it back',
+          };
+        }
+        // The hauler went down loaded — the goods spilled as one real takeable pod.
+        const pod = this._contractClaimPod(m);
+        if (pod) {
+          return {
+            ...base,
+            stationId: null,
+            sectorId: sectorNow,
+            targetEntityId: pod.id,
+            pos: { x: pod.pos.x, z: pod.pos.z },
+            reason: 'The hauler is down — the manifest pod is drifting',
+          };
+        }
+        if (wreck) {
+          return {
+            ...base,
+            stationId: null,
+            sectorId: sectorNow,
+            targetEntityId: wreck.id,
+            pos: { x: wreck.pos.x, z: wreck.pos.z },
+            reason: 'The hull is stripped — settle up at the dock',
+          };
+        }
       }
     }
 
@@ -4035,6 +4176,14 @@ export const missions = {
       if (!m || m.status !== 'active' || m.type !== 'salvage_retrieval') continue;
       if (!m.params || m.params.setPieceObjective !== 'investigation_recover_box') continue;
       if (this.state.world.currentSectorId !== m.destSectorId) continue;
+      // G1: the black box comes out of the chain's OWN placed wreck. A wreck bound to the offer
+      // must be the authored hull (entity.data.uniqueWreckId); unbound legacy offers keep the
+      // sector-wide rule. Any random scrap wreck no longer settles the story stage.
+      const boundWreckId = m.params.wreckId || m.wreckId || (m.cause && m.cause.wreckId) || null;
+      if (boundWreckId) {
+        const wreckData = wreck && wreck.data;
+        if (!wreckData || wreckData.uniqueWreckId !== boundWreckId) continue;
+      }
       m.params.recoveredWreckId = p.wreckId;
       m.objectiveProgress = m.objectiveTarget;
       this._completeMission(m, i);
@@ -4213,7 +4362,10 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
-      if (m.params && m.params.setPieceObjective === 'long_read_rumor_survey') continue;
+      // Wreck-bound set-piece scans (long_read rumor survey + the four D13-D16 chain openings)
+      // are aimed at one placed authored hull. A generic sector pulse must never finish them;
+      // completion arrives from uniqueWreck:bearingFixed when the placed wreck is actually scanned.
+      if (m.params && WRECK_BOUND_SET_PIECE_OBJECTIVES.has(m.params.setPieceObjective)) continue;
       // Authored landmark probes settle only from scanner's exact physical signal result below.
       // A generic sector pulse must never finish a job aimed at one named hull.
       if (m.params && m.params.landmarkProbe) continue;
@@ -4371,6 +4523,45 @@ export const missions = {
     return false;
   },
 
+  /**
+   * G1: reconcile a wreck-bound set-piece stage at accept time. If the chain's hull is already
+   * known (a repeat run over a scanned/salvaged wreck, or a free-roam scan before accepting),
+   * the stage completes against the durable bearing instead of demanding new world work — the
+   * same reconcile precedent long_read's known-bearing opening follows.
+   */
+  _startWreckBoundStageObjective(mission) {
+    const params = mission && mission.params;
+    if (!mission || mission.status !== 'active' || !params) return false;
+    const objective = params.setPieceObjective;
+    const wreckId = params.wreckId || mission.wreckId || (mission.cause && mission.cause.wreckId);
+    if (!wreckId) return false;
+    const own = this.state.player && this.state.player.uniqueWrecks;
+    const bearing = own && own.bearings && own.bearings[wreckId];
+    if (!bearing) return false;
+
+    if (WRECK_BOUND_SET_PIECE_OBJECTIVES.has(objective)) {
+      // Only 'rumored' still owes the scan; fixed/decision/salvaged proves the hull was read.
+      if (bearing.phase === 'rumored') return false;
+      return this._onLongReadBearingFixed({
+        wreckId,
+        sectorId: mission.destSectorId,
+        phase: bearing.phase,
+      });
+    }
+
+    if (objective === 'investigation_recover_box') {
+      // The box already left the hull: decision pending or fully salvaged proves the recovery.
+      if (bearing.phase !== 'decision' && bearing.phase !== 'salvaged') return false;
+      const index = this.state.missions.active.indexOf(mission);
+      if (index < 0) return false;
+      params.recoveredWreckId = wreckId;
+      mission.objectiveProgress = mission.objectiveTarget;
+      this._completeMission(mission, index);
+      return true;
+    }
+    return false;
+  },
+
   _startLongReadObjective(mission) {
     const params = mission && mission.params;
     if (!mission || mission.status !== 'active' || !params) return false;
@@ -4514,8 +4705,10 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const mission = this.state.missions.active[i];
       const params = mission && mission.params;
+      // G1: every wreck-bound set-piece scan stage (long_read's rumor survey and the four
+      // D13-D16 chain openings) completes when ITS placed wreck's bearing is actually fixed.
       if (!mission || mission.status !== 'active' || !params
-        || params.setPieceObjective !== 'long_read_rumor_survey'
+        || !WRECK_BOUND_SET_PIECE_OBJECTIVES.has(params.setPieceObjective)
         || params.wreckId !== payload.wreckId) continue;
       params.rumorPurchased = true;
       params.bearingFixed = true;
@@ -6272,8 +6465,17 @@ export const missions = {
         return 'Lane report is clean. Hostile signatures cleared, trade traffic can pretend it was always safe.';
       case 'recon_scan':
         return 'Scan packet received. The map is now less wrong where it matters.';
-      case 'passenger_transport':
+      case 'passenger_transport': {
+        // A1: the receipt quotes the fare the run made real, not a seat count.
+        const pax = p.passenger;
+        if (pax && pax.name) {
+          const quote = this._passengerBeatLine(m, 'arrive');
+          return quote
+            ? `${pax.name} stepped off at ${dest}. "${quote}"`
+            : `${pax.name} transferred at ${dest}. The fee cleared.`;
+        }
         return 'Passenger transferred at ' + dest + '. Their name stays boring on the manifest.';
+      }
       case 'tow_recovery':
         return p.completionMethod === 'sling_in'
           ? 'Slag core slung into ' + dest + '. The yard logged the throw, not the dock.'
@@ -6335,8 +6537,67 @@ export const missions = {
     return advanceSetPieceMission(this.state, mission, { outcome, reason });
   },
 
+  /**
+   * G2 — the Witness Run / station-contact seam. The run's witnesses ARE Customs bar contacts
+   * ("Filecleaver" Dorin, "Wraith" Kell) whose durable counters (`dorin.trust` -1..1,
+   * `kell.cover` 0..6, authored initial 0) previously had no emitter anywhere. At the run's
+   * TERMINAL settlement the receipt (witness + branch + outcome) becomes canonical
+   * `stationContact:counterDelta` intents; stationContacts stays the sole counter writer.
+   * Mapping, from the branch semantics:
+   *   publish (testimony filed public):  the witness's own record advances — dorin.trust +1 —
+   *     and public files burn the copy desk Kell hides behind — kell.cover -1.
+   *   shelter (record kept unavailable): the desk stays dark and Kell's handoffs held —
+   *     kell.cover +1 — while Dorin watches her massacre proof stay buried — dorin.trust -1.
+   *   terminal failure (any branch):    a botched run draws scrutiny to the customs line —
+   *     kell.cover -1; it earns nobody's trust.
+   * Cover BUILDS from 0 through sheltered runs and erodes through public/burned ones; trust
+   * clamps at ±1. Repeated runs keep moving the bounded counters, so a repeat runner watches
+   * Kell's cover be built and eaten away inside the same save.
+   */
+  _witnessRunCounterDeltas(receipt, cause) {
+    const witnessId = cause && cause.witnessId || null;
+    if (receipt.outcome === 'completed') {
+      if (receipt.branchId === 'publish') {
+        return witnessId === 'kell'
+          ? [{ trackerId: 'kell.cover', delta: -1 }, { trackerId: 'dorin.trust', delta: 1 }]
+          : [{ trackerId: 'dorin.trust', delta: 1 }, { trackerId: 'kell.cover', delta: -1 }];
+      }
+      if (receipt.branchId === 'shelter') {
+        return witnessId === 'kell'
+          ? [{ trackerId: 'kell.cover', delta: 1 }, { trackerId: 'dorin.trust', delta: -1 }]
+          : [{ trackerId: 'dorin.trust', delta: -1 }, { trackerId: 'kell.cover', delta: 1 }];
+      }
+      return [];
+    }
+    return [{ trackerId: 'kell.cover', delta: -1 }];
+  },
+
+  _emitWitnessRunContactSeam(mission, transition) {
+    const cause = setPieceCauseOf(mission);
+    if (!cause || cause.archetypeId !== 'witness_run') return false;
+    // Only the run's terminal settlement is an outcome: stage advances and single-stage retries
+    // are not. advanceSetPieceMission returns status 'completed' for both a finished route and a
+    // terminally failed attempt (retry budget spent), each distinguishable by receipt.outcome.
+    if (transition.status !== 'completed') return false;
+    const receipt = transition.receipt;
+    if (!receipt) return false;
+    const deltas = this._witnessRunCounterDeltas(receipt, cause);
+    if (!deltas.length) return false;
+    const reason = `witness_run:${receipt.branchId || 'common'}:${receipt.outcome}`
+      + `:witness=${cause.witnessId || 'seeded'}`;
+    for (const row of deltas) {
+      this.bus.emit('stationContact:counterDelta', {
+        trackerId: row.trackerId,
+        delta: row.delta,
+        reason: reason.slice(0, 96),
+      });
+    }
+    return true;
+  },
+
   _boardSetPieceTransition(mission, transition) {
     if (!transition || !transition.receipt) return false;
+    this._emitWitnessRunContactSeam(mission, transition);
     for (const offer of transition.offers || []) this._onExternalBoardOffer(offer);
     const receipt = transition.receipt;
     const fields = setPieceEventFields(mission, transition);
@@ -7563,6 +7824,10 @@ export const missions = {
           }
         }
       }
+    } else if (contractClaimSiteMission(m)) {
+      // WF-08 claim-stake salvage: the board row's physical content — a filed wreck with a
+      // working claim crew parked on the destination approach. Its own scene, spawned here.
+      this._spawnContractClaimSite(m, nextRng, px, pz);
     } else if (m.type === AUTHORED_SET_PIECE_TYPE) {
       this._spawnAuthoredSetPieceTargets(m, nextRng, px, pz);
     } else if (m.type === CAPITAL_BOSS_TYPE) {
@@ -7710,6 +7975,494 @@ export const missions = {
     this.bus.emit('mission:updated', { missionId: m.id, twist: 'escort_turns' });
   },
 
+  // =========================================================================================
+  // WF-08 CLAIM-STAKE SALVAGE — a board salvage row is a contested wreck site.
+  // Spawn: one drifting dead hauler (the contract manifest as its real salvagePool) plus a
+  // passive working crew — a 'mule_trader' hauler lead that siphons units into its own
+  // cargoManifest while the player is on scene, and 'wasp_swarmer' cutters that hold fire.
+  // Touch the claim and the scene turns: mining's claim-jump protest runs the law report,
+  // the cutters spring, and the hauler runs for open space with whatever it already cut.
+  // Killing the passive hauler drops its manifest as a real takeable pod via lootShards'
+  // civilian-payload path; the claim lapses when nobody is left on site to hold it.
+  // =========================================================================================
+
+  /** The live contested hull, or null — it is the only entity carrying contractClaimSiteOf. */
+  _contractClaimWreck(m) {
+    for (const id of (m && m.targetEntityIds) || []) {
+      const e = this.state.entities.get(id);
+      if (e && e.alive !== false && e.data && e.data.contractClaimSiteOf === m.id) return e;
+    }
+    return null;
+  },
+
+  /** Live crew hulls stamped by this contract's site. They are lane life, not targets —
+   *  tracked by their contractClaimCrewOf stamp so settlement can release them. */
+  _contractClaimCrew(m) {
+    const out = [];
+    if (!m) return out;
+    forEachLivingWorldActor(this.state, (e) => {
+      if (e && e.data && String(e.data.contractClaimCrewOf) === String(m.id)) out.push(e);
+    });
+    return out;
+  },
+
+  _contractClaimLead(m) {
+    const crew = this._contractClaimCrew(m);
+    return crew.find((e) => e.data && e.data.claimRole === 'lead') || null;
+  },
+
+  /** The pod lootShards spilled when the claim hauler died loaded — the manifest body that
+   *  still physically carries this contract's goods. Returns null once it is drained or gone. */
+  _contractClaimPod(m) {
+    const manifestId = `claim-manifest:${m && m.id}`;
+    let pod = null;
+    forEachJobInteractable(this.state, (e) => {
+      if (pod || !e || e.alive === false || !e.data) return;
+      if (e.data.payloadType !== CIVILIAN_MANIFEST_PAYLOAD_TYPE) return;
+      if (e.data.manifestId !== manifestId) return;
+      if (salvagePoolUnits(e.data.salvagePool) <= 0) return;
+      pod = e;
+    });
+    return pod;
+  },
+
+  /** Units the crew already lifted onto a hull's manifest (the takeable cargo the lead carries). */
+  _contractClaimManifestUnits(entity) {
+    const lines = entity && entity.data && entity.data.cargoManifest
+      && entity.data.cargoManifest.lines;
+    if (!Array.isArray(lines)) return 0;
+    let total = 0;
+    for (const line of lines) total += Math.max(0, Math.floor(Number(line && line.qty) || 0));
+    return total;
+  },
+
+  _contractClaimToast(m, text) {
+    this.bus.emit('comms:popup', {
+      sender: 'Claim Crew',
+      text,
+      category: 'personal',
+      ttl: 6,
+    });
+    this.bus.emit('mission:updated', { missionId: m.id });
+  },
+
+  /**
+   * Materialize the contested site: the hull + its crew, placed outside port safety off the
+   * destination station (the contract's own lane), with the player-ring fallback every other
+   * hostile spawn uses. Wreck idempotence is durable-slot 0; the crew are stamped lane actors
+   * (contractClaimCrewOf), swept/released like escort ambushers rather than mission targets.
+   */
+  _spawnContractClaimSite(m, nextRng, px, pz) {
+    const helpers = this.helpers;
+    if (!helpers || !helpers.spawnEntity) return;
+    const params = m.params || (m.params = {});
+    m.targetEntityIds = (m.targetEntityIds || []).filter((id) => {
+      const e = this.state.entities.get(id);
+      return e && e.alive !== false;
+    });
+    let wreck = this._contractClaimWreck(m);
+    const rng = nextRng(0);
+    const budget = helpers.spawnBudget;
+    const requester = `mission:${m.id}`;
+
+    if (!wreck && !params.contractWreckGone) {
+      const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+      if (grant <= 0) {
+        this._noteMissionSpawnDeferred(m, 1, 0);
+        return;
+      }
+      // The hull went down on the destination's own approach: port-safe ring around the
+      // destination station, falling back to the shared hostile ring off the player when the
+      // berth isn't materialized (uncharted sector, distant contract).
+      const destEnt = this._liveStation(m.destStationId);
+      const sitePos = (destEnt && missionHostileSpawnPos(this.state, destEnt.pos, rng))
+        || missionHostileSpawnPos(this.state, { x: px, z: pz }, rng)
+        || { x: px + 1900, z: pz + 900 };
+      // Respawn conserves the pool: whatever the player (or the crew) already cut stays cut.
+      const pool = params.contractWreckPool && typeof params.contractWreckPool === 'object'
+        ? { ...params.contractWreckPool }
+        : {
+          [params.cmdtyId]: Math.max(1, Math.floor(Number(params.qty) || 1)),
+          cmdty_scrap_metal: 2 + Math.floor(rng() * 4),
+        };
+      params.contractClaimId = params.contractClaimId || `claim:${m.id}`;
+      let ent = null;
+      try {
+        ent = helpers.spawnEntity({
+          type: 'wreck',
+          team: 2,
+          pos: { x: sitePos.x, z: sitePos.z },
+          vel: { x: (rng() - 0.5) * 5, z: (rng() - 0.5) * 5 },
+          rot: rng() * Math.PI * 2,
+          radius: 22,
+          mass: 160,
+          hull: 150,
+          hullMax: 150,
+          collides: true,
+          collisionMask: MISSION_WRECK_COLLISION_MASK,
+          physicsBody: { shape: 'capsule' },
+          data: {
+            contractClaimSiteOf: m.id,
+            proportions: WRECK_COLLIDER_PROPORTIONS,
+            scanLabel: CONTRACT_CLAIM_SCAN_LABEL,
+            tetherable: true,
+            salvagePool: pool,
+            // A foreign-looking claim id ambient salvors/tugs already respect (they refuse
+            // claimed bodies); mining's protest resolves the crew through salvorClaimId.
+            ...(params.contractCrewGone ? {} : { salvorClaimedBy: params.contractClaimId }),
+          },
+        });
+      } catch (error) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+        throw error;
+      }
+      if (!ent) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+        return;
+      }
+      if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+      this._stampMissionTargetIdentity(ent, m, 0);
+      m.targetEntityIds.push(ent.id);
+      params.contractSiteSeen = true;
+      wreck = ent;
+      this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
+      if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+    }
+    if (!wreck || params.contractCrewGone) return;
+
+    // The claim crew: one hauling lead plus 1–3 cutters scaled by the contract's risk tier.
+    // Passive means unrostered and non-hostile both ways — the sanctioned "menace that holds
+    // fire" state — until the player touches the claim. Top up to the full complement only;
+    // confirmed kills (any killer — the lane is dangerous) are never quietly replaced.
+    const sector = SECTOR_BY_ID.get(m.destSectorId);
+    const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
+    const cuttersWant = 1 + Math.min(2, Math.max(0, Math.floor(Number(m.riskTier) / 2) | 0));
+    const casualties = params.contractClaimCasualties || {};
+    const crew = this._contractClaimCrew(m);
+    const haveLead = crew.some((e) => e.data && e.data.claimRole === 'lead');
+    const haveCutters = crew.filter((e) => e.data && e.data.claimRole === 'cutter').length;
+    const want = ((!haveLead && !(casualties.lead > 0)) ? 1 : 0)
+      + Math.max(0, cuttersWant - haveCutters - (casualties.cutter | 0));
+    if (want <= 0) return;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(want, requester) : want;
+    if (grant <= 0) { this._noteMissionSpawnDeferred(m, want, 0); return; }
+    let spawned = 0;
+    let crewIndex = crew.length;
+    for (let i = 0; i < grant; i++) {
+      // The hauling lead comes first — a crew of cutters with nobody to hold the take is
+      // an ambush, not a claim site.
+      const role = (!haveLead && !(casualties.lead > 0) && spawned === 0) ? 'lead' : 'cutter';
+      const archetype = role === 'lead' ? 'mule_trader' : 'wasp_swarmer';
+      const a = rng() * Math.PI * 2;
+      const r = role === 'lead' ? 34 + rng() * 20 : 62 + rng() * 46 + 14 * crewIndex;
+      const pos = {
+        x: wreck.pos.x + Math.cos(a) * r,
+        z: wreck.pos.z + Math.sin(a) * r,
+      };
+      const level = Math.round(lvLo + (lvHi - lvLo) * rng());
+      const spec = makeEnemySpawnSpec(archetype, level, pos, { startedTick: this.state.tick });
+      spec.data = spec.data || {};
+      spec.data.ai = spec.data.ai || {};
+      spec.data.ai.passive = true;
+      spec.data.contractClaimCrewOf = String(m.id);
+      spec.data.claimRole = role;
+      spec.data.salvorClaimId = params.contractClaimId;
+      spec.data.scanLabel = role === 'lead' ? 'CLAIM HAULER' : 'CLAIM CUTTER';
+      if (role === 'lead') {
+        spec.data.cargoManifest = {
+          manifestId: `claim-manifest:${m.id}`,
+          ownerName: 'Claim Hauler',
+          role: 'salvor',
+          lines: [],
+        };
+      }
+      let ent = null;
+      try {
+        ent = helpers.spawnEntity(spec);
+      } catch (error) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, grant - spawned);
+        throw error;
+      }
+      if (ent) {
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        spawned++;
+        crewIndex++;
+      }
+    }
+    if (budget && typeof budget.releaseSome === 'function' && spawned < grant) {
+      budget.releaseSome(requester, grant - spawned);
+    }
+    if (spawned > 0) this.bus.emit('mission:updated', { missionId: m.id });
+  },
+
+  /**
+   * Per-tick scene drive — runs only while the player is in the destination sector with a live
+   * site. The passive crew mills the hull (deterministic orbit, pure simTime), the lead siphons
+   * a unit every CONTRACT_CLAIM_CUT_PERIOD_S into its own manifest while the player is close
+   * enough to watch, and the filed claim lapses the moment no living crew hull is near it.
+   */
+  _driveContractClaimSite(m, state, dt) {
+    if (!contractClaimSiteMission(m)) return;
+    if ((state.world && state.world.currentSectorId) !== m.destSectorId) return;
+    const params = m.params || (m.params = {});
+    const wreck = this._contractClaimWreck(m);
+    if (!wreck) return;
+    const crew = this._contractClaimCrew(m);
+    const player = state.entities && state.entities.get(state.playerId);
+    const now = Number(state.simTime) || 0;
+
+    // Claim lapse: nobody left on site to hold it — the wreck reads unclaimed, so the strip
+    // that follows protests to nobody. This is the payoff for clearing the crew first. The
+    // flag may already be set (the spring's empty-crew early-out marks the crew extinct the
+    // moment the last hull dies); the filed claim itself still clears here, on the live hull.
+    if (wreck.data && wreck.data.salvorClaimedBy) {
+      const anyOnSite = crew.some((e) => e.pos && wreck.pos && Math.hypot(
+        e.pos.x - wreck.pos.x, e.pos.z - wreck.pos.z,
+      ) <= CONTRACT_CLAIM_FLEE_RANGE_WU);
+      if (!anyOnSite) {
+        if (!params.contractCrewGone) {
+          this.bus.emit('toast', {
+            text: 'The claim crew is gone — the hull reads unclaimed.',
+            kind: 'info', ttl: 4,
+          });
+        }
+        params.contractCrewGone = true;
+        delete wreck.data.salvorClaimedBy;
+        this._refreshTrackedMissionNav(m);
+      }
+    }
+
+    // Deterministic mill: each passive hull holds a slow ring around the wreck. Index in the
+    // live crew array sets phase/ring, so a thinned crew naturally re-spaces itself.
+    let slot = 0;
+    for (const e of crew) {
+      const ai = e.data && e.data.ai;
+      if (!ai || ai.passive !== true) continue;
+      const isLead = e.data.claimRole === 'lead';
+      if (isLead && params.contractCrewSprung && wreck.pos && player && player.pos) {
+        // The hauler runs with whatever it already cut — away from the player, off the hull.
+        const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+        const len = Math.hypot(dx, dz) || 1e-4;
+        steerIntentToward(e,
+          e.pos.x + (dx / len) * 1600,
+          e.pos.z + (dz / len) * 1600, 60);
+        continue;
+      }
+      const ring = isLead ? 40 : 68 + 18 * slot;
+      const a = now * CONTRACT_CLAIM_ORBIT_RAD_PER_S + slot * 2.13 + (isLead ? 0 : 1.4);
+      steerIntentToward(e,
+        wreck.pos.x + Math.cos(a) * ring,
+        wreck.pos.z + Math.sin(a) * ring, 18);
+      slot++;
+    }
+
+    // The working claim: the lead physically moves one unit a beat from the hulk into its own
+    // hold while the player is close enough to see it. When the pool is gone the contract's
+    // goods live on the hauler — the waypoint already follows them there.
+    const lead = crew.find((e) => e.data && e.data.claimRole === 'lead');
+    const pool = wreck.data && wreck.data.salvagePool;
+    if (lead && pool && player && player.pos && wreck.pos) {
+      const playerNear = Math.hypot(player.pos.x - wreck.pos.x, player.pos.z - wreck.pos.z)
+        <= CONTRACT_CLAIM_PLAYER_RANGE_WU;
+      const leadOnHull = Math.hypot(lead.pos.x - wreck.pos.x, lead.pos.z - wreck.pos.z)
+        <= CONTRACT_CLAIM_WORK_RANGE_WU;
+      if (playerNear && leadOnHull && now - (Number(params.contractClaimCutAt) || 0) >= CONTRACT_CLAIM_CUT_PERIOD_S) {
+        const takeId = (pool[params.cmdtyId] | 0) > 0
+          ? params.cmdtyId
+          : Object.keys(pool).find((id) => (pool[id] | 0) > 0) || null;
+        if (takeId) {
+          params.contractClaimCutAt = now;
+          pool[takeId] = (pool[takeId] | 0) - 1;
+          if (pool[takeId] <= 0) delete pool[takeId];
+          const manifest = lead.data.cargoManifest || (lead.data.cargoManifest = {
+            manifestId: `claim-manifest:${m.id}`, ownerName: 'Claim Hauler', role: 'salvor', lines: [],
+          });
+          const line = manifest.lines.find((l) => l && l.commodityId === takeId);
+          if (line) line.qty = (line.qty | 0) + 1;
+          else manifest.lines.push({ commodityId: takeId, qty: 1 });
+          if (salvagePoolUnits(pool) === 0 && !params.contractPoolEmptied) {
+            params.contractPoolEmptied = true;
+            this.bus.emit('toast', {
+              text: 'The claim crew finished the hull — the manifest is aboard their hauler.',
+              kind: 'warn', ttl: 5,
+            });
+            this._refreshTrackedMissionNav(m);
+          }
+        }
+      }
+    }
+  },
+
+  /**
+   * The scene turns: cutters go hostile on the player (they hold the claim), the hauler runs.
+   * Idempotent — the sprung flag and the one-line broadcast happen once per mission.
+   */
+  _springContractClaimCrew(m, trigger) {
+    const params = m.params || (m.params = {});
+    const crew = this._contractClaimCrew(m);
+    if (!crew.length) { params.contractCrewGone = true; return false; }
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    params.contractCrewSprung = true;
+    for (const e of crew) {
+      const data = e.data || (e.data = {});
+      const ai = data.ai || (data.ai = {});
+      if (data.claimRole === 'lead') continue;        // the hauler bolts; it never joins the guns
+      ai.passive = false;
+      ai.spawnContext = 'mission';
+      ai.squadId = `mission:${m.id}:claim`;
+      ai.motive = 'claim_defense';
+      ai.engagementTrigger = trigger || 'claim_contested';
+      if (player && player.team != null) ai.hostileTeams = [player.team];
+      ai.forcePlayerTarget = true;
+      ai.retaliationTargetId = this.state.playerId;
+      const combat = data.combat || (data.combat = {});
+      combat.targetId = this.state.playerId;
+      const intent = data.intent;
+      if (intent) { intent.moveX = 0; intent.moveZ = 0; intent.fire = false; }
+    }
+    if (!params.contractCrewSprungAnnounced) {
+      params.contractCrewSprungAnnounced = true;
+      this._contractClaimToast(m, 'Claim crew is going loud — they mean to keep the hull.');
+    }
+    return true;
+  },
+
+  /** The first beam touch on a filed hull earns one warning before the first unit counts. */
+  _onContractClaimBeamStart(p) {
+    if (!p || p.targetId == null) return;
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      const wreck = this._contractClaimWreck(m);
+      if (!wreck || wreck.id !== p.targetId) continue;
+      const params = m.params;
+      if (params.contractClaimWarned || params.contractCrewGone) continue;
+      if (!wreck.data || !wreck.data.salvorClaimedBy) continue;
+      params.contractClaimWarned = true;
+      this._contractClaimToast(m, 'Filed claim, stranger. Cut that hull and we cut you.');
+      this._refreshTrackedMissionNav(m);
+      return;
+    }
+  },
+
+  /** The protest mining already emitted — the law report and the crew's guns are one moment. */
+  _onContractClaimJumped(p) {
+    if (!p || p.wreckId == null) return;
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      const wreck = this._contractClaimWreck(m);
+      if (!wreck || wreck.id !== p.wreckId) continue;
+      this._springContractClaimCrew(m, 'claim_jumped');
+      return;
+    }
+  },
+
+  /** Latching the filed hull is touching the claim — the crew answers physically. */
+  _onContractClaimLatch(p) {
+    if (!p || p.targetId == null) return;
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      const wreck = this._contractClaimWreck(m);
+      if (!wreck || wreck.id !== p.targetId) continue;
+      const params = m.params;
+      if (params.contractCrewGone) return;
+      if (!params.contractClaimLatchWarned) {
+        params.contractClaimLatchWarned = true;
+        this._contractClaimToast(m, 'Hands off the claim. Cut that line or we cut you.');
+      }
+      this._springContractClaimCrew(m, 'claim_latched');
+      return;
+    }
+  },
+
+  /** Shooting the crew (or being the crew's victim) springs the defense. Only the player's
+   *  fire counts — ambient predation on the crew is the lane's own business. */
+  _onContractClaimDamage(p) {
+    if (!p || p.targetId == null) return;
+    if (p.attackerId !== this.state.playerId) return;
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      const e = this.state.entities.get(p.targetId);
+      if (!e || !e.data || String(e.data.contractClaimCrewOf) !== String(m.id)) continue;
+      this._springContractClaimCrew(m, 'crew_fired_on');
+      return;
+    }
+  },
+
+  _onContractClaimKill(p) {
+    if (!p || p.id == null) return;
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      const params = m.params || (m.params = {});
+      if ((m.targetEntityIds || []).includes(p.id)) {
+        params.contractWreckGone = 'destroyed';
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', { missionId: m.id, wreckGone: 'destroyed' });
+        return;
+      }
+      const e = this.state.entities.get(p.id);
+      if (e && e.data && String(e.data.contractClaimCrewOf) === String(m.id)) {
+        // Crew deaths are remembered on the contract — a thinned crew stays thinned across
+        // sector exit/re-entry, and a dead hauler is never quietly replaced by a fresh one.
+        const casualties = params.contractClaimCasualties
+          || (params.contractClaimCasualties = { lead: 0, cutter: 0 });
+        casualties[e.data.claimRole === 'lead' ? 'lead' : 'cutter']++;
+        if (p.killerId === this.state.playerId) this._springContractClaimCrew(m, 'crew_killed');
+        // A loaded hauler going down moves the goods into the spilled pod — the marker
+        // follows the cargo, not the wreck or the grave.
+        this._refreshTrackedMissionNav(m);
+        return;
+      }
+    }
+  },
+
+  _onContractClaimDestroyed(p) {
+    if (!p || p.id == null) return;
+    if (p.reason === 'save_restore') return; // a restore sweep is not a kill
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      // entity:destroyed is QUEUED — ids recycle before the receipt flushes, so the bare id
+      // can name a fresh occupant. The payload carries the corpse object itself: its own
+      // site stamp is the identity. Publishers without an entity ref fall back to the id.
+      if (p.entity) {
+        if (!p.entity.data || p.entity.data.contractClaimSiteOf !== m.id) continue;
+      } else if (!(m.targetEntityIds || []).includes(p.id)) continue;
+      const params = m.params || (m.params = {});
+      params.contractWreckGone = 'destroyed';
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id, wreckGone: 'destroyed' });
+      return;
+    }
+  },
+
+  /** lootShards emits this AFTER the spilled manifest pod exists — the moment the marker can
+   *  truthfully re-target the cargo (the kill handler runs before the pod is spawned). */
+  _onContractClaimPodSpilled(p) {
+    if (!p || p.payloadId == null) return;
+    const pod = this.state.entities && this.state.entities.get(p.payloadId);
+    if (!pod || !pod.data || pod.data.payloadType !== CIVILIAN_MANIFEST_PAYLOAD_TYPE) return;
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      if (pod.data.manifestId !== `claim-manifest:${m.id}`) continue;
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id });
+      return;
+    }
+  },
+
+  /** The player finished the cut — the site is done regardless of what the crew wants. */
+  _onContractClaimSalvageCompleted(p) {
+    if (!p || p.wreckId == null) return;
+    for (const m of this.state.missions.active || []) {
+      if (!contractClaimSiteMission(m)) continue;
+      if (!(m.targetEntityIds || []).includes(p.wreckId)) continue;
+      const params = m.params || (m.params = {});
+      params.contractWreckGone = 'drained';
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id, wreckGone: 'drained' });
+      return;
+    }
+  },
+
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
     // Capital boss contracts hand the authored score back at the settlement boundary. The detach
@@ -7739,10 +8492,22 @@ export const missions = {
     // life (unpinned, unstamped) rather than sweeping them — the fight the contract started
     // stays in the sky, which is exactly what a stranger remembers about an escort gone loud.
     forEachLivingWorldActor(this.state, (e) => {
-      if (!e || !e.data || e.data.escortAmbushOf !== String(m.id)) return;
-      e.data.escortAmbushOf = null;
-      const budget = this.helpers && this.helpers.spawnBudget;
-      if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      if (!e || !e.data) return;
+      if (e.data.escortAmbushOf === String(m.id)) {
+        e.data.escortAmbushOf = null;
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      }
+      // WF-08: a claim-stake crew outlives its contract the same way — the hauler keeps
+      // whatever it already loaded (a real manifest payload if it dies later), and sprung
+      // cutters stay the hostile lane actors the fight made them.
+      if (e.data.contractClaimCrewOf === String(m.id)) {
+        e.data.contractClaimCrewOf = null;
+        e.data.salvorClaimId = null;
+        e.data.claimRole = null;
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      }
     });
     for (const id of targetIds) {
       const e = this.state.entities.get(id);
@@ -7763,6 +8528,7 @@ export const missions = {
     this.spawnTargetsForSector(sectorId);
     this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);
+    this._onPassengerSectorEnter(sectorId);
     this._refreshNavigation({ preferStory: true });
     this._storyTrigger('sector', { sectorId });
   },
@@ -7789,6 +8555,80 @@ export const missions = {
         text: cause.travelText,
         ...setPieceEventFields(mission),
       });
+    }
+  },
+
+  // =========================================================================================
+  // PASSENGERS ARE PEOPLE (A1) — a fare the run makes real, on existing seams
+  //
+  // The passenger is minted per offer (params.passenger — name + why-line, hash-derived from
+  // the world seed and the offer id, so save/load is stable and no rng draw is spent). They
+  // speak three times: the boarding line on dock:undocked, one mid-run line at the route
+  // midpoint on the sim clock (or sooner if the player crosses into the destination sector),
+  // and an arrival line quoted back in the settlement receipt. Line picks are hash-derived
+  // from (seed, mission id) — never ambient randomness.
+  // =========================================================================================
+
+  /** One beat line for this mission's passenger, deterministically picked and interpolated. */
+  _passengerBeatLine(m, kind) {
+    const pax = m && m.params && m.params.passenger;
+    if (!pax || !pax.name) return '';
+    const seed = (this.state.meta && this.state.meta.seed) || 0;
+    const idx = hash32(seed >>> 0, String(m.id || pax.name), 'pax-beat', kind);
+    return passengerBeatLine(kind, idx)
+      .replace(/\{name\}/g, pax.name)
+      .replace(/\{dest\}/g, this._destName(m));
+  },
+
+  _speakPassenger(m, kind) {
+    const pax = m && m.params && m.params.passenger;
+    const text = this._passengerBeatLine(m, kind);
+    if (!pax || !pax.name || !text) return;
+    this.bus.emit('comms:popup', { sender: pax.name, text, category: 'personal', ttl: 7 });
+  },
+
+  /** Undock: the boarding line, plus the mid-run beat scheduled at the route midpoint. */
+  _onPassengerUndock() {
+    const state = this.state;
+    for (const m of (state.missions && state.missions.active) || []) {
+      if (!m || m.status !== 'active' || m.type !== 'passenger_transport') continue;
+      if (!(m.params && m.params.passenger)) continue;
+      if (!m._paxBoardSpoken) {
+        m._paxBoardSpoken = true;
+        this._speakPassenger(m, 'board');
+      }
+      // Route midpoint at the reference cruise speed, clamped so the line never lands at the
+      // umbilical nor waits out the whole run. A faster player crosses into the destination
+      // sector first and speaks it there (see _onPassengerSectorEnter).
+      if (m._paxMidrunAt == null) {
+        const etaMidS = (Math.max(0, Number(m.distance) || 0) / 2)
+          / (MISSION_TUNING.cruiseSpeedRef || 140);
+        m._paxMidrunAt = (Number(state.simTime) || 0) + Math.min(Math.max(etaMidS, 45), 240);
+      }
+      break; // one passenger voice per undock
+    }
+  },
+
+  /** A destination-sector crossing speaks the mid-run beat early. */
+  _onPassengerSectorEnter(sectorId) {
+    for (const m of (this.state.missions && this.state.missions.active) || []) {
+      if (!m || m.status !== 'active' || m.type !== 'passenger_transport') continue;
+      if (m._paxMidrunSpoken || !(m.params && m.params.passenger)) continue;
+      if (m.destSectorId !== sectorId) continue;
+      m._paxMidrunSpoken = true;
+      this._speakPassenger(m, 'midrun');
+      break;
+    }
+  },
+
+  /** Per-tick: the scheduled mid-run beat for runs that never cross a sector boundary. */
+  _drivePassengerBeats(state) {
+    for (const m of (state.missions && state.missions.active) || []) {
+      if (!m || m.status !== 'active' || m.type !== 'passenger_transport') continue;
+      if (m._paxMidrunAt == null || m._paxMidrunSpoken) continue;
+      if ((Number(state.simTime) || 0) < m._paxMidrunAt) continue;
+      m._paxMidrunSpoken = true;
+      this._speakPassenger(m, 'midrun');
     }
   },
 
@@ -7837,6 +8677,18 @@ export const missions = {
         for (const id of m.targetEntityIds || []) {
           const entity = this.state.entities.get(id);
           if (!entity || entity.id === this.state.playerId) continue;
+          // WF-08: a claim-stake wreck that is swept mid-strip keeps its real remaining pool —
+          // the respawn must not quietly refill the hold the player or the crew already cut.
+          if (entity.data && entity.data.contractClaimSiteOf === m.id) {
+            m.params = m.params || {};
+            m.params.contractWreckPool = {
+              ...(entity.data.salvagePool && typeof entity.data.salvagePool === 'object'
+                ? entity.data.salvagePool : {}),
+            };
+            // Sweep ≠ destruction: drop the site stamp now so the queued entity:destroyed
+            // receipt cannot misread this leave as the hull being killed.
+            entity.data.contractClaimSiteOf = null;
+          }
           entity.alive = false;
           const budget = this.helpers && this.helpers.spawnBudget;
           if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(id);
@@ -8642,6 +9494,60 @@ const CLEAN_PHYSICAL_RELEASE = new Set(['clean', 'razor']);
 
 function physicalRoleOf(entity) {
   return entity && entity.data && entity.data.physicalRole || null;
+}
+
+/**
+ * Claim-stake salvage predicates. The OFFER-level gate decides `needsTargets` before
+ * instance creation (story/site fields live on the offer, not in params); the MISSION-level
+ * gate drives the spawn/steer/listener paths on the live instance. Both refuse every salvage
+ * row that already owns a physical site — authored set pieces, wreck-communicator offers,
+ * POI follow-ups, and the mutation-recovery pocket all keep their own machinery.
+ */
+function contractClaimSiteOffer(offer) {
+  if (!offer || offer.type !== 'salvage_retrieval') return false;
+  if (offer.storyTag || offer.storyContractId || offer.wreckId || offer.campaign47aBeat != null) return false;
+  const p = offer.params;
+  if (!p || !p.cmdtyId) return false;
+  if (p.setPieceObjective || p.salvagePointId || p.survivorPodId || p.wreckMissionId
+    || p.wreckPos || p.poiSignalFollowup) return false;
+  return true;
+}
+
+function contractClaimSiteMission(m) {
+  if (!m || m.type !== 'salvage_retrieval' || m.status !== 'active') return false;
+  if (m.storyTag || m.storyContractId || m.wreckId || isMutationRecovery(m)) return false;
+  const p = m.params;
+  if (!p || !p.cmdtyId) return false;
+  if (p.setPieceObjective || p.salvagePointId || p.survivorPodId || p.wreckMissionId
+    || p.wreckPos || p.poiSignalFollowup) return false;
+  return true;
+}
+
+/** Whole units still inside a salvagePool map (the shared wreck/payload drain shape). */
+function salvagePoolUnits(pool) {
+  if (!pool || typeof pool !== 'object') return 0;
+  let total = 0;
+  for (const id of Object.keys(pool)) total += Math.max(0, Math.floor(Number(pool[id]) || 0));
+  return total;
+}
+
+/** Sanctioned passive-ship steer: write the flight intent (claim-beacon pattern — an
+ *  unrostered ship is driven nowhere else). Pure geometry + simTime, no allocation. */
+function steerIntentToward(e, tx, tz, stop) {
+  const data = e.data || (e.data = {});
+  const intent = data.intent || (data.intent = {});
+  const dx = tx - e.pos.x, dz = tz - e.pos.z;
+  const d2 = dx * dx + dz * dz;
+  const stopR = stop || 40;
+  if (d2 <= stopR * stopR) { intent.moveZ = 0; intent.moveX = 0; return; }
+  const len = Math.sqrt(d2) || 1;
+  const ux = dx / len, uz = dz / len;
+  const cf = Math.cos(e.rot || 0), sf = Math.sin(e.rot || 0);
+  intent.moveZ = cf * ux + sf * uz;
+  intent.moveX = -sf * ux + cf * uz;
+  intent.aimAngle = Math.atan2(dz, dx);
+  intent.fire = false;
+  intent.fireGroup = null;
 }
 
 function missionHostileSpawnPos(state, origin, rng) {

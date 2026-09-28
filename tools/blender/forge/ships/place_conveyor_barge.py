@@ -27,7 +27,13 @@ def build():
               bevel=0.2)
         F.box(s, f'PontoonCap{e:+d}', (34.5, e * 7.4, 1.9), (3.0, 1.4, 2.4),
               material='paint.aged', bevel=0.1)
-    F.box(s, 'Deck', (0, 0, 3.4), (68.0, 14.4, 0.8), material='paint', bevel=0.08)
+    F.box(s, 'Deck', (0, 0, 3.4), (68.0, 14.4, 0.8), material='paint2', bevel=0.08)
+    # recessed dark grating panels break the deck slab up between the hoppers
+    s.detail = 1
+    for i in range(5):
+        F.box(s, f'DeckGrate{i}', (-28.0 + i * 14.0, 0, 3.85), (9.0, 12.6, 0.14),
+              material='dark', bevel=0.0)
+    s.detail = 0
     # deck edge kerbs
     for e in (-1, 1):
         F.box(s, f'Kerb{e:+d}', (0, e * 7.0, 4.0), (68.0, 0.4, 0.5), material='hazard',
@@ -52,8 +58,8 @@ def build():
         F.light(s, f'BayLamp{k}', (hx + 5.0, -5.4, 6.0), 'glow_amber', size=0.4)
 
     # --- conveyor gallery down the spine, over the hoppers ------------------------------------
-    F.box(s, 'Gallery', (0, 0, 7.2), (62.0, 3.0, 2.0), material='paint.aged', bevel=0.12)
-    F.box(s, 'GalleryRoof', (0, 0, 8.35), (62.0, 3.4, 0.35), material='paint', bevel=0.02)
+    F.box(s, 'Gallery', (0, 0, 7.2), (62.0, 3.0, 2.0), material='paint2', bevel=0.12)
+    F.box(s, 'GalleryRoof', (0, 0, 8.35), (62.0, 3.4, 0.35), material='dark', bevel=0.02)
     for i in range(8):
         F.box(s, f'GalPost{i}', (-28.0 + i * 8.0, 0, 5.9), (0.7, 3.2, 2.6),
               material='paint2', bevel=0.03)

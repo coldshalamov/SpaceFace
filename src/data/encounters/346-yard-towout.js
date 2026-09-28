@@ -13,8 +13,10 @@ export const trigger = deepFreeze({
   deck: 'civilian',
   weight: 1.5,
   zoneTypes: ['civilian_core'],
-  script: 'salvage',
-  fallbackScript: 'salvage',
+  // Self-registered runtime (below) dispatches by shapeId; the legacy script labels must name
+  // real ENCOUNTER_SCRIPTS keys for check tooling — 'salvage' is not one. Sibling modules leave
+  // fallbackScript unset so the schedule label defaults to 'whisper'.
+  script: 'selfRegistered',
   pressureCost: 20,
   cooldownS: 600,
   proximity: true,

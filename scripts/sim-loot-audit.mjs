@@ -9,7 +9,7 @@ import { COMMODITIES } from '../src/data/commodities.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
-import { UNIQUE_WRECKS } from '../src/data/uniqueWrecks.js';
+import { SITE_RECOVERED_UNIQUE_IDS, UNIQUE_WRECKS } from '../src/data/uniqueWrecks.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { combat } from '../src/systems/combat.js';
@@ -36,7 +36,7 @@ const report = runDepthProgramLootAudit({
     modules: MODULES,
     ships: SHIPS,
     weapons: WEAPONS,
-    lineageUniqueIds: ACE_TROPHY_HEADS.map((row) => row.id),
+    lineageUniqueIds: [...ACE_TROPHY_HEADS.map((row) => row.id), ...SITE_RECOVERED_UNIQUE_IDS],
     siteUniqueIds: ALIEN_UNIQUE_GRANTS.map((row) => row.id),
   },
 });

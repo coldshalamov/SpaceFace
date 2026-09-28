@@ -49,9 +49,10 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     const a0 = from + (span * i) / n + 2.5;
     const a1 = from + (span * (i + 1)) / n - 2.5;
     const segState = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
+    const segLit = s.selected ? ' is-lit' : '';
     if (a1 > a0) {
-      if (segState !== 'is-empty') sys += `<path class="orr-power__seg-bloom ${segState}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
-      sys += `<path class="orr-power__seg ${segState}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
+      if (segState !== 'is-empty') sys += `<path class="orr-power__seg-bloom ${segState}${segLit}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
+      sys += `<path class="orr-power__seg ${segState}${segLit}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
     }
     const a = from + (span * (i + 0.5)) / n;
     const [tx0, ty0] = polar(cx, cy, r + 11, a);
@@ -62,7 +63,7 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     const state = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
     const word = String(s.label || s.type || '').toUpperCase();
     const count = s.available > 1 ? ` ${s.fitted}/${s.available}` : '';
-    sys += `<path class="orr-power__sys ${state}" d="M ${f2(tx0)} ${f2(ty0)} L ${f2(tx1)} ${f2(ty1)}"/>`
+    sys += `<path class="orr-power__sys ${state}${segLit}" d="M ${f2(tx0)} ${f2(ty0)} L ${f2(tx1)} ${f2(ty1)}"/>`
       + `<text class="orr-power__syslabel ${state}" x="${f2(lx)}" y="${f2(ly + 3)}" text-anchor="${anchor}">${escapeXml(word)}${escapeXml(count)}</text>`;
   });
   // the words ride outside the arc, so the ink box is wider than the drawing: the viewBox carries

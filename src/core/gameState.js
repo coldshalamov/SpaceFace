@@ -31,7 +31,7 @@ function defaultSettings() {
     // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
     // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0 },
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false },
     gameplay: {
       autosaveIntervalS: 120,
       tutorialHints: true,
@@ -51,7 +51,10 @@ function defaultSettings() {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
       masslineBindingProfile: 'space-v1', // new profiles: Space primary + persistent F alias
       flightMode: 'assisted',
-      gamepad: { enabled: true, deadzone: 0.12, invertY: false },
+      // scheme: 'drive' keeps the wheel-like pad map (left stick = yaw + throttle);
+      // 'twinstick' makes the left stick a world-frame drive vector while the right stick
+      // aims and steers the nose (PQ-164.04). schemeSuggested: the one-shot pad-connect toast.
+      gamepad: { enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false },
     },
     // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.

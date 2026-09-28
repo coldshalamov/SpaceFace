@@ -1,0 +1,372 @@
+{
+  "builder": "tools/blender/build_wreck_aftermath_pack.py",
+  "builderSha256": "5b16d54a454df644c20f723a79a962967c63d201f23b4a4009fbfe9958ed30d1",
+  "blender": "5.1.2",
+  "command": "blender --background --factory-startup --python tools/blender/build_wreck_aftermath_pack.py -- --render --distances --sheets --silhouettes --states --gaps --compositions",
+  "fiction": "design/fiction/THE_LONG_AFTERMATH.md",
+  "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
+  "sourceOnly": true,
+  "rng": "none - every dimension, break, drift and state is authored",
+  "playerHullM": 28.0,
+  "minGapClearRadiusM": 20.0,
+  "assets": [
+    {
+      "id": "wreck_liner_drum",
+      "family": "liner",
+      "kind": "primary",
+      "state": "cooling",
+      "was": "Civilian passenger liner (Forge massline), mid habitation drum, split lengthwise.",
+      "reads": "Rows of dead cabin windows on two half-shells \u2014 the drum cracked along its keel and the gap between the halves is the way through.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum.glb",
+      "sha256": "06bf57b33f8649ad7f7dee6eec98f3494f5928af11c1a73fb30091edbf50c464",
+      "bytes": 639644,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 8750,
+      "sizeM": [
+        87.0,
+        80.99,
+        50.0
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -50.81,
+        -0.04,
+        0.6
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [
+        {
+          "name": "INTERACTION_DrumBore",
+          "atM": [
+            -0.3,
+            0.0,
+            -0.6
+          ],
+          "clearRadiusM": 22.05,
+          "nearest": "Drum",
+          "clearSpanM": 44.11,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          87.0,
+          80.99,
+          50.0
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_bow",
+      "family": "liner",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Passenger liner forward hull: wedge bow, glazed bridge, drum shoulder.",
+      "reads": "Almost undamaged \u2014 whatever happened, it happened behind this bulkhead.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_bow.glb",
+      "sha256": "6bc1e424e40e3b09c88afa509e38a1d541b334ba589e1eeee8ecd6868688984d",
+      "bytes": 636164,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 10052,
+      "sizeM": [
+        69.0,
+        68.11,
+        39.69
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        34.17,
+        -1.79,
+        1.45
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Salvage_Bridge"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          30.0,
+          14.0,
+          -6.0
+        ],
+        "tumbleAxis": [
+          0.14,
+          0.361,
+          0.922
+        ],
+        "tumbleDeg": 21.0,
+        "driftDistanceM": 33.65,
+        "note": "barely tumbled: it parted cleanly and kept the ship attitude"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          69.0,
+          68.11,
+          39.69
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_boatbay",
+      "family": "liner",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Liner boarding sector: dock collar, service hatch, roof galleries.",
+      "reads": "The yellow dock ring says exactly what this bay was for \u2014 passengers used to walk through this.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_boatbay.glb",
+      "sha256": "11c54775f1cc94e13cf4ed6571910c0bd0a5eb3842522a0c7729208aa0b004cc",
+      "bytes": 783604,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 12208,
+      "sizeM": [
+        52.67,
+        53.98,
+        32.62
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        9.33,
+        -0.93,
+        0.35
+      ],
+      "sockets": [
+        "SOCKET_Evidence_Manifest",
+        "SOCKET_Salvage_Bay"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          52.67,
+          53.98,
+          32.62
+        ]
+      }
+    },
+    {
+      "id": "deb_liner_hull_panel",
+      "family": "liner",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "A curved drum plate with two decks of dead windows in it.",
+      "reads": "A panel of a home, torn off whole \u2014 the liner read survives in fragments.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_liner_hull_panel.glb",
+      "sha256": "480d33456ddce28d5d2e37bbd47d9c32bc62ba672d4b614c46439494e7c119bf",
+      "bytes": 347516,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 2912,
+      "sizeM": [
+        16.14,
+        27.12,
+        29.0
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -40.64,
+        15.95,
+        7.14
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          16.14,
+          27.12,
+          29.0
+        ]
+      }
+    },
+    {
+      "id": "deb_liner_drive_pod",
+      "family": "liner",
+      "kind": "debris",
+      "state": "stripped",
+      "was": "The liner's stern drive block with all three nozzles.",
+      "reads": "An engine face with no ship behind it \u2014 the pods read as machinery even without the hull.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_liner_drive_pod.glb",
+      "sha256": "8cfa7ac6e8358017cea4f2fcc0a157a776a427a1a69b0afe809a829875d557f1",
+      "bytes": 318372,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 2132,
+      "sizeM": [
+        8.62,
+        18.0,
+        13.07
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -26.23,
+        -0.01,
+        0.31
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          8.62,
+          18.0,
+          13.07
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_drum__fresh",
+      "family": "liner",
+      "kind": "state-variant",
+      "state": "fresh",
+      "was": "Civilian passenger liner (Forge massline), mid habitation drum, split lengthwise.",
+      "reads": "Rows of dead cabin windows on two half-shells \u2014 the drum cracked along its keel and the gap between the halves is the way through.",
+      "variantOf": "wreck_liner_drum",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum__fresh.glb",
+      "sha256": "7def74f8a5395d246977635b40cc8079594928f62d74e098a95811bfe147d062",
+      "bytes": 645128,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 8790,
+      "sizeM": [
+        79.62,
+        74.12,
+        45.76
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_DrumBore",
+          "atM": [
+            -0.3,
+            0.0,
+            -0.6
+          ],
+          "clearRadiusM": 20.19,
+          "nearest": "Drum",
+          "clearSpanM": 40.38,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        -46.5,
+        -0.04,
+        0.55
+      ]
+    },
+    {
+      "id": "wreck_liner_drum__derelict",
+      "family": "liner",
+      "kind": "state-variant",
+      "state": "derelict",
+      "was": "Civilian passenger liner (Forge massline), mid habitation drum, split lengthwise.",
+      "reads": "Rows of dead cabin windows on two half-shells \u2014 the drum cracked along its keel and the gap between the halves is the way through.",
+      "variantOf": "wreck_liner_drum",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum__derelict.glb",
+      "sha256": "aa54d1e278da0fcb8a126c8c5d7dde10a57ff5b0405baaaa8db4c630e852ab40",
+      "bytes": 639660,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 8750,
+      "sizeM": [
+        87.0,
+        80.99,
+        50.0
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_DrumBore",
+          "atM": [
+            -0.3,
+            0.0,
+            -0.6
+          ],
+          "clearRadiusM": 22.05,
+          "nearest": "Drum",
+          "clearSpanM": 44.11,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        -50.81,
+        -0.04,
+        0.6
+      ]
+    }
+  ],
+  "socketFailures": [],
+  "gapFailures": [],
+  "floatingMarkFailures": [],
+  "renderFailures": [],
+  "assetCount": 7
+}

@@ -265,6 +265,38 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'Weigh-off good. Clear the lane.',
     'Taken. The mines stay sleeping.',
   ]),
+  // dart shepherd — the Reach pack that runs leashed bombs instead of pointing guns
+  dart_shepherd_demand: Object.freeze([
+    'REACH: bombs on the leash, hauler. Weigh off {amount} in goods or the darts fly.',
+    'JACKAL: see the darts? {amount} in cargo puts them back to sleep.',
+    'REACH: tithe {amount} from the hold — or we crack your hull with ordnance.',
+    'SHEPHERD: {amount} in goods buys the leash. Otherwise my darts eat your drive.',
+    'REACH: the pack runs fused. {amount} weighed off, or you meet them moving.',
+  ]),
+  dart_shepherd_spring: Object.freeze([
+    'Leash cut. The darts pick their own meal.',
+    'Fuses lit — fly, little bombs.',
+    'No tithe. Cut them loose.',
+  ]),
+  dart_shepherd_paid: Object.freeze([
+    'Weighed off. The darts go back to sleep.',
+    'Good tithe. The leash holds today.',
+    'Taken. The bombs stay parked.',
+  ]),
+  dart_shepherd_refused: Object.freeze([
+    'Wrong answer. Darts, run.',
+    'Denied. Feed them the hull.',
+    'No tithe. Loose the pack.',
+  ]),
+  dart_shepherd_flee: Object.freeze([
+    'Runner. The leash has a long reach.',
+    'Gone. The shepherd counts another debt.',
+    'Burn off then. The darts remember the bearing.',
+  ]),
+  dart_shepherd_broke: Object.freeze([
+    'Empty hold. The darts collect what the cargo could not pay.',
+    'Nothing to weigh. The bombs invoice the hull.',
+  ]),
   // vael warden convoy — lawful freight under guardian screen
   warden_convoy_alert: Object.freeze([
     'TRAFFIC ALERT: Vael freighter under warden screen. Raiders want the hold; the screen wants the lane.',
@@ -483,6 +515,9 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'minefield_wake.paid':     'TITHE PAID — {tithe}. The wake holds its fire and peels off to scoop.',
   'minefield_wake.cleared':  'WAKE CLEARED — mine rack scrap and a half-finished weigh-slip remain.',
   'minefield_wake.escaped':  'WAKE EVADED — the trap did not hold you.',
+  'dart_shepherd.paid':      'WEIGH-OFF PAID — {tithe}. The shepherd reins the darts in.',
+  'dart_shepherd.cleared':   'SHEPHERD DOWN — the dart pack breaks leash and scatters.',
+  'dart_shepherd.escaped':   'LEASH EVADED — the shepherd reels the bombs back to the belt.',
   'vael_lane_tithe.paid':    'TITHE PAID — {amount} cr. Cargo intact, Vael cools.',
   'vael_lane_tithe.cleared': 'SCREEN BROKEN — tithe lane cleared.',
   'vael_lane_tithe.escaped': 'TITHE EVADED — Vael marks your wake.',

@@ -9,6 +9,9 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // is pinned from this module; buy/sell stay the same verbs.
 import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
+import { rollTo } from '../../orrery/text.js';
+import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
@@ -167,6 +170,55 @@ function holdFree(state) {
   return Math.max(0, c.capVolume - (c.usedVolume || 0));
 }
 function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+const r2 = (n) => Math.round(Number(n) * 100) / 100;
+
+/** The quote's price impact as a 0..1 fraction (economy.quote reports percent points). */
+function impact01Of(quote) {
+  if (!quote || !quote.ok) return 0;
+  return Math.max(0, Math.min(1, Math.abs(Number(quote.priceImpactPct) || 0) / 100));
+}
+
+/** Demand as an arc: a 120-degree track with a needle at low, normal or high. Pure markup. */
+function demandArcHtml(level, word) {
+  const cx = 32, cy = 38, r = 26;
+  const ang = level >= 3 ? 50 : level <= 1 ? -50 : 0;
+  const track = arcD(cx, cy, r, -60, 60);
+  let stops = '';
+  for (const a of [-50, 0, 50]) {
+    const [x0, y0] = polar(cx, cy, r - 4, a);
+    const [x1, y1] = polar(cx, cy, r + 3, a);
+    stops += `M ${r2(x0)} ${r2(y0)} L ${r2(x1)} ${r2(y1)} `;
+  }
+  const [nx, ny] = polar(cx, cy, r - 6, ang);
+  const safeWord = word === 'high' || word === 'low' ? word : 'normal';
+  return `<span class="orr-mkt-demand"><svg viewBox="0 0 64 40" aria-hidden="true" focusable="false">`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .27)" stroke-width="5" stroke-linecap="round"/>`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .6)" stroke-width="1.5"/>`
+    + `<path d="${stops}" fill="none" stroke="rgb(236 230 216 / .55)" stroke-width="1.5"/>`
+    + `<path d="M ${cx} ${cy} L ${r2(nx)} ${r2(ny)}" fill="none" stroke="rgb(248 244 234)" stroke-width="2" stroke-linecap="round"/>`
+    + `<circle cx="${r2(nx)}" cy="${r2(ny)}" r="2.6" fill="rgb(248 244 234)"/>`
+    + `</svg><span class="orr-mkt-demand__w">${safeWord}</span></span>`;
+}
+
+/** The hold after this trade as an arc: used over capacity, the fill to the contemplated level. */
+function holdArcHtml(used, cap) {
+  if (!(cap > 0)) return '';
+  const frac = Math.max(0, Math.min(1, used / cap));
+  const cx = 52, cy = 56, r = 44;
+  const track = arcD(cx, cy, r, -90, 90);
+  const end = -90 + 180 * frac;
+  const fill = frac > 0.001 ? arcD(cx, cy, r, -90, end) : '';
+  const [bx, by] = polar(cx, cy, r, end);
+  return `<svg viewBox="0 0 104 62" aria-hidden="true" focusable="false">`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .27)" stroke-width="5" stroke-linecap="round"/>`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .6)" stroke-width="1.5"/>`
+    + (fill
+      ? `<path d="${fill}" fill="none" stroke="rgb(248 244 234 / .2)" stroke-width="8" stroke-linecap="round"/>`
+        + `<path d="${fill}" fill="none" stroke="rgb(248 244 234)" stroke-width="2.5" stroke-linecap="round"/>`
+      : '')
+    + `<circle cx="${r2(bx)}" cy="${r2(by)}" r="3" fill="rgb(248 244 234)"/>`
+    + `</svg><span class="orr-mkt-holdarc__t">Hold<b>${fmt(used)} / ${fmt(cap)} u</b></span>`;
+}
 
 /** The corrupt dock owns the wash; the register only reads its durable receipt. */
 export function marketLaunderLedgerHtml(state) {
@@ -311,6 +363,8 @@ export function createMarketScreen(ctx) {
   let marketFilter = 'all';
   let marketQuery = '';
   let listRenderSignature = '';
+  // The verb's last side: the Lamp Key morphs its word only when buy becomes sell or back.
+  let lastVerbMode = null;
   // The register's chrome (filters, search, table) is built once and updated in place.
   let modeEl = null;
   let searchEl = null;
@@ -571,6 +625,18 @@ export function createMarketScreen(ctx) {
     listEl.innerHTML = bindStationMarkup(marketBrowserHtml());
     modeEl = listEl.querySelector('.sx-mkt-browser__mode');
     searchEl = listEl.querySelector('[data-market-search]');
+    // The find is a scale line with a cursor: the input keeps its hooks, the span carries the rule.
+    if (searchEl && typeof searchEl.replaceWith === 'function' && typeof document !== 'undefined'
+      && typeof document.createElement === 'function') {
+      const wrap = document.createElement('span');
+      wrap.className = 'orr-mkt-find';
+      searchEl.replaceWith(wrap);
+      wrap.appendChild(searchEl);
+      const cursor = document.createElement('span');
+      cursor.className = 'orr-mkt-find__cursor';
+      cursor.setAttribute('aria-hidden', 'true');
+      wrap.appendChild(cursor);
+    }
     tbodyEl = listEl.querySelector('tbody');
     filterEls = new Map();
     for (const btn of listEl.querySelectorAll('[data-market-filter]')) {
@@ -656,6 +722,12 @@ export function createMarketScreen(ctx) {
       selectedId = visible[0].id;
       qty = mode === 'sell' ? heldQty(state, selectedId) : 1;
     } else if (!selectedId && rows.length) selectedId = rows[0].id;
+    // Unknown stock prints no column of dashes: when no visible row carries a stock figure or
+    // held cargo, the STOCK column yields.
+    const stockKnown = visible.some((r) => (Number(r.entry && r.entry.stock) || 0) > 0 || heldQty(state, r.id) > 0);
+    if (listEl && listEl.classList && typeof listEl.classList.toggle === 'function') {
+      listEl.classList.toggle('is-stockless', !stockKnown);
+    }
 
     if (!tbodyEl) buildBrowserChrome();
 
@@ -765,6 +837,299 @@ export function createMarketScreen(ctx) {
     }
     dressStage();
     renderLaunderLedger(state);
+    instrumentStage(state, r, { buy, sell, demandLevel: demand, demandWord: demandWord(demand) });
+    syncTicker();
+  }
+
+  // THE INSTRUMENT DRESSING. The quote's grids dissolve onto the trace: the hero numeral moves to
+  // the price scale's right end, the driver words join the foot key, spread brackets the scale,
+  // demand becomes an arc, the trace gains its band and the trade's price-impact ghost. Cosmetic
+  // only — every reading it moves stays in the DOM for assistive technology and the checks.
+  function instrumentStage(state, r, info) {
+    const heroEl = quoteEl.querySelector('.sx-mkt__hero');
+    const instrumentEl = quoteEl.querySelector('.sx-mkt-instrument');
+    const plot = quoteEl.querySelector('.sx-mkt-instrument__plot');
+    if (heroEl && instrumentEl && quoteEl.children && typeof getComputedStyle === 'function') {
+      heroEl.style.gridColumn = '2';
+      heroEl.style.gridRow = String(quoteHeroRow(quoteEl, heroEl, instrumentEl));
+    }
+    dissolveDrivers(quoteEl);
+    const demandVal = quoteEl.querySelector('.sx-mkt-readouts__item--demand dd');
+    if (demandVal) demandVal.innerHTML = demandArcHtml(info.demandLevel, info.demandWord);
+    if (plot) {
+      syncTraceBand(plot);
+      syncSpreadBracket(plot, info.buy, info.sell);
+      syncGhost(plot, impact01Of(selectedTradeQuote(state, r)), mode);
+    }
+  }
+
+  // The hero numeral's grid row: the instrument's own row, counting only the siblings that take
+  // part in grid auto-placement (the essay and cone read are absolutely placed, the drivers are
+  // folded, the tracked line carries order 20, the hero is explicitly placed and takes no slot).
+  function quoteHeroRow(quoteRoot, heroEl, instrumentEl) {
+    let row = 1;
+    for (const sib of quoteRoot.children) {
+      if (sib === instrumentEl) break;
+      if (sib === heroEl) continue;
+      if (sib.classList && sib.classList.contains('sx-mkt-tracked')) continue;
+      let cs = null;
+      try { cs = getComputedStyle(sib); } catch (_) { cs = null; }
+      if (cs && (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed')) continue;
+      row += 1;
+    }
+    return row;
+  }
+
+  // The driver grid dissolves: its words join the instrument's foot key while the spread's
+  // value brackets the price scale.
+  function dissolveDrivers(quoteRoot) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    const items = quoteRoot.querySelectorAll ? [...quoteRoot.querySelectorAll('.sx-mkt-drivers__item')] : [];
+    const bits = [];
+    for (const it of items) {
+      const k = it.querySelector('.sx-mkt-drivers__k');
+      const v = it.querySelector('.sx-mkt-drivers__v');
+      const kind = k ? k.textContent.trim() : '';
+      const value = v ? v.textContent.trim() : '';
+      if (!value) continue;
+      bits.push({ kind, value, dir: it.getAttribute('data-dir') || 'flat', tip: it.getAttribute('title') || '' });
+    }
+    const key = quoteRoot.querySelector('.sx-mkt-chart-key');
+    if (key && bits.length && key.parentNode) {
+      const p = document.createElement('p');
+      p.className = 'orr-mkt-subkey';
+      p.setAttribute('aria-hidden', 'true');
+      for (const bit of bits) {
+        const s = document.createElement('span');
+        s.className = 'orr-mkt-subkey__bit';
+        s.setAttribute('data-dir', bit.dir);
+        if (bit.tip) s.setAttribute('title', bit.tip);
+        const kk = document.createElement('span');
+        kk.textContent = bit.kind;
+        const b = document.createElement('b');
+        b.textContent = bit.value;
+        s.appendChild(kk);
+        s.appendChild(document.createTextNode(' '));
+        s.appendChild(b);
+        p.appendChild(s);
+      }
+      key.parentNode.insertBefore(p, key.nextSibling);
+    }
+  }
+
+  // The trace's band: the history line drawn again beneath itself, wide and faint, so the trace
+  // is a body of light and not a wire.
+  function syncTraceBand(plot) {
+    if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return;
+    const svg = plot.querySelector('svg.sx-mkt-chart');
+    const line = svg ? svg.querySelector('.sx-mkt-line[data-history-line]') : null;
+    const d = line ? line.getAttribute('d') : '';
+    if (!svg || !line || !d || svg.querySelector('.sx-mkt-band')) return;
+    const band = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    band.setAttribute('class', 'sx-mkt-band');
+    band.setAttribute('d', d);
+    band.setAttribute('fill', 'none');
+    band.setAttribute('vector-effect', 'non-scaling-stroke');
+    band.setAttribute('stroke-linejoin', 'round');
+    band.setAttribute('stroke-linecap', 'round');
+    band.setAttribute('aria-hidden', 'true');
+    svg.insertBefore(band, line);
+  }
+
+  // The spread bracket on the scale between the BUY and SELL beads, labelled with the margin.
+  function syncSpreadBracket(plot, buy, sell) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    if (plot.querySelector('.orr-mkt-spread')) return;
+    const readTop = (sel) => {
+      const tick = plot.querySelector(sel);
+      const raw = tick && tick.style ? String(tick.style.top || '') : '';
+      const v = raw ? Number(raw.replace('%', '')) : NaN;
+      return Number.isFinite(v) ? v : null;
+    };
+    const a = readTop('.sx-mkt-instrument__tick--buy');
+    const b = readTop('.sx-mkt-instrument__tick--sell');
+    if (a == null || b == null) return;
+    const el = document.createElement('div');
+    el.className = 'orr-mkt-spread';
+    el.setAttribute('aria-hidden', 'true');
+    const h = Number(plot.clientHeight) || 0;
+    if (h > 0) {
+      const topPx = (Math.min(a, b) / 100) * h;
+      const botPx = (Math.max(a, b) / 100) * h;
+      const height = Math.max(40, botPx - topPx);
+      const top = Math.max(0, Math.min(h - height, ((topPx + botPx) / 2) - (height / 2)));
+      el.style.top = `${Math.round(top)}px`;
+      el.style.height = `${Math.round(height)}px`;
+    } else {
+      el.style.top = `${Math.min(a, b)}%`;
+      el.style.height = `${Math.max(2, Math.abs(b - a))}%`;
+    }
+    const margin = Math.max(0, Math.round((Number(buy) || 0) - (Number(sell) || 0)));
+    const v = document.createElement('span');
+    v.className = 'orr-mkt-spread__v';
+    v.appendChild(document.createTextNode(fmt(margin)));
+    const k = document.createElement('span');
+    k.className = 'orr-mkt-spread__k';
+    k.textContent = 'spread';
+    v.appendChild(k);
+    el.appendChild(v);
+    plot.appendChild(el);
+  }
+
+  // The price-impact ghost: the contemplated trade's own segment on the trace, from the live end
+  // toward where the trade would move the price — up when buying, down when selling. Updates in
+  // place while the dial turns; removed when there is no live impact.
+  function syncGhost(plot, impact01, tradeMode) {
+    if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return;
+    const svg = plot.querySelector('svg.sx-mkt-chart');
+    const line = svg ? svg.querySelector('.sx-mkt-line[data-history-line]') : null;
+    const d = line ? line.getAttribute('d') : '';
+    const m = d ? /([\d.]+),([\d.]+)\s*$/.exec(d) : null;
+    const ghost = svg ? svg.querySelector('.sx-mkt-ghost') : null;
+    const bead = svg ? svg.querySelector('.sx-mkt-ghostbead') : null;
+    if (!svg || !m || !(impact01 > 0)) {
+      if (ghost) ghost.remove();
+      if (bead) bead.remove();
+      return;
+    }
+    const x1 = Number(m[1]);
+    const y1 = Number(m[2]);
+    const dy = Math.max(6, Math.min(110, impact01 * 140));
+    const x2 = Math.min(996, x1 + 64);
+    const y2 = Math.max(6, Math.min(234, tradeMode === 'sell' ? y1 + dy : y1 - dy));
+    const NS = 'http://www.w3.org/2000/svg';
+    let g = ghost;
+    if (!g) {
+      g = document.createElementNS(NS, 'path');
+      g.setAttribute('class', 'sx-mkt-ghost');
+      g.setAttribute('fill', 'none');
+      g.setAttribute('vector-effect', 'non-scaling-stroke');
+      g.setAttribute('aria-hidden', 'true');
+      svg.appendChild(g);
+    }
+    g.setAttribute('d', `M ${r2(x1)} ${r2(y1)} L ${r2(x2)} ${r2(y2)}`);
+    let dot = bead;
+    if (!dot) {
+      dot = document.createElementNS(NS, 'ellipse');
+      dot.setAttribute('class', 'sx-mkt-ghostbead');
+      dot.setAttribute('rx', '4');
+      dot.setAttribute('ry', '6.5');
+      dot.setAttribute('aria-hidden', 'true');
+      svg.appendChild(dot);
+    }
+    dot.setAttribute('cx', String(r2(x2)));
+    dot.setAttribute('cy', String(r2(y2)));
+  }
+
+  function refreshGhost() {
+    const plot = quoteEl.querySelector('.sx-mkt-instrument__plot');
+    if (!plot) return;
+    const state = ctx.state || {};
+    const row = tradedList(state).find((x) => x.id === selectedId);
+    if (!row) return;
+    syncGhost(plot, impact01Of(selectedTradeQuote(state, row)), mode);
+  }
+
+  // The tape: the ladder's prices streaming under the trace. Built from the rendered rows
+  // (the same numbers the player reads), in ladder order, capped; two identical halves loop
+  // the marquee. The ladder holds every reading accessibly, so the tape is motion only.
+  let tickerSig = '';
+  function syncTicker() {
+    const instrument = quoteEl.querySelector('.sx-mkt-instrument');
+    // the tape foots the analysis: after the sale line when there is one, else the instrument
+    const anchor = quoteEl.querySelector('.sx-mkt-sale') || instrument;
+    const prev = quoteEl.querySelector('.orr-mkt-tape');
+    const items = [];
+    if (anchor && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      for (const row of rowEls().slice(0, 14)) {
+        const def = CMDTY_BY_ID.get(row.getAttribute('data-cmdty') || '');
+        const priceCell = row.querySelector('.sx-mkt-row__price');
+        const price = priceCell && priceCell.firstChild ? String(priceCell.firstChild.textContent || '').trim() : '';
+        const tr = row.querySelector('.sx-mkt-row__tr');
+        const flat = !tr || (tr.classList && tr.classList.contains('is-flat')) || tr.getAttribute('aria-label') === 'History unavailable';
+        const trend = tr && !flat ? String(tr.textContent || '').trim() : '';
+        if (!def || !price) continue;
+        items.push({ name: def.name, price, trend });
+      }
+    }
+    if (!anchor || !items.length) {
+      if (prev) prev.remove();
+      tickerSig = '';
+      return;
+    }
+    const sig = items.map((it) => `${it.name}|${it.price}|${it.trend}`).join('~');
+    if (prev && sig === tickerSig) return;
+    tickerSig = sig;
+    const half = items.map((it) => `<span class="orr-mkt-tape__it">${escapeHtml(String(it.name)).toUpperCase()} `
+      + `<span class="orr-mkt-tape__p">${escapeHtml(it.price)}</span>`
+      + (it.trend ? ` <span class="orr-mkt-tape__t">${escapeHtml(it.trend)}</span>` : '') + '</span>').join('');
+    const tape = document.createElement('div');
+    tape.className = 'orr-mkt-tape';
+    tape.setAttribute('aria-hidden', 'true');
+    tape.innerHTML = `<div class="orr-mkt-tape__run"><div class="orr-mkt-tape__half">${half}</div><div class="orr-mkt-tape__half">${half}</div></div>`;
+    if (prev) prev.replaceWith(tape);
+    else if (anchor.parentNode) anchor.parentNode.insertBefore(tape, anchor.nextSibling);
+    else quoteEl.appendChild(tape);
+  }
+
+  // The total as a rolling counter: the digits roll, the unit suffix stands beside them.
+  function setTradeTotal(el, text) {
+    const str = String(text == null ? '' : text);
+    const m = /^([\d,]+)(.*)$/.exec(str);
+    if (!el || !m || typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      if (el) el.textContent = str;
+      return;
+    }
+    const kids = el.children ? [...el.children] : [];
+    const has = (cls) => kids.find((k) => k.classList && typeof k.classList.contains === 'function' && k.classList.contains(cls)) || null;
+    let num = has('orr-mkt-totalnum');
+    if (!num) {
+      el.textContent = '';
+      num = document.createElement('span');
+      num.className = 'orr-mkt-totalnum';
+      el.appendChild(num);
+    }
+    rollTo(num, m[1]);
+    // The rolling columns spell every digit for layout; the strong keeps the true value as read.
+    el.setAttribute('aria-label', `${m[1]}${m[2] || ''}`.trim());
+    const sufText = m[2] || '';
+    const suf = has('orr-mkt-totalsuf');
+    if (sufText) {
+      if (!suf) {
+        const s = document.createElement('span');
+        s.className = 'orr-mkt-totalsuf';
+        s.textContent = sufText;
+        el.appendChild(s);
+      } else if (suf.textContent !== sufText) suf.textContent = sufText;
+    } else if (suf) suf.remove();
+  }
+
+  // The hold arc under the total: what the hold looks like after this trade fills.
+  function syncHoldArc(state, def) {
+    const total = tradeEl.querySelector('.so-trade-total');
+    if (!total || typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    const cargo = state && state.player && state.player.cargo;
+    const cap = Math.max(0, Number(cargo && cargo.capVolume) || 0);
+    const kids = total.children ? [...total.children] : [];
+    const host = kids.find((k) => k.classList && typeof k.classList.contains === 'function' && k.classList.contains('orr-mkt-holdarc')) || null;
+    if (!(cap > 0)) {
+      if (host) host.hidden = true;
+      return;
+    }
+    let box = host;
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'orr-mkt-holdarc';
+      box.setAttribute('aria-hidden', 'true');
+      total.appendChild(box);
+    }
+    box.hidden = false;
+    const used = Math.max(0, Number(cargo && cargo.usedVolume) || 0);
+    const vol = Number(def && def.volPerU) > 0 ? Number(def.volPerU) : 1;
+    const amount = Math.max(0, qty);
+    const after = mode === 'buy' ? used + amount * vol : Math.max(0, used - amount * vol);
+    const html = holdArcHtml(after, cap);
+    if (box.innerHTML !== html) box.innerHTML = html;
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
@@ -823,14 +1188,18 @@ export function createMarketScreen(ctx) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
       tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
       setQtyDial(tradeEl, qty, maxQty);
-      tradeEl.querySelector('[data-trade-total]').textContent = quoteReady ? fmt(total) + ' cr' : 'Unavailable';
+      const totalEl = tradeEl.querySelector('[data-trade-total]');
+      if (totalEl) setTradeTotal(totalEl, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
       tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Total gain';
       const go = tradeEl.querySelector('[data-go]');
       go.disabled = !canAct;
-      go.textContent = goLabel(mode);
+      const goWord = go.querySelector('.orr-lampkey__word');
+      if (goWord) goWord.textContent = goLabel(mode);
+      else go.textContent = goLabel(mode);
       const noteEl = tradeEl.querySelector('.sx-trade__note');
       noteEl.textContent = note;
       noteEl.hidden = !note;
+      syncHoldArc(state, r.def);
       for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
       syncKeys(tradeEl);
       return;
@@ -839,6 +1208,19 @@ export function createMarketScreen(ctx) {
     // Preserve the native event contract: the live side commits, the other side switches mode.
     tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note, limit: maxQty }));
     dressConsole();
+    // The commit is the tab's one Lamp Key; its word morphs between BUY and SELL.
+    const goBtn = tradeEl.querySelector('[data-go]');
+    if (goBtn && goBtn.ownerDocument) {
+      dressLampKey(goBtn);
+      if (mode !== lastVerbMode) {
+        const word = goBtn.querySelector('.orr-lampkey__word');
+        if (word) word.classList.add('orr-mkt-morph');
+      }
+    }
+    lastVerbMode = mode;
+    const tradeTotal = tradeEl.querySelector('[data-trade-total]');
+    if (tradeTotal) setTradeTotal(tradeTotal, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
+    syncHoldArc(state, def);
   }
 
   // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
@@ -1202,6 +1584,7 @@ export function createMarketScreen(ctx) {
     scrubFrame = 0;
     renderConsole(ctx.state || {}, { receiptOnly: true });
     refreshSaleLine();
+    refreshGhost();
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
   }
   consoleEl.addEventListener('selectstart', (ev) => { if (scrub && scrub.moved) ev.preventDefault(); });

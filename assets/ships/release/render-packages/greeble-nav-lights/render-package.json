@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "eb34405680f4200fdc9ec3cb3dfe6c31828e29101a04bf7e04a0282d2a044df4",
+  "contentHash": "4648a6cf5cdd1abd742dfb5d6e8c02b6c6f68da646c84b3ef2f24275f6a35a64",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -343,8 +343,8 @@
       "uri": "greeble_nav_lights.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
@@ -514,7 +514,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
   },
-  "runtimeHash": "09c82a55f633ce8cacd61865eac0bdb71f7498f392517f62fa2ff76ad4402efe",
+  "runtimeHash": "6663b9e4091e43d1dd8a22749f61dc44b586c4488b88c2c94d61a88e5b76b07c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

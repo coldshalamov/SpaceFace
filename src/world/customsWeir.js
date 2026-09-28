@@ -23,6 +23,13 @@ export const HELIOS_CUSTOMS_WEIR = Object.freeze({
   halfWidth: 80,
   zoneRadius: 1300,
   dwellS: 0.7,
+  // The corridor's gate booths belong to Helios Station. A hull that holds under
+  // the beam for a beat gets its manifest read; a hull that runs the corridor
+  // fast outruns the read.
+  stationId: 'station_helios',
+  readDwellS: 1.6,
+  readSpeed: 34,
+  readText: 'CUSTOMS CORRIDOR: manifest read — transit logged.',
 });
 
 const TETHYS_HEADING = Math.atan2(1180, 640);
@@ -37,6 +44,12 @@ export const TETHYS_CUSTOMS_WEIR = Object.freeze({
   halfAngle: 0.42,
   zoneRadius: 820,
   dwellS: 0.7,
+  // The cone pins a berth at the Customs Gate: a shorter hold, but only a hull
+  // nearly stopped inside it can be read.
+  stationId: 'station_customs',
+  readDwellS: 1.1,
+  readSpeed: 22,
+  readText: 'CUSTOMS GATE: manifest read — transit logged.',
 });
 
 export const CUSTOMS_WEIRS = Object.freeze([HELIOS_CUSTOMS_WEIR, TETHYS_CUSTOMS_WEIR]);

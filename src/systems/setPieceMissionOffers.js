@@ -52,11 +52,25 @@ function chainIdFor(state, cursor) {
   return `sp1_${cursor.archetypeId}_${cursor.startEpoch}_${suffix}`;
 }
 
-function reservedLongReadWreckIds(state) {
+/**
+ * G1: wreck ids currently reserved by the set-piece program. Two sources:
+ *  - static: every chain definition with a dedicated `wreckId` (D13-D16) owns that hull wherever
+ *    the chain appears on a board or in an active run;
+ *  - live: every posted offer / active mission whose set-piece cause carries a wreckId (this is
+ *    the former reservedLongReadWreckIds pattern, generalized to all archetypes so two live
+ *    chains can never silently bind the same physical hull).
+ * long_read's dynamic candidate pick excludes all of these: a dedicated chain wreck could never
+ * complete long_read's rumor purchase (its `mission` channel minting is the chain's own accept),
+ * and a live chain must not find its hull reassigned mid-run.
+ */
+function reservedSetPieceWreckIds(state) {
   const reserved = new Set();
+  for (const definition of catalog()) {
+    if (definition && definition.wreckId) reserved.add(definition.wreckId);
+  }
   const inspect = (value) => {
     const cause = value && value.source === SET_PIECE_MISSION_SOURCE && value.cause;
-    if (!cause || cause.archetypeId !== 'long_read') return;
+    if (!cause) return;
     const wreckId = cause.wreckId || value.wreckId || value.params && value.params.wreckId;
     if (wreckId) reserved.add(wreckId);
   };
@@ -70,7 +84,7 @@ function reservedLongReadWreckIds(state) {
 function longReadCandidates(state) {
   const bearings = state && state.player && state.player.uniqueWrecks
     && state.player.uniqueWrecks.bearings || {};
-  const reserved = reservedLongReadWreckIds(state);
+  const reserved = reservedSetPieceWreckIds(state);
   return UNIQUE_WRECKS.filter((wreck) => {
     if (!wreck || reserved.has(wreck.id) || bearings[wreck.id] && bearings[wreck.id].phase === 'salvaged') {
       return false;
@@ -80,6 +94,16 @@ function longReadCandidates(state) {
     ));
     return !!source;
   });
+}
+
+/**
+ * The physical target of a set-piece chain stage: long_read picks dynamically from the unreserved
+ * candidate pool; a chain with a dedicated wreckId (D13-D16) is always bound to exactly that hull.
+ */
+function chainWreckTarget(state, definition, cursor) {
+  if (definition.wreckId) return uniqueWreckById(definition.wreckId);
+  if (definition.id === 'long_read') return longReadTarget(state, cursor);
+  return null;
 }
 
 function longReadTarget(state, cursor) {
@@ -230,6 +254,12 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     sourceRef: wreck && wreck.bearingSourceRef || null,
     channelId: source && source.channelId || null,
   };
+  // A wreck-bound stage runs where its hull lies: long_read's first two stages and every stage
+  // carrying a wreck-bound setPieceObjective resolve to the wreck's home sector.
+  const stageBoundToWreck = !!(wreck && (
+    (definition.id === 'long_read' && cursor.stageIndex < 2)
+    || (stage.params && missionData.WRECK_BOUND_SET_PIECE_OBJECTIVES.has(stage.params.setPieceObjective))
+  ));
   const offer = {
     id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
     type: stage.type,
@@ -240,7 +270,7 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     collateral_cr: collateralCr,
     riskTier: Math.trunc(Number(stage.riskTier) || 0),
     destStationId: stage.destStationId || null,
-    destSectorId: wreck && cursor.stageIndex < 2 ? wreck.sectorId : stage.destSectorId,
+    destSectorId: stageBoundToWreck ? wreck.sectorId : stage.destSectorId,
     distance: Math.max(0, Number(stage.distance) || 0),
     title,
     summary,
@@ -270,7 +300,7 @@ export function buildSetPieceMissionOffers(state, rawCursor) {
   let cursor = normalizedCursor(rawCursor);
   const definition = definitionFor(cursor.archetypeId);
   if (!definition) return [];
-  const wreck = definition.id === 'long_read' ? longReadTarget(state, cursor) : null;
+  const wreck = chainWreckTarget(state, definition, cursor);
   if (definition.id === 'long_read' && !wreck) return [];
   if (wreck && !cursor.wreckId) cursor = { ...cursor, wreckId: wreck.id };
   let rows = stageAt(definition, cursor);

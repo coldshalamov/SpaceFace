@@ -57,6 +57,7 @@ test('a moral-trap reveal still speaks when no voice helper is mounted, once', (
     _helpers: {},
     _speakReveal: moralTrapSystem._speakReveal,
     _maybeReveal: moralTrapSystem._maybeReveal,
+    _revealMission: moralTrapSystem._revealMission,
   };
   sys._maybeReveal();
   assert.equal(toasts.length, 1);

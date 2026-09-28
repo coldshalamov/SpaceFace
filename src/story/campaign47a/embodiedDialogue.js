@@ -1,5 +1,6 @@
 // Concise canonical contact voice for Campaign 47-A. Story remains the presentation authority.
 import { CAMPAIGN_BEATS, ENDINGS } from './campaignData.js';
+import { stationContactCounterValue } from '../../data/stationContacts.js';
 
 export const EMBODIED_DIALOGUE_ID = 'campaign47a.embodiedDialogue.v2';
 export const EMBODIED_DIALOGUE_SCHEMA_VERSION = 2;
@@ -113,7 +114,37 @@ export function depthContactAvailable(cardEntry, state = {}) {
   return true;
 }
 export function depthContactsForStation(stationId, state = {}) {
-  return DEPTH_PROGRAM_CONTACTS.filter((entry) => entry.stationHints.includes(stationId) && depthContactAvailable(entry, state));
+  return DEPTH_PROGRAM_CONTACTS.filter((entry) => entry.stationHints.includes(stationId) && depthContactAvailable(entry, state))
+    .map((entry) => {
+      const greeting = witnessSeamGreeting(entry.id, state);
+      // G2: the two Witness Run contacts greet you by what you actually did — differently per
+      // branch, and Kell's greeting erodes with his cover counter. Null keeps the authored blurb.
+      return greeting ? { ...entry, blurb: greeting } : entry;
+    });
+}
+
+// G2 witness seam: pure functions of the durable station-contact counters. Bands are bounded by
+// CONTACT_COUNTER_DEFS (dorin.trust -1..1, kell.cover 0..6); every line stays inside the
+// 12-word blurb budget.
+const WITNESS_SEAM_GREETINGS = Object.freeze({
+  contact_filecleaver_dorin: (state) => {
+    const trust = stationContactCounterValue(state, 'dorin.trust');
+    if (trust >= 1) return 'The log has a record now. Your name is on it.';
+    if (trust <= -1) return 'The log stays buried. I remember who chose the shelf.';
+    return null;
+  },
+  contact_wraith_kell: (state) => {
+    const cover = stationContactCounterValue(state, 'kell.cover');
+    if (cover >= 5) return 'Six years of quiet handoffs. The desk swears I was never here.';
+    if (cover >= 3) return 'My day-files and night-files disagree. Walk past.';
+    if (cover >= 1) return 'Hale is asking the desk questions. Order something.';
+    return null;
+  },
+});
+
+function witnessSeamGreeting(contactId, state) {
+  const greeting = WITNESS_SEAM_GREETINGS[contactId];
+  return greeting ? greeting(state) : null;
 }
 export function listBeatComms() { return BEAT_COMMS.slice(); }
 export function commsForBeat(beatIndex, opts = {}) {

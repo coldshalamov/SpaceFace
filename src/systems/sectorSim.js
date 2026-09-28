@@ -37,6 +37,7 @@ import {
   scaleVolume,
   FREIGHT_CAUSE,
 } from '../economy/freightCausality.js';
+import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -58,6 +59,22 @@ const DENSITY_MIN = 0, DENSITY_MAX = 0.80;
 const MAX_IMPULSES = 256;
 const MAX_INTEL_ALERTS = 3;
 const MAX_APPLIED_EMBODIMENT_IDS = 4096;
+
+// Lane attrition — real freight outcomes become field impulses (see _onFreightLoss/_onFreightSpill).
+// Sized so ONE hauler death is a blip the kernel decays (~0.24/day price decay), while sustained
+// predation over a day pushes a lane past route_scarcity (0.12) and toward the scarcity-contract
+// threshold (0.25) — the "strangle a supply line" read the board can then act on.
+const FREIGHT_LOSS_PRESSURE_BASE = 0.018;   // pricePressure floor for any manifested shipment lost
+const FREIGHT_LOSS_PRESSURE_PER_UNIT = 0.0012;
+const FREIGHT_LOSS_PRESSURE_MAX = 0.06;
+const FREIGHT_LOSS_DANGER_BASE = 0.012;     // a hull died on the lane
+const FREIGHT_LOSS_DANGER_PER_UNIT = 0.0003;
+const FREIGHT_LOSS_DANGER_MAX = 0.028;
+const FREIGHT_EMPTY_LOSS_DANGER = 0.02;     // law hull / empty manifest: violence, not scarcity
+const FREIGHT_SPILL_DANGER_BASE = 0.007;    // cargo dumped under fire — the lane is being worked
+const FREIGHT_SPILL_DANGER_PER_UNIT = 0.0002;
+const FREIGHT_SPILL_DANGER_MAX = 0.018;
+const FREIGHT_VOLATILE_DANGER_MULT = 1.6;   // volatile freight burning/loose on a lane is worse
 
 const STATION_GOODS = Object.freeze({
   refinery: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_fuel_cells'],
@@ -107,6 +124,12 @@ export const sectorSim = {
     }));
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
     this.bus.on('conflict:flip', (p) => this._onConflictFlip(p));
+    // Freight attrition: manifested shipments dying or dumping cargo mark the lane they died on.
+    // The emitters (traffic, encounterDirector, claims convoys) already book destination stock and
+    // news; this is the route-level half — the field that drives sectorSignalFor, field-born
+    // contracts, demand prose, and intel thresholds.
+    this.bus.on('freight:loss', (p) => this._guard('freight:loss', () => this._onFreightLoss(p)));
+    this.bus.on('freight:cargoSpilled', (p) => this._guard('freight:cargoSpilled', () => this._onFreightSpill(p)));
 
     // Transit consequence path: sectorSim computes exposure; combat applies damage through its
     // existing single-writer pipeline. Speed lowers incident probability; armor/hull absorb impact.
@@ -500,7 +523,13 @@ export const sectorSim = {
       influence[p.factionId] = p.type === 'station' ? -0.16 : -0.012;
     }
     if (p.type === 'station') {
-      this.injectImpulse({ kind: 'infrastructure_loss', sectorId, danger: 0.11, pricePressure: 0.055, influence });
+      // A pirate base dying is not infrastructure loss: the pocket it raided from loses
+      // danger and the outfit loses a foothold. base_destroyed is the classified kind.
+      if (p.baseKind === 'pirate_base') {
+        this.injectImpulse({ kind: 'base_destroyed', sectorId, danger: -0.05, influence });
+      } else {
+        this.injectImpulse({ kind: 'infrastructure_loss', sectorId, danger: 0.11, pricePressure: 0.055, influence });
+      }
     } else if (p.factionLawful) {
       this.injectImpulse({ kind: 'lawful_kill', sectorId, danger: 0.022, pricePressure: 0.006, influence });
     } else {
@@ -515,6 +544,66 @@ export const sectorSim = {
       danger: 0.08, pricePressure: 0.04,
       factionId: p.newOwner, influenceDelta: 0.34,
     });
+  },
+
+  /**
+   * A manifested shipment died on a lane (traffic kill, encounter convoy loss, claim convoy).
+   * The emitters already book the destination's stock drain and the headline; this is the missing
+   * route-level half — the sector where the freight died carries a bounded scarcity + danger mark,
+   * so sustained predation reads as route_scarcity downstream (contracts, demand prose, intel).
+   * Scales with the lost volume; volatile freight dying marks the lane as more dangerous.
+   */
+  _onFreightLoss(p) {
+    if (!p || typeof p !== 'object') return false;
+    const sectorId = (typeof p.sectorId === 'string' && p.sectorId)
+      || STATION_TO_SECTOR.get(p.stationId)
+      || (this.state.world && this.state.world.currentSectorId)
+      || null;
+    if (!sectorId || !SECTOR_BY_ID.has(sectorId)) return false;
+    const qty = Math.max(0, Math.round(Number(p.totalQty) || 0));
+    if (!(qty > 0)) {
+      // No sellable freight aboard (law hull / empty manifest): still violence on the lane, but
+      // there is no lost shipment to price. Annotate through the shipped lawful_kill semantics.
+      return this.injectImpulse({ kind: 'lawful_kill', sectorId, danger: FREIGHT_EMPTY_LOSS_DANGER });
+    }
+    const volatileKlass = volatileClassOf(p.primaryCommodityId || p.commodityId);
+    const pricePressure = clamp(
+      FREIGHT_LOSS_PRESSURE_BASE + qty * FREIGHT_LOSS_PRESSURE_PER_UNIT,
+      FREIGHT_LOSS_PRESSURE_BASE,
+      FREIGHT_LOSS_PRESSURE_MAX,
+    );
+    const danger = clamp(
+      (FREIGHT_LOSS_DANGER_BASE + qty * FREIGHT_LOSS_DANGER_PER_UNIT)
+        * (volatileKlass ? FREIGHT_VOLATILE_DANGER_MULT : 1),
+      FREIGHT_LOSS_DANGER_BASE,
+      FREIGHT_LOSS_DANGER_MAX,
+    );
+    return this.injectImpulse({ kind: 'freight_loss', sectorId, danger, pricePressure });
+  },
+
+  /**
+   * Cargo dumped loose under fire is the lane being worked — even though the pods are recoverable
+   * and may still be scooped and sold. Danger marks the violence; the price axis stays honest
+   * through freight:loss (goods actually destroyed) and the reduced manifest's smaller arrival,
+   * never through a spill that can still be recovered.
+   */
+  _onFreightSpill(p) {
+    if (!p || typeof p !== 'object') return false;
+    // Spills are live-sector events: ambient traffic and running encounters only exist in the
+    // sector the player is in, so the current sector is the lane when none is carried.
+    const sectorId = (typeof p.sectorId === 'string' && p.sectorId)
+      || (this.state.world && this.state.world.currentSectorId)
+      || null;
+    if (!sectorId || !SECTOR_BY_ID.has(sectorId)) return false;
+    const qty = Math.max(0, Math.round(Number(p.qty) || 0));
+    const volatileKlass = volatileClassOf(p.commodityId);
+    const danger = clamp(
+      (FREIGHT_SPILL_DANGER_BASE + qty * FREIGHT_SPILL_DANGER_PER_UNIT)
+        * (volatileKlass ? FREIGHT_VOLATILE_DANGER_MULT : 1),
+      FREIGHT_SPILL_DANGER_BASE,
+      FREIGHT_SPILL_DANGER_MAX,
+    );
+    return this.injectImpulse({ kind: 'freight_spill', sectorId, danger });
   },
 
   // ------------------------------------------------------------------------------------------

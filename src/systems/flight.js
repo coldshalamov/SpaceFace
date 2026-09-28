@@ -572,6 +572,9 @@ function thrustNozzles(throttle, strafe, brake, out, pool) {
   }
   if (strafe > 0.025) write('strafe-right', Math.min(1, strafe), -Math.PI / 2);
   else if (strafe < -0.025) write('strafe-left', Math.min(1, -strafe), Math.PI / 2);
+  // The pool owns the objects; `out` is the published view — slots must be mirrored in or
+  // the emit carries [undefined × n] (regressed in 5d0729001's payload-retention refactor).
+  for (let i = 0; i < n; i++) out[i] = pool[i];
   out.length = n;
   return out;
 }

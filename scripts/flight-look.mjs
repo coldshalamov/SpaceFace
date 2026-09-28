@@ -124,6 +124,134 @@ try {
     }, { token: String(token), dist: Number(dist ?? args.aimDist ?? 260) });
   }
 
+  // The chase camera aims at the player, not the target — aimDist just parks the player near
+  // the target, so at wide zooms the target drifts to a frame edge (the hub sat cut off at
+  // the bottom). Centre it: unproject screen-centre onto the target's height plane, shift the
+  // player by that world delta, and iterate until the target's NDC lands under ~3% of centre.
+  async function centreOn(token) {
+    for (let i = 0; i < 4; i++) {
+      const r = await page.evaluate(async (token) => {
+        const THREE = await import('three');
+        const s = window.SF.state;
+        let tx, tz, ty = 0;
+        if (token.startsWith('pos:')) {
+          const [x, z] = token.slice(4).split('~').map(Number);
+          tx = x; tz = z;
+        } else if (token.startsWith('rocknear:')) {
+          // 'rocknear:x~z' — centre on the nearest live asteroid-field rock to (x,z); used
+          // to proof procedural geology bodies that never become entities.
+          const [x, z] = token.slice(9).split('~').map(Number);
+          const rocks = s.world?.asteroidField?.rocks || [];
+          let best = null, bestD = Infinity;
+          for (const r of rocks) {
+            if (!r || r.alive === false) continue;
+            const d = (r.pos.x - x) ** 2 + (r.pos.z - z) ** 2;
+            if (d < bestD) { bestD = d; best = r; }
+          }
+          if (!best) return 'no rock near ' + token;
+          tx = best.pos.x; tz = best.pos.z;
+        } else {
+          const matches = (e) => {
+            const d = e.data || {};
+            return d.stationId === token || d.archetypeGlb === token || d.poiId === token
+              || d.landmarkGlb === token || d.placeId === token || d.worldSiteId === token
+              || e.placeId === token || (e.data && e.data.placeId) === token
+              || e.id === token || e.id === `${token}/root`;
+          };
+          let t = null;
+          for (const e of s.entities.values()) if (matches(e)) { t = e; break; }
+          if (!t) for (const row of s.world?.dressing?.rows || []) {
+            if (row && row.alive !== false && matches(row)) { t = row; break; }
+          }
+          if (!t) return 'no match ' + token;
+          tx = t.pos.x; tz = t.pos.z; ty = t.pos.y || 0;
+        }
+        const cam = s.render && s.render.camera;
+        if (!cam || !cam.projectionMatrix) return 'no camera';
+        const camPos = new THREE.Vector3();
+        cam.getWorldPosition(camPos);
+        // M2 floating origin: scene XZ is frame-local (global - world.frameOrigin). tx/tz and
+        // player.pos are galactic-global, so convert both sides of the projection.
+        const fo = (s.world && s.world.frameOrigin) || { x: 0, z: 0 };
+        const lx = tx - fo.x, lz = tz - fo.z;
+        const ndc = new THREE.Vector3(lx, ty, lz).project(cam);
+        // Whole-body fit: project the target visual's bounding-box corners to NDC so a
+        // centred anchor can't still leave a large body clipped at a frame edge.
+        let fit = null;
+        try {
+          const scene = s.render && s.render.scene;
+          let root = (t && (t.data?.authoredVisualRoot || t.object3d)) || null;
+          if (!root && scene && t) {
+            root = scene.getObjectByName(`station:${t.id}`)
+              || scene.getObjectByName(`place:${t.id}`)
+              || scene.getObjectByName(t.id)
+              || null;
+          }
+          if (!root && scene && t) {
+            const want = [t.stationId, t.placeId, t.data?.stationId, t.data?.placeId,
+              t.data?.archetypeGlb, t.data?.worldSiteId]
+              .filter((w) => typeof w === 'string' && w.length >= 5);
+            want.push(`station:${t.id}`, `place:${t.id}`);
+            const re = new RegExp(want.map((w) => String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'i');
+            const hits = [];
+            scene.traverse((o) => {
+              if (!o.isMesh) return;
+              for (let n = o; n; n = n.parent) {
+                const ud = n.userData || {};
+                const tag = `${n.name} ${ud.placeId || ''} ${ud.archetypeGlb || ''} ${ud.stationId || ''} ${ud.entityId || ''}`;
+                if (want.length && re.test(tag)) { hits.push(o); break; }
+              }
+            });
+            if (hits.length) root = hits;
+          }
+          if (root) {
+            const box = new THREE.Box3();
+            const items = Array.isArray(root) ? root : [root];
+            for (const o of items) box.expandByObject(o);
+            if (isFinite(box.min.x)) {
+              let mx = 0, my = 0;
+              for (const cx of [box.min.x, box.max.x])
+                for (const cy of [box.min.y, box.max.y])
+                  for (const cz of [box.min.z, box.max.z]) {
+                    const p = new THREE.Vector3(cx, cy, cz).project(cam);
+                    if (Math.abs(p.x) > mx) mx = Math.abs(p.x);
+                    if (Math.abs(p.y) > my) my = Math.abs(p.y);
+                  }
+              fit = { ndcMaxX: +mx.toFixed(2), ndcMaxY: +my.toFixed(2), inside: mx < 1 && my < 1, meshes: items.length };
+            }
+          }
+        } catch { /* fit is best-effort evidence */ }
+        const centre = new THREE.Vector3(0, 0, 0.5).unproject(cam).sub(camPos);
+        const t = centre.y ? (ty - camPos.y) / centre.y : 0;
+        // camPos is frame-local too — lift the screen-centre ground point back to global
+        // before differencing against global tx/tz.
+        const c0x = camPos.x + centre.x * t + fo.x, c0z = camPos.z + centre.z * t + fo.z;
+        const dx = tx - c0x, dz = tz - c0z;
+        const p = s.entities.get(s.playerId);
+        const world = window.SF.registry?.get?.('world');
+        // Damped step: the chase camera lags the player, so the full projected delta
+        // overshoots and the NDC error oscillates across passes.
+        const dest = { x: p.pos.x + dx * 0.7, z: p.pos.z + dz * 0.7 };
+        const moved = world && world.relocatePlayerInSector
+          ? world.relocatePlayerInSector(dest, { reason: 'flight-look:centre' })
+          : false;
+        if (!moved) {
+          p.pos.x = dest.x; p.pos.z = dest.z;
+          if (p.prevPos) { p.prevPos.x = p.pos.x; p.prevPos.z = p.pos.z; }
+        }
+        // Kill drift either way — a settling player slides the chase frame off the target
+        // between the centre pass and the screenshot.
+        if (p.vel) { p.vel.x = 0; p.vel.z = 0; }
+        return { ndcX: +ndc.x.toFixed(3), ndcY: +ndc.y.toFixed(3), dx: +dx.toFixed(1), dz: +dz.toFixed(1), moved, fit };
+      }, String(token));
+      if (typeof r === 'string') { console.log('centre', token, r); return r; }
+      if (Math.abs(r.ndcX) < 0.03 && Math.abs(r.ndcY) < 0.03) { console.log('centre', token, 'ok', JSON.stringify(r)); return r; }
+      if (i === 3) console.log('centre', token, 'last', JSON.stringify(r));
+      await page.waitForTimeout(1600);
+    }
+    console.log('centre', token, 'best-effort after 4 passes');
+  }
+
   // Stations hide their procedural fallback while 'awaiting-authored-admission', so a shot
   // taken before the boundary admits shows floating overlay over empty space. Gate the
   // capture on the aimed entity reaching an authored state with real meshes.
@@ -458,6 +586,7 @@ try {
   }
   if (args.aim) await waitTargetJobs(String(args.aim));
   await drainQueue();
+  if (args.aim) await centreOn(String(args.aim));
   await page.waitForTimeout(Number(args.wait || 20) * 1000);
   // SwiftShader trips the software-renderer emergency profile (third-resolution, bloom off). A
   // look capture wants the hardware picture: full resolution and the shipping bloom/ink post.
@@ -480,6 +609,7 @@ try {
     // that stay dormant (alive=false) until the player is near, so they can never match
     // the name matcher from a distance.
     for (const token of aimList) {
+      let centreToken = null;
       if (token.startsWith('sec:')) {
         // Sector hop mid-run — same entry point as --sector so the sector materializes
         // at full presence before the next aims.
@@ -509,14 +639,34 @@ try {
         for (const zoom of zooms) {
           await page.evaluate((z) => { const c = window.SF.state.camera; c.zoom = z; c.targetZoom = z; c.zoomTarget = z; }, zoom);
           await page.waitForTimeout(Number(args.settle || 6) * 1000);
+          // Re-centre after the settle — drift during the wait slides the target off-frame.
+          await centreOn(target);
+          await page.waitForTimeout(800);
           const safe = `claim_${spec}_${target}`.replace(/[^\w.-]/g, '_');
           await page.screenshot({ path: `${OUT}flight_${safe}_z${zoom}.png`, timeout: 180000 });
           console.log('shot', safe, 'zoom', zoom);
         }
         continue;
       }
-      if (token.startsWith('pos:')) {
-        const [px, pz] = token.slice(4).split('~').map(Number);
+      if (token.startsWith('pos:') || token.startsWith('rocknear:') || token.startsWith('wreckfield:')) {
+        // 'wreckfield:' resolves itself in-page: relocate to the first live wreck-aftermath
+        // dressing row in the current sector (prefer a hero wreck_* body over debris).
+        let px, pz;
+        if (token.startsWith('wreckfield:')) {
+          const hit = await page.evaluate(() => {
+            const s = window.SF.state;
+            const rows = [...(s.world?.dressing?.rows || []), ...(s.entityList || [])]
+              .filter((r) => r && r.alive !== false && r.data && r.data.wreckAftermath === true);
+            const hero = rows.find((r) => /_wreck_/.test(r.data.placeId || '')) || rows[0];
+            return hero ? { x: hero.pos.x, z: hero.pos.z, id: hero.data.placeId || hero.id } : null;
+          });
+          if (!hit) { console.log('aim', token, 'no wreck aftermath rows'); continue; }
+          console.log('wreckfield ->', hit.id, Math.round(hit.x), Math.round(hit.z));
+          px = hit.x; pz = hit.z + 140;
+          centreToken = `pos:${px}~${hit.z}`;
+        } else {
+          [px, pz] = token.split(':')[1].split('~').map(Number);
+        }
         const rep = await page.evaluate(({ x, z }) => {
           const world = window.SF.registry?.get?.('world');
           const moved = world && world.relocatePlayerInSector
@@ -525,6 +675,26 @@ try {
           return `pos(${x},${z}) relocated=${moved}`;
         }, { x: px, z: pz });
         console.log('aim', token, rep);
+        if (token.startsWith('rocknear:')) {
+          // Park the player beside the nearest rock, not on it — centreOn then frames the
+          // rock while the hull reads beside it for scale.
+          const off = await page.evaluate(({ x, z }) => {
+            const s = window.SF.state;
+            const rocks = s.world?.asteroidField?.rocks || [];
+            let best = null, bestD = Infinity;
+            for (const r of rocks) {
+              if (!r || r.alive === false) continue;
+              const d = (r.pos.x - x) ** 2 + (r.pos.z - z) ** 2;
+              if (d < bestD) { bestD = d; best = r; }
+            }
+            if (!best) return 'no rock';
+            const world = window.SF.registry?.get?.('world');
+            const dest = { x: best.pos.x + best.radius * 1.6, z: best.pos.z + best.radius * 0.9 };
+            if (world?.relocatePlayerInSector) world.relocatePlayerInSector(dest, { reason: 'flight-look:rocknear' });
+            return `rock@${Math.round(best.pos.x)},${Math.round(best.pos.z)} r=${best.radius} type=${best.data?.typeId || '?'}`;
+          }, { x: px, z: pz });
+          console.log('rocknear', off);
+        }
         // Let dormant dressing rows wake, then issue the authored requests the renderer's
         // spatial prefetch skipped and pump the queue until the area's bodies admit.
         const posWaitMs = Number(args.posWait || 8) * 1000;
@@ -557,6 +727,11 @@ try {
       for (const zoom of zooms) {
         await page.evaluate((z) => { const c = window.SF.state.camera; c.zoom = z; c.targetZoom = z; c.zoomTarget = z; }, zoom);
         await page.waitForTimeout(Number(args.settle || 6) * 1000);
+        // Centre per shot, not once per aim: the player drifts during settle waits and the
+        // chase camera follows the player, so a single centre pass leaves the target cut
+        // at the frame edge at shot time.
+        await centreOn(centreToken || token);
+        await page.waitForTimeout(800);
         const safe = token.replace(/[^\w.-]/g, '_');
         await page.screenshot({ path: `${OUT}flight_${safe}_z${zoom}.png`, timeout: 180000 });
         console.log('shot', token, 'zoom', zoom);
@@ -566,6 +741,7 @@ try {
     for (const zoom of zooms) {
       await page.evaluate((z) => { const c = window.SF.state.camera; c.zoom = z; c.targetZoom = z; c.zoomTarget = z; }, zoom);
       await page.waitForTimeout(Number(args.settle || 6) * 1000);
+      if (args.aim) { await centreOn(String(args.aim)); await page.waitForTimeout(800); }
       await page.screenshot({ path: `${OUT}flight_z${zoom}.png`, timeout: 180000 });
       console.log('shot zoom', zoom);
     }

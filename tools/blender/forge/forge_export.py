@@ -333,10 +333,22 @@ def live_place_contract(file):
     conv = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # glTF -> Blender
     sockets = []
     for i, n in enumerate(nodes):
-        if str(n.get('name', '')).startswith('SOCKET_'):
+        # Some live places carry lowercase socket_* nodes (e.g. the breakaway fork's
+        # socket_mouth/socket_seat) — match case-insensitively so the contract survives.
+        # LANDMARK_ marker empties are the same contract class (e.g. LANDMARK_MineralSeam,
+        # LANDMARK_ProspectorTags) — carry them too. HOOK_/MOUNT_ empties are NOT carried:
+        # the loader requires hook nodes to resolve to renderable geometry (a live
+        # HOOK_Emissive empty would fail validation on the forged file).
+        name = str(n.get('name', '')).upper()
+        is_marker = 'mesh' not in n and name.startswith(('SOCKET_', 'LANDMARK_'))
+        if is_marker:
             sockets.append((n['name'], conv @ world(i) @ conv.inverted(), n.get('extras', {})))
     scene = doc['scenes'][doc.get('scene', 0)]
     roots = [nodes[i]['name'] for i in scene['nodes'] if 'ROOT' in str(nodes[i].get('name', '')).upper()]
+    # Some live places root the scene at a plainly-named node (place_asteroid_seamed,
+    # place_asteroid_graffiti) that render-package pilots look up by name — keep it.
+    if not roots and len(scene['nodes']) == 1:
+        roots = [nodes[scene['nodes'][0]]['name']]
     meta = (scene.get('extras') or {}).get('spacefaceAsset') or (doc.get('asset', {}).get('extras') or {}).get('spacefaceAsset') or {}
     return {'sockets': sockets, 'root': roots[0] if roots else None, 'meta': meta}
 
@@ -350,12 +362,17 @@ def export_place(ship, spec, preview=False):
     _rename_materials(ship)
     root = _root_empty(live['root'] or f"SF_{spec['file'].upper()}_ROOT", {})
     meshes_all = []
-    for level in (0, 1, 2):
+    # Some consumers instantiate every primitive in the GLB (the shipworks preview mounts
+    # the dock interior whole — no LOD selection), so spec['lod_levels'] can pin LOD0-only.
+    for level in spec.get('lod_levels', (0, 1, 2)):
         meshes = _lod_meshes(ship, level, f'LOD{level}')
         for m in meshes:
             m.parent = root
         meshes_all += meshes
-    _collision_hull(ship, root, [m for m in meshes_all if m.name.startswith('LOD0_')])
+    # spec['no_collision'] skips the hull — the dock interiors are UI backdrops, never
+    # spawned in the world, and the live files carry no collision node.
+    if not spec.get('no_collision'):
+        _collision_hull(ship, root, [m for m in meshes_all if m.name.startswith('LOD0_')])
     for name, mat, extras in live['sockets']:
         e = bpy.data.objects.new(name, None)
         bpy.context.scene.collection.objects.link(e)
@@ -369,7 +386,8 @@ def export_place(ship, spec, preview=False):
     _export([root] + list(root.children), path)
     # Identity only: descriptive fields of the old body (triangle counts, material lists, texture
     # notes) would be false for the forged one.
-    keep = ('contractVersion', 'assetId', 'partId', 'liveId', 'category', 'family', 'role')
+    keep = ('contractVersion', 'assetId', 'partId', 'liveId', 'category', 'family', 'role',
+            'previewMount', 'sourceRole')
     identity = {k: live['meta'][k] for k in keep if k in live['meta']}
     if new_place:
         identity.update({'contractVersion': 2, 'liveId': spec['file'], 'category': 'places'})

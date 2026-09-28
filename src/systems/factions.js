@@ -332,8 +332,12 @@ export const factions = {
     bus.on('mission:expired', onMissionLost);
 
     // Customs / patrol contraband scan: heavy rep hit + escalating strike counter (§4.4).
+    // A body surrendered to the gate is not a bust — it is the legal way out, and
+    // leaving it off the strike ledger is what makes dumping cargo at the weir honest.
+    // A body on someone else's line files its strike against them, not the player.
     bus.on('contraband:scanned', (p) => {
-      if (!p || !p.found || !p.factionId) return;
+      if (!p || !p.found || !p.factionId || p.surrendered === true) return;
+      if (p.evidenceOwnerId != null && p.evidenceOwnerId !== state.playerId) return;
       const rec = ensureFaction(state, p.factionId);
       rec.knownContrabandStrikes++;
       // Standing for the bust is already applied from economy's faction:repDelta. This

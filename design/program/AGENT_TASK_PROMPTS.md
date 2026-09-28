@@ -55,6 +55,13 @@ ledger row too. Report in build_map §1.4 words. Stop only for a §1.5 stop cond
 For N rows: start N threads, one BOARD prompt each — or give one agent
 `BOARD — take the next N OPEN rows in order, finishing each before claiming the next`.
 
+`PB` rows (group G, numbers 72+) work the same — the source the row names is the planbank
+(`design/planbank/SpaceFace_Planbank_300/`): read each named packet `.md`, its
+`domains/<domain>.md` guide, and `EXECUTION_CONTRACT.md` first; the group's audit record is
+`TRIAGE_2026-09-28.md`. A packet already satisfied closes as already-satisfied; a CHECK packet
+reproduces its boundary before building. Rows sharing a seam tag are serial inside that seam —
+one live NOW row per seam.
+
 ## Prompt A0 — INFERENCE (think, complete, rotate)
 
 Copy `INFERENCE_GOAL.txt` as the whole prompt. Do not paraphrase.

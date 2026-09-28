@@ -23,10 +23,15 @@ def build():
 
     # --- square deck with moon pool -----------------------------------------------------------
     # deck as four slabs around a central square hole
-    F.box(s, 'DeckA', (0, -4.8, 4.0), (14.0, 5.0, 1.0), material='paint', bevel=0.06)
-    F.box(s, 'DeckB', (0, 4.8, 4.0), (14.0, 5.0, 1.0), material='paint', bevel=0.06)
+    F.box(s, 'DeckA', (0, -4.8, 4.0), (14.0, 5.0, 1.0), material='paint2', bevel=0.06)
+    F.box(s, 'DeckB', (0, 4.8, 4.0), (14.0, 5.0, 1.0), material='paint2', bevel=0.06)
     F.box(s, 'DeckC', (-4.8, 0, 4.0), (4.4, 4.8, 1.0), material='paint.aged', bevel=0.06)
     F.box(s, 'DeckD', (4.8, 0, 4.0), (4.4, 4.8, 1.0), material='paint.aged', bevel=0.06)
+    # recessed dark grating insets on the slabs
+    s.detail = 1
+    F.box(s, 'GrateA', (0, -4.8, 4.56), (11.0, 3.4, 0.16), material='dark', bevel=0.0)
+    F.box(s, 'GrateB', (0, 4.8, 4.56), (11.0, 3.4, 0.16), material='dark', bevel=0.0)
+    s.detail = 0
     # moon-pool kerb ring + hazard edge
     for e in (-1, 1):
         F.box(s, f'PoolKerb{e:+d}', (e * 2.4, 0, 4.6), (0.4, 5.0, 0.4), material='hazard',
@@ -40,7 +45,7 @@ def build():
         fx, fy = ex * 6.6, ey * 6.6
         F.beams(s, f'Leg{k}', [((fx, fy, 0.4), (ex * 5.6, ey * 5.6, 3.9))], 0.9,
                 material='paint2')
-        F.box(s, f'Foot{k}', (fx, fy, 0.3), (2.8, 2.8, 0.7), material='paint.aged',
+        F.box(s, f'Foot{k}', (fx, fy, 0.3), (2.8, 2.8, 0.7), material='paint2',
               bevel=0.08)
         F.box(s, f'FootHaz{k}', (fx, fy, 0.75), (2.0, 2.0, 0.2), material='hazard',
               bevel=0.0)

@@ -247,10 +247,22 @@ test('missions preserve legacy lifecycle payloads alongside encounter aftermath 
   state.missions.active.push(expiredMission);
   missions._expireMission(expiredMission, 0);
   const expired = bus.log.find((entry) => entry.name === 'mission:expired');
-  assert.deepEqual(expired.payload, {
+  // Legacy lifecycle fields plus the additive mutation seam: an expired contract refiles
+  // as a restitution successor, and the event carries the pointer when one posts.
+  assert.deepEqual({
+    missionId: expired.payload.missionId,
+    reason: expired.payload.reason,
+    source: expired.payload.source,
+    causeFingerprint: expired.payload.causeFingerprint,
+    mutationTag: expired.payload.mutationTag,
+  }, {
     missionId: expiredMission.id,
     reason: 'deadline',
     source: 'encounterAftermath',
     causeFingerprint: cause.fingerprint,
+    mutationTag: 'restitution',
   });
+  const successor = state.missions.active.find((a) => a.id === expired.payload.mutatedToMissionId);
+  assert.ok(successor && successor.mutationTag === 'restitution',
+    'an expired aftermath contract refiles as a restitution successor');
 });

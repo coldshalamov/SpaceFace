@@ -284,7 +284,11 @@ export class HullScorchPool {
       this._cursor = (this._cursor + 1) % this.capacity;
     }
     const s = this.slots[slot];
+    // Quiet settled flight: update walked CAP + commit(0) every frame. Trust live
+    // (spawn ++ when taking a dead slot / retire -- / dispose clear); picture unchanged at 0.
+    const wasAlive = !!s.alive;
     s.alive = 1;
+    if (!wasAlive) this.live += 1;
     s.targetId = spec.targetId != null ? spec.targetId : null;
     s.localX = finiteOr(spec.localX, 0);
     s.localY = finiteOr(spec.localY, 0);
@@ -309,6 +313,10 @@ export class HullScorchPool {
   }
 
   update(dt, resolvePose) {
+    // Quiet path: capacity walk + 5-attr commit(0) when live===0 was pure CPU;
+    // mesh already count=0/visible=false after the frame that retired the last slot.
+    // Keep one idle publish when mesh.count>0 so a trailing clear still hides.
+    if (!(this.live > 0) && !(this.mesh.count > 0)) return 0;
     let live = 0;
     for (let i = 0; i < this.capacity; i++) {
       const s = this.slots[i];
@@ -316,6 +324,7 @@ export class HullScorchPool {
       s.age += Math.max(0, finiteOr(dt, 0));
       if (s.age >= s.life) {
         s.alive = 0;
+        this.live = Math.max(0, this.live - 1);
         continue;
       }
       let x = s.localX;
@@ -368,5 +377,7 @@ export class HullScorchPool {
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
     this.geometry.dispose();
     this.material.dispose();
+    this.live = 0;
+    for (const s of this.slots) s.alive = 0;
   }
 }

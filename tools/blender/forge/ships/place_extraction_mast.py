@@ -37,13 +37,13 @@ def build():
         F.truss(s, f'Outrigger{k}', (ex * 0.7, ey * 0.7, 2.0), (ex * 4.6, ey * 3.4, 0.5),
                 1.1, 2, material='paint2', chord=0.4, web=0.22)
         F.box(s, f'Foot{k}', (ex * 4.9, ey * 3.6, 0.4), (2.2, 1.8, 0.8),
-              material='paint.aged', bevel=0.06)
+              material='paint2', bevel=0.06)
         F.box(s, f'FootPad{k}', (ex * 4.9, ey * 3.6, 0.9), (1.6, 1.2, 0.25),
               material='hazard', bevel=0.0)
         F.light(s, f'FootLamp{k}', (ex * 4.9, ey * 3.6, 1.15), 'glow_amber', size=0.28)
 
     # --- lattice mast ---------------------------------------------------------------------------
-    F.truss(s, 'Mast', (0, 0, 1.6), (0, 0, 11.2), 1.7, 7, material='paint', chord=0.32,
+    F.truss(s, 'Mast', (0, 0, 1.6), (0, 0, 11.2), 1.7, 7, material='paint2', chord=0.32,
             web=0.18)
     F.cylinder(s, 'MastBandA', (0, 0, 4.6), (0, 0, 6.0), 1.05, material='hazard',
                segments=12)
