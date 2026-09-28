@@ -1678,6 +1678,7 @@ export const traffic = {
       if (!record || record.kind !== RECORD_KIND.CONVOY || !record.trafficRole
         || home !== CERES_ACTIVITY_SECTOR_ID || authoredRecordIds.has(recordId)
         || record.itinerary?.kind === 'claim_depot'
+        || record.itinerary?.kind === 'claim_convoy'
         || terminalWorldRecord(record)) continue;
       if (worldOwner && typeof worldOwner.markWorldRecordDestroyed === 'function') {
         worldOwner.markWorldRecordDestroyed(recordId, { outcome: 'destroyed' });
@@ -4641,7 +4642,10 @@ export const traffic = {
         // arrived: emit owner-safe freight arrival (manifest → stock pressure), wait, re-route
         rec.nextTradeT -= dt;
         if (rec.nextTradeT <= 0 && role.trades) {
-          this._emitArrival(e, rec, target);
+          // A claim convoy whose job was released (not completed) inside dock range still carries
+          // its manifest for the beat before re-assignment — that freight settles through
+          // claim:convoyDocked, never through an ambient trade (D96).
+          if (!(e.data && e.data.claimConvoy)) this._emitArrival(e, rec, target);
           rec.nextTradeT = TRADE_INTERVAL_S + this._rng() * 6;
         }
         rec.waitT = 2.5 + this._rng() * 2;

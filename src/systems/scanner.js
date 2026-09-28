@@ -900,7 +900,7 @@ export const scanner = {
       appendNonCollidingScanTargets(state, origin, profile.nearRadius, candidates);
     }
 
-    this.bus.emit('scan:pulse', { pos: origin });
+    this.bus.emit('scan:pulse', { pos: origin, radius: profile.nearRadius });
 
     for (const entity of candidates) {
       if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;

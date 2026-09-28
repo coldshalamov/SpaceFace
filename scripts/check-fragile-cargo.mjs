@@ -148,7 +148,7 @@ function testRuntimeScope() {
   const fragileSrc = readFileSync(new URL('../src/systems/fragileCargo.js', import.meta.url), 'utf8');
   assert.match(registrySrc, /import \{ fragileCargo \} from '\.\.\/systems\/fragileCargo\.js';/,
     'registry imports fragileCargo');
-  assert.match(registrySrc, /fieldDepletion, cargo, fragileCargo, economy/,
+  assert.match(registrySrc, /\['fieldDepletion', fieldDepletion\],[\s\S]*?\['cargo', cargo\],[\s\S]*?\['fragileCargo', fragileCargo\],[\s\S]*?\['economy', economy\]/,
     'fragileCargo is registered after cargo and before economy');
   assert.match(physicsSrc, /bus\.emit\('physics:impact'/,
     'live physics emits the hard-impact seam');

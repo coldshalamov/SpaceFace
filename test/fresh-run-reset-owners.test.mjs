@@ -75,7 +75,7 @@ test('canonical New Game clears virtual NPC jobs before a same-worldRecordId act
 
   resetOnly('npcJobsRuntime', system);
 
-  assert.deepEqual(state.npcJobs, { byId: {} });
+  assert.deepEqual(state.npcJobs, { byId: {}, siteCouriers: {}, lots: {} });
 });
 
 test('canonical New Game clears the durable Vesta extraction ledger', () => {

@@ -189,7 +189,7 @@ function testPackageAndRegistryWiring() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ scanReveal \} from '\.\.\/systems\/scanReveal\.js';/,
     'registry imports scanReveal system');
-  assert.match(registry, /scanner, scanReveal, buildIdentity, pirateDisguise/,
+  assert.match(registry, /\['scanner', scanner\],\s*\['scanReveal', scanReveal\],[\s\S]*?\['buildIdentity', buildIdentity\],[\s\S]*?\['pirateDisguise', pirateDisguise\]/,
     'scanReveal is registered immediately after scanner, with buildIdentity before pirateDisguise');
 
   const source = readFileSync(new URL('../src/systems/scanReveal.js', import.meta.url), 'utf8')

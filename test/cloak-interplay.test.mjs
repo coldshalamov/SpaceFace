@@ -18,6 +18,7 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import { MASSLINE2_FLAGS, snapshotFeatureMaps, restoreFeatureMaps } from '../src/data/featureFlags.js';
 import { cloak, engageEntityCloak, cloakHidesEntityFrom } from '../src/systems/cloak.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
+import { ai as legacyAi } from '../src/systems/ai.js';
 import { weapons } from '../src/systems/weapons.js';
 
 const DT = 1 / 60;
@@ -183,6 +184,25 @@ test('an NPC cloak plays by the same rules against an NPC observer', () => {
     assert.ok(confidences.length >= 60, 'NPC cloak must fade the same bounded way');
     assert.ok(lostAt > 0, 'NPC contact must be lost, not held forever');
     assertStrictlyFalling(confidences, 'npc cloak fade');
+  });
+});
+
+test('the legacy ai slot honors the same cloak acquisition gate (D100)', () => {
+  withCloakFlag(() => {
+    const world = makeWorld();
+    const { state, player, hunter } = world;
+    const sys = Object.create(legacyAi);
+    sys.init({ state, bus: world.bus, helpers: world.helpers });
+    hunter.data.ai.forcePlayerTarget = true;
+    const arch = { sensor: 1400 };
+
+    assert.equal(sys._selectTarget(hunter, hunter.data, state, player, arch), player,
+      'an uncloaked hostile contact must still acquire');
+
+    engagePlayerCloak(world);
+    assert.equal(cloakHidesEntityFrom(state, hunter, player), true, 'hunter sits outside the ring');
+    assert.equal(sys._selectTarget(hunter, hunter.data, state, player, arch), null,
+      'a cloaked player must not enter legacy acquisition');
   });
 });
 

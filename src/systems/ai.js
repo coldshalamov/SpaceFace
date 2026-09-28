@@ -11,6 +11,7 @@ import {
   entityNeedsAiThink,
   getActivityOwnerEntities,
 } from '../world/activityRuntime.js';
+import { cloakHidesEntityFrom } from './cloak.js';
 
 // FSM states.
 const S = { IDLE: 'idle', PATROL: 'patrol', PURSUE: 'pursue', ATTACK: 'attack', STRAFE: 'strafe', FLEE: 'flee' };
@@ -530,6 +531,10 @@ export const ai = {
     const consider = (cand) => {
       if (!cand || !cand.alive || cand.type !== 'ship' || cand === e) return;
       if (!this._isHostile(e, cand)) return;
+      // A cloaked contact is invisible to acquisition — the same single gate tacticalAI/aiPorts
+      // use. Latent today (legacy slot is off every live profile) but a profile flip must not
+      // silently un-stealth the verb (D100).
+      if (cloakHidesEntityFrom(state, e, cand)) return;
       const dx = cand.pos.x - e.pos.x, dz = cand.pos.z - e.pos.z;
       const d2 = dx * dx + dz * dz;
       if (d2 > sensor2) return;
