@@ -402,7 +402,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 26 | VM-LATCH-E | Quiet-latch render/HUD wave E | IMPORT | OPEN |
 | 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | OPEN |
 | 28 | VM-HITCH | Hitch/admission batch (~8: hitch-asteroid-cell-key, opening-admission, drain-gate, dynres-target-pool, integrated-quality-preset…) | IMPORT | OPEN |
-| 29 | VM-WEAPONS-D62 | `weapons-npc-quiet-latch` + apply the D62 carry note (pre-INFERENCE-23 `_tickLock` 2-arg call needs updating on import) | IMPORT+FIX | OPEN |
 | 30 | VM-REPORTS | Reports/stills/doc packages (~20: quiet-witness-baseline, cpu/alloc profiles, boot-times, contact sheets — docs-only imports, lowest production value; do after code batches) | IMPORT | OPEN |
 
 ### D. Build — measured-gap rows (§22 wave D), campaign remainders (§23/§24), seams
