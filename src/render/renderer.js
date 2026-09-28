@@ -1915,6 +1915,74 @@ const _clearanceVecA = typeof THREE !== 'undefined' ? new THREE.Vector3() : null
 const _clearanceVecB = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
 const _clearanceVecC = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
 
+// Field rocks are uniformly scaled by entity radius on `asteroidBody`. Unit-ish displaced
+// geo spans ~2R; veins/gas hulls add <~25%. When that upper bound cannot clear the 120 WU
+// span bar, skip setFromObject — drifting rocks re-invalidate the numeric cache every WU
+// and otherwise re-enter updateWorldMatrix under camera.follow (quiet profile).
+// (vm-drop camera-clearance-asteroid-span-reject)
+let CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = true;
+// After span-reject: undersized field rocks still re-entered the floor walk every WU
+// (pos-keyed cache miss → re-reject). Sticky never-roof + structural exclude keeps them
+// off the per-frame walk until scale/asset changes. Soft-GPU fps not claimed.
+// (vm-drop camera-clearance-never-roof-exclude)
+let CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE = true;
+export function setCameraClearanceAsteroidSpanRejectForBench(enabled) {
+  CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = enabled !== false;
+  return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT;
+}
+export function getCameraClearanceAsteroidSpanRejectForBench() {
+  return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT !== false;
+}
+export function setCameraClearanceAsteroidNeverRoofExcludeForBench(enabled) {
+  CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE = enabled !== false;
+  return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE;
+}
+export function getCameraClearanceAsteroidNeverRoofExcludeForBench() {
+  return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE !== false;
+}
+
+// Settled / quiet-chase clearance: retain the last floor so follow() skips the structural
+// walk + box-cache hits. Retain KEY quantizes cam X/Y/Z to 0.25 WU (same cell as #53/#77);
+// exact floats still drive the AABB walk on cell change. Box rewrites bump a module epoch
+// so a drifting capital rock / authored stamp change cannot return a stale roof.
+// Soft-GPU fps not claimed. (vm-drop camera-clearance-floor-retain + -pos-quantize)
+let CAMERA_CLEARANCE_FLOOR_RETAIN = true;
+let _clearanceBoxEpoch = 0;
+export function setCameraClearanceFloorRetainForBench(enabled) {
+  CAMERA_CLEARANCE_FLOOR_RETAIN = enabled !== false;
+  return CAMERA_CLEARANCE_FLOOR_RETAIN;
+}
+export function getCameraClearanceFloorRetainForBench() {
+  return CAMERA_CLEARANCE_FLOOR_RETAIN !== false;
+}
+
+// Quiet chase drift used to miss floor retain every frame: cam floats creep by ≪ glass,
+// so bit-identical keys never matched in flight (settled-only retain). Quantize the retain
+// KEY (not the AABB walk) to the same 0.25 WU cell as authored-instance / presentation
+// query retain. Exact floats still drive the structural walk on cell change. Margin is
+// 16 WU, so a one-cell delay at an AABB edge is negligible. Soft-GPU fps not claimed.
+const CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANT_WU = 0.25;
+let CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE = true;
+export function setCameraClearanceFloorRetainPosQuantizeForBench(enabled) {
+  CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE = enabled !== false;
+  return CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE;
+}
+export function getCameraClearanceFloorRetainPosQuantizeForBench() {
+  return CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE !== false;
+}
+function quantizeClearanceRetainPos(value) {
+  if (CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE === false) return value;
+  const q = CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANT_WU;
+  return Math.round(value / q) * q;
+}
+
+function asteroidClearanceSpanHint(data) {
+  const body = data && data.asteroidBody;
+  if (!body || !body.scale) return 0;
+  const scale = Math.abs(Number(body.scale.x) || 0);
+  return scale > 0 ? scale * 2.5 : 0;
+}
+
 function clearanceBoundUnsettled(data) {
   if (!data) return true;
   if (data.geometryPending === true) return true;
@@ -1931,6 +1999,15 @@ function clearanceBoundUnsettled(data) {
 function cameraClearanceBoxForMesh(mesh) {
   const data = mesh && mesh.userData;
   if (!data || !CAMERA_CLEARANCE_KINDS.has(data.kind)) return null;
+  // Sticky never-roof: undersized asteroids cannot clear the span bar at any position.
+  // Do not invalidate on drift — only on scale change (capital promotion / authoring).
+  if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid'
+      && data.cameraClearanceNeverRoof === true) {
+    const body = data.asteroidBody;
+    const scaleX = body && body.scale ? Math.abs(Number(body.scale.x) || 0) : 0;
+    if (data.cameraClearanceNeverRoofScale === scaleX) return null;
+    data.cameraClearanceNeverRoof = false;
+  }
   // A model that is still arriving does not have a roof. Measuring the stand-in, or the
   // half-built body, is what yanked the camera up and down while stations loaded.
   if (clearanceBoundUnsettled(data)) return null;
@@ -1944,6 +2021,25 @@ function cameraClearanceBoxForMesh(mesh) {
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
       && cached.posX === posX && cached.posZ === posZ) {
     return cached;
+  }
+  if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid') {
+    const hint = asteroidClearanceSpanHint(data);
+    if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
+      const body = data.asteroidBody;
+      data.cameraClearanceNeverRoof = true;
+      data.cameraClearanceNeverRoofScale = body && body.scale
+        ? Math.abs(Number(body.scale.x) || 0) : 0;
+      const rec = cached || (data.cameraClearanceBox = {});
+      rec.assetState = assetState;
+      rec.compositionId = compositionId;
+      rec.posX = posX;
+      rec.posZ = posZ;
+      rec.box = null;
+      rec.grid = null;
+      _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+      return rec;
+    }
+    data.cameraClearanceNeverRoof = false;
   }
   _clearanceBoxScratch.setFromObject(mesh);
   let box = null;
@@ -1973,6 +2069,7 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.posZ = posZ;
   rec.box = box;
   rec.grid = grid;
+  _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
   return rec;
 }
 
@@ -9601,6 +9698,15 @@ export const render = {
           return { skipped: true, reason: 'opening-plan-incomplete' };
         }
         openingStepStarted = openingNow();
+        const softGpuOpening = !shouldAwaitOpeningGpuCook({
+          gpu: state.render && state.render.gpu,
+          renderer,
+        });
+        // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
+        // bounded so this stage yields back to the loading/flight event loop sooner.
+        // Also pass deadlineMs into the uploader — Promise.race alone misses sync initTexture
+        // bursts that starve the timer until well past the budget.
+        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           // Same sliced cadence as the end-of-cook census: per-item task hops
           // cost more than the small uploads themselves on a contended host.
@@ -9608,14 +9714,8 @@ export const render = {
           includeEmpty: true,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
+          deadlineMs: softGpuOpening ? residencyBudgetMs : undefined,
         });
-        // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
-        // bounded so this stage yields back to the loading/flight event loop sooner.
-        const softGpuOpening = !shouldAwaitOpeningGpuCook({
-          gpu: state.render && state.render.gpu,
-          renderer,
-        });
-        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
         const result = await Promise.race([
           residency,
           new Promise((resolve) => setTimeout(() => resolve({
@@ -9624,13 +9724,21 @@ export const render = {
             textures: 0,
           }), residencyBudgetMs)),
         ]);
-        recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted,
-          result && result.reason === 'loading-budget' ? 'timeout' : 'resolved', {
-            subjects: Array.isArray(plan.residencySubjects) ? plan.residencySubjects.length : undefined,
-            textureRefs: Array.isArray(plan.textureRefs) ? plan.textureRefs.length : undefined,
-            textures: result ? result.textures : undefined,
-          });
-        if (result && result.skipped === true) {
+        const residencyOutcome = result && (
+          result.reason === 'loading-budget'
+          || result.reason === 'loading-deadline'
+          || result.reason === 'loading-deadline-partial'
+        ) ? 'timeout' : 'resolved';
+        recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted, residencyOutcome, {
+          subjects: Array.isArray(plan.residencySubjects) ? plan.residencySubjects.length : undefined,
+          textureRefs: Array.isArray(plan.textureRefs) ? plan.textureRefs.length : undefined,
+          textures: result ? result.textures : undefined,
+          reason: result && result.reason || undefined,
+        });
+        // Soft-GPU partial deadline must continue to receipt. Only abandon when residency
+        // itself refused the whole stage (legacy loading-budget skip without partial work).
+        if (result && result.skipped === true && result.partial !== true
+            && result.reason !== 'loading-deadline-partial') {
           result.openingSubmissionPlan = plan;
           return result;
         }
