@@ -1,3 +1,32 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w1-vm-prestep1, board §1C row 20)
+
+Sim/preStep batch landed on master. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `prestep-movables-trust` | `379b834ce` | focused 29/29 |
+| `stamp-near-work-awake-cache` | `cde7e2c6b` | focused 96/96 |
+| `stamp-near-work-budget-early-exit` | `0df8e3f87` | focused 93/93 |
+| `lifetime-sweep-quiet-clocks-skip` (#143) | `657bb7a4a` | focused 7/7 |
+
+Already on master before this pass (verified, no re-import): `combat-table-pose-incremental`
+(`39d58e4f5`), `npc-field-role-cache` (`e59537847`), `npc-jobs-id-list-cache` (`f59b91b49`).
+
+Skipped this pass:
+
+- `npc-job-signatures-quiet-sleep-latch` — vfx.js hunks edit the `sector:enter`/`newGame`/`save:loaded`
+  reset lines that depend on sibling latch packages not yet on master (statusAttached/tumbleBody/
+  trailEmit/lootMagnet/wreckWisps resets); current lines also carry newer `_explosionRupture` /
+  `_resetMonofilamentBlade` resets. Needs the sibling latches imported first (or a re-export).
+- `lifetime-corpse-lane-compact` — master's `lifetimeSweep` corpse compact was restructured to
+  `corpseIndices` + batch `_removeEntitiesAtIndices`; the patch's fail-open path revives the old
+  per-corpse loop. Needs re-export against current master (adapted to the batch path).
+- `registry-step-dispatch` — fails on 3/4 files vs current master (catchupPolicy head,
+  authoritativeSystemManifest, sim-clock-catchup test).
+
+`stamp-near-work-flag`, `-gate`, `-incremental`, `-prepared`, `-skip`, `-tap`, `-contract`, `-dense`
+do not exist on `origin/vm-drop` or master — never shipped.
+
 # IMPORT_DIGEST report — 20260926c (post-#168; **#170 ship** retail-gltfloader-vendored-alias)
 
 Master tip: **`97c88f92b`** (fetched; unchanged). No restack needed. No vm-drop package has been imported since dz.
@@ -330,10 +359,12 @@ cross-check; Picture ON, soft-GPU; tip through #64).
 | **166** | **`render-package-digest-zero-copy`** (live digest lane ~14.6× median, ≥9.7× floor; 2–9 ms per-package bursts removed) |
 | **167** | **`embedded-ktx2-single-copy`** (lane 1.9–2.1×, floor 1.39×; −55.6 ms per 10 heaviest packages; bytes identical) |
 
-Including already-packaged but **not yet on master** (do not re-ship):
-`combat-table-pose-incremental` (~4.78×), `stamp-near-work-awake-cache`,
+Including already-packaged but **not yet on master** (do not re-ship).
+**20260928 update:** `combat-table-pose-incremental` (~4.78×), `stamp-near-work-awake-cache`,
 `stamp-near-work-budget-early-exit`, `prestep-movables-trust`,
-`lifetime-sweep-quiet-clocks-skip` (#143), customs cones / sanctuary /
+`lifetime-sweep-quiet-clocks-skip` (#143), `npc-field-role-cache` and
+`npc-jobs-id-list-cache` are **now on master** (see the import ledger above). Remaining:
+customs cones / sanctuary /
 combat pre+postPhysics (#145–#155), classify flying-rock / frame / early
 parked latches, `sync-entity-views-closure-gate`, `micromotion-settled-skip`,
 `hull-scorch-quiet-live-skip`, `countermeasures-quiet-empty-latch`,
