@@ -95,7 +95,7 @@ const SCALAR_MOD_KEYS = Object.freeze([
   'damageReductionPct', 'boostTopSpeedPct', 'boostDurS', 'boostCdS', 'hullRepairOOC',
   'magnetRange', 'weaponRangePct', 'weaponDmgPct', 'weaponHeatDissipPct',
   'ramDamageDealtMult', 'tetherReelRateMult', 'tetherSpoolMult', 'richCoreRingPctBonus',
-  'scanRangeMult',
+  'scanRangeMult', 'bioFilterMult',
 ]);
 
 const KNOWN_CM_KINDS = new Set(['chaff', 'ecm', 'decoy']); // decoy lands today
