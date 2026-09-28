@@ -66,6 +66,7 @@ import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
 import { fieldHud } from '../ui/fieldHud.js';                    // PQ-012: field state/cooldown/denial chip (DOM-guarded)
 import { planetHud } from '../ui/planetHud.js';                  // PQ-013: band pill + heat readout (DOM-guarded)
+import { miningHud } from '../ui/miningHud.js';                  // INF: mining beam's vent/rich-core/seam rhythms at the contact (DOM-guarded)
 // Massline Physics Identity — Wave M2 (design/revamp/MASSLINE_PHYSICS_IDENTITY.md). All eight are
 // massline2Flag-gated (OFF headless) and are deliberately NOT in the sf-sim curated harness list,
 // so the 47-A golden never executes them. New runtime state lives under state.massline2.
@@ -502,6 +503,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
     ['planetHud', planetHud],
+    ['miningHud', miningHud],
     ['sectorPostcard', sectorPostcard],
     ['dockDenyBanner', dockDenyBanner],
     ['stationBroadcast', stationBroadcast],

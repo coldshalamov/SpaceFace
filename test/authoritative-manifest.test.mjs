@@ -64,18 +64,24 @@ test('production init + update order lengths match the live browser baseline', (
   // packet landed, now ticking for one bounded purpose: firing a same-sector fork whose short
   // post-undock delay has elapsed. Every other reveal path stays event-driven; a mission
   // without a pending reveal makes the tick a two-comparison no-op.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 163);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 122);
+  // 163 -> 164 init / 122 -> 123 update: miningHud — the mining beam's vent-band / rich-core /
+  // seam instrument (DOM-guarded, event-mirrored from the seams mining.js already publishes).
+  // One system in both orders, same posture as the sibling DOM-guarded HUDs; its tick only
+  // places the world-anchored dial and retires it when the beam stops.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 164);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 123);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('massSeedHud'));
+  assert.ok(PRODUCTION_INIT_ORDER.includes('miningHud'));
   assert.ok(!PRODUCTION_UPDATE_ORDER.includes('render'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('flightSlot'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('masslineSnares'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('massSeedHud'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('miningHud'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('stuntGrammar'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('collisionConsequences')
     < PRODUCTION_UPDATE_ORDER.indexOf('stuntGrammar'));
@@ -209,7 +215,9 @@ test('browser production system set is unchanged vs production manifest constant
   // kill-replay ring, writes only its own ring buffers).
   // 162 with noFireAdvisory (one system in both orders; the no-fire ring watch — observer).
   // 163 with wreckChoicePrompt (BP-01.1/PQ-138.04; event-only prompt-deck adapter).
-  assert.equal(registry.systems.length, 163);
+  // 164 with miningHud (INF lane): the mining instrument joins both orders beside the
+  // other DOM-guarded HUDs (massSeedHud/fieldHud/planetHud posture).
+  assert.equal(registry.systems.length, 164);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

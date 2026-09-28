@@ -55,7 +55,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
   'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
-  'massSeedHud', 'fieldHud', 'planetHud', 'survivalHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
+  // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
+  // ticks only to place the world-anchored dial (same posture as the sibling HUDs).
+  'massSeedHud', 'fieldHud', 'planetHud', 'miningHud', 'survivalHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
   'hazardHints', 'noFireAdvisory', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
   // impoundPayPrompt, moralTrapPrompt and wreckChoicePrompt are event-only like customsPrompt —
   // init order matters (bus subscriptions); all are deliberately absent from
@@ -113,7 +115,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // ring; it writes nothing but its own ring buffers.
   'swarmChain', 'killReplay', 'killcamRecorder',
   'heat', 'traffic', 'drill', 'claims', 'chronicler',
-  'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
+  'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
   'survivalHud',
@@ -156,6 +158,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   massSeedHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   fieldHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
+  miningHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   voiceArbiter: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'voice' }),
   save: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'persistence' }),
 });
