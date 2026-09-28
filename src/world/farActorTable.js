@@ -204,6 +204,10 @@ export function shouldVirtualizeFarActor(entity, state) {
   const data = entity.data || {};
   if (flags.persistent || flags.missionPinned || data.missionPinned || data.missionId) return false;
   if (data.isBoss || data.namedAceId || data.uniqueWreckId || data.uniqueWreck) return false;
+  // A marker-bound wreck's body belongs to the aftermath marker (state.aftermathWrecks), which
+  // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
+  // would promote as an unbindable shell duplicating the marker's own respawn (D89).
+  if (data.markerId) return false;
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;

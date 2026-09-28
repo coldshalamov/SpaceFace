@@ -125,7 +125,10 @@ function killPayload(victim) {
 }
 
 function wrecks(state) {
-  return state.entityList.filter((entity) => entity && entity.type === 'wreck');
+  // Marker-bound bodies only: a player kill (killerId === playerId) also throws one unbound
+  // companion shard (arenaShardOf, no markerId) — dressing, not a second aftermath wreck.
+  return state.entityList.filter((entity) => entity && entity.type === 'wreck'
+    && entity.data && entity.data.markerId != null);
 }
 
 function removeLiveEntity(state, entity) {

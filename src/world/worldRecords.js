@@ -655,6 +655,9 @@ export function captureEntityRecord(entity, opts = {}) {
     || null;
   if (!sectorId) return null;
   const kind = opts.kind || classifyEntityKind(entity);
+  // Marker-bound wrecks are persisted by state.aftermathWrecks — capture only produced a degraded
+  // twin shell beside the marker's own rematerialized body (D89). The marker is the record.
+  if (kind === RECORD_KIND.AFTERMATH) return null;
   const seed = opts.seed != null ? opts.seed : 1;
   const d = entity.data || {};
   const existingId = d.worldRecordId || opts.recordId || null;

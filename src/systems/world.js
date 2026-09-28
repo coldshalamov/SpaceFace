@@ -1532,6 +1532,11 @@ export const world = {
       if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss) {
         hadCombatHistory = true;
       }
+      // A marker-bound wreck's live body belongs to aftermathWrecks — the marker is its durable
+      // record and sector:enter respawns the full hulk (pool, provenance, drift). Materializing
+      // the thin record shell beside it was the D89 duplicate. World-owned AFTERMATH rows (the
+      // Orrin witness recorder) carry no aftermath marker and still rematerialize.
+      if (rec.kind === RECORD_KIND.AFTERMATH && aftermathOwnsMarker(state, rec.markerId)) continue;
       if (!recordShouldRematerialize(rec, tier)) continue;
       // Exactly-once: never double-spawn a live entity for the same record.
       const existing = findLiveRecordEntity(state, rec.recordId);
@@ -6247,6 +6252,17 @@ function findCacheLotEntity(state, lotKey, lotId) {
     }
   }
   return null;
+}
+
+function aftermathOwnsMarker(state, markerId) {
+  const bySector = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  if (!markerId || !bySector) return false;
+  for (const markers of Object.values(bySector)) {
+    if (Array.isArray(markers) && markers.some((marker) => marker && marker.markerId === markerId)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function findLiveRecordEntity(state, recordId) {

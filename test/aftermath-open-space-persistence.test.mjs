@@ -115,7 +115,10 @@ function openPos() {
 }
 
 function wrecks(state) {
-  return state.entityList.filter((entity) => entity && entity.type === 'wreck' && entity.alive !== false);
+  // Marker-bound bodies only: a player kill also throws one unbound companion shard
+  // (arenaShardOf, no markerId) — dressing, not a second aftermath wreck.
+  return state.entityList.filter((entity) => entity && entity.type === 'wreck'
+    && entity.alive !== false && entity.data && entity.data.markerId != null);
 }
 
 test('an open-space kill leaves a durable marker, a bound wreck, and a headline', () => {
