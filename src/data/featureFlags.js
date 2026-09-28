@@ -24,6 +24,11 @@ import {
   PRODUCTION_FEATURES,
   cloneFeatureConfig,
 } from '../runtime/runtimeProfiles.js';
+// The fields/planets maps live in ./fields.js and ./planets.js (orchestrator-owned rule: lanes
+// never add flag names here); this file only teaches the profile seed/snapshot machinery about
+// them (D87).
+import { FIELD_FLAGS } from './fields.js';
+import { PLANET_FLAGS } from './planets.js';
 
 function mapsFromFeatures(features) {
   const f = features || LEGACY47A_FEATURES;
@@ -31,6 +36,8 @@ function mapsFromFeatures(features) {
     combat: { ...f.combat },
     massline2: { ...f.massline2 },
     travel: { ...f.travel },
+    fields: { enabled: false, ...(f.fields || {}) },
+    planets: { enabled: false, ...(f.planets || {}) },
   };
 }
 
@@ -112,6 +119,8 @@ export function snapshotFeatureMaps() {
     combat: { ...COMBAT_FLAGS },
     massline2: { ...MASSLINE2_FLAGS },
     travel: { ...TRAVEL_FLAGS },
+    fields: { ...FIELD_FLAGS },
+    planets: { ...PLANET_FLAGS },
   };
 }
 
@@ -121,6 +130,8 @@ export function restoreFeatureMaps(snapshot) {
   Object.assign(COMBAT_FLAGS, snapshot.combat);
   Object.assign(MASSLINE2_FLAGS, snapshot.massline2);
   Object.assign(TRAVEL_FLAGS, snapshot.travel);
+  if (snapshot.fields) Object.assign(FIELD_FLAGS, snapshot.fields);
+  if (snapshot.planets) Object.assign(PLANET_FLAGS, snapshot.planets);
 }
 
 /**
@@ -132,6 +143,8 @@ export function applyFeatureConfigToMaps(features) {
   Object.assign(COMBAT_FLAGS, cfg.combat);
   Object.assign(MASSLINE2_FLAGS, cfg.massline2);
   Object.assign(TRAVEL_FLAGS, cfg.travel);
+  Object.assign(FIELD_FLAGS, cfg.fields);
+  Object.assign(PLANET_FLAGS, cfg.planets);
   return snapshotFeatureMaps();
 }
 
@@ -141,6 +154,8 @@ export function featureConfigFromMaps() {
     combat: { ...COMBAT_FLAGS },
     massline2: { ...MASSLINE2_FLAGS },
     travel: { ...TRAVEL_FLAGS },
+    fields: { ...FIELD_FLAGS },
+    planets: { ...PLANET_FLAGS },
   };
 }
 

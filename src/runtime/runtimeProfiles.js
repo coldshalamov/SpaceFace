@@ -4,7 +4,7 @@
 // inferred from typeof window, process.env, headless/headed, bundler mode, or renderer
 // availability. Host adapters may choose presentation; profiles choose gameplay.
 
-/** @typedef {{ combat: Record<string, boolean>, massline2: Record<string, boolean>, travel: Record<string, boolean> }} FeatureConfig */
+/** @typedef {{ combat: Record<string, boolean>, massline2: Record<string, boolean>, travel: Record<string, boolean>, fields: Record<string, boolean>, planets: Record<string, boolean> }} FeatureConfig */
 
 /** Production browser defaults, written explicitly (no env derivation). */
 export const PRODUCTION_FEATURES = Object.freeze({
@@ -50,6 +50,14 @@ export const PRODUCTION_FEATURES = Object.freeze({
     dashMomentum: true,
     laneBoost: true,
   }),
+  // Continuous field powers (PQ-012 family) — shipped ON, profile-driven, never typeof window (D87).
+  fields: Object.freeze({
+    enabled: true,
+  }),
+  // Authored planetary site (PQ-013, the Anvil) — shipped ON under the same profile law.
+  planets: Object.freeze({
+    enabled: true,
+  }),
 });
 
 /**
@@ -92,6 +100,13 @@ export const LEGACY47A_FEATURES = Object.freeze({
     boostNeverBrakes: false,
     dashMomentum: false,
     laneBoost: false,
+  }),
+  // 47-A predates the field kernel — keep the golden byte-stable with fields pinned OFF.
+  fields: Object.freeze({
+    enabled: false,
+  }),
+  planets: Object.freeze({
+    enabled: false,
   }),
 });
 
@@ -180,6 +195,9 @@ export function cloneFeatureConfig(features) {
     combat: { ...src.combat },
     massline2: { ...src.massline2 },
     travel: { ...src.travel },
+    // A partial config that predates the fields family must read OFF, not inherit a stale map.
+    fields: { enabled: false, ...(src.fields || {}) },
+    planets: { enabled: false, ...(src.planets || {}) },
   };
 }
 
@@ -190,5 +208,7 @@ export function freezeFeatureConfig(features) {
     combat: Object.freeze({ ...c.combat }),
     massline2: Object.freeze({ ...c.massline2 }),
     travel: Object.freeze({ ...c.travel }),
+    fields: Object.freeze({ ...c.fields }),
+    planets: Object.freeze({ ...c.planets }),
   });
 }

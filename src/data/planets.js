@@ -14,10 +14,11 @@
 //
 // Determinism: pure frozen data. No imports with side effects, no RNG, no Date.
 
-// Tier-B determinism gate — same idiom as FIELD_FLAGS (src/data/fields.js): ON in the browser,
-// OFF under node, so sf-sim / the 47a golden never construct the planet. Mutable for tests.
-const IS_BROWSER = typeof window !== 'undefined';
-export const PLANET_FLAGS = { enabled: IS_BROWSER };
+// Tier-B determinism gate — same idiom as FIELD_FLAGS (src/data/fields.js): the process default
+// is OFF (matching legacy47a) and runtime-profile seeding (`applyFeatureConfigToMaps`) writes the
+// profile's `planets` family here — production ON, legacy47a OFF. Never an environment read:
+// profiles choose gameplay (D87). Mutable for tests.
+export const PLANET_FLAGS = { enabled: false };
 export function planetFlag(name) { return !!PLANET_FLAGS[name]; }
 
 /** Band edges are PLANAR radii (x/z distance from the site centre, WU). Hysteresis is applied

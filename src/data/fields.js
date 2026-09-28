@@ -45,18 +45,19 @@ export function fieldVolumeOf(defOrKind) {
   return VOLUME_BY_KIND[defOrKind] || FIELD_VOLUMES.RING;
 }
 
-// FIELD_FLAGS — Tier-B determinism gate (same idiom as src/data/featureFlags.js:15-45, but
-// co-located with the feature to respect that file's "orchestrator-owned, lanes never add their
-// own" rule). Defaults OFF under node (the 47a golden runs headless with `window` undefined) and
-// ON in the browser, so the deterministic golden stays byte-identical while live play gets the
-// feature. Mutable export so a headless smoke/integration test can opt in
-// (`FIELD_FLAGS.enabled = true`); read at CALL TIME, never cached at init. This is golden-safety
-// layer (b): the fields system is a strict no-op while `enabled` reads false. Layer (a) is that
-// `fields` is absent from sf-sim.mjs's curated systems list; layer (c) is that nothing auto-spawns
-// a field on the 47a route (deploy is player-input-only). No SCENARIO pin is needed because the
-// system can never reach the golden through any of the three layers.
-const IS_BROWSER = typeof window !== 'undefined';
-export const FIELD_FLAGS = { enabled: IS_BROWSER };
+// FIELD_FLAGS — Tier-B determinism gate (same idiom as src/data/featureFlags.js, but co-located
+// with the feature to respect that file's "orchestrator-owned, lanes never add their own" rule).
+// The process default is OFF — matching the legacy47a profile — and runtime-profile seeding
+// (`applyFeatureConfigToMaps`, run by createRegistry/createAuthoritativeRuntime on every boot)
+// writes the profile's `fields` family here: production ON, legacy47a OFF. Never an environment
+// read: profiles choose gameplay, hosts choose presentation (D87). Mutable export so a headless
+// smoke/integration test can opt in (`FIELD_FLAGS.enabled = true`); read at CALL TIME, never
+// cached at init. This is golden-safety layer (b): the fields system is a strict no-op while
+// `enabled` reads false. Layer (a) is that `fields` is absent from sf-sim.mjs's curated systems
+// list; layer (c) is that nothing auto-spawns a field on the 47a route (deploy is
+// player-input-only). No SCENARIO pin is needed because the system can never reach the golden
+// through any of the three layers.
+export const FIELD_FLAGS = { enabled: false };
 /** Read a field flag by name; unknown names read false. Pure. */
 export function fieldsFlag(name) { return !!FIELD_FLAGS[name]; }
 
