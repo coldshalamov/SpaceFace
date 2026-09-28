@@ -154,6 +154,99 @@ export const WORLD_ONE_OFFS = Object.freeze([
     }),
     why: 'She held the dock for the last flag that owned it. Every flag since keeps her lamps burning — the pylon is the only marker both sides obey.',
   }),
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+  // CV-QUIET - detour texture ON THE LEGS, not at the places. The eight set pieces above are
+  // anchored beside stations; the flight BETWEEN jobs was still empty glass and a marker. These
+  // four sit in the open transit of the default route - the hop a new pilot flies fifty times, and
+  // the three gate runs out of Helios Prime - and they are the four things a detour is worth here:
+  // a body, a job already underway, a signal, and a joke the physics tells. Non-systemic on
+  // purpose: no mission, no scan gate, no economy hook. Rare enough to stay specific.
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+  Object.freeze({
+    // A BODY - a heavy thing sitting in the middle of the shortest hop in the game. You rope it or
+    // you go around it; either way the hop is a place now instead of a line on the glass.
+    id: 'oneoff_spare_keg',
+    name: 'The Spare Keg — a bulk container set down mid-hop',
+    placeId: 'place_ore_bulk_container',
+    sectorId: 'sector_helios_prime',
+    anchor: { type: 'station', id: 'station_helios' },
+    // (1280,-420) + (-240,120) = (1040,-300): 322 WU off the Sanctioned Claim and 268 WU off the
+    // Helios berth, which is the hop itself. Slightly out of the direct line, so it is a detour.
+    offsetLocal: Object.freeze({ x: -240, z: 120 }),
+    rot: 1.3,
+    spin: 0.12,
+    radius: 12,
+    physicalBody: Object.freeze({ mass: 90 }),
+    why: 'The yard lends it out and nobody logs the return. Every green pilot has had to go around it once.',
+  }),
+  Object.freeze({
+    // A JOB ALREADY UNDERWAY - a transfer clamped mid-load with the drone half a bead through the
+    // seam and the worklight still burning. Nobody is flying it. That is the point: you arrived in
+    // the middle of their shift and the shift does not care.
+    id: 'oneoff_half_shift',
+    name: 'The Half-Shift — a transfer still mid-load, crew gone to dinner',
+    placeId: 'place_transfer_arm',
+    sectorId: 'sector_helios_prime',
+    anchor: { type: 'station', id: 'station_helios' },
+    // On the Vesta gate run, the industrial leg where work is the fiction: (770, 900).
+    offsetLocal: Object.freeze({ x: -510, z: 1320 }),
+    rot: 2.4,
+    spin: 0,
+    radius: 16,
+    cluster: Object.freeze({
+      props: Object.freeze([
+        Object.freeze({ placeId: 'place_ore_bulk_container', dx: 44, dz: -26, rot: 0.7, radius: 10 }),
+        Object.freeze({ placeId: 'place_welding_drone', dx: -30, dz: 36, rot: 1.9, radius: 6 }),
+        Object.freeze({ placeId: 'place_worklight_tower', dx: 14, dz: 50, rot: 0.2, radius: 8 }),
+      ]),
+    }),
+    why: 'The arm is still clamped, the drone still has half a bead to lay, and the worklight is still on. Whoever ran this shift is coming back.',
+  }),
+  Object.freeze({
+    // A SIGNAL - a transponder that still answers every hail with a registry number nobody owns.
+    // The customs service leaves it up because the lane steers by the reply, which is the only
+    // reason a lie is still standing on the toll run.
+    id: 'oneoff_answering_buoy',
+    name: 'The Answering Buoy — a transponder replying for a hull that broke up years ago',
+    placeId: 'place_transponder_gate',
+    sectorId: 'sector_helios_prime',
+    anchor: { type: 'station', id: 'station_helios' },
+    // On the Tethys gate run, the toll leg where a signal is the fiction: (1890, 690).
+    offsetLocal: Object.freeze({ x: 610, z: 1110 }),
+    rot: 0.9,
+    spin: 0.08,
+    radius: 18,
+    cluster: Object.freeze({
+      props: Object.freeze([
+        Object.freeze({ placeId: 'place_nav_buoy', dx: -40, dz: 22, rot: 1.4, radius: 8 }),
+      ]),
+    }),
+    why: 'It answers every hail with a registry number nobody owns. The lane still steers by the reply, so nobody takes it down.',
+  }),
+  Object.freeze({
+    // A JOKE THE PHYSICS TELLS - a mixed load spilled a decade ago that sorted itself by weight.
+    // Heavy pods clumped, light ones strung out down the lane. No system did that; the universe
+    // did, and it is funnier than anything a script would have written.
+    id: 'oneoff_the_settling',
+    name: 'The Settling — a spilled load that filed itself by weight',
+    placeId: 'place_cargo_pod_standard',
+    sectorId: 'sector_helios_prime',
+    anchor: { type: 'station', id: 'station_helios' },
+    // On the Ceres gate run, out past the derelict tanker so the two detours read apart: (-920, 780).
+    offsetLocal: Object.freeze({ x: -2200, z: 1200 }),
+    rot: 0.3,
+    spin: 0.05,
+    radius: 10,
+    cluster: Object.freeze({
+      // Heavy at the head of the clump, light strung out behind: spacing widens with distance.
+      props: Object.freeze([
+        Object.freeze({ placeId: 'place_ore_bulk_container', dx: 26, dz: 14, rot: 1.1, radius: 10 }),
+        Object.freeze({ placeId: 'place_cargo_pod_standard_breached', dx: 74, dz: -30, rot: 2.2, radius: 8 }),
+        Object.freeze({ placeId: 'place_cargo_pod_hazmat', dx: 148, dz: 52, rot: 0.5, radius: 7 }),
+      ]),
+    }),
+    why: 'He dumped a mixed load here a decade ago. The heavy pods clumped, the light ones strung out down the lane, and physics never mentioned it to anyone.',
+  }),
 ]);
 
 // One ropeable cache beside a named Helios landmark. Not one of the six texture props:
