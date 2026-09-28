@@ -126,6 +126,14 @@ def build():
     F.light(s, 'NavPort', (-4.7, PY + POD_W / 2 + 0.06, 0.75), 'glow_red', size=0.15)
     F.light(s, 'NavStarboard', (-4.7, -PY - POD_W / 2 - 0.06, 0.75), 'glow_green', size=0.15)
     F.light(s, 'Beacon', (6.0, 0.0, 1.62), 'glow_amber', size=0.14)
+
+    # --- damage hooks: rear gun turret and mast shed, dome flickers, bumper plate displaces ------
+    _dmg = {o.name: o for o in s.objects}
+    s.hook_part('HOOK_SECONDARY_TURRET', _dmg['TurretRing'], _dmg['TurretHead'],
+                _dmg['RearGun0.2'], _dmg['RearGun-0.2'])
+    s.hook_part('HOOK_SECONDARY_MAST', _dmg['Mast_Mast'], _dmg['Mast_Foot'], _dmg['Mast_Tip'])
+    s.hook_part('HOOK_SENSOR_DOME', _dmg['Dome'], _dmg['Dome_Lens'])
+    s.hook_part('HOOK_ARMOR_BUMPER', _dmg['Bumper'])
     return s
 
 

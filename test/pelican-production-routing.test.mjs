@@ -43,8 +43,7 @@ assert.deepEqual(visual, {
 }, 'the player Pelican must resolve the remastered production body');
 assert.deepEqual(authoredPreloadPlanForEntity(pelican, { requiredWholeShip: true }), {
   hull: ['wholeships/pelican_production_v1.glb'],
-  weapon: ['weapons/weapon_pulse_cannon.glb'],
-}, 'the live Pelican must decode LOD0 and its fitted gun');
+}, 'the live Pelican must decode LOD0 alone — its Forge body integrates hardpoints, so fitted kit records are never mounted or decoded');
 assert.match(shipArchetypeKeyForDefId('ship_pelican'), /pelican_production_v1\.glb/);
 assert.equal(resolveRequiredWholeShipRecord(pelican, [record], {
   releaseMode: true,

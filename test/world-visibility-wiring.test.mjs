@@ -247,7 +247,7 @@ test('a panic-jettisoned pod carries owner, affiliation, manifest and route trut
 
   // createSimulation forks each registered system — call the live instance, not the import.
   const trafficSys = sim.registry.get('traffic');
-  const pod = trafficSys._spillHaulerCargoFromViolence(hauler, attacker);
+  const pod = trafficSys._spillHaulerCargoFromViolence(hauler, attacker, 'combat_fire');
   assert.ok(pod, 'the spill materializes a real body');
   assert.equal(pod.type, 'payload');
   assert.equal(pod.flags && pod.flags.persistent, true, 'the pod is a persistent, scoopable body');
@@ -284,6 +284,58 @@ test('a panic-jettisoned pod carries owner, affiliation, manifest and route trut
   // One dump per hauler — a second volley does not double-spill.
   assert.equal(trafficSys._spillHaulerCargoFromViolence(hauler, attacker), null);
   assert.equal(spills.length, 1);
+  sim.dispose();
+});
+
+// SF-288: a bad throw's damage receipt names the flung mass — not generic gunfire — on the pod
+// the mistake actually dislodged. The combat:damage event path is the real seam, not the helper.
+test('a whip-flung mass that clips a hauler spills cargo naming the real cause', () => {
+  const sim = createSimulation({ seed: 11, systems: [traffic] });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.world = state.world || {};
+  state.world.currentSectorId = HELIOS;
+  const hauler = sim.spawn({
+    type: 'ship', team: 2, pos: { x: 100, z: 0 }, vel: { x: 4, z: 0 },
+    radius: 8, mass: 80, hull: 100, hullMax: 100, factionId: 'faction_mts',
+    data: {
+      trafficRole: 'hauler', name: 'MTS Freighter Kestrel',
+      itinerary: { originStationId: 'station_port_low', destinationStationId: 'station_helios' },
+      cargoManifest: {
+        manifestId: 'manifest_kestrel_1',
+        lines: [{ commodityId: 'cmdty_silicate', qty: 40 }],
+        totalQty: 40,
+      },
+    },
+  });
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 60, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 6, hull: 100, hullMax: 100, data: {},
+  });
+  state.playerId = player.id;
+  const spills = [];
+  bus.on('freight:cargoSpilled', (p) => spills.push(p));
+
+  // The route the throw actually takes: tether:whipImpact → combat kernel → combat:damage with
+  // attackerId = the player and origin.kind = 'massline_whip'. Traffic spills on the receipt.
+  bus.emit('combat:damage', {
+    targetId: hauler.id,
+    attackerId: player.id,
+    applied: 12,
+    type: 'kinetic',
+    origin: { kind: 'massline_whip', id: 'payload_9' },
+    pos: { x: hauler.pos.x, z: hauler.pos.z },
+  });
+
+  const pod = [...state.entities.values()].find((e) => (
+    e.type === 'payload' && e.data && e.data.payloadType === 'jettisoned_cargo'));
+  assert.ok(pod, 'the clipped hauler physically dislodges its load');
+  assert.equal(pod.data.spillCause, 'massline_whip', 'the pod names the flung mass, not gunfire');
+  assert.equal(pod.data.attackerId, player.id, 'the mistake attributes to the thrower');
+  assert.equal(pod.data.ownerId, hauler.id, 'the freight still names its owner');
+  assert.equal(hauler.data.cargoManifest.lines[0].qty, 30, 'manifest truthfully decrements');
+  assert.equal(spills.length, 1);
+  assert.equal(spills[0].cause, 'massline_whip', 'the chronicle reads the same cause');
   sim.dispose();
 });
 

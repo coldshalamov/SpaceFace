@@ -140,6 +140,16 @@ def build():
     F.light(s, 'NavPort', (-2.1, 3.52, 0.12), 'glow_red', size=0.14)
     F.light(s, 'NavStarboard', (-4.3, BY - 1.1, 0.5), 'glow_green', size=0.14)
     F.light(s, 'Beacon', (-3.6, 0.0, 1.38), 'glow_amber', size=0.13)
+
+    # --- damage hooks: port turret + bay crane + mast shed, scout dish flickers, winglet lifts ---
+    _dmg = {o.name: o for o in s.objects}
+    s.hook_part('HOOK_SECONDARY_TURRET', _dmg['TurretRing'], _dmg['TurretHead'], _dmg['Mantlet'],
+                _dmg['TurretGun2.25'], _dmg['TurretGun2.65'], _dmg['TurretMuzzle2.25'], _dmg['TurretMuzzle2.65'])
+    s.hook_part('HOOK_SECONDARY_CRANE', _dmg['CranePost'], _dmg['CraneBoom'], _dmg['CraneHook'], _dmg['CraneBlock'],
+                _dmg['Mast_Mast'], _dmg['Mast_Foot'], _dmg['Mast_Tip'])
+    s.hook_part('HOOK_SENSOR_DISH', _dmg['DishPost'], _dmg['Dish'], _dmg['DishFace'], _dmg['DishHorn'],
+                _dmg['DishFeed'])
+    s.hook_part('HOOK_ARMOR_WINGLET', _dmg['Winglet'])
     return s
 
 

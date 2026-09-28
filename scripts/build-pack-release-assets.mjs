@@ -614,6 +614,12 @@ function stampPackReleaseIdentity(document, asset, {
   const root = document.getRoot();
   const materialNames = [...new Set((sourceGltf.materials || []).map((material) => material.name || ''))];
   const exportedLods = lodsDeclaredBy(sourceGltf);
+  // Forge-derived pack sources (e.g. the everyday-kit ore hopper, rebuilt in
+  // tools/blender/forge/ships/) stamp spacefaceAsset.forge on the source GLB — carry
+  // that provenance onto the release contract instead of masking it as kit-authored.
+  const sourceMeta = sourceGltf?.asset?.extras?.spacefaceAsset
+    || sourceGltf?.scenes?.[sourceGltf.scene ?? 0]?.extras?.spacefaceAsset
+    || {};
   const contract = {
     contractVersion: 2,
     assetId: asset.id,
@@ -651,6 +657,7 @@ function stampPackReleaseIdentity(document, asset, {
       path: asset.source,
       sha256: sourceSha256,
     },
+    ...(sourceMeta.forge ? { forge: sourceMeta.forge } : {}),
   };
 
   const gltfAsset = root.getAsset();

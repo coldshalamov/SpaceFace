@@ -559,7 +559,10 @@ html body #screens #sf-automation.au-orrery .au-node__beam {
 html body #screens #sf-automation.au-orrery .au-node__beam i {
   position: absolute; top: 50%; left: 0; width: 4px; height: 4px; border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55);
+  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55); }
+/* the traveller is the node's live state in motion — it only runs while the node is live,
+   never as idle chrome (motion means state change) */
+html body #screens #sf-automation.au-orrery .au-node.is-live .au-node__beam i {
   animation: au-pulse 2.8s linear infinite; }
 html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam i { display: none; }
 /* r2 F2: the parked bead sits mid-beam at rest (stills show it), sized by cr/min; the dormant
@@ -639,7 +642,9 @@ html body #screens #sf-automation.au-orrery .au-route__beam {
     linear-gradient(rgb(var(--au-bone) / .38), rgb(var(--au-bone) / .38)) center / 100% 4px no-repeat; }
 html body #screens #sf-automation.au-orrery .au-route__beam i {
   position: absolute; top: 50%; left: 0; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
-  background: rgb(var(--au-ice)); box-shadow: 0 0 7px 2px rgb(var(--au-ice) / .6);
+  background: rgb(var(--au-ice)); box-shadow: 0 0 7px 2px rgb(var(--au-ice) / .6); }
+/* the pulse travels only while a route is plotted — the strip's live state, not ambient motion */
+html body #screens #sf-automation.au-orrery .au-route.is-plotted .au-route__beam i {
   animation: au-pulse 2.4s linear infinite; }
 html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-route__beam i { animation: none; left: 46%; }
 /* O7a (A1+A2): purchase tiers are one-line ladder rungs (name + stats + verb), the helper
@@ -975,6 +980,7 @@ export const automationScreen = {
       const share = cap > 0 ? Math.max(0, Math.min(1, classRate[kind] / cap)) : 0;
       const live = counts[kind] > 0 && classRate[kind] > 0;
       node.dataset.live = live ? '1' : '0';
+      node.classList.toggle('is-live', live);
       const beadPx = `${(3 + share * 4).toFixed(1)}px`;
       const pulse = node.querySelector('[data-p]');
       if (pulse) {
@@ -1154,7 +1160,7 @@ export const automationScreen = {
           <span class="au-next-meta">${escapeHtml(next.meta)}</span>
           <button class="au-cta" data-focus-key="operations-next:${escapeHtml(action)}:${escapeHtml(actionTarget)}" data-act="${escapeHtml(action)}" data-ref="${escapeHtml(actionTarget)}"${kindAttr} data-why="${escapeHtml(actionTitle)}" aria-label="${escapeHtml(actionTitle)}">${escapeHtml(next.cta)}</button>
         </div>
-        <div class="au-route" role="img" aria-label="Route plotted: you to ${escapeHtml(berth)}">
+        <div class="au-route is-plotted" role="img" aria-label="Route plotted: you to ${escapeHtml(berth)}">
           <span class="au-route__from">You</span>
           <span class="au-route__beam" aria-hidden="true"><i></i></span>
           <span class="au-route__to">${escapeHtml(berth)}</span>
@@ -1239,7 +1245,7 @@ export const automationScreen = {
       card.className = 'au-card au-shop au-shop--drones';
       card.innerHTML = `
         <div class="grow">
-          <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" title="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
+          <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" data-why="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
           <div class="meta">
             <span>mine ${def.mineRate}/s</span>
             <span>yield ~${fmtCr(estDroneRate(def))}/min gross</span>
@@ -1249,7 +1255,7 @@ export const automationScreen = {
           </div>
           ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the drones line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the drones line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1322,7 +1328,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the traders line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the traders line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="hireTrader" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1412,7 +1418,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the outposts line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the outposts line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buildOutpost" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1471,7 +1477,7 @@ export const automationScreen = {
             <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
             <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
-          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" title="Take the wing throttle — conduct the fleet line" aria-label="Take the wing throttle">Throttle</button>
+          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" data-why="Take the wing throttle — conduct the fleet line" aria-label="Take the wing throttle">Throttle</button>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
         frag.appendChild(card);
       }

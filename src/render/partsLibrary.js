@@ -1002,17 +1002,23 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
     // The body bakes the silhouette, not the fit: fitted guns and budget-heavy modules still
     // mount on its authored SOCKET_* contract, so cook exactly the parts the live build reads.
     const plan = { hull: [file] };
-    const fitSeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
-    const fitDef = SHIP_BY_ID.get(entity.data && entity.data.defId);
-    addPlanFiles(plan, 'weapon', authoredWeaponMounts(entity, fitDef, contractRecords('weapon'), fitSeed, { fittedOnly: true })
-      .map((mount) => mount.record && mount.record.url));
-    const moduleMounts = fittedModuleMounts(entity, contractRecords('pod'), contractRecords('greeble'), fitSeed);
-    addPlanFiles(plan, 'pod', moduleMounts
-      .filter((mount) => String(mount.file).startsWith('pods/'))
-      .map((mount) => mount.record && mount.record.url));
-    addPlanFiles(plan, 'greeble', moduleMounts
-      .filter((mount) => !String(mount.file).startsWith('pods/'))
-      .map((mount) => mount.record && mount.record.url));
+    // Every whole-ship selection resolves to a Forge body under wholeships/ whose metadata
+    // integrates hardpoints, so compose never mounts kit records for them (the
+    // hullIntegratesHardpoints gates below). Do not decode bolt-on records they cannot draw;
+    // a non-integrated whole ship (none are live-selectable today) would keep this path.
+    if (!String(file).startsWith('wholeships/')) {
+      const fitSeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
+      const fitDef = SHIP_BY_ID.get(entity.data && entity.data.defId);
+      addPlanFiles(plan, 'weapon', authoredWeaponMounts(entity, fitDef, contractRecords('weapon'), fitSeed, { fittedOnly: true })
+        .map((mount) => mount.record && mount.record.url));
+      const moduleMounts = fittedModuleMounts(entity, contractRecords('pod'), contractRecords('greeble'), fitSeed);
+      addPlanFiles(plan, 'pod', moduleMounts
+        .filter((mount) => String(mount.file).startsWith('pods/'))
+        .map((mount) => mount.record && mount.record.url));
+      addPlanFiles(plan, 'greeble', moduleMounts
+        .filter((mount) => !String(mount.file).startsWith('pods/'))
+        .map((mount) => mount.record && mount.record.url));
+    }
     return plan;
   }
 

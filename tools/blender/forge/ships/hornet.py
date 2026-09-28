@@ -90,6 +90,12 @@ def build():
     F.light(s, 'NavPort', (-4.35, 4.34, 0.0), 'glow_red')
     F.light(s, 'NavStarboard', (-4.35, -4.34, 0.0), 'glow_green')
     F.light(s, 'Beacon', (-1.0, 0.0, 0.73), 'glow_amber', size=0.1)
+
+    # --- damage hooks: wingtip gun pod sheds, beacon strobes at critical, port flap displaces ----
+    _dmg = {o.name: o for o in s.objects}
+    s.hook_part('HOOK_SECONDARY_TIPPOD', _dmg['TipPod'], _dmg['TipBarrel'])
+    s.hook_part('HOOK_SENSOR_BEACON', _dmg['Beacon'])
+    s.hook_part('HOOK_ARMOR_FLAP', _dmg['FlapOuter'])
     return s
 
 

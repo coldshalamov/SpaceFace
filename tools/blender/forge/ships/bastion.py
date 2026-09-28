@@ -109,9 +109,11 @@ def build():
     F.cylinder(s, 'TurretBBarbette', (1.4, 0.0, 0.7), (1.4, 0.0, 1.46), 1.0, material='paint2', segments=40)
 
     # --- broadside casemates: one gun each side ----------------------------------------------------
-    F.box(s, 'Casemate', (-0.4, 3.35, 0.05), (1.3, 0.7, 0.7), material='paint2', bevel=0.05, mirror=True, taper=0.85)
-    F.cylinder(s, 'CasemateGun', (-0.4, 3.6, 0.1), (-0.4, 4.3, 0.1), 0.1, material='gunmetal', segments=12,
-               mirror=True, cap_material='dark')
+    casemate = F.box(s, 'Casemate', (-0.4, 3.35, 0.05), (1.3, 0.7, 0.7), material='paint2', bevel=0.05,
+                     mirror=True, taper=0.85)
+    casemate_gun = F.cylinder(s, 'CasemateGun', (-0.4, 3.6, 0.1), (-0.4, 4.3, 0.1), 0.1,
+                              material='gunmetal', segments=12, mirror=True, cap_material='dark')
+    s.hook_part('HOOK_SECONDARY_CASEMATE', casemate, casemate_gun)
 
     # --- drive block: three torch nozzles in an armoured frame -------------------------------------
     F.box(s, 'DriveBlock', (-9.6, 0.0, -0.1), (1.2, 4.2, 1.5), material='gunmetal', bevel=0.05)

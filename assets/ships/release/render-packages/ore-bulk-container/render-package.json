@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Hoist_Center",
       "nodePath": [
         0,
-        13
+        30
       ],
       "parentNodeId": "sf.render.ore-bulk-container.root",
       "worldTransform": [
@@ -53,408 +53,833 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "73dff0a4d871ac44ff279717c50a8741f3d2eca54d070ea7127f2f1ae8952c2c",
+  "contentHash": "ea741e49fb6d2aee6673b4016a4cd3aac8cd6ca186cc66aea8e3a59d5ef887cd",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          5,
-          -1.6748238801956177,
-          2.5003814697265625
+          4.849999904632568,
+          -1.7002090215682983,
+          2.3500304222106934
         ],
         "min": [
-          -5,
-          -2.0251762866973877,
-          -2.5003814697265625
+          -4.849999904632568,
+          -1.9997910261154175,
+          -2.3500304222106934
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6a825f192b3a837db6faba8e79f4d769491bec4110d7ef2d339c52b27f8dcb5",
+      "geometryHash": "8dbcfb9258c13661c661d8d1a2a0a150b1c362da4529e1c2a67368d6e38dcdc6",
       "id": "sf.render.ore-bulk-container.mesh.floor.primitive.0",
-      "indexCount": 36,
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
+      "meshName": "Floor.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.floor",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          -0.20279879868030548,
-          2.494990348815918,
-          1.7999999523162842
+          3.049999952316284,
+          0.8500290513038635,
+          -2.455005407333374
         ],
         "min": [
-          -4.197201728820801,
-          0.6050096154212952,
-          -2.3999998569488525
+          2.1499998569488525,
+          0.3499710261821747,
+          -2.5049946308135986
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a96c2f19826b46d24a5462902ccbed77f68453bb707f31e374b33326738ef547",
-      "id": "sf.render.ore-bulk-container.mesh.ore-a-0.primitive.0",
-      "indexCount": 300,
+      "geometryHash": "d37db8f394627984bc381ae5a143c1f3acca46d87bba12a9382dc9a6e5cfb385",
+      "id": "sf.render.ore-bulk-container.mesh.idplate.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.006",
-      "nodeId": "sf.render.ore-bulk-container.mesh.ore-a-0",
+      "meshName": "IdPlate.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.idplate",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 436
     },
     {
       "bounds": {
         "max": [
-          0.1932649314403534,
-          2.1358940601348877,
-          0.26700007915496826
+          -0.4434002637863159,
+          3.068723201751709,
+          1.9772332906723022
         ],
         "min": [
-          -2.2832648754119873,
-          0.9641059637069702,
-          -2.3369998931884766
+          -3.9463186264038086,
+          -0.5381059646606445,
+          -1.5507820844650269
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4c79d7789b59f83fe5810d368cda19595f05f38b3a2208455ed7cec1810098b",
-      "id": "sf.render.ore-bulk-container.mesh.ore-a-1.primitive.0",
-      "indexCount": 300,
+      "geometryHash": "bfb6e79fc2c36af4fd759557c0fa4dab282c6f681c8d4614ddee2a2a74be8079",
+      "id": "sf.render.ore-bulk-container.mesh.orea0.primitive.0",
+      "indexCount": 960,
       "indexed": true,
-      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "materialHash": "2efca7b937bdfa21bda093d84b29cdbf9f536cdfde3a4b9621cb7c412825c9ee",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.007",
-      "nodeId": "sf.render.ore-bulk-container.mesh.ore-a-1",
+      "meshName": "OreA0.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.orea0",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 944
     },
     {
       "bounds": {
         "max": [
-          -2.251399517059326,
-          2.0224952697753906,
-          1.5899999141693115
+          0.11010123044252396,
+          2.569697618484497,
+          2.085848569869995
         ],
         "min": [
-          -4.248600959777832,
-          1.0775048732757568,
-          -0.5099999308586121
+          -2.1563119888305664,
+          0.271298885345459,
+          0.009945737197995186
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ef14914de5d3d9e915f1978baf03cf557d5dd34486ec33954d41967a8c91d0e",
-      "id": "sf.render.ore-bulk-container.mesh.ore-a-2.primitive.0",
-      "indexCount": 300,
+      "geometryHash": "e463b3b201ff69b02968e921c0e7fb8f73fbd0894f4901bddb3b14522bf74afb",
+      "id": "sf.render.ore-bulk-container.mesh.orea1.primitive.0",
+      "indexCount": 960,
       "indexed": true,
-      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "materialHash": "1ef25b5db168ab53c92da3fbc29fefff32fa8f7190ca6b574daf2fb39a6ae994",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.001",
-      "nodeId": "sf.render.ore-bulk-container.mesh.ore-a-2",
+      "meshName": "OreA1.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.orea1",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 950
     },
     {
       "bounds": {
         "max": [
-          4.587410926818848,
-          2.7349894046783447,
-          2.6999998092651367
+          -2.3541252613067627,
+          2.4683728218078613,
+          0.332689106464386
         ],
         "min": [
-          0.21258918941020966,
-          0.6650107502937317,
-          -1.899999737739563
+          -4.129524230957031,
+          0.675022304058075,
+          -1.4282610416412354
         ]
       },
       "drawMode": 4,
-      "geometryHash": "076379d294cc89a82810650eca8902e151412f841d9598427d723f8523648dd0",
-      "id": "sf.render.ore-bulk-container.mesh.ore-b-0.primitive.0",
-      "indexCount": 300,
+      "geometryHash": "9e37d3b44886b54fa0e73c33d2cf835c1af9c3bfb0887f481e2946b041fbc72c",
+      "id": "sf.render.ore-bulk-container.mesh.orea2.primitive.0",
+      "indexCount": 960,
       "indexed": true,
-      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "materialHash": "2efca7b937bdfa21bda093d84b29cdbf9f536cdfde3a4b9621cb7c412825c9ee",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.002",
-      "nodeId": "sf.render.ore-bulk-container.mesh.ore-b-0",
+      "meshName": "OreA2.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.orea2",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 948
     },
     {
       "bounds": {
         "max": [
-          5.021194934844971,
-          2.34169340133667,
-          1.0210000276565552
+          4.313782215118408,
+          3.3085134029388428,
+          1.6462358236312866
         ],
         "min": [
-          2.308805227279663,
-          1.0583065748214722,
-          -1.8309998512268066
+          0.5629932880401611,
+          -0.5484099388122559,
+          -2.4165091514587402
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08e1dee40e35bb1e1a7ee4673a416c1cf08e4ca4c3fec8d89f8067a6c0963cc1",
-      "id": "sf.render.ore-bulk-container.mesh.ore-b-1.primitive.0",
-      "indexCount": 300,
+      "geometryHash": "c7ffafb48f27ea248d9dcd7a72f67222ce2cb598f5f183d71bd64b6e0d57a96e",
+      "id": "sf.render.ore-bulk-container.mesh.oreb0.primitive.0",
+      "indexCount": 960,
       "indexed": true,
-      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "materialHash": "2efca7b937bdfa21bda093d84b29cdbf9f536cdfde3a4b9621cb7c412825c9ee",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.003",
-      "nodeId": "sf.render.ore-bulk-container.mesh.ore-b-1",
+      "meshName": "OreB0.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.oreb0",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 952
     },
     {
       "bounds": {
         "max": [
-          2.343705415725708,
-          2.2174947261810303,
-          2.4699997901916504
+          4.641128063201904,
+          2.8093204498291016,
+          1.493977427482605
         ],
         "min": [
-          0.15629462897777557,
-          1.1825053691864014,
-          0.17000019550323486
+          2.3580658435821533,
+          0.5090832114219666,
+          -0.8509148359298706
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83515496e23bc316eded1b038cfb292870a22de30ea6ed35cfe466a4b8a338c2",
-      "id": "sf.render.ore-bulk-container.mesh.ore-b-2.primitive.0",
-      "indexCount": 300,
+      "geometryHash": "d858d1bba4e567cb2f96ec17b62d14f2276cc164cf29aa374155f78b5ada1baa",
+      "id": "sf.render.ore-bulk-container.mesh.oreb1.primitive.0",
+      "indexCount": 960,
       "indexed": true,
-      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "materialHash": "1ef25b5db168ab53c92da3fbc29fefff32fa8f7190ca6b574daf2fb39a6ae994",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.004",
-      "nodeId": "sf.render.ore-bulk-container.mesh.ore-b-2",
+      "meshName": "OreB1.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.oreb1",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 945
     },
     {
       "bounds": {
         "max": [
-          3.3999998569488525,
-          1.0499649047851562,
-          2.575000762939453
+          2.2317399978637695,
+          2.553295850753784,
+          -0.3302246630191803
         ],
         "min": [
-          1.7999999523162842,
-          0.15003511309623718,
-          2.5249991416931152
+          0.2795886993408203,
+          0.6106770038604736,
+          -2.27189040184021
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90f7217f22100af5d51dc1d3da593e6f154994eb2ff1b66c924d6cab5144801d",
-      "id": "sf.render.ore-bulk-container.mesh.plate.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "ddc2f76682972bea1bf2df36352b61db895d5606940fe3dedc758d1d6641f63d",
+      "id": "sf.render.ore-bulk-container.mesh.oreb2.primitive.0",
+      "indexCount": 960,
       "indexed": true,
-      "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
+      "materialHash": "2efca7b937bdfa21bda093d84b29cdbf9f536cdfde3a4b9621cb7c412825c9ee",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
-      "nodeId": "sf.render.ore-bulk-container.mesh.plate",
+      "meshName": "OreB2.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.oreb2",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 952
     },
     {
       "bounds": {
         "max": [
-          5.099999904632568,
-          2.1502349376678467,
-          2.549847364425659
+          4.599999904632568,
+          1.7997939586639404,
+          2.0497634410858154
         ],
         "min": [
-          -5.099999904632568,
-          1.9497648477554321,
-          2.1501524448394775
+          -4.599999904632568,
+          0.9002059698104858,
+          -2.0497634410858154
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf027272a02defec680603feccd65c74f150e7d1fbb4fd7f97acd70f6a83fc7d",
-      "id": "sf.render.ore-bulk-container.mesh.rim-s.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "8331b6167e3a5b894636f1b0d5336dbd4d5541d721a2d66605ad5ba81ec760ea",
+      "id": "sf.render.ore-bulk-container.mesh.orefill.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "materialHash": "1ef25b5db168ab53c92da3fbc29fefff32fa8f7190ca6b574daf2fb39a6ae994",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.ore-bulk-container.mesh.rim-s",
+      "meshName": "OreFill.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.orefill",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          5.099999904632568,
-          2.1502349376678467,
-          -2.1501524448394775
+          -3.88991379737854,
+          1.6999999284744263,
+          2.4900949001312256
         ],
         "min": [
-          -5.099999904632568,
-          1.9497648477554321,
-          -2.549847364425659
+          -4.110086441040039,
+          -1.899999976158142,
+          2.349905252456665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ee925d8ab2d040f964bc64558c31041048fa8518f61ab6ae52946649c4c4995",
-      "id": "sf.render.ore-bulk-container.mesh.rim.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "c7c24e87831ec41d04b386b3abf671bb353432c8085533858f13c972539686a0",
+      "id": "sf.render.ore-bulk-container.mesh.ribp0.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.ore-bulk-container.mesh.rim",
+      "meshName": "RibP0.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribp0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          5.099999904632568,
-          -1.7748619318008423,
-          -2.324862003326416
+          -2.5565803050994873,
+          1.6999999284744263,
+          2.4900949001312256
         ],
         "min": [
-          -5.099999904632568,
-          -2.0251381397247314,
-          -2.5751380920410156
+          -2.7767531871795654,
+          -1.899999976158142,
+          2.349905252456665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7ea6f2ba6439bfd25c7ab054e3616f8bee5c859d345437c405eb4c201c078ba",
-      "id": "sf.render.ore-bulk-container.mesh.rub-p.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "a3201a210a66f6b04521cea9173c04ee7a52b9d1081887e7db3af5810d36879a",
+      "id": "sf.render.ore-bulk-container.mesh.ribp1.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.ore-bulk-container.mesh.rub-p",
+      "meshName": "RibP1.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribp1",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          5.099999904632568,
-          -1.7748619318008423,
-          2.5751380920410156
+          -1.2232470512390137,
+          1.6999999284744263,
+          2.4900949001312256
         ],
         "min": [
-          -5.099999904632568,
-          -2.0251381397247314,
-          2.324862003326416
+          -1.4434196949005127,
+          -1.899999976158142,
+          2.349905252456665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20d28f4b46a0a64434d8781d82fed49b5445d853efaadd8d12f4f84caae10751",
-      "id": "sf.render.ore-bulk-container.mesh.rub-s.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "4aa29678178fd738aef7b04c0a0f4a4b9c0db2222b3293d4ebe90ff09a2ffa13",
+      "id": "sf.render.ore-bulk-container.mesh.ribp2.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.ore-bulk-container.mesh.rub-s",
+      "meshName": "RibP2.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribp2",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          -4.675128936767578,
-          2.0001068115234375,
-          2.5
+          0.1100863665342331,
+          1.6999999284744263,
+          2.4900949001312256
         ],
         "min": [
-          -5.024870872497559,
-          -2.0001068115234375,
-          -2.5
+          -0.1100863665342331,
+          -1.899999976158142,
+          2.349905252456665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "713cfeacce6b196477ea37b6252819cab6ddc3cf9880f4b2c297d4bd37002f62",
-      "id": "sf.render.ore-bulk-container.mesh.wall-a.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "fbaa78423160b81b22f4e84d92859cc0cbf8caae872380c1035e92fa6064377f",
+      "id": "sf.render.ore-bulk-container.mesh.ribp3.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.ore-bulk-container.mesh.wall-a",
+      "meshName": "RibP3.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribp3",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          5.024870872497559,
-          2.0001068115234375,
-          2.5
+          1.4434196949005127,
+          1.6999999284744263,
+          2.4900949001312256
         ],
         "min": [
-          4.675128936767578,
-          -2.0001068115234375,
-          -2.5
+          1.2232470512390137,
+          -1.899999976158142,
+          2.349905252456665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46b7bf3f7da8df8ce994c7f86031fbb46c90333123b30cb8845965f19fa59362",
-      "id": "sf.render.ore-bulk-container.mesh.wall-f.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "b810fe71806a67855c1d2795ceb6f59d477840b3fecb08f4512d059182e92b64",
+      "id": "sf.render.ore-bulk-container.mesh.ribp4.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.ore-bulk-container.mesh.wall-f",
+      "meshName": "RibP4.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribp4",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7767531871795654,
+          1.6999999284744263,
+          2.4900949001312256
+        ],
+        "min": [
+          2.5565803050994873,
+          -1.899999976158142,
+          2.349905252456665
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "080dd4e8873bc0757736b2d3e6b981fb3a2e66f0741c755df26bb7c3c2a26f76",
+      "id": "sf.render.ore-bulk-container.mesh.ribp5.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibP5.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribp5",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          4.110086441040039,
+          1.6999999284744263,
+          2.4900949001312256
+        ],
+        "min": [
+          3.88991379737854,
+          -1.899999976158142,
+          2.349905252456665
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa2ae42c1e72a607790bb2d76323d17c3a06403fb2759c6b354ad27c4b8e921c",
+      "id": "sf.render.ore-bulk-container.mesh.ribp6.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibP6.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribp6",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.88991379737854,
+          1.6999999284744263,
+          -2.349905252456665
+        ],
+        "min": [
+          -4.110086441040039,
+          -1.899999976158142,
+          -2.4900949001312256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8542b1c1a5b96b1bf6b75cab8a184cbee649c6a9c5e02719f07ccfb3d1fc5b71",
+      "id": "sf.render.ore-bulk-container.mesh.ribs0.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibS0.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribs0",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.5565803050994873,
+          1.6999999284744263,
+          -2.349905252456665
+        ],
+        "min": [
+          -2.7767531871795654,
+          -1.899999976158142,
+          -2.4900949001312256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c41441d222d979f2da4973d67a34845a82d646f63d759cfb1f632f3d09ab0453",
+      "id": "sf.render.ore-bulk-container.mesh.ribs1.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibS1.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribs1",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2232470512390137,
+          1.6999999284744263,
+          -2.349905252456665
+        ],
+        "min": [
+          -1.4434196949005127,
+          -1.899999976158142,
+          -2.4900949001312256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab0e09bf8d13011ee499b2db6cb17f2833dfc8ac132ecf14ac5c18d988d7409e",
+      "id": "sf.render.ore-bulk-container.mesh.ribs2.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibS2.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribs2",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          0.1100863665342331,
+          1.6999999284744263,
+          -2.349905252456665
+        ],
+        "min": [
+          -0.1100863665342331,
+          -1.899999976158142,
+          -2.4900949001312256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14e97ba0d8fab41c0f74e6562e550d1f8564bb34081645f381e2d06bdbb1a3bf",
+      "id": "sf.render.ore-bulk-container.mesh.ribs3.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibS3.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribs3",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4434196949005127,
+          1.6999999284744263,
+          -2.349905252456665
+        ],
+        "min": [
+          1.2232470512390137,
+          -1.899999976158142,
+          -2.4900949001312256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf5b1f22b1082f6fa018e31dfbdac30d460c8dfaa4e1766d3dd75c7d08ea9555",
+      "id": "sf.render.ore-bulk-container.mesh.ribs4.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibS4.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribs4",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7767531871795654,
+          1.6999999284744263,
+          -2.349905252456665
+        ],
+        "min": [
+          2.5565803050994873,
+          -1.899999976158142,
+          -2.4900949001312256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e111f7aeeec5b5a1876ce0264b2d2e8a18ea2f2a1dbcad6d2566b3374ca24f30",
+      "id": "sf.render.ore-bulk-container.mesh.ribs5.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibS5.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribs5",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          4.110086441040039,
+          1.6999999284744263,
+          -2.349905252456665
+        ],
+        "min": [
+          3.88991379737854,
+          -1.899999976158142,
+          -2.4900949001312256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f2a34e94f496515d53479a06d66cc58c4b553522141b8fe60a9173707db0b46",
+      "id": "sf.render.ore-bulk-container.mesh.ribs6.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RibS6.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.ribs6",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.800159931182861,
+          2.1998398303985596,
+          2.450000047683716
+        ],
+        "min": [
+          -5.099839687347412,
+          1.9001601934432983,
+          -2.450000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9d1015210093be3147dc314380a4e2dc3947961f9152ae235385b5b74fa118c4",
+      "id": "sf.render.ore-bulk-container.mesh.rimaft.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RimAft.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.rimaft",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          5.099839687347412,
+          2.1998398303985596,
+          2.450000047683716
+        ],
+        "min": [
+          4.800159931182861,
+          1.9001601934432983,
+          -2.450000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "343b6d9eaf594028c6ce6179a17c7bf9df94247b22b08f217d918524fee0b87d",
+      "id": "sf.render.ore-bulk-container.mesh.rimfore.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "RimFore.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.rimfore",
+      "primitiveIndex": 0,
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
           5,
-          1.999725341796875,
-          -2.174823760986328
+          2.200150966644287,
+          2.5300090312957764
         ],
         "min": [
           -5,
-          -1.999725341796875,
-          -2.5251760482788086
+          1.8998489379882812,
+          2.269991159439087
         ]
       },
       "drawMode": 4,
-      "geometryHash": "114edeca6eb6e740f22d6a2d4cf7814bbdb678b56162cef1caee426d1178d701",
-      "id": "sf.render.ore-bulk-container.mesh.wall-p.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "232c95ee1edf4bff85a99f3cf606a3b1c16152026d262a9142f1754f32ae767c",
+      "id": "sf.render.ore-bulk-container.mesh.rimport.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.ore-bulk-container.mesh.wall-p",
+      "meshName": "RimPort.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.rimport",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
           5,
-          1.999725341796875,
-          2.5251760482788086
+          2.200150966644287,
+          -2.269991159439087
         ],
         "min": [
           -5,
-          -1.999725341796875,
-          2.174823760986328
+          1.8998489379882812,
+          -2.5300090312957764
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d96b40439214dffb7711c65bed0057e9a2a6e4bbf67ba8b0f90322fe59ddcd8",
-      "id": "sf.render.ore-bulk-container.mesh.wall-s.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "3b646ea5ff9099aefd72193a0569c6fa6055066cc73209af5b0809c6f33e206a",
+      "id": "sf.render.ore-bulk-container.mesh.rimstar.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.ore-bulk-container.mesh.wall-s",
+      "meshName": "RimStar.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.rimstar",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          4.949999809265137,
+          -1.5797510147094727,
+          2.5101542472839355
+        ],
+        "min": [
+          -4.949999809265137,
+          -1.820249080657959,
+          2.4098458290100098
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "65933c58e7688eeffb07ab612530d81bce25aa2b3c516852478f127dc02d0e07",
+      "id": "sf.render.ore-bulk-container.mesh.rubport.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "RubPort.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.rubport",
+      "primitiveIndex": 0,
+      "vertexCount": 440
+    },
+    {
+      "bounds": {
+        "max": [
+          4.949999809265137,
+          -1.5797510147094727,
+          -2.4098458290100098
+        ],
+        "min": [
+          -4.949999809265137,
+          -1.820249080657959,
+          -2.5101542472839355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7078c6e0f9bb86dc55e1c034764237487e3a1f7296c69f4580f2ed4b8772cc35",
+      "id": "sf.render.ore-bulk-container.mesh.rubstar.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "RubStar.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.rubstar",
+      "primitiveIndex": 0,
+      "vertexCount": 440
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.699965000152588,
+          2.000013589859009,
+          2.3499999046325684
+        ],
+        "min": [
+          -5.000034809112549,
+          -2.000013589859009,
+          -2.3499999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28a797ffbff83b3d4d2bfcb3f0c0ee142804821f27a41205d813e55abba6587c",
+      "id": "sf.render.ore-bulk-container.mesh.wallaft.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "2575bc7b664daf8a343b3681080ea06fa29ed3bd281b967ffc963f26c2e383a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "WallAft.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.wallaft",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          5.000034809112549,
+          2.000013589859009,
+          2.3499999046325684
+        ],
+        "min": [
+          4.699965000152588,
+          -2.000013589859009,
+          -2.3499999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9fd04654369f08db0e04d5945b1f93e9c7681516e7e0ece9e94bab732663e7f9",
+      "id": "sf.render.ore-bulk-container.mesh.wallfore.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "2575bc7b664daf8a343b3681080ea06fa29ed3bd281b967ffc963f26c2e383a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "WallFore.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.wallfore",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          4.849999904632568,
+          2.0001235008239746,
+          2.499790906906128
+        ],
+        "min": [
+          -4.849999904632568,
+          -2.0001235008239746,
+          2.200208902359009
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7972910e6862b32e5b913a5ce8ee4450690dfa4ddcb76033b12905c41fb2934a",
+      "id": "sf.render.ore-bulk-container.mesh.wallport.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "2575bc7b664daf8a343b3681080ea06fa29ed3bd281b967ffc963f26c2e383a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "WallPort.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.wallport",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          4.849999904632568,
+          2.0001235008239746,
+          -2.200208902359009
+        ],
+        "min": [
+          -4.849999904632568,
+          -2.0001235008239746,
+          -2.499790906906128
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4c03adfa20d6a90acce5bc064873e216dfdb17834363e70990303408eaa65daa",
+      "id": "sf.render.ore-bulk-container.mesh.wallstar.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "2575bc7b664daf8a343b3681080ea06fa29ed3bd281b967ffc963f26c2e383a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "WallStar.001",
+      "nodeId": "sf.render.ore-bulk-container.mesh.wallstar",
+      "primitiveIndex": 0,
+      "vertexCount": 432
     }
   ],
   "hlods": [],
@@ -462,46 +887,114 @@
   "lods": [],
   "materials": [
     {
-      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "id": "material:143624083cd581b0939afdce",
-      "name": "esk_bare_steel",
+      "hash": "1ef25b5db168ab53c92da3fbc29fefff32fa8f7190ca6b574daf2fb39a6ae994",
+      "id": "material:1ef25b5db168ab53c92da3fb",
+      "name": "Material_Stone_deep",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
-      "id": "material:5305fc668e4d72b103333713",
-      "name": "esk_hazard_stripe",
+      "hash": "2575bc7b664daf8a343b3681080ea06fa29ed3bd281b967ffc963f26c2e383a5",
+      "id": "material:2575bc7b664daf8a343b3681",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2efca7b937bdfa21bda093d84b29cdbf9f536cdfde3a4b9621cb7c412825c9ee",
+      "id": "material:2efca7b937bdfa21bda093d8",
+      "name": "Material_Stone",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
-      "id": "material:695c76668ce8672d176ef9f0",
-      "name": "esk_paint_industrial_ochre",
+      "hash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "id": "material:5ef013365e942f1ac873c307",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
-      "id": "material:b3f07a16d4766efd3b9f9cbd",
-      "name": "esk_ore_raw",
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
-      "id": "material:be22fc38209109d7bc12285f",
-      "name": "esk_id_plate",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "id": "material:ef83aaa905288b1ffc8a4f70",
-      "name": "esk_struct_alloy",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -526,8 +1019,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "floor",
-      "nodeName": "floor",
+      "mergeBoundary": "Floor",
+      "nodeName": "Floor",
       "nodePath": [
         0,
         1
@@ -555,7 +1048,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.ore-a-0",
+      "id": "sf.render.ore-bulk-container.mesh.idplate",
       "localTransform": [
         1,
         0,
@@ -575,8 +1068,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ore_a_0",
-      "nodeName": "ore_a_0",
+      "mergeBoundary": "IdPlate",
+      "nodeName": "IdPlate",
       "nodePath": [
         0,
         2
@@ -604,7 +1097,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.ore-a-1",
+      "id": "sf.render.ore-bulk-container.mesh.orea0",
       "localTransform": [
         1,
         0,
@@ -624,8 +1117,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ore_a_1",
-      "nodeName": "ore_a_1",
+      "mergeBoundary": "OreA0",
+      "nodeName": "OreA0",
       "nodePath": [
         0,
         3
@@ -653,7 +1146,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.ore-a-2",
+      "id": "sf.render.ore-bulk-container.mesh.orea1",
       "localTransform": [
         1,
         0,
@@ -673,8 +1166,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ore_a_2",
-      "nodeName": "ore_a_2",
+      "mergeBoundary": "OreA1",
+      "nodeName": "OreA1",
       "nodePath": [
         0,
         4
@@ -702,7 +1195,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.ore-b-0",
+      "id": "sf.render.ore-bulk-container.mesh.orea2",
       "localTransform": [
         1,
         0,
@@ -722,8 +1215,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ore_b_0",
-      "nodeName": "ore_b_0",
+      "mergeBoundary": "OreA2",
+      "nodeName": "OreA2",
       "nodePath": [
         0,
         5
@@ -751,7 +1244,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.ore-b-1",
+      "id": "sf.render.ore-bulk-container.mesh.oreb0",
       "localTransform": [
         1,
         0,
@@ -771,8 +1264,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ore_b_1",
-      "nodeName": "ore_b_1",
+      "mergeBoundary": "OreB0",
+      "nodeName": "OreB0",
       "nodePath": [
         0,
         6
@@ -800,7 +1293,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.ore-b-2",
+      "id": "sf.render.ore-bulk-container.mesh.oreb1",
       "localTransform": [
         1,
         0,
@@ -820,8 +1313,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ore_b_2",
-      "nodeName": "ore_b_2",
+      "mergeBoundary": "OreB1",
+      "nodeName": "OreB1",
       "nodePath": [
         0,
         7
@@ -849,7 +1342,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.plate",
+      "id": "sf.render.ore-bulk-container.mesh.oreb2",
       "localTransform": [
         1,
         0,
@@ -869,8 +1362,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "plate",
-      "nodeName": "plate",
+      "mergeBoundary": "OreB2",
+      "nodeName": "OreB2",
       "nodePath": [
         0,
         8
@@ -898,7 +1391,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.rim",
+      "id": "sf.render.ore-bulk-container.mesh.orefill",
       "localTransform": [
         1,
         0,
@@ -918,8 +1411,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "rim",
-      "nodeName": "rim",
+      "mergeBoundary": "OreFill",
+      "nodeName": "OreFill",
       "nodePath": [
         0,
         9
@@ -947,7 +1440,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.rim-s",
+      "id": "sf.render.ore-bulk-container.mesh.ribp0",
       "localTransform": [
         1,
         0,
@@ -967,8 +1460,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "rim_s",
-      "nodeName": "rim_s",
+      "mergeBoundary": "RibP0",
+      "nodeName": "RibP0",
       "nodePath": [
         0,
         10
@@ -996,7 +1489,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.rub-p",
+      "id": "sf.render.ore-bulk-container.mesh.ribp1",
       "localTransform": [
         1,
         0,
@@ -1016,8 +1509,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "rub_p",
-      "nodeName": "rub_p",
+      "mergeBoundary": "RibP1",
+      "nodeName": "RibP1",
       "nodePath": [
         0,
         11
@@ -1045,7 +1538,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.rub-s",
+      "id": "sf.render.ore-bulk-container.mesh.ribp2",
       "localTransform": [
         1,
         0,
@@ -1065,8 +1558,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "rub_s",
-      "nodeName": "rub_s",
+      "mergeBoundary": "RibP2",
+      "nodeName": "RibP2",
       "nodePath": [
         0,
         12
@@ -1094,7 +1587,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.wall-a",
+      "id": "sf.render.ore-bulk-container.mesh.ribp3",
       "localTransform": [
         1,
         0,
@@ -1114,8 +1607,57 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "wall_a",
-      "nodeName": "wall_a",
+      "mergeBoundary": "RibP3",
+      "nodeName": "RibP3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.ribp4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RibP4",
+      "nodeName": "RibP4",
       "nodePath": [
         0,
         14
@@ -1143,7 +1685,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.wall-f",
+      "id": "sf.render.ore-bulk-container.mesh.ribp5",
       "localTransform": [
         1,
         0,
@@ -1163,8 +1705,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "wall_f",
-      "nodeName": "wall_f",
+      "mergeBoundary": "RibP5",
+      "nodeName": "RibP5",
       "nodePath": [
         0,
         15
@@ -1192,7 +1734,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.wall-p",
+      "id": "sf.render.ore-bulk-container.mesh.ribp6",
       "localTransform": [
         1,
         0,
@@ -1212,8 +1754,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "wall_p",
-      "nodeName": "wall_p",
+      "mergeBoundary": "RibP6",
+      "nodeName": "RibP6",
       "nodePath": [
         0,
         16
@@ -1241,7 +1783,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-bulk-container.mesh.wall-s",
+      "id": "sf.render.ore-bulk-container.mesh.ribs0",
       "localTransform": [
         1,
         0,
@@ -1261,11 +1803,795 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "wall_s",
-      "nodeName": "wall_s",
+      "mergeBoundary": "RibS0",
+      "nodeName": "RibS0",
       "nodePath": [
         0,
         17
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.ribs1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RibS1",
+      "nodeName": "RibS1",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.ribs2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RibS2",
+      "nodeName": "RibS2",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.ribs3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RibS3",
+      "nodeName": "RibS3",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.ribs4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RibS4",
+      "nodeName": "RibS4",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.ribs5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RibS5",
+      "nodeName": "RibS5",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.ribs6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RibS6",
+      "nodeName": "RibS6",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.rimaft",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RimAft",
+      "nodeName": "RimAft",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.rimfore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RimFore",
+      "nodeName": "RimFore",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.rimport",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RimPort",
+      "nodeName": "RimPort",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.rimstar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RimStar",
+      "nodeName": "RimStar",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.rubport",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RubPort",
+      "nodeName": "RubPort",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.rubstar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RubStar",
+      "nodeName": "RubStar",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.wallaft",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "WallAft",
+      "nodeName": "WallAft",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.wallfore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "WallFore",
+      "nodeName": "WallFore",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.wallport",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "WallPort",
+      "nodeName": "WallPort",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.ore-bulk-container.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-bulk-container.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-bulk-container.mesh.wallstar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "WallStar",
+      "nodeName": "WallStar",
+      "nodePath": [
+        0,
+        34
       ],
       "parentId": "sf.render.ore-bulk-container.root",
       "role": "immutable",
@@ -1340,45 +2666,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "e1829c4920d357212555ff40e14e268a4d3f0155ec03570e6fdf79f1d2728e3b"
+      "sha256": "3814ae9311c6da723b9306fe6b0b04c6f8c145b794efee00731822a7db2c32cd"
     },
     "sourceGlb": {
-      "bytes": 24560,
-      "sha256": "c2218f0ee99d530c1f1aad36cfdbec946cba4bac10c0925d5f43d1878fc3b1cd",
+      "bytes": 258892,
+      "sha256": "7b3790f47213df97581ecc72216d5f5a5b24e4526823a80e63655cddb63c5b0f",
       "uri": "place_ore_bulk_container.glb"
     },
     "sourceManifest": {
-      "bytes": 208595,
-      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
+      "bytes": 209118,
+      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 48300,
-    "sha256": "5458f7bbdccbdf2a7cb1877d75a206203561e909c12eef371ae2376526a706cb",
+    "bytes": 401836,
+    "sha256": "300282438abf4a892a92df366323c0a0713779dc46325c85e9273a73be0d8264",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.3549065589904785,
-        0.06243085861206055
+        0.6541949510574341,
+        0
       ],
       "max": [
-        5.099999904632568,
-        2.7349894046783447,
-        2.6999998092651367
+        5.099839687347412,
+        3.3085134029388428,
+        2.5300090312957764
       ],
       "min": [
-        -5.099999904632568,
-        -2.0251762866973877,
-        -2.5751380920410156
+        -5.099839687347412,
+        -2.0001235008239746,
+        -2.5300090312957764
       ],
       "size": [
-        10.199999809265137,
-        4.760165691375732,
-        5.275137901306152
+        10.199679374694824,
+        5.308636903762817,
+        5.060018062591553
       ]
     },
     "hidden": [],
@@ -1404,7 +2730,7 @@
           1
         ],
         "name": "SOCKET_Hoist_Center",
-        "planIndex": 15,
+        "planIndex": 32,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1423,19 +2749,20 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 14,
-      "warning": 2
+      "geology": 7,
+      "hull": 4,
+      "mechanical": 22
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -1470,45 +2797,130 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "warning"
+        "role": "geology"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "geology"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 16,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "geology"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 34,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 36,
+        "role": "hull"
       }
     ],
-    "nodeCount": 20,
+    "nodeCount": 37,
     "primitives": [
       {
         "canopy": false,
@@ -1530,7 +2942,7 @@
           0,
           1
         ],
-        "name": "floor",
+        "name": "Floor",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1557,7 +2969,7 @@
           0,
           1
         ],
-        "name": "ore_a_0",
+        "name": "IdPlate",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1584,7 +2996,7 @@
           0,
           1
         ],
-        "name": "ore_a_1",
+        "name": "OreA0",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1611,7 +3023,7 @@
           0,
           1
         ],
-        "name": "ore_a_2",
+        "name": "OreA1",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1638,7 +3050,7 @@
           0,
           1
         ],
-        "name": "ore_b_0",
+        "name": "OreA2",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1665,7 +3077,7 @@
           0,
           1
         ],
-        "name": "ore_b_1",
+        "name": "OreB0",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -1692,7 +3104,7 @@
           0,
           1
         ],
-        "name": "ore_b_2",
+        "name": "OreB1",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1719,7 +3131,7 @@
           0,
           1
         ],
-        "name": "plate",
+        "name": "OreB2",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -1746,7 +3158,7 @@
           0,
           1
         ],
-        "name": "rim",
+        "name": "OreFill",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -1773,7 +3185,7 @@
           0,
           1
         ],
-        "name": "rim_s",
+        "name": "RibP0",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -1800,7 +3212,7 @@
           0,
           1
         ],
-        "name": "rub_p",
+        "name": "RibP1",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -1827,7 +3239,7 @@
           0,
           1
         ],
-        "name": "rub_s",
+        "name": "RibP2",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -1854,7 +3266,34 @@
           0,
           1
         ],
-        "name": "wall_a",
+        "name": "RibP3",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RibP4",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -1881,7 +3320,7 @@
           0,
           1
         ],
-        "name": "wall_f",
+        "name": "RibP5",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -1908,7 +3347,7 @@
           0,
           1
         ],
-        "name": "wall_p",
+        "name": "RibP6",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -1935,8 +3374,440 @@
           0,
           1
         ],
-        "name": "wall_s",
+        "name": "RibS0",
         "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RibS1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RibS2",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RibS3",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RibS4",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RibS5",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RibS6",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RimAft",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RimFore",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RimPort",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RimStar",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RubPort",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "RubStar",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "WallAft",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "WallFore",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "WallPort",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "WallStar",
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1947,40 +3818,57 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_bulk_container.glb"
   },
-  "runtimeHash": "a99cfccc634a6b55855996aa4f2af7b2318b5c1f6b3387fd3f459d55c9927986",
+  "runtimeHash": "3f9caff26b0eba55d33388a2921a872ccc27d363ec24475626b78cd255a1fcfa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          5.099999904632568,
-          2.7349894046783447,
-          2.6999998092651367
+          5.099839687347412,
+          3.3085134029388428,
+          2.5300090312957764
         ],
         "min": [
-          -5.099999904632568,
-          -2.0251762866973877,
-          -2.5751380920410156
+          -5.099839687347412,
+          -2.0001235008239746,
+          -2.5300090312957764
         ]
       },
       "id": "sf.render.ore-bulk-container.body",
       "nodeIds": [
         "sf.render.ore-bulk-container.mesh.floor",
-        "sf.render.ore-bulk-container.mesh.ore-a-0",
-        "sf.render.ore-bulk-container.mesh.ore-a-1",
-        "sf.render.ore-bulk-container.mesh.ore-a-2",
-        "sf.render.ore-bulk-container.mesh.ore-b-0",
-        "sf.render.ore-bulk-container.mesh.ore-b-1",
-        "sf.render.ore-bulk-container.mesh.ore-b-2",
-        "sf.render.ore-bulk-container.mesh.plate",
-        "sf.render.ore-bulk-container.mesh.rim",
-        "sf.render.ore-bulk-container.mesh.rim-s",
-        "sf.render.ore-bulk-container.mesh.rub-p",
-        "sf.render.ore-bulk-container.mesh.rub-s",
-        "sf.render.ore-bulk-container.mesh.wall-a",
-        "sf.render.ore-bulk-container.mesh.wall-f",
-        "sf.render.ore-bulk-container.mesh.wall-p",
-        "sf.render.ore-bulk-container.mesh.wall-s",
+        "sf.render.ore-bulk-container.mesh.idplate",
+        "sf.render.ore-bulk-container.mesh.orea0",
+        "sf.render.ore-bulk-container.mesh.orea1",
+        "sf.render.ore-bulk-container.mesh.orea2",
+        "sf.render.ore-bulk-container.mesh.oreb0",
+        "sf.render.ore-bulk-container.mesh.oreb1",
+        "sf.render.ore-bulk-container.mesh.oreb2",
+        "sf.render.ore-bulk-container.mesh.orefill",
+        "sf.render.ore-bulk-container.mesh.ribp0",
+        "sf.render.ore-bulk-container.mesh.ribp1",
+        "sf.render.ore-bulk-container.mesh.ribp2",
+        "sf.render.ore-bulk-container.mesh.ribp3",
+        "sf.render.ore-bulk-container.mesh.ribp4",
+        "sf.render.ore-bulk-container.mesh.ribp5",
+        "sf.render.ore-bulk-container.mesh.ribp6",
+        "sf.render.ore-bulk-container.mesh.ribs0",
+        "sf.render.ore-bulk-container.mesh.ribs1",
+        "sf.render.ore-bulk-container.mesh.ribs2",
+        "sf.render.ore-bulk-container.mesh.ribs3",
+        "sf.render.ore-bulk-container.mesh.ribs4",
+        "sf.render.ore-bulk-container.mesh.ribs5",
+        "sf.render.ore-bulk-container.mesh.ribs6",
+        "sf.render.ore-bulk-container.mesh.rimaft",
+        "sf.render.ore-bulk-container.mesh.rimfore",
+        "sf.render.ore-bulk-container.mesh.rimport",
+        "sf.render.ore-bulk-container.mesh.rimstar",
+        "sf.render.ore-bulk-container.mesh.rubport",
+        "sf.render.ore-bulk-container.mesh.rubstar",
+        "sf.render.ore-bulk-container.mesh.wallaft",
+        "sf.render.ore-bulk-container.mesh.wallfore",
+        "sf.render.ore-bulk-container.mesh.wallport",
+        "sf.render.ore-bulk-container.mesh.wallstar",
         "sf.render.ore-bulk-container.root"
       ]
     }

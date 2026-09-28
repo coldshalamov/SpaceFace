@@ -16,10 +16,10 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_asteroid_graffiti'
 COLORS = {
-    'stone': '#5e564b',
-    'stone.strata': '#4a443b',
-    'stone.deep': '#4a443b',
-    'stone.quarry': '#6a6256',   # the flat cut face — lighter stone, never machinery tile
+    'stone': '#524a40',
+    'stone.strata': '#403830',
+    'stone.deep': '#403830',
+    'stone.quarry': '#5c5448',   # the flat cut face — lighter stone, never machinery tile
     'paint.tag1': '#3f6a62',     # teal survey band — muted
     'paint.tag2': '#8a5c20',     # ochre claim band — muted
     'hazard': '#8a7418',
@@ -35,14 +35,14 @@ def build():
     s = F.Ship(SHIP_ID, COLORS)
 
     # --- the mass: displaced core + satellites; a flat quarried face up/forward -------------
-    F.rock(s, 'Core', (0, 0, -0.5), 9.2, seed=17, subdiv=4, relief=0.34, terrace=0.45,
+    F.rock(s, 'Core', (0, 0, -0.5), 9.2, seed=17, subdiv=4, relief=0.34, terrace=0.0,
            material='stone',
            quarry_plane=((0.5, -0.5, 5.9), (0.1, -0.25, 1.0)), quarry_material='stone.quarry')
-    F.rock(s, 'LumpA', (-6.8, 2.5, -1.0), 4.0, seed=53, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpA', (-6.8, 2.5, -1.0), 4.0, seed=53, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
-    F.rock(s, 'LumpB', (5.5, -4.0, 2.5), 3.4, seed=67, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpB', (5.5, -4.0, 2.5), 3.4, seed=67, subdiv=4, relief=0.3, terrace=0.0,
            material='stone')
-    F.rock(s, 'LumpC', (-3.0, -6.0, -3.5), 3.2, seed=79, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpC', (-3.0, -6.0, -3.5), 3.2, seed=79, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
 
     # one stratum below the cut so the body reads layered

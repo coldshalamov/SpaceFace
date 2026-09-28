@@ -14,9 +14,9 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_asteroid_rock_c'
 COLORS = {
-    'stone': '#5b5348',
-    'stone.strata': '#453f36',
-    'stone.deep': '#453f36',
+    'stone': '#4e463d',
+    'stone.strata': '#38322b',
+    'stone.deep': '#38322b',
     'ceramic.xtal': '#5d6a72',   # pale crystal blades — darker than before, less glassy
     'glow_cyan': '#4fd8e8',      # faint crystal tips only
     'gunmetal': '#3a3f45',
@@ -30,11 +30,11 @@ def build():
     s = F.Ship(SHIP_ID, COLORS)
 
     # --- the displaced stone core + satellites ---------------------------------------------
-    F.rock(s, 'Core', (0, 0, -0.3), 4.3, seed=31, subdiv=4, relief=0.32, terrace=0.45,
+    F.rock(s, 'Core', (0, 0, -0.3), 4.3, seed=31, subdiv=4, relief=0.32, terrace=0.0,
            material='stone')
-    F.rock(s, 'LumpA', (2.6, -1.8, 1.2), 1.9, seed=43, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpA', (2.6, -1.8, 1.2), 1.9, seed=43, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
-    F.rock(s, 'LumpB', (-2.4, 0.8, -2.4), 1.5, seed=57, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpB', (-2.4, 0.8, -2.4), 1.5, seed=57, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
 
     F.band(s, 'Core', (0, -0.2, -1.4), (0.1, -0.08, 1.0), 0.8, 'stone.strata')

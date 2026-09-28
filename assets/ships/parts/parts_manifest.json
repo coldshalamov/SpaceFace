@@ -1893,8 +1893,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_graffiti.glb",
-      "tris": 11145,
-      "bytes": 1345248,
+      "tris": 11176,
+      "bytes": 1346272,
       "textureSize": 1024,
       "note": "Forge rebuild: graffiti rock — quarried face with modelled miners' paint bands, survey stakes, lamp.",
       "hooks": [],
@@ -1904,19 +1904,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.385281562805176,
-          -8.65831184387207,
-          -8.522741317749023
+          -10.395482063293457,
+          -8.838441848754883,
+          -8.543100357055664
         ],
         "max": [
-          8.5,
+          8.500030517578125,
           7.143588066101074,
-          8.887947082519531
+          8.892744064331055
         ],
         "dimensionsM": [
-          18.885281562805176,
-          15.801899909973145,
-          17.410688400268555
+          18.895512580871582,
+          15.982029914855957,
+          17.43584442138672
         ]
       },
       "tintable": {
@@ -1928,8 +1928,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
-      "tris": 12044,
-      "bytes": 1275220,
+      "tris": 12072,
+      "bytes": 1269900,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios metallic rock — faceted boulder cluster, quarried face, dark specular veins.",
       "hooks": [],
@@ -1939,19 +1939,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -6.870567321777344,
-          -5.432442665100098,
-          -4.577163219451904
+          -6.918847560882568,
+          -5.454514980316162,
+          -4.611258506774902
         ],
         "max": [
-          6.182191848754883,
-          3.966879367828369,
-          4.896740913391113
+          6.196010589599609,
+          4.046204566955566,
+          4.97465181350708
         ],
         "dimensionsM": [
-          13.052759170532227,
-          9.399322032928467,
-          9.473904132843018
+          13.114858150482178,
+          9.500719547271729,
+          9.585910320281982
         ]
       },
       "tintable": {}
@@ -1961,8 +1961,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
-      "tris": 10634,
-      "bytes": 1185048,
+      "tris": 11608,
+      "bytes": 1234432,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios icy rock — faceted core with pale frost caps and ice veins.",
       "hooks": [],
@@ -1972,19 +1972,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.7149980068206787,
-          -3.254791021347046,
-          -4.3643879890441895
+          -3.77760648727417,
+          -3.2931997776031494,
+          -4.37443208694458
         ],
         "max": [
-          3.9075732231140137,
-          4.610268592834473,
-          4.479449272155762
+          3.964128017425537,
+          4.525360584259033,
+          4.519436836242676
         ],
         "dimensionsM": [
-          7.622571229934692,
-          7.8650596141815186,
-          8.843837261199951
+          7.741734504699707,
+          7.818560361862183,
+          8.893868923187256
         ]
       },
       "tintable": {
@@ -1996,8 +1996,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
-      "tris": 8796,
-      "bytes": 958720,
+      "tris": 8802,
+      "bytes": 946996,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios crystalline rock — faceted core with a spiked crystal cluster, faint glow.",
       "hooks": [],
@@ -2007,19 +2007,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -4.043612480163574,
-          -4.020028114318848,
-          -3.8952245712280273
+          -4.129167556762695,
+          -4.036986351013184,
+          -3.8952183723449707
         ],
         "max": [
-          4.1853461265563965,
+          4.227375030517578,
           5.407841205596924,
-          3.5967705249786377
+          3.609050989151001
         ],
         "dimensionsM": [
-          8.22895860671997,
-          9.427869319915771,
-          7.491995096206665
+          8.356542587280273,
+          9.444827556610107,
+          7.504269361495972
         ]
       },
       "tintable": {}
@@ -2029,8 +2029,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
-      "tris": 12102,
-      "bytes": 1272548,
+      "tris": 12138,
+      "bytes": 1248968,
       "textureSize": 1024,
       "note": "Forge rebuild: seamed asteroid — banded mineral vein cut across the rock, faint warm seam.",
       "hooks": [],
@@ -2040,19 +2040,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.006564140319824,
-          -9.429875373840332,
-          -8.806736946105957
+          -11.000487327575684,
+          -9.713141441345215,
+          -8.996600151062012
         ],
         "max": [
-          9.286056518554688,
-          9.426740646362305,
-          9.977361679077148
+          9.299568176269531,
+          9.532408714294434,
+          10.200077056884766
         ],
         "dimensionsM": [
-          20.29262065887451,
-          18.856616020202637,
-          18.784098625183105
+          20.300055503845215,
+          19.24555015563965,
+          19.196677207946777
         ]
       },
       "tintable": {}
@@ -2872,7 +2872,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 15476,
-      "bytes": 1275648,
+      "bytes": 1276252,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2928,7 +2928,7 @@
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
       "tris": 7476,
-      "bytes": 667184,
+      "bytes": 667864,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2984,7 +2984,7 @@
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
       "tris": 11128,
-      "bytes": 843476,
+      "bytes": 844472,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
@@ -5433,14 +5433,15 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
-      "tris": 5324,
-      "bytes": 341868,
+      "tris": 7732,
+      "bytes": 597584,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1216 tris.",
+      "note": "Forge rebuild: the generic tow can — corrugated ISO shell, door latches, freight band, tow eye (same pods/ file and contract as the PQ-era body).",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -5459,26 +5460,24 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "MOUNT_Child"
-      ],
+      "hooks": [],
       "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.5299999713897705,
+          -0.5199999809265137,
           -0.019999995827674866,
-          -1.5103009939193726
+          -1.5299999713897705
         ],
         "max": [
-          4.809999942779541,
-          2.430000066757202,
-          1.5003010034561157
+          4.900000095367432,
+          2.2699999809265137,
+          1.5299999713897705
         ],
         "dimensionsM": [
-          5.3399999141693115,
-          2.450000062584877,
-          3.0106019973754883
+          5.420000076293945,
+          2.2899999767541885,
+          3.059999942779541
         ]
       }
     },
@@ -5487,13 +5486,14 @@
       "category": "pods",
       "priority": "P1",
       "file": "pods/pod_47a_evidence_spindle.glb",
-      "tris": 6864,
-      "bytes": 448040,
+      "tris": 10608,
+      "bytes": 744168,
       "textureSize": 256,
       "tintable": {
-        "hull": "Material_Hull"
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical"
       },
-      "note": "PQ-193.04 2026-09-14 — the 47-A evidence can: the ordinary tow can's ISO body under custody (seal straps, evidence chevrons, bolted cover, ledger case with a recessed lamp, padlocked door). Scenario-only: reached through SCENARIO_47A_PACKAGED_PROPS, deliberately not in runtimeSlots. Built by tools/blender/build_pq193_04_47a_bodies.py.",
+      "note": "Forge rebuild: the 47-A evidence can — sealed ISO body, custody straps, evidence bands, ledger case, padlocked door (same pods/ file and contract as the PQ-193.04 body).",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -5512,26 +5512,24 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "MOUNT_Child"
-      ],
+      "hooks": [],
       "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.7100000381469727,
-          -0.019999995827674866,
-          -1.6253180503845215
+          -2.809999942779541,
+          -1.0799999237060547,
+          -1.625
         ],
         "max": [
-          4.809999942779541,
-          3.609999895095825,
-          1.555317997932434
+          2.5999999046325684,
+          2.5999999046325684,
+          1.5549999475479126
         ],
         "dimensionsM": [
-          5.519999980926514,
-          3.6299998909235,
-          3.1806360483169556
+          5.409999847412109,
+          3.679999828338623,
+          3.1799999475479126
         ]
       }
     },
@@ -6479,7 +6477,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
       "tris": 29012,
-      "bytes": 1733424,
+      "bytes": 1736444,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6974,7 +6972,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 12724,
-      "bytes": 848804,
+      "bytes": 853080,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7405,7 +7403,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
       "tris": 23604,
-      "bytes": 1430636,
+      "bytes": 1438224,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7527,7 +7525,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_pelican",
       "tris": 25410,
-      "bytes": 1485476,
+      "bytes": 1490384,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8084,7 +8082,7 @@
       "status": "accepted",
       "wiringStatus": "live_player_wasp",
       "tris": 39784,
-      "bytes": 2132980,
+      "bytes": 2137672,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8294,8 +8292,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/yard_tug.glb",
-      "tris": 64514,
-      "bytes": 3637072,
+      "tris": 64504,
+      "bytes": 3653492,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

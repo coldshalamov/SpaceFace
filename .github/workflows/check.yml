@@ -56,6 +56,10 @@ jobs:
           # Program-control validation verifies integrated receipts against commits reachable from
           # HEAD, so it needs history rather than the action's default single-commit checkout.
           fetch-depth: 0
+          # Blobless: keep full commit ancestry for the control-plane checks but fetch historical
+          # blobs lazily — the archive/* tags carry ~4k commits and multi-GB binary history that
+          # otherwise stalls the whole job inside the fetch step.
+          filter: blob:none
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -156,6 +160,7 @@ jobs:
         with:
           # The feel bars are read alongside program receipts, which resolve against history.
           fetch-depth: 0
+          filter: blob:none
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -204,6 +209,7 @@ jobs:
           # THROWS when that ref is missing, which is exactly what a shallow single-commit checkout
           # gives you. This job needs the remote-tracking refs, so it needs full history.
           fetch-depth: 0
+          filter: blob:none
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

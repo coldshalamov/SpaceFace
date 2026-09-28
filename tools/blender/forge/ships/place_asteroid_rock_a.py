@@ -14,10 +14,11 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_asteroid_rock_a'
 COLORS = {
-    'stone': '#5e564b',          # tan-grey belt mid value
-    'stone.strata': '#4a443b',   # darker stratum bands
-    'stone.deep': '#4a443b',     # satellites
-    'stone.quarry': '#6a6256',   # flat quarried face — a shade lighter, same stone finish
+    'stone': '#524a40',          # tan-grey belt value — authored a step under #5e564b so the
+    # rendered read lands there after the key lift
+    'stone.strata': '#403830',   # darker stratum bands
+    'stone.deep': '#403830',     # satellites
+    'stone.quarry': '#5c5448',   # flat quarried face — a shade lighter, same stone finish
     'paint2': '#3a3f45',
     'dark': '#16191d',
     'glow_amber': '#c88f2a',
@@ -29,16 +30,16 @@ def build():
     s = F.Ship(SHIP_ID, COLORS)
 
     # --- the mass: displaced core with a quarried top face + satellite boulders ------------
-    F.rock(s, 'Core', (0, 0, -0.6), 5.5, seed=11, subdiv=4, relief=0.34, terrace=0.45,
+    F.rock(s, 'Core', (0, 0, -0.6), 5.5, seed=11, subdiv=4, relief=0.34, terrace=0.0,
            material='stone',
            quarry_plane=((0.4, -0.2, 4.2), (0.15, -0.1, 1.0)), quarry_material='stone.quarry')
-    F.rock(s, 'LumpA', (-4.6, -1.4, 1.4), 2.6, seed=23, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpA', (-4.6, -1.4, 1.4), 2.6, seed=23, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
-    F.rock(s, 'LumpB', (3.8, 1.4, -2.2), 2.4, seed=37, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpB', (3.8, 1.4, -2.2), 2.4, seed=37, subdiv=4, relief=0.3, terrace=0.0,
            material='stone')
-    F.rock(s, 'LumpC', (-2.2, 1.8, -3.0), 1.9, seed=51, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpC', (-2.2, 1.8, -3.0), 1.9, seed=51, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
-    F.rock(s, 'Shard', (4.9, -1.8, 1.9), 1.5, seed=63, subdiv=4, relief=0.28, terrace=0.4,
+    F.rock(s, 'Shard', (4.9, -1.8, 1.9), 1.5, seed=63, subdiv=4, relief=0.28, terrace=0.0,
            material='stone.deep',
            quarry_plane=((4.9, -1.8, 2.4), (-0.4, 0.2, 1.0)), quarry_material='stone.quarry')
 

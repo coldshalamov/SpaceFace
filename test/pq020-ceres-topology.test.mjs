@@ -17,8 +17,15 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // ring-hub proxy and gates the 3-primitive jump-ring proxy instead of one center ball each,
 // so the sector collider count rises 23 → 66. Entity/type census unchanged. Prior digest
 // d07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b.
+// Re-synced 2026-09-28 with scripts/lib/pq020CeresTopology.mjs: sanctioned Forge rebuild waves
+// moved embedded release hashes and the measured-skin collider count (184 → 190); this local
+// pin had drifted stale since the optic-structure re-pin. Prior digest
+// efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0.
+// Re-pinned 2026-09-28 for the alien-ecology additive seam (PR #170): the Closed Refinery's
+// 12-fauna colony joins the structural census (entities 23 → 35, byType +fauna:12); colliders
+// unchanged at 190. Prior digest daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0';
+  '1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -133,15 +140,18 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // and one POI marker are far-actor rows until the player approaches, so they are not on the
   // combat list. They are still materialized as planned (worldSite below counts live + shelved).
   // Pre-shelf this was total 38 / fx 10 / wreck 14 / collidable 21.
+  // PR #170: the Closed Refinery colony adds 12 fauna bodies to the live core census
+  // (23 → 35); they are not collider-backed, so `collidable` stays at 14.
   assert.deepEqual(first.structuralCost.entities, {
-    total: 23,
-    byType: { asteroid: 6, fx: 9, ship: 2, station: 6 },
+    total: 35,
+    byType: { asteroid: 6, fauna: 12, fx: 9, ship: 2, station: 6 },
     collidable: 14,
   });
-  // Colliders went 14 → 66 with the compound-collision rollout: each station registers the
-  // 23-primitive ring-hub proxy and each gate the 3-primitive jump-ring proxy (2×23 + 4×3 +
-  // 6 asteroids + 2 ship capsules), replacing the one-ball-per-entity count.
-  assert.equal(first.structuralCost.colliders, 66);
+  // Colliders went 14 → 66 with the compound-collision rollout, then kept moving as measured
+  // skins and authored rebuilds changed proxy primitive counts (66 → 108 prism gallery,
+  // 108 → 184 Forge wave, 184 → 190 the packet-8 pack releases). The count tracks sanctioned
+  // asset rebuilds, not topology — the digest pin above is the canary.
+  assert.equal(first.structuralCost.colliders, 190);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
@@ -183,9 +193,12 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.deepEqual(first.additiveDressing.groupIds, [
     'everydaySpaceKit', 'worldOneOff', 'wreckAftermath',
   ]);
+  // The Long Berth yard tug became a physical wreck body (0c6f0ea1a) and leaves the
+  // fx dressing census whenever the far-actor shelf takes it, so the authored dressing
+  // total is 20 fx entities rather than 21.
   assert.deepEqual(first.additiveDressing.totals, {
-    entities: 21,
-    byType: { fx: 21 },
+    entities: 20,
+    byType: { fx: 20 },
     collidable: 0,
     colliders: 0,
   });
@@ -199,7 +212,7 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     {
       id: 'worldOneOff',
       dataFlag: 'worldOneOff',
-      live: { entities: 11, byType: { fx: 11 }, collidable: 0, colliders: 0 },
+      live: { entities: 10, byType: { fx: 10 }, collidable: 0, colliders: 0 },
     },
     {
       id: 'wreckAftermath',

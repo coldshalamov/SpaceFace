@@ -2,7 +2,7 @@
   "schema": "spaceface.everydaySpaceKit.v1",
   "provenance": {
     "builderPath": "tools/blender/build_everyday_space_kit.py",
-    "builderSha256AtAssetGeneration": "48abd26a0374c9a231b8f765a3c1604029849e07234b20866c97cb95ec9de46f",
+    "builderSha256AtAssetGeneration": "9e9964c7d5cca99ee4c84e619550300e4548a6d9dbc1e6f4c3628df91a18ee36",
     "blenderVersionAtAssetGeneration": "5.1.2",
     "gltfGeneratorRecords": [
       "Khronos glTF Blender I/O v5.1.20"
@@ -116,13 +116,13 @@
     {
       "id": "ore_bulk_container",
       "status": "design_candidate",
-      "triangles": 720,
+      "triangles": 6996,
       "sizeM": [
         10.2,
-        5.275,
-        4.76
+        5.06,
+        5.308
       ],
-      "parts": 16,
+      "parts": 33,
       "sockets": [
         "SOCKET_Hoist_Center"
       ],
@@ -130,22 +130,23 @@
         "kind": "box",
         "centerM": [
           0.0,
-          -0.062,
-          0.355
+          0.0,
+          0.654
         ],
         "halfExtentsM": [
           5.1,
-          2.637,
-          2.38
+          2.53,
+          2.654
         ]
       },
-      "bytes": 49696,
-      "sha256": "258c3d1139887c480b4008aa878b6a928d210c33452142c211f8752b0e8c0130",
+      "bytes": 714692,
+      "sha256": "756667dd8665fbde4c6c28f48ed3cee437f14aae423717b75a2c3ff59ef50ab8",
       "family": "cargo",
       "role": "open-top bulk ore box, load proud of the rim (show your mass)",
       "states": "active=ore mound present; abandoned=empty box (subtraction)",
       "placement": "mining worksites, conveyor discharge, barge loading aprons",
-      "lodPlan": "LOD1: box+ore as one; LOD2: single box"
+      "lodPlan": "LOD1: box+ore as one; LOD2: single box",
+      "forgeDerived": "tools/blender/forge/ships/place_ore_bulk_container.py"
     },
     {
       "id": "container_rack",

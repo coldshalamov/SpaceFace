@@ -482,7 +482,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
 | 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | DONE — bound-wreck pool reattach + classified-mint idempotence fix; 3/3 focused + 116/116 adjacent; receipt SF-286-FIRST-VICTORY-WRECK.md |
 | 77 | PB-SLICE-B | SF-289+290 customs crossing three honest approaches + refinery shortage solved by visible delivery | PB | DONE — weir bolt flags unread transits into the hot-ledger + starved-yard feed run re-feeds the real hopper via cargo:delivered→stock; 12/12 focused + 219/219 adjacent runnable; receipt PB-SLICE-B-WEIR-BOLT-STARVED-YARD.md |
-| 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | OPEN — must-share pair |
+| 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | DONE — spill pods name the real cause (massline_whip/panic_jettison/combat_fire) + stolen freight rides ai.stolenLoot through release/shelf, sheds under pressure, drops on kill; storage-gated destroyed path; 38/38 focused + 51/51 adjacent; receipt PB-SLICE-C-BAD-THROW-ROBBERY-PURSUIT.md |
 | 79 | PB-SLICE-D | SF-291+293 same rope proves two careers + heavy enemy becomes temporary terrain | PB | OPEN |
 | 80 | PB-SLICE-E | SF-294+295 quiet return visit reveals what changed + investigation changes the next physical choice | PB | OPEN |
 | 81 | PB-SLICE-F | SF-296+297 low-resource dignified recovery + combat pressure clears into audible breathing room | PB | OPEN |
@@ -2156,10 +2156,7 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
-| **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
-| **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |
 | **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |
-| **GFX-11** | Runtime attachments on Forge hulls: retro shells on the nozzles, damage hooks shedding, player paint on all 14 hulls. |
 | **GFX-12** | Wave F F3: the pending-body stand-in is the hull's own Forge LOD2. |
 
 ### Wave D — shelf that beats live

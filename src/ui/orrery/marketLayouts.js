@@ -419,7 +419,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt-instrument__plot { height:80px !important; }
   ${M} .sx-mkt-chart-key { display:flex !important; margin-top:4px !important; font-size:12px !important; }
   ${M} .sx-mkt-chart-key > span { white-space:nowrap !important; flex:none !important; }
-  ${M} .sx-mkt-chart-key { font-size:11px !important; letter-spacing:.08em !important; margin-left:20px !important; }
+  ${M} .sx-mkt-chart-key { font-size:12px !important; letter-spacing:.06em !important; margin-left:12px !important; }
   ${M} .orr-mkt-subkey { margin-left:20px !important; }
   ${M} .sx-qty .orr-qdial { filter:drop-shadow(0 0 6px rgb(7 8 10 / .9)); }
   ${M} .sx-mkt__quote > .sx-mkt-chain { display:none !important; }

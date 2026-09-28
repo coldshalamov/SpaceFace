@@ -28,7 +28,7 @@ const CSS = `
 .orr-voicearc .orr-bardial__minor { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1.5px; stroke-linecap:butt; }
 .orr-voicearc .orr-bardial__tick { fill:none; stroke:rgb(${BONE} / .6); stroke-width:2px; stroke-linecap:butt; transition:stroke .18s ease-out; }
 .orr-voicearc .orr-bardial__tick.is-on { stroke:rgb(250 247 238); }
-.orr-voicearc .orr-bardial__num { font-family:var(--dp-face-label, "Archivo"); font-size:10px; font-weight:600; letter-spacing:0; fill:rgb(${BONE} / .55); text-anchor:middle; dominant-baseline:central; }
+.orr-voicearc .orr-bardial__num { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:600; letter-spacing:0; fill:rgb(${BONE} / .55); text-anchor:middle; dominant-baseline:central; }
 .orr-voicearc .orr-bardial__num.is-on { fill:rgb(250 247 238); }
 /* the cursor: a needle across the band and a notched chevron pointing at her voice, in warm white with a bloom */
 .orr-voicearc .orr-bardial__needle-bloom { fill:none; stroke:rgb(250 247 238 / .22); stroke-width:8px; stroke-linecap:butt; }

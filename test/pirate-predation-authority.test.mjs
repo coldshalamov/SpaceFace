@@ -10,6 +10,7 @@ import {
   isHostileForAI,
 } from '../src/ai/engagementAuthority.js';
 import { ambientObjective } from '../src/ai/ambientPredation.js';
+import { getFarActor, insertFarActor } from '../src/world/farActorTable.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { createSimulation } from '../src/core/sim.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
@@ -908,6 +909,7 @@ test('a raider destroyed mid-escape respills its secured cargo as ordinary resid
   ai.predationObjective.secured = [{ commodityId: 'cmdty_ore_iron', qty: 5 }];
   ai.predationObjective.securedQty = 5;
 
+  raider.alive = false; // the kernel flags the hull dead before the killed receipt ships
   harness.bus.emit('entity:killed', {
     id: raider.id,
     killerId: victim.id,
@@ -950,4 +952,189 @@ test('a rematerialized stale ambient binding sweeps clear fail-closed', () => {
   assert.equal(raider.data.ai.retaliationTargetId, undefined, 'no retaliation residue');
   assert.equal(raider.data.ai.predationTargetId, undefined, 'no target residue');
   assert.equal(raider.data.ai.motive, 'assigned_interdiction', 'pre-raid doctrine restored');
+});
+
+test('an escaped raider keeps what it stole — the loot rides its durable hull', () => {
+  const harness = bootAmbient(47075);
+  ambientPair(harness);
+  const { raidId, raider, victim } = boundAmbientRaid(harness);
+  const ai = raider.data.ai;
+  ai.predationStatus = 'cargo_escape';
+  ai.predationObjective.escapeOrigin = { x: raider.pos.x, z: raider.pos.z };
+  ai.predationObjective.escapeRadius = 100;
+  ai.predationObjective.escapeDeadlineAt = harness.state.simTime + 60;
+  ai.predationObjective.secured = [{ commodityId: 'cmdty_ore_iron', qty: 6 }];
+  ai.predationObjective.securedQty = 6;
+
+  raider.pos.x += 150; // beyond the escape radius — the raid releases 'escaped'
+  harness.sim.runTicks(2 * 60);
+  assert.equal(harness.events.cleared[0].reason, 'escaped');
+  assert.equal(ai.predationObjective, undefined, 'the raid binding released');
+  // SF-292: the goods stay in the actual current owner's hands — the raider's durable ai bag
+  // (the part of the record that survives shelving), never deleted at the release boundary.
+  assert.ok(ai.stolenLoot && Array.isArray(ai.stolenLoot.lines), 'kept loot rides the hull');
+  assert.equal(ai.stolenLoot.lines[0].commodityId, 'cmdty_ore_iron');
+  assert.equal(ai.stolenLoot.lines[0].qty, 6);
+  assert.equal(ai.stolenLoot.victimId, victim.id);
+  assert.equal(ai.stolenLoot.manifestId, AMBIENT_MANIFEST);
+});
+
+test('an escaped raider killed later drops the loot it kept — nothing vanishes', () => {
+  const harness = bootAmbient(47076);
+  ambientPair(harness);
+  const { raidId, raider, victim } = boundAmbientRaid(harness);
+  const ai = raider.data.ai;
+  ai.predationStatus = 'cargo_escape';
+  ai.predationObjective.escapeOrigin = { x: raider.pos.x, z: raider.pos.z };
+  ai.predationObjective.escapeRadius = 100;
+  ai.predationObjective.escapeDeadlineAt = harness.state.simTime + 60;
+  ai.predationObjective.secured = [{ commodityId: 'cmdty_ore_iron', qty: 5 }];
+  ai.predationObjective.securedQty = 5;
+  raider.pos.x += 150;
+  harness.sim.runTicks(2 * 60);
+  assert.equal(harness.events.cleared[0].reason, 'escaped');
+  assert.ok(ai.stolenLoot, 'loot aboard after escape');
+
+  // The player runs the thief down after the raid released — the kill still drops the take.
+  raider.alive = false;
+  harness.bus.emit('entity:killed', {
+    id: raider.id, killerId: harness.player.id, sectorId: AMBIENT_SECTOR, pos: { ...raider.pos },
+  });
+  let residue = [...harness.state.entities.values()].filter((entity) => (
+    entity.type === 'payload' && entity.data
+      && entity.data.payloadType === 'jettisoned_cargo'
+      && entity.data.ownerId === raider.id
+  ));
+  assert.equal(residue.length, 1, 'kept loot respills as a physical pod');
+  assert.equal(residue[0].data.salvagePool.cmdty_ore_iron, 5);
+  assert.equal(residue[0].data.stolenFromId, victim.id, 'the pod still names its freight owner');
+  assert.equal(residue[0].data.manifestId, AMBIENT_MANIFEST);
+  assert.equal(ai.stolenLoot, undefined, 'the ledger drained with the drop');
+
+  // The corpse's post-delete destroyed receipt arrives on the same drained ledger — no double drop.
+  harness.state.entities.delete(raider.id);
+  harness.bus.emit('entity:destroyed', {
+    id: raider.id, type: 'ship', pos: { ...raider.pos }, entity: raider,
+  });
+  residue = [...harness.state.entities.values()].filter((entity) => (
+    entity.type === 'payload' && entity.data
+      && entity.data.payloadType === 'jettisoned_cargo'
+      && entity.data.ownerId === raider.id
+  ));
+  assert.equal(residue.length, 1, 'killed→destroyed drops the take exactly once');
+});
+
+test('pressure during the escape knocks the loot loose piecemeal — a pursuit recovers it', () => {
+  const harness = bootAmbient(47077);
+  ambientPair(harness);
+  const { raidId, raider } = boundAmbientRaid(harness);
+  const ai = raider.data.ai;
+  ai.predationStatus = 'cargo_escape';
+  ai.predationObjective.secured = [{ commodityId: 'cmdty_ore_iron', qty: 6 }];
+  ai.predationObjective.securedQty = 6;
+  const patrol = harness.sim.spawn(ambientRaiderSpec({ x: raider.pos.x + 50, z: raider.pos.z }));
+
+  // A lawful pursuer's fire — not the player — still pressures the ditch.
+  harness.bus.emit('combat:damage', {
+    targetId: raider.id, attackerId: patrol.id, applied: 4, pos: { ...raider.pos },
+  });
+  const firstDump = [...harness.state.entities.values()].filter((e) => (
+    e.type === 'payload' && e.data && e.data.spillCause === 'pressure_jettison'));
+  assert.equal(firstDump.length, 1, 'one pressured ditch, not a burst');
+  assert.equal(firstDump[0].data.salvagePool.cmdty_ore_iron, 3, 'about a third of the line sheds');
+  assert.equal(firstDump[0].data.stolenFromId, harness.state.entities.get(
+    ai.predationObjective.targetId).id);
+  assert.equal(ai.predationObjective.securedQty, 3, 'the live ledger decrements — conserved');
+  assert.equal(ai.predationStatus, 'cargo_escape', 'the raider keeps running while it sheds');
+
+  // Cooldown: a second hit inside the window drops nothing more.
+  harness.bus.emit('combat:damage', {
+    targetId: raider.id, attackerId: patrol.id, applied: 4, pos: { ...raider.pos },
+  });
+  assert.equal([...harness.state.entities.values()].filter((e) => (
+    e.type === 'payload' && e.data && e.data.spillCause === 'pressure_jettison')).length, 1);
+  assert.equal(ai.predationObjective.securedQty, 3);
+
+  // After the window, sustained pressure sheds the rest in lumps — cargo total stays conserved.
+  harness.state.simTime += 5;
+  harness.bus.emit('combat:damage', {
+    targetId: raider.id, attackerId: patrol.id, applied: 4, pos: { ...raider.pos },
+  });
+  const dumps = [...harness.state.entities.values()].filter((e) => (
+    e.type === 'payload' && e.data && e.data.spillCause === 'pressure_jettison'));
+  const spilled = dumps.reduce((sum, e) => sum + e.data.salvagePool.cmdty_ore_iron, 0);
+  assert.equal(spilled + ai.predationObjective.securedQty, 6,
+    'pods + remaining ledger == the stolen total');
+});
+
+test('player fire mid-escape converts the raider and the kept loot still drops on the kill', () => {
+  const harness = bootAmbient(47078);
+  ambientPair(harness);
+  const { raidId, raider } = boundAmbientRaid(harness);
+  const ai = raider.data.ai;
+  ai.predationStatus = 'cargo_escape';
+  ai.predationObjective.secured = [{ commodityId: 'cmdty_ore_iron', qty: 7 }];
+  ai.predationObjective.securedQty = 7;
+
+  harness.bus.emit('combat:damage', {
+    targetId: raider.id, attackerId: harness.player.id, applied: 9, pos: { ...raider.pos },
+  });
+  assert.equal(ai.motive, 'self_defense', 'player intervention still converts the raider');
+  // The first hit also knocked one lump loose; the rest transferred into the durable ledger.
+  const dumps = [...harness.state.entities.values()].filter((e) => (
+    e.type === 'payload' && e.data && e.data.spillCause === 'pressure_jettison'));
+  const spilledQty = dumps.reduce((sum, e) => sum + e.data.salvagePool.cmdty_ore_iron, 0);
+  const aboard = ai.stolenLoot
+    ? ai.stolenLoot.lines.reduce((sum, l) => sum + l.qty, 0) : 0;
+  assert.equal(spilledQty + aboard, 7, 'hit-ditch + kept ledger == the stolen total');
+
+  raider.alive = false;
+  harness.bus.emit('entity:killed', {
+    id: raider.id, killerId: harness.player.id, sectorId: AMBIENT_SECTOR, pos: { ...raider.pos },
+  });
+  const allPods = [...harness.state.entities.values()].filter((e) => (
+    e.type === 'payload' && e.data && e.data.salvagePool
+      && e.data.salvagePool.cmdty_ore_iron > 0));
+  const total = allPods.reduce((sum, e) => sum + e.data.salvagePool.cmdty_ore_iron, 0);
+  assert.equal(total, 7, 'the whole take is back in the world — conserved end to end');
+  assert.equal(ai.stolenLoot, undefined);
+});
+
+test('a dead raider\'s post-delete entity:destroyed still drops the cargo — payload ref, not id lookup', () => {
+  const harness = bootAmbient(47079);
+  ambientPair(harness);
+  const { raider } = boundAmbientRaid(harness);
+  const ai = raider.data.ai;
+  ai.stolenLoot = { lines: [{ commodityId: 'cmdty_ore_iron', qty: 4 }], victimId: null, manifestId: null };
+  // The destroyed receipt queues after the map delete — the id lookup misses; the payload's own
+  // entity ref is the only live handle (the pre-fix path dropped this cargo silently).
+  raider.alive = false;
+  harness.state.entities.delete(raider.id);
+  harness.bus.emit('entity:destroyed', {
+    id: raider.id, type: 'ship', pos: { ...raider.pos }, entity: raider,
+  });
+  const residue = [...harness.state.entities.values()].filter((e) => (
+    e.type === 'payload' && e.data && e.data.spillCause === 'raider_destroyed'));
+  assert.equal(residue.length, 1, 'the post-delete drop still conserves the freight');
+  assert.equal(residue[0].data.salvagePool.cmdty_ore_iron, 4);
+});
+
+test('a virtualized (shelved) raider keeps its loot on the shared ai bag — no invisible drop', () => {
+  const harness = bootAmbient(47079);
+  ambientPair(harness);
+  const { raider } = boundAmbientRaid(harness);
+  const ai = raider.data.ai;
+  ai.stolenLoot = { lines: [{ commodityId: 'cmdty_ore_iron', qty: 4 }], victimId: null, manifestId: null };
+  // The real shelf path: insertFarActor shares the entity's ai bag BY REFERENCE into the far row
+  // (leanIdentityData), then removeEntity(reason:'virtualize') flags alive=false and queues a
+  // destroyed receipt carrying that same ref. A respill here would strand invisible pods at the
+  // shelf edge AND erase the row's ledger through the shared bag — the row IS the conservation.
+  const rec = insertFarActor(harness.state, raider, harness.state.simTime, harness.sim.helpers);
+  harness.sim.helpers.removeEntity(raider.id, { immediate: true, reason: 'virtualize' });
+  harness.sim.runTicks(1); // flush the queued entity:destroyed receipt
+  const pods = [...harness.state.entities.values()].filter((e) => e.type === 'payload');
+  assert.equal(pods.length, 0, 'a stored hull drops nothing');
+  const row = getFarActor(harness.state, raider.id);
+  assert.equal(row, rec, 'the far row holds the shelved raider');
+  assert.equal(row.data.ai.stolenLoot.lines[0].qty, 4, 'the loot rides the shelved ai bag intact');
 });

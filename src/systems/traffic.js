@@ -5003,7 +5003,9 @@ export const traffic = {
       z = from.z;
     }
     this._recordViolence(x, z, attackerId, victimId, Number.isFinite(state && state.simTime) ? state.simTime : 0);
-    this._spillHaulerCargoFromViolence(victim, attacker);
+    // The spill names what landed: a whip-flung mass reads as the mass, not as gunfire.
+    const cause = p.origin && typeof p.origin.kind === 'string' ? p.origin.kind : 'combat_damage';
+    this._spillHaulerCargoFromViolence(victim, attacker, cause);
     if (victim) {
       this._broadcastCivilianDistress(victim, attacker, 'combat_damage');
     }
@@ -5050,7 +5052,7 @@ export const traffic = {
       null,
       Number.isFinite(state && state.simTime) ? state.simTime : 0,
     );
-    this._spillHaulerCargoFromViolence(victim, shooter);
+    this._spillHaulerCargoFromViolence(victim, shooter, 'combat_fire');
     if (victim) {
       this._broadcastCivilianDistress(victim, shooter, 'combat_fire');
     }
@@ -5179,7 +5181,7 @@ export const traffic = {
     return null;
   },
 
-  _spillHaulerCargoFromViolence(hauler, attacker) {
+  _spillHaulerCargoFromViolence(hauler, attacker, cause = 'combat_damage') {
     if (!hauler || hauler.alive === false || hauler.type !== 'ship') return null;
     if (attacker && attacker.id === hauler.id) return null;
     if (isSurvivalCohort(hauler) || isSurvivalCohort(attacker)) return null;
@@ -5242,7 +5244,9 @@ export const traffic = {
       pod.data.manifestId = current.manifestId || null;
       pod.data.ownerRecordId = (rec && rec.worldRecordId) || null;
       pod.data.carrierRole = (rec && rec.role) || hauler.role || 'hauler';
-      pod.data.spillCause = 'combat_fire';
+      // The pod remembers what actually dislodged it — gunfire, a flung mass, or raw panic —
+      // so a scoop-and-hail read matches the event that made it.
+      pod.data.spillCause = cause;
       pod.data.attackerId = (attacker && attacker.id) || null;
     }
     data.violenceCargoSpilled = true;
@@ -5274,7 +5278,7 @@ export const traffic = {
         attackerId: (attacker && attacker.id) || null,
         entityId: hauler.id,
         manifestId: current.manifestId || null,
-        cause: 'combat_fire',
+        cause,
         commodityId: line.commodityId,
         qty: dump,
         podCount: 1,
@@ -5495,7 +5499,8 @@ export const traffic = {
       const reaction = 'dump_cargo';
       if (rec) rec.civilianReaction = reaction;
       if (e.data) e.data.civilianReaction = reaction;
-      this._spillHaulerCargoFromViolence(e, threatEnt);
+      // A panic dump before any hit lands is the hauler's own jettison, not battle damage.
+      this._spillHaulerCargoFromViolence(e, threatEnt, 'panic_jettison');
       if (stations && stations.length > 1 && rec && !rec.worldSiteRoute && !rec.claimTravelRoute) {
         if (rec.violenceResumeTargetId == null) rec.violenceResumeTargetId = rec.targetId;
         const dest = this._pickFleeStation(e, stations, aim, rec.targetId);
