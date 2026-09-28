@@ -1,0 +1,464 @@
+{
+  "builder": "tools/blender/build_wreck_aftermath_pack.py",
+  "builderSha256": "667780a838748311f542af7002152e1c386bfb12907bce56fad92ad797c36836",
+  "blender": "5.1.2",
+  "command": "blender --background --factory-startup --python tools/blender/build_wreck_aftermath_pack.py -- --render --distances --sheets --silhouettes --states --gaps --compositions",
+  "fiction": "design/fiction/THE_LONG_AFTERMATH.md",
+  "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
+  "sourceOnly": true,
+  "rng": "none - every dimension, break, drift and state is authored",
+  "playerHullM": 28.0,
+  "minGapClearRadiusM": 20.0,
+  "assets": [
+    {
+      "id": "wreck_ore_freighter_bow",
+      "family": "ore_freighter",
+      "kind": "primary",
+      "state": "cooling",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow.glb",
+      "sha256": "2e49df17946184bc8ad00039092ee89e7759d4ea8e804b64eed79f55b41f8840",
+      "bytes": 1043616,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 15998,
+      "sizeM": [
+        179.03,
+        70.12,
+        70.12
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        58.89,
+        0.0,
+        0.0
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -19.1,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.22,
+          "clearSpanM": 48.45,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          179.03,
+          70.12,
+          70.12
+        ]
+      }
+    },
+    {
+      "id": "wreck_ore_freighter_stern",
+      "family": "ore_freighter",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Bulk ore freighter (Forge ore barge), stern: drive block, command tower, radiators.",
+      "reads": "The business end survived whole \u2014 which is why the read is \"salvage target\", not debris: intact drives, dead lights, the tower windows dark.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_stern.glb",
+      "sha256": "6d132c86bf3dc0b295104c48077240063bc441fc6f6e3e13351397c13f337800",
+      "bytes": 1185620,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 22360,
+      "sizeM": [
+        145.0,
+        64.88,
+        62.73
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -81.9,
+        0.23,
+        13.57
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Reactor",
+        "SOCKET_Salvage_Drive",
+        "SOCKET_Salvage_Radiator"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -34.0,
+          -19.0,
+          7.0
+        ],
+        "tumbleAxis": [
+          0.201,
+          -0.301,
+          0.932
+        ],
+        "tumbleDeg": 24.0,
+        "driftDistanceM": 39.57,
+        "note": "the drive end took the momentum; it backs away from the break"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          145.0,
+          64.88,
+          62.73
+        ]
+      }
+    },
+    {
+      "id": "wreck_ore_freighter_hopper",
+      "family": "ore_freighter",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "One cargo hopper bay of the ore barge, ore still heaped in the well.",
+      "reads": "A whole hold section \u2014 the ore heap says the cargo left with the break, which is exactly the story the bow's empty gap tells from the other side.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_hopper.glb",
+      "sha256": "237338e9b49c9b15707a82140ed7aa1c966c8195c673196f1a67c33f1f08426a",
+      "bytes": 565476,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 5744,
+      "sizeM": [
+        49.0,
+        47.13,
+        25.44
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        63.7,
+        0.06,
+        2.06
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Ore"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          49.0,
+          47.13,
+          25.44
+        ]
+      }
+    },
+    {
+      "id": "deb_ore_freighter_ring_span",
+      "family": "ore_freighter",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "One ring frame of the freighter trunk, snapped at the lower arc.",
+      "reads": "Bare frame with a coaming plate still on it \u2014 the piece that explains what the ribcage gap in the bow section used to hold.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_ring_span.glb",
+      "sha256": "3dee8a66034e874fb9accd811795bb2efe05e342c49c56496c00a159eb3dfa6d",
+      "bytes": 214124,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 304,
+      "sizeM": [
+        10.14,
+        53.0,
+        51.85
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        0.52,
+        0.01,
+        1.01
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          10.14,
+          53.0,
+          51.85
+        ]
+      }
+    },
+    {
+      "id": "deb_ore_freighter_hopper_lid",
+      "family": "ore_freighter",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "The deck plate and coaming around one hopper mouth, peeled off the trunk.",
+      "reads": "Flat plate with the hopper rim in it \u2014 reads as the missing piece of the hopper wreck next to it in the field.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_hopper_lid.glb",
+      "sha256": "b23be11b613007b6ad75bfdfc3b23919e297325c41356ca294deb2d0dc626117",
+      "bytes": 459016,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 4250,
+      "sizeM": [
+        24.94,
+        32.22,
+        30.57
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        42.97,
+        0.16,
+        3.27
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          24.94,
+          32.22,
+          30.57
+        ]
+      }
+    },
+    {
+      "id": "deb_ore_freighter_drive_bell",
+      "family": "ore_freighter",
+      "kind": "debris",
+      "state": "stripped",
+      "was": "The stern drive face of the ore barge: four bells in a square block.",
+      "reads": "Four dark bells pointing one way \u2014 an engine room with the ship torn off it.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_drive_bell.glb",
+      "sha256": "a01bce1a49429a2b1ed75661f2fed2e39b446804cc888b4a5854b036fb623103",
+      "bytes": 377404,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 3581,
+      "sizeM": [
+        8.19,
+        15.98,
+        9.88
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -34.04,
+        0.01,
+        -0.0
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          8.19,
+          15.98,
+          9.88
+        ]
+      }
+    },
+    {
+      "id": "wreck_ore_freighter_bow__fresh",
+      "family": "ore_freighter",
+      "kind": "state-variant",
+      "state": "fresh",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "variantOf": "wreck_ore_freighter_bow",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow__fresh.glb",
+      "sha256": "8cffa75e8b127fcfe5828595545ee9cae1842e5f0f7d3e34a073276f250b361b",
+      "bytes": 1049736,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 16038,
+      "sizeM": [
+        179.03,
+        70.12,
+        70.12
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -19.1,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.22,
+          "clearSpanM": 48.45,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        58.89,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "wreck_ore_freighter_bow__derelict",
+      "family": "ore_freighter",
+      "kind": "state-variant",
+      "state": "derelict",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "variantOf": "wreck_ore_freighter_bow",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow__derelict.glb",
+      "sha256": "5b263b88e04560aaa0feafa4b6fcbeb8b9eee049fd0107bfb2fc382191547c75",
+      "bytes": 1043752,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 15998,
+      "sizeM": [
+        179.03,
+        70.12,
+        70.12
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -19.1,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.22,
+          "clearSpanM": 48.45,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        58.89,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "wreck_ore_freighter_bow__stripped",
+      "family": "ore_freighter",
+      "kind": "state-variant",
+      "state": "stripped",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "variantOf": "wreck_ore_freighter_bow",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow__stripped.glb",
+      "sha256": "9176630ab4eb01f412a6f7befeb53f71fef3d2344c94338a4594938e5d2ec915",
+      "bytes": 981968,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 9882,
+      "sizeM": [
+        179.0,
+        69.87,
+        69.87
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -18.8,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.02,
+          "clearSpanM": 48.05,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        58.38,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "socketFailures": [],
+  "gapFailures": [],
+  "floatingMarkFailures": [],
+  "renderFailures": [],
+  "assetCount": 9
+}

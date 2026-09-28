@@ -2156,8 +2156,6 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
-| **GFX-3** | Remaining pre-Forge places rebuilt, in order: opening route → claim outposts / conveyor / industry props → law & travel → the rest. |
-| **GFX-7** | Wrecks derived from the Forge ships replace the pre-Forge aftermath pack. |
 | **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
 | **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |
 | **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |

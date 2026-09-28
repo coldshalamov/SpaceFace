@@ -6,533 +6,833 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5ea660272e7cb391146dbb7769b2477150f8956e3197aba0b8ebbc8406df575c",
+  "contentHash": "50f58ed1189b2ad55637c475d8c07315adb41eb6f0f7a321fdedd7addf1ebdec",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -5.292121410369873,
-          -6.103991508483887,
-          3.000000476837158
+          -2.412379741668701,
+          2.6658942699432373,
+          8.966727256774902
         ],
         "min": [
-          -5.492079257965088,
-          -6.604250907897949,
-          -3.000000476837158
+          -4.312561511993408,
+          -2.1919708251953125,
+          4.108861923217773
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a86204b1a633439877c53148a67e5ca0dee6b8330a570c139aca47eec69d9ebf",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-0.primitive.0",
+      "geometryHash": "38bea0eb5240b8fe2fb10fa5972964a7f2ca735978a44aa5142b140fbd0cadeb",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.0",
+      "indexCount": 666,
+      "indexed": true,
+      "materialHash": "8ae036dd411f7e5445fda0a3843c7efdfec1aad89973c7dba55d76524fb7e1a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive-4.55",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55",
+      "primitiveIndex": 0,
+      "vertexCount": 204
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.441638708114624,
+          2.520308017730713,
+          8.82114028930664
+        ],
+        "min": [
+          -4.312561511993408,
+          -2.046384572982788,
+          4.254447937011719
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "156b0e523607e33236a1fab325438743faaa227fe32a5fc407ee7fdcd266de6e",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.1",
+      "indexCount": 384,
+      "indexed": true,
+      "materialHash": "4910b1e96e545ef824c3f2f7776e9609845fe81a76de9d2e6a1f64c54814cf5b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive-4.55",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55",
+      "primitiveIndex": 1,
+      "vertexCount": 136
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.441638708114624,
+          1.4417543411254883,
+          7.742587089538574
+        ],
+        "min": [
+          -3.441638708114624,
+          -0.967831015586853,
+          5.333001613616943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "36cec25eca6f54062349519c599f48a30862fa56a3d135c5dfc070c6e72cdced",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.2",
+      "indexCount": 90,
+      "indexed": true,
+      "materialHash": "107b3b40aa7340bab3d64f33c838b650c0e1fe760558989064c350edd9dc0512",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive-4.55",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55",
+      "primitiveIndex": 2,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.412492275238037,
+          3.2956175804138184,
+          3.047328472137451
+        ],
+        "min": [
+          -4.312448978424072,
+          -2.8216941356658936,
+          -3.0699830055236816
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "effd9577b47637e0c996d5cf3efbc6a1bb8a4f3d7b059d49f68a7053a41f327d",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.0",
+      "indexCount": 666,
+      "indexed": true,
+      "materialHash": "8ae036dd411f7e5445fda0a3843c7efdfec1aad89973c7dba55d76524fb7e1a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive0.0",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0",
+      "primitiveIndex": 0,
+      "vertexCount": 204
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.4416277408599854,
+          3.1122868061065674,
+          2.8639976978302
+        ],
+        "min": [
+          -4.312448978424072,
+          -2.6383633613586426,
+          -2.8866522312164307
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93a9e3ae22ac9c1cbe1b132c261de7b8a3ba92ebf7456ec1f8f1e11bd8dcfc08",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.1",
+      "indexCount": 384,
+      "indexed": true,
+      "materialHash": "4910b1e96e545ef824c3f2f7776e9609845fe81a76de9d2e6a1f64c54814cf5b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive0.0",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0",
+      "primitiveIndex": 1,
+      "vertexCount": 136
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.4416277408599854,
+          1.7541080713272095,
+          1.5058190822601318
+        ],
+        "min": [
+          -3.4416277408599854,
+          -1.2801846265792847,
+          -1.5284736156463623
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19a7ca5e41a95f5c0d434266eb8165b11dd2859b1993e6a088de5dd9cff276f3",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.2",
+      "indexCount": 90,
+      "indexed": true,
+      "materialHash": "107b3b40aa7340bab3d64f33c838b650c0e1fe760558989064c350edd9dc0512",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive0.0",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0",
+      "primitiveIndex": 2,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.412379741668701,
+          2.6658942699432373,
+          -4.131516456604004
+        ],
+        "min": [
+          -4.312561511993408,
+          -2.1919708251953125,
+          -8.989381790161133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ebd7a4344f44a0650b4ce8699fe165dc8140f7e99ef4b4a86466fe35959bdcbd",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.0",
+      "indexCount": 666,
+      "indexed": true,
+      "materialHash": "8ae036dd411f7e5445fda0a3843c7efdfec1aad89973c7dba55d76524fb7e1a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive4.55",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55",
+      "primitiveIndex": 0,
+      "vertexCount": 204
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.441638708114624,
+          2.520308017730713,
+          -4.277102470397949
+        ],
+        "min": [
+          -4.312561511993408,
+          -2.046384572982788,
+          -8.843794822692871
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1519291b566f88d10685f7027da930a55d22688bc25f902041bba5a69123ce83",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.1",
+      "indexCount": 384,
+      "indexed": true,
+      "materialHash": "4910b1e96e545ef824c3f2f7776e9609845fe81a76de9d2e6a1f64c54814cf5b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive4.55",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55",
+      "primitiveIndex": 1,
+      "vertexCount": 136
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.441638708114624,
+          1.4417543411254883,
+          -5.355656147003174
+        ],
+        "min": [
+          -3.441638708114624,
+          -0.967831015586853,
+          -7.765241622924805
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cc7665080f5976b0ccc0674f346e8704e29219135d7f52c101d8486e5a576df",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.2",
+      "indexCount": 90,
+      "indexed": true,
+      "materialHash": "107b3b40aa7340bab3d64f33c838b650c0e1fe760558989064c350edd9dc0512",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drive4.55",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55",
+      "primitiveIndex": 2,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17375575006008148,
+          5.9918670654296875,
+          5.825226783752441
+        ],
+        "min": [
+          -0.7209664583206177,
+          -5.81061315536499,
+          -5.926826477050781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9c5248770842c368504c32e94a8d2aa43a5bfee5fc2bb98650488b0454834b1",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1a.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drum_xrib1a",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1a",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.015977412462234497,
+          0.16453231871128082,
+          -0.04355042427778244
+        ],
+        "min": [
+          -0.33049729466438293,
+          -3.6833548545837402,
+          -8.10671615600586
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e324fd4e307395af614d124e5e10da85d64eaeeaff8ebab324473033f11d595f",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1b.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drum_xrib1b",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1b",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.04100736975669861,
+          6.537234783172607,
+          8.439817428588867
+        ],
+        "min": [
+          -0.5871613025665283,
+          -5.092911243438721,
+          -8.45936393737793
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cd8a85e9d6e9a74d0965091e56053199550d56b8f389a516bf6909590db24786",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.0",
+      "indexCount": 699,
+      "indexed": true,
+      "materialHash": "abdafa9a3562195c30af8a2110302d9df76377f0de80a5d5177e6e150b5fae7b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum",
+      "primitiveIndex": 0,
+      "vertexCount": 330
+    },
+    {
+      "bounds": {
+        "max": [
+          0.046164751052856445,
+          -4.869081020355225,
+          7.138095378875732
+        ],
+        "min": [
+          -0.5417763590812683,
+          -6.537234783172607,
+          -7.050367832183838
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c1d31009c56d5e4d8e8b9fd35347cdd70a974bfc7c1a523f37ae34cd3ef74b75",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.1",
+      "indexCount": 171,
+      "indexed": true,
+      "materialHash": "e0b1798dca5a9551b4088d53e07b133c2ce56e41ecf5d127302c89182a672d70",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum",
+      "primitiveIndex": 1,
+      "vertexCount": 92
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5314615964889526,
+          6.311083793640137,
+          8.051982879638672
+        ],
+        "min": [
+          -0.5459022521972656,
+          -6.3556952476501465,
+          -8.077717781066895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30f72a93fc2a6d8d31be950e9254f1d1b8e65e34d0fe83d2d6f324aadece97a6",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.2",
+      "indexCount": 816,
+      "indexed": true,
+      "materialHash": "4910b1e96e545ef824c3f2f7776e9609845fe81a76de9d2e6a1f64c54814cf5b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drum",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum",
+      "primitiveIndex": 2,
+      "vertexCount": 280
+    },
+    {
+      "bounds": {
+        "max": [
+          0.49273681640625,
+          -3.2750320434570312,
+          -4.413632869720459
+        ],
+        "min": [
+          -0.43196868896484375,
+          -4.09633731842041,
+          -5.197461128234863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "29914d44cdc4dd24c2d4a572bd74ca73c68ae857392bb1f9174db51f0c10882e",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib0",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6618518829345703,
+          -0.4972510039806366,
+          -7.255648612976074
+        ],
+        "min": [
+          -0.44109153747558594,
+          -1.2789078950881958,
+          -8.306351661682129
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "807758ef2b53e1379389e916b34a6362d2f83bbd35e184afdbc80a6192a26464",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib1",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4197216033935547,
+          2.651663064956665,
+          -6.650059223175049
+        ],
+        "min": [
+          -0.4143524169921875,
+          2.0060555934906006,
+          -7.426605224609375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1af545ccb724f4a8160916b8312baf4c282ed91b20febf4a77336687907f5937",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib2",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5855140686035156,
+          5.068649768829346,
+          -2.656371593475342
+        ],
+        "min": [
+          -0.43030548095703125,
+          4.148190021514893,
+          -3.4562978744506836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4606e88b00ac6d79a9ef6514e73b1140c483d15ee6c801ea67b8ba907612511e",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib3.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib3",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib3",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7310619354248047,
+          5.353396892547607,
+          2.758251905441284
+        ],
+        "min": [
+          -0.4718780517578125,
+          4.2588300704956055,
+          1.8519444465637207
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "778506f571af04cbfddbe267e7b2b07bf2d32b25ad20477812666adc6dd88f6c",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib4.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib4",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib4",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.49905967712402344,
+          3.118549108505249,
+          7.061743259429932
+        ],
+        "min": [
+          -0.42954444885253906,
+          2.3774399757385254,
+          6.212263584136963
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b07632e4b5cbd65ed0bf371ca301d51028fd44837f48097681cc5403643b533",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib5.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib5",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib5",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6594829559326172,
+          -0.046171143651008606,
+          8.419556617736816
+        ],
+        "min": [
+          -0.4492206573486328,
+          -0.7991570830345154,
+          7.363366603851318
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "61baedc360ae3f7be24bf61a1b73a65abfa3a46988e33659088981cce54a321d",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib6.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib6",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib6",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.42537689208984375,
+          -3.008674383163452,
+          5.731424808502197
+        ],
+        "min": [
+          -0.4120903015136719,
+          -3.735320806503296,
+          5.007027626037598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f1c3d3a81155b827df7599b54dd0169be31c3a518e48c325ed1dbb479d1f170e",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib7.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib7",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib7",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5875968933105469,
+          -4.207674980163574,
+          0.7345908284187317
+        ],
+        "min": [
+          -0.4191417694091797,
+          -5.1584954261779785,
+          0.006612484809011221
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54419e44b2288fe5cd4ca2ee37cbdb5b7098155ba3e59ad95f6ced32444f3b75",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib8.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialPipelineKey": "opaque",
+      "meshName": "podCut_f_rib8",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib8",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2603607177734375,
+          5.4442362785339355,
+          0.8176104426383972
+        ],
+        "min": [
+          -0.4587745666503906,
+          3.4906280040740967,
+          0.026192476972937584
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae5337076bd32a5b87e49ef4480aa8f13b4c23ed958911d8db890174a3952a69",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-0",
+      "meshName": "podCut_t_tear0",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -5.292121410369873,
-          -0.10399145632982254,
-          3.000000476837158
+          4.31245231628418,
+          3.0862061977386475,
+          7.236149787902832
         ],
         "min": [
-          -5.492079257965088,
-          -0.604250967502594,
-          -3.000000476837158
+          -0.4589061737060547,
+          1.7697032690048218,
+          4.440637588500977
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44f1ea6fbee02d1f15814c85cf5f46e726559ecc0c383fb1578dfb079465b749",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-1.primitive.0",
+      "geometryHash": "771ebc8148dbe0d5e3af82a54db1195a2c4ae07035e2dde642bb7b089c708169",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-1",
+      "meshName": "podCut_t_tear1",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -5.292121887207031,
-          -0.35412120819091797,
-          3.2501296997070312
+          2.7778587341308594,
+          -0.29632338881492615,
+          8.377540588378906
         ],
         "min": [
-          -5.49207878112793,
-          -6.354121208190918,
-          2.7498703002929688
+          -0.4632835388183594,
+          -1.8327674865722656,
+          5.88102912902832
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba7db244a8be886e627054187e9ab2bdeb03abb52d61503db161690b9f6f453e",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-2.primitive.0",
+      "geometryHash": "09fad79b8581f9d48f3d378c60a816189d0ead2b074f7e34ab83829b1738ab26",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-2",
+      "meshName": "podCut_t_tear2",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -5.292121887207031,
-          -0.35412120819091797,
-          -2.7498703002929688
+          1.3514562845230103,
+          -3.204798460006714,
+          3.9239649772644043
         ],
         "min": [
-          -5.49207878112793,
-          -6.354121208190918,
-          -3.2501296997070312
+          -0.5758501291275024,
+          -4.931571006774902,
+          1.927945852279663
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5301212f2b909c75a31cf22d160db8f29918cb440882554306503da967d50597",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-3.primitive.0",
+      "geometryHash": "c210a3d95a135f8947c7c3de83058f2a52f6696fe0d68cbc87ed8c998e6fce58",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-3",
+      "meshName": "podCut_t_tear3",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -4.29198694229126,
-          0.24587924778461456,
-          3.5999999046325684
+          3.2471160888671875,
+          -2.8074464797973633,
+          -2.651536703109741
         ],
         "min": [
-          -5.2922139167785645,
-          -6.9541215896606445,
-          -3.5999999046325684
+          -0.4195518493652344,
+          -4.247951030731201,
+          -4.4958930015563965
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95b5d0151dd604ccc3fcb57c051fec431e45bf33be4bc73ad2b09aaab30f5564",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-mount.primitive.0",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-mount",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          8.307900428771973,
-          0.04634406045079231,
-          3.4004640579223633
-        ],
-        "min": [
-          -4.692101955413818,
-          -6.754586696624756,
-          -3.4004640579223633
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3fa818d049616df387c8335efd9877030b88787802bf052bed60172bf0f96a5f",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pod.primitive.0",
-      "indexCount": 132,
-      "indexed": true,
-      "materialHash": "b72c4bde20076e63a08e723af3e9477d4fd88ae24f65bfc8177c97c220c44b4f",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pod",
-      "primitiveIndex": 0,
-      "vertexCount": 72
-    },
-    {
-      "bounds": {
-        "max": [
-          6.307899475097656,
-          4.845985412597656,
-          0.39991456270217896
-        ],
-        "min": [
-          -0.6921005249023438,
-          -1.1542282104492188,
-          -0.39991456270217896
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1230ac0811d8ecd20d66880cfcbc5a33b378b83bc03d39eb442a652a7ebcbba9",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pylon.primitive.0",
+      "geometryHash": "3cfe3360b15947ca5130b018ae5e2a11317039785e9b550c785fe5c729d74309",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pylon",
+      "meshName": "podCut_t_tear4",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear4",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -4.955453872680664,
-          -4.765027046203613,
-          -1.0832182168960571
+          1.7228069305419922,
+          0.17375308275222778,
+          -6.798473834991455
         ],
         "min": [
-          -6.728747367858887,
-          -5.476523399353027,
-          -1.4032217264175415
+          -0.43421173095703125,
+          -1.4052212238311768,
+          -8.240523338317871
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40b944402648890762bfe5474ecbbb56c75f1dc31597d48f1be612ca32b8eda0",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0a.primitive.0",
+      "geometryHash": "18ddc85dff1d49e130882c2bea3a6bc5df4866b5dfaa35f93163141186f0087b",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0a",
+      "meshName": "podCut_t_tear5",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear5",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -6.628575801849365,
-          -5.207337856292725,
-          -1.1132067441940308
+          3.8794898986816406,
+          3.5403451919555664,
+          -4.000694751739502
         ],
         "min": [
-          -8.25562572479248,
-          -6.27421236038208,
-          -1.3732331991195679
+          -0.5389347076416016,
+          2.1545562744140625,
+          -6.8262104988098145
         ]
       },
       "drawMode": 4,
-      "geometryHash": "847f8dd7d40b83db94b58c3631fe4a0c548438cda52249768a56932f2f15b1d0",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0b.primitive.0",
+      "geometryHash": "715f21a56ccb841402635be603ddb81c624dcffde24f5ae0aa4c478c3df22c0f",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0b",
+      "meshName": "podCut_t_tear6",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear6",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -4.8904128074646,
-          -4.47386360168457,
-          1.7266137599945068
+          -1.1928666830062866,
+          5.00408935546875,
+          9
         ],
         "min": [
-          -6.793788433074951,
-          -6.120819091796875,
-          1.406693935394287
+          -3.1682686805725098,
+          -4.761955738067627,
+          -9
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be12358070297253ba6aa610478dd9aab3d5341ae687ace44a1d679fdea13a66",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1a.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "632218bbfc1bc00d0a60c2f6d2ee83accf4336613650f8db02f67a766df49f3c",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2a.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1a",
+      "meshName": "SternBlock_xrib2a",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2a",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          -6.576355934143066,
-          -5.93828821182251,
-          1.6965928077697754
+          -1.2363598346710205,
+          0.19284813106060028,
+          0.02345423772931099
         ],
         "min": [
-          -8.307845115661621,
-          -8.996395111083984,
-          1.4367148876190186
+          -2.2356956005096436,
+          -4.699938774108887,
+          -8.982385635375977
         ]
       },
       "drawMode": 4,
-      "geometryHash": "100ec5099b04a796ba62b860e82d5710ded1dd4f7215f4d4b29ab20a76d73b8c",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1b.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "91e2d9a8900f9ced9d1b51e280668324de6cd257223585572ece93c857bfc3d2",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2b.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1b",
+      "meshName": "SternBlock_xrib2b",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2b",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          -4.917226314544678,
-          -1.646038293838501,
-          1.4032459259033203
+          -0.397510826587677,
+          4.872133255004883,
+          8.912750244140625
         ],
         "min": [
-          -6.766974925994873,
-          -2.8288962841033936,
-          1.0831940174102783
+          -2.9880998134613037,
+          -4.628509044647217,
+          -8.935405731201172
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ade8b3bd26c7f390aefb02cd8ddafad088a3eccff3c4a4146573cebf1a530400",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2a.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "d1b2c006028bb019862e765d268fbaa984daf509f218bd43eaed7dcd9a7c76cd",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock.primitive.0",
+      "indexCount": 414,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "e0b1798dca5a9551b4088d53e07b133c2ce56e41ecf5d127302c89182a672d70",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2a",
+      "meshName": "SternBlock",
+      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock",
       "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.590237617492676,
-          -2.606623888015747,
-          1.373265266418457
-        ],
-        "min": [
-          -8.293963432312012,
-          -4.658310890197754,
-          1.1131746768951416
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bfed698b6771c1e3a9d82167ba86a31c5fcdadbaffb83885fcac7ab71f2de7ab",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -4.955453872680664,
-          -1.9551528692245483,
-          -1.4066520929336548
-        ],
-        "min": [
-          -6.728747367858887,
-          -2.666649580001831,
-          -1.7266556024551392
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "64ac1acd459529fa6c022f84738dd06aa9e50f4b102b2e74667c6f81b1f8f034",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.628575801849365,
-          -2.3974640369415283,
-          -1.4366406202316284
-        ],
-        "min": [
-          -8.25562572479248,
-          -3.464338541030884,
-          -1.6966670751571655
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0e6f722f8766f2e43e60a080875708132d2ccc97216a81313d7b03a857f38c8c",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.3840692639350891,
-          6.3193206787109375,
-          0.7343690991401672
-        ],
-        "min": [
-          -0.7491503357887268,
-          4.8724365234375,
-          -0.33261433243751526
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fb985e7fe9a6a17bc5c807d031a5bf769785fb0cba3d121ac873a9bc7669e891",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          3.130451202392578,
-          7.971311569213867,
-          0.8225641846656799
-        ],
-        "min": [
-          1.5981264114379883,
-          4.980445861816406,
-          -0.33339187502861023
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4fcf6050aa0231589d50368afcc12c62fef8770615472a24ad137e8cdd1f5f63",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.242462158203125,
-          6.767592906951904,
-          0.7482955455780029
-        ],
-        "min": [
-          4.25273323059082,
-          4.86416482925415,
-          -0.14862839877605438
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "abf8531dad736abef989eafdc5c91d62f4fb5d8d9e1be936f681f8528d08ba0e",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.769131183624268,
-          8.54328441619873,
-          0.7415257692337036
-        ],
-        "min": [
-          4.109656810760498,
-          4.848471164703369,
-          -0.8648366928100586
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d34cb8e7dfe4eeea863faab2d30a963087fb781e4347ea120fa21f9d19b892b0",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          3.873988628387451,
-          7.090719699859619,
-          0.20968089997768402
-        ],
-        "min": [
-          2.6761536598205566,
-          4.98103666305542,
-          -1.0032271146774292
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4b927d2bce530c15ef90f92783990febcf80ab4f855d7743780c152371930045",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8428199291229248,
-          8.996377944946289,
-          0.5191724896430969
-        ],
-        "min": [
-          -0.5063322186470032,
-          4.835379123687744,
-          -0.6363487839698792
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "90209d8f3631dea8bdc278f760f693038301c646096d6504eb6f321346827d49",
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-5.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-5",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 158
     }
   ],
   "hlods": [],
@@ -540,44 +840,240 @@
   "lods": [],
   "materials": [
     {
-      "hash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "id": "material:22fb5bdfdbdcd9d19625effa",
-      "name": "wrk_torn_edge",
-      "pipelineKey": "opaque:front",
+      "hash": "107b3b40aa7340bab3d64f33c838b650c0e1fe760558989064c350edd9dc0512",
+      "id": "material:107b3b40aa7340bab3d64f33",
+      "name": "Forge_massline_express_liner_glow_drive__dead",
+      "pipelineKey": "opaque:double",
       "textures": []
     },
     {
-      "hash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "id": "material:5aaf41e5bfb89546b316c457",
-      "name": "wrk_cable",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "4910b1e96e545ef824c3f2f7776e9609845fe81a76de9d2e6a1f64c54814cf5b",
+      "id": "material:4910b1e96e545ef824c3f2f7",
+      "name": "Forge_massline_express_liner_dark__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "b72c4bde20076e63a08e723af3e9477d4fd88ae24f65bfc8177c97c220c44b4f",
-      "id": "material:b72c4bde20076e63a08e723a",
-      "name": "wrk_paint_liner_bone",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "8ae036dd411f7e5445fda0a3843c7efdfec1aad89973c7dba55d76524fb7e1a5",
+      "id": "material:8ae036dd411f7e5445fda0a3",
+      "name": "Forge_massline_express_liner_gunmetal__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "id": "material:cd6123b380f546013af23403",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "id": "material:8e7bb086a9b3b9e3e1d2f26a",
+      "name": "Forge_massline_express_liner_wk_torn__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
-      "id": "material:f7df8b61adf293d3c6c14176",
-      "name": "wrk_cut_edge",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "abdafa9a3562195c30af8a2110302d9df76377f0de80a5d5177e6e150b5fae7b",
+      "id": "material:abdafa9a3562195c30af8a21",
+      "name": "Forge_massline_express_liner_paint__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "id": "material:b5a6d18a5afd893c95a48d69",
+      "name": "Forge_massline_express_liner_wk_frame__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "id": "material:bd2c5bccc203471f40a56c83",
+      "name": "Forge_massline_express_liner_wk_frame",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e0b1798dca5a9551b4088d53e07b133c2ce56e41ecf5d127302c89182a672d70",
+      "id": "material:e0b1798dca5a9551b4088d53",
+      "name": "Forge_massline_express_liner_paint2.frame__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-0",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55",
       "localTransform": [
         1,
         0,
@@ -597,8 +1093,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_bell_cut_0",
-      "nodeName": "cut_bell_cut_0",
+      "mergeBoundary": "Drive-4.55",
+      "nodeName": "Drive-4.55",
       "nodePath": [
         0,
         0
@@ -626,7 +1122,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-1",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0",
       "localTransform": [
         1,
         0,
@@ -646,8 +1142,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_bell_cut_1",
-      "nodeName": "cut_bell_cut_1",
+      "mergeBoundary": "Drive0.0",
+      "nodeName": "Drive0.0",
       "nodePath": [
         0,
         1
@@ -675,7 +1171,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-2",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55",
       "localTransform": [
         1,
         0,
@@ -695,8 +1191,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_bell_cut_2",
-      "nodeName": "cut_bell_cut_2",
+      "mergeBoundary": "Drive4.55",
+      "nodeName": "Drive4.55",
       "nodePath": [
         0,
         2
@@ -724,7 +1220,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-3",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum",
       "localTransform": [
         1,
         0,
@@ -744,8 +1240,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_bell_cut_3",
-      "nodeName": "cut_bell_cut_3",
+      "mergeBoundary": "Drum",
+      "nodeName": "Drum",
       "nodePath": [
         0,
         3
@@ -773,7 +1269,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-mount",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1a",
       "localTransform": [
         1,
         0,
@@ -793,8 +1289,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnd_mount",
-      "nodeName": "lnd_mount",
+      "mergeBoundary": "Drum_xrib1a",
+      "nodeName": "Drum_xrib1a",
       "nodePath": [
         0,
         4
@@ -822,7 +1318,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pod",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1b",
       "localTransform": [
         1,
         0,
@@ -842,8 +1338,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnd_pod",
-      "nodeName": "lnd_pod",
+      "mergeBoundary": "Drum_xrib1b",
+      "nodeName": "Drum_xrib1b",
       "nodePath": [
         0,
         5
@@ -871,7 +1367,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pylon",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib0",
       "localTransform": [
         1,
         0,
@@ -891,8 +1387,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lnd_pylon",
-      "nodeName": "lnd_pylon",
+      "mergeBoundary": "podCut_f_rib0",
+      "nodeName": "podCut_f_rib0",
       "nodePath": [
         0,
         6
@@ -920,7 +1416,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0a",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib1",
       "localTransform": [
         1,
         0,
@@ -940,8 +1436,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_0a",
-      "nodeName": "stub_cbl_0a",
+      "mergeBoundary": "podCut_f_rib1",
+      "nodeName": "podCut_f_rib1",
       "nodePath": [
         0,
         7
@@ -969,7 +1465,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0b",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib2",
       "localTransform": [
         1,
         0,
@@ -989,8 +1485,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_0b",
-      "nodeName": "stub_cbl_0b",
+      "mergeBoundary": "podCut_f_rib2",
+      "nodeName": "podCut_f_rib2",
       "nodePath": [
         0,
         8
@@ -1018,7 +1514,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1a",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib3",
       "localTransform": [
         1,
         0,
@@ -1038,8 +1534,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_1a",
-      "nodeName": "stub_cbl_1a",
+      "mergeBoundary": "podCut_f_rib3",
+      "nodeName": "podCut_f_rib3",
       "nodePath": [
         0,
         9
@@ -1067,7 +1563,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1b",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib4",
       "localTransform": [
         1,
         0,
@@ -1087,8 +1583,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_1b",
-      "nodeName": "stub_cbl_1b",
+      "mergeBoundary": "podCut_f_rib4",
+      "nodeName": "podCut_f_rib4",
       "nodePath": [
         0,
         10
@@ -1116,7 +1612,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2a",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib5",
       "localTransform": [
         1,
         0,
@@ -1136,8 +1632,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_2a",
-      "nodeName": "stub_cbl_2a",
+      "mergeBoundary": "podCut_f_rib5",
+      "nodeName": "podCut_f_rib5",
       "nodePath": [
         0,
         11
@@ -1165,7 +1661,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2b",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib6",
       "localTransform": [
         1,
         0,
@@ -1185,8 +1681,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_2b",
-      "nodeName": "stub_cbl_2b",
+      "mergeBoundary": "podCut_f_rib6",
+      "nodeName": "podCut_f_rib6",
       "nodePath": [
         0,
         12
@@ -1214,7 +1710,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3a",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib7",
       "localTransform": [
         1,
         0,
@@ -1234,8 +1730,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_3a",
-      "nodeName": "stub_cbl_3a",
+      "mergeBoundary": "podCut_f_rib7",
+      "nodeName": "podCut_f_rib7",
       "nodePath": [
         0,
         13
@@ -1263,7 +1759,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3b",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib8",
       "localTransform": [
         1,
         0,
@@ -1283,8 +1779,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stub_cbl_3b",
-      "nodeName": "stub_cbl_3b",
+      "mergeBoundary": "podCut_f_rib8",
+      "nodeName": "podCut_f_rib8",
       "nodePath": [
         0,
         14
@@ -1312,7 +1808,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-0",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear0",
       "localTransform": [
         1,
         0,
@@ -1332,8 +1828,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_pylon_tear_0",
-      "nodeName": "tear_pylon_tear_0",
+      "mergeBoundary": "podCut_t_tear0",
+      "nodeName": "podCut_t_tear0",
       "nodePath": [
         0,
         15
@@ -1361,7 +1857,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-1",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear1",
       "localTransform": [
         1,
         0,
@@ -1381,8 +1877,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_pylon_tear_1",
-      "nodeName": "tear_pylon_tear_1",
+      "mergeBoundary": "podCut_t_tear1",
+      "nodeName": "podCut_t_tear1",
       "nodePath": [
         0,
         16
@@ -1410,7 +1906,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-2",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear2",
       "localTransform": [
         1,
         0,
@@ -1430,8 +1926,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_pylon_tear_2",
-      "nodeName": "tear_pylon_tear_2",
+      "mergeBoundary": "podCut_t_tear2",
+      "nodeName": "podCut_t_tear2",
       "nodePath": [
         0,
         17
@@ -1459,7 +1955,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-3",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear3",
       "localTransform": [
         1,
         0,
@@ -1479,8 +1975,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_pylon_tear_3",
-      "nodeName": "tear_pylon_tear_3",
+      "mergeBoundary": "podCut_t_tear3",
+      "nodeName": "podCut_t_tear3",
       "nodePath": [
         0,
         18
@@ -1508,7 +2004,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-4",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear4",
       "localTransform": [
         1,
         0,
@@ -1528,8 +2024,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_pylon_tear_4",
-      "nodeName": "tear_pylon_tear_4",
+      "mergeBoundary": "podCut_t_tear4",
+      "nodeName": "podCut_t_tear4",
       "nodePath": [
         0,
         19
@@ -1557,7 +2053,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-5",
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear5",
       "localTransform": [
         1,
         0,
@@ -1577,11 +2073,207 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_pylon_tear_5",
-      "nodeName": "tear_pylon_tear_5",
+      "mergeBoundary": "podCut_t_tear5",
+      "nodeName": "podCut_t_tear5",
       "nodePath": [
         0,
         20
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-drive-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "podCut_t_tear6",
+      "nodeName": "podCut_t_tear6",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-drive-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "SternBlock",
+      "nodeName": "SternBlock",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-drive-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "SternBlock_xrib2a",
+      "nodeName": "SternBlock_xrib2a",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-drive-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "SternBlock_xrib2b",
+      "nodeName": "SternBlock_xrib2b",
+      "nodePath": [
+        0,
+        24
       ],
       "parentId": "sf.render.aftermath-deb-liner-drive-pod.root",
       "role": "immutable",
@@ -1656,118 +2348,100 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "fbb99cb264abb3a058bcafd54fbbc9a89df99fa7b01b14dbe749ac22987f4ce2"
+      "sha256": "01300678214d3145c5e13350274fd709aa0df067a207ec89c6eb299225b1116d"
     },
     "sourceGlb": {
-      "bytes": 25544,
-      "sha256": "0680a7e722842bf55f4df13934de6e2371c5643e1f656efd12a2bfae1f6859b8",
+      "bytes": 198032,
+      "sha256": "46ea8a5e8e9e87d0b05eb173420c83bc400adaf6b95ee9e58a7f511a8e4537c6",
       "uri": "place_aftermath_deb_liner_drive_pod.glb"
     },
     "sourceManifest": {
-      "bytes": 207712,
-      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 50732,
-    "sha256": "cf41e1135832b31f5517b2e0ef2a17c6f2b6cba5bc744e4c955d41b97fba969a",
+    "bytes": 231316,
+    "sha256": "19513fe706f13f672586dc9fee2f0a706b6de65efceabe2424c1c4ba378b48dd",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.00002765655517578125,
-        -0.00000858306884765625,
+        -0.00005459785461425781,
+        0,
         0
       ],
       "max": [
-        8.307900428771973,
-        8.996377944946289,
-        3.5999999046325684
+        4.31245231628418,
+        6.537234783172607,
+        9
       ],
       "min": [
-        -8.307845115661621,
-        -8.996395111083984,
-        -3.5999999046325684
+        -4.312561511993408,
+        -6.537234783172607,
+        -9
       ],
       "size": [
-        16.615745544433594,
-        17.992773056030273,
-        7.199999809265137
+        8.625013828277588,
+        13.074469566345215,
+        18
       ]
     },
     "hidden": [],
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 21
+      "drive": 3,
+      "hull": 3,
+      "mechanical": 27
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
@@ -1782,35 +2456,115 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 23,
+    "nodeCount": 39,
     "primitives": [
       {
         "canopy": false,
@@ -1832,34 +2586,7 @@
           0,
           1
         ],
-        "name": "cut_bell_cut_0",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "cut_bell_cut_1",
+        "name": "Drive-455_1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1886,7 +2613,7 @@
           0,
           1
         ],
-        "name": "cut_bell_cut_2",
+        "name": "Drive-455_2",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1913,7 +2640,7 @@
           0,
           1
         ],
-        "name": "cut_bell_cut_3",
+        "name": "Drive-455_3",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1940,34 +2667,7 @@
           0,
           1
         ],
-        "name": "lnd_mount",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "lnd_pod",
+        "name": "Drive00_1",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1994,7 +2694,7 @@
           0,
           1
         ],
-        "name": "lnd_pylon",
+        "name": "Drive00_2",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2021,7 +2721,7 @@
           0,
           1
         ],
-        "name": "stub_cbl_0a",
+        "name": "Drive00_3",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -2048,34 +2748,7 @@
           0,
           1
         ],
-        "name": "stub_cbl_0b",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "stub_cbl_1a",
+        "name": "Drive455_1",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -2102,7 +2775,7 @@
           0,
           1
         ],
-        "name": "stub_cbl_1b",
+        "name": "Drive455_2",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -2129,7 +2802,7 @@
           0,
           1
         ],
-        "name": "stub_cbl_2a",
+        "name": "Drive455_3",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2156,34 +2829,7 @@
           0,
           1
         ],
-        "name": "stub_cbl_2b",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "stub_cbl_3a",
+        "name": "Drum_1",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -2210,7 +2856,7 @@
           0,
           1
         ],
-        "name": "stub_cbl_3b",
+        "name": "Drum_2",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -2237,7 +2883,7 @@
           0,
           1
         ],
-        "name": "tear_pylon_tear_0",
+        "name": "Drum_3",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -2264,7 +2910,7 @@
           0,
           1
         ],
-        "name": "tear_pylon_tear_1",
+        "name": "Drum_xrib1a",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -2291,7 +2937,7 @@
           0,
           1
         ],
-        "name": "tear_pylon_tear_2",
+        "name": "Drum_xrib1b",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -2318,7 +2964,7 @@
           0,
           1
         ],
-        "name": "tear_pylon_tear_3",
+        "name": "podCut_f_rib0",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -2345,7 +2991,7 @@
           0,
           1
         ],
-        "name": "tear_pylon_tear_4",
+        "name": "podCut_f_rib1",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -2372,8 +3018,440 @@
           0,
           1
         ],
-        "name": "tear_pylon_tear_5",
+        "name": "podCut_f_rib2",
         "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_f_rib3",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_f_rib4",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_f_rib5",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_f_rib6",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_f_rib7",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_f_rib8",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_t_tear0",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_t_tear1",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_t_tear2",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_t_tear3",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_t_tear4",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_t_tear5",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "podCut_t_tear6",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SternBlock",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SternBlock_xrib2a",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SternBlock_xrib2b",
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2384,45 +3462,49 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_drive_pod.glb"
   },
-  "runtimeHash": "0dcbe35b1bc2b81e77ab00830dd408f32e5d7b2e1f5927d11f9a4c79e5d151d5",
+  "runtimeHash": "10bf8e5d93657b4dbd662b246a1951e7d252c8487f2219701e72054edde44463",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          8.307900428771973,
-          8.996377944946289,
-          3.5999999046325684
+          4.31245231628418,
+          6.537234783172607,
+          9
         ],
         "min": [
-          -8.307845115661621,
-          -8.996395111083984,
-          -3.5999999046325684
+          -4.312561511993408,
+          -6.537234783172607,
+          -9
         ]
       },
       "id": "sf.render.aftermath-deb-liner-drive-pod.body",
       "nodeIds": [
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-0",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-1",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-2",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.cut-bell-cut-3",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-mount",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pod",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.lnd-pylon",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0a",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-0b",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1a",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-1b",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2a",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-2b",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3a",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.stub-cbl-3b",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-0",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-1",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-2",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-3",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-4",
-        "sf.render.aftermath-deb-liner-drive-pod.mesh.tear-pylon-tear-5",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.drum",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1a",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1b",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib0",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib1",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib2",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib3",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib4",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib5",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib6",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib7",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib8",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear0",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear1",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear2",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear3",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear4",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear5",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear6",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2a",
+        "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2b",
         "sf.render.aftermath-deb-liner-drive-pod.root"
       ]
     }

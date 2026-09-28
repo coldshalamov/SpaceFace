@@ -6,26 +6,51 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e3e7473ee08499400b9cc9d1dd312da073d857eaa3b3285634951633c732665c",
+  "contentHash": "35090b28b9703274b85334b8177f8be842a318f035001f82b07dbf437a448952",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.883017063140869,
-          2.8884949684143066,
-          1.9240775108337402
+          3.7774438858032227,
+          3.782386302947998,
+          3.5656087398529053
         ],
         "min": [
-          1.723455786705017,
-          -2.8884949684143066,
-          -2.0854532718658447
+          -4,
+          -3.782386302947998,
+          -0.49745094776153564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45c962b4071723e53c0f1a05af42cb337372ad527b3b7989a83e84baf55aee55",
+      "geometryHash": "3206ace75cfa12f520cac942fcef3a991313fbeb337a22da428a3ef8087a6e84",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-heat.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_frag_grating_sheet_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4,
+          1.0713911056518555,
+          1.8767046928405762
+        ],
+        "min": [
+          -3.307460308074951,
+          -0.24795256555080414,
+          -3.565253257751465
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "482c59c002dd8778e2b9db0daee66b801783134fb89a16130bbbf48bcdfbc7b2",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-insulation.primitive.0",
-      "indexCount": 180,
+      "indexCount": 192,
       "indexed": true,
       "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
       "materialPipelineKey": "opaque",
@@ -37,93 +62,93 @@
     {
       "bounds": {
         "max": [
-          1.8744263648986816,
-          1.3404755592346191,
-          2.0855777263641357
+          3.7774438858032227,
+          3.782386302947998,
+          3.5656087398529053
         ],
         "min": [
-          -3.882953405380249,
-          -1.09921133518219,
-          -2.0157668590545654
+          -4,
+          -3.782386302947998,
+          -0.49745094776153564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6be76547d8ce40815e69446efc3aedf9660ed371322fef8c69748ea914010148",
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-structural.primitive.0",
-      "indexCount": 144,
+      "geometryHash": "aa49e98c202db94b861d5b7000a2df48a7763d9a2ec1f8a6decb1f17e992f3c4",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-heat.primitive.0",
+      "indexCount": 15,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_frag_grating_sheet_Material_Structural_mesh",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-structural",
+      "meshName": "LOD1_frag_grating_sheet_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-heat",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 11
     },
     {
       "bounds": {
         "max": [
-          3.883017063140869,
-          2.8884949684143066,
-          1.9240775108337402
+          4,
+          1.0384392738342285,
+          1.8775562047958374
         ],
         "min": [
-          1.723455786705017,
-          -2.8884949684143066,
-          -2.0854532718658447
+          -3.307460308074951,
+          -0.24789848923683167,
+          -3.565293788909912
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40c9ce0db51cece784a325eb6127949221b8659b3eb671a53c11a900997060e4",
+      "geometryHash": "03f58b43167b2a661b758bbccee66fec98762d468f02738a427a1b2430927b1f",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-insulation.primitive.0",
-      "indexCount": 84,
+      "indexCount": 90,
       "indexed": true,
       "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_frag_grating_sheet_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-insulation",
       "primitiveIndex": 0,
-      "vertexCount": 62
+      "vertexCount": 86
     },
     {
       "bounds": {
         "max": [
-          1.8744263648986816,
-          1.3404755592346191,
-          2.0855777263641357
+          3.7126989364624023,
+          3.782741069793701,
+          3.27392315864563
         ],
         "min": [
-          -3.882953405380249,
-          -1.09921133518219,
-          -2.0157668590545654
+          -4,
+          -3.6748058795928955,
+          -0.4971010982990265
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5c528b806494194f2a498e1992a3fea564807d1f18d17371c7aebedb2d1c48b",
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-structural.primitive.0",
-      "indexCount": 69,
+      "geometryHash": "7d9ee816f2aca4b32c0562ba3a08fd807c95c935018ea8024782c29f7a5762e6",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-heat.primitive.0",
+      "indexCount": 6,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_frag_grating_sheet_Material_Structural_mesh",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-structural",
+      "meshName": "LOD2_frag_grating_sheet_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-heat",
       "primitiveIndex": 0,
-      "vertexCount": 49
+      "vertexCount": 4
     },
     {
       "bounds": {
         "max": [
-          3.883017063140869,
-          2.8884949684143066,
-          0.3583533763885498
+          4,
+          1.038275122642517,
+          1.8776496648788452
         ],
         "min": [
-          1.723455786705017,
-          -2.8884949684143066,
-          -2.085411787033081
+          -3.3005313873291016,
+          -0.24773424863815308,
+          -3.565387010574341
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fde838d53ee75a35ffef64bd00156cbbf7b71b6bf234077b8ff4d4ebe3a6d6c6",
+      "geometryHash": "9093ea0a0c5e50d3a4f32e06ca961c66439076c484b45e4a02e56dc45508e49c",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -132,32 +157,7 @@
       "meshName": "LOD2_frag_grating_sheet_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation",
       "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8744263648986816,
-          1.3404755592346191,
-          2.0855777263641357
-        ],
-        "min": [
-          -3.882953405380249,
-          -1.09921133518219,
-          -2.0157668590545654
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f08f4a55c23a9acc7351f6ff4c8bccfb9759cdb11bb250ef16c3b0a4e67a5263",
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-structural.primitive.0",
-      "indexCount": 27,
-      "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_frag_grating_sheet_Material_Structural_mesh",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-structural",
-      "primitiveIndex": 0,
-      "vertexCount": 19
+      "vertexCount": 36
     }
   ],
   "hlods": [],
@@ -165,32 +165,32 @@
   "lods": [],
   "materials": [
     {
-      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
-      "id": "material:124d57494b8cd5aee7fba823",
-      "name": "Material_Structural",
+      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "name": "Material_Heat",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_structural_alloy_basecolor",
+          "name": "wreck_heat_affected_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
+          "name": "wreck_heat_affected_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_structural_alloy_normal",
+          "name": "wreck_heat_affected_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
+          "name": "wreck_heat_affected_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -376,7 +376,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-insulation",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-heat",
       "localTransform": [
         1,
         0,
@@ -396,8 +396,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_frag_grating_sheet_Material_Insulation",
-      "nodeName": "LOD0_frag_grating_sheet_Material_Insulation",
+      "mergeBoundary": "LOD0_frag_grating_sheet_Material_Heat",
+      "nodeName": "LOD0_frag_grating_sheet_Material_Heat",
       "nodePath": [
         0,
         0,
@@ -426,7 +426,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-structural",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-insulation",
       "localTransform": [
         1,
         0,
@@ -446,8 +446,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_frag_grating_sheet_Material_Structural",
-      "nodeName": "LOD0_frag_grating_sheet_Material_Structural",
+      "mergeBoundary": "LOD0_frag_grating_sheet_Material_Insulation",
+      "nodeName": "LOD0_frag_grating_sheet_Material_Insulation",
       "nodePath": [
         0,
         0,
@@ -525,7 +525,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-insulation",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-heat",
       "localTransform": [
         1,
         0,
@@ -545,8 +545,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_frag_grating_sheet_Material_Insulation",
-      "nodeName": "LOD1_frag_grating_sheet_Material_Insulation",
+      "mergeBoundary": "LOD1_frag_grating_sheet_Material_Heat",
+      "nodeName": "LOD1_frag_grating_sheet_Material_Heat",
       "nodePath": [
         0,
         1,
@@ -575,7 +575,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-structural",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-insulation",
       "localTransform": [
         1,
         0,
@@ -595,8 +595,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_frag_grating_sheet_Material_Structural",
-      "nodeName": "LOD1_frag_grating_sheet_Material_Structural",
+      "mergeBoundary": "LOD1_frag_grating_sheet_Material_Insulation",
+      "nodeName": "LOD1_frag_grating_sheet_Material_Insulation",
       "nodePath": [
         0,
         1,
@@ -674,7 +674,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-heat",
       "localTransform": [
         1,
         0,
@@ -694,8 +694,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_frag_grating_sheet_Material_Insulation",
-      "nodeName": "LOD2_frag_grating_sheet_Material_Insulation",
+      "mergeBoundary": "LOD2_frag_grating_sheet_Material_Heat",
+      "nodeName": "LOD2_frag_grating_sheet_Material_Heat",
       "nodePath": [
         0,
         2,
@@ -724,7 +724,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-structural",
+      "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation",
       "localTransform": [
         1,
         0,
@@ -744,8 +744,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_frag_grating_sheet_Material_Structural",
-      "nodeName": "LOD2_frag_grating_sheet_Material_Structural",
+      "mergeBoundary": "LOD2_frag_grating_sheet_Material_Insulation",
+      "nodeName": "LOD2_frag_grating_sheet_Material_Insulation",
       "nodePath": [
         0,
         2,
@@ -776,45 +776,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "e66e5ce928c0379e0974684f6c1202dc02df99f55b0359da5b03a8b67a89f3b9"
+      "sha256": "c2c7f7c8bcdd210d4482eca559b305b0a2289729984004d3bb193a8fa07c27b7"
     },
     "sourceGlb": {
-      "bytes": 555072,
-      "sha256": "09a2590076082f2fd7dc99b98fde23c818cdb9a4e820cd295354e68ae25f7dc8",
+      "bytes": 253600,
+      "sha256": "6170bab058aa28eab8bc17eee277aa14b9952384961ab19c51b4f19037715a53",
       "uri": "place_aftermath_frag_grating_sheet_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 207712,
-      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 560636,
-    "sha256": "7478f2b7fe73b75bdf5e0483bc9b917dd1879f92ca0260fdfa371cfe6b77e0a8",
+    "bytes": 258588,
+    "sha256": "fefad506f47f4d5e617cc39c2018909f3d037ce3c30532e24b2cd9352de7092e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000031828880310058594,
         0,
-        0.00006222724914550781
+        0.0001773834228515625,
+        0.00011086463928222656
       ],
       "max": [
-        3.883017063140869,
-        2.8884949684143066,
-        2.0855777263641357
+        4,
+        3.782741069793701,
+        3.5656087398529053
       ],
       "min": [
-        -3.882953405380249,
-        -2.8884949684143066,
-        -2.0854532718658447
+        -4,
+        -3.782386302947998,
+        -3.565387010574341
       ],
       "size": [
-        7.765970468521118,
-        5.776989936828613,
-        4.1710309982299805
+        8,
+        7.565127372741699,
+        7.130995750427246
       ]
     },
     "hidden": [],
@@ -877,7 +877,7 @@
           0,
           1
         ],
-        "name": "LOD0_frag_grating_sheet_Material_Insulation",
+        "name": "LOD0_frag_grating_sheet_Material_Heat",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -904,7 +904,7 @@
           0,
           1
         ],
-        "name": "LOD0_frag_grating_sheet_Material_Structural",
+        "name": "LOD0_frag_grating_sheet_Material_Insulation",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -931,7 +931,7 @@
           0,
           1
         ],
-        "name": "LOD1_frag_grating_sheet_Material_Insulation",
+        "name": "LOD1_frag_grating_sheet_Material_Heat",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -958,7 +958,7 @@
           0,
           1
         ],
-        "name": "LOD1_frag_grating_sheet_Material_Structural",
+        "name": "LOD1_frag_grating_sheet_Material_Insulation",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -985,7 +985,7 @@
           0,
           1
         ],
-        "name": "LOD2_frag_grating_sheet_Material_Insulation",
+        "name": "LOD2_frag_grating_sheet_Material_Heat",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1012,7 +1012,7 @@
           0,
           1
         ],
-        "name": "LOD2_frag_grating_sheet_Material_Structural",
+        "name": "LOD2_frag_grating_sheet_Material_Insulation",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -1024,20 +1024,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet_authored_down.glb"
   },
-  "runtimeHash": "db51b8a69898439e703dc7c9a2baf1455ad1fceab8f66e3b01b86e07207c757a",
+  "runtimeHash": "eece9439cffda4be48a5ae45e9a4b0c0b134e52e00a8dc8b26aa87f2faa8a93b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.883017063140869,
-          2.8884949684143066,
-          2.0855777263641357
+          4,
+          3.782741069793701,
+          3.5656087398529053
         ],
         "min": [
-          -3.882953405380249,
-          -2.8884949684143066,
-          -2.0854532718658447
+          -4,
+          -3.782386302947998,
+          -3.565387010574341
         ]
       },
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.body",
@@ -1045,14 +1045,14 @@
         "sf.render.aftermath-frag-grating-sheet-authored-down.node.frag-grating-sheet",
         "sf.render.aftermath-frag-grating-sheet-authored-down.node.frag-grating-sheet-001",
         "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet",
+        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-heat",
         "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-insulation",
-        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-structural",
         "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet",
+        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-heat",
         "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-insulation",
-        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-structural",
         "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet",
-        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation",
-        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-structural"
+        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-heat",
+        "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation"
       ]
     }
   ]

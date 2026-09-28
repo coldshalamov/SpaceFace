@@ -170,7 +170,11 @@ try {
         if (!cam || !cam.projectionMatrix) return 'no camera';
         const camPos = new THREE.Vector3();
         cam.getWorldPosition(camPos);
-        const ndc = new THREE.Vector3(tx, ty, tz).project(cam);
+        // M2 floating origin: scene XZ is frame-local (global - world.frameOrigin). tx/tz and
+        // player.pos are galactic-global, so convert both sides of the projection.
+        const fo = (s.world && s.world.frameOrigin) || { x: 0, z: 0 };
+        const lx = tx - fo.x, lz = tz - fo.z;
+        const ndc = new THREE.Vector3(lx, ty, lz).project(cam);
         // Whole-body fit: project the target visual's bounding-box corners to NDC so a
         // centred anchor can't still leave a large body clipped at a frame edge.
         let fit = null;
@@ -219,7 +223,9 @@ try {
         } catch { /* fit is best-effort evidence */ }
         const centre = new THREE.Vector3(0, 0, 0.5).unproject(cam).sub(camPos);
         const t = centre.y ? (ty - camPos.y) / centre.y : 0;
-        const c0x = camPos.x + centre.x * t, c0z = camPos.z + centre.z * t;
+        // camPos is frame-local too — lift the screen-centre ground point back to global
+        // before differencing against global tx/tz.
+        const c0x = camPos.x + centre.x * t + fo.x, c0z = camPos.z + centre.z * t + fo.z;
         const dx = tx - c0x, dz = tz - c0z;
         const p = s.entities.get(s.playerId);
         const world = window.SF.registry?.get?.('world');
@@ -603,6 +609,7 @@ try {
     // that stay dormant (alive=false) until the player is near, so they can never match
     // the name matcher from a distance.
     for (const token of aimList) {
+      let centreToken = null;
       if (token.startsWith('sec:')) {
         // Sector hop mid-run — same entry point as --sector so the sector materializes
         // at full presence before the next aims.
@@ -641,8 +648,25 @@ try {
         }
         continue;
       }
-      if (token.startsWith('pos:') || token.startsWith('rocknear:')) {
-        const [px, pz] = token.split(':')[1].split('~').map(Number);
+      if (token.startsWith('pos:') || token.startsWith('rocknear:') || token.startsWith('wreckfield:')) {
+        // 'wreckfield:' resolves itself in-page: relocate to the first live wreck-aftermath
+        // dressing row in the current sector (prefer a hero wreck_* body over debris).
+        let px, pz;
+        if (token.startsWith('wreckfield:')) {
+          const hit = await page.evaluate(() => {
+            const s = window.SF.state;
+            const rows = [...(s.world?.dressing?.rows || []), ...(s.entityList || [])]
+              .filter((r) => r && r.alive !== false && r.data && r.data.wreckAftermath === true);
+            const hero = rows.find((r) => /_wreck_/.test(r.data.placeId || '')) || rows[0];
+            return hero ? { x: hero.pos.x, z: hero.pos.z, id: hero.data.placeId || hero.id } : null;
+          });
+          if (!hit) { console.log('aim', token, 'no wreck aftermath rows'); continue; }
+          console.log('wreckfield ->', hit.id, Math.round(hit.x), Math.round(hit.z));
+          px = hit.x; pz = hit.z + 140;
+          centreToken = `pos:${px}~${hit.z}`;
+        } else {
+          [px, pz] = token.split(':')[1].split('~').map(Number);
+        }
         const rep = await page.evaluate(({ x, z }) => {
           const world = window.SF.registry?.get?.('world');
           const moved = world && world.relocatePlayerInSector
@@ -706,7 +730,7 @@ try {
         // Centre per shot, not once per aim: the player drifts during settle waits and the
         // chase camera follows the player, so a single centre pass leaves the target cut
         // at the frame edge at shot time.
-        await centreOn(token);
+        await centreOn(centreToken || token);
         await page.waitForTimeout(800);
         const safe = token.replace(/[^\w.-]/g, '_');
         await page.screenshot({ path: `${OUT}flight_${safe}_z${zoom}.png`, timeout: 180000 });

@@ -59,49 +59,49 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ffc5837da1085172165fbd817ef459485d355405f941ee40c4b99d1694768449",
+  "contentHash": "9541bde03881ff393c0d5fdfab82dbf4e37b4b3dc785462e70e0b9bd0b4e97ec",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          10.94859504699707,
-          8.358057975769043,
-          9.554874420166016
+          8.5,
+          7.143920421600342,
+          8.887961387634277
         ],
         "min": [
-          -11.472993850708008,
-          -11.572775840759277,
-          -11.270989418029785
+          -10.346320152282715,
+          -8.65864372253418,
+          -8.52275562286377
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3515cae7cec98bbaec62de85a01598d320a3753fdb9a45877546a588bdd0b9a",
+      "geometryHash": "87d35b7e62a8050968c6373a0a4a894522fda4697eba158f03285ee0cc601819",
       "id": "sf.render.graffiti.mesh.collision-hull.primitive.0",
-      "indexCount": 300,
+      "indexCount": 846,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.graffiti.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 292
+      "vertexCount": 822
     },
     {
       "bounds": {
         "max": [
-          7.900000095367432,
-          7.020143508911133,
-          3.9003357887268066
+          7.699999809265137,
+          6.419875144958496,
+          3.8996217250823975
         ],
         "min": [
-          -8.300000190734863,
-          5.279856204986572,
-          -3.500335931777954
+          -8.100000381469727,
+          4.680124759674072,
+          -3.499621868133545
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f69f54996869d32154bff217348139978ba6e6488c1643d3def6f32d98cc4342",
+      "geometryHash": "47a68889231d03d55a66464c0ed2f600ee5d62dccdcf2a422534bc54a1dcf33e",
       "id": "sf.render.graffiti.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -115,47 +115,22 @@
     {
       "bounds": {
         "max": [
-          5.737961292266846,
-          8.357672691345215,
-          4.5994062423706055
+          8.5,
+          7.14351749420166,
+          2.5257949829101562
         ],
         "min": [
-          -4.737961292266846,
-          4.642327785491943,
-          -3.399406671524048
+          -4.540788650512695,
+          5.056482315063477,
+          -3.425281286239624
         ]
       },
       "drawMode": 4,
-      "geometryHash": "430fc6141d3fc4aa46b366f4722b6c4eda95593b354a16c85bec54a8b8eb34b6",
-      "id": "sf.render.graffiti.mesh.lod0-brushedmetal.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "bd3502e9ce3d875519e56dcfe6834b9346a9972fb655eb3d7616f65f371e1b0c",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_BrushedMetal",
-      "nodeId": "sf.render.graffiti.mesh.lod0-brushedmetal",
-      "primitiveIndex": 0,
-      "vertexCount": 174
-    },
-    {
-      "bounds": {
-        "max": [
-          8.699999809265137,
-          7.88346529006958,
-          2.5244948863983154
-        ],
-        "min": [
-          -4.538296222686768,
-          5.816534519195557,
-          -3.4245972633361816
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d473a8bdfcda6669e4ca96d17e153c00b4b6d5608b4c039041da0e75425420b3",
+      "geometryHash": "587945be0f8435aa8953d4f0da67245ab67319200227a5f4c903e8bf33c1d7f8",
       "id": "sf.render.graffiti.mesh.lod0-hull-tag1.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "f47857a426dcf7928977f600eb614648e4283ff4e910cf1b7344000d1bd40f22",
+      "materialHash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_tag1",
       "nodeId": "sf.render.graffiti.mesh.lod0-hull-tag1",
@@ -165,68 +140,43 @@
     {
       "bounds": {
         "max": [
-          3.187049388885498,
-          7.689014911651611,
-          3.8250772953033447
+          3.36946439743042,
+          6.9484734535217285,
+          3.824958562850952
         ],
         "min": [
-          -8.199999809265137,
-          4.6249680519104,
-          -0.9181655049324036
+          -8,
+          4.025174140930176,
+          -0.9192867279052734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a9f9e65287d350de5c0e768c0af6741ec52f4b82888f211ec69264bbfa9d44b",
+      "geometryHash": "56d5b25f10302baccba1a17cc19901178cce07bb537c1c73fa4396c07a8b8d6c",
       "id": "sf.render.graffiti.mesh.lod0-hull-tag2.primitive.0",
-      "indexCount": 72,
+      "indexCount": 108,
       "indexed": true,
-      "materialHash": "a733aa1b9e38ccfc62f08f73e7c16b213324df3cc241234ece4419aff61b6e8c",
+      "materialHash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_tag2",
       "nodeId": "sf.render.graffiti.mesh.lod0-hull-tag2",
       "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          4.313935279846191,
-          7.220785140991211,
-          -1.046387791633606
-        ],
-        "min": [
-          2.486065149307251,
-          6.579215049743652,
-          -2.553612232208252
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "83915cb3350d068632dada04d4c89d17dc229e9bc7cf088bdf65950f8fa186ac",
-      "id": "sf.render.graffiti.mesh.lod0-hull-tag3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "dfc3fc15f2af39382cdbee98eb5f73f33c4342a6760a13ef4e2408f1c9cc0749",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull_tag3",
-      "nodeId": "sf.render.graffiti.mesh.lod0-hull-tag3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 72
     },
     {
       "bounds": {
         "max": [
           6.031637668609619,
-          4.626253604888916,
+          4.226253509521484,
           -4.154685974121094
         ],
         "min": [
           5.353260517120361,
-          4.096398830413818,
+          3.696398973464966,
           -4.8839874267578125
         ]
       },
       "drawMode": 4,
-      "geometryHash": "04c618a5733050a4c6c2a2072107c18dce6555f336941a36980f3d7081340bf7",
+      "geometryHash": "6e6d8ed15aa211988c70f6891e6e893c098b92cd5398a62b59f96a6827db99cf",
       "id": "sf.render.graffiti.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -240,18 +190,18 @@
     {
       "bounds": {
         "max": [
-          7.8779425621032715,
-          6.7998480796813965,
-          3.8861052989959717
+          7.677942276000977,
+          6.199646472930908,
+          3.8855323791503906
         ],
         "min": [
-          -8.277941703796387,
-          2.2001519203186035,
-          -4.9385666847229
+          -8.07794189453125,
+          1.600353479385376,
+          -4.937994003295898
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c183d030ecc2d38e6a7c8e96a8bbdcc1daf3c0b84109ff90f02dedfa1a750642",
+      "geometryHash": "4e60eb11ceeab328a3f6a55345f075272f53614cf1280b1593e5103b0a3ec026",
       "id": "sf.render.graffiti.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2808,
       "indexed": true,
@@ -260,23 +210,23 @@
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.graffiti.mesh.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 876
+      "vertexCount": 878
     },
     {
       "bounds": {
         "max": [
           6.1587371826171875,
-          4.133431911468506,
+          3.7334325313568115,
           -4.375
         ],
         "min": [
           5.675006866455078,
-          3.8168342113494873,
+          3.416834831237793,
           -4.93812894821167
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0492b2f449501ce08537f9b752a74518d1c2061b35fc03cb85a541af4bf08911",
+      "geometryHash": "d196abcb8be69d4ef68494b335466c84fef763349893632374945332dfe729aa",
       "id": "sf.render.graffiti.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -290,68 +240,118 @@
     {
       "bounds": {
         "max": [
-          0.24998441338539124,
-          3.2837672233581543,
-          9.332168579101562
+          -0.3229369819164276,
+          2.372086524963379,
+          8.887947082519531
         ],
         "min": [
-          -11.473003387451172,
-          -7.4990644454956055,
-          -6.482039928436279
+          -10.346654891967773,
+          -6.567692756652832,
+          -5.9109697341918945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d287133e38add57c70e5be62c42995513941345c058c2db4563dd672925853bd",
+      "geometryHash": "a930873eb1d95f625daf54638b55250c1b47afbc5e52fe246f5dc66ea4de398b",
       "id": "sf.render.graffiti.mesh.lod0-stone-deep.primitive.0",
-      "indexCount": 480,
+      "indexCount": 7680,
       "indexed": true,
-      "materialHash": "c222ae603c82167bdb3f2ab16cc6ec456a9781e16f1228a86c87f6a3c38abc51",
+      "materialHash": "18778d087122aacf196d07a2a53472c9c7aeda5cedc9c866bfe069fef2f5d8d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_deep",
       "nodeId": "sf.render.graffiti.mesh.lod0-stone-deep",
       "primitiveIndex": 0,
-      "vertexCount": 376
+      "vertexCount": 5379
     },
     {
       "bounds": {
         "max": [
-          10.949097633361816,
-          6.8209710121154785,
-          9.5546875
+          4.547815322875977,
+          6.897215366363525,
+          2.867443084716797
         ],
         "min": [
-          -9.82809066772461,
-          -11.57158374786377,
-          -11.27080249786377
+          -5.304195404052734,
+          5.2447404861450195,
+          -2.7821218967437744
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63735fc26745eec632e14171582167e59170aaeb8cd1820389c394a4fdd433f3",
-      "id": "sf.render.graffiti.mesh.lod0-stone.primitive.0",
-      "indexCount": 480,
+      "geometryHash": "76416d9411f8b0f499761cd67ac0cf73ba86768740f9d6c845b4ba997858f744",
+      "id": "sf.render.graffiti.mesh.lod0-stone-quarry.primitive.0",
+      "indexCount": 150,
       "indexed": true,
-      "materialHash": "5476a2a1dda793cd9661c309058576b9100d4b0f966aa164f1688a79751abff4",
+      "materialHash": "3fdcdcc8321e7154d1160e4acecb33cc513243b543170a5374b33859d1f948f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_quarry",
+      "nodeId": "sf.render.graffiti.mesh.lod0-stone-quarry",
+      "primitiveIndex": 0,
+      "vertexCount": 38
+    },
+    {
+      "bounds": {
+        "max": [
+          7.36501932144165,
+          -1.7762863636016846,
+          7.070004940032959
+        ],
+        "min": [
+          -7.480157852172852,
+          -4.517858982086182,
+          -7.842528343200684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eba8f9ea70c127d3b2e6388c8b02e31dfbeba5c7256c7d033e0bcf0abd826675",
+      "id": "sf.render.graffiti.mesh.lod0-stone-strata.primitive.0",
+      "indexCount": 819,
+      "indexed": true,
+      "materialHash": "98d80eaab57fa6eb6bb9d73f80e51cd6130b347633f82423fff3ab4536dbad82",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_strata",
+      "nodeId": "sf.render.graffiti.mesh.lod0-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 493
+    },
+    {
+      "bounds": {
+        "max": [
+          8.425435066223145,
+          6.990138530731201,
+          8.67733383178711
+        ],
+        "min": [
+          -7.810885429382324,
+          -8.658271789550781,
+          -8.522741317749023
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c89decea06c4bcf738e836ef1c97db6ad684409fd2ff5de153c019fc1c14c95",
+      "id": "sf.render.graffiti.mesh.lod0-stone.primitive.0",
+      "indexCount": 7749,
+      "indexed": true,
+      "materialHash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone",
       "nodeId": "sf.render.graffiti.mesh.lod0-stone",
       "primitiveIndex": 0,
-      "vertexCount": 353
+      "vertexCount": 5364
     },
     {
       "bounds": {
         "max": [
-          -0.5167986154556274,
-          7.123559951782227,
-          -0.8209388852119446
+          -0.5155435800552368,
+          6.378292083740234,
+          -0.8206570744514465
         ],
         "min": [
-          -4.0832014083862305,
-          6.676440238952637,
-          -3.4790611267089844
+          -4.084456443786621,
+          5.921708106994629,
+          -3.4793429374694824
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d621f8822e1ed4abf4350f272f7cd407e3881468add4c7235276ad56b3594aa",
+      "geometryHash": "94e796e111d37cf7d229353678fdacfcedf692a0b9a1b3576c4cab66796da5e8",
       "id": "sf.render.graffiti.mesh.lod0-warning.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -365,293 +365,293 @@
     {
       "bounds": {
         "max": [
-          7.900000095367432,
-          7.020143508911133,
-          3.9003357887268066
+          7.699999809265137,
+          6.373584747314453,
+          3.8996217250823975
         ],
         "min": [
-          -8.300000190734863,
-          5.279856204986572,
-          -3.500335931777954
+          -8.100000381469727,
+          4.726415634155273,
+          -3.499621629714966
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e5d49c7f27ee9fa9376d9e3c20ac14ab05af087d8cb2c97a5d1bc0299a80667",
+      "geometryHash": "13fac9a8eadc455307c253f6c227f5dee74d584381fc9f3bd6750c8309d4089f",
       "id": "sf.render.graffiti.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 72,
+      "indexCount": 6,
       "indexed": true,
       "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.graffiti.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 6
     },
     {
       "bounds": {
         "max": [
-          5.735201835632324,
-          8.357458114624023,
-          4.595386028289795
+          8.5,
+          7.056700706481934,
+          2.525832176208496
         ],
         "min": [
-          -4.737103462219238,
-          4.643396377563477,
-          -3.3955516815185547
+          -4.518359184265137,
+          5.143299579620361,
+          -3.408651828765869
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc69e8b9bc48fdffae900c58e093168cbe04ad4fe7830bc20b3f3af4b2fa8202",
-      "id": "sf.render.graffiti.mesh.lod1-brushedmetal.primitive.0",
-      "indexCount": 144,
-      "indexed": true,
-      "materialHash": "bd3502e9ce3d875519e56dcfe6834b9346a9972fb655eb3d7616f65f371e1b0c",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_BrushedMetal",
-      "nodeId": "sf.render.graffiti.mesh.lod1-brushedmetal",
-      "primitiveIndex": 0,
-      "vertexCount": 58
-    },
-    {
-      "bounds": {
-        "max": [
-          8.699999809265137,
-          7.88346529006958,
-          2.5244948863983154
-        ],
-        "min": [
-          -4.538296222686768,
-          5.816534519195557,
-          -3.4245972633361816
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b76d243dc3cd76dea08dd4426ef9833eb0f59511f16279c88afb843b8c358b88",
+      "geometryHash": "a7dd452055f417de09edb3150d18001818ac9cb7c9d8f863a2c66418abd949d5",
       "id": "sf.render.graffiti.mesh.lod1-hull-tag1.primitive.0",
-      "indexCount": 72,
+      "indexCount": 30,
       "indexed": true,
-      "materialHash": "f47857a426dcf7928977f600eb614648e4283ff4e910cf1b7344000d1bd40f22",
+      "materialHash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_tag1",
       "nodeId": "sf.render.graffiti.mesh.lod1-hull-tag1",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 22
     },
     {
       "bounds": {
         "max": [
-          3.187049388885498,
-          7.689014911651611,
-          3.8250772953033447
+          3.3565094470977783,
+          6.890779972076416,
+          3.808192729949951
         ],
         "min": [
-          -8.199999809265137,
-          4.6249680519104,
-          -0.9181655049324036
+          -8,
+          4.024878978729248,
+          -0.9043064117431641
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c50b2038106f5cf5c6be16ba958f5c06d081000b60bf90fc40acec8b857d9f94",
+      "geometryHash": "bab91ccb706790fac5a01288f09f41c34f27d894354f881f60911fa444ae8a06",
       "id": "sf.render.graffiti.mesh.lod1-hull-tag2.primitive.0",
-      "indexCount": 72,
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "a733aa1b9e38ccfc62f08f73e7c16b213324df3cc241234ece4419aff61b6e8c",
+      "materialHash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_tag2",
       "nodeId": "sf.render.graffiti.mesh.lod1-hull-tag2",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          4.313935279846191,
-          7.220785140991211,
-          -1.046387791633606
-        ],
-        "min": [
-          2.486065149307251,
-          6.579215049743652,
-          -2.553612232208252
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e8e3c4d091d1054a5494f837fa6374b4f75d6b6ded3bce05b2922cc1d855c9e5",
-      "id": "sf.render.graffiti.mesh.lod1-hull-tag3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "dfc3fc15f2af39382cdbee98eb5f73f33c4342a6760a13ef4e2408f1c9cc0749",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Hull_tag3",
-      "nodeId": "sf.render.graffiti.mesh.lod1-hull-tag3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          6.032736301422119,
-          4.625237464904785,
-          -4.154685974121094
+          6.018063545227051,
+          4.20373010635376,
+          -4.174142360687256
         ],
         "min": [
-          5.351955413818359,
-          4.096183776855469,
-          -4.8839874267578125
+          5.36619758605957,
+          3.6975598335266113,
+          -4.885302543640137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "55bcc952b60d56c3c812e1a902a8383fa43ad8b8318fb506794444d616dcde7c",
+      "geometryHash": "9693354f37acbedc033c678ceaa180643f6febc7482b0d89fa0e680375d7f859",
       "id": "sf.render.graffiti.mesh.lod1-lights-warm.primitive.0",
-      "indexCount": 510,
+      "indexCount": 90,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.graffiti.mesh.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 178
+      "vertexCount": 72
     },
     {
       "bounds": {
         "max": [
-          7.873799800872803,
-          6.79569149017334,
-          3.885535955429077
+          7.6910719871521,
+          6.199917793273926,
+          3.879033327102661
         ],
         "min": [
-          -8.273653984069824,
-          2.2043089866638184,
-          -4.938473224639893
+          -8.046371459960938,
+          1.5983235836029053,
+          -4.9437713623046875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "415b9e91e34fa3fc8f536fdbc581d4568d2265ea4dc4caaea376e552115333ff",
+      "geometryHash": "5180d390ba5637e2de3a18735070d4377a3d87227d8d029ec502e8aeaa79ea22",
       "id": "sf.render.graffiti.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 264,
+      "indexCount": 108,
       "indexed": true,
       "materialHash": "c4e320516ec0b150cb89a0cedf17e091b3d069fcf1fbf6aa33a27202531ed55d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.graffiti.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 134
+      "vertexCount": 74
     },
     {
       "bounds": {
         "max": [
-          6.159397125244141,
-          4.129432201385498,
+          6.163574695587158,
+          3.732537269592285,
           -4.375
         ],
         "min": [
-          5.6750054359436035,
-          3.8143155574798584,
-          -4.937939167022705
+          5.675004959106445,
+          3.3955695629119873,
+          -4.94408655166626
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f19f64f072c1540d091f71a6d934c0ba643fbaa7e9e043efb0d7b0999410cf0",
+      "geometryHash": "fedfe3171ebefc65c50fb69727d3c50cd8e20bcaf8e449f885bf2ab365bf10a3",
       "id": "sf.render.graffiti.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 72,
+      "indexCount": 9,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.graffiti.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 38
+      "vertexCount": 7
     },
     {
       "bounds": {
         "max": [
-          0.24998441338539124,
-          3.2837672233581543,
-          9.332168579101562
+          -0.284376859664917,
+          2.411191701889038,
+          8.853227615356445
         ],
         "min": [
-          -11.473003387451172,
-          -7.4990644454956055,
-          -6.482039928436279
+          -10.38550853729248,
+          -6.520230770111084,
+          -5.9109697341918945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d287133e38add57c70e5be62c42995513941345c058c2db4563dd672925853bd",
+      "geometryHash": "5dc4f60db3db122a481655f42aeddc5e7f5910c08830d1f380193608ec3fa17d",
       "id": "sf.render.graffiti.mesh.lod1-stone-deep.primitive.0",
-      "indexCount": 480,
+      "indexCount": 3306,
       "indexed": true,
-      "materialHash": "c222ae603c82167bdb3f2ab16cc6ec456a9781e16f1228a86c87f6a3c38abc51",
+      "materialHash": "18778d087122aacf196d07a2a53472c9c7aeda5cedc9c866bfe069fef2f5d8d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_deep",
       "nodeId": "sf.render.graffiti.mesh.lod1-stone-deep",
       "primitiveIndex": 0,
-      "vertexCount": 376
+      "vertexCount": 2412
     },
     {
       "bounds": {
         "max": [
-          10.949097633361816,
-          6.8209710121154785,
-          9.5546875
+          5.031000137329102,
+          6.8223042488098145,
+          2.7393712997436523
         ],
         "min": [
-          -9.82809066772461,
-          -11.57158374786377,
-          -11.27080249786377
+          -5.304195404052734,
+          5.283080101013184,
+          -2.7822797298431396
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63735fc26745eec632e14171582167e59170aaeb8cd1820389c394a4fdd433f3",
-      "id": "sf.render.graffiti.mesh.lod1-stone.primitive.0",
-      "indexCount": 480,
+      "geometryHash": "8b1351b5142e40d002467176de1d94ffb557d7539d83c9656bad4e544bf5a5be",
+      "id": "sf.render.graffiti.mesh.lod1-stone-quarry.primitive.0",
+      "indexCount": 30,
       "indexed": true,
-      "materialHash": "5476a2a1dda793cd9661c309058576b9100d4b0f966aa164f1688a79751abff4",
+      "materialHash": "3fdcdcc8321e7154d1160e4acecb33cc513243b543170a5374b33859d1f948f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_quarry",
+      "nodeId": "sf.render.graffiti.mesh.lod1-stone-quarry",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          7.364976406097412,
+          -1.2257739305496216,
+          6.988468170166016
+        ],
+        "min": [
+          -7.428141117095947,
+          -5.48650598526001,
+          -8.152125358581543
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "280e9190d22f380fd5af8b4ec89764c645167c3c35f84164bfa33c41bfb7bccc",
+      "id": "sf.render.graffiti.mesh.lod1-stone-strata.primitive.0",
+      "indexCount": 303,
+      "indexed": true,
+      "materialHash": "98d80eaab57fa6eb6bb9d73f80e51cd6130b347633f82423fff3ab4536dbad82",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_strata",
+      "nodeId": "sf.render.graffiti.mesh.lod1-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 204
+    },
+    {
+      "bounds": {
+        "max": [
+          8.40583610534668,
+          6.989933013916016,
+          8.737095832824707
+        ],
+        "min": [
+          -7.811046600341797,
+          -8.658065795898438,
+          -8.522741317749023
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f8ef86af122a90a352021a26aa7bcc6b42c7846221163a68c5439556ec5aa50c",
+      "id": "sf.render.graffiti.mesh.lod1-stone.primitive.0",
+      "indexCount": 4287,
+      "indexed": true,
+      "materialHash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone",
       "nodeId": "sf.render.graffiti.mesh.lod1-stone",
       "primitiveIndex": 0,
-      "vertexCount": 353
+      "vertexCount": 3084
     },
     {
       "bounds": {
         "max": [
-          -0.5167986154556274,
-          7.123559951782227,
-          -0.8209388852119446
+          -0.5356238484382629,
+          6.3784098625183105,
+          -0.8248875737190247
         ],
         "min": [
-          -4.0832014083862305,
-          6.676440238952637,
-          -3.4790611267089844
+          -4.084456443786621,
+          5.998908996582031,
+          -3.4751129150390625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3b378b6f38062158e75d17530dea4b7a6947944317424af4ff096eaa7f36ff4",
+      "geometryHash": "abd3c46671e71b78093fe52995b904ad2ce2a115d9e3266336f54a0f4b1edd17",
       "id": "sf.render.graffiti.mesh.lod1-warning.primitive.0",
-      "indexCount": 108,
+      "indexCount": 48,
       "indexed": true,
       "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.graffiti.mesh.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          7.90000057220459,
-          6.97367000579834,
-          3.900336265563965
+          7.699999809265137,
+          6.373584747314453,
+          3.8996217250823975
         ],
         "min": [
-          -8.30000114440918,
-          5.326329708099365,
-          -3.500336170196533
+          -8.100000381469727,
+          4.726415634155273,
+          -3.499621629714966
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6cef547dc123771e984d6d5a50eba694d7d320620219528e5e74d7ffaf358af",
+      "geometryHash": "13fac9a8eadc455307c253f6c227f5dee74d584381fc9f3bd6750c8309d4089f",
       "id": "sf.render.graffiti.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -665,118 +665,68 @@
     {
       "bounds": {
         "max": [
-          5.72858190536499,
-          8.352029800415039,
-          4.583062171936035
+          8.5,
+          7.037079811096191,
+          2.5256526470184326
         ],
         "min": [
-          -4.72793436050415,
-          4.648674011230469,
-          -3.3830626010894775
+          -4.493215084075928,
+          5.143235206604004,
+          -3.4084722995758057
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40c04eff21f607a0ca75a15cb8896a340f31a0fe26dcd0e5a95698f11ca4bb91",
-      "id": "sf.render.graffiti.mesh.lod2-brushedmetal.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "bd3502e9ce3d875519e56dcfe6834b9346a9972fb655eb3d7616f65f371e1b0c",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_BrushedMetal",
-      "nodeId": "sf.render.graffiti.mesh.lod2-brushedmetal",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          8.699999809265137,
-          7.832167625427246,
-          2.5179247856140137
-        ],
-        "min": [
-          -4.511712551116943,
-          5.919378280639648,
-          -3.4079315662384033
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ceaae70c97ae2ffbf58d1554e2e7dc9f629c1e2ef6aea330067a2743dd3ea91b",
+      "geometryHash": "2e647b2e244a69b467b116aed63840086f9739bcd58dac916ee85907edd2e1d7",
       "id": "sf.render.graffiti.mesh.lod2-hull-tag1.primitive.0",
       "indexCount": 15,
       "indexed": true,
-      "materialHash": "f47857a426dcf7928977f600eb614648e4283ff4e910cf1b7344000d1bd40f22",
+      "materialHash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_tag1",
       "nodeId": "sf.render.graffiti.mesh.lod2-hull-tag1",
       "primitiveIndex": 0,
-      "vertexCount": 11
+      "vertexCount": 13
     },
     {
       "bounds": {
         "max": [
-          3.163072347640991,
-          7.6371283531188965,
-          3.8079605102539062
+          3.331737995147705,
+          6.817966461181641,
+          3.8081796169281006
         ],
         "min": [
-          -8.199999809265137,
-          4.625308990478516,
-          -0.9044876098632812
+          -8,
+          4.025061130523682,
+          -0.4638306498527527
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b304b9f94d46a2408cd911e831ee26b0290270d0f8b1a36eddb561f3a538c35e",
+      "geometryHash": "59d40cc66fe1fa0e425ca72f5363faa4b03012213fa431c130589462e55110f3",
       "id": "sf.render.graffiti.mesh.lod2-hull-tag2.primitive.0",
-      "indexCount": 15,
+      "indexCount": 9,
       "indexed": true,
-      "materialHash": "a733aa1b9e38ccfc62f08f73e7c16b213324df3cc241234ece4419aff61b6e8c",
+      "materialHash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_tag2",
       "nodeId": "sf.render.graffiti.mesh.lod2-hull-tag2",
       "primitiveIndex": 0,
-      "vertexCount": 11
+      "vertexCount": 9
     },
     {
       "bounds": {
         "max": [
-          4.298141002655029,
-          7.148299217224121,
-          -1.046449899673462
+          6.0180439949035645,
+          4.203725814819336,
+          -4.174142360687256
         ],
         "min": [
-          2.501859426498413,
-          6.579214572906494,
-          -2.5425379276275635
+          5.34766149520874,
+          3.697564125061035,
+          -4.8980793952941895
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6f388b37f2ce291791e3ace737ff78b0ada0ca60a8d4b7f0eae84521e6c6e83",
-      "id": "sf.render.graffiti.mesh.lod2-hull-tag3.primitive.0",
-      "indexCount": 18,
-      "indexed": true,
-      "materialHash": "dfc3fc15f2af39382cdbee98eb5f73f33c4342a6760a13ef4e2408f1c9cc0749",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Hull_tag3",
-      "nodeId": "sf.render.graffiti.mesh.lod2-hull-tag3",
-      "primitiveIndex": 0,
-      "vertexCount": 14
-    },
-    {
-      "bounds": {
-        "max": [
-          6.060572624206543,
-          4.613473415374756,
-          -4.1519269943237305
-        ],
-        "min": [
-          5.3520050048828125,
-          4.129202842712402,
-          -4.886220932006836
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1a37c042f735998fc8b9063ceecdcd80192349bf9cc0eebfd328c137ddb2b5c8",
+      "geometryHash": "71e0cb8d159e98b2a1af8ed8b03202d378ccc23993571cdf1dba289e0e803737",
       "id": "sf.render.graffiti.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -785,48 +735,48 @@
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.graffiti.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 65
+      "vertexCount": 63
     },
     {
       "bounds": {
         "max": [
-          7.8463664054870605,
-          6.84431266784668,
-          3.850240707397461
+          7.629779815673828,
+          6.263947486877441,
+          3.8010592460632324
         ],
         "min": [
-          -8.291060447692871,
-          2.175013303756714,
-          -4.924949645996094
+          -8.058126449584961,
+          1.5753381252288818,
+          -4.944180965423584
         ]
       },
       "drawMode": 4,
-      "geometryHash": "242d8649018b0556aa6882d458808e61ace16b7c354ab2ae94f649ab724c1d26",
+      "geometryHash": "25b28bad224c5b13a34a76730a59cd7a4c63e51c12e89fa413f052d7355eb046",
       "id": "sf.render.graffiti.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 54,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "c4e320516ec0b150cb89a0cedf17e091b3d069fcf1fbf6aa33a27202531ed55d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.graffiti.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 40
+      "vertexCount": 28
     },
     {
       "bounds": {
         "max": [
-          6.163585186004639,
-          4.132540225982666,
+          6.163574695587158,
+          3.7325570583343506,
           -4.375
         ],
         "min": [
-          5.674994468688965,
-          3.8364810943603516,
-          -4.925253868103027
+          5.675004959106445,
+          3.4014945030212402,
+          -4.94408655166626
         ]
       },
       "drawMode": 4,
-      "geometryHash": "809ff972f3271f21893f9e23fa4043dd658b426f50bd02a8eb43bf8951a766f5",
+      "geometryHash": "08391be313f90cfc3585308ce719d1e30bac9990f86319d9a1bc161a950ff30b",
       "id": "sf.render.graffiti.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -840,77 +790,127 @@
     {
       "bounds": {
         "max": [
-          0.24990108609199524,
-          3.2837672233581543,
-          9.332168579101562
+          -0.2944382429122925,
+          2.3702681064605713,
+          8.880448341369629
         ],
         "min": [
-          -11.4730863571167,
-          -7.4990644454956055,
-          -6.482039928436279
+          -10.20633602142334,
+          -6.4793548583984375,
+          -5.695584297180176
         ]
       },
       "drawMode": 4,
-      "geometryHash": "323e64d426f422398e31ebe249d00dc6fcf1d7290b8dec944c5c2b48300ce154",
+      "geometryHash": "4adbbb359aecc3bb52d018b691cdc1b71a8d35616731c64dfc4bf02296553d27",
       "id": "sf.render.graffiti.mesh.lod2-stone-deep.primitive.0",
-      "indexCount": 372,
+      "indexCount": 1422,
       "indexed": true,
-      "materialHash": "c222ae603c82167bdb3f2ab16cc6ec456a9781e16f1228a86c87f6a3c38abc51",
+      "materialHash": "18778d087122aacf196d07a2a53472c9c7aeda5cedc9c866bfe069fef2f5d8d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_deep",
       "nodeId": "sf.render.graffiti.mesh.lod2-stone-deep",
       "primitiveIndex": 0,
-      "vertexCount": 290
+      "vertexCount": 1056
     },
     {
       "bounds": {
         "max": [
-          10.949097633361816,
-          6.830799102783203,
-          9.5546875
+          5.391375541687012,
+          6.794264793395996,
+          2.8751943111419678
         ],
         "min": [
-          -9.82809066772461,
-          -11.571924209594727,
-          -11.27080249786377
+          -5.430469036102295,
+          5.066309928894043,
+          -2.7822723388671875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9156d0d3b0989baa98d326a836affab206f48f6f33cb10797802e4cedd2151eb",
-      "id": "sf.render.graffiti.mesh.lod2-stone.primitive.0",
-      "indexCount": 390,
+      "geometryHash": "635f4b8697a5125c06fcb3200a36bcb79ccfe5dc54673e617e189c93c3ec4a74",
+      "id": "sf.render.graffiti.mesh.lod2-stone-quarry.primitive.0",
+      "indexCount": 21,
       "indexed": true,
-      "materialHash": "5476a2a1dda793cd9661c309058576b9100d4b0f966aa164f1688a79751abff4",
+      "materialHash": "3fdcdcc8321e7154d1160e4acecb33cc513243b543170a5374b33859d1f948f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_quarry",
+      "nodeId": "sf.render.graffiti.mesh.lod2-stone-quarry",
+      "primitiveIndex": 0,
+      "vertexCount": 9
+    },
+    {
+      "bounds": {
+        "max": [
+          7.343502998352051,
+          -1.5135096311569214,
+          6.691009998321533
+        ],
+        "min": [
+          -7.369171142578125,
+          -5.411491870880127,
+          -8.152125358581543
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f21d13fa9049f02e7f402cdc049ca6d1314134dbf468c689fed24c6efdb096b2",
+      "id": "sf.render.graffiti.mesh.lod2-stone-strata.primitive.0",
+      "indexCount": 153,
+      "indexed": true,
+      "materialHash": "98d80eaab57fa6eb6bb9d73f80e51cd6130b347633f82423fff3ab4536dbad82",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_strata",
+      "nodeId": "sf.render.graffiti.mesh.lod2-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 133
+    },
+    {
+      "bounds": {
+        "max": [
+          8.33716106414795,
+          6.82601261138916,
+          8.727142333984375
+        ],
+        "min": [
+          -7.567479133605957,
+          -8.592270851135254,
+          -8.445802688598633
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7a8e5bb1859f470c4162080f3ee04f2ceae0fdabbe6c1887bc3cad505c13aa3d",
+      "id": "sf.render.graffiti.mesh.lod2-stone.primitive.0",
+      "indexCount": 1926,
+      "indexed": true,
+      "materialHash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone",
       "nodeId": "sf.render.graffiti.mesh.lod2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 292
+      "vertexCount": 1380
     },
     {
       "bounds": {
         "max": [
-          -0.6842794418334961,
-          7.0751447677612305,
-          -0.8247970342636108
+          -0.8141096234321594,
+          6.301018714904785,
+          -1.0199339389801025
         ],
         "min": [
-          -4.0832014083862305,
-          6.749017715454102,
-          -3.475203037261963
+          -4.084456443786621,
+          6.024755001068115,
+          -3.475064277648926
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e3fd67a1ce9add01faf911693487560b8e50debf9050d49b9860f814b5b729f",
+      "geometryHash": "5211152a697d3c121b703705072ed39694828acce0c57ca9c5a4c74abbc1ce1f",
       "id": "sf.render.graffiti.mesh.lod2-warning.primitive.0",
-      "indexCount": 36,
+      "indexCount": 9,
       "indexed": true,
       "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.graffiti.mesh.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 28
+      "vertexCount": 9
     }
   ],
   "hlods": [],
@@ -950,6 +950,13 @@
       ]
     },
     {
+      "hash": "18778d087122aacf196d07a2a53472c9c7aeda5cedc9c866bfe069fef2f5d8d7",
+      "id": "material:18778d087122aacf196d07a2",
+      "name": "Material_Stone_deep",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "id": "material:333a696e723d180dee93b90e",
       "name": "Material_Warning",
@@ -982,11 +989,43 @@
       ]
     },
     {
-      "hash": "5476a2a1dda793cd9661c309058576b9100d4b0f966aa164f1688a79751abff4",
-      "id": "material:5476a2a1dda793cd9661c309",
-      "name": "Material_Stone",
+      "hash": "3fdcdcc8321e7154d1160e4acecb33cc513243b543170a5374b33859d1f948f3",
+      "id": "material:3fdcdcc8321e7154d1160e4a",
+      "name": "Material_Stone_quarry",
       "pipelineKey": "opaque:front",
       "textures": []
+    },
+    {
+      "hash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
+      "id": "material:4aeff76ee803f141524180ba",
+      "name": "Material_Hull_tag1",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
@@ -996,73 +1035,16 @@
       "textures": []
     },
     {
-      "hash": "a733aa1b9e38ccfc62f08f73e7c16b213324df3cc241234ece4419aff61b6e8c",
-      "id": "material:a733aa1b9e38ccfc62f08f73",
-      "name": "Material_Hull_tag2",
+      "hash": "98d80eaab57fa6eb6bb9d73f80e51cd6130b347633f82423fff3ab4536dbad82",
+      "id": "material:98d80eaab57fa6eb6bb9d73f",
+      "name": "Material_Stone_strata",
       "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
+      "textures": []
     },
     {
-      "hash": "bd3502e9ce3d875519e56dcfe6834b9346a9972fb655eb3d7616f65f371e1b0c",
-      "id": "material:bd3502e9ce3d875519e56dcf",
-      "name": "Material_BrushedMetal",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "c222ae603c82167bdb3f2ab16cc6ec456a9781e16f1228a86c87f6a3c38abc51",
-      "id": "material:c222ae603c82167bdb3f2ab1",
-      "name": "Material_Stone_deep",
+      "hash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
+      "id": "material:b314fe9e367c26173a421470",
+      "name": "Material_Stone",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -1099,75 +1081,43 @@
       ]
     },
     {
-      "hash": "dfc3fc15f2af39382cdbee98eb5f73f33c4342a6760a13ef4e2408f1c9cc0749",
-      "id": "material:dfc3fc15f2af39382cdbee98",
-      "name": "Material_Hull_tag3",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "f47857a426dcf7928977f600eb614648e4283ff4e910cf1b7344000d1bd40f22",
-      "id": "material:f47857a426dcf7928977f600",
-      "name": "Material_Hull_tag1",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
       "id": "material:fab3eefb927c4e588f15130e",
       "name": "Material_Emissive_Amber",
       "pipelineKey": "opaque:front",
       "textures": []
+    },
+    {
+      "hash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
+      "id": "material:fd34ceca3dc6a5188ab2f69b",
+      "name": "Material_Hull_tag2",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -1270,55 +1220,6 @@
       ]
     },
     {
-      "id": "sf.render.graffiti.mesh.lod0-brushedmetal",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_BrushedMetal",
-      "nodeName": "LOD0_BrushedMetal",
-      "nodePath": [
-        0,
-        3
-      ],
-      "parentId": "sf.render.graffiti.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.graffiti.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
       "id": "sf.render.graffiti.mesh.lod0-hull-tag1",
       "localTransform": [
         1,
@@ -1343,7 +1244,7 @@
       "nodeName": "LOD0_Hull_tag1",
       "nodePath": [
         0,
-        4
+        3
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -1392,56 +1293,7 @@
       "nodeName": "LOD0_Hull_tag2",
       "nodePath": [
         0,
-        5
-      ],
-      "parentId": "sf.render.graffiti.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.graffiti.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.graffiti.mesh.lod0-hull-tag3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hull_tag3",
-      "nodeName": "LOD0_Hull_tag3",
-      "nodePath": [
-        0,
-        6
+        4
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -1490,7 +1342,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        7
+        5
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -1539,7 +1391,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        8
+        6
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -1588,7 +1440,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        9
+        7
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -1637,7 +1489,7 @@
       "nodeName": "LOD0_Stone",
       "nodePath": [
         0,
-        10
+        8
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -1684,6 +1536,104 @@
       "materialPipelineKey": "opaque",
       "mergeBoundary": "LOD0_Stone_deep",
       "nodeName": "LOD0_Stone_deep",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.graffiti.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.graffiti.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.graffiti.mesh.lod0-stone-quarry",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_quarry",
+      "nodeName": "LOD0_Stone_quarry",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.graffiti.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.graffiti.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.graffiti.mesh.lod0-stone-strata",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_strata",
+      "nodeName": "LOD0_Stone_strata",
       "nodePath": [
         0,
         11
@@ -1809,55 +1759,6 @@
       ]
     },
     {
-      "id": "sf.render.graffiti.mesh.lod1-brushedmetal",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_BrushedMetal",
-      "nodeName": "LOD1_BrushedMetal",
-      "nodePath": [
-        0,
-        14
-      ],
-      "parentId": "sf.render.graffiti.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.graffiti.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
       "id": "sf.render.graffiti.mesh.lod1-hull-tag1",
       "localTransform": [
         1,
@@ -1882,7 +1783,7 @@
       "nodeName": "LOD1_Hull_tag1",
       "nodePath": [
         0,
-        15
+        14
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -1931,56 +1832,7 @@
       "nodeName": "LOD1_Hull_tag2",
       "nodePath": [
         0,
-        16
-      ],
-      "parentId": "sf.render.graffiti.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.graffiti.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.graffiti.mesh.lod1-hull-tag3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hull_tag3",
-      "nodeName": "LOD1_Hull_tag3",
-      "nodePath": [
-        0,
-        17
+        15
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2029,7 +1881,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        18
+        16
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2078,7 +1930,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        19
+        17
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2127,7 +1979,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        20
+        18
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2176,7 +2028,7 @@
       "nodeName": "LOD1_Stone",
       "nodePath": [
         0,
-        21
+        19
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2223,6 +2075,104 @@
       "materialPipelineKey": "opaque",
       "mergeBoundary": "LOD1_Stone_deep",
       "nodeName": "LOD1_Stone_deep",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.graffiti.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.graffiti.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.graffiti.mesh.lod1-stone-quarry",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_quarry",
+      "nodeName": "LOD1_Stone_quarry",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.graffiti.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.graffiti.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.graffiti.mesh.lod1-stone-strata",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_strata",
+      "nodeName": "LOD1_Stone_strata",
       "nodePath": [
         0,
         22
@@ -2348,55 +2298,6 @@
       ]
     },
     {
-      "id": "sf.render.graffiti.mesh.lod2-brushedmetal",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_BrushedMetal",
-      "nodeName": "LOD2_BrushedMetal",
-      "nodePath": [
-        0,
-        25
-      ],
-      "parentId": "sf.render.graffiti.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.graffiti.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
       "id": "sf.render.graffiti.mesh.lod2-hull-tag1",
       "localTransform": [
         1,
@@ -2421,7 +2322,7 @@
       "nodeName": "LOD2_Hull_tag1",
       "nodePath": [
         0,
-        26
+        25
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2470,56 +2371,7 @@
       "nodeName": "LOD2_Hull_tag2",
       "nodePath": [
         0,
-        27
-      ],
-      "parentId": "sf.render.graffiti.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.graffiti.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.graffiti.mesh.lod2-hull-tag3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hull_tag3",
-      "nodeName": "LOD2_Hull_tag3",
-      "nodePath": [
-        0,
-        28
+        26
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2568,7 +2420,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        29
+        27
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2617,7 +2469,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        30
+        28
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2666,7 +2518,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        31
+        29
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2715,7 +2567,7 @@
       "nodeName": "LOD2_Stone",
       "nodePath": [
         0,
-        32
+        30
       ],
       "parentId": "sf.render.graffiti.root",
       "role": "immutable",
@@ -2762,6 +2614,104 @@
       "materialPipelineKey": "opaque",
       "mergeBoundary": "LOD2_Stone_deep",
       "nodeName": "LOD2_Stone_deep",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.graffiti.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.graffiti.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.graffiti.mesh.lod2-stone-quarry",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_quarry",
+      "nodeName": "LOD2_Stone_quarry",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.graffiti.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.graffiti.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.graffiti.mesh.lod2-stone-strata",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_strata",
+      "nodeName": "LOD2_Stone_strata",
       "nodePath": [
         0,
         33
@@ -2888,45 +2838,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "84b79f8697f1e91e9181126333a6537d4b6b7fe3fa2ff55f4643f1357d26da59"
+      "sha256": "e2bccb974effda14ce0163c11a94fb51d6d98afba337a71b6eb7255575fe1bae"
     },
     "sourceGlb": {
-      "bytes": 406600,
-      "sha256": "e78ede8d6fd84b91ed92c341f62cfaa83d9f072a2e37264ec08e32e5db4fbcac",
+      "bytes": 705016,
+      "sha256": "75cbfee508fcb4a6e8bb50a0d85ecd632330da76d4b81191c420ab877337a0f9",
       "uri": "place_asteroid_graffiti.glb"
     },
     "sourceManifest": {
-      "bytes": 207712,
-      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 514188,
-    "sha256": "a6218454e6735768a5108a53a09de629fe885aabfe0d118cbd2e448839effd18",
+    "bytes": 1120448,
+    "sha256": "d1e821d568adf262cef2c7958be064c5c056ba3e9054634d04b6190cedcd797d",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.2619943618774414,
-        -1.6073589324951172,
-        -0.8580574989318848
+        -0.9427542686462402,
+        -0.757361650466919,
+        0.1826028823852539
       ],
       "max": [
-        10.949097633361816,
-        8.358057975769043,
-        9.554874420166016
+        8.5,
+        7.143920421600342,
+        8.887961387634277
       ],
       "min": [
-        -11.4730863571167,
-        -11.572775840759277,
-        -11.270989418029785
+        -10.38550853729248,
+        -8.65864372253418,
+        -8.52275562286377
       ],
       "size": [
-        22.422183990478516,
-        19.93083381652832,
-        20.8258638381958
+        18.88550853729248,
+        15.802564144134521,
+        17.410717010498047
       ]
     },
     "hidden": [
@@ -2984,9 +2934,9 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 7,
-      "hull": 9,
-      "mechanical": 9,
+      "geology": 13,
+      "hull": 6,
+      "mechanical": 6,
       "signal": 6,
       "warning": 3
     },
@@ -3004,7 +2954,7 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3014,27 +2964,27 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 8,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 9,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
       },
       {
         "allowTextures": true,
@@ -3059,7 +3009,7 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3069,27 +3019,27 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 19,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
+        "planIndex": 20,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "geology"
       },
       {
         "allowTextures": true,
@@ -3114,7 +3064,7 @@
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3124,27 +3074,27 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 32,
+        "planIndex": 30,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 33,
+        "planIndex": 31,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "geology"
       },
       {
         "allowTextures": true,
@@ -3211,7 +3161,7 @@
           0,
           1
         ],
-        "name": "LOD0_BrushedMetal",
+        "name": "LOD0_Hull_tag1",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -3238,7 +3188,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_tag1",
+        "name": "LOD0_Hull_tag2",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -3265,7 +3215,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_tag2",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -3292,7 +3242,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_tag3",
+        "name": "LOD0_Mechanical",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -3319,7 +3269,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -3346,7 +3296,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_Stone",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -3373,7 +3323,7 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_Stone_deep",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -3400,7 +3350,7 @@
           0,
           1
         ],
-        "name": "LOD0_Stone",
+        "name": "LOD0_Stone_quarry",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -3427,7 +3377,7 @@
           0,
           1
         ],
-        "name": "LOD0_Stone_deep",
+        "name": "LOD0_Stone_strata",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -3508,7 +3458,7 @@
           0,
           1
         ],
-        "name": "LOD1_BrushedMetal",
+        "name": "LOD1_Hull_tag1",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -3535,7 +3485,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull_tag1",
+        "name": "LOD1_Hull_tag2",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -3562,7 +3512,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull_tag2",
+        "name": "LOD1_Lights_Warm",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -3589,7 +3539,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull_tag3",
+        "name": "LOD1_Mechanical",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -3616,7 +3566,7 @@
           0,
           1
         ],
-        "name": "LOD1_Lights_Warm",
+        "name": "LOD1_MechanicalDark",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -3643,7 +3593,7 @@
           0,
           1
         ],
-        "name": "LOD1_Mechanical",
+        "name": "LOD1_Stone",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -3670,7 +3620,7 @@
           0,
           1
         ],
-        "name": "LOD1_MechanicalDark",
+        "name": "LOD1_Stone_deep",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -3697,7 +3647,7 @@
           0,
           1
         ],
-        "name": "LOD1_Stone",
+        "name": "LOD1_Stone_quarry",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -3724,7 +3674,7 @@
           0,
           1
         ],
-        "name": "LOD1_Stone_deep",
+        "name": "LOD1_Stone_strata",
         "planIndex": 24,
         "tags": {
           "canopy": false,
@@ -3805,7 +3755,7 @@
           0,
           1
         ],
-        "name": "LOD2_BrushedMetal",
+        "name": "LOD2_Hull_tag1",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -3832,7 +3782,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hull_tag1",
+        "name": "LOD2_Hull_tag2",
         "planIndex": 28,
         "tags": {
           "canopy": false,
@@ -3859,7 +3809,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hull_tag2",
+        "name": "LOD2_Lights_Warm",
         "planIndex": 29,
         "tags": {
           "canopy": false,
@@ -3886,7 +3836,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hull_tag3",
+        "name": "LOD2_Mechanical",
         "planIndex": 30,
         "tags": {
           "canopy": false,
@@ -3913,7 +3863,7 @@
           0,
           1
         ],
-        "name": "LOD2_Lights_Warm",
+        "name": "LOD2_MechanicalDark",
         "planIndex": 31,
         "tags": {
           "canopy": false,
@@ -3940,7 +3890,7 @@
           0,
           1
         ],
-        "name": "LOD2_Mechanical",
+        "name": "LOD2_Stone",
         "planIndex": 32,
         "tags": {
           "canopy": false,
@@ -3967,7 +3917,7 @@
           0,
           1
         ],
-        "name": "LOD2_MechanicalDark",
+        "name": "LOD2_Stone_deep",
         "planIndex": 33,
         "tags": {
           "canopy": false,
@@ -3994,7 +3944,7 @@
           0,
           1
         ],
-        "name": "LOD2_Stone",
+        "name": "LOD2_Stone_quarry",
         "planIndex": 34,
         "tags": {
           "canopy": false,
@@ -4021,7 +3971,7 @@
           0,
           1
         ],
-        "name": "LOD2_Stone_deep",
+        "name": "LOD2_Stone_strata",
         "planIndex": 35,
         "tags": {
           "canopy": false,
@@ -4060,57 +4010,57 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_graffiti.glb"
   },
-  "runtimeHash": "f3dfdc8ae44586eee5b9f1a2f5c842a7def3d88f7d08253ba4ad12c3364e8812",
+  "runtimeHash": "fe383083d4fae80613928f5d0b7a428c7b43f65a8c0bf722b871f3e90c201f13",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          10.949097633361816,
-          8.358057975769043,
-          9.554874420166016
+          8.5,
+          7.143920421600342,
+          8.887961387634277
         ],
         "min": [
-          -11.4730863571167,
-          -11.572775840759277,
-          -11.270989418029785
+          -10.38550853729248,
+          -8.65864372253418,
+          -8.52275562286377
         ]
       },
       "id": "sf.render.graffiti.body",
       "nodeIds": [
         "sf.render.graffiti.mesh.collision-hull",
         "sf.render.graffiti.mesh.lod0-beacon-amber",
-        "sf.render.graffiti.mesh.lod0-brushedmetal",
         "sf.render.graffiti.mesh.lod0-hull-tag1",
         "sf.render.graffiti.mesh.lod0-hull-tag2",
-        "sf.render.graffiti.mesh.lod0-hull-tag3",
         "sf.render.graffiti.mesh.lod0-lights-warm",
         "sf.render.graffiti.mesh.lod0-mechanical",
         "sf.render.graffiti.mesh.lod0-mechanicaldark",
         "sf.render.graffiti.mesh.lod0-stone",
         "sf.render.graffiti.mesh.lod0-stone-deep",
+        "sf.render.graffiti.mesh.lod0-stone-quarry",
+        "sf.render.graffiti.mesh.lod0-stone-strata",
         "sf.render.graffiti.mesh.lod0-warning",
         "sf.render.graffiti.mesh.lod1-beacon-amber",
-        "sf.render.graffiti.mesh.lod1-brushedmetal",
         "sf.render.graffiti.mesh.lod1-hull-tag1",
         "sf.render.graffiti.mesh.lod1-hull-tag2",
-        "sf.render.graffiti.mesh.lod1-hull-tag3",
         "sf.render.graffiti.mesh.lod1-lights-warm",
         "sf.render.graffiti.mesh.lod1-mechanical",
         "sf.render.graffiti.mesh.lod1-mechanicaldark",
         "sf.render.graffiti.mesh.lod1-stone",
         "sf.render.graffiti.mesh.lod1-stone-deep",
+        "sf.render.graffiti.mesh.lod1-stone-quarry",
+        "sf.render.graffiti.mesh.lod1-stone-strata",
         "sf.render.graffiti.mesh.lod1-warning",
         "sf.render.graffiti.mesh.lod2-beacon-amber",
-        "sf.render.graffiti.mesh.lod2-brushedmetal",
         "sf.render.graffiti.mesh.lod2-hull-tag1",
         "sf.render.graffiti.mesh.lod2-hull-tag2",
-        "sf.render.graffiti.mesh.lod2-hull-tag3",
         "sf.render.graffiti.mesh.lod2-lights-warm",
         "sf.render.graffiti.mesh.lod2-mechanical",
         "sf.render.graffiti.mesh.lod2-mechanicaldark",
         "sf.render.graffiti.mesh.lod2-stone",
         "sf.render.graffiti.mesh.lod2-stone-deep",
+        "sf.render.graffiti.mesh.lod2-stone-quarry",
+        "sf.render.graffiti.mesh.lod2-stone-strata",
         "sf.render.graffiti.mesh.lod2-warning",
         "sf.render.graffiti.root"
       ]

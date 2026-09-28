@@ -16,15 +16,15 @@
         0,
         1,
         0,
-        -2.5744247436523438,
-        0.020649433135986328,
-        0.03860735893249512,
+        -11.377056121826172,
+        0.08037960529327393,
+        -1.842031717300415,
         1
       ],
       "nodeName": "SOCKET_Salvage_Radiator",
       "nodePath": [
         0,
-        9
+        20
       ],
       "parentNodeId": "sf.render.aftermath-aft-radiator-panel.root",
       "worldTransform": [
@@ -40,9 +40,9 @@
         0,
         1,
         0,
-        -2.5744247436523438,
-        0.020649433135986328,
-        0.03860735893249512,
+        -11.377056121826172,
+        0.08037960529327393,
+        -1.842031717300415,
         1
       ]
     }
@@ -53,431 +53,506 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5dfae76a7047bd0e21477da0296153e7601e2c4bcb876b783907e509ca2cc099",
+  "contentHash": "42c2841966a01d2240418fbdb78499237fdca7b6ed71e76c0197a31f9a03f338",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          6.425575256347656,
-          4.820564270019531,
-          -0.11531274020671844
+          -4.678750038146973,
+          -0.27463236451148987,
+          2.130058526992798
         ],
         "min": [
-          -11.574424743652344,
-          4.020734786987305,
-          -0.8074725270271301
+          -4.8127360343933105,
+          -0.44878360629081726,
+          1.8621265888214111
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8e07eb8fd32888e06da4a5def4204030d2a1ea66928df4cc4db75307db45e61",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-a.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "8429051f45bd552d529c4397f7b18a82b38727c168f2cad0e2fd0df3d36ff2f3",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100-m.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-a",
+      "meshName": "PipeClamp-100_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100-m",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 168
     },
     {
       "bounds": {
         "max": [
-          6.425575256347656,
-          -3.979436159133911,
-          -0.11531274020671844
+          -4.678750038146973,
+          -0.27463236451148987,
+          -1.8621265888214111
         ],
         "min": [
-          -11.574424743652344,
-          -4.779265403747559,
-          -0.8074725270271301
+          -4.8127360343933105,
+          -0.44878360629081726,
+          -2.130058526992798
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e93ac05db2858135b45eb4ff98242b1b4a5ecaf84b70b4deac124f4ed4d8a0be",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-b.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "e32bd248386d2cc77c31adeb40e8ff5d975ec68b186186350d726ced13e9f62f",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-b",
+      "meshName": "PipeClamp-100",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 168
     },
     {
       "bounds": {
         "max": [
-          6.925575256347656,
-          4.520588397979736,
-          0.28910326957702637
+          0.6798676252365112,
+          -0.27463236451148987,
+          2.130058526992798
         ],
         "min": [
-          -12.074424743652344,
-          -4.479289531707764,
-          -0.21188856661319733
+          0.545922040939331,
+          -0.44878360629081726,
+          1.8621265888214111
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b651853c350ec4ecded377f49bb5bb00833a09992144a143226e78910941378",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-panel.primitive.0",
+      "geometryHash": "ba0dc71ea5bfaaa72bb268be381f58af55d89e763e3af956d45d0e879d8cf9bc",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20-m.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeClamp-20_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20-m",
+      "primitiveIndex": 0,
+      "vertexCount": 180
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6798676252365112,
+          -0.27463236451148987,
+          -1.8621265888214111
+        ],
+        "min": [
+          0.545922040939331,
+          -0.44878360629081726,
+          -2.130058526992798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d146a110ae7cd2f2bbb24424c73a5be30bf4cb8a7a6df3f79727b9ae145350e0",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeClamp-20",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20",
+      "primitiveIndex": 0,
+      "vertexCount": 180
+    },
+    {
+      "bounds": {
+        "max": [
+          10.057504653930664,
+          -0.27463236451148987,
+          2.130058526992798
+        ],
+        "min": [
+          9.923518180847168,
+          -0.44878360629081726,
+          1.8621265888214111
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9b3849a634abf8166eb6338ae63152e6e17965fcdde63824c41af4ede5a7945a",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120-m.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeClamp120_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120-m",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          10.057504653930664,
+          -0.27463236451148987,
+          -1.8621265888214111
+        ],
+        "min": [
+          9.923518180847168,
+          -0.44878360629081726,
+          -2.130058526992798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "367fc746d87b6ad5d64866e30fe1f33195f91a4d9d65dcd2a0fa7be92686f840",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeClamp120",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          5.368675708770752,
+          -0.27463236451148987,
+          2.130058526992798
+        ],
+        "min": [
+          5.234730243682861,
+          -0.44878360629081726,
+          1.8621265888214111
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc46216fdb1d4dc65836ac3f3a343d24dd334f7ba44e9006fe2238d6333ef17c",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50-m.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeClamp50_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50-m",
+      "primitiveIndex": 0,
+      "vertexCount": 172
+    },
+    {
+      "bounds": {
+        "max": [
+          5.368675708770752,
+          -0.27463236451148987,
+          -1.8621265888214111
+        ],
+        "min": [
+          5.234730243682861,
+          -0.44878360629081726,
+          -2.130058526992798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f47596eb5f85cd53a2b64325d244276c9de761e1da3b51d800829c57986f0bba",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeClamp50",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50",
+      "primitiveIndex": 0,
+      "vertexCount": 172
+    },
+    {
+      "bounds": {
+        "max": [
+          12,
+          -0.2208402007818222,
+          2.0766756534576416
+        ],
+        "min": [
+          -6.085402011871338,
+          -0.38200655579566956,
+          1.9155093431472778
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d107e2dbc104ed2f47d1b6b18ebcbe5d230eaa983fe2ceb2cdea7b8df288924",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.piperun-m.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "fbc5f02020d77dd509e51dc4a45f23cab6f5273733301dbffc94ccbf173e77a0",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeRun_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.piperun-m",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          12,
+          -0.2208402007818222,
+          -1.9155093431472778
+        ],
+        "min": [
+          -6.085402011871338,
+          -0.38200655579566956,
+          -2.0766756534576416
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8733d6390728db64b3898ebb1ed2c21ab405075be62d9a76dcbc535423ac9661",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.piperun.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "fbc5f02020d77dd509e51dc4a45f23cab6f5273733301dbffc94ccbf173e77a0",
+      "materialPipelineKey": "opaque",
+      "meshName": "PipeRun",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.piperun",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.946418762207031,
+          0.44876712560653687,
+          2.277421236038208
+        ],
+        "min": [
+          -11.999994277954102,
+          0.1473814845085144,
+          1.4066423177719116
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "661de88c06eb01d400965fbc3b44950a691ef736eba799b1afd73e2fc8aa7cb1",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "04b25837d69193ba9433d3594783f5984cd6f657ca7f242a20faa48597023653",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-panel",
+      "meshName": "Radiator_0_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0-m",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -9.324270248413086,
-          4.720649242401123,
-          0.13834184408187866
+          -11.946418762207031,
+          0.44876712560653687,
+          -1.4066423177719116
         ],
         "min": [
-          -9.824579238891602,
-          -4.67935037612915,
-          -0.8611271381378174
+          -11.999994277954102,
+          0.1473814845085144,
+          -2.277421236038208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d06aba00213be6a5d16f2f202cb320c790156ef0ed78823a93e2bf15ee793427",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-0.primitive.0",
+      "geometryHash": "6126376b2097f11c0a0b45b4054a4fd143abc86eb62ea448a377aac12b03ef42",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-0",
+      "meshName": "Radiator_0",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -4.724270820617676,
-          4.720649242401123,
-          0.13834184408187866
+          -11.665090560913086,
+          0.44876712560653687,
+          2.277421236038208
         ],
         "min": [
-          -5.224578857421875,
-          -4.67935037612915,
-          -0.8611271381378174
+          -11.71866512298584,
+          0.1473814845085144,
+          1.4066423177719116
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8fae06f78a92ed07b4d10b14c0490f56c8c1b378410694dcab0b6c74415614b",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-1.primitive.0",
+      "geometryHash": "a96a03d6d1bbda11b54428b294c0177c32bf6d43bda0b08652fd9efb55a0233a",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-1",
+      "meshName": "Radiator_1_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1-m",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.12427058815956116,
-          4.720649242401123,
-          0.13834184408187866
+          -11.665090560913086,
+          0.44876712560653687,
+          -1.4066423177719116
         ],
         "min": [
-          -0.6245788335800171,
-          -4.67935037612915,
-          -0.8611271381378174
+          -11.71866512298584,
+          0.1473814845085144,
+          -2.277421236038208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c3d56f74f81ee4d5559315c20cec21a81fd59b78110f3a41fcec4f9fce6b933",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-2.primitive.0",
+      "geometryHash": "d672fb65ab01efd017bd750d70578336151c03a089ae78c9f401006d5a26e32b",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-2",
+      "meshName": "Radiator_1",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          4.475729465484619,
-          4.720649242401123,
-          0.13834184408187866
+          -11.383761405944824,
+          0.44876712560653687,
+          2.277421236038208
         ],
         "min": [
-          3.97542142868042,
-          -4.67935037612915,
-          -0.8611271381378174
+          -11.437336921691895,
+          0.1473814845085144,
+          1.4066423177719116
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fdb7d531f417d08d3c795cf897d399b38e98b6f2083a304ec979681831f99e60",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-3.primitive.0",
+      "geometryHash": "86b23da3b0ba01d0142f74fb345bbef828d86bc6341103bae88bb6768340bed1",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-3",
+      "meshName": "Radiator_2_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2-m",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -2.542929172515869,
-          2.1466293334960938,
-          0.5684657692909241
+          -11.383761405944824,
+          0.44876712560653687,
+          -1.4066423177719116
         ],
         "min": [
-          -10.60591983795166,
-          -0.10533058643341064,
-          0.3087489604949951
+          -11.437336921691895,
+          0.1473814845085144,
+          -2.277421236038208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbb714980a13ef1fb5d04ab405765f4113a76d7e4307991619644d7189912d5c",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-0.primitive.0",
+      "geometryHash": "26d73d24c155f81e0a2a5cbc962357b9743297d5f78637f9df507bf5245c9a71",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "332786644a4fc6083022f490e9b1bf4a359e8b0de092327eeb6c6bc20ecf81d5",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-0",
+      "meshName": "Radiator_2",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          5.457070827484131,
-          0.1466294527053833,
-          0.5684657692909241
+          -11.102433204650879,
+          0.44876712560653687,
+          2.277421236038208
         ],
         "min": [
-          -2.6059203147888184,
-          -2.105330467224121,
-          0.3087489604949951
+          -11.15600872039795,
+          0.1473814845085144,
+          1.4066423177719116
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4bc3b8ce65ffe478f2b1cbec3efb9b473dd8e84e762635e0538b669b96b7ca5b",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-1.primitive.0",
+      "geometryHash": "02fa77355c77c330e10395e896bcd8dd95d6ff049d5c65c7826c462719dc7d6a",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "332786644a4fc6083022f490e9b1bf4a359e8b0de092327eeb6c6bc20ecf81d5",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-1",
+      "meshName": "Radiator_3_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3-m",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          8.512788772583008,
-          -2.3156423568725586,
-          4.726283550262451
+          -11.102433204650879,
+          0.44876712560653687,
+          -1.4066423177719116
         ],
         "min": [
-          6.968362808227539,
-          -3.7831077575683594,
-          3.46171236038208
+          -11.15600872039795,
+          0.1473814845085144,
+          -2.277421236038208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "259d88d1aa6b5b6833366e12e3684e03263ff36f90271d0eaabc2bde1c32083d",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-0.primitive.0",
+      "geometryHash": "a4b540e868ddbd1e40d0c20915f807086ce3fed589f8ebbdca24d64bb9571783",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-0",
+      "meshName": "Radiator_3",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          10.928857803344727,
-          -6.565730094909668,
-          2.740494966506958
+          -10.821105003356934,
+          0.44876712560653687,
+          2.277421236038208
         ],
         "min": [
-          6.840293884277344,
-          -8.195764541625977,
-          0.5242737531661987
+          -10.874679565429688,
+          0.1473814845085144,
+          1.4066423177719116
         ]
       },
       "drawMode": 4,
-      "geometryHash": "107ae3f49f1ed53c6d869f888f19e85da2bda0fcbaec4acdf5b39254a3ce3051",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-1.primitive.0",
+      "geometryHash": "969a31f686e0cd6ec6b8803a08103fd4d12a35bd8df133686bc7efc2964c83da",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-1",
+      "meshName": "Radiator_4_M",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4-m",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          9.32999038696289,
-          -6.833685874938965,
-          -0.5459815263748169
+          -10.821105003356934,
+          0.44876712560653687,
+          -1.4066423177719116
         ],
         "min": [
-          6.723159313201904,
-          -8.768814086914062,
-          -2.450281858444214
+          -10.874679565429688,
+          0.1473814845085144,
+          -2.277421236038208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af16a897a003b14fcee355e11e01fb34a2e05f9b942684cd6dee9ac22b4bd16c",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-2.primitive.0",
+      "geometryHash": "c59ee329bd886c7b8f3c8512d3d6e0d90730c29716908d050f00f52743368115",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          11.544466972351074,
-          -2.1744565963745117,
-          -1.811525821685791
-        ],
-        "min": [
-          6.796685218811035,
-          -4.232436180114746,
-          -5.155046463012695
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e017cdd4584b5ab26f96dc1b24f3932d01852ed4b08a304475447d09d8d66af5",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          9.805480003356934,
-          3.4077231884002686,
-          -2.743706703186035
-        ],
-        "min": [
-          6.819670677185059,
-          2.628833532333374,
-          -4.9165568351745605
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4b34825b7065820e0b34db0b19570468a0cb769d5fc2b9ed00e1fd67b3a748d2",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          12.074455261230469,
-          8.76882553100586,
-          -0.6313509345054626
-        ],
-        "min": [
-          6.838695526123047,
-          5.708919048309326,
-          -2.3174052238464355
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d852618325401629efe8b3f292b9cb8750cd8e5314f2c1912c114b55794b701f",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-5.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-5",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          10.261401176452637,
-          8.417091369628906,
-          2.7136945724487305
-        ],
-        "min": [
-          6.9357500076293945,
-          6.894702434539795,
-          0.2922073304653168
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e49ba94585acafd06d81da9e0a703d0797060fbfbd837dbe45b51cc06d51c552",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-6.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-6",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          8.838464736938477,
-          4.3113932609558105,
-          5.155062198638916
-        ],
-        "min": [
-          6.64268684387207,
-          2.582054615020752,
-          2.881810426712036
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "208387b734b5130f925e1fb3cdb6d29a8d9220eaff3138a242968b18044db0ae",
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-7.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.012",
-      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-7",
+      "meshName": "Radiator_4",
+      "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4",
       "primitiveIndex": 0,
       "vertexCount": 24
     }
@@ -487,44 +562,73 @@
   "lods": [],
   "materials": [
     {
-      "hash": "04b25837d69193ba9433d3594783f5984cd6f657ca7f242a20faa48597023653",
-      "id": "material:04b25837d69193ba9433d359",
-      "name": "wrk_scorch_edge",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "id": "material:0dac9b269e88e4a2a6e51b7b",
+      "name": "Forge_ore_barge_gunmetal",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "id": "material:22fb5bdfdbdcd9d19625effa",
-      "name": "wrk_torn_edge",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "332786644a4fc6083022f490e9b1bf4a359e8b0de092327eeb6c6bc20ecf81d5",
-      "id": "material:332786644a4fc6083022f490",
-      "name": "wrk_hot_deep_red",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "id": "material:cd6123b380f546013af23403",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
-      "id": "material:f3523d8806199d6eff1110c0",
-      "name": "wrk_pipe",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "fbc5f02020d77dd509e51dc4a45f23cab6f5273733301dbffc94ccbf173e77a0",
+      "id": "material:fbc5f02020d77dd509e51dc4",
+      "name": "Forge_ore_barge_bare",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-a",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100",
       "localTransform": [
         1,
         0,
@@ -544,8 +648,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ar_header_a",
-      "nodeName": "ar_header_a",
+      "mergeBoundary": "PipeClamp-100",
+      "nodeName": "PipeClamp-100",
       "nodePath": [
         0,
         0
@@ -573,7 +677,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-b",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100-m",
       "localTransform": [
         1,
         0,
@@ -593,8 +697,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ar_header_b",
-      "nodeName": "ar_header_b",
+      "mergeBoundary": "PipeClamp-100_M",
+      "nodeName": "PipeClamp-100_M",
       "nodePath": [
         0,
         1
@@ -622,7 +726,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-panel",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20",
       "localTransform": [
         1,
         0,
@@ -642,8 +746,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ar_panel",
-      "nodeName": "ar_panel",
+      "mergeBoundary": "PipeClamp-20",
+      "nodeName": "PipeClamp-20",
       "nodePath": [
         0,
         2
@@ -671,7 +775,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-0",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20-m",
       "localTransform": [
         1,
         0,
@@ -691,8 +795,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ar_rib_0",
-      "nodeName": "ar_rib_0",
+      "mergeBoundary": "PipeClamp-20_M",
+      "nodeName": "PipeClamp-20_M",
       "nodePath": [
         0,
         3
@@ -720,7 +824,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-1",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120",
       "localTransform": [
         1,
         0,
@@ -740,8 +844,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ar_rib_1",
-      "nodeName": "ar_rib_1",
+      "mergeBoundary": "PipeClamp120",
+      "nodeName": "PipeClamp120",
       "nodePath": [
         0,
         4
@@ -769,7 +873,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-2",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120-m",
       "localTransform": [
         1,
         0,
@@ -789,8 +893,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ar_rib_2",
-      "nodeName": "ar_rib_2",
+      "mergeBoundary": "PipeClamp120_M",
+      "nodeName": "PipeClamp120_M",
       "nodePath": [
         0,
         5
@@ -818,7 +922,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-3",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50",
       "localTransform": [
         1,
         0,
@@ -838,8 +942,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ar_rib_3",
-      "nodeName": "ar_rib_3",
+      "mergeBoundary": "PipeClamp50",
+      "nodeName": "PipeClamp50",
       "nodePath": [
         0,
         6
@@ -867,7 +971,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-0",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50-m",
       "localTransform": [
         1,
         0,
@@ -887,8 +991,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "crack_crack_0",
-      "nodeName": "crack_crack_0",
+      "mergeBoundary": "PipeClamp50_M",
+      "nodeName": "PipeClamp50_M",
       "nodePath": [
         0,
         7
@@ -916,7 +1020,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-1",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.piperun",
       "localTransform": [
         1,
         0,
@@ -936,8 +1040,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "crack_crack_1",
-      "nodeName": "crack_crack_1",
+      "mergeBoundary": "PipeRun",
+      "nodeName": "PipeRun",
       "nodePath": [
         0,
         8
@@ -965,7 +1069,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-0",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.piperun-m",
       "localTransform": [
         1,
         0,
@@ -985,8 +1089,57 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_0",
-      "nodeName": "tear_root_tear_0",
+      "mergeBoundary": "PipeRun_M",
+      "nodeName": "PipeRun_M",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-aft-radiator-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-radiator-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Radiator_0",
+      "nodeName": "Radiator_0",
       "nodePath": [
         0,
         10
@@ -1014,7 +1167,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-1",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0-m",
       "localTransform": [
         1,
         0,
@@ -1034,8 +1187,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_1",
-      "nodeName": "tear_root_tear_1",
+      "mergeBoundary": "Radiator_0_M",
+      "nodeName": "Radiator_0_M",
       "nodePath": [
         0,
         11
@@ -1063,7 +1216,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-2",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1",
       "localTransform": [
         1,
         0,
@@ -1083,8 +1236,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_2",
-      "nodeName": "tear_root_tear_2",
+      "mergeBoundary": "Radiator_1",
+      "nodeName": "Radiator_1",
       "nodePath": [
         0,
         12
@@ -1112,7 +1265,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-3",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1-m",
       "localTransform": [
         1,
         0,
@@ -1132,8 +1285,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_3",
-      "nodeName": "tear_root_tear_3",
+      "mergeBoundary": "Radiator_1_M",
+      "nodeName": "Radiator_1_M",
       "nodePath": [
         0,
         13
@@ -1161,7 +1314,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-4",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2",
       "localTransform": [
         1,
         0,
@@ -1181,8 +1334,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_4",
-      "nodeName": "tear_root_tear_4",
+      "mergeBoundary": "Radiator_2",
+      "nodeName": "Radiator_2",
       "nodePath": [
         0,
         14
@@ -1210,7 +1363,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-5",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2-m",
       "localTransform": [
         1,
         0,
@@ -1230,8 +1383,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_5",
-      "nodeName": "tear_root_tear_5",
+      "mergeBoundary": "Radiator_2_M",
+      "nodeName": "Radiator_2_M",
       "nodePath": [
         0,
         15
@@ -1259,7 +1412,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-6",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3",
       "localTransform": [
         1,
         0,
@@ -1279,8 +1432,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_6",
-      "nodeName": "tear_root_tear_6",
+      "mergeBoundary": "Radiator_3",
+      "nodeName": "Radiator_3",
       "nodePath": [
         0,
         16
@@ -1308,7 +1461,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-7",
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3-m",
       "localTransform": [
         1,
         0,
@@ -1328,11 +1481,109 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_root_tear_7",
-      "nodeName": "tear_root_tear_7",
+      "mergeBoundary": "Radiator_3_M",
+      "nodeName": "Radiator_3_M",
       "nodePath": [
         0,
         17
+      ],
+      "parentId": "sf.render.aftermath-aft-radiator-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-radiator-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Radiator_4",
+      "nodeName": "Radiator_4",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-aft-radiator-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-radiator-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Radiator_4_M",
+      "nodeName": "Radiator_4_M",
+      "nodePath": [
+        0,
+        19
       ],
       "parentId": "sf.render.aftermath-aft-radiator-panel.root",
       "role": "immutable",
@@ -1407,45 +1658,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6832241bc75955092b1419db958758933c5824cdfde249e5af81f52011e92af5"
+      "sha256": "6e94ba286c60a7e7bece517bf065c38ad84e14727c2035565bc3949303f36d7a"
     },
     "sourceGlb": {
-      "bytes": 20480,
-      "sha256": "9f6d7021eaf9449335c582648108a04b91b58a87bc2342deee567ee7d3e42254",
+      "bytes": 159036,
+      "sha256": "a214f283a72bcacdf59af0fd5fd8a8243fe2997f97489b11aef03f784744f3cd",
       "uri": "place_aftermath_aft_radiator_panel.glb"
     },
     "sourceManifest": {
-      "bytes": 207712,
-      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 41892,
-    "sha256": "1d0985077185027f7027f2b78e116895f4bc8878bc3cf9dd8d5a021c298ceb1d",
+    "bytes": 190396,
+    "sha256": "a099819719283fd9351618b35e20adda40196263b4c34886ffc4a9be8924b36a",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.0000152587890625,
-        0.0000057220458984375,
-        0.000007867813110351562
+        0.00000286102294921875,
+        -0.000008240342140197754,
+        0
       ],
       "max": [
-        12.074455261230469,
-        8.76882553100586,
-        5.155062198638916
+        12,
+        0.44876712560653687,
+        2.277421236038208
       ],
       "min": [
-        -12.074424743652344,
-        -8.768814086914062,
-        -5.155046463012695
+        -11.999994277954102,
+        -0.44878360629081726,
+        -2.277421236038208
       ],
       "size": [
-        24.148880004882812,
-        17.537639617919922,
-        10.310108661651611
+        23.9999942779541,
+        0.8975507318973541,
+        4.554842472076416
       ]
     },
     "hidden": [],
@@ -1465,13 +1716,13 @@
           0,
           1,
           0,
-          -2.5744247436523438,
-          0.020649433135986328,
-          0.03860735893249512,
+          -11.377056121826172,
+          0.08037960529327393,
+          -1.842031717300415,
           1
         ],
         "name": "SOCKET_Salvage_Radiator",
-        "planIndex": 11,
+        "planIndex": 22,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1490,9 +1741,7 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 14,
-      "mechanical": 2,
-      "rubber": 1
+      "mechanical": 20
     },
     "materialProfiles": [
       {
@@ -1508,80 +1757,95 @@
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "rubber"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 20,
+    "nodeCount": 23,
     "primitives": [
       {
         "canopy": false,
@@ -1603,7 +1867,7 @@
           0,
           1
         ],
-        "name": "ar_header_a",
+        "name": "PipeClamp-100",
         "planIndex": 2,
         "tags": {
           "canopy": false,
@@ -1630,7 +1894,7 @@
           0,
           1
         ],
-        "name": "ar_header_b",
+        "name": "PipeClamp-100_M",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1657,7 +1921,7 @@
           0,
           1
         ],
-        "name": "ar_panel",
+        "name": "PipeClamp-20",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1684,7 +1948,7 @@
           0,
           1
         ],
-        "name": "ar_rib_0",
+        "name": "PipeClamp-20_M",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1711,7 +1975,7 @@
           0,
           1
         ],
-        "name": "ar_rib_1",
+        "name": "PipeClamp120",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1738,7 +2002,7 @@
           0,
           1
         ],
-        "name": "ar_rib_2",
+        "name": "PipeClamp120_M",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1765,7 +2029,7 @@
           0,
           1
         ],
-        "name": "ar_rib_3",
+        "name": "PipeClamp50",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -1792,7 +2056,7 @@
           0,
           1
         ],
-        "name": "crack_crack_0",
+        "name": "PipeClamp50_M",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1819,7 +2083,7 @@
           0,
           1
         ],
-        "name": "crack_crack_1",
+        "name": "PipeRun",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -1846,7 +2110,34 @@
           0,
           1
         ],
-        "name": "tear_root_tear_0",
+        "name": "PipeRun_M",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Radiator_0",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -1873,7 +2164,7 @@
           0,
           1
         ],
-        "name": "tear_root_tear_1",
+        "name": "Radiator_0_M",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -1900,7 +2191,7 @@
           0,
           1
         ],
-        "name": "tear_root_tear_2",
+        "name": "Radiator_1",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -1927,7 +2218,7 @@
           0,
           1
         ],
-        "name": "tear_root_tear_3",
+        "name": "Radiator_1_M",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -1954,7 +2245,7 @@
           0,
           1
         ],
-        "name": "tear_root_tear_4",
+        "name": "Radiator_2",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -1981,7 +2272,7 @@
           0,
           1
         ],
-        "name": "tear_root_tear_5",
+        "name": "Radiator_2_M",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -2008,7 +2299,7 @@
           0,
           1
         ],
-        "name": "tear_root_tear_6",
+        "name": "Radiator_3",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -2035,8 +2326,62 @@
           0,
           1
         ],
-        "name": "tear_root_tear_7",
+        "name": "Radiator_3_M",
         "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Radiator_4",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Radiator_4_M",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2047,41 +2392,44 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_radiator_panel.glb"
   },
-  "runtimeHash": "12a4bffd432a1441971e5ddd36949bdc7c144aa9d149566173b3d868771c1650",
+  "runtimeHash": "d7a6dbde03e6a5378cbbd6602e6163e89b10ca3110c8632a62f82e4f545d7575",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          12.074455261230469,
-          8.76882553100586,
-          5.155062198638916
+          12,
+          0.44876712560653687,
+          2.277421236038208
         ],
         "min": [
-          -12.074424743652344,
-          -8.768814086914062,
-          -5.155046463012695
+          -11.999994277954102,
+          -0.44878360629081726,
+          -2.277421236038208
         ]
       },
       "id": "sf.render.aftermath-aft-radiator-panel.body",
       "nodeIds": [
-        "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-a",
-        "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-b",
-        "sf.render.aftermath-aft-radiator-panel.mesh.ar-panel",
-        "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-0",
-        "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-1",
-        "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-2",
-        "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-3",
-        "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-0",
-        "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-1",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-0",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-1",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-2",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-3",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-4",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-5",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-6",
-        "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-7",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-100-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp-20-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp120-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50",
+        "sf.render.aftermath-aft-radiator-panel.mesh.pipeclamp50-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.piperun",
+        "sf.render.aftermath-aft-radiator-panel.mesh.piperun-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-0-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-1-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-2-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-3-m",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4",
+        "sf.render.aftermath-aft-radiator-panel.mesh.radiator-4-m",
         "sf.render.aftermath-aft-radiator-panel.root"
       ]
     }

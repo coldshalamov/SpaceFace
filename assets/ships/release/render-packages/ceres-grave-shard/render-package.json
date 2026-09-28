@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "50ec126147e237997d13fb5c26c66a498d572eddc571f595e2333363edfd7d6d",
+  "contentHash": "71b226787cf843da362d0dd966da0a7a2601c7929c5f6bc218d52ecbe2ec9b5d",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port.dynamic",
@@ -138,7 +138,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7db4d142188b10cfd1709fb881d033d95ccb0d06fad4f7946e95d7546247118a",
+      "geometryHash": "0e9aeabe0508a24f01c31b2e97513cdff2fd027457532b2832dc34c5a017cf70",
       "id": "sf.render.ceres-grave-shard.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -147,7 +147,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.ceres-grave-shard.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 764
+      "vertexCount": 762
     },
     {
       "bounds": {
@@ -202,18 +202,18 @@
     {
       "bounds": {
         "max": [
-          8.444829940795898,
-          9.176044464111328,
-          5.7364702224731445
+          8.006121635437012,
+          8.810608863830566,
+          5.777156352996826
         ],
         "min": [
           -9.300000190734863,
-          1.1519606113433838,
-          -5.832030296325684
+          1.1518032550811768,
+          -5.858143329620361
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83a3e737ce7fbd5a68d0c624d09badedc5e98fc57d31cfbba06191bd3fe38275",
+      "geometryHash": "4b4bbdf50c4152e61b2ada551ac552c3e904c553f32794ad9150665d6ad5f341",
       "id": "sf.render.ceres-grave-shard.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 4380,
       "indexed": true,
@@ -527,18 +527,18 @@
     {
       "bounds": {
         "max": [
-          8.444499015808105,
-          9.175741195678711,
-          5.73580265045166
+          8.005790710449219,
+          8.81031322479248,
+          5.776078224182129
         ],
         "min": [
           -9.300000190734863,
-          1.151807427406311,
-          -5.830316066741943
+          1.1516543626785278,
+          -5.856886386871338
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed43d4a52602ea117d1d5d49c306e0475b96dc363f6020283f125969b4d4cffd",
+      "geometryHash": "f3a192b2cf9aaca62835af4c3caa8e6706e5bb0ad8ef4fa77f347af8b1ee40c6",
       "id": "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 1356,
       "indexed": true,
@@ -547,7 +547,7 @@
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 664
+      "vertexCount": 661
     },
     {
       "bounds": {
@@ -3511,19 +3511,19 @@
       "sha256": "da6c99ca284b1f52dda6ab2003aaec7b45cc778024420ec8d70e95f967964c96"
     },
     "sourceGlb": {
-      "bytes": 452408,
-      "sha256": "81799939ff2f46cb2a4d2f57d47f5a3914f6a1df1051d1467728062e265cb443",
+      "bytes": 452916,
+      "sha256": "addbfad4e88c139b0b9e68b4696f6f8cef8a389c27124789551db92491400118",
       "uri": "place_ceres_grave_shard.glb"
     },
     "sourceManifest": {
-      "bytes": 207712,
-      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 587280,
-    "sha256": "77db1b693dfefd3312d0ef9666212feb1052b49963ec17dcba7db889399db670",
+    "bytes": 587528,
+    "sha256": "b21b75bc87fff97815eddfdfbff114daae72aaf9318e4939300636efff4306af",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4900,7 +4900,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb"
   },
-  "runtimeHash": "7e3601ef0e50d248c04ff1925ed649b676d76452c2a2cd85e5ddbc0322383808",
+  "runtimeHash": "25d90602997dcd2d69b9646cf6f95fb2dcaa026b768c0bcd24bebdfb124a4f08",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

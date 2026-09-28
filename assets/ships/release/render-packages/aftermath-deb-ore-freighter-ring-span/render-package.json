@@ -6,683 +6,208 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bda463c27b2cf58ef404edf58b3ec72304a6a73695c6e926373b0487b10de42a",
+  "contentHash": "705320e8d6053aa49c150bb9bc299893c5b5b5751b803fd8fb5dc68d73a2556b",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          10.752960205078125,
-          0.9129547476768494,
-          4.262627601623535
+          4.068929672241211,
+          25.926132202148438,
+          23.095510482788086
         ],
         "min": [
-          8.979665756225586,
-          0.2014581561088562,
-          3.942624092102051
+          -0.8404260873794556,
+          4.021875381469727,
+          1.4292352199554443
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c984487a868b9e14557eec30bc2fc28e3be238e757b741862584bfd8b370ad92",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0a.primitive.0",
+      "geometryHash": "6a7e9fe55f456257199fde571c505e7b0691bc348c9bac1bdc2419b984ed2f0e",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0a",
+      "meshName": "Coaming",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          12.279838562011719,
-          0.4706437587738037,
-          4.232639312744141
+          0.8355315923690796,
+          -16.30087661743164,
+          -12.74388313293457
         ],
         "min": [
-          10.652788162231445,
-          -0.5962308645248413,
-          3.9726126194000244
+          -2.3412973880767822,
+          -20.276439666748047,
+          -17.9481201171875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0ffb952e45cc40156d54a5c1d1cf88ac55c5d1021de9f26be0268a0a8267224",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0b.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "3b82dc0aade7a75ddff18963ce2e0d4a242e30ebc24c9d15a866a1acc093de96",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0b",
+      "meshName": "endA_rib0",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          10.818000793457031,
-          5.082643032073975,
-          -6.3686676025390625
+          3.993924856185913,
+          -12.889808654785156,
+          -17.039743423461914
         ],
         "min": [
-          8.91462516784668,
-          3.4356868267059326,
-          -6.688587188720703
+          0.7032407522201538,
+          -16.87347412109375,
+          -20.808950424194336
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7f5fe92e12fd6cab1074ac035d3bb0e3d9f00871d35198cdc56ce0e553104bf",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1a.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "706d7df4af4a96cef26bfd96083dc3fc1ab588d734811dde8adf52e0db9d7e27",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1a",
+      "meshName": "endA_rib1",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          12.33205795288086,
-          3.618217945098877,
-          -6.398688316345215
+          -1.2429206371307373,
+          -11.803704261779785,
+          -16.885906219482422
         ],
         "min": [
-          10.600568771362305,
-          0.5601111650466919,
-          -6.658566474914551
+          -5.068449974060059,
+          -16.63251495361328,
+          -21.264362335205078
         ]
       },
       "drawMode": 4,
-      "geometryHash": "78cbdf1d3fbfcea1c80afa3f5f04a51225ecf7407966f710942f07ac81aedb1c",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1b.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "1c2d72a6b20ffcd85817df7178194bf74c09963119cd501543dee46f4b458fff",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1b",
+      "meshName": "endA_rib2",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          10.791187286376953,
-          12.206549644470215,
-          2.5860276222229004
+          5.068371772766113,
+          22.17772674560547,
+          -8.956995964050293
         ],
         "min": [
-          8.941438674926758,
-          11.02369213104248,
-          2.2659759521484375
+          0.7018579244613647,
+          16.937366485595703,
+          -13.75979232788086
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a83d6fc6f8f8470501cf56dccdc9c617118e0cabb5be25570d76822d3c082e2",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2a.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "f647ac62caa232522d9ec967eaaf64d1bf972b4a965781498294574b8c4c9d4c",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.012",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2a",
+      "meshName": "endB_rib0",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          12.31817626953125,
-          11.245965003967285,
-          2.556046962738037
+          -1.189072608947754,
+          22.83646583557129,
+          -7.886473178863525
         ],
         "min": [
-          10.614450454711914,
-          9.1942777633667,
-          2.295956611633301
+          -4.155564308166504,
+          18.94789695739746,
+          -11.929524421691895
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0327cb828ac97d41f1e1ff7e557d906af984158755b64663e97fa2e3e3e5c47",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2b.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "a76f79270384989617f95058188809af6f7d9af4fe70d72f11f0896af38069cb",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.013",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2b",
+      "meshName": "endB_rib1",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          11.012818336486816,
-          6.173147201538086,
-          11.753926277160645
+          0.10497882217168808,
+          19.86627197265625,
+          -13.297409057617188
         ],
         "min": [
-          8.987809181213379,
-          5.681180953979492,
-          11.035674095153809
+          -3.055746078491211,
+          15.257126808166504,
+          -16.476139068603516
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28f1d98bd9e401ab5e27ae32d4973e63ce77e969c24a602e2a6c467ee5350de7",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-0.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "252b7ffc0eb797ea0aa01f528243287bd1cc6f06f22d7e1b6b3e62ceede73465",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2.primitive.0",
+      "indexCount": 48,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-0",
+      "meshName": "endB_rib2",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          11.37346363067627,
-          -2.575214147567749,
-          6.066286087036133
+          0.6828113198280334,
+          25.496667861938477,
+          26.499998092651367
         ],
         "min": [
-          8.987160682678223,
-          -3.389448404312134,
-          5.349514007568359
+          -1.717530369758606,
+          -25.924667358398438,
+          -26.499998092651367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d34f0288f01a0b7cd7c7133f1df113a73e20701edb5ba0a0974d93629d3e121",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-1.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "36372698d69af5c8087250f0dde8a46e8c976bbb04168d95bde04b79e9a61bfd",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc.primitive.0",
+      "indexCount": 588,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-1",
+      "meshName": "RingArc",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc",
       "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          11.737972259521484,
-          -2.530444622039795,
-          -5.304593563079834
-        ],
-        "min": [
-          8.98265266418457,
-          -3.4705910682678223,
-          -6.132206439971924
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "91c76fedb8a28fec6f7a722f0084faf448a84902794e47d9d5c6f23984f65f83",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          11.195425987243652,
-          6.195645809173584,
-          -11.013327598571777
-        ],
-        "min": [
-          8.985201835632324,
-          5.658682346343994,
-          -11.797272682189941
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "28532977f2f10f23af24fbf1e264c4fbbc202d16478331592c22a98b608431f1",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          11.555718421936035,
-          15.284347534179688,
-          -5.327053070068359
-        ],
-        "min": [
-          8.984906196594238,
-          14.407157897949219,
-          -6.099246978759766
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a771dbaef971546ff7e440e4b4998cb9e8fb03fd0ca9151cab9b0aaf46779134",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          11.008957862854004,
-          15.162633895874023,
-          6.000365257263184
-        ],
-        "min": [
-          8.991669654846191,
-          14.474311828613281,
-          5.394434928894043
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c8d5334e6e2b3ec20d7c7ff8e7f0570be24aba1e8776a2f1ba28299cef14f482",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-5.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-5",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          10.506938934326172,
-          2.9069347381591797,
-          11.621085166931152
-        ],
-        "min": [
-          8.955686569213867,
-          1.3174887895584106,
-          10.288140296936035
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "aa6d7183c2e7d1dbd1a3e6ae749c317efec98a4c934f5cc3dddb1179131936c5",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          12.863686561584473,
-          -3.226593255996704,
-          2.774898052215576
-        ],
-        "min": [
-          8.886940956115723,
-          -4.978797912597656,
-          0.6979013681411743
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "adb768b237038dce75d97da357069c38c56ed2f9a822348671829e0fe622ba67",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          11.388965606689453,
-          0.31830498576164246,
-          -7.937798500061035
-        ],
-        "min": [
-          8.645658493041992,
-          -1.5597174167633057,
-          -10.220088005065918
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f91ea26e38aef8c2142f765e30e82eec39c285c0cecb5c4e45d5e6d73c4fba1c",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          13.726762771606445,
-          10.626910209655762,
-          -8.763484001159668
-        ],
-        "min": [
-          8.595863342285156,
-          8.495347023010254,
-          -12.212483406066895
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "74f40c2ab7f8de2f8c115c87fd8012e473762eda86e241c818351011bdd47769",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          11.63068962097168,
-          16.8308162689209,
-          -0.9318100810050964
-        ],
-        "min": [
-          8.975933074951172,
-          15.478917121887207,
-          -2.6022489070892334
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c3e0556fd6d21d9c93f0d12dcac43c2ccc8c27e1aceb1c0aacc16a41aa13141d",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          14.172884941101074,
-          13.539523124694824,
-          9.805435180664062
-        ],
-        "min": [
-          8.721739768981934,
-          10.783307075500488,
-          7.57234001159668
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "552279bf6fa7e5697c51f1034b1a5c3528ed8a690e0430ca8dcec8dc9859a950",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-5.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-5",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          8.914506912231445,
-          16.720279693603516,
-          -15.508515357971191
-        ],
-        "min": [
-          -7.8818817138671875,
-          -6.365951061248779,
-          -19.491483688354492
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b023454f24d195b767f915d067982c56d4b92796e567c516be8beaac98887eca",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          8.914508819580078,
-          16.72028160095215,
-          19.491485595703125
-        ],
-        "min": [
-          -7.88188362121582,
-          -6.365952968597412,
-          15.508514404296875
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "dc4bd741e03a3517217d1826485323b05f51c913ca1634a15bd17464b88fd991",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.6164703369140625,
-          23.927167892456055,
-          24
-        ],
-        "min": [
-          -8.35090446472168,
-          -24.072839736938477,
-          -24
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1d2ae5eff59b9ad059b4ba705068ec4a880f92bb4ca78bfeb710207d8036f3b7",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-ring.primitive.0",
-      "indexCount": 864,
-      "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "materialPipelineKey": "opaque",
-      "meshName": "Torus",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-ring",
-      "primitiveIndex": 0,
-      "vertexCount": 484
-    },
-    {
-      "bounds": {
-        "max": [
-          8.016312599182129,
-          26.62732696533203,
-          3.200308322906494
-        ],
-        "min": [
-          -8.983687400817871,
-          22.427001953125,
-          -3.200308322906494
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "7ed47c668233b0b066b0bc04a2c9da1c8b6178085a8c22dfc7a26f1c77083950",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-spine-stub.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0f57980100b6f1b770239d21a2e1ce04b40a7e5e63eabce512691fcfb9d6f104",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-spine-stub",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.376819133758545,
-          -21.838542938232422,
-          2.7903409004211426
-        ],
-        "min": [
-          -2.8692574501037598,
-          -23.73712921142578,
-          1.3680557012557983
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "724ce82ace67b1bfc88b91042c914049a2ec765489adcab4b3e91ccd5c80eb09",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.810944557189941,
-          -21.991363525390625,
-          6.274181842803955
-        ],
-        "min": [
-          -8.75354290008545,
-          -25.872310638427734,
-          4.407843112945557
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "dfb89c07c9d11c0b7c7aee2404bce43e6cc7b649a4923f1b9a140f8ff36cbb36",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -11.718873023986816,
-          -21.829927444458008,
-          2.286303997039795
-        ],
-        "min": [
-          -14.172900199890137,
-          -24.3177433013916,
-          0.6001611351966858
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9ec8ec291933380a0ae404023838203b5522852dc428ccb2277845d1a688fe58",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.641822814941406,
-          -21.80854606628418,
-          -3.701498508453369
-        ],
-        "min": [
-          -12.012762069702148,
-          -26.627126693725586,
-          -5.123134136199951
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0a06ae3db7cc7815a70eb7278731d8d11c4c16bf49b5e94dc1ba5e06a8e5abd3",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.9774458408355713,
-          -21.992168426513672,
-          -3.54677677154541
-        ],
-        "min": [
-          -4.975056171417236,
-          -24.727500915527344,
-          -5.054478645324707
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ec8a09a9b77a082f80363433910665acca1639171df12add6ee22c022758ed03",
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
-      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 220
     }
   ],
   "hlods": [],
@@ -690,37 +215,73 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0f57980100b6f1b770239d21a2e1ce04b40a7e5e63eabce512691fcfb9d6f104",
-      "id": "material:0f57980100b6f1b770239d21",
-      "name": "wrk_hull_bare",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "id": "material:0c7aa7865a150ff305773a74",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
-      "id": "material:22fb5bdfdbdcd9d19625effa",
-      "name": "wrk_torn_edge",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
-      "id": "material:5aaf41e5bfb89546b316c457",
-      "name": "wrk_cable",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "id": "material:cd6123b380f546013af23403",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "hash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "id": "material:2420fbdf2e405d9bd20f8b92",
+      "name": "Forge_ore_barge_wk_torn",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0a",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
       "localTransform": [
         1,
         0,
@@ -740,8 +301,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_cbl_0a",
-      "nodeName": "break_a_cbl_0a",
+      "mergeBoundary": "Coaming",
+      "nodeName": "Coaming",
       "nodePath": [
         0,
         0
@@ -769,7 +330,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0b",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0",
       "localTransform": [
         1,
         0,
@@ -789,8 +350,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_cbl_0b",
-      "nodeName": "break_a_cbl_0b",
+      "mergeBoundary": "endA_rib0",
+      "nodeName": "endA_rib0",
       "nodePath": [
         0,
         1
@@ -818,7 +379,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1a",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1",
       "localTransform": [
         1,
         0,
@@ -838,8 +399,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_cbl_1a",
-      "nodeName": "break_a_cbl_1a",
+      "mergeBoundary": "endA_rib1",
+      "nodeName": "endA_rib1",
       "nodePath": [
         0,
         2
@@ -867,7 +428,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1b",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2",
       "localTransform": [
         1,
         0,
@@ -887,8 +448,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_cbl_1b",
-      "nodeName": "break_a_cbl_1b",
+      "mergeBoundary": "endA_rib2",
+      "nodeName": "endA_rib2",
       "nodePath": [
         0,
         3
@@ -916,7 +477,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2a",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0",
       "localTransform": [
         1,
         0,
@@ -936,8 +497,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_cbl_2a",
-      "nodeName": "break_a_cbl_2a",
+      "mergeBoundary": "endB_rib0",
+      "nodeName": "endB_rib0",
       "nodePath": [
         0,
         4
@@ -965,7 +526,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2b",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1",
       "localTransform": [
         1,
         0,
@@ -985,8 +546,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_cbl_2b",
-      "nodeName": "break_a_cbl_2b",
+      "mergeBoundary": "endB_rib1",
+      "nodeName": "endB_rib1",
       "nodePath": [
         0,
         5
@@ -1014,7 +575,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-0",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2",
       "localTransform": [
         1,
         0,
@@ -1034,8 +595,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_rib_0",
-      "nodeName": "break_a_rib_0",
+      "mergeBoundary": "endB_rib2",
+      "nodeName": "endB_rib2",
       "nodePath": [
         0,
         6
@@ -1063,7 +624,7 @@
       ]
     },
     {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-1",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc",
       "localTransform": [
         1,
         0,
@@ -1083,942 +644,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_rib_1",
-      "nodeName": "break_a_rib_1",
+      "mergeBoundary": "RingArc",
+      "nodeName": "RingArc",
       "nodePath": [
         0,
         7
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_rib_2",
-      "nodeName": "break_a_rib_2",
-      "nodePath": [
-        0,
-        8
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_rib_3",
-      "nodeName": "break_a_rib_3",
-      "nodePath": [
-        0,
-        9
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-4",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_rib_4",
-      "nodeName": "break_a_rib_4",
-      "nodePath": [
-        0,
-        10
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-5",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_rib_5",
-      "nodeName": "break_a_rib_5",
-      "nodePath": [
-        0,
-        11
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_tear_0",
-      "nodeName": "break_a_tear_0",
-      "nodePath": [
-        0,
-        12
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_tear_1",
-      "nodeName": "break_a_tear_1",
-      "nodePath": [
-        0,
-        13
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_tear_2",
-      "nodeName": "break_a_tear_2",
-      "nodePath": [
-        0,
-        14
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_tear_3",
-      "nodeName": "break_a_tear_3",
-      "nodePath": [
-        0,
-        15
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-4",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_tear_4",
-      "nodeName": "break_a_tear_4",
-      "nodePath": [
-        0,
-        16
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-5",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "break_a_tear_5",
-      "nodeName": "break_a_tear_5",
-      "nodePath": [
-        0,
-        17
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "deb_brace_-1",
-      "nodeName": "deb_brace_-1",
-      "nodePath": [
-        0,
-        18
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "deb_brace_1",
-      "nodeName": "deb_brace_1",
-      "nodePath": [
-        0,
-        19
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-ring",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "deb_ring",
-      "nodeName": "deb_ring",
-      "nodePath": [
-        0,
-        20
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-spine-stub",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "deb_spine_stub",
-      "nodeName": "deb_spine_stub",
-      "nodePath": [
-        0,
-        21
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_ring_tear_0",
-      "nodeName": "tear_ring_tear_0",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_ring_tear_1",
-      "nodeName": "tear_ring_tear_1",
-      "nodePath": [
-        0,
-        23
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_ring_tear_2",
-      "nodeName": "tear_ring_tear_2",
-      "nodePath": [
-        0,
-        24
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_ring_tear_3",
-      "nodeName": "tear_ring_tear_3",
-      "nodePath": [
-        0,
-        25
-      ],
-      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-4",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "tear_ring_tear_4",
-      "nodeName": "tear_ring_tear_4",
-      "nodePath": [
-        0,
-        26
       ],
       "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
       "role": "immutable",
@@ -2093,192 +723,96 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "4230943e394b225a87847e165001de14b598d9bd2e30c77cd983c922dd2584d1"
+      "sha256": "809ae6e61b429fd8dacaa34b561bcc031d9aa17e59617f17ad6a500696a4392d"
     },
     "sourceGlb": {
-      "bytes": 31696,
-      "sha256": "36c4339145c4a5ce1e468bd4918b4b6080902fc8ac3096ad120859767b2d3330",
+      "bytes": 129040,
+      "sha256": "f4cb0009c4c7bf2b21e58d96e16f6c0d2b91855ff5ac9dd640211334c8ad1c98",
       "uri": "place_aftermath_deb_ore_freighter_ring_span.glb"
     },
     "sourceManifest": {
-      "bytes": 207712,
-      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
+      "bytes": 208595,
+      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 71088,
-    "sha256": "51a6c10a7c3838fab67b8d233ac232af28d3df50b62983940ea688e1d00f41ac",
+    "bytes": 133324,
+    "sha256": "b56d3c19455c2a07309a2c66275d8f44a8c102a3e1258970ca1832e8e8b20080",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.00000762939453125,
-        0.00010013580322265625,
+        -0.00003910064697265625,
+        0.000732421875,
         0
       ],
       "max": [
-        14.172884941101074,
-        26.62732696533203,
-        24
+        5.068371772766113,
+        25.926132202148438,
+        26.499998092651367
       ],
       "min": [
-        -14.172900199890137,
-        -26.627126693725586,
-        -24
+        -5.068449974060059,
+        -25.924667358398438,
+        -26.499998092651367
       ],
       "size": [
-        28.34578514099121,
-        53.25445365905762,
-        48
+        10.136821746826172,
+        51.850799560546875,
+        52.999996185302734
       ]
     },
     "hidden": [],
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "geology": 26,
-      "hull": 1
+      "mechanical": 8
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "geology"
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 29,
+    "nodeCount": 10,
     "primitives": [
       {
         "canopy": false,
@@ -2300,7 +834,7 @@
           0,
           1
         ],
-        "name": "break_a_cbl_0a",
+        "name": "Coaming",
         "planIndex": 2,
         "tags": {
           "canopy": false,
@@ -2327,7 +861,7 @@
           0,
           1
         ],
-        "name": "break_a_cbl_0b",
+        "name": "endA_rib0",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -2354,7 +888,7 @@
           0,
           1
         ],
-        "name": "break_a_cbl_1a",
+        "name": "endA_rib1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2381,7 +915,7 @@
           0,
           1
         ],
-        "name": "break_a_cbl_1b",
+        "name": "endA_rib2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2408,7 +942,7 @@
           0,
           1
         ],
-        "name": "break_a_cbl_2a",
+        "name": "endB_rib0",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -2435,7 +969,7 @@
           0,
           1
         ],
-        "name": "break_a_cbl_2b",
+        "name": "endB_rib1",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2462,7 +996,7 @@
           0,
           1
         ],
-        "name": "break_a_rib_0",
+        "name": "endB_rib2",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2489,521 +1023,8 @@
           0,
           1
         ],
-        "name": "break_a_rib_1",
+        "name": "RingArc",
         "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_rib_2",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_rib_3",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_rib_4",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_rib_5",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_tear_0",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_tear_1",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_tear_2",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_tear_3",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_tear_4",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "break_a_tear_5",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "deb_brace_-1",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "deb_brace_1",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "deb_ring",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "deb_spine_stub",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "tear_ring_tear_0",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "tear_ring_tear_1",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "tear_ring_tear_2",
-        "planIndex": 26,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "tear_ring_tear_3",
-        "planIndex": 27,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "tear_ring_tear_4",
-        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3014,51 +1035,32 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_ring_span.glb"
   },
-  "runtimeHash": "a3b8b41646ecdf2c3b2f62b8d6d345035b560617d998abe6a76a0ec5296ebf50",
+  "runtimeHash": "ed554f8b63878d0c20a3ad7c63a62b9ccd657b08ad46e12acdcfd8ca4a518200",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          14.172884941101074,
-          26.62732696533203,
-          24
+          5.068371772766113,
+          25.926132202148438,
+          26.499998092651367
         ],
         "min": [
-          -14.172900199890137,
-          -26.627126693725586,
-          -24
+          -5.068449974060059,
+          -25.924667358398438,
+          -26.499998092651367
         ]
       },
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
       "nodeIds": [
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0a",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-0b",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1a",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-1b",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2a",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-cbl-2b",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-0",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-1",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-2",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-3",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-4",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-rib-5",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-0",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-1",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-2",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-3",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-4",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.break-a-tear-5",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-brace-1-2",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-ring",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.deb-spine-stub",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-0",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-1",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-2",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-3",
-        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.tear-ring-tear-4",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc",
         "sf.render.aftermath-deb-ore-freighter-ring-span.root"
       ]
     }

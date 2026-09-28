@@ -57,9 +57,11 @@ def build():
     edge_x, edge_z = -1.0 + 10.0 * math.cos(lean), 3.4 + 10.0 * math.sin(lean)
     for i in range(7):
         ty = -5.2 + i * 1.75
-        F.box(s, f'EdgeTooth{i}', (edge_x - 0.35 + 0.3 * (i % 2), ty,
-                                   edge_z - 0.15 + 0.4 * (i % 3)),
-              (1.3, 1.0, 0.22), material='bare', bevel=0.02,
+        # each tooth straddles the torn rim: most of its volume sits inside the plate's
+        # footprint, only the jagged tip protrudes — nothing floats off the edge
+        F.box(s, f'EdgeTooth{i}', (edge_x - 1.15 + 0.2 * (i % 2), ty,
+                                   edge_z - 0.55 + 0.25 * (i % 3)),
+              (2.2, 1.0, 0.5), material='bare', bevel=0.02,
               rot=(math.radians((i * 29) % 14 - 7), lean, math.radians(3)))
     s.detail = 0
     # faded livery shard still on the skin

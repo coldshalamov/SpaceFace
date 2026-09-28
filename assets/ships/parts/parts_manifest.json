@@ -1893,8 +1893,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_graffiti.glb",
-      "tris": 3139,
-      "bytes": 471884,
+      "tris": 11145,
+      "bytes": 1345248,
       "textureSize": 1024,
       "note": "Forge rebuild: graffiti rock — quarried face with modelled miners' paint bands, survey stakes, lamp.",
       "hooks": [],
@@ -1904,19 +1904,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.472993850708008,
-          -11.5720853805542,
-          -11.27080249786377
+          -10.385281562805176,
+          -8.65831184387207,
+          -8.522741317749023
         ],
         "max": [
-          10.94859504699707,
-          8.357562065124512,
-          9.5546875
+          8.5,
+          7.143588066101074,
+          8.887947082519531
         ],
         "dimensionsM": [
-          22.421588897705078,
-          19.92964744567871,
-          20.82548999786377
+          18.885281562805176,
+          15.801899909973145,
+          17.410688400268555
         ]
       },
       "tintable": {
@@ -1928,8 +1928,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
-      "tris": 2404,
-      "bytes": 390772,
+      "tris": 12044,
+      "bytes": 1275220,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios metallic rock — faceted boulder cluster, quarried face, dark specular veins.",
       "hooks": [],
@@ -1939,32 +1939,30 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.66919469833374,
-          -6.032202243804932,
-          -5.641731262207031
+          -6.870567321777344,
+          -5.432442665100098,
+          -4.577163219451904
         ],
         "max": [
-          6.429420471191406,
-          5.67051362991333,
-          5.172295093536377
+          6.182191848754883,
+          3.966879367828369,
+          4.896740913391113
         ],
         "dimensionsM": [
-          14.098615169525146,
-          11.702715873718262,
-          10.814026355743408
+          13.052759170532227,
+          9.399322032928467,
+          9.473904132843018
         ]
       },
-      "tintable": {
-        "mechanical": "Material_Mechanical"
-      }
+      "tintable": {}
     },
     {
       "id": "place_asteroid_rock_b",
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
-      "tris": 2556,
-      "bytes": 257436,
+      "tris": 10634,
+      "bytes": 1185048,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios icy rock — faceted core with pale frost caps and ice veins.",
       "hooks": [],
@@ -1974,19 +1972,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -4.3946356773376465,
-          -4.901143550872803,
-          -4.777379989624023
+          -3.7149980068206787,
+          -3.254791021347046,
+          -4.3643879890441895
         ],
         "max": [
-          4.7146525382995605,
-          6.119078159332275,
-          5.088866233825684
+          3.9075732231140137,
+          4.610268592834473,
+          4.479449272155762
         ],
         "dimensionsM": [
-          9.109288215637207,
-          11.020221710205078,
-          9.866246223449707
+          7.622571229934692,
+          7.8650596141815186,
+          8.843837261199951
         ]
       },
       "tintable": {
@@ -1998,8 +1996,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
-      "tris": 2592,
-      "bytes": 259696,
+      "tris": 8796,
+      "bytes": 958720,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios crystalline rock — faceted core with a spiked crystal cluster, faint glow.",
       "hooks": [],
@@ -2009,19 +2007,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -4.555400371551514,
-          -4.815824508666992,
-          -5.003177642822266
+          -4.043612480163574,
+          -4.020028114318848,
+          -3.8952245712280273
         ],
         "max": [
-          5.126271724700928,
-          6.116000175476074,
-          4.405653953552246
+          4.1853461265563965,
+          5.407841205596924,
+          3.5967705249786377
         ],
         "dimensionsM": [
-          9.681672096252441,
-          10.931824684143066,
-          9.408831596374512
+          8.22895860671997,
+          9.427869319915771,
+          7.491995096206665
         ]
       },
       "tintable": {}
@@ -2031,8 +2029,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
-      "tris": 8128,
-      "bytes": 714336,
+      "tris": 12102,
+      "bytes": 1272548,
       "textureSize": 1024,
       "note": "Forge rebuild: seamed asteroid — banded mineral vein cut across the rock, faint warm seam.",
       "hooks": [],
@@ -2042,24 +2040,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.036152839660645,
-          -11.16214656829834,
-          -10.1146240234375
+          -11.006564140319824,
+          -9.429875373840332,
+          -8.806736946105957
         ],
         "max": [
-          11.718476295471191,
-          10.621345520019531,
-          10.594304084777832
+          9.286056518554688,
+          9.426740646362305,
+          9.977361679077148
         ],
         "dimensionsM": [
-          23.754629135131836,
-          21.78349208831787,
-          20.708928108215332
+          20.29262065887451,
+          18.856616020202637,
+          18.784098625183105
         ]
       },
-      "tintable": {
-        "mechanical": "Material_Mechanical"
-      }
+      "tintable": {}
     },
     {
       "id": "place_cargo_pod_standard",
@@ -2164,7 +2160,7 @@
       "priority": "P1",
       "file": "places/place_ceres_grave_shard.glb",
       "tris": 5768,
-      "bytes": 586908,
+      "bytes": 586812,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -3934,7 +3930,7 @@
       "priority": "P2",
       "file": "places/place_slurry_tank.glb",
       "tris": 10524,
-      "bytes": 1104864,
+      "bytes": 1105088,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",

@@ -80,8 +80,13 @@ _IMAGE_CACHE = {}
 
 def _image(name, colorspace):
     key = (name, colorspace)
-    if key in _IMAGE_CACHE and _IMAGE_CACHE[key].name in bpy.data.images:
-        return _IMAGE_CACHE[key]
+    cached = _IMAGE_CACHE.get(key)
+    if cached is not None:
+        try:
+            if cached.name in bpy.data.images:
+                return cached
+        except ReferenceError:
+            pass  # orphan-purged between pack pieces; fall through and reload
     path = os.path.join(TEXTURE_DIR, name)
     if not os.path.exists(path):
         from forge_textures import generate_panel_set, generate_machinery_set  # noqa
@@ -1176,24 +1181,51 @@ def sphere(ship, name, center, r, material='paint', segments=24, uv_scale=1.0):
                 uv_scale=uv_scale)
 
 
-def rock(ship, name, center, radius, seed, quarry_plane=None, material='stone', uv_scale=1.0):
+def rock(ship, name, center, radius, seed, quarry_plane=None, material='stone', uv_scale=1.0,
+         subdiv=2, relief=0.0, terrace=0.0, quarry_material=None):
     """Deterministic faceted boulder: an icosphere displaced by a seeded hash, so the same seed
     always yields the same rock (no clock or ambient RNG). quarry_plane=(point, normal) clamps
     every vert on the +normal side onto the plane — a flat quarried face where a boulder was
-    cut from a cliff or dock. Finish default `stone`: plain rough surface, no machinery tile."""
+    cut from a cliff or dock; quarry_material paints the clamped faces a second stone value.
+    Finish default `stone`: plain rough surface, no machinery tile.
+
+    subdiv: icosphere subdivisions — 2 gives the chunky legacy blob, 3+ gives the smaller
+    facets of real belt geology. relief: amplitude of the layered direction-correlated
+    displacement (broad lumps + fine jitter) that breaks the papercraft silhouette; 0 keeps
+    the legacy per-vertex hash only. terrace: partial quantisation of the radius — ledges
+    and strata steps instead of smooth lumps."""
     bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=1.0)
     for i, v in enumerate(bm.verts):
-        k = 0.75 + 0.45 * (0.5 + 0.5 * math.sin(seed * 12.9898 + i * 78.233))
+        if relief:
+            # layered, direction-correlated lumps + fine jitter — smaller facets, more weight,
+            # tighter envelope than the legacy per-vertex hash (k stays ~0.6..1.05)
+            d = v.co.normalized()
+            lump = (math.sin(3.1 * d.x + seed * 1.7) * math.sin(2.7 * d.y + seed * 0.9)
+                    * math.sin(3.9 * d.z + seed * 2.3))
+            fine = math.sin(seed * 7.13 + i * 13.73) + 0.5 * math.sin(seed * 3.31 + i * 47.7)
+            k = 0.80 + relief * 0.5 * lump + 0.05 * fine
+        else:
+            k = 0.75 + 0.45 * (0.5 + 0.5 * math.sin(seed * 12.9898 + i * 78.233))
+        if terrace:
+            step = 0.055
+            k = (1.0 - terrace) * k + terrace * (math.floor(k / step) * step)
         v.co *= radius * k
     bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(seed * 1.7, 3, 'Z'))
     bmesh.ops.translate(bm, verts=bm.verts, vec=center)
+    mats = [material] + ([quarry_material] if quarry_material else [])
     if quarry_plane is not None:
         q0, qn = Vector(quarry_plane[0]), Vector(quarry_plane[1]).normalized()
         for v in bm.verts:
             d = (v.co - q0).dot(qn)
             if d > 0:
                 v.co -= qn * d
+        if quarry_material is not None:
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+            slot = mats.index(quarry_material)
+            for f in bm.faces:
+                if all(abs((v.co - q0).dot(qn)) < 1e-3 for v in f.verts):
+                    f.material_index = slot
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    return ship.add(_new_object(name, bm, ship.slots([material]), bevel=0.0, uv_scale=uv_scale,
+    return ship.add(_new_object(name, bm, ship.slots(mats), bevel=0.0, uv_scale=uv_scale,
                                 smooth_angle=14.0))

@@ -46,6 +46,7 @@ import argparse
 import hashlib
 import json
 import math
+import shutil
 import sys
 from pathlib import Path
 
@@ -54,7 +55,16 @@ from mathutils import Euler, Vector
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT_SOURCE = ROOT / 'assets' / 'incubator' / 'wreck_aftermath_pack' / 'source'
+OUT_AUTHOR = ROOT / 'assets' / 'incubator' / 'wreck_aftermath_pack' / 'authored_down'
 OUT_EVIDENCE = ROOT / 'assets' / 'incubator' / 'wreck_aftermath_pack' / 'evidence'
+
+# GFX-7: pieces are cut from real Forge donor hulls. wreck_kit holds the shared fracture /
+# damage-state tooling (also the GFX-6 hull-damage seam); forge supplies the ships' build().
+FORGE_DIR = ROOT / 'tools' / 'blender' / 'forge'
+for _p in (str(FORGE_DIR), str(FORGE_DIR / 'ships')):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+import wreck_kit as W  # noqa: E402
 
 # Player hull is 28 m (CAMERA_VISIBLE_BUBBLE.md). A navigable gap must present at least 40 m of
 # clear span -- enough that a pilot commits rather than scrapes. Asserted, not eyeballed.
@@ -647,6 +657,7 @@ def gap_clearance(objs, center):
     gap at all, because they will try."""
     c = Vector(center)
     best = float('inf')
+    nearest = None
     for o in objs:
         if o.type != 'MESH' or not o.data.polygons:
             continue
@@ -656,8 +667,10 @@ def gap_clearance(objs, center):
             continue
         if not hit:
             continue
-        best = min(best, ((o.matrix_world @ loc) - c).length)
-    return best
+        d = ((o.matrix_world @ loc) - c).length
+        if d < best:
+            best, nearest = d, o.name
+    return best, nearest
 
 
 def apply_state(asm, state):
@@ -752,1203 +765,717 @@ def finish(asm, name, sockets=(), recentre=True):
     return root, [round(v, 2) for v in offset]
 
 
+
 # ===========================================================================
-# FAMILY 1 — BULK ORE FREIGHTER
+# FAMILY BUILDERS — Forge-derived wrecks (GFX-7)
 #
-# Identity that survives dismemberment (fiction §5): repeated deep hoppers slung inside an exposed
-# open ring-frame trunk. The RINGS are the rhythm, and rings are frames -- so the class stays
-# readable even in the heavily-stripped state where the skin is gone.
+# Every piece is cut from a real Forge donor hull by wreck_kit: run the donor's own build(),
+# keep a region, split it on jagged multi-plane cuts, cap the wounds with scorched plate, grow
+# exposed frame ribs and torn flanges along the cut, then apply a damage state. The catalog
+# contract (src/data/wreckAftermathDressing.js) is unchanged — same ids, file names, longestM,
+# socket names and gap probes; only the geometry source changed.
 #
-# The ring geometry is also what makes the navigable gap honest. A "missing hopper" slot between
-# solid sides gives ~24 m of cross-section and the player hull is 28 m: that gap would be a lie.
-# Slung INSIDE ring frames of 22 m inner radius, a torn-out hopper leaves the full ring bore clear,
-# and the player flies through the ribcage port-to-starboard. Asserted in the report, not eyeballed.
+# Donors (fiction §5 — the wreck must still say what it was):
+#   ore_freighter <- ore_barge.py             the pack freighter was always drawn as a hopper
+#                                             bulk hauler; the barge IS that ship
+#   corvette      <- bastion.py               the player corvette: compact armoured hull, citadel,
+#                                             two turrets. warden.py is a tier-4 sponson gunship —
+#                                             a class above "patrol corvette" — so bastion is the
+#                                             honest donor.
+#   liner         <- massline_express_liner.py the only passenger hull in the fleet; the drum +
+#                                             wedge bow are its identity.
 
-FR_BAY = 34.0
-FR_RING_MAJOR = 23.0
-FR_RING_MINOR = 1.0          # inner bore 22.0 -> clear radius 22 > MIN_GAP_CLEAR_RADIUS
-FR_RINGS = (119.0, 85.0, 51.0, 17.0, -17.0, -51.0, -85.0, -119.0)
-FR_BAYS = (102.0, 68.0, 34.0, 0.0, -34.0, -68.0, -102.0)
-FR_BOW_X = 134.0             # bow module centre; hull spans 119..149
-FR_STERN_X = -134.0
-FR_BREAK_X = 0.0             # fiction §1.1: in the weak BAY, never through a frame
-FR_GAP_BAY = 68.0            # the hopper that was torn out
-
-
-def _fr_hopper(asm, tag, xc, split=False, breached=False):
-    """A deep ore hopper: wide mouth at z=+4 tapering to a narrow chute at z=-19, 28 m long.
-    Fits inside the 22 m ring bore at every height (checked: 15.5 m at the mouth, 19.9 m at the
-    chute corners)."""
-    # 26 m, not 28: a hopper is 4 m shorter than its bay so that the bay it is torn OUT of clears
-    # the 40 m the fiction promises. At 28 m the empty bay measured 39.4 m -- the 0.6 m bulkhead
-    # plates ate the margin, and a gap that misses by 300 mm is still a gap the player cannot fly.
-    half = 13.0
-    lean = math.atan2(9.0, 23.0)  # slope of the taper, both sides
-    for sgn in (1, -1):
-        if breached and sgn < 0:
-            # a hole torn in the PORT side (-Y), which is what the review camera and the player's
-            # approach both see. Fire inside a sealed box is fire nobody ever witnesses.
-            for i, (dx, w) in enumerate(((-9.0, 8.0), (9.0, 8.0))):
-                asm.add(tag, box(f'{tag}_side_{sgn}_{i}', (w, 0.5, 24.7), (xc + dx, sgn * 10.5, -7.5),
-                                 rot=(-sgn * lean, 0, 0)), 'wrk_paint_freight_ochre')
-            tear_fringe(asm, tag, (xc, sgn * 10.5, -7.5), (0, -0.93, -0.36), 7.0, 7, squash=1.6,
-                        depth=3.0, width=2.6)
-            continue
-        asm.add(tag, box(f'{tag}_side_{sgn}', (26.0, 0.5, 24.7), (xc, sgn * 10.5, -7.5),
-                         rot=(-sgn * lean, 0, 0)), 'wrk_paint_freight_ochre')
-        # external stiffeners: the frame rhythm repeats at hopper scale too
-        for i, dx in enumerate((-8.5, 0.0, 8.5)):
-            asm.add(tag, box(f'{tag}_stiff_{sgn}_{i}', (1.1, 0.9, 24.0),
-                             (xc + dx, sgn * 11.1, -7.5), rot=(-sgn * lean, 0, 0)), 'wrk_frame_steel')
-    # tapered end bulkheads, stacked in three widths
-    for ex, label in ((xc - half, 'f'), (xc + half, 'a')):
-        for i, (zc, w, h) in enumerate(((0.0, 26.6, 8.0), (-8.0, 20.4, 8.0), (-15.5, 14.9, 7.0))):
-            # painted, not bare grey: round 1 read the stepped bulkheads as a grey slab wedged in
-            # the frame rather than as the end of the hopper
-            asm.add(tag, box(f'{tag}_end_{label}_{i}', (0.6, w, h), (ex, 0, zc)),
-                    'wrk_paint_freight_ochre')
-    # loading hatches across the mouth. The middle one is always open -- a hopper is loaded from the
-    # gallery above, and an open hatch is what lets the fire inside be SEEN without being a lamp.
-    for i, dx in enumerate((-8.4, 8.4)):
-        asm.add(tag, box(f'{tag}_hatch_{i}', (7.6, 30.0, 0.5), (xc + dx, 0, 4.3)),
-                'wrk_deck_grate')
-    asm.add(tag, box(f'{tag}_chute', (26.0, 12.0, 1.4), (xc, 0, -19.0)), 'wrk_hull_bare')
-    for sgn in (1, -1):
-        asm.add(tag, beam(f'{tag}_rim_{sgn}', (xc - half, sgn * 15.0, 4.0),
-                          (xc + half, sgn * 15.0, 4.0), 0.55), 'wrk_frame_steel')
-    if split:
-        # fiction §1.2: a vessel that lets go PETALS -- the seam splits and folds outward, still
-        # anchored. Here the chute seam has opened and the load is leaving.
-        for i, sgn in enumerate((1, -1)):
-            asm.add(tag, plate(f'{tag}_petal_{i}', (xc - 9, sgn * 5.0, -18.0),
-                               (xc + 9, sgn * 12.0, -25.0), 9.0, 0.4, roll=sgn * 0.8), 'wrk_torn_edge')
-        for i, (dx, dy, dz, r) in enumerate(((-6, 2, -26, 2.6), (2, -3, -30, 2.0), (9, 4, -24, 1.7),
-                                             (-1, 6, -34, 1.3), (6, -7, -38, 1.1))):
-            asm.add(tag, sphere(f'{tag}_ore_{i}', r, (xc + dx, dy, dz), seg=8, rings=5), 'wrk_ore_raw')
+DONOR_ORE = 'ore_barge'
+DONOR_CORVETTE = 'bastion'
+DONOR_LINER = 'massline_express_liner'
 
 
-def _fr_ring(asm, x, idx):
-    tag = f'ring_{idx}'
-    asm.add(tag, ring_frame(f'fr_ring_{idx}', FR_RING_MAJOR, FR_RING_MINOR, (x, 0, 0)), 'wrk_frame_steel')
-    # gusset plates where the ring meets the dorsal spine and the ventral chords
-    for sgn in (1, -1):
-        asm.add(tag, box(f'fr_ring_{idx}_gusset_{sgn}', (1.6, 3.0, 4.0), (x, sgn * 3.0, 22.0)),
-                'wrk_frame_steel')
-    return tag
+def _asm(ship):
+    """finish() expects an Assembly with .objects(); a wreck-kit Ship plays the same role."""
+    class _A:
+        def objects(self, keep=None, drop=()):
+            return list(ship.objects)
+    return _A()
 
 
-def _fr_ring_broken(asm, x, idx):
-    """The frame nearest a break is never pristine. This one is an open arc with both ends torn --
-    40 degrees of it went with the section that left, and the gap faces -Y where the review camera
-    and the player's approach both see it."""
-    tag = f'ring_{idx}'
-    e0, e1 = ring_arc(asm, tag, f'fr_ring_{idx}', FR_RING_MAJOR, FR_RING_MINOR, (x, 0, 0),
-                      200.0, 520.0)
-    for sgn in (1, -1):
-        asm.add(tag, box(f'fr_ring_{idx}_gusset_{sgn}', (1.6, 3.0, 4.0), (x, sgn * 3.0, 22.0)),
-                'wrk_frame_steel')
-    torn_member(asm, f'{tag}_tearA', e0, (0.0, -0.17, 0.98), 1.9, hot='wrk_hot_orange',
-                splay=3, length=7.0, peel=2, peel_len=7.0, peel_w=3.4)
-    torn_member(asm, f'{tag}_tearB', e1, (0.0, -0.17, -0.98), 1.9, hot='wrk_hot_orange',
-                splay=3, length=6.0, peel=2, peel_len=6.0, peel_w=3.0)
+def _meta(family, kind, state, was, reads, drift=None, drift_note=None):
+    return {'family': family, 'kind': kind, 'state': state, 'was': was, 'reads': reads,
+            'drift': drift, 'driftNote': drift_note}
 
 
-def freighter_assembly(x_lo=-152.0, x_hi=152.0, missing_hoppers=(), broken_ring_x=None,
-                       breached_hoppers=()):
-    """The INTACT bulk ore freighter, authored once and CLIPPED TO AN X RANGE.
-
-    Clipping at author time rather than deleting afterwards is what keeps the continuous members
-    honest: the spine, gallery and ventral chords are built to the length this piece actually has,
-    so nothing hangs in vacuum past the break and no rib survives 120 m aft of a hull that ended.
-    `missing_hoppers` names bay indices whose hopper is not present -- the freighter's navigable gap
-    is literally an absent hopper, so the hole and the drifting hopper share one source of truth."""
-    asm = Assembly('ore_freighter')
-
-    def inside(x, margin=0.0):
-        return (x_lo - margin) <= x <= (x_hi + margin)
-
-    for idx, x in enumerate(FR_RINGS):
-        if not inside(x):
-            continue
-        if broken_ring_x is not None and abs(x - broken_ring_x) < 0.5:
-            _fr_ring_broken(asm, x, idx)
-        else:
-            _fr_ring(asm, x, idx)
-
-    # dorsal spine + loading gallery: the covered trunk running the hopper string
-    s_lo, s_hi = max(x_lo, -136.0), min(x_hi, 136.0)
-    if s_hi - s_lo > 1.0:
-        asm.add('spine', box('fr_spine', (s_hi - s_lo, 6.4, 4.2), ((s_lo + s_hi) * 0.5, 0, 24.6)),
-                'wrk_hull_bare')
-        g_lo, g_hi = max(s_lo, -125.0), min(s_hi, 125.0)
-        asm.add('plating_gallery', box('fr_gallery', (g_hi - g_lo, 11.0, 2.0),
-                                       ((g_lo + g_hi) * 0.5, 0, 27.4)), 'wrk_paint_freight_ochre')
-        for i in range(13):
-            x = -120.0 + i * 20.0
-            if g_lo <= x <= g_hi:
-                asm.add('plating_gallery', box(f'fr_gallery_rib_{i}', (1.2, 12.4, 1.0), (x, 0, 28.6)),
-                        'wrk_frame_steel')
-    # ventral chords: the lower load path
-    c_lo, c_hi = max(x_lo, -124.0), min(x_hi, 124.0)
-    if c_hi - c_lo > 1.0:
-        for sgn in (1, -1):
-            asm.add('chord', beam(f'fr_chord_{sgn}', (c_lo, sgn * 9.0, -21.2),
-                                  (c_hi, sgn * 9.0, -21.2), 1.3), 'wrk_frame_steel')
-    # Bay bracing ties each ring to the spine above and the chords below. It is routed OUTSIDE the
-    # 22 m ring bore on purpose: bracing through the bore would be the structurally obvious place to
-    # put it and would also quietly destroy the navigable gap -- the first build measured 36.1 m of
-    # clear span against the 40 m the fiction promises, and this is what caused it.
-    for i in range(len(FR_RINGS) - 1):
-        xa, xb = FR_RINGS[i], FR_RINGS[i + 1]
-        if not (inside(xa) and inside(xb)):
-            continue
-        for sgn in (1, -1):
-            asm.add(f'brace_{i}', beam(f'fr_brace_d_{i}_{sgn}', (xa, sgn * 3.2, 23.4),
-                                       (xb, sgn * 6.0, 25.6), 0.5, verts=4), 'wrk_frame_steel')
-            asm.add(f'brace_{i}', beam(f'fr_brace_v_{i}_{sgn}', (xa, sgn * 9.0, -22.0),
-                                       (xb, sgn * 4.4, -23.4), 0.5, verts=4), 'wrk_frame_steel')
-
-    for i, xc in enumerate(FR_BAYS):
-        if inside(xc, margin=-14.0) and i not in missing_hoppers:
-            _fr_hopper(asm, f'cargo_hopper_{i}', xc, breached=(i in breached_hoppers))
-
-    if x_hi >= 119.0:
-        _fr_bow_module(asm)
-    if x_lo <= -119.0:
-        _fr_stern_module(asm)
-    return asm
+def _finish_forge(ship, pid, longest_m, socks_m, meta, probes=()):
+    """Scale donor units to the catalog longestM, Forge-finish every mesh, wrap in the pack root.
+    socks_m / probes take DONOR-frame positions; they are scaled with the piece."""
+    k = W.scale_to_longest(ship, longest_m)
+    W.finish_piece(ship)
+    socks = [socket(n, tuple(Vector(p) * k), size=sz) for n, p, sz in socks_m]
+    root, origin = finish(_asm(ship), pid, socks)
+    meta = dict(meta)
+    meta['sockets'] = [s.name for s in socks]
+    meta['shipFrameOriginM'] = origin
+    if probes:
+        meta['gapProbes'] = [
+            {'name': n, 'atM': [round(Vector(p)[i] * k - origin[i], 2) for i in range(3)]}
+            for n, p in probes]
+    return root, meta
 
 
-def _fr_bow_module(asm):
-    """Bridge, window band, ground tackle, sensor head."""
-    asm.add('bow_hull', box('fr_bow_hull', (30.0, 26.0, 20.0), (FR_BOW_X, 0, 2.0)),
-            'wrk_paint_freight_ochre')
-    asm.add('bow_hull', cone('fr_bow_nose', 13.0, 5.0, 12.0, (FR_BOW_X + 20.0, 0, 2.0),
-                             rot=(0, math.pi / 2, 0), verts=12), 'wrk_paint_freight_ochre')
-    asm.add('bow_bridge', box('fr_bridge', (14.0, 20.0, 8.0), (FR_BOW_X - 4.0, 0, 15.5)),
-            'wrk_paint_freight_ochre')
-    asm.add('bow_glass', box('fr_bridge_glass', (0.6, 18.0, 3.4), (FR_BOW_X + 3.2, 0, 16.4)),
-            'wrk_glass_shattered')
-    for sgn in (1, -1):
-        asm.add('bow_hull', cyl(f'fr_fairlead_{sgn}', 2.2, 3.0, (FR_BOW_X + 8.0, sgn * 11.0, 9.0),
-                                rot=(math.pi / 2, 0, 0), verts=10), 'wrk_hull_bare')
-    asm.add('sensor_mast', beam('fr_sensor_mast', (FR_BOW_X - 4.0, 0, 19.5),
-                                (FR_BOW_X - 6.0, 0, 32.0), 0.5), 'wrk_frame_steel')
-    asm.add('sensor_dish', cone('fr_sensor_dish', 3.4, 0.4, 1.6, (FR_BOW_X - 6.2, 0, 33.0),
-                                rot=(0, math.pi / 2, 0), verts=12), 'wrk_hull_bare')
+def _blank_donor(ship_id=DONOR_ORE):
+    """A Forge Ship with its palette/materials but no hull — the canvas for kit-authored
+    fragments and components that carry the shared Forge finish vocabulary."""
+    s = W.build_donor(ship_id)
+    W.clear_objects(s)
+    return s
 
-def _fr_stern_module(asm):
-    """Drive block, bells, reactor, radiator wings."""
-    asm.add('stern_hull', box('fr_stern_hull', (30.0, 24.0, 22.0), (FR_STERN_X, 0, 1.0)),
-            'wrk_paint_freight_ochre')
-    for sgn in (1, -1):
-        asm.add('drive_bell', cone(f'fr_bell_{sgn}', 4.2, 7.2, 11.0, (FR_STERN_X - 20.0, sgn * 8.0, 0),
-                                   rot=(0, -math.pi / 2, 0), verts=14), 'wrk_hull_bare')
-        asm.add('drive_bell', tube(f'fr_bell_ring_{sgn}', 7.4, 1.2, (FR_STERN_X - 25.2, sgn * 8.0, 0),
-                                   rot=(0, math.pi / 2, 0), verts=14), 'wrk_frame_steel')
-        asm.add('radiator', box(f'fr_rad_{sgn}', (22.0, 0.7, 15.0),
-                                (FR_STERN_X + 2.0, sgn * 17.0, 6.0), rot=(sgn * 0.25, 0, 0)),
-                'wrk_hull_bare')
-    asm.add('reactor', cyl('fr_reactor', 5.0, 12.0, (FR_STERN_X + 4.0, 0, 4.0),
-                           rot=(0, math.pi / 2, 0), verts=14), 'wrk_tank_shell')
-    asm.add('reactor', tube('fr_reactor_cage', 6.2, 13.0, (FR_STERN_X + 4.0, 0, 4.0),
-                            rot=(0, math.pi / 2, 0), verts=10), 'wrk_frame_steel')
-    return asm
 
+def _intact(ship_id, name, was, reads):
+    """The 'as built' reference for silhouette sheets: the Forge donor itself, finished."""
+    s = W.build_donor(ship_id)
+    W.finish_piece(s)
+    root, origin = finish(_asm(s), name, ())
+    return root, {'family': name.split('_')[1], 'kind': 'reference', 'state': 'intact',
+                  'was': was, 'reads': reads, 'sockets': [], 'shipFrameOriginM': origin,
+                  'drift': None}
+
+
+# ---------------------------------------------------------------------------
+# FAMILY 1 — BULK ORE FREIGHTER   (donor: Forge ore_barge)
+#
+# Identity that survives dismemberment (fiction §5): deep hoppers sunk in an open deck, hazard
+# coamings, a pusher stern. The barge's own geometry carries all of it.
 
 def build_wreck_ore_freighter_bow(state='cooling'):
-    """PRIMARY. ~150 m. Bow, bridge, three ring bays, two hoppers and the hole where the third was.
-
-    Bay 1 (x=+68) is authored MISSING: its hopper is the drifting secondary section, and the empty
-    ring bore it leaves is the navigable gap."""
-    asm = freighter_assembly(x_lo=FR_BREAK_X, x_hi=152.0, missing_hoppers=(1,),
-                             broken_ring_x=17.0, breached_hoppers=(2,))
-
-    # THE BREAK (fiction 1.1): the spine let go in the bay centred on x=0, between frames. On an open
-    # ring-frame trunk the only things that can tear are the members that actually crossed the
-    # plane -- spine, gallery skin, and the two ventral chords. Note the gallery gets NO hot metal:
-    # thin plate cools first, so heat survives only in the heavy sections (fiction 3).
-    truss_break(asm, 'break_main', [
-        ((FR_BREAK_X, 0.0, 24.6), (-1, 0, 0), 3.2, 'wrk_hot_white'),     # spine: thickest, whitest
-        ((FR_BREAK_X, 0.0, 27.4), (-1, 0, 0), 5.5, None),                # gallery plating: cold
-        ((FR_BREAK_X, -9.0, -21.2), (-1, 0, 0), 1.3, 'wrk_hot_orange'),  # port chord
-        ((FR_BREAK_X, 9.0, -21.2), (-1, 0, 0), 1.3, 'wrk_hot_orange'),   # starboard chord
-    ], cables=7, live_arc='wrk_arc_blue', cable_at=((FR_BREAK_X, 0, 23.6), (-1, 0, 0), 3.4))
-    # directional damage (fiction §1.6): something arrived from port-low and raked forward.
-    # the fire came from the break aft and washed forward; the bow still wears its owner's ochre
-    scorch_from_break(asm, (FR_BREAK_X + 6.0, 0, 4.0), 78.0)
-    cooling_cracks(asm, 'crack_spine', [(2.0, -3.2, 24.0), (26.0, -3.2, 24.3), (46.0, -3.0, 24.6),
-                                        (70.0, -3.2, 24.6)])
-    cooling_cracks(asm, 'crack_ring', [(17.0, -21.0, 8.0), (17.0, -22.6, 0.0), (17.0, -20.0, -9.0)])
-    # vents originate at BREACHES, never at intact plating: round 2 put this one on the bridge
-    # window, where it read as foam on the glass.
-    vent_jet(asm, 'vent_break', (5.0, -3.4, 23.4), (-0.42, -0.86, 0.28), 22.0, r0=0.6)
-    vent_jet(asm, 'vent_hold', (34.0, -11.6, -6.0), (0.1, -0.97, 0.22), 17.0, r0=0.45)
-    # the ship's own systems still trying (fiction §4): sparse, two marks, not a runway
-    asm.add('emerg', sphere('fr_emerg_a', 0.7, (FR_BOW_X + 6.0, -12.0, 12.0), seg=8, rings=5),
-            'wrk_emerg_amber')
-    asm.add('emerg', sphere('fr_emerg_b', 0.6, (34.0, -6.0, 26.9), seg=8, rings=5), 'wrk_emerg_red')
-    # Fire INSIDE the hold, seen only through the open centre hatch (fiction 4: a fire you can see
-    # all of is a lamp). The hopper at +34 keeps its two end hatches, so the burn is occluded from
-    # most angles and flares as the player passes the opening.
-    asm.add('fire_hold', sphere('fr_fire_a', 5.4, (34.0, 0.0, -7.0), seg=12, rings=7),
-            'wrk_fire_internal')
-    asm.add('fire_hold', sphere('fr_fire_b', 3.2, (30.0, -3.4, -13.0), seg=10, rings=6),
-            'wrk_hot_orange')
-    # the break itself glows from within the spine box
-    asm.add('fire_break', cyl('fr_glow_spine', 2.4, 7.0, (5.0, 0.0, 24.6),
-                              rot=(0, math.pi / 2, 0), verts=10), 'wrk_hot_deep_red')
-
-    apply_state(asm, state)
-    socks = [
-        socket('SOCKET_Salvage_Bridge', (FR_BOW_X - 4.0, 0, 20.0)),
-        socket('SOCKET_Salvage_Hopper', (102.0, 0, -6.0)),
-        socket('SOCKET_Hazard_Break', (FR_BREAK_X + 3.0, 0, 0)),
-        socket('SOCKET_BlackBox', (FR_BOW_X - 8.0, 3.2, 13.0)),
-        socket('INTERACTION_RibcageGap', (FR_GAP_BAY, 0, 0), size=20.0),
-    ]
-    root, origin = finish(asm, 'wreck_ore_freighter_bow', socks)
-    # the probe is authored in the intact vessel's frame, so it moves with the recentring
-    probe = [FR_GAP_BAY - origin[0], -origin[1], -origin[2]]
-    meta = {
-        'family': 'ore_freighter',
-        'kind': 'primary',
-        'state': state,
-        'shipFrameOriginM': origin,
-        'was': 'Bulk ore freighter, forward two-thirds: bow, bridge and three ring-frame cargo bays.',
-        'reads': 'Repeated ring frames and deep hoppers say freighter; the clean bay-centre break '
-                 'with its rib fan says the spine snapped under load; the missing hopper says the '
-                 'load left with it.',
-        'gapProbes': [{'name': 'INTERACTION_RibcageGap', 'atM': probe}],
-        'sockets': [s.name for s in socks],
-        'drift': None,
-    }
-    return root, meta
+    """PRIMARY. Forward hopper deck of a Forge ore barge — hoppers, gantry, forecastle — with a
+    bay torn clean out between two lobes. Bare frame rings and chords span the gap; the gap is
+    the pack's navigable wound."""
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=-4.0, hi=None, axis=0, seed=11, jag=0.3,
+                drop=('NavStarboard', 'NavPort', 'Mast', 'Beacon', 'LampBar', 'Flood'))
+    # Band is wide enough that the frame rings can hug the cut faces and still leave the probe
+    # point >= 20 m clear of every mesh (INTERACTION_RibcageGap is measured, not asserted).
+    W.carve_band(s, 0.5, 10.5, axis=0, seed=17, jag=0.3)
+    for i, rx in enumerate((1.4, 9.6)):
+        W.mk_ring_arc(s, f'GapRing{i}', 4.6, 0.5, 0.42, 0.0, 360.0, center=(rx, 0, 0),
+                      segments=28, finish='wk_frame')
+    for i, (cy, cz) in enumerate(((4.1, 0.0), (-4.1, 0.0), (0.0, 4.0), (0.0, -4.0))):
+        W._mk_beam(s, f'GapChord{i}', (0.6, cy, cz), (10.4, cy, cz), 0.2, finish='wk_frame')
+    W.wound(s, 'woundFore', (0.5, 0, 0), (1, 0, 0), 4.3, seed=3, stub=0.3, squash=0.55)
+    W.wound(s, 'woundAft', (10.5, 0, 0), (-1, 0, 0), 4.3, seed=8, stub=0.3, squash=0.55)
+    W.scorch_gradient(s, (0.5, 0, 0), 4.5)
+    W.scorch_gradient(s, (10.5, 0, 0), 4.5)
+    W.apply_damage_state(s, state, cut_at=(0.5, 0, 0.8), seed=11)
+    return _finish_forge(
+        s, 'wreck_ore_freighter_bow', 179.0,
+        [('SOCKET_Salvage_Bridge', (17.6, 0.0, 2.4), 2.0),
+         ('SOCKET_Salvage_Hopper', (12.0, 0.0, 1.7), 2.0),
+         ('SOCKET_Hazard_Break', (10.0, 0.0, 1.2), 2.0),
+         ('SOCKET_BlackBox', (16.9, 1.6, 1.9), 2.0),
+         ('INTERACTION_RibcageGap', (5.5, 0.0, 0.0), 20.0)],
+        _meta('ore_freighter', 'primary', state,
+              'Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and '
+              'the forward cargo bays.',
+              'Deep hopper wells and hazard coamings say freighter; the bay torn out between the '
+              'lobes is spanned only by bare frame rings — the hull snapped between frames and '
+              'the missing bay is now a fly-through wound.'),
+        probes=[('INTERACTION_RibcageGap', (5.5, 0.0, 0.0))])
 
 
 def build_wreck_ore_freighter_stern(state='cooling'):
-    """SECONDARY. The drive end, parted at the break and drifted away from it with the tumble the
-    parting torque gave it (fiction §1.4). Mass stayed roughly on the lane; area did not."""
-    asm = freighter_assembly(x_lo=-152.0, x_hi=-34.0, broken_ring_x=-51.0)
-    truss_break(asm, 'break_main', [
-        ((-34.0, 0.0, 24.6), (1, 0, 0), 3.2, 'wrk_hot_orange'),
-        ((-34.0, 0.0, 27.4), (1, 0, 0), 5.5, None),
-        ((-34.0, -9.0, -21.2), (1, 0, 0), 1.3, 'wrk_hot_deep_red'),
-        ((-34.0, 9.0, -21.2), (1, 0, 0), 1.3, 'wrk_hot_deep_red'),
-    ], cables=5, live_arc='wrk_arc_blue', cable_at=((-34.0, 0, 23.6), (1, 0, 0), 3.4))
-    scorch_from_break(asm, (-40.0, 0, 4.0), 66.0)
-    cooling_cracks(asm, 'crack_stern_ring', [(-51.0, -20.6, 9.0), (-51.0, -22.8, 0.0),
-                                             (-51.0, -20.0, -9.6)])
-    cooling_cracks(asm, 'crack_stern_chord', [(-44.0, -9.0, -21.2), (-70.0, -9.0, -21.2),
-                                              (-96.0, -9.0, -21.2)])
-    asm.add('fire_reactor', sphere('fr_fire_reactor', 4.4, (FR_STERN_X + 4.0, 0, 4.0),
-                                   seg=12, rings=7), 'wrk_fire_internal')
-    vent_jet(asm, 'vent_stern', (FR_STERN_X + 8.0, -12.4, 4.0), (0, -1, -0.15), 20.0, r0=0.6)
-    apply_state(asm, state)
-    socks = [
-        socket('SOCKET_Salvage_Drive', (FR_STERN_X - 20.0, 8.0, 0)),
-        socket('SOCKET_Hazard_Reactor', (FR_STERN_X + 4.0, 0, 4.0)),
-        socket('SOCKET_Salvage_Radiator', (FR_STERN_X + 2.0, -17.0, 6.0)),
-    ]
-    d = drift_spec((-46.0, 31.0, -11.0), tumble_axis=(0.21, 0.88, 0.42), tumble_deg=37.0,
-                   note='away from the break plane at x=-34, down-lane and to port')
-    root, origin = finish(asm, 'wreck_ore_freighter_stern', socks)
-    meta = {
-        'family': 'ore_freighter',
-        'kind': 'secondary',
-        'state': state,
-        'was': 'Bulk ore freighter, drive section: reactor, twin bells, radiator wings, two bays.',
-        'reads': 'The heavy end. It kept its rings and its bells, tumbled off the lane axis, and '
-                 'its break faces back toward the bow it left.',
-        'sockets': [s.name for s in socks],
-        'shipFrameOriginM': origin,
-        'drift': d,
-        'driftNote': 'Offset points away from the break plane at x=-34 along -X/+Y; the section '
-                     'tumbled 37 deg about a non-aligned axis so it cannot read as parallel to the bow.',
-    }
-    return root, meta
+    """SECONDARY. The working end — drive block, four bells, radiator fins, command tower —
+    parted at the forward break and drifted off with a slow tumble."""
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=None, hi=-4.0, axis=0, seed=23, jag=0.3,
+                drop=('BowLamp', 'FoscleFlood', 'Windlass', 'BowFender'))
+    W.wound(s, 'woundFwd', (-4.0, 0, 0), (1, 0, 0), 4.3, seed=5, stub=0.55, squash=0.55)
+    W.scorch_gradient(s, (-4.0, 0, 0), 5.0)
+    W.apply_damage_state(s, state, cut_at=(-4.0, 0, 0.8), seed=23)
+    d = drift_spec((-34.0, -19.0, 7.0), tumble_axis=(0.2, -0.3, 0.93), tumble_deg=24.0,
+                   note='the drive end took the momentum; it backs away from the break')
+    return _finish_forge(
+        s, 'wreck_ore_freighter_stern', 145.0,
+        [('SOCKET_Salvage_Drive', (-21.0, 1.95, 1.9), 2.0),
+         ('SOCKET_Hazard_Reactor', (-19.5, 0.0, 0.0), 2.0),
+         ('SOCKET_Salvage_Radiator', (-19.9, 2.9, 1.5), 2.0)],
+        _meta('ore_freighter', 'secondary', state,
+              'Bulk ore freighter (Forge ore barge), stern: drive block, command tower, radiators.',
+              'The business end survived whole — which is why the read is "salvage target", not '
+              'debris: intact drives, dead lights, the tower windows dark.',
+              drift=d))
 
 
 def build_wreck_ore_freighter_hopper(state='cooling'):
-    """SECONDARY. The hopper that was torn out of bay +68 -- the contents of the hole in the primary.
-    Split along its chute seam, still spilling."""
-    asm = Assembly('ore_freighter_hopper')
-    _fr_hopper(asm, 'cargo_hopper_loose', 0.0, split=True)
-    # the hanger lugs it tore off the ring frames by
-    for sgn in (1, -1):
-        for i, dx in enumerate((-12.0, 12.0)):
-            asm.add('lug', beam(f'hop_lug_{sgn}_{i}', (dx, sgn * 15.0, 4.0),
-                                (dx + sgn * 1.5, sgn * 17.5, 8.4), 0.65, verts=5), 'wrk_torn_edge')
-    break_plane(asm, 'break_lug', (0, 0, 5.0), (0, 0, 1), 15.5,
-                ribs=7, tears=8, cables=3, squash=0.35, stub=2.2, hot='wrk_hot_orange')
-    cooling_cracks(asm, 'crack_hopper', [(-13.0, -10.6, -8.0), (0.0, -11.4, -12.0), (13.0, -10.6, -8.0)])
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Ore', (0, 0, -14.0))]
-    d = drift_spec((18.0, -24.0, -13.0), tumble_axis=(0.62, 0.24, 0.75), tumble_deg=63.0,
-                   note='fell out of bay +68 and below the lane axis, tumbling hard')
-    root, _origin = finish(asm, 'wreck_ore_freighter_hopper', socks)
-    return root, {
-        'family': 'ore_freighter', 'kind': 'secondary', 'state': state,
-        'was': 'Bulk ore freighter, single cargo hopper torn from its ring frames.',
-        'reads': 'The thing that used to be in the hole. Lugs sheared at the top rim, chute seam '
-                 'petalled outward, load still leaving.',
-        'sockets': [s.name for s in socks], 'drift': d,
-        'shipFrameOriginM': [FR_GAP_BAY, 0.0, -7.5],
-    }
+    """SECONDARY. One hopper bay with its ore load still aboard, torn out of the trunk between
+    the two frame rings that held it."""
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=9.8, hi=14.3, axis=0, seed=31, jag=0.4)
+    W.wound(s, 'woundA', (9.8, 0, 0.3), (-1, 0, 0), 4.0, seed=9, stub=0.4, squash=0.5)
+    W.wound(s, 'woundB', (14.3, 0, 0.3), (1, 0, 0), 4.0, seed=13, stub=0.4, squash=0.5)
+    W.scorch_gradient(s, (9.8, 0, 0), 3.5)
+    W.scorch_gradient(s, (14.3, 0, 0), 3.5)
+    W.apply_damage_state(s, state, seed=31)
+    return _finish_forge(
+        s, 'wreck_ore_freighter_hopper', 49.0,
+        [('SOCKET_Salvage_Ore', (12.0, 0.0, 1.4), 2.0)],
+        _meta('ore_freighter', 'secondary', state,
+              'One cargo hopper bay of the ore barge, ore still heaped in the well.',
+              'A whole hold section — the ore heap says the cargo left with the break, which is '
+              'exactly the story the bow\'s empty gap tells from the other side.'))
 
 
 def build_deb_ore_freighter_ring_span(state='cooling'):
-    """MEDIUM DEBRIS. One ring frame and the bay bracing that came with it."""
-    asm = Assembly('fr_ring_span')
-    asm.add('ring', ring_frame('deb_ring', FR_RING_MAJOR, FR_RING_MINOR, (0, 0, 0)), 'wrk_frame_steel')
-    for sgn in (1, -1):
-        asm.add('brace', beam(f'deb_brace_{sgn}', (0, sgn * 16.0, 16.5), (16.0, sgn * 19.0, -6.0),
-                              0.5, verts=4), 'wrk_frame_steel')
-    asm.add('spine', box('deb_spine_stub', (17.0, 6.4, 4.2), (7.0, 0, 24.6)), 'wrk_hull_bare')
-    break_plane(asm, 'break_a', (16.5, 0, 6.0), (1, 0, 0), 12.0, ribs=6, tears=6, cables=3,
-                squash=0.9, stub=2.4)
-    tear_fringe(asm, 'tear_ring', (0, 0, -22.0), (0, 0, -1), 6.0, 5)
-    apply_state(asm, state)
-    d = drift_spec((-8.0, 62.0, 26.0), tumble_axis=(0.75, 0.12, 0.65), tumble_deg=71.0,
-                   note='light structure: shed early and travelled far (fiction 1.3)')
-    root, _origin = finish(asm, 'deb_ore_freighter_ring_span')
-    return root, {'family': 'ore_freighter', 'kind': 'debris', 'state': state,
-                  'was': 'Bulk ore freighter, one transverse ring frame with bay bracing.',
-                  'reads': 'A frame with nothing left to frame. The 46 m bore names the ship class '
-                           'on its own.', 'sockets': [], 'drift': d,
-                  'shipFrameOriginM': [51.0, 0.0, 0.0]}
+    """DEBRIS. A trunk frame ring, torn open at one arc — the part of the freighter that does not
+    read as hull at all until you see the hopper coaming still bolted to it."""
+    s = _blank_donor(DONOR_ORE)
+    W.mk_ring_arc(s, 'RingArc', 4.7, 0.55, 0.45, -70.0, 205.0, segments=24, finish='wk_frame')
+    # a coaming plate still rides the intact arc, and stubs fray where the ring snapped
+    W._mk_plate(s, 'Coaming', (0.4, -3.4, 1.8), (0.4, -1.2, 4.2), 2.6, 0.16, roll=0.3,
+                finish='wk_torn')
+    W.frame_stubs(s, 'endA', (0.0, 3.6, -3.0), (0, -0.75, 0.66), 0.5, count=3, stub=0.7, seed=4)
+    W.frame_stubs(s, 'endB', (0.0, 2.4, 4.1), (0, -0.5, -0.86), 0.5, count=3, stub=0.7, seed=9)
+    W.apply_damage_state(s, state, seed=7)
+    return _finish_forge(
+        s, 'deb_ore_freighter_ring_span', 53.0, [],
+        _meta('ore_freighter', 'debris', state,
+              'One ring frame of the freighter trunk, snapped at the lower arc.',
+              'Bare frame with a coaming plate still on it — the piece that explains what the '
+              'ribcage gap in the bow section used to hold.'))
 
 
 def build_deb_ore_freighter_hopper_lid(state='cooling'):
-    """MEDIUM DEBRIS. A hopper's top rim and one side panel, curled back."""
-    asm = Assembly('fr_hopper_lid')
-    lean = math.atan2(9.0, 23.0)
-    asm.add('plate', box('lid_side', (26.0, 0.5, 18.0), (0, 0, 0), rot=(-lean, 0, 0)),
-            'wrk_paint_freight_ochre')
-    asm.add('rim', beam('lid_rim', (-13.0, 3.6, 8.6), (13.0, 3.6, 8.6), 0.55), 'wrk_frame_steel')
-    for i, dx in enumerate((-8.5, 0.0, 8.5)):
-        asm.add('stiff', box(f'lid_stiff_{i}', (1.1, 0.9, 17.0), (dx, 0.7, 0), rot=(-lean, 0, 0)),
-                'wrk_frame_steel')
-    tear_fringe(asm, 'tear_lid', (0, -1.6, -8.4), (0, -0.36, -0.93), 12.0, 8, squash=0.24)
-    tear_fringe(asm, 'tear_lid_end', (13.4, 0, 0), (1, 0, 0), 8.0, 6, squash=0.7)
-    scorch_trail(asm, 'scorch_lid', (-3.0, -1.2, 2.0), (1, 0, 0), (0, 0.36, 0.93), 11.0)
-    apply_state(asm, state)
-    d = drift_spec((36.0, -74.0, 19.0), tumble_axis=(0.34, 0.71, 0.62), tumble_deg=118.0,
-                   note='largest area-to-mass ratio in the family: the farthest traveller')
-    root, _origin = finish(asm, 'deb_ore_freighter_hopper_lid')
-    return root, {'family': 'ore_freighter', 'kind': 'debris', 'state': state,
-                  'was': 'Bulk ore freighter, hopper side panel and top rim rail.',
-                  'reads': 'Large area, low mass -- exactly the class of part that shears off and '
-                           'travels (fiction §1.3). Ochre paint still names the owner.',
-                  'sockets': [], 'drift': d,
-                  'shipFrameOriginM': [FR_GAP_BAY, 12.0, 0.0]}
+    """DEBRIS. A hopper coaming with its deck plate — the lid the open hopper lost."""
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=10.0, hi=14.0, axis=0, also={2: (0.15, None)}, seed=37, jag=0.35)
+    W.wound(s, 'lidA', (10.0, 0, 0.9), (-1, 0, 0), 3.6, seed=2, stub=0.3, ribs=6, tears=5)
+    W.apply_damage_state(s, state, seed=37)
+    return _finish_forge(
+        s, 'deb_ore_freighter_hopper_lid', 32.0, [],
+        _meta('ore_freighter', 'debris', state,
+              'The deck plate and coaming around one hopper mouth, peeled off the trunk.',
+              'Flat plate with the hopper rim in it — reads as the missing piece of the hopper '
+                  'wreck next to it in the field.'))
 
 
 def build_deb_ore_freighter_drive_bell(state='stripped'):
-    """MEDIUM DEBRIS. A drive bell on its mount ring, cut free and then dropped."""
-    asm = Assembly('fr_drive_bell')
-    asm.add('bell', cone('bell', 4.2, 7.2, 11.0, (0, 0, 0), rot=(0, -math.pi / 2, 0), verts=14),
-            'wrk_hull_bare')
-    asm.add('bell_ring', tube('bell_ring', 7.4, 1.2, (-5.2, 0, 0), rot=(0, math.pi / 2, 0), verts=14),
-            'wrk_frame_steel')
-    asm.add('mount', box('bell_mount', (3.0, 9.0, 1.4), (6.4, 0, 0)), 'wrk_frame_steel')
-    # fiction §2: drive bells are taken FIRST, and a torch leaves a straight repeated edge
-    cut_panel(asm, 'cut_mount', (7.6, -4.4, -0.8), (0, 1, 0), (0, 0, 1), 8.8, 1.6)
-    conduit_stubs(asm, 'stub_feed', (7.0, 0, 0), (1, 0, 0), 2.4, 4)
-    apply_state(asm, state)
-    root, _origin = finish(asm, 'deb_ore_freighter_drive_bell')
-    d = drift_spec((14.0, -9.0, -6.0), tumble_axis=(0.5, 0.5, 0.7), tumble_deg=24.0,
-                   note='barely moved: it was cut off and released, not blown off')
-    return root, {'family': 'ore_freighter', 'kind': 'debris', 'state': state,
-                  'was': 'Bulk ore freighter, one drive bell with its mount ring.',
-                  'reads': 'Cut free, not blown free: the mount edge is straight and square where '
-                           'the torch went round it. Someone was here first.',
-                  'sockets': [], 'drift': d,
-                  'shipFrameOriginM': [-154.0, 8.0, 0.0]}
+    """DEBRIS. The drive face of the barge — all four nozzle bells still in their block."""
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=None, hi=-20.0, axis=0, seed=41, jag=0.35,
+                drop=('NavStarboard', 'NavPort', 'Radiator'))
+    W.wound(s, 'bellWound', (-20.0, 0, 0), (1, 0, 0), 3.6, seed=6, stub=0.5, squash=0.7)
+    W.apply_damage_state(s, state, seed=41)
+    return _finish_forge(
+        s, 'deb_ore_freighter_drive_bell', 16.0, [],
+        _meta('ore_freighter', 'debris', state,
+              'The stern drive face of the ore barge: four bells in a square block.',
+              'Four dark bells pointing one way — an engine room with the ship torn off it.'))
 
 
-def build_ore_freighter_intact():
-    """RENDER-ONLY reference silhouette. Deliberately NOT exported: these are wrecks, and shipping a
-    flyable-looking intact hull would invite a promotion lane to treat it as a ship. It exists so the
-    contact sheet can put 'what it was' beside 'what it is'."""
-    asm = freighter_assembly()
-    root, _origin = finish(asm, 'ref_ore_freighter_intact')
-    return root, {'family': 'ore_freighter', 'kind': 'reference', 'state': 'intact',
-                  'was': 'Bulk ore freighter, as built.', 'reads': 'Reference silhouette.',
-                  'sockets': [], 'drift': None}
-
-
-
-
-# ===========================================================================
-# FAMILY 2 — PATROL CORVETTE (Concord)
-#
-# Chosen deliberately as the second hull because it is a PLATED MONOCOQUE. The freighter proved
-# truss_break() on an open frame; nothing had yet exercised break_plane() on the shape it was
-# written for -- a closed tube whose skin tears around a perimeter.
-#
-# It also carries the law. `military` is the one class flagged restricted: true in
-# src/data/wreckClasses.js ("stripping it without a permit is a crime"), so the corvette's stripped
-# variant is not a story about scrap value. It is evidence.
-
-CV_LEN = 74.0
-CV_R = 7.0             # hull radius: lean, fast proportions
-CV_CUT_X = -6.0        # the lance went through here, at an angle -- not square to anything
-
-
-def _cv_barbette(asm, tag, x, turret=True):
-    """A turret ring. The ring is structure and survives; the turret is a bolt-on and does not."""
-    asm.add(tag, cyl(f'{tag}_barb', 4.2, 3.0, (x, 0, CV_R * 0.72), verts=14), 'wrk_armor')
-    asm.add(tag, tube(f'{tag}_ring', 4.5, 1.1, (x, 0, CV_R * 0.72 + 1.6), verts=14), 'wrk_frame_steel')
-    if turret:
-        asm.add(f'{tag}_turret', box(f'{tag}_house', (7.0, 6.0, 3.2), (x, 0, CV_R * 0.72 + 3.4)),
-                'wrk_paint_navy_concord')
-        asm.add(f'{tag}_turret', cyl(f'{tag}_gun', 0.55, 11.0, (x + 6.0, 0, CV_R * 0.72 + 3.6),
-                                     rot=(0, math.pi / 2, 0), verts=10), 'wrk_hull_bare')
-
-
-def corvette_assembly(x_lo=-CV_LEN, x_hi=CV_LEN, turrets=(1, 1), stripped_turret=None):
-    asm = Assembly('corvette')
-
-    def inside(x, m=0.0):
-        return (x_lo - m) <= x <= (x_hi + m)
-
-    # armoured monocoque: a segmented tube so a break can take a station without taking the ship
-    for i in range(10):
-        x = -63.0 + i * 14.0
-        if not inside(x, m=-7.0):
-            continue
-        asm.add(f'hull_{i}', cyl(f'cv_hull_{i}', CV_R, 14.0, (x, 0, 0), rot=(0, math.pi / 2, 0),
-                                 verts=12), 'wrk_paint_navy_concord')
-        # belt armour on the flanks -- the citadel that never gets salvaged (fiction 2)
-        for sgn in (1, -1):
-            asm.add(f'plating_belt_{i}', box(f'cv_belt_{i}_{sgn}', (13.0, 0.7, 5.0),
-                                             (x, sgn * (CV_R - 0.2), -0.5)), 'wrk_armor')
-    if inside(66.0, m=-8.0):
-        asm.add('prow', cone('cv_prow', CV_R, 1.2, 16.0, (69.0, 0, 0), rot=(0, math.pi / 2, 0),
-                             verts=12), 'wrk_paint_navy_concord')
-    # bridge citadel + window band
-    if inside(24.0, m=-6.0):
-        asm.add('bridge', box('cv_bridge', (14.0, 9.0, 4.4), (24.0, 0, CV_R * 0.78)),
-                'wrk_paint_navy_concord')
-        asm.add('bridge_glass', box('cv_bridge_glass', (0.5, 7.4, 1.6), (30.6, 0, CV_R * 0.78 + 0.5)),
-                'wrk_glass_shattered')
-    if turrets[0] and inside(46.0, m=-6.0):
-        _cv_barbette(asm, 'barbette_fwd', 46.0, turret=(stripped_turret != 'fwd'))
-    if turrets[1] and inside(-30.0, m=-6.0):
-        _cv_barbette(asm, 'barbette_aft', -30.0, turret=(stripped_turret != 'aft'))
-    # dorsal sensor spine + lateral fins
-    if inside(6.0, m=-20.0):
-        asm.add('sensor_spine', box('cv_spine', (44.0, 2.2, 1.6), (6.0, 0, CV_R + 1.0)),
-                'wrk_hull_bare')
-    for sgn in (1, -1):
-        if inside(-46.0, m=-9.0):
-            asm.add('fin', box(f'cv_fin_{sgn}', (18.0, 0.6, 11.0), (-46.0, sgn * 7.4, -1.0),
-                               rot=(sgn * 0.34, 0, 0)), 'wrk_armor')
-    # drive block
-    if inside(-62.0, m=-8.0):
-        asm.add('stern_block', cyl('cv_drive_block', CV_R * 1.05, 12.0, (-62.0, 0, 0),
-                                   rot=(0, math.pi / 2, 0), verts=12), 'wrk_paint_navy_concord')
-        for i, (dy, dz) in enumerate(((0.0, 3.4), (-3.6, -2.2), (3.6, -2.2))):
-            asm.add('drive_bell', cone(f'cv_bell_{i}', 2.0, 3.2, 6.0, (-71.0, dy, dz),
-                                       rot=(0, -math.pi / 2, 0), verts=12), 'wrk_hull_bare')
-        asm.add('reactor', cyl('cv_reactor', 3.0, 7.0, (-54.0, 0, 0), rot=(0, math.pi / 2, 0),
-                               verts=12), 'wrk_tank_shell')
-    return asm
-
+# ---------------------------------------------------------------------------
+# FAMILY 2 — PATROL CORVETTE   (donor: Forge bastion — the player corvette)
 
 def build_wreck_corvette_forward(state='cooling'):
-    """PRIMARY. Cut through the keel by a lance. The forward barbette is an EMPTY RING: the turret
-    was sheared off its bearing and is a separate section."""
-    asm = corvette_assembly(x_lo=CV_CUT_X, x_hi=CV_LEN, turrets=(1, 0), stripped_turret='fwd')
-    # a plated tube tears around a perimeter -- this is break_plane()'s shape
-    break_plane(asm, 'break_lance', (CV_CUT_X, 0, 0), (-1, 0, 0), CV_R * 1.02,
-                ribs=10, tears=9, cables=5, hot='wrk_hot_white', live_arc='wrk_arc_blue', stub=5.2)
-    # the lance kept going: a second, shallower gouge along the port flank shows its line
-    torn_member(asm, 'gouge', (16.0, -CV_R + 0.4, -1.0), (0.30, -0.94, 0.16), 2.2,
-                hot='wrk_hot_orange', splay=3, length=6.0, peel=3, peel_len=6.0, peel_w=2.6)
-    scorch_from_break(asm, (CV_CUT_X + 4.0, -2.0, 0), 46.0)
-    cooling_cracks(asm, 'crack_belt', [(2.0, -CV_R - 0.2, -0.5), (16.0, -CV_R - 0.3, -0.5),
-                                       (30.0, -CV_R - 0.2, -0.5)])
-    asm.add('fire_core', sphere('cv_fire', 2.6, (4.0, -1.6, -1.0), seg=10, rings=6), 'wrk_fire_internal')
-    vent_jet(asm, 'vent_cut', (CV_CUT_X + 1.0, -4.0, 1.0), (-0.2, -0.94, 0.28), 15.0, r0=0.4)
-    asm.add('emerg', sphere('cv_emerg', 0.55, (28.0, -4.4, 8.2), seg=8, rings=5), 'wrk_emerg_red')
-    apply_state(asm, state)
-    socks = [
-        socket('SOCKET_Salvage_Barbette', (46.0, 0, CV_R * 0.72 + 2.4)),
-        socket('SOCKET_Hazard_Break', (CV_CUT_X + 3.0, 0, 0)),
-        socket('SOCKET_BlackBox', (24.0, 2.6, CV_R * 0.78 + 1.0)),
-        socket('SOCKET_Evidence_Registry', (58.0, -CV_R + 0.4, 1.0)),
-    ]
-    root, origin = finish(asm, 'wreck_corvette_forward', socks)
-    return root, {
-        'family': 'corvette', 'kind': 'primary', 'state': state,
-        'was': 'Concord patrol corvette, forward hull: prow, bridge citadel, forward barbette.',
-        'reads': 'Belt armour and a gun ring say warship. The cut is angled and clean-edged where '
-                 'the lance went through, ragged where the hull let go behind it. The barbette is '
-                 'empty -- the turret is somewhere else.',
-        'sockets': [s.name for s in socks], 'shipFrameOriginM': origin, 'drift': None,
-        'wreckClass': 'military',
-        'restricted': True,
-    }
+    """PRIMARY. Bow and citadel of a Forge bastion corvette — both turrets, bridge tower, sensor
+    mast — sheared aft of the bridge."""
+    s = W.build_donor(DONOR_CORVETTE)
+    W.keep_band(s, lo=-2.5, hi=None, axis=0, seed=43, jag=0.25,
+                drop=('NavStarboard', 'NavPort'))
+    W.wound(s, 'woundAft', (-2.5, 0, 0.4), (-1, 0, 0), 2.9, seed=4, stub=0.4, squash=0.7)
+    W.scorch_gradient(s, (-2.5, 0, 0.4), 3.5)
+    W.apply_damage_state(s, state, cut_at=(-2.5, 0, 1.0), seed=43)
+    d = drift_spec((16.0, 22.0, -4.0), tumble_axis=(0.9, 0.1, 0.42), tumble_deg=31.0,
+                   note='the bow spun away on the forward vector')
+    return _finish_forge(
+        s, 'wreck_corvette_forward', 89.0,
+        [('SOCKET_Salvage_Barbette', (5.0, 0.0, 1.7), 2.0),
+         ('SOCKET_Hazard_Break', (-2.4, 0.0, 0.6), 2.0),
+         ('SOCKET_BlackBox', (-1.8, 0.6, 2.3), 2.0),
+         ('SOCKET_Evidence_Registry', (8.6, -2.4, 0.7), 2.0)],
+        _meta('corvette', 'primary', state,
+              'Concord-pattern patrol corvette (Forge bastion), forward hull: citadel, bridge, '
+              'two main turrets.',
+              'Armoured casemate and gun houses say warship; the lit-window bridge is what turns '
+              'it into a crew\'s ship that ended.',
+              drift=d))
 
 
 def build_wreck_corvette_engine(state='cooling'):
-    """SECONDARY. The drive end, still carrying the reactor nobody wants to be near."""
-    asm = corvette_assembly(x_lo=-CV_LEN, x_hi=CV_CUT_X, turrets=(0, 1))
-    break_plane(asm, 'break_lance', (CV_CUT_X, 0, 0), (1, 0, 0), CV_R * 1.02,
-                ribs=9, tears=8, cables=4, hot='wrk_hot_orange', live_arc='wrk_arc_blue', stub=4.4)
-    scorch_from_break(asm, (CV_CUT_X - 6.0, -2.0, 0), 40.0)
-    asm.add('fire_reactor', sphere('cv_fire_r', 2.9, (-54.0, 0, 0), seg=10, rings=6), 'wrk_fire_internal')
-    cooling_cracks(asm, 'crack_drive', [(-56.0, -6.4, -1.0), (-64.0, -6.6, -0.4), (-70.0, -5.0, 0.6)])
-    apply_state(asm, state)
-    socks = [
-        socket('SOCKET_Salvage_Drive', (-71.0, 0, 0)),
-        socket('SOCKET_Hazard_Reactor', (-54.0, 0, 0)),
-    ]
-    d = drift_spec((-24.0, -19.0, 7.0), tumble_axis=(0.18, 0.62, 0.76), tumble_deg=52.0,
-                   note='pushed aft and to starboard by its own dying drive')
-    root, origin = finish(asm, 'wreck_corvette_engine', socks)
-    return root, {
-        'family': 'corvette', 'kind': 'secondary', 'state': state,
-        'was': 'Concord patrol corvette, drive section: reactor, three bells, aft barbette.',
-        'reads': 'The end that kept thrusting for a second after the ship stopped being a ship.',
-        'sockets': [s.name for s in socks], 'shipFrameOriginM': origin, 'drift': d,
-        'wreckClass': 'military', 'restricted': True,
-    }
+    """SECONDARY. The aft hull — drive block, three torch nozzles, armour belts — split off at
+    the citadel break."""
+    s = W.build_donor(DONOR_CORVETTE)
+    W.keep_band(s, lo=None, hi=-2.5, axis=0, seed=47, jag=0.25,
+                drop=('NavStarboard', 'NavPort'))
+    W.wound(s, 'woundFwd', (-2.5, 0, 0.3), (1, 0, 0), 2.9, seed=7, stub=0.45, squash=0.7)
+    W.scorch_gradient(s, (-2.5, 0, 0.3), 3.5)
+    W.apply_damage_state(s, state, cut_at=(-2.5, 0, 0.8), seed=47)
+    d = drift_spec((-26.0, -11.0, 5.0), tumble_axis=(-0.3, 0.5, 0.81), tumble_deg=18.0,
+                   note='it fell off the break under the drive\'s dead momentum')
+    return _finish_forge(
+        s, 'wreck_corvette_engine', 73.0,
+        [('SOCKET_Salvage_Drive', (-10.4, 0.7, 0.2), 2.0),
+         ('SOCKET_Hazard_Reactor', (-9.6, 0.0, 0.4), 2.0)],
+        _meta('corvette', 'secondary', state,
+              'Patrol corvette (Forge bastion), aft hull: drive block, belts, casemates.',
+              'Three dead torches in an armoured frame — the engine section that never fired '
+              'again.', drift=d))
 
 
 def build_wreck_corvette_turret(state='cooling'):
-    """SECONDARY. Sheared off its bearing ring, gun still trained where it was last pointed."""
-    asm = Assembly('corvette_turret')
-    asm.add('turret', box('cvt_house', (7.0, 6.0, 3.2), (0, 0, 0)), 'wrk_paint_navy_concord')
-    asm.add('turret', cyl('cvt_gun', 0.55, 11.0, (6.0, 0, 0.2), rot=(0, math.pi / 2, 0), verts=10),
-            'wrk_hull_bare')
-    asm.add('ring', tube('cvt_ring', 4.5, 1.1, (0, 0, -2.0), verts=14), 'wrk_frame_steel')
-    # the bearing SHEARED: a ring of broken teeth, not a cut
-    rib_fan(asm, 'shear', (0, 0, -2.4), (0, 0, -1), 4.2, 12, stub=1.6, thick=0.22)
-    tear_fringe(asm, 'shear', (0, 0, -2.6), (0, 0, -1), 4.6, 8, depth=1.8, width=1.6)
-    scorch_from_break(asm, (0, -1.0, -2.0), 7.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Weapon', (2.0, 0, 0.6))]
-    d = drift_spec((11.0, 26.0, 14.0), tumble_axis=(0.71, 0.33, 0.62), tumble_deg=104.0,
-                   note='light, high, and spinning: sheared parts leave fast')
-    root, _o = finish(asm, 'wreck_corvette_turret', socks)
-    return root, {
-        'family': 'corvette', 'kind': 'secondary', 'state': state,
-        'was': 'Concord patrol corvette, main turret with its bearing ring.',
-        'reads': 'Milspec, restricted, and lying in the open. Someone will want it and someone will '
-                 'be fined for taking it.',
-        'sockets': [s.name for s in socks], 'shipFrameOriginM': [46.0, 0.0, 5.0], 'drift': d,
-        'wreckClass': 'military', 'restricted': True,
-    }
+    """SECONDARY. One complete turret — race, house, twin barrels — blown off its barbette."""
+    s = W.build_donor(DONOR_CORVETTE)
+    W.take_parts(s, ('TurretA',))
+    W.torn_flange(s, 'trBase', (5.0, 0, 0.75), (0, 0, -1), 0.9, count=6, depth=0.5, width=0.5,
+                  seed=3)
+    W.apply_damage_state(s, state, seed=51)
+    d = drift_spec((-6.0, 30.0, 9.0), tumble_axis=(0.4, -0.7, 0.6), tumble_deg=67.0,
+                   note='it tumbles like the thing that threw it was still exploding')
+    return _finish_forge(
+        s, 'wreck_corvette_turret', 16.0,
+        [('SOCKET_Salvage_Weapon', (5.0, 0.0, 1.5), 2.0)],
+        _meta('corvette', 'secondary', state,
+              'A whole corvette turret, torn from the deck ring.',
+              'Gun house with both barrels still on it — firepower drifting loose is the detail '
+              'that says the fight was violent, not slow.', drift=d))
 
 
 def build_deb_corvette_armor_belt(state='cooling'):
-    """MEDIUM DEBRIS. A section of belt armour, holed."""
-    asm = Assembly('cv_belt')
-    asm.add('plate', box('belt_slab', (15.0, 0.8, 5.0), (0, 0, 0)), 'wrk_armor')
-    for i, dx in enumerate((-5.0, 0.5, 5.5)):
-        asm.add('rib', box(f'belt_rib_{i}', (0.9, 1.6, 4.6), (dx, 0.9, 0)), 'wrk_frame_steel')
-    tear_fringe(asm, 'tear_a', (7.6, 0, 0), (1, 0, 0), 2.6, 6, squash=1.9, depth=2.0, width=1.6)
-    tear_fringe(asm, 'tear_b', (-7.6, 0, 0), (-1, 0, 0), 2.6, 6, squash=1.9, depth=1.7, width=1.4)
-    scorch_from_break(asm, (3.0, -0.5, 0), 9.0)
-    apply_state(asm, state)
-    d = drift_spec((22.0, -31.0, -12.0), tumble_axis=(0.26, 0.80, 0.54), tumble_deg=87.0)
-    root, _o = finish(asm, 'deb_corvette_armor_belt')
-    return root, {'family': 'corvette', 'kind': 'debris', 'state': state,
-                  'was': 'Concord patrol corvette, one belt-armour section.',
-                  'reads': 'Too heavy to be worth lifting, too obviously milspec to be worth being '
-                           'caught with.', 'sockets': [], 'shipFrameOriginM': [16.0, -7.0, -0.5],
-                  'drift': d, 'wreckClass': 'military', 'restricted': True}
+    """DEBRIS. A flank armour belt — the layered side slabs with their stripe banding, both rows
+    still tied by the frames that carried them."""
+    s = W.build_donor(DONOR_CORVETTE)
+    W.take_parts(s, ('Belt',))
+    for i, x in enumerate((-6.4, -3.2, -0.4)):
+        W._mk_beam(s, f'BeltTie{i}', (x, -3.2, -0.4), (x, 3.2, -0.4), 0.16, finish='wk_frame')
+    W.torn_flange(s, 'beltTear', (-8.9, 0, -0.4), (-1, 0, 0), 3.0, count=5, depth=0.9, width=0.7,
+                  seed=5)
+    W.apply_damage_state(s, state, seed=57)
+    return _finish_forge(
+        s, 'deb_corvette_armor_belt', 23.0, [],
+        _meta('corvette', 'debris', state,
+              'The corvette\'s flank armour belt, peeled off in one run.',
+              'Layered slabs with the warning-stripe edge — warship skin without the warship.'))
 
 
 def build_deb_corvette_barbette_ring(state='stripped'):
-    """MEDIUM DEBRIS. A gun ring cut out of the deck -- a salvage cut, not battle damage."""
-    asm = Assembly('cv_barb')
-    asm.add('ring', tube('barb_ring', 4.5, 1.2, (0, 0, 1.4), verts=14), 'wrk_frame_steel')
-    asm.add('barb', cyl('barb_drum', 4.2, 3.0, (0, 0, 0), verts=14), 'wrk_armor')
-    asm.add('deck', box('barb_deck', (11.0, 10.0, 0.5), (0, 0, -1.7)), 'wrk_paint_navy_concord')
-    # fiction 2: a torch follows the framing, so the deck it came out of is a clean rectangle
-    cut_panel(asm, 'cut_deck', (-5.5, -5.0, -1.9), (1, 0, 0), (0, 1, 0), 11.0, 10.0)
-    conduit_stubs(asm, 'stub_feed', (0, 0, -1.9), (0, 0, -1), 2.2, 4)
-    apply_state(asm, state)
-    d = drift_spec((6.0, -8.0, -4.0), tumble_axis=(0.62, 0.44, 0.65), tumble_deg=31.0,
-                   note='dropped, not thrown: cut free by a salvage crew')
-    root, _o = finish(asm, 'deb_corvette_barbette_ring')
-    return root, {'family': 'corvette', 'kind': 'debris', 'state': state,
-                  'was': 'Concord patrol corvette, barbette ring cut from the deck.',
-                  'reads': 'The straight square edge on the deck plate is the whole story: this was '
-                           'taken, and taking it was a crime.',
-                  'sockets': [], 'shipFrameOriginM': [-30.0, 0.0, 5.0], 'drift': d,
-                  'wreckClass': 'military', 'restricted': True}
+    """DEBRIS. The barbette ring a turret used to sit in — race ring and mount stump."""
+    s = W.build_donor(DONOR_CORVETTE)
+    W.take_parts(s, ('TurretBRing', 'TurretBRace', 'TurretBBarbette'))
+    W.frame_stubs(s, 'barbRim', (1.4, 0, 1.5), (0, 0, 1), 0.95, count=4, stub=0.4, seed=2)
+    W.apply_damage_state(s, state, seed=59)
+    return _finish_forge(
+        s, 'deb_corvette_barbette_ring', 11.0, [],
+        _meta('corvette', 'debris', state,
+              'The barbette ring under turret B, cut out of the deck.',
+              'A gun mount with no gun — pairs with the loose turret drifting in the same field.'))
 
 
-def build_corvette_intact():
-    asm = corvette_assembly()
-    root, _o = finish(asm, 'ref_corvette_intact')
-    return root, {'family': 'corvette', 'kind': 'reference', 'state': 'intact',
-                  'was': 'Concord patrol corvette, as built.', 'reads': 'Reference silhouette.',
-                  'sockets': [], 'drift': None}
-
-
-# ===========================================================================
-# FAMILY 3 — CIVILIAN PASSENGER LINER
-#
-# Chosen as the third hull because the outward-petalling pressure vessel (fiction 1.2) is the one
-# fracture rule nothing else in the pack tests, and because a 46 m hab drum is the only hull here
-# big enough to hold a navigable gap INSIDE itself rather than between its sections.
-
-LN_DRUM_X = -6.0
-LN_DRUM_R = 23.0
-LN_DRUM_L = 44.0
-LN_PETAL_SECTORS = (4, 5, 6, 7)     # a 120-degree wound, opened toward -Y
-
-
-def _ln_drum(asm, tag, petal=True, sectors=12):
-    """The pressurised hab drum. Fiction 1.2: a vessel that lets go PETALS -- the shell splits on its
-    weld seams and folds outward, still anchored by its saddles. An outward petal is the single
-    clearest read of 'this burst from inside', and it is the opposite of a hole punched in."""
-    for i in range(sectors):
-        a0 = i * (360.0 / sectors)
-        mid = math.radians(a0 + 180.0 / sectors)
-        outward = Vector((0.0, math.cos(mid), math.sin(mid)))
-        if petal and i in LN_PETAL_SECTORS:
-            base = Vector((LN_DRUM_X, 0, 0)) + outward * (LN_DRUM_R - 0.6)
-            tip = base + outward * 17.0 + Vector((0.0, 0.0, 0.0))
-            asm.add(f'{tag}_petal', plate(f'{tag}_petal_{i}', base, tip, LN_DRUM_L * 0.82, 0.5,
-                                          roll=0.55 + 0.30 * (i % 3)), 'wrk_torn_edge')
-            # the frames the skin tore off stay behind, bare
-            asm.add(f'{tag}_petal', beam(f'{tag}_frame_{i}',
-                                         Vector((LN_DRUM_X - LN_DRUM_L * 0.42, 0, 0)) + outward * LN_DRUM_R,
-                                         Vector((LN_DRUM_X + LN_DRUM_L * 0.42, 0, 0)) + outward * LN_DRUM_R,
-                                         0.42, verts=5), 'wrk_frame_steel')
-            continue
-        tangent = Vector((0.0, -math.sin(mid), math.cos(mid)))
-        asm.add(f'{tag}_shell', box(f'{tag}_shell_{i}', (LN_DRUM_L, 0.7, 12.4),
-                                    tuple(Vector((LN_DRUM_X, 0, 0)) + outward * LN_DRUM_R),
-                                    rot=(math.radians(a0 + 180.0 / sectors), 0, 0)),
-                'wrk_paint_liner_bone')
-        # continuous window rows: the identity that survives everything (fiction 5)
-        if i not in LN_PETAL_SECTORS:
-            asm.add(f'{tag}_glass', box(f'{tag}_win_{i}', (LN_DRUM_L * 0.82, 0.3, 2.0),
-                                        tuple(Vector((LN_DRUM_X, 0, 0)) + outward * (LN_DRUM_R + 0.4)),
-                                        rot=(math.radians(a0 + 180.0 / sectors), 0, 0)),
-                    'wrk_glass_shattered')
-    for ex in (LN_DRUM_X - LN_DRUM_L * 0.5, LN_DRUM_X + LN_DRUM_L * 0.5):
-        asm.add(f'{tag}_bulkhead', tube(f'{tag}_ring_{ex:.0f}', LN_DRUM_R, 1.4, (ex, 0, 0),
-                                        rot=(0, math.pi / 2, 0), verts=20), 'wrk_frame_steel')
-
+# ---------------------------------------------------------------------------
+# FAMILY 3 — CIVILIAN PASSENGER LINER   (donor: Forge massline_express_liner)
 
 def build_wreck_liner_drum(state='cooling'):
-    """PRIMARY. The hab drum, petalled outward. The wound IS the navigable gap: fly in through the
-    hole the decompression made and out through the open bulkhead ring."""
-    asm = Assembly('liner_drum')
-    _ln_drum(asm, 'drum', petal=True)
-    # spine stubs at both ends -- the drum was the middle of a longer ship
-    for sgn, d in ((1, (1, 0, 0)), (-1, (-1, 0, 0))):
-        x = LN_DRUM_X + sgn * (LN_DRUM_L * 0.5 + 4.0)
-        asm.add('spine', cyl(f'ln_spine_{sgn}', 5.0, 9.0, (x, 0, 0), rot=(0, math.pi / 2, 0),
-                             verts=12), 'wrk_hull_bare')
-        torn_member(asm, f'break_spine_{sgn}', (x + sgn * 4.6, 0, 0), d, 5.0,
-                    hot='wrk_hot_orange' if sgn < 0 else None, splay=4, length=8.0,
-                    peel=3, peel_len=7.0, peel_w=3.4)
-    # ONE deck, in the belly. Two decks at -15 and -19.5 read fine and measured 16.8 m of clear
-    # radius: a drum is only flyable if its bore is actually empty, so interior structure has to
-    # hug the shell rather than span the middle.
-    asm.add('deck', box('ln_deck_0', (LN_DRUM_L * 0.9, 18.0, 0.5), (LN_DRUM_X, 0, -21.0)),
-            'wrk_deck_grate')
-    # fire against the far wall in an INTACT sector: seen across the bore through the wound, hidden
-    # from every other angle by the shell it sits behind (fiction 4)
-    asm.add('fire_hold', sphere('ln_fire', 2.6, (LN_DRUM_X + 15.0, 17.5, 8.0), seg=12, rings=7),
-            'wrk_fire_internal')
-    vent_jet(asm, 'vent_wound', (LN_DRUM_X, -18.0, -8.0), (0.05, -0.92, -0.38), 26.0, r0=0.7)
-    cooling_cracks(asm, 'crack_ring', [(LN_DRUM_X - 21.0, -20.0, 9.0), (LN_DRUM_X - 21.6, -22.4, 0.0),
-                                       (LN_DRUM_X - 21.0, -19.4, -9.6)])
-    scorch_from_break(asm, (LN_DRUM_X, -18.0, -10.0), 34.0)
-    # emergency lighting is the horror of this one: the ship is still trying to help
-    # lamps ride the shell's inner face at r=22 and only in INTACT sectors -- two of the three were
-    # authored at r~19.5, i.e. hanging in the middle of the room, and one was in a sector the
-    # decompression had torn away entirely
-    for i, a_deg in enumerate((40.0, 100.0, 290.0)):
-        a = math.radians(a_deg)
-        asm.add('emerg', sphere(f'ln_emerg_{i}', 0.8,
-                                (LN_DRUM_X + 14.0 - i * 13.0, math.cos(a) * 22.0, math.sin(a) * 22.0),
-                                seg=8, rings=5), 'wrk_emerg_amber')
-    apply_state(asm, state)
-    socks = [
-        socket('SOCKET_Salvage_Hab', (LN_DRUM_X, 0, -12.0)),
-        socket('SOCKET_Hazard_Wound', (LN_DRUM_X, -20.0, -6.0)),
-        socket('SOCKET_BlackBox', (LN_DRUM_X + 19.0, 4.0, 6.0)),
-        socket('INTERACTION_DrumBore', (LN_DRUM_X, 0, 0.0), size=20.0),
-    ]
-    root, origin = finish(asm, 'wreck_liner_drum', socks)
-    probe = [LN_DRUM_X - origin[0], -origin[1], -origin[2]]
-    return root, {
-        'family': 'liner', 'kind': 'primary', 'state': state,
-        'was': 'Civilian passenger liner, pressurised habitation drum.',
-        'reads': 'Window rows say people lived here. The shell is folded OUTWARD along four sectors, '
-                 'which says it burst from the inside -- nothing hit this ship, its air left it.',
-        'gapProbes': [{'name': 'INTERACTION_DrumBore', 'atM': probe}],
-        'sockets': [s.name for s in socks], 'shipFrameOriginM': origin, 'drift': None,
-    }
+    """PRIMARY. A mid-ship slice of the liner's habitation drum, split open down the keel: two
+    half-shells standing apart, deck windows still strung along the flanks. The bore between the
+    halves is the pack's second navigable gap."""
+    s = W.build_donor(DONOR_LINER)
+    W.keep_band(s, lo=-16.0, hi=-6.0, axis=0, seed=61, jag=0.3,
+                drop=('NavStarboard', 'NavPort', 'Mast', 'Beacon', 'Dish'))
+    W.carve_band(s, -4.9, 4.9, axis=1, seed=67, jag=0.25)
+    # end bulkhead ribs still tie the two half-shells together at both cut faces
+    for i, x in enumerate((-15.6, -6.4)):
+        for j, z in enumerate((-4.55, 4.75)):
+            W._mk_beam(s, f'BhRib{i}{j}', (x, -4.85, z), (x, 4.85, z), 0.22, finish='wk_frame')
+    W.wound(s, 'woundA', (-16.0, 0, 0.2), (-1, 0, 0), 7.6, seed=10, stub=0.5, squash=0.62)
+    W.wound(s, 'woundB', (-6.0, 0, 0.2), (1, 0, 0), 7.6, seed=15, stub=0.5, squash=0.62)
+    W.scorch_gradient(s, (-16.0, 0, 0), 4.0)
+    W.scorch_gradient(s, (-6.0, 0, 0), 4.0)
+    W.apply_damage_state(s, state, cut_at=(-6.0, 4.0, 4.0), seed=61)
+    return _finish_forge(
+        s, 'wreck_liner_drum', 87.0,
+        [('SOCKET_Salvage_Hab', (-11.0, 6.8, 1.0), 2.0),
+         ('SOCKET_Hazard_Wound', (-11.0, 4.5, -3.0), 2.0),
+         ('SOCKET_BlackBox', (-7.2, 6.4, 3.6), 2.0),
+         ('INTERACTION_DrumBore', (-11.0, 0.0, 0.0), 20.0)],
+        _meta('liner', 'primary', state,
+              'Civilian passenger liner (Forge massline), mid habitation drum, split lengthwise.',
+              'Rows of dead cabin windows on two half-shells — the drum cracked along its keel '
+              'and the gap between the halves is the way through.',
+              ),
+        probes=[('INTERACTION_DrumBore', (-11.0, 0.0, 0.0))])
 
 
 def build_wreck_liner_bow(state='cooling'):
-    """SECONDARY. The bow survived intact -- which is the cruelty of it."""
-    asm = Assembly('liner_bow')
-    for i in range(3):
-        asm.add(f'hull_{i}', cyl(f'lnb_hull_{i}', 11.0 - i * 1.2, 14.0, (i * -14.0, 0, 0),
-                                 rot=(0, math.pi / 2, 0), verts=14), 'wrk_paint_liner_bone')
-        asm.add(f'glass_{i}', box(f'lnb_win_{i}', (11.0, 1.8, 0.4), (i * -14.0, -10.4, 1.6)),
-                'wrk_glass_shattered')
-        asm.add(f'glass_{i}', box(f'lnb_win_t{i}', (11.0, 1.8, 0.4), (i * -14.0, 10.4, 1.6)),
-                'wrk_glass_shattered')
-    asm.add('prow', cone('lnb_prow', 11.0, 2.0, 14.0, (14.0, 0, 0), rot=(0, math.pi / 2, 0),
-                         verts=14), 'wrk_paint_liner_bone')
-    asm.add('bridge', box('lnb_bridge', (10.0, 15.0, 4.0), (2.0, 0, 10.0)), 'wrk_paint_liner_bone')
-    asm.add('bridge_glass', box('lnb_bridge_glass', (0.5, 13.0, 1.8), (7.2, 0, 10.6)),
-            'wrk_glass_shattered')
-    torn_member(asm, 'break_aft', (-32.0, 0, 0), (-1, 0, 0), 9.0, hot='wrk_hot_deep_red',
-                splay=5, length=9.0, peel=4, peel_len=8.0, peel_w=4.0)
-    tear_fringe(asm, 'break_aft', (-32.0, 0, 0), (-1, 0, 0), 9.2, 10, depth=4.0, width=3.0)
-    scorch_from_break(asm, (-30.0, -4.0, 0), 30.0)
-    asm.add('emerg', sphere('lnb_emerg', 0.7, (0.0, -10.6, 5.0), seg=8, rings=5), 'wrk_emerg_amber')
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Bridge', (2.0, 0, 12.0)),
-             socket('SOCKET_BlackBox', (2.0, 3.0, 8.0))]
-    d = drift_spec((38.0, 17.0, -9.0), tumble_axis=(0.14, 0.36, 0.92), tumble_deg=28.0,
+    """SECONDARY. The liner's wedge bow — glazed operations bridge, drum shoulder, skylights —
+    parted almost clean. Which is the cruelty of it."""
+    s = W.build_donor(DONOR_LINER)
+    W.keep_band(s, lo=4.0, hi=None, axis=0, seed=71, jag=0.25,
+                drop=('NavStarboard', 'NavPort', 'DockLamp'))
+    W.wound(s, 'woundAft', (4.0, 0, 0.2), (-1, 0, 0), 6.8, seed=12, stub=0.55, squash=0.6)
+    W.scorch_gradient(s, (4.0, 0, 0), 4.5)
+    W.apply_damage_state(s, state, cut_at=(4.0, 2.0, 3.5), seed=71)
+    d = drift_spec((30.0, 14.0, -6.0), tumble_axis=(0.14, 0.36, 0.92), tumble_deg=21.0,
                    note='barely tumbled: it parted cleanly and kept the ship attitude')
-    root, origin = finish(asm, 'wreck_liner_bow', socks)
-    return root, {
-        'family': 'liner', 'kind': 'secondary', 'state': state,
-        'was': 'Civilian passenger liner, forward hull and bridge.',
-        'reads': 'Almost undamaged, which is the worst part: whatever happened, it happened behind '
-                 'this bulkhead and everyone forward of it knew about it for a while.',
-        'sockets': [s.name for s in socks], 'shipFrameOriginM': origin, 'drift': d,
-    }
+    return _finish_forge(
+        s, 'wreck_liner_bow', 69.0,
+        [('SOCKET_Salvage_Bridge', (13.2, 0.0, 3.0), 2.0),
+         ('SOCKET_BlackBox', (6.5, 3.0, 5.2), 2.0)],
+        _meta('liner', 'secondary', state,
+              'Passenger liner forward hull: wedge bow, glazed bridge, drum shoulder.',
+              'Almost undamaged — whatever happened, it happened behind this bulkhead.',
+              drift=d))
 
 
 def build_wreck_liner_boatbay(state='cooling'):
-    """SECONDARY. The boat bay -- and every davit is EMPTY. Someone got off."""
-    asm = Assembly('liner_boatbay')
-    asm.add('hull', box('lbb_hull', (30.0, 13.0, 11.0), (0, 0, 0)), 'wrk_paint_liner_bone')
-    for i, dx in enumerate((-10.0, -2.0, 6.0)):
-        # davit arms swung OUT and empty: the single most eloquent shape in this pack
-        asm.add('davit', beam(f'lbb_davit_{i}', (dx, -6.4, 4.0), (dx, -13.0, 7.4), 0.45, verts=6),
-                'wrk_frame_steel')
-        asm.add('davit', beam(f'lbb_fall_{i}', (dx, -13.0, 7.4), (dx, -12.4, 1.0), 0.12, verts=4),
-                'wrk_cable')
-        asm.add('bay', box(f'lbb_cradle_{i}', (6.4, 3.0, 0.5), (dx, -5.6, 1.0)), 'wrk_deck_grate')
-    asm.add('glass', box('lbb_win', (26.0, 1.8, 0.4), (0, -6.8, 7.4)), 'wrk_glass_shattered')
-    torn_member(asm, 'break_f', (16.0, 0, 0), (1, 0, 0), 6.0, hot='wrk_hot_deep_red',
-                splay=4, length=6.5, peel=3, peel_len=5.5, peel_w=2.8)
-    torn_member(asm, 'break_a', (-16.0, 0, 0), (-1, 0, 0), 6.0, splay=4, length=6.0,
-                peel=3, peel_len=5.0, peel_w=2.6)
-    scorch_from_break(asm, (14.0, -3.0, 0), 22.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Bay', (0, -5.0, 2.0)),
-             socket('SOCKET_Evidence_Manifest', (-8.0, -6.6, 6.0))]
-    d = drift_spec((-14.0, -33.0, 12.0), tumble_axis=(0.55, 0.22, 0.80), tumble_deg=66.0)
-    root, origin = finish(asm, 'wreck_liner_boatbay', socks)
-    return root, {
-        'family': 'liner', 'kind': 'secondary', 'state': state,
-        'was': 'Civilian passenger liner, boat bay section.',
-        'reads': 'Three davits, swung out, falls cut, cradles empty. The lifeboats launched. '
-                 'Somebody survived this and the wreck says so without a word.',
-        'sockets': [s.name for s in socks], 'shipFrameOriginM': origin, 'drift': d,
-    }
+    """SECONDARY. The boarding dock sector: a drum section carrying the dock collar and service
+    hatch, with the galleries still on the roof."""
+    s = W.build_donor(DONOR_LINER)
+    W.keep_band(s, lo=-1.5, hi=8.0, axis=0, seed=73, jag=0.3,
+                drop=('NavStarboard', 'NavPort'))
+    W.wound(s, 'bayA', (-1.5, 0, 0.2), (-1, 0, 0), 7.6, seed=14, stub=0.5, squash=0.62)
+    W.wound(s, 'bayB', (8.0, 0, 0.2), (1, 0, 0), 7.2, seed=19, stub=0.5, squash=0.62)
+    W.scorch_gradient(s, (-1.5, 0, 0), 4.0)
+    W.apply_damage_state(s, state, seed=73)
+    return _finish_forge(
+        s, 'wreck_liner_boatbay', 54.0,
+        [('SOCKET_Salvage_Bay', (3.4, -8.9, 0.4), 2.0),
+         ('SOCKET_Evidence_Manifest', (-0.5, -8.4, 3.4), 2.0)],
+        _meta('liner', 'secondary', state,
+              'Liner boarding sector: dock collar, service hatch, roof galleries.',
+              'The yellow dock ring says exactly what this bay was for — passengers used to walk '
+              'through this.'))
 
 
 def build_deb_liner_hull_panel(state='cooling'):
-    """MEDIUM DEBRIS. A hull panel with an intact window row: instantly a PASSENGER ship."""
-    asm = Assembly('ln_panel')
-    asm.add('plate', box('lnp_skin', (19.0, 8.0, 0.6), (0, 0, 0), rot=(0.22, 0, 0)),
-            'wrk_paint_liner_bone')
-    asm.add('glass', box('lnp_win', (16.0, 1.7, 0.35), (0, 0, 0.55), rot=(0.22, 0, 0)),
-            'wrk_glass_shattered')
-    for i, dx in enumerate((-6.5, 0.0, 6.5)):
-        asm.add('rib', box(f'lnp_rib_{i}', (0.7, 7.6, 0.9), (dx, 0, -0.7), rot=(0.22, 0, 0)),
-                'wrk_frame_steel')
-    tear_fringe(asm, 'tear_a', (9.6, 0, 0), (1, 0, 0), 3.8, 7, squash=1.7, depth=2.6, width=2.0)
-    tear_fringe(asm, 'tear_b', (-9.6, 0, 0), (-1, 0, 0), 3.8, 7, squash=1.7, depth=2.2, width=1.8)
-    apply_state(asm, state)
-    d = drift_spec((-31.0, -58.0, 24.0), tumble_axis=(0.42, 0.66, 0.62), tumble_deg=133.0,
-                   note='thin skin, huge area: the piece that ends up furthest from the hull')
-    root, _o = finish(asm, 'deb_liner_hull_panel')
-    return root, {'family': 'liner', 'kind': 'debris', 'state': state,
-                  'was': 'Civilian passenger liner, hull panel with cabin window row.',
-                  'reads': 'One row of windows is all it takes. Nobody mistakes this for freight.',
-                  'sockets': [], 'shipFrameOriginM': [LN_DRUM_X + 8.0, -20.0, 6.0], 'drift': d}
+    """DEBRIS. A quarter-shell plate off the drum — the section with two decks of cabin windows."""
+    s = W.build_donor(DONOR_LINER)
+    W.keep_band(s, lo=-13.5, hi=-9.5, axis=0, also={1: (2.5, None), 2: (0.5, None)},
+                seed=79, jag=0.35)
+    W.wound(s, 'panelRim', (-11.5, 4.5, 0.6), (-1, 0, 0), 3.4, seed=8, stub=0.35, ribs=6,
+            tears=5, squash=0.7)
+    W.apply_damage_state(s, state, seed=79)
+    return _finish_forge(
+        s, 'deb_liner_hull_panel', 29.0, [],
+        _meta('liner', 'debris', state,
+              'A curved drum plate with two decks of dead windows in it.',
+              'A panel of a home, torn off whole — the liner read survives in fragments.'))
 
 
 def build_deb_liner_drive_pod(state='stripped'):
-    """MEDIUM DEBRIS. An outboard drive pod, bell already taken."""
-    asm = Assembly('ln_pod')
-    asm.add('pod', cyl('lnd_pod', 3.4, 13.0, (0, 0, 0), rot=(0, math.pi / 2, 0), verts=12),
-            'wrk_paint_liner_bone')
-    asm.add('pylon', box('lnd_pylon', (7.0, 0.8, 6.0), (1.0, 0, 5.2)), 'wrk_frame_steel')
-    asm.add('mount', tube('lnd_mount', 3.6, 1.0, (-6.6, 0, 0), rot=(0, math.pi / 2, 0), verts=12),
-            'wrk_frame_steel')
-    cut_panel(asm, 'cut_bell', (-7.2, -3.0, -3.0), (0, 1, 0), (0, 0, 1), 6.0, 6.0)
-    tear_fringe(asm, 'tear_pylon', (1.0, 0, 8.4), (0, 0, 1), 3.4, 6, squash=0.22, depth=2.0, width=1.6)
-    conduit_stubs(asm, 'stub', (-6.8, 0, 0), (-1, 0, 0), 2.0, 4)
-    apply_state(asm, state)
-    d = drift_spec((-19.0, 24.0, -16.0), tumble_axis=(0.68, 0.51, 0.53), tumble_deg=74.0)
-    root, _o = finish(asm, 'deb_liner_drive_pod')
-    return root, {'family': 'liner', 'kind': 'debris', 'state': state,
-                  'was': 'Civilian passenger liner, outboard drive pod.',
-                  'reads': 'Torn off its pylon, and the bell is already gone -- square torch cut '
-                           'around the mount. Salvage got here before you did.',
-                  'sockets': [], 'shipFrameOriginM': [LN_DRUM_X - 26.0, 14.0, 0.0], 'drift': d}
+    """DEBRIS. The liner's stern block — three nozzles in a shouldered housing."""
+    s = W.build_donor(DONOR_LINER)
+    W.keep_band(s, lo=None, hi=-18.4, axis=0, seed=83, jag=0.3,
+                drop=('NavStarboard', 'NavPort', 'Vent'))
+    W.wound(s, 'podCut', (-18.4, 0, 0.3), (1, 0, 0), 5.4, seed=6, stub=0.5, squash=0.6)
+    W.apply_damage_state(s, state, seed=83)
+    return _finish_forge(
+        s, 'deb_liner_drive_pod', 18.0, [],
+        _meta('liner', 'debris', state,
+              'The liner\'s stern drive block with all three nozzles.',
+              'An engine face with no ship behind it — the pods read as machinery even without '
+              'the hull.'))
 
 
-def build_liner_intact():
-    asm = Assembly('liner_intact')
-    _ln_drum(asm, 'drum', petal=False)
-    for i in range(3):
-        asm.add(f'hull_{i}', cyl(f'lni_hull_{i}', 11.0 - i * 1.2, 14.0,
-                                 (44.0 + i * 14.0, 0, 0), rot=(0, math.pi / 2, 0), verts=14),
-                'wrk_paint_liner_bone')
-    asm.add('prow', cone('lni_prow', 11.0, 2.0, 14.0, (86.0, 0, 0), rot=(0, math.pi / 2, 0),
-                         verts=14), 'wrk_paint_liner_bone')
-    asm.add('bay', box('lni_bay', (30.0, 13.0, 11.0), (-46.0, 0, 0)), 'wrk_paint_liner_bone')
-    for sgn in (1, -1):
-        asm.add('pod', cyl(f'lni_pod_{sgn}', 3.4, 13.0, (-72.0, sgn * 14.0, -4.0),
-                           rot=(0, math.pi / 2, 0), verts=12), 'wrk_paint_liner_bone')
-        asm.add('pylon', box(f'lni_pylon_{sgn}', (7.0, 0.8, 6.0), (-71.0, sgn * 14.0, 1.2)),
-                'wrk_frame_steel')
-    root, _o = finish(asm, 'ref_liner_intact')
-    return root, {'family': 'liner', 'kind': 'reference', 'state': 'intact',
-                  'was': 'Civilian passenger liner, as built.', 'reads': 'Reference silhouette.',
-                  'sockets': [], 'drift': None}
-
-
-# ===========================================================================
-# ORDINARY AFTERMATH KIT (fiction §6)
-#
-# Most combat should leave something, and it must not be a hero wreck -- a landmark that shows up
-# after every skirmish stops being a landmark by the third one. These are eight recognisable
-# COMPONENTS that could have come off any hull.
-#
-# Sized 8-22 m on purpose: the game's own aftermath path pins entity radius at WRECK_RADIUS = 9
-# (aftermathWrecks.js), i.e. an ~18 m wreck. A component at this scale can REPLACE that procedural
-# wreck rather than garnish it. The dormant foundry fragments are 3-7 m and cannot.
-#
-# Every one obeys the same three rules as the hero hulls: broken at a joint rather than shattered
-# (§1), some showing salvage cuts rather than battle damage (§2), fresh ones still glowing (§4).
-
-def _aft(name, family='aftermath', kind='component', state='cooling', was='', reads='', socks=(),
-         origin=None, d=None):
-    return {'family': family, 'kind': kind, 'state': state, 'was': was, 'reads': reads,
-            'sockets': [s.name for s in socks], 'shipFrameOriginM': origin, 'drift': d}
-
+# ---------------------------------------------------------------------------
+# AFTERMATH COMPONENT KIT — shared donor cuts (the routine-fight debris field)
 
 def build_aft_engine_section(state='cooling'):
-    asm = Assembly('aft_engine')
-    asm.add('block', cyl('ae_block', 3.4, 8.0, (0, 0, 0), rot=(0, math.pi / 2, 0), verts=14),
-            'wrk_hull_bare')
-    asm.add('drive_bell', cone('ae_bell', 2.2, 4.4, 7.0, (-7.0, 0, 0), rot=(0, -math.pi / 2, 0),
-                               verts=14), 'wrk_hull_bare')
-    asm.add('drive_bell', tube('ae_bellring', 4.6, 1.0, (-10.2, 0, 0), rot=(0, math.pi / 2, 0),
-                               verts=14), 'wrk_frame_steel')
-    for i in range(4):
-        a = 0.4 + i * math.pi / 2
-        asm.add('pipe', beam(f'ae_manifold_{i}', (2.0, math.cos(a) * 3.2, math.sin(a) * 3.2),
-                             (-3.0, math.cos(a) * 4.0, math.sin(a) * 4.0), 0.35, verts=6), 'wrk_pipe')
-    torn_member(asm, 'break_mount', (4.4, 0, 0), (1, 0, 0), 3.2, hot='wrk_hot_white',
-                splay=5, length=6.0, peel=4, peel_len=5.0, peel_w=2.4)
-    conduit_stubs(asm, 'stub', (4.2, 0, 0), (1, 0, 0), 2.4, 4, live='wrk_arc_blue')
-    asm.add('fire_core', sphere('ae_fire', 1.9, (-1.0, 0, 0), seg=10, rings=6), 'wrk_fire_internal')
-    cooling_cracks(asm, 'crack', [(3.0, -3.3, 0.6), (-1.0, -3.5, 0.4), (-4.6, -2.6, 0.2)])
-    scorch_from_break(asm, (3.6, -1.0, 0), 8.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Drive', (-7.0, 0, 0)), socket('SOCKET_Hazard_Core', (0, 0, 0))]
-    root, _o = finish(asm, 'aft_engine_section', socks)
-    return root, _aft('aft_engine_section', state=state, socks=socks,
-                      was='Any hull, engine section: combustion block, bell, feed manifold.',
-                      reads='The single most legible "a ship died here" shape there is. Torn off '
-                            'its mounts, still hot in the throat.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.4, 0.6, 0.7), tumble_deg=41.0))
+    """The barge's whole working tail: drive loft, four bells, radiator fins."""
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=None, hi=-17.8, axis=0, seed=89, jag=0.35)
+    W.wound(s, 'engCut', (-17.8, 0, 0), (1, 0, 0), 3.9, seed=4, stub=0.5, squash=0.6)
+    W.apply_damage_state(s, state, seed=89)
+    return _finish_forge(
+        s, 'aft_engine_section', 25.0,
+        [('SOCKET_Salvage_Drive', (-21.0, 1.95, 1.9), 2.0),
+         ('SOCKET_Hazard_Core', (-19.6, 0.0, 0.0), 2.0)],
+        _meta('aftermath', 'component', state,
+              'An ore barge drive block and radiator farm, cut off the hull.',
+              'Bells + fins — the silhouette of "engine" at debris scale.'))
 
 
 def build_aft_weapon_spar(state='cooling'):
-    asm = Assembly('aft_spar')
-    asm.add('spar', box('as_spar', (17.0, 2.4, 1.6), (0, 0, 0)), 'wrk_armor')
-    asm.add('mount', cyl('as_mount', 1.5, 2.6, (7.0, 0, 0.8), verts=10), 'wrk_frame_steel')
-    asm.add('weapon', cyl('as_barrel', 0.45, 7.0, (-4.0, 0, 1.4), rot=(0, math.pi / 2, 0), verts=10),
-            'wrk_hull_bare')
-    asm.add('weapon', box('as_housing', (4.4, 2.0, 1.8), (0.5, 0, 1.6)), 'wrk_hull_bare')
-    for i, dx in enumerate((-6.0, -1.0, 4.0)):
-        asm.add('rib', box(f'as_rib_{i}', (0.6, 3.0, 1.2), (dx, 0, -0.5)), 'wrk_frame_steel')
-    torn_member(asm, 'break_root', (8.6, 0, 0), (1, 0, 0), 1.6, hot='wrk_hot_orange',
-                splay=4, length=5.0, peel=3, peel_len=4.4, peel_w=1.8)
-    tear_fringe(asm, 'tear_tip', (-8.6, 0, 0), (-1, 0, 0), 1.4, 5, squash=1.4, depth=1.6, width=1.2)
-    scorch_from_break(asm, (7.0, -0.8, 0), 9.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Weapon', (0.5, 0, 2.0))]
-    root, _o = finish(asm, 'aft_weapon_spar', socks)
-    return root, _aft('aft_weapon_spar', state=state, socks=socks,
-                      was='Any hull, weapon spar or hardpoint wing.',
-                      reads='Snapped at the root fitting, not mid-span: things break where they '
-                            'bolt on.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.7, 0.2, 0.68), tumble_deg=96.0))
+    """A corvette turret on the snapped length of its deck mounting spar."""
+    s = W.build_donor(DONOR_CORVETTE)
+    W.take_parts(s, ('TurretB',))
+    W._mk_beam(s, 'Spar', (-4.4, 0.0, 0.5), (5.2, 0.0, 0.5), 0.32, finish='wk_frame')
+    W.torn_flange(s, 'sparEnd', (-4.4, 0, 0.5), (-1, 0, 0), 0.5, count=4, depth=0.6, width=0.4,
+                  seed=3)
+    W.apply_damage_state(s, state, seed=91)
+    return _finish_forge(
+        s, 'aft_weapon_spar', 28.0,
+        [('SOCKET_Salvage_Weapon', (1.4, 0.0, 1.9), 2.0)],
+        _meta('aftermath', 'component', state,
+              'A corvette turret still bolted to a snapped mounting spar.',
+              'A gun that came off with a piece of the ship — the break reads two ways at once.'))
 
 
 def build_aft_cargo_module(state='cooling'):
-    asm = Assembly('aft_cargo')
-    # deliberately the Berth-standard 6x3x3 footprint the everyday-space kit established, scaled to
-    # a triple module: a shape the player has already learned reads as freight
-    asm.add('cargo_box', box('ac_box', (13.0, 6.4, 6.4), (0, 0, 0)), 'wrk_paint_freight_ochre')
-    for i, dx in enumerate((-4.4, 0.0, 4.4)):
-        asm.add('rib', box(f'ac_rib_{i}', (0.5, 6.8, 6.8), (dx, 0, 0)), 'wrk_frame_steel')
-    # split along a seam and spilling
-    for i, sgn in enumerate((1, -1)):
-        asm.add('petal', plate(f'ac_petal_{i}', (-2.0, sgn * 3.2, -3.2), (4.0, sgn * 6.4, -6.0),
-                               5.0, 0.3, roll=sgn * 0.7), 'wrk_torn_edge')
-    for i, (dx, dy, dz, r) in enumerate(((1.0, 1.0, -6.0, 1.1), (3.4, -2.0, -8.0, 0.9),
-                                         (-1.6, 2.6, -9.2, 0.7))):
-        asm.add('spill', box(f'ac_crate_{i}', (r * 2, r * 1.6, r * 1.6), (dx, dy, dz),
-                             rot=(0.4 * i, 0.3 * i, 0.2 * i)), 'wrk_paint_freight_ochre')
-    tear_fringe(asm, 'tear_seam', (1.0, 0, -3.2), (0, 0, -1), 5.4, 8, depth=2.2, width=1.8)
-    scorch_from_break(asm, (2.0, -3.4, -2.0), 8.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Cargo', (0, 0, 0))]
-    root, _o = finish(asm, 'aft_cargo_module', socks)
-    return root, _aft('aft_cargo_module', state=state, socks=socks,
-                      was='Any hull, cargo module on the Berth-standard footprint.',
-                      reads='Split on a seam and still shedding. Whoever gets here first gets the '
-                            'rest of it.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.3, 0.8, 0.52), tumble_deg=58.0))
+    """A hopper bay slice with its ore — the smallest unit of a freighter."""
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=3.2, hi=6.8, axis=0, seed=97, jag=0.4)
+    W.wound(s, 'cargoA', (3.2, 0, 0.3), (-1, 0, 0), 3.8, seed=5, stub=0.35, ribs=6, tears=5)
+    W.apply_damage_state(s, state, seed=97)
+    return _finish_forge(
+        s, 'aft_cargo_module', 15.0,
+        [('SOCKET_Salvage_Cargo', (5.0, 0.0, 1.2), 2.0)],
+        _meta('aftermath', 'component', state,
+              'One hopper section of an ore barge, ore still in the well.',
+              'A hold with its cargo — salvage crews read this as "worth boarding".'))
 
 
 def build_aft_cockpit_section(state='cooling'):
-    asm = Assembly('aft_cockpit')
-    asm.add('nose', cone('ak_nose', 3.0, 0.8, 7.0, (4.0, 0, 0), rot=(0, math.pi / 2, 0), verts=12),
-            'wrk_hull_bare')
-    asm.add('cabin', box('ak_cabin', (6.0, 5.0, 3.6), (-2.0, 0, 0.2)), 'wrk_hull_bare')
-    asm.add('glass', box('ak_canopy', (4.6, 3.6, 0.4), (-1.4, 0, 2.1)), 'wrk_glass_shattered')
-    asm.add('glass', box('ak_canopy_side', (4.6, 0.4, 1.6), (-1.4, -2.5, 0.8)), 'wrk_glass_shattered')
-    torn_member(asm, 'break_aft', (-5.4, 0, 0), (-1, 0, 0), 2.6, hot='wrk_hot_orange',
-                splay=5, length=5.0, peel=4, peel_len=4.2, peel_w=2.0)
-    conduit_stubs(asm, 'stub', (-5.2, 0, 0), (-1, 0, 0), 1.8, 5, live='wrk_arc_blue')
-    asm.add('emerg', sphere('ak_emerg', 0.4, (-1.0, -2.7, 1.4), seg=8, rings=5), 'wrk_emerg_red')
-    scorch_from_break(asm, (-4.4, -1.4, 0), 7.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_BlackBox', (-3.0, 1.6, -0.6)),
-             socket('SOCKET_Evidence_Registry', (2.0, -2.6, 0.6))]
-    root, _o = finish(asm, 'aft_cockpit_section', socks)
-    return root, _aft('aft_cockpit_section', state=state, socks=socks,
-                      was='Any hull, cockpit / control section.',
-                      reads='The part with the black box in it, and the part a player will always '
-                            'stop for. Canopy gone, cabin lights still on.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.6, 0.44, 0.67), tumble_deg=77.0))
+    """The barge command tower — bridge glazing, tower windows, lamp bar — torn off its deck."""
+    s = W.build_donor(DONOR_ORE)
+    W.take_parts(s, ('Tower', 'Bridge', 'LampBar', 'Mast', 'Beacon', 'Flood'))
+    # the torn-off foot of the tower: a scorched skirt plate and frame stubs pointing down
+    W._mk_plate(s, 'TowerSkirt', (-16.8, -2.1, 1.35), (-12.5, -2.1, 1.35), 4.2, 0.14, roll=0.0,
+                finish='wk_scorch')
+    W.frame_stubs(s, 'towerBase', (-14.7, 0, 1.2), (0, 0, -1), 1.7, count=7, stub=0.5, seed=4)
+    W.apply_damage_state(s, state, seed=101)
+    return _finish_forge(
+        s, 'aft_cockpit_section', 21.0,
+        [('SOCKET_BlackBox', (-14.2, 1.1, 5.2), 2.0),
+         ('SOCKET_Evidence_Registry', (-13.0, -1.3, 4.3), 2.0)],
+        _meta('aftermath', 'component', state,
+              'The command tower of an ore barge, torn off at its deck.',
+              'Bridge glazing and dead flood lamps on a broken footing — the room the crew '
+              'watched it happen from.'))
 
 
 def build_aft_radiator_panel(state='cooling'):
-    asm = Assembly('aft_radiator')
-    asm.add('panel', box('ar_panel', (19.0, 0.5, 9.0), (0, 0, 0)), 'wrk_hull_bare')
-    for i, dx in enumerate((-7.0, -2.4, 2.2, 6.8)):
-        asm.add('rib', box(f'ar_rib_{i}', (0.5, 1.0, 9.4), (dx, 0.4, 0)), 'wrk_frame_steel')
-    asm.add('pipe', beam('ar_header_a', (-9.0, 0.5, 4.4), (9.0, 0.5, 4.4), 0.4), 'wrk_pipe')
-    asm.add('pipe', beam('ar_header_b', (-9.0, 0.5, -4.4), (9.0, 0.5, -4.4), 0.4), 'wrk_pipe')
-    # a big thin panel is the classic thing that shears off and travels (fiction §1.3)
-    tear_fringe(asm, 'tear_root', (9.6, 0, 0), (1, 0, 0), 4.6, 8, squash=1.9, depth=2.6, width=2.0)
-    # cold: a radiator that still glowed would mean the ship was still running it
-    cooling_cracks(asm, 'crack', [(-8.0, -0.4, 2.0), (0.0, -0.4, 0.0), (8.0, -0.4, -2.0)])
-    scorch_from_break(asm, (7.0, -0.6, 0), 10.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Radiator', (0, 0, 0))]
-    root, _o = finish(asm, 'aft_radiator_panel', socks)
-    return root, _aft('aft_radiator_panel', state=state, socks=socks,
-                      was='Any hull, radiator wing panel.',
-                      reads='Huge area, almost no mass. If this is near the hull it came off, the '
-                            'kill was recent.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.2, 0.75, 0.63), tumble_deg=141.0))
+    """The barge's radiator fin farm on its header pipe — shed heat-sink."""
+    s = W.build_donor(DONOR_ORE)
+    W.take_parts(s, ('Radiator', 'PipeRun', 'PipeClamp'))
+    W.apply_damage_state(s, state, seed=103)
+    return _finish_forge(
+        s, 'aft_radiator_panel', 24.0,
+        [('SOCKET_Salvage_Radiator', (-19.9, 2.75, 2.0), 2.0)],
+        _meta('aftermath', 'component', state,
+              'A radiator fin array off the ore barge stern.',
+              'A comb of dark fins — reads as cooling surface from any angle.'))
 
 
 def build_aft_pressure_tank(state='cooling'):
-    asm = Assembly('aft_tank')
-    asm.add('tank', cyl('at_shell', 3.6, 9.0, (0, 0, 0), rot=(0, math.pi / 2, 0), verts=16),
-            'wrk_tank_shell')
-    for ex in (-4.5, 4.5):
-        asm.add('tank', sphere(f'at_dome_{ex:.0f}', 3.6, (ex, 0, 0), seg=14, rings=8), 'wrk_tank_shell')
-    for i, sgn in enumerate((1, -1)):
-        asm.add('saddle', box(f'at_saddle_{i}', (1.4, 8.0, 1.0), (sgn * 3.0, 0, -3.6)),
-                'wrk_frame_steel')
-    # fiction §1.2: it petals, and the saddles hold on
-    for i in range(4):
-        a = 0.5 + i * 0.55
-        base = Vector((0, math.cos(a) * 3.4, math.sin(a) * 3.4))
-        tip = base + Vector((0, math.cos(a), math.sin(a))) * 6.0
-        asm.add('petal', plate(f'at_petal_{i}', tuple(base), tuple(tip), 5.0, 0.3,
-                               roll=0.6 + 0.3 * i), 'wrk_torn_edge')
-    vent_jet(asm, 'vent', (0.0, 2.6, 2.6), (0, 0.62, 0.78), 12.0, r0=0.4)
-    scorch_from_break(asm, (0, 2.0, 2.0), 7.0)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Hazard_Volatile', (0, 0, 0))]
-    root, _o = finish(asm, 'aft_pressure_tank', socks)
-    return root, _aft('aft_pressure_tank', state=state, socks=socks,
-                      was='Any hull, pressure vessel with saddle mounts.',
-                      reads='Peeled open from the inside and still anchored by its saddles -- the '
-                            'clearest "this burst" shape in the kit.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.52, 0.3, 0.8), tumble_deg=63.0))
+    """A ruptured pressure vessel: ceramic shell, domed ends, the skin petalled open at a weld."""
+    s = _blank_donor(DONOR_LINER)  # liner palette; the tank is authored in wreck-kit language
+    W.F.cylinder(s, 'TankBody', (-3.0, 0.0, 0.0), (2.2, 0.0, 0.0), 1.6, material='ceramic',
+                 segments=28)
+    for i, ex in enumerate((-3.0, 2.2)):
+        W.F.cylinder(s, f'TankDome{i}', (ex, 0.0, 0.0),
+                     (ex + (-0.9 if ex < 0 else 0.9), 0.0, 0.0), 1.6, 1.2, material='ceramic',
+                     segments=28)
+    # burst at a weld: keep the capped end of the shell; the far dome is torn away entirely
+    W.jagged_bisect(s.objects[0], (-0.4, 0, 0), (1, 0, 0), seed=7, jag=0.5, ship=s)
+    dome_far = bpy.data.objects.get('TankDome1')
+    if dome_far is not None:
+        s.objects.remove(dome_far)
+        bpy.data.objects.remove(dome_far, do_unlink=True)
+    W.torn_flange(s, 'tankPetals', (-0.4, 0, 0), (1, 0, 0), 1.5, count=7, depth=0.9,
+                  width=0.8, seed=11)
+    W.F.cylinder(s, 'TankValve', (-2.4, 0.0, 1.5), (-2.4, 0.0, 2.2), 0.22, material='gunmetal',
+                 segments=12)
+    W.apply_damage_state(s, state, seed=107)
+    return _finish_forge(
+        s, 'aft_pressure_tank', 17.0,
+        [('SOCKET_Hazard_Volatile', (-0.4, 0.0, 0.0), 2.0)],
+        _meta('aftermath', 'component', state,
+              'A ship-stores pressure tank, blown at a weld seam.',
+              'The petals fold OUT — internal pressure did this, nobody shot it.'))
 
 
 def build_aft_armor_slab(state='derelict'):
-    asm = Assembly('aft_armor')
-    asm.add('plate', box('aa_slab', (11.0, 1.2, 7.0), (0, 0, 0)), 'wrk_armor')
-    for i, dz in enumerate((-2.0, 2.0)):
-        asm.add('rib', box(f'aa_rib_{i}', (10.0, 1.6, 0.8), (0, 0.9, dz)), 'wrk_frame_steel')
-    # a dish, not a hole: armour that did its job and deformed
-    asm.add('dish', sphere('aa_dish', 2.6, (1.6, -1.2, 0.6), seg=12, rings=7), 'wrk_scorch')
-    tear_fringe(asm, 'tear_a', (5.6, 0, 0), (1, 0, 0), 3.4, 6, squash=1.6, depth=1.8, width=1.6)
-    tear_fringe(asm, 'tear_b', (-5.6, 0, 0), (-1, 0, 0), 3.4, 6, squash=1.6, depth=1.5, width=1.4)
-    scorch_from_break(asm, (1.6, -1.4, 0.6), 6.0)
-    apply_state(asm, state)
-    root, _o = finish(asm, 'aft_armor_slab')
-    return root, _aft('aft_armor_slab', state=state,
-                      was='Any hull, armour slab with backing ribs.',
-                      reads='Dished inward on one face and scorched around it. Something hit this '
-                            'from a direction, and the armour won.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.66, 0.5, 0.56), tumble_deg=38.0))
+    """One slab of corvette flank armour, dead a long time."""
+    s = W.build_donor(DONOR_CORVETTE)
+    W.take_parts(s, ('Belt1',))
+    W.keep_side(s, axis=1, sign=1, at=0.0, seed=109)
+    W.torn_flange(s, 'slabEdge', (-5.5, 2.7, -0.4), (0, -0.6, 0.4), 2.4, count=4, depth=0.7,
+                  width=0.6, seed=3)
+    W.apply_damage_state(s, state, seed=109)
+    return _finish_forge(
+        s, 'aft_armor_slab', 18.0, [],
+        _meta('aftermath', 'component', state,
+              'A corvette armour slab, face-up in the field.',
+              'Layered chamfered plate with the stripe edge — warship armour as litter.'))
 
 
 def build_aft_dock_collar(state='stripped'):
-    asm = Assembly('aft_collar')
-    asm.add('collar', tube('ad_ring', 4.0, 2.4, (0, 0, 0), rot=(0, math.pi / 2, 0), verts=18),
-            'wrk_hull_bare')
-    asm.add('collar', tube('ad_seal', 3.4, 0.8, (1.6, 0, 0), rot=(0, math.pi / 2, 0), verts=18),
-            'wrk_insulation')
-    for i in range(6):
-        a = i * math.tau / 6
-        asm.add('latch', box(f'ad_latch_{i}', (1.6, 0.9, 0.9),
-                             (0.4, math.cos(a) * 4.2, math.sin(a) * 4.2)), 'wrk_frame_steel')
-    asm.add('tunnel', cyl('ad_tunnel', 3.0, 5.0, (-3.4, 0, 0), rot=(0, math.pi / 2, 0), verts=14),
-            'wrk_hull_bare')
-    # severed, and then someone cut the good parts off the severed end
-    torn_member(asm, 'break_tunnel', (-6.2, 0, 0), (-1, 0, 0), 3.0, splay=4, length=4.6,
-                peel=3, peel_len=4.0, peel_w=2.0)
-    cut_panel(asm, 'cut_latch', (0.4, 3.4, -1.0), (1, 0, 0), (0, 0, 1), 2.0, 2.0)
-    conduit_stubs(asm, 'stub', (-6.0, 0, 0), (-1, 0, 0), 2.0, 4)
-    apply_state(asm, state)
-    socks = [socket('SOCKET_Salvage_Collar', (0, 0, 0))]
-    root, _o = finish(asm, 'aft_dock_collar', socks)
-    return root, _aft('aft_dock_collar', state=state, socks=socks,
-                      was='Any hull, severed docking collar and tunnel stub.',
-                      reads='A door to nothing. One latch has been cut out square -- the rest are '
-                            'still there, so whoever it was left in a hurry.',
-                      d=drift_spec((0, 0, 0), tumble_axis=(0.45, 0.62, 0.64), tumble_deg=88.0))
+    """The liner's boarding collar: pressure ring, hazard rim, dock lamp — cut off the drum."""
+    s = W.build_donor(DONOR_LINER)
+    W.take_parts(s, ('DockCollar', 'DockRing', 'DockLamp', 'ServiceHatch'))
+    W.torn_flange(s, 'collarCut', (3.4, -8.1, 0.4), (0, 1, 0), 1.4, count=6, depth=0.6,
+                  width=0.5, seed=6)
+    W.apply_damage_state(s, state, seed=113)
+    return _finish_forge(
+        s, 'aft_dock_collar', 16.0,
+        [('SOCKET_Salvage_Collar', (3.4, -9.2, 0.4), 2.0)],
+        _meta('aftermath', 'component', state,
+              'A docking collar with its hazard ring, pulled off the hull.',
+              'A door frame with no door — the smallest possible read of "people used to board '
+              'here".'))
 
 
-# ===========================================================================
-# SHARED FRAGMENT KIT (fiction §6)
-#
-# SHARED across every family, not authored per-family: at the size a fragment occupies on
-# screen there is no legibility to be gained from making it family-specific, and one near-identical
-# kit per family would be N times the review surface for no player-visible gain.
-#
-# "All six families" is what the FICTION specifies (§5). Only THREE are built — ore freighter,
-# corvette, liner — so this kit is currently shared across three, sized to serve six if the
-# remaining hulls are ever authored. Do not read the six as a count of what exists.
-#
-# The dormant foundry trio (scenery_wreck_fragment_v01..v03) covers similar ideas at 0.5-7 m; see
-# EXISTING_COVERAGE.md §2. These are authored at 4-9 m with drift specs and pack materials, and do
-# not touch those files.
+# ---------------------------------------------------------------------------
+# SHARED FRAGMENT KIT — authored in Forge finishes, small enough to litter a field
 
-def _frag(name, was, reads, tumble, state='cooling'):
-    return {'family': 'fragments', 'kind': 'fragment', 'state': state, 'was': was, 'reads': reads,
-            'sockets': [], 'shipFrameOriginM': None,
-            'drift': drift_spec((0, 0, 0), tumble_axis=tumble[0], tumble_deg=tumble[1])}
+def _frag_meta(name, state, was, reads, tumble):
+    return _meta('fragments', 'fragment', state, was, reads,
+                 drift=drift_spec((0, 0, 0), tumble_axis=tumble[0], tumble_deg=tumble[1]))
 
 
 def build_frag_plate_curl(state='cooling'):
-    asm = Assembly('frag_curl')
-    for i, (roll, w) in enumerate(((0.6, 3.4), (1.5, 2.6), (2.4, 1.8))):
-        asm.add('plate', plate(f'fc_{i}', (-3.0 + i * 0.6, i * 0.8, i * 0.5),
-                               (3.2 - i * 0.5, i * 1.4 + 0.6, i * 1.1), w, 0.16, roll=roll),
-                'wrk_paint_freight_ochre' if i == 0 else 'wrk_torn_edge')
-    apply_state(asm, state)
-    root, _o = finish(asm, 'frag_plate_curl')
-    return root, _frag('frag_plate_curl', 'Hull plating, curled back on itself.',
-                       'Paint on one face, bare torn metal on the other.', ((0.6, 0.5, 0.62), 122.0),
-                       state)
+    s = _blank_donor()
+    W._mk_plate(s, 'curl0', (-1.2, -0.6, 0.0), (-1.2, 0.9, 0.5), 1.6, 0.1, roll=0.9,
+                finish='wk_torn')
+    W._mk_plate(s, 'curl1', (0.1, -0.8, 0.3), (0.3, 0.8, -0.4), 1.4, 0.1, roll=1.4,
+                finish='wk_scorch')
+    W._mk_plate(s, 'curl2', (0.9, -0.2, -0.2), (1.1, 0.5, 0.7), 1.1, 0.1, roll=0.5,
+                finish='wk_torn')
+    W.apply_damage_state(s, state, seed=3)
+    return _finish_forge(s, 'frag_plate_curl', 6.0, [],
+                         _frag_meta('frag_plate_curl', state,
+                                    'Skin plating, rolled open like paper.',
+                                    'Three curls off the same hull — the field\'s confetti.',
+                                    ((0.7, 0.3, 0.6), 140.0)))
 
 
 def build_frag_rib_cluster(state='cooling'):
-    asm = Assembly('frag_ribs')
-    for i in range(5):
-        a = 0.3 + i * 0.7
-        asm.add('rib', beam(f'fr_rib_{i}', (-3.2 + i * 0.7, math.cos(a) * 0.6, math.sin(a) * 0.6),
-                            (3.0 - i * 0.5, math.cos(a) * 2.6, math.sin(a) * 2.8), 0.22, verts=5),
-                'wrk_frame_steel')
-    asm.add('plate', plate('fr_skin', (-2.0, 0.4, 0.2), (2.4, 1.2, 1.6), 2.2, 0.14, roll=0.9),
-            'wrk_torn_edge')
-    apply_state(asm, state)
-    root, _o = finish(asm, 'frag_rib_cluster')
-    return root, _frag('frag_rib_cluster', 'Internal framing with a shred of skin still attached.',
-                       'Frames survive what plating does not -- this is that rule at fragment scale.',
-                       ((0.3, 0.72, 0.62), 88.0), state)
+    s = _blank_donor()
+    W._mk_plate(s, 'ribHub', (-0.3, 0, 0), (0.3, 0, 0), 1.2, 0.4, roll=0.0, finish='wk_frame')
+    W.frame_stubs(s, 'ribFan', (0.0, 0, 0), (1, 0.3, 0.2), 0.9, count=6, stub=1.4, thick=0.12,
+                  seed=5)
+    W.apply_damage_state(s, state, seed=7)
+    return _finish_forge(s, 'frag_rib_cluster', 6.0, [],
+                         _frag_meta('frag_rib_cluster', state,
+                                    'A frame joint with its ribs still on it.',
+                                    'The skeleton\'s knuckle — the piece that makes the rest of '
+                                    'the debris read as bones.', ((0.4, 0.6, 0.7), 110.0)))
 
 
 def build_frag_cable_bundle(state='cooling'):
-    asm = Assembly('frag_cable')
-    for i in range(7):
-        a = i * 0.9
-        asm.add('cable', beam(f'fb_c_{i}', (-2.6, math.cos(a) * 0.4, math.sin(a) * 0.4),
-                              (2.2 + 0.4 * (i % 3), math.cos(a) * 2.2, math.sin(a) * 1.8 - 0.6),
-                              0.13, verts=4), 'wrk_cable')
-    asm.add('conduit', cyl('fb_duct', 0.9, 3.0, (-3.0, 0, 0), rot=(0, math.pi / 2, 0), verts=10),
-            'wrk_pipe')
-    asm.add('arc', sphere('fb_arc', 0.22, (2.4, 1.4, 0.6), seg=8, rings=5), 'wrk_arc_blue')
-    apply_state(asm, state)
-    root, _o = finish(asm, 'frag_cable_bundle')
-    return root, _frag('frag_cable_bundle', 'Severed cable trunk, conduit still on the end.',
-                       'Still live: one arc, tiny, the hottest colour in the pack owning the least '
-                       'screen area.', ((0.72, 0.32, 0.61), 154.0), state)
+    s = _blank_donor()
+    for i in range(5):
+        a = i * 1.25
+        W.mk_pipe(s, f'cab{i}', [(-1.8, math.cos(a) * 0.5, math.sin(a) * 0.4),
+                                 (0.0, math.cos(a + 1.1) * 1.1, math.sin(a + 0.7) * 0.9),
+                                 (1.9, math.cos(a + 2.0) * 0.7, math.sin(a + 1.4) * 1.2 - 0.4)],
+                  0.09 + 0.02 * (i % 2), finish='wk_cut', verts=5)
+    W._mk_plate(s, 'cabCollar', (-1.9, -0.5, -0.4), (-1.9, 0.5, 0.4), 0.9, 0.3, roll=0.0,
+                finish='wk_frame')
+    W.apply_damage_state(s, state, seed=11)
+    return _finish_forge(s, 'frag_cable_bundle', 8.0, [],
+                         _frag_meta('frag_cable_bundle', state,
+                                    'Severed cable trunking off a ship\'s spine.',
+                                    'Bent ends, not cut — this came out with the wall.',
+                                    ((0.7, 0.3, 0.6), 150.0)))
 
 
 def build_frag_grating_sheet(state='derelict'):
-    asm = Assembly('frag_grate')
-    asm.add('plate', box('fg_sheet', (5.6, 4.0, 0.18), (0, 0, 0), rot=(0.3, 0.2, 0)), 'wrk_deck_grate')
-    for i, dx in enumerate((-1.8, 0.6, 2.6)):
-        asm.add('rib', box(f'fg_bar_{i}', (0.22, 4.2, 0.3), (dx, 0, -0.2), rot=(0.3, 0.2, 0)),
-                'wrk_frame_steel')
-    tear_fringe(asm, 'tear', (2.9, 0, 0), (1, 0, 0), 1.8, 5, squash=1.6, depth=1.1, width=0.9)
-    apply_state(asm, state)
-    root, _o = finish(asm, 'frag_grating_sheet')
-    return root, _frag('frag_grating_sheet', 'Deck grating, one bay of it.',
-                       'Says there was a floor here, and therefore people.',
-                       ((0.5, 0.6, 0.62), 61.0), state)
+    s = _blank_donor()
+    W._mk_plate(s, 'grate', (-1.1, -0.8, 0.0), (1.2, -0.4, 0.3), 2.2, 0.1, roll=0.35,
+                finish='wk_scorch')
+    for i in range(4):
+        W._mk_beam(s, f'gBar{i}', (-0.9 + i * 0.7, -0.7, 0.12 + i * 0.03),
+                   (-0.8 + i * 0.7, 1.0, 0.35 + i * 0.03), 0.06, finish='wk_frame')
+    W.apply_damage_state(s, state, seed=13)
+    return _finish_forge(s, 'frag_grating_sheet', 8.0, [],
+                         _frag_meta('frag_grating_sheet', state,
+                                    'One bay of deck grating.',
+                                    'There was a floor here, and therefore people.',
+                                    ((0.5, 0.6, 0.6), 61.0)))
 
 
 def build_frag_pipe_tangle(state='cooling'):
-    asm = Assembly('frag_pipes')
-    for i in range(6):
-        a = i * 1.1
-        asm.add('pipe', beam(f'fp_{i}', (-2.4 + i * 0.4, math.cos(a) * 1.2, math.sin(a) * 1.0),
-                             (2.0 - i * 0.3, math.cos(a + 1.2) * 1.6, math.sin(a + 0.8) * 1.8),
-                             0.24, verts=6), 'wrk_pipe')
-    asm.add('bracket', box('fp_bracket', (0.5, 2.6, 0.5), (0.4, 0, -1.2)), 'wrk_frame_steel')
-    apply_state(asm, state)
-    root, _o = finish(asm, 'frag_pipe_tangle')
-    return root, _frag('frag_pipe_tangle', 'Service pipework torn out of a run.',
-                       'Bent, not cut: this came out with the wall.', ((0.66, 0.5, 0.56), 97.0), state)
+    s = _blank_donor()
+    for i in range(4):
+        a = i * 1.5
+        W.mk_pipe(s, f'pipe{i}', [(-1.2 + i * 0.2, math.cos(a) * 0.6, math.sin(a) * 0.5),
+                                  (0.2 - i * 0.1, math.cos(a + 1.0) * 0.9, math.sin(a + 0.6) * 0.8),
+                                  (1.1 - i * 0.15, math.cos(a + 2.0) * 0.4, math.sin(a + 1.3) * 0.9)],
+                  0.14, finish='wk_cut', verts=5)
+    W._mk_beam(s, 'pipeBracket', (-0.2, -0.9, -0.6), (0.4, 0.9, -0.6), 0.18, finish='wk_frame')
+    W.apply_damage_state(s, state, seed=17)
+    return _finish_forge(s, 'frag_pipe_tangle', 5.0, [],
+                         _frag_meta('frag_pipe_tangle', state,
+                                    'Service pipework torn out of a run.',
+                                    'A tangle that still remembers the wall it came off.',
+                                    ((0.66, 0.5, 0.56), 97.0)))
 
 
 def build_frag_strut_shard(state='cooling'):
-    asm = Assembly('frag_strut')
-    asm.add('strut', beam('fs_main', (-4.0, 0, 0), (3.6, 0.8, 1.2), 0.4, verts=6), 'wrk_frame_steel')
-    asm.add('strut', beam('fs_side', (-1.2, 0.2, 0.3), (1.8, -1.6, -1.4), 0.28, verts=5),
-            'wrk_frame_steel')
-    torn_member(asm, 'break', (3.8, 0.85, 1.3), (0.9, 0.2, 0.3), 0.5, hot='wrk_hot_deep_red',
-                splay=3, length=2.0, peel=2, peel_len=1.6, peel_w=0.8)
-    apply_state(asm, state)
-    root, _o = finish(asm, 'frag_strut_shard')
-    return root, _frag('frag_strut_shard', 'Structural strut, snapped.',
-                       'One end frayed and faintly warm, the other cleanly attached to nothing.',
-                       ((0.42, 0.68, 0.6), 133.0), state)
+    s = _blank_donor()
+    W._mk_beam(s, 'strutMain', (-2.0, 0, 0), (2.0, 0.4, 0.6), 0.28, finish='wk_frame', verts=6)
+    W._mk_beam(s, 'strutSide', (-0.6, 0.1, 0.1), (1.0, -0.9, -0.8), 0.18, finish='wk_frame',
+               verts=5)
+    W.frame_stubs(s, 'strutFray', (2.1, 0.42, 0.65), (0.9, 0.2, 0.3), 0.5, count=3, stub=0.6,
+                  seed=3)
+    W.apply_damage_state(s, state, seed=19)
+    return _finish_forge(s, 'frag_strut_shard', 11.0, [],
+                         _frag_meta('frag_strut_shard', state,
+                                    'A structural strut, snapped.',
+                                    'One end frayed, the other cleanly attached to nothing.',
+                                    ((0.42, 0.68, 0.6), 133.0)))
 
+
+# ---------------------------------------------------------------------------
+# AUTHORED-DOWN HERO — Forge-derived replacement for the imported mining barge.
+# The barge is authored_down-only in the catalog (no source twin): the SAME file is mirrored to
+# source/ for provenance and authored_down/ for release promotion, and stays out of the
+# 37-asset source report.
+
+def build_wreck_mining_barge(state='derelict'):
+    """The mining barge hero — a whole Forge ore barge dead in the field: midship ore bins blown
+    out between two frame rings, the halves still slung from the keel chords, cutter station at
+    the bow, drives cold. The BinGap is a fly-through wound, measured like the pack's other gaps.
+    """
+    s = W.build_donor(DONOR_ORE)
+    W.keep_band(s, lo=None, hi=None, axis=0, seed=0, jag=0.0,
+                drop=('NavStarboard', 'NavPort', 'Mast', 'Beacon', 'LampBar', 'Flood'))
+    # bins torn out midship; the wound is wide enough to fly through (measured below). The gap
+    # needs 20 m of clear radius: the keel chords hug the hull bottom, so the probe — and the
+    # fly-through lane it advertises — rides high in the bore, above the chord line.
+    W.carve_band(s, -4.5, 12.5, axis=0, seed=29, jag=0.3)
+    for i, rx in enumerate((-3.7, 11.7)):
+        W.mk_ring_arc(s, f'BinRing{i}', 4.4, 0.5, 0.4, 0.0, 360.0, center=(rx, 0, 0),
+                      segments=26, finish='wk_frame')
+    # keel chords are the only things still joining the halves — the bore stays open above them
+    for i, cy in enumerate((1.7, -1.7)):
+        W._mk_beam(s, f'KeelChord{i}', (-4.4, cy, -4.4), (12.4, cy, -4.4), 0.26,
+                   finish='wk_frame')
+    W.wound(s, 'woundFore', (-4.5, 0, 0), (1, 0, 0), 4.2, seed=21, stub=0.4, squash=0.55)
+    W.wound(s, 'woundAft', (12.5, 0, 0), (-1, 0, 0), 4.2, seed=25, stub=0.4, squash=0.55)
+    W.scorch_gradient(s, (-4.5, 0, 0), 4.5)
+    W.scorch_gradient(s, (12.5, 0, 0), 4.5)
+    W.apply_damage_state(s, state, seed=29)
+    return _finish_forge(
+        s, 'wreck_mining_barge', 147.0,
+        [('SOCKET_BlackBox', (16.9, 1.6, 1.9), 2.0),
+         ('SOCKET_Hazard_Break', (11.5, 0.0, 1.2), 2.0),
+         ('SOCKET_Hazard_Core', (4.0, 0.0, -3.4), 2.0),
+         ('SOCKET_Salvage_Cutter', (18.5, 0.0, 0.5), 2.0),
+         ('SOCKET_Salvage_Drive', (-19.5, 0.0, 0.6), 2.0),
+         ('SOCKET_Salvage_Ore', (13.1, 0.0, 1.5), 2.0),
+         ('INTERACTION_BinGap', (4.0, 0.0, 2.6), 20.0)],
+        _meta('ore_freighter', 'hero', state,
+              'Asteroid mining barge (Forge ore barge), whole hull, bins blown out.',
+              'The whole ship is here — cutter, bins, drives — and it is still dead: the '
+              'fly-through BinGap is where the cargo hold used to be.',
+              ),
+        probes=[('INTERACTION_BinGap', (4.0, 0.0, 2.6))])
+
+
+# ---------------------------------------------------------------------------
+# REFERENCES — the intact donors, for the "as built vs wreck" silhouette sheets.
+
+def build_ore_freighter_intact():
+    return _intact(DONOR_ORE, 'ref_ore_freighter_intact',
+                   'The Forge ore barge, intact.',
+                   'Every piece in the family was this ship once — the silhouette sheet proves it.')
+
+def build_corvette_intact():
+    return _intact(DONOR_CORVETTE, 'ref_corvette_intact',
+                   'The Forge bastion corvette, intact.',
+                   'Casemate, citadel, turrets — the wreck pieces carry all three.')
+
+def build_liner_intact():
+    return _intact(DONOR_LINER, 'ref_liner_intact',
+                   'The Forge massline express liner, intact.',
+                   'Drum, wedge, galleries — the wreck pieces carry the window rows.')
 
 # ===========================================================================
 # Registry. `kind` drives review framing: primary/secondary get hero distance bands, debris and
@@ -2101,11 +1628,12 @@ def measure_gaps(root, probes):
     meshes = [o for o in root.children_recursive if o.type == 'MESH']
     out = []
     for probe in probes:
-        clear = gap_clearance(meshes, probe['atM'])
+        clear, nearest = gap_clearance(meshes, probe['atM'])
         out.append({
             'name': probe['name'],
             'atM': [round(v, 1) for v in probe['atM']],
             'clearRadiusM': round(clear, 2),
+            'nearest': nearest,
             'clearSpanM': round(clear * 2.0, 2),
             'playerHullM': PLAYER_HULL_M,
             'requiredRadiusM': MIN_GAP_CLEAR_RADIUS,
@@ -2280,17 +1808,30 @@ def render_silhouette_sheet(family, intact_id, wreck_ids, shot_path):
     "that used to be a freighter", and the only honest way to check that is to put the intact hull
     directly above its own wreckage and see whether the eye connects them."""
     reset_scene()
+    # The intact reference is the ONE live build allowed in a sheet scene: donor build()s wipe
+    # everything, so it goes in first and the wreck pieces arrive as GLB imports on top of it.
     ref_root, _meta = REFERENCES[intact_id]()
     _lo, _hi, ref_size = envelope(ref_root)
-    span = max(1.0, max(ref_size)) * 0.30
-    top = span * len(wreck_ids) * 0.5
-    ref_root.location = Vector((0, 0, top))
-    _label_front('AS BUILT', (-max(ref_size) * 0.74, 0, top + span * 0.34), span * 0.15)
-    for i, wid in enumerate(wreck_ids):
-        r, _m = BUILDERS[wid]()
-        r.location = Vector((0, 0, top - span * (i + 1)))
-        _label_front(wid, (-max(ref_size) * 0.74, 0, top - span * (i + 1) + span * 0.34),
-                     span * 0.11)
+    wrecks = [(wid, _import_glb_root(OUT_SOURCE / f'{wid}.glb')) for wid in wreck_ids]
+    # The donor builds at ship units while the exported pieces are metres. Scale the intact
+    # reference up so the "as built" row reads at the same magnitude as the pieces cut from it —
+    # a 40-unit hull next to a 180 m wreck reads as a toy, not a donor.
+    biggest_wreck = max((max(envelope(r)[2]) for _w, r in wrecks), default=1.0)
+    ref_root.scale = tuple(biggest_wreck * 1.35 / max(1.0, max(ref_size)) for _ in range(3))
+    bpy.context.view_layer.update()
+    # Stack rows down Z; each row's own envelope drives spacing so nothing overlaps.
+    rows = [('AS BUILT', ref_root)] + wrecks
+    envs = {r.name: envelope(r) for _n, r in rows}
+    heights = [envs[r.name][2].z for _n, r in rows]
+    maxw = max(envs[r.name][2].x for _n, r in rows)
+    gap = max(heights) * 0.20
+    cursor = (sum(heights) + gap * (len(rows) - 1)) * 0.5
+    for (label, r), h in zip(rows, heights):
+        lo, hi, _sz = envs[r.name]
+        r.location = Vector((-(lo.x + hi.x) * 0.5, 0.0, cursor - hi.z))
+        _label_front(label, (-maxw * 0.62, 0.0, cursor - h * 0.30),
+                     max(h * 0.14, maxw * 0.035))
+        cursor -= h + gap
     bpy.context.view_layer.update()
     _sheet_frame(shot_path, (1500, 1800))
 
@@ -2330,9 +1871,9 @@ def _sheet_frame(shot_path, res):
     cam.data.clip_end = d * 4.0
     bpy.context.scene.camera = cam
     e = max(span.x, span.z) ** 2 * 0.25
-    for loc, energy, col in (((mid.x + d * 0.5, mid.y - d * 0.7, mid.z + d * 0.5), 60 * e, (1.0, 0.86, 0.68)),
-                             ((mid.x - d * 0.6, mid.y - d * 0.6, mid.z - d * 0.3), 20 * e, (0.55, 0.68, 1.0)),
-                             ((mid.x, mid.y - d * 0.2, mid.z + d * 0.8), 22 * e, (0.75, 0.82, 1.0))):
+    for loc, energy, col in (((mid.x + d * 0.5, mid.y - d * 0.7, mid.z + d * 0.5), 82 * e, (1.0, 0.86, 0.68)),
+                             ((mid.x - d * 0.6, mid.y - d * 0.6, mid.z - d * 0.3), 30 * e, (0.55, 0.68, 1.0)),
+                             ((mid.x, mid.y - d * 0.2, mid.z + d * 0.8), 34 * e, (0.75, 0.82, 1.0))):
         bpy.ops.object.light_add(type='AREA', location=loc)
         lt = bpy.context.active_object
         lt.data.energy = energy * WRECK_KEY_MUL
@@ -2373,11 +1914,27 @@ def _label_front(text, loc, size):
     return t
 
 
+def _import_glb_root(path):
+    """Import an exported pack GLB and return its root object.
+
+    Every sheet render must place several pieces in one scene, but each BUILDERS call runs a
+    donor's build() which factory-resets the scene -- two built pieces can never coexist. The
+    source GLBs the main loop just exported ARE the pieces, so sheets import those instead; the
+    picture then shows the shipped files, not a parallel rebuild."""
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    new = [o for o in bpy.data.objects if o not in before]
+    roots = [o for o in new if o.parent is None or o.parent not in new]
+    if not roots:
+        raise RuntimeError(f'no root object after importing {path.name}')
+    return next((o for o in roots if o.name.split('.')[0] == path.stem), roots[0])
+
+
 def render_family_sheet(family, ids, shot_path):
     reset_scene()
     built = []
     for pid in ids:
-        r, _m = BUILDERS[pid]()
+        r = _import_glb_root(OUT_SOURCE / f'{pid}.glb')
         _lo, _hi, size = envelope(r)
         built.append((pid, r, max(size)))
     sp = max(1.0, max(b[2] for b in built)) * 1.18
@@ -2396,21 +1953,23 @@ def render_state_ladder(base_id, states, shot_path):
     """Fresh beside derelict on the SAME hull. Fiction §3 lives or dies on this one image."""
     reset_scene()
     order = ('fresh',) + tuple(s for s in states if s != 'fresh')
-    probe, _m = BUILDERS[base_id](state=order[0])
-    _lo, _hi, sz = envelope(probe)
-    bpy.data.objects.remove(probe, do_unlink=True)
-    reset_scene()
-    sp = max(1.0, max(sz)) * 0.34
-    top = sp * (len(order) - 1) * 0.5
-    for i, st in enumerate(order):
-        r, _m = BUILDERS[base_id](state=st)
-        r.location = Vector((0, 0, top - sp * i))
-        _label_front(st.upper(), (-max(sz) * 0.78, 0, top - sp * i + sp * 0.34), sp * 0.16)
+    pieces = [(st, _import_glb_root(OUT_SOURCE / f'{base_id}__{st}.glb')) for st in order]
+    envs = {r.name: envelope(r) for _st, r in pieces}
+    heights = [envs[r.name][2].z for _st, r in pieces]
+    maxw = max(envs[r.name][2].x for _st, r in pieces)
+    gap = max(heights) * 0.22
+    cursor = (sum(heights) + gap * (len(pieces) - 1)) * 0.5
+    for (st, r), h in zip(pieces, heights):
+        lo, hi, _sz = envs[r.name]
+        r.location = Vector((-(lo.x + hi.x) * 0.5, 0.0, cursor - hi.z))
+        _label_front(st.upper(), (-maxw * 0.62, 0.0, cursor - h * 0.30),
+                     max(h * 0.14, maxw * 0.04))
+        cursor -= h + gap
     bpy.context.view_layer.update()
     _sheet_frame(shot_path, (1500, 1700))
 
 
-def render_composition(family, shot_path):
+def render_composition(family, metas, shot_path):
     """Put the ship back together as it now lies: every piece at its ship-frame origin PLUS its
     recorded drift. This is the only render in the pack where fiction 1.4 can be judged -- a
     per-asset shot cannot show whether a section drifted away from the break it tore off at, and
@@ -2420,7 +1979,8 @@ def render_composition(family, shot_path):
     for pid in FAMILY_OF[family]:
         if pid not in BUILDERS:
             continue
-        root, meta = BUILDERS[pid]()
+        root = _import_glb_root(OUT_SOURCE / f'{pid}.glb')
+        meta = metas.get(pid) or {}
         staged(root, meta.get('shipFrameOriginM') or (0, 0, 0), meta.get('drift'))
     bpy.context.view_layer.update()
     for o in bpy.data.objects:
@@ -2575,32 +2135,10 @@ def main():
             for probe in meta.get('gapProbes') or []:
                 render_gap_pass(root, probe, OUT_EVIDENCE / f"{pid}_gap_{probe['name']}.png")
 
-    if args.sheets:
-        for fam, fam_ids in FAMILY_OF.items():
-            if args.only and fam != args.only:
-                continue
-            render_family_sheet(fam, [i for i in fam_ids if i in BUILDERS],
-                                OUT_EVIDENCE / f'family-{fam}.png')
-    if args.silhouettes:
-        for ref_id in REFERENCES:
-            fam = ref_id.replace('ref_', '').replace('_intact', '')
-            if args.only and fam != args.only:
-                continue
-            heroes = [i for i in FAMILY_OF.get(fam, ()) if i in BUILDERS and i.startswith('wreck_')]
-            render_silhouette_sheet(fam, ref_id, heroes, OUT_EVIDENCE / f'silhouette-{fam}.png')
-    if args.compositions:
-        for fam in COMPOSITION_FAMILIES:
-            if args.only and fam != args.only:
-                continue
-            render_composition(fam, OUT_EVIDENCE / f'composition-{fam}.png')
-    if args.states:
-        for base_id, states in STATE_VARIANTS.items():
-            if base_id not in ids:
-                continue
-            render_state_ladder(base_id, states, OUT_EVIDENCE / f'states-{base_id}.png')
-
     # State variants ship as their own GLBs. A promotion lane needs a file per state, not a
     # rebuild instruction -- and the wreckClasses.js mapping in INTEGRATION.md points at filenames.
+    # These export BEFORE the sheet renders: the state ladder imports the files, and an export
+    # after the renders would have it drawing stale (or missing) GLBs.
     for base_id, states in STATE_VARIANTS.items():
         if base_id not in ids:
             continue
@@ -2641,6 +2179,54 @@ def main():
             for f in report['assets'][-1]['floatingMarks']:
                 report['floatingMarkFailures'].append({'id': vid, **f})
             log(f'{vid}: {[round(v, 1) for v in size]} m - {tri_count(root)} tris')
+
+    metas = {a['id']: a for a in report['assets']}
+    if args.sheets:
+        for fam, fam_ids in FAMILY_OF.items():
+            if args.only and fam != args.only:
+                continue
+            render_family_sheet(fam, [i for i in fam_ids if i in BUILDERS],
+                                OUT_EVIDENCE / f'family-{fam}.png')
+    if args.silhouettes:
+        for ref_id in REFERENCES:
+            fam = ref_id.replace('ref_', '').replace('_intact', '')
+            if args.only and fam != args.only:
+                continue
+            heroes = [i for i in FAMILY_OF.get(fam, ()) if i in BUILDERS and i.startswith('wreck_')]
+            render_silhouette_sheet(fam, ref_id, heroes, OUT_EVIDENCE / f'silhouette-{fam}.png')
+    if args.compositions:
+        for fam in COMPOSITION_FAMILIES:
+            if args.only and fam != args.only:
+                continue
+            render_composition(fam, metas, OUT_EVIDENCE / f'composition-{fam}.png')
+    if args.states:
+        for base_id, states in STATE_VARIANTS.items():
+            if base_id not in ids:
+                continue
+            render_state_ladder(base_id, states, OUT_EVIDENCE / f'states-{base_id}.png')
+
+    # The authored-down hero: Forge-derived mining barge, mirrored to authored_down/ for release
+    # promotion and to source/ for provenance (the catalog has no source twin for it). Kept OUT
+    # of report['assets'] — the 37-source inventory is the release contract — but the same
+    # socket / gap / floating-mark assertions apply to it.
+    if not args.only:
+        reset_scene()
+        broot, bmeta = build_wreck_mining_barge()
+        blo, bhi, bsize = envelope(broot)
+        OUT_AUTHOR.mkdir(parents=True, exist_ok=True)
+        for g in measure_gaps(broot, bmeta.get('gapProbes') or []):
+            if not g['pass']:
+                report['gapFailures'].append({'id': 'wreck_mining_barge', **g})
+        for f in check_attachment(broot):
+            report['floatingMarkFailures'].append({'id': 'wreck_mining_barge', **f})
+        bpath = OUT_AUTHOR / 'wreck_mining_barge.glb'
+        bsha = export_glb(broot, bpath)
+        bfound, bmissing = verify_sockets(bpath, bmeta.get('sockets') or [])
+        if bmissing:
+            report['socketFailures'].append({'id': 'wreck_mining_barge', 'missing': bmissing})
+        shutil.copy2(bpath, OUT_SOURCE / 'wreck_mining_barge.glb')
+        log(f"wreck_mining_barge (authored_down): {[round(v, 1) for v in bsize]} m - "
+            f"{tri_count(broot)} tris - {len(bfound)} sockets")
 
     report['renderFailures'] = RENDER_FAILURES
     report['assetCount'] = len(report['assets'])

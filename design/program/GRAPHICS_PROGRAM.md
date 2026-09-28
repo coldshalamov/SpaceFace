@@ -12,7 +12,7 @@ The build-map entry is `build_map.md` §13D, Wave GFX.
 |---|---|
 | Ships | **All 47 live bodies are Forge.** That covers the 14 player hulls (Kestrel/Hitch to Leviathan), the Ashline raiders, Helios civil traffic, the work fleet, the faction variants (Span dmc/mts/reach, Wasp free/mts/scn) and the Massline liner. Registry: `tools/blender/forge/fleet.json`. |
 | Stations | **Forge:** refinery, mining rig, fab yard, military bastion, research array, black-market warren, jump gate, trade hub and its three faction overlays (`var_station_trade_hub_{free,mts,scn}_overlay_v01`). |
-| Props | **Forge:** cargo pod, lane beacon, nav buoy, mining drone, worklight tower, container rack, sensor mast. Everything else under `assets/ships/parts/places/` is still an older pipeline (see backlog GFX-3). |
+| Props | **Forge:** every place on the default route — cargo pod, lane beacon, nav buoy, mining drone, worklight tower, container rack, sensor mast, the Helios lane marks, dead hulk, debris, billboard, memorial array, the claim-outpost family, industry props, transponder gate, interdiction buoy, the Ceres and 47-A story props, the breakaway fork and SP-07, the rock places, the dock interiors, and the wreck/aftermath pack (derived from the Forge ore barge, Bastion and Massline liner by `tools/blender/forge/wreck_kit.py`). Still older: the Asteroid Works board pieces (`place_works_*`) and the Wreck Cathedral. |
 | Landmarks | **Forge (live):** the Candle Fleet, the Resonant Cathedral and the Skerris Throne, as new places drawn at landmark scale (`placeTargetRadius` 100/110/150), and the Quiessence ring (seventeen becalmed carriers: `place_quiessence_freighter_{a,b,c}`, variants of the Forge tanker, Span and ore barge). The Wreck Cathedral is an older pipeline. |
 | Runtime look | Forge materials (`spacefaceFinish: forge-v1`) skip the rescue layers (roughness noise, palette multiplies, pigment). The procedural PBR fallback no longer stamps fine-grain relief on manufactured surfaces. |
 | Interface art | HUD silhouettes are traced from the hulls (`tools/blender/forge/silhouettes.py`). Hero/side/top/holo/jig posters are rendered for all player hulls (`tools/art/render_hull_posters.mjs`). `src/ui/hullPosters.js` lists all 14. |
@@ -112,19 +112,11 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
 
 | # | Task | Why | Done when |
 |---|---|---|---|
-| **GFX-3** | Rebuild the remaining places in Forge, in player-visibility order. See the ordered list below the table. | These are the last pre-Forge bodies on the default route. | Each is same-slot replaced with the live sockets. |
-| **GFX-7** | Wrecks that match the ships: derive destroyed/derelict versions of Forge hulls from the Forge sources (fracture into chunks, scorch the plates, expose the frames), and replace the pre-Forge aftermath pack. | Kills and salvage are core loops; wrecks should be the ships you just fought. | The aftermath dressing uses Forge-derived pieces. |
 | **GFX-8** | Asteroids: review the procedural common-rock geology (`src/render/objectSpaceGeology.js`) and the authored rock places against the Forge bar at chase camera; rebuild rock A/B/C/seamed/graffiti with the GFX-6 rock primitive. | Rocks are everywhere. The procedural geology already reads as rock; the authored rock places are older. | The rocks match the stations' material language. |
 | **GFX-9** | Bolt-on parts (weapons, pods, engines under `assets/ships/parts/`): audit which still draw on the live route. Forge hulls skip bolt-ons; modular NPC kits may not. Rebuild the survivors as Forge parts or retire them. | Old-pipeline parts next to Forge hulls break the one-game read. | The census shows no pre-Forge part on the default route. |
 | **GFX-10** | Performance pass on the Forge fleet: `probe-frame-solid` with a crowded Helios; dedupe the shared tile textures across GLBs in the loader (identical images are embedded per GLB today); instance repeated NPC hulls; measure GPU memory. | Consistency made sharing possible; take the win. | Frame p50/p95 and texture MB are recorded before/after in `build_map.md` §21.4. |
 | **GFX-11** | Runtime attachments on Forge hulls: retro-thruster shells (`Retro_Shell_*`), plume sockets, damage hooks (`HOOK_SECONDARY/SENSOR/ARMOR`) shedding in combat, player paint override across all 14 hulls. | Runtime layers were written against the old bodies. | `flight-look` stills per hull show retros on the nozzles and a clean paint swap; a damage run sheds parts. |
 | **GFX-12** | Wave F stand-ins (§13D): the pending-body stand-in is the hull's own Forge LOD2, preloaded. | No box ever. | `probe:frame-solid` rootSwaps 0; no generic marker on a cold New Game. |
-
-**GFX-3 order:**
-1. Opening route: dead hulk, debris chunk, station billboard, lane pin, tally post, claim mark, ash pin, whistle, cold locker, memorial array (as a prop).
-2. Player-built: the claim outpost family (base, bastion, catcher, fence, refinery, relay), conveyor barge and truss, drill platform, extraction mast, freight platform, radiator bank, slurry tank, transfer arm, maintenance gantry.
-3. Law and travel: transponder gate, interdiction buoy.
-4. The rest: Ceres wrecks, scrap cage, improvised dock, 47-A capsule, breakaway fork and SP-07.
 
 Pick a row, read FORGE.md and this page, and use the matching brief template. When a row is done,
 delete it here and in `build_map.md` §13D Wave GFX in the same commit.
