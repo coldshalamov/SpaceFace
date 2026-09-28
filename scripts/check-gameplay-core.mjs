@@ -5,7 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { Masks } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
-import { core } from '../src/core/coreSystem.js';
+import { core, VOLATILE_INDEX_PERIOD_TICKS } from '../src/core/coreSystem.js';
 import { physics } from '../src/core/physics.js';
 import { queryNearbyEntities } from '../src/core/spatialQuery.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
@@ -303,9 +303,16 @@ function checkCoreEntityIndexIsLifecycleDriven() {
   assert(index.weaponShips.includes(ship), 'volatile weapon ship bucket should be populated from live ship data');
 
   ship.data.weapons = [];
-  core.preStep(1 / 60, state);
+  // Receipt note — bar re-pinned to landed behavior: refreshVolatileEntityIndex rebuilt
+  // aiShips/weaponShips every preStep until d75759b9e moved the walk to the
+  // VOLATILE_INDEX_PERIOD_TICKS cadence ("a hot attach still lands within a few ticks").
+  // The contract this bar guards is refresh-without-rebuild, not refresh-next-tick, so the
+  // wait is bounded by the real window: still red if the cadence never catches the detach.
+  for (let i = 0; i <= VOLATILE_INDEX_PERIOD_TICKS && index.weaponShips.includes(ship); i++) {
+    core.preStep(1 / 60, state);
+  }
   assert.equal(index.version, firstVersion, 'unchanged entity membership should not churn entityIndex.version every tick');
-  assert(!index.weaponShips.includes(ship), 'volatile weapon ship bucket should refresh without a full entity-list rebuild');
+  assert(!index.weaponShips.includes(ship), 'volatile weapon ship bucket should refresh within the volatile cadence window without a full entity-list rebuild');
 
   const spawned = helpers.spawnEntity({
     type: 'asteroid',
@@ -952,8 +959,10 @@ function checkAutoTargetGToggle() {
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
   assert.equal(state.input.autoFire, true, 'G must enable auto-target');
   assert.equal(state.input.pursuitSlot?.active || false, false, 'G must not enable pursuit steering');
-  assert(toasts.some((t) => /Draw-to-fly ON/.test(t.text)),
-    'toggle must explain the draw-to-fly control');
+  // Receipt note — bar re-pinned to landed copy: 98dcd2e68 renamed G's toggle to the dynamic
+  // combat stick ('Combat stick ON'), retiring the 'Draw-to-fly ON' toast this pinned.
+  assert(toasts.some((t) => /Combat stick ON/.test(t.text)),
+    'toggle must explain the combat-stick control it enabled');
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
   assert.equal(state.input.autoFire, false, 'second G press must disable auto-target');
   console.log('[PASS] g-auto-target-toggle restores draw-to-fly and never creates pursuit');
@@ -3860,7 +3869,10 @@ function checkCreditWritersRejectNegativeAmounts() {
 }
 
 function checkGateTollRequiresCredits() {
+  // a483a6970 made _onRequestJump reject 'docked' for anything outside flight mode before the
+  // toll is even priced — the gate-toll contract only applies to a flight-mode request.
   const makeState = (credits) => ({
+    mode: 'flight',
     player: { credits, researchedNodes: [] },
     story: { flags: {} },
     world: { currentSectorId: 'sector_ceres_belt', sectors: {} },
