@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { ACE_TROPHY_HEADS } from '../src/data/sectors.js';
+import { ALIEN_UNIQUE_GRANTS } from '../src/data/alienEcology.js';
 import { BLUEPRINTS } from '../src/data/blueprints.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
@@ -25,6 +26,7 @@ const catalogs = {
   ships: SHIPS,
   weapons: WEAPONS,
   lineageUniqueIds: ACE_TROPHY_HEADS.map((row) => row.id),
+  siteUniqueIds: ALIEN_UNIQUE_GRANTS.map((row) => row.id),
 };
 
 function audit(overrides = {}) {
