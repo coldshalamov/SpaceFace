@@ -381,7 +381,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 |---|---|---|---|---|
 | 1 | ADOPT-FIGHTWORLD | Land the stale fight/world run: ~12 test files + ~14 system hunks uncommitted in the tree (memorial thief, seam mines, thrown-explosive fuse, kill shards, cookoff chains, berth memory, bar desk, bay-7 scan, faction-presence wire, kill replay, set pieces, crucible a-list). Run each focused suite; pathspec-commit green groups. Do **not** revert `536afa04b` (impulseCharges recycled-id fix — already landed). | ADOPT | CLAIMED devin-wave1 |
 | 2 | ADOPT-PERF | Land or close the stale perf-pipeline hunks: dirty files under `src/render/**` + flight/input strays left by `devin-perf-pipeline`. Inspect each hunk, keep what is coherent, commit by pathspec. | ADOPT | CLAIMED devin-wave1 |
-| 3 | ADOPT-CAMPAIGN10 | Land or close `devin-campaign-10` residue — re-check tree for leftover hunks after rows 1–2. | ADOPT | CLAIMED devin-wave1 |
 
 ### B. Defect ledger — open rows (ledger: `DEMO_READINESS_2026-09-20.md` §6)
 
