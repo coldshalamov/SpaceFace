@@ -2038,3 +2038,137 @@ input[type="radio"]:checked::before {
   text-shadow: 0 0 8px color-mix(in srgb, var(--sf-you) 45%, transparent);
 }
 .sf-fx-comms-trace__wave .sf-fx-morph { min-width: 102px; }
+
+/* ------------------------------------------------------------------------- *
+ * ORRERY Wave 2 — Replay (src/ui/screens/replay.js). The instrument is the  *
+ * TAPE: a 30s tracing-beam timeline. Migrated screens own no CSS, so the    *
+ * view's placement lives here, scoped to .orr-replay; material (words, Lamp *
+ * Key, bands) comes from Deckplate and the orrery library at runtime.       *
+ * ------------------------------------------------------------------------- */
+.orr-replay { position:absolute; inset:0; overflow:hidden; }
+.orr-replay__veil-top { position:absolute; inset:0 0 auto 0; height:36%; pointer-events:none;
+  background:linear-gradient(rgb(5 7 10 / .74), rgb(5 7 10 / .30) 55%, transparent); }
+.orr-replay__veil-foot { position:absolute; inset:auto 0 0 0; height:54%; pointer-events:none;
+  background:linear-gradient(transparent, rgb(5 7 10 / .55) 34%, rgb(5 7 10 / .86)); }
+.orr-replay__exit { position:absolute; top:20px; left:26px; z-index:3; }
+.orr-replay__read { position:absolute; top:14px; right:30px; z-index:3; text-align:right; }
+.orr-replay__count { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
+  font-size:clamp(52px, 7.2vw, 96px); line-height:1; letter-spacing:-.02em;
+  color:rgb(236 230 216); font-variant-numeric:tabular-nums; white-space:nowrap;
+  text-shadow:0 2px 18px rgb(0 0 0 / .55); }
+.orr-replay__count .orr-replay__total { font-size:.42em; font-weight:280; color:rgb(236 230 216 / .72); }
+.orr-replay__count .orr-replay__sep { font-size:.42em; font-weight:280; color:rgb(236 230 216 / .45); margin:0 .35em; }
+.orr-replay__codes { font-family:var(--dp-face-code, "Spline Sans Mono"); font-size:12px;
+  letter-spacing:.08em; color:rgb(236 230 216 / .68); margin-top:10px; white-space:nowrap; }
+.orr-replay__tape { position:absolute; left:6%; right:6%; bottom:96px; height:172px; z-index:2; }
+.orr-replay__tape:focus-visible { outline:1px solid rgb(255 217 140 / .9); outline-offset:6px; }
+.orr-replay__tape svg.orr-svg { position:absolute; inset:0; width:100%; height:100%; }
+.orr-replay__readout { position:absolute; top:0; left:2px; right:2px; margin:0;
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size:12px;
+  letter-spacing:.12em; text-transform:uppercase; line-height:1.4; color:rgb(236 230 216 / .78);
+  text-shadow:0 1px 8px rgb(0 0 0 / .8); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.orr-replay__ev { position:absolute; margin:0; transform:translateX(-50%); white-space:nowrap;
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size:12px;
+  letter-spacing:.1em; text-transform:uppercase; color:rgb(236 230 216 / .88);
+  text-shadow:0 1px 8px rgb(0 0 0 / .9); pointer-events:none; }
+.orr-replay__sec { position:absolute; margin:0; transform:translateX(-50%); white-space:nowrap;
+  font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300; font-size:12px;
+  font-variant-numeric:tabular-nums; color:rgb(236 230 216 / .6); pointer-events:none; }
+.orr-replay__transport { position:absolute; left:0; right:0; bottom:22px; z-index:3;
+  display:flex; justify-content:center; align-items:center; gap:clamp(18px, 3vw, 44px); }
+html.sf-reduce-motion .orr-replay__pulse { display:none; }
+@media (forced-colors:active) {
+  .orr-replay__count, .orr-replay__total, .orr-replay__sep { color:CanvasText; text-shadow:none; }
+  .orr-replay__codes, .orr-replay__readout, .orr-replay__ev, .orr-replay__sec {
+    color:CanvasText; text-shadow:none; }
+}
+
+/* ------------------------------------------------------------------------- *
+ * ORRERY Wave 2 — Clips (src/ui/screens/clips.js). The instrument is the    *
+ * REEL: rated moments on a curved rail. Placement scoped to .orr-clips /    *
+ * .orr-clip; material from Deckplate and the orrery library at runtime.      *
+ * ------------------------------------------------------------------------- */
+.orr-clips { position:absolute; inset:0; overflow:hidden; }
+.orr-clips__veil-top { position:absolute; inset:0 0 auto 0; height:34%; pointer-events:none;
+  background:linear-gradient(rgb(5 7 10 / .74), rgb(5 7 10 / .30) 55%, transparent); }
+.orr-clips__veil-foot { position:absolute; inset:auto 0 0 0; height:46%; pointer-events:none;
+  background:linear-gradient(transparent, rgb(5 7 10 / .55) 34%, rgb(5 7 10 / .86)); }
+.orr-clips__exit { position:absolute; top:20px; left:26px; z-index:3; }
+.orr-clips__read { position:absolute; top:14px; right:30px; z-index:3; text-align:right; }
+.orr-clips__count { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
+  font-size:clamp(48px, 6vw, 84px); line-height:1; color:rgb(236 230 216);
+  font-variant-numeric:tabular-nums; text-shadow:0 2px 18px rgb(0 0 0 / .55); }
+.orr-clips__count-label { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600;
+  font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(236 230 216 / .66);
+  margin-top:6px; }
+.orr-clips__runtime { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300;
+  font-size:20px; color:rgb(236 230 216 / .9); font-variant-numeric:tabular-nums; margin-top:8px; }
+.orr-clips__rail { position:absolute; left:4%; right:4%; top:27%; height:380px; z-index:2; }
+.orr-clips__rail > svg.orr-rail-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.orr-clips__plates { position:absolute; inset:0; }
+.orr-clip__plate { position:absolute; top:0; left:0; margin:0; padding:0; border:0; background:none;
+  transform-origin:50% 0; transition:transform 480ms var(--dp-ease-out, cubic-bezier(.16,1,.3,1)), opacity 320ms linear;
+  cursor:pointer; }
+/* Focus is the dp-attend bracket (a bone mark at the leading edge), never a box: a rect outline
+   round a Tilt Plate reads as a bordered box, which ORRERY forbids absolutely. The !important is
+   the same load-bearing answer dp-attend gives: kit.css outranks this sheet on :focus, so only an
+   important declaration can replace the ring — and the bracket plus the lit foot replace it. */
+.orr-clip__plate:focus-visible { outline:none !important; outline-offset:0 !important; }
+.orr-clip__plate:focus-visible::before { content:""; position:absolute; left:-12px; top:6%; bottom:6%;
+  width:2px; background:rgb(236 230 216 / .9); }
+.orr-clip__plate:focus-visible .orr-clip__foot {
+  background:linear-gradient(90deg, rgb(248 244 234 / .95), rgb(248 244 234 / .45)); }
+.orr-clip__art { position:relative; width:100%; overflow:hidden;
+  -webkit-mask-image:linear-gradient(rgb(0 0 0) 78%, transparent); mask-image:linear-gradient(rgb(0 0 0) 78%, transparent); }
+.orr-clip__art canvas, .orr-clip__art svg { display:block; width:100%; height:100%; }
+.orr-clip__foot { height:3px; margin-top:6px;
+  background:linear-gradient(90deg, rgb(236 230 216 / .75), rgb(236 230 216 / .30)); }
+.orr-clip__plate.is-ghost .orr-clip__foot { background:linear-gradient(90deg, rgb(236 230 216 / .4), rgb(236 230 216 / .12)); }
+.orr-clip__name { margin:8px 0 0; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%;
+  font-weight:800; font-size:19px; letter-spacing:-.01em; line-height:1.05; color:rgb(236 230 216);
+  text-shadow:0 1px 10px rgb(0 0 0 / .85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.orr-clip__plate:not(.is-chosen) .orr-clip__name { color:rgb(236 230 216 / .72); }
+.orr-clip__sub { margin:5px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
+  font-weight:600; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+  color:rgb(236 230 216 / .62); white-space:nowrap; }
+.orr-clip__bounds { margin:5px 0 0; font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%;
+  font-weight:300; font-size:14px; font-variant-numeric:tabular-nums; color:rgb(236 230 216 / .9);
+  white-space:nowrap; }
+.orr-clip__tickcode { margin:3px 0 0; font-family:var(--dp-face-code, "Spline Sans Mono"); font-size:12px;
+  letter-spacing:.06em; color:rgb(236 230 216 / .5); white-space:nowrap; }
+.orr-clip__plate:not(.is-chosen) .orr-clip__sub, .orr-clip__plate:not(.is-chosen) .orr-clip__bounds,
+.orr-clip__plate:not(.is-chosen) .orr-clip__tickcode, .orr-clip__plate:not(.is-chosen) .orr-clip__beam,
+.orr-clip__plate:not(.is-chosen) .orr-clip__gauge { display:none; }
+.orr-clip__plate.is-ghost .orr-clip__sub { display:block; }
+.orr-clip__gauge { position:absolute; top:-6px; right:-6px; width:46px; height:46px; pointer-events:none; }
+.orr-clip__beam { position:relative; margin-top:6px; height:30px; }
+.orr-clip__beam svg { position:absolute; inset:0; width:100%; height:100%; }
+.orr-clip__thumb { position:absolute; top:2px; width:14px; height:26px; margin-left:-7px; cursor:ew-resize;
+  touch-action:none; }
+.orr-clip__thumb::before { content:""; position:absolute; left:5px; top:0; width:4px; height:100%;
+  background:rgb(236 230 216 / .85); box-shadow:0 0 8px rgb(236 230 216 / .35); }
+.orr-clip__thumb:focus-visible { outline:1px solid rgb(255 217 140 / .9); outline-offset:2px; }
+.orr-clips__readline { position:absolute; left:0; right:0; bottom:92px; z-index:2; text-align:center;
+  display:flex; justify-content:center; align-items:baseline; gap:14px; padding:0 6%; }
+.orr-clips__pos { font-family:var(--dp-face-code, "Spline Sans Mono"); font-size:12px; letter-spacing:.08em;
+  color:rgb(236 230 216 / .6); white-space:nowrap; }
+.orr-clips__readout { margin:0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
+  font-weight:600; font-size:12px; letter-spacing:.12em; text-transform:uppercase; line-height:1.4;
+  color:rgb(236 230 216 / .8); text-shadow:0 1px 8px rgb(0 0 0 / .8);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.orr-clips__actions { position:absolute; left:0; right:0; bottom:22px; z-index:3;
+  display:flex; justify-content:center; align-items:center; gap:clamp(18px, 3vw, 40px); }
+.orr-clip__dial { display:flex; align-items:flex-end; gap:0; }
+.orr-clip__dial-svg { display:block; }
+.orr-clip__dial-opt { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600;
+  font-size:12px; letter-spacing:.14em; color:rgb(236 230 216 / .55); cursor:pointer; padding:4px 2px; }
+.orr-clip__dial-opt[aria-checked="true"] { color:rgb(236 230 216); }
+.orr-clip__dial-opt:focus-visible { outline:1px solid rgb(255 217 140 / .9); outline-offset:2px; }
+html.sf-reduce-motion .orr-clip__plate { transition:none; }
+@media (forced-colors:active) {
+  .orr-clips__count, .orr-clips__runtime { color:CanvasText; text-shadow:none; }
+  .orr-clips__count-label, .orr-clips__pos, .orr-clips__readout, .orr-clip__name,
+  .orr-clip__sub, .orr-clip__bounds, .orr-clip__tickcode, .orr-clip__dial-opt { color:CanvasText; text-shadow:none; }
+  .orr-clip__foot { background:CanvasText; }
+  .orr-clip__thumb::before { background:CanvasText; box-shadow:none; }
+}
