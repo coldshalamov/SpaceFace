@@ -169,6 +169,7 @@ import {
   promoteAsteroidFieldRock,
   queryAsteroidField,
   shouldKeepLiveAsteroid,
+  tickOpticFieldRocks,
 } from '../world/asteroidField.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
 import {
@@ -1257,8 +1258,10 @@ export const world = {
     }
   },
 
-  // Optic lattices are live colliders, spawned once per sector bag. They do not draw the
-  // field RNG and they are not ore. REDUCED neighbors stay empty until the sector is FULL.
+  // Optic lattices are field-resident colliders, stamped once per FULL sector bag.
+  // They promote into entityList only inside the authored decode disc (tickOpticFieldRocks)
+  // so a quiet Ceres pocket does not keep ~40 combat asteroids warm for a distant gallery.
+  // They do not draw the field RNG and they are not ore. REDUCED neighbors stay empty until FULL.
   _ensureOpticStructures(sector, active) {
     if (!sector || !active) return;
     // Array (even empty) means this bag already ran the stamp — do not double-spawn on promote.
@@ -1286,18 +1289,16 @@ export const world = {
           x: spec.origin.x + body.x,
           z: spec.origin.z + body.z,
         }, sector.id);
-        // Lattice spacing is authored against entity.radius (projectile sweep uses that). Keep the
-        // physics ball on the same radius so scaled rock colliders cannot seal the mouth shut.
-        const ent = this.helpers.spawnEntity({
-          type: 'asteroid',
+        // Lattice spacing is authored against entity.radius; promote keeps physicsBody on that
+        // radius so scaled rock colliders cannot seal the mouth shut.
+        const rec = insertAsteroidFieldRock(this.state, {
           pos,
           radius: body.radius,
           mass: 200 + body.radius * 40,
           angVel: 0,
           hull: 1e6,
           hullMax: 1e6,
-          collides: true,
-          physicsBody: { radius: body.radius },
+          homeSectorId: sector.id,
           data: {
             typeId: body.typeId,
             tint: body.tint,
@@ -1308,10 +1309,11 @@ export const world = {
             size: body.radius,
             // Not ore: skip massline latch so the mining beam cannot acquire via tether.
             masslineTetherable: false,
+            homeSectorId: sector.id,
+            sectorId: sector.id,
           },
         });
-        if (!ent) continue;
-        this._stampHomeSector(ent, sector.id);
+        if (!rec) continue;
         // A cell the player burned is durable state: restore it dark mid-quiet, or let a
         // lattice that healed while shelved come back live and forget the stale entry.
         const spentCells = this.state.world.opticSpent && this.state.world.opticSpent[spec.id];
@@ -1322,10 +1324,10 @@ export const world = {
             delete spentCells[`${body.ix},${body.iz}`];
             if (!Object.keys(spentCells).length) delete this.state.world.opticSpent[spec.id];
           } else {
-            recordOpticSpend(ent, spentAt); // entity side only — the ledger already holds it
+            recordOpticSpend(rec, spentAt); // record side only — the ledger already holds it
           }
         }
-        ids.push(ent.id);
+        ids.push(rec.id);
       }
     }
     active.opticStructureIds = ids;
@@ -3679,6 +3681,8 @@ export const world = {
       gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
     }
     tickFarActors(state, this.helpers, this.bus);
+    // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
+    tickOpticFieldRocks(state, this.helpers);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted

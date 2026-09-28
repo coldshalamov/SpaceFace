@@ -140,16 +140,20 @@ test('quiet Ceres combat list drops the dormant belt and dressing', () => {
   const alive = aliveList(state);
   const allLiveAsteroids = alive.filter((e) => e.type === 'asteroid');
   // Optic-lattice bodies are authored structural dressing that share the asteroid entity type:
-  // invulnerable, unmineable, off the field census. They stand beside the minable live set,
-  // not inside it — count them apart so the activity/geology bound keeps its meaning.
+  // invulnerable, unmineable, field-resident until the decode disc promotes them. They stand in
+  // the compact field census, not on the live list — count them apart so the activity/geology
+  // bound keeps its meaning.
   const liveFieldAsteroids = allLiveAsteroids.filter((e) => !(e.data && e.data.opticStructureId));
   const liveOptics = allLiveAsteroids.length - liveFieldAsteroids.length;
   const liveAsteroids = liveFieldAsteroids.length;
   const liveFx = alive.filter((e) => e.type === 'fx').length;
+  const fieldRocks = (state.world.asteroidField && state.world.asteroidField.rocks) || [];
+  const fieldOptics = fieldRocks.filter((r) => r.data && r.data.opticStructureId).length;
   assert.ok(census.fieldRocks > 200, `expected a compact field, got ${census.fieldRocks}`);
   assert.equal(allLiveAsteroids.length, census.liveAsteroids);
   assert.ok(liveAsteroids < 40, `live asteroids should be the activity/geology set, got ${liveAsteroids}`);
-  assert.ok(liveOptics > 0, 'the authored optic lattice stands as structural dressing');
+  assert.ok(fieldOptics > 0, 'the authored optic lattice stands as structural dressing');
+  assert.equal(liveOptics, 0, `optic lattices stay field-resident until approach, got ${liveOptics} live`);
   assert.ok(fx.dressingRows > 10, `expected dressing off the combat list, got ${fx.dressingRows}`);
   assert.ok(liveFx < 40, `live fx should be landmarks/claimables, got ${liveFx}`);
   // The authored optic lattice and activity anchors put ~60 structural bodies on the list; the
