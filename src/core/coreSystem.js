@@ -329,6 +329,9 @@ export const core = {
         pos: { x: e.pos.x, z: e.pos.z },
         radius: e.radius,
         factionId: e.factionId,
+        // Same generation ref as the single path: ids recycle, and a queued receipt that flushes
+        // after a new occupant took the id must not release that occupant's binding.
+        entity: e,
       };
       if (opts && opts.reason) destroyed.reason = opts.reason;
       this.bus.queue('entity:destroyed', destroyed);
