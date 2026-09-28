@@ -1446,6 +1446,25 @@ export const vfx = {
     // or _projectileCacheDirty. Soft-GPU fps not claimed.
     this._projectileTrailsQuietEmpty = false;
     this._projectileTrailsQuietIndexVersion = -1;
+    // Quiet settled flight: overlay quartet (wanted ring / customs weir /
+    // route ribbon / payload release ghost) still paid four truth readers +
+    // mesh hide writes every tick while all inactive. Latch after first
+    // empty observe; wake on cheap identity/ref snapshot (heatZone flags,
+    // customsWeir ref, nav/autopilot/waypoint/target refs, tether phase/
+    // targetId, payloadReleaseGhost ref) — not a full truth re-read.
+    // Soft-GPU fps not claimed. Different angle from held truth-reread wake.
+    this._overlayQuartetQuietEmpty = false;
+    this._overlayQuartetHeatActive = false;
+    this._overlayQuartetHeatLevel = 0;
+    this._overlayQuartetHeatRadius = 0;
+    this._overlayQuartetWeirRef = null;
+    this._overlayQuartetNavRef = null;
+    this._overlayQuartetApActive = false;
+    this._overlayQuartetWaypointRef = null;
+    this._overlayQuartetApTargetRef = null;
+    this._overlayQuartetTetherPhase = null;
+    this._overlayQuartetTetherTargetId = null;
+    this._overlayQuartetGhostRef = null;
     this._seamMarkersWereRelevant = false;
     // Quiet settled flight: irrelevant seam path used to re-walk asteroids +
     // commitDynamicBufferOwner(0) every tick. Latch after first sleep; clear on
@@ -2379,12 +2398,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -8397,6 +8416,85 @@ export const vfx = {
     seg.mesh.visible = opacity > 0.01;
   },
 
+  // Cheap identity wake for overlay-quartet quiet latch. Compares heatZone
+  // flags, customsWeir ref, nav/autopilot identity, tether phase/target, and
+  // payloadReleaseGhost ref — avoids re-running readWantedSearchVolume /
+  // routeRibbon / etc. while latched. Soft-GPU fps not claimed.
+  _overlayQuartetQuietMaybeAwake() {
+    return this._overlayQuartetIdentityChanged();
+  },
+
+  _overlayQuartetIdentityChanged() {
+    const state = this.state;
+    const player = state && state.player;
+    const hz = player && player.heatZone;
+    if (!!(hz && hz.active) !== this._overlayQuartetHeatActive) return true;
+    if ((hz ? hz.level : 0) !== this._overlayQuartetHeatLevel) return true;
+    if ((hz ? hz.radius : 0) !== this._overlayQuartetHeatRadius) return true;
+    const weir = state && state.lawSecurity ? state.lawSecurity.customsWeir : null;
+    if (weir !== this._overlayQuartetWeirRef) return true;
+    const nav = player && player.nav;
+    if (nav !== this._overlayQuartetNavRef) return true;
+    const ap = nav && nav.autopilot;
+    if (!!(ap && ap.active === true) !== this._overlayQuartetApActive) return true;
+    if ((nav ? nav.waypoint : null) !== this._overlayQuartetWaypointRef) return true;
+    if ((ap ? ap.target : null) !== this._overlayQuartetApTargetRef) return true;
+    const tether = player && player.tether;
+    if ((tether ? tether.phase : null) !== this._overlayQuartetTetherPhase) return true;
+    if ((tether ? tether.targetId : null) !== this._overlayQuartetTetherTargetId) return true;
+    const ghost = player && player.masslineTelemetry
+      ? player.masslineTelemetry.payloadReleaseGhost
+      : null;
+    if (ghost !== this._overlayQuartetGhostRef) return true;
+    return false;
+  },
+
+  _overlayQuartetCaptureIdentity() {
+    const state = this.state;
+    const player = state && state.player;
+    const hz = player && player.heatZone;
+    this._overlayQuartetHeatActive = !!(hz && hz.active);
+    this._overlayQuartetHeatLevel = hz ? hz.level : 0;
+    this._overlayQuartetHeatRadius = hz ? hz.radius : 0;
+    this._overlayQuartetWeirRef = state && state.lawSecurity ? state.lawSecurity.customsWeir : null;
+    const nav = player && player.nav;
+    this._overlayQuartetNavRef = nav || null;
+    const ap = nav && nav.autopilot;
+    this._overlayQuartetApActive = !!(ap && ap.active === true);
+    this._overlayQuartetWaypointRef = nav ? nav.waypoint : null;
+    this._overlayQuartetApTargetRef = ap ? ap.target : null;
+    const tether = player && player.tether;
+    this._overlayQuartetTetherPhase = tether ? tether.phase : null;
+    this._overlayQuartetTetherTargetId = tether ? tether.targetId : null;
+    this._overlayQuartetGhostRef = player && player.masslineTelemetry
+      ? player.masslineTelemetry.payloadReleaseGhost
+      : null;
+  },
+
+  _overlayQuartetIsQuiet() {
+    const state = this.state;
+    const player = state && state.player;
+    const hz = player && player.heatZone;
+    if (hz && hz.active === true && hz.radius > 0 && hz.level > 0) return false;
+    const weir = state && state.lawSecurity ? state.lawSecurity.customsWeir : null;
+    if (weir && weir.active === true && Array.isArray(weir.segments) && weir.segments.length > 0) {
+      return false;
+    }
+    const nav = player && player.nav;
+    const ap = nav && nav.autopilot;
+    if ((ap && ap.active === true) || (nav && nav.waypoint) || (ap && ap.target)) return false;
+    const ghost = player && player.masslineTelemetry
+      ? player.masslineTelemetry.payloadReleaseGhost
+      : null;
+    if (ghost && ghost.active === true) return false;
+    return true;
+  },
+
+  _overlayQuartetQuietLatch() {
+    this._overlayQuartetQuietEmpty = true;
+    this._overlayQuartetCaptureIdentity();
+  },
+
   _updatePayloadReleaseGhost() {
     const ghost = this.state && this.state.player && this.state.player.masslineTelemetry
       && this.state.player.masslineTelemetry.payloadReleaseGhost;
@@ -11331,10 +11429,18 @@ export const vfx = {
     } else {
       sub.arcPreview = 0;
     }
-    this._updatePayloadReleaseGhost();
-    this._updateWantedSearchRing();
-    this._updateCustomsWeirLines();
-    this._updateRouteRibbon();
+    // Quiet overlay-quartet latch: skip four truth readers + hide writes
+    // while identity snapshot unchanged. Soft-GPU fps not claimed.
+    if (this._overlayQuartetQuietEmpty && !this._overlayQuartetQuietMaybeAwake()) {
+      /* latched */
+    } else {
+      this._overlayQuartetQuietEmpty = false;
+      this._updatePayloadReleaseGhost();
+      this._updateWantedSearchRing();
+      this._updateCustomsWeirLines();
+      this._updateRouteRibbon();
+      if (this._overlayQuartetIsQuiet()) this._overlayQuartetQuietLatch();
+    }
     if (this._masslineReleaseArcActive()) {
       sub.masslineReleaseArc = this._updateMasslineReleaseArc(dt) ? 1 : 0;
     } else {
