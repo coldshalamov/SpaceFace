@@ -95,6 +95,9 @@ test('a packed light death hurts a neighbor and an isolated death hits nobody', 
   assert.equal(lightCookoffEligible(state, { ...origin, alive: true }), true);
   assert.equal(lightCookoffEligible({ run: { kind: 'adventure' } }, origin), false);
   assert.equal(lightCookoffEligible(state, { ...origin, mass: 80, data: { ...origin.data, shipClass: 'capital' } }), false);
+  assert.equal(lightCookoffEligible(state, {
+    ...origin, alive: true, mass: 30, data: { runCohort: 'survival', shipClass: 'gunship' },
+  }), true);
   const packed = lightCookoffHits(origin, [
     { id: 2, type: 'ship', alive: true, pos: { x: 18, z: 0 } },
     { id: 9, type: 'ship', alive: true, pos: { x: 10, z: 0 } },
