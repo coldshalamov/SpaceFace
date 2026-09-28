@@ -2529,18 +2529,18 @@ function masslineTargetLabel(target) {
   return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-/** Resolve physical world anchors once at latch time. Each end is the tether socket when the
- * body has one. A wreck, pod, or any other body with no socket uses the measured hardpoint,
- * not the entity origin. */
+/** Resolve physical world anchors once at latch time. Both ends of a dynamic attachment are
+ * the bodies' centers of mass — the standing remoteAttachmentWorld contract: a constraint
+ * hung on a hull socket applies steering torque by itself and becomes an accidental attitude
+ * controller. Static/terrain anchors keep the readable surface endpoint the player latched. */
 export function contextualAttachmentWorlds(player, target, acquiredTargetWorld) {
   const source = modelTruthRopeEnd(player);
-  const targetEnd = modelTruthRopeEnd(target);
-  const sourceWorld = source
-    ? { x: source.x, y: 0, z: source.z }
-    : { x: player.pos.x, y: 0, z: player.pos.z };
-  const targetWorld = targetEnd
-    ? { x: targetEnd.x, y: 0, z: targetEnd.z }
-    : acquiredTargetWorld;
+  const sourceWorld = TOW_TARGET_COM_TYPES.has(player && player.type) && player.pos
+    ? { x: player.pos.x, y: 0, z: player.pos.z }
+    : (source ? { x: source.x, y: 0, z: source.z } : { x: player.pos.x, y: 0, z: player.pos.z });
+  const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type) && target.pos
+    ? { x: target.pos.x, y: 0, z: target.pos.z }
+    : (modelTruthRopeEnd(target) || acquiredTargetWorld);
   return { sourceWorld, targetWorld };
 }
 
