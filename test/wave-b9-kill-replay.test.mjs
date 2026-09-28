@@ -87,3 +87,24 @@ test('the live ring records a survival step and skip leaves the stunt names', ()
   assert.equal(result.headline, 'The run ended.');
   assert.deepEqual(result.stuntKills, [{ name: 'Bolas' }]);
 });
+
+test('a closer wreck does not steal the live hull the player is killing', () => {
+  resetKillReplay();
+  const player = { id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 } };
+  const wreck = { id: 9, alive: true, type: 'wreck', pos: { x: 8, z: 0 } };
+  const foe = { id: 2, alive: true, type: 'ship', pos: { x: 80, z: 0 } };
+  const state = {
+    tick: 0,
+    run: { kind: 'survival', phase: 'combat', seed: 4242 },
+    playerId: 1,
+    entities: new Map([[1, player], [2, foe], [9, wreck]]),
+    entityList: [player, wreck, foe],
+  };
+  killReplay.init({ state });
+  for (let i = 0; i < 30; i += 1) {
+    killReplay.update(1 / 60, state);
+  }
+  const record = captureKillReplay(state, foe);
+  const mid = record.samples[Math.floor(record.samples.length / 2)];
+  assert.ok(Math.abs(mid.bx - foe.pos.x) < 1, `replay tracked wreck at ${mid.bx} instead of the live hull`);
+});
