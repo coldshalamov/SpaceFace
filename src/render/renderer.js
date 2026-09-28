@@ -9565,15 +9565,15 @@ export const render = {
         // the receipt entirely. Give the published plan a bounded window first; on KHR runners the
         // warmup never runs, so self-build immediately.
         let plan = state.render.openingSubmissionPlan;
+        // Soft-GPU / no-KHR: a prior miss showed waiting here just renamed cost into
+        // drainWait+residency (~2.5 s wall). Do not poll — use a plan already published
+        // by the concurrent warmup if present, otherwise self-build below.
         if (!plan && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
           const planWaitStarted = openingNow();
-          while (!state.render.openingSubmissionPlan
-              && openingNow() - planWaitStarted < 8000
-              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-          recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted,
-            state.render.openingSubmissionPlan ? 'resolved' : 'timeout');
+          recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted, 'skipped', {
+            budgetMs: 0,
+            reason: 'soft-gpu-self-build',
+          });
           plan = state.render.openingSubmissionPlan || null;
         }
         if (!plan) plan = buildOpeningSubmissionPlan();
@@ -9609,13 +9609,20 @@ export const render = {
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
         });
+        // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
+        // bounded so this stage yields back to the loading/flight event loop sooner.
+        const softGpuOpening = !shouldAwaitOpeningGpuCook({
+          gpu: state.render && state.render.gpu,
+          renderer,
+        });
+        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
         const result = await Promise.race([
           residency,
           new Promise((resolve) => setTimeout(() => resolve({
             skipped: true,
             reason: 'loading-budget',
             textures: 0,
-          }), 5000)),
+          }), residencyBudgetMs)),
         ]);
         recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted,
           result && result.reason === 'loading-budget' ? 'timeout' : 'resolved', {
@@ -9686,24 +9693,15 @@ export const render = {
         // presented frame. Give the published drain a bounded window to settle before the census;
         // on KHR runners the warmup never runs, so the handle stays unset and this skips.
         const drainWaitStarted = openingNow();
+        // Soft-GPU: the concurrent exact-plan drain still runs; awaiting it here was the
+        // dominant prepareOpeningGpuResources wall after planWait was removed (~1.9 s).
+        // Freeze the receipt with whatever is already resident and let mid-flight admission
+        // cover the rest — same fire-and-forget policy as waitForOpeningGpuResources.
         if (!shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
-          while (!state.render.openingSubmissionReady
-              && openingNow() - drainWaitStarted < 2000
-              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-          const submission = state.render.openingSubmissionReady;
-          if (submission && typeof submission.then === 'function') {
-            const drainOutcome = await Promise.race([
-              Promise.resolve(submission).then(() => 'resolved', () => 'error'),
-              new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000)),
-            ]);
-            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, drainOutcome);
-          } else {
-            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
-              reason: 'no-submission-handle',
-            });
-          }
+          recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
+            budgetMs: 0,
+            reason: 'soft-gpu-no-await',
+          });
         }
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
