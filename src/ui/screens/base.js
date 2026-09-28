@@ -8,6 +8,7 @@ import {
   BODY_SLOTS_BY_SIZE,
   BODY_SPECIALIZATIONS,
   BODY_SPECIALIZATION_BY_ID,
+  CLAIMABLE_BODY_SITES,
 } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
@@ -447,6 +448,16 @@ export const baseScreen = {
     const usedSlots = body.modules.length;
     sub.textContent = body.size + '-class body · ' + usedSlots + '/' + body.slots + ' module slots · sector ' + (body.sectorId || '?');
     wrap.appendChild(sub);
+
+    // Authored identity (INFERENCE): a claimed body keeps the micro-history its arrival plate
+    // told. Looks the site up by poiId and reuses the existing .base-sub token — no new styling.
+    const site = body.poiId && CLAIMABLE_BODY_SITES.find((s) => s.id === body.poiId);
+    if (site && site.why) {
+      const why = document.createElement('div');
+      why.className = 'base-sub';
+      why.textContent = site.why;
+      wrap.appendChild(why);
+    }
 
     const plan = recommendBaseBuildPlan(player, body);
     const planEl = document.createElement('div');

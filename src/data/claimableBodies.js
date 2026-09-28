@@ -137,6 +137,140 @@ export const BODY_SPECIALIZATION_BY_ID = new Map(BODY_SPECIALIZATIONS.map((s) =>
 // world content, not a second base system or a renderer special case. The two original sites retain
 // their stable ids/positions for save compatibility. `applyClaimableBodySites()` overlays those
 // records and appends the rest after sector anchors have been applied.
+// Authored micro-histories for the 15 claim sites — what each body was FOR, and why its claim
+// died or survived. `title`/`body` use the same discoveryPlate shape as every sectors.js plate
+// (arrival plate popup shows the title; the codex journal carries the body); `why` is the
+// one-line identity the Base screen keeps once the body is claimed. Keyed by site id so the
+// CLAIMABLE_BODY_SITES rows — and the save-compat ids/positions they carry — stay untouched.
+const SITE_HISTORIES = Object.freeze({
+  poi_claim_rookery: Object.freeze({
+    title: 'Rookery Prospect — Staked Twice, Worked Once',
+    body: 'A DMC survey stake from the first belt rush, re-flagged when Ceres Refinery opened '
+      + 'intake. The rig log shows one shift cut and one pay-out before the crew walked to a '
+      + 'richer seam; the on-site scale still reads the last tare.',
+    why: 'A first-rush DMC survey stake, worked one shift and walked off when the seam thinlined. '
+      + 'Your flag is the third on this rock.',
+  }),
+  poi_claim_kilnside: Object.freeze({
+    title: 'Kilnside Lease — the Foundry\u2019s Slag-Kill',
+    body: 'Leased by Forge Foundry as a slag-kill: reject alloy fused here and tipped over the '
+      + 'crystal field\u2019s rim. Closed the shift the radiation pocket crept inside tolerance. '
+      + 'The kiln crew that tended it sings shifts at the refuel depot now.',
+    why: 'The foundry\u2019s slag-kill, closed when the radiation pocket crept inside tolerance. '
+      + 'The kiln bed still runs warm to the touch.',
+  }),
+  poi_claim_drift_nine: Object.freeze({
+    title: 'Drift Claim Nine — Ninth Stake on the Same Rock',
+    body: 'The registry lists eight earlier stakes on this body, each lapsed for unpaid fees. '
+      + 'Nine held longer because its filer ran it as a dead drop for the Smuggler Den — the '
+      + 'manifest says ore, and the assay bench says packing foam.',
+    why: 'Ninth stake on a body eight owners lapsed out of. The last filer declared ore and '
+      + 'shipped nothing of the kind.',
+  }),
+  poi_claim_pallas: Object.freeze({
+    title: 'Pallas Industrial Moon — Foreclosed Mid-Shift',
+    body: 'A Free collective built the seamed moon out as a full extraction floor: hab ring, ore '
+      + 'lifts, union boards. Foreclosed mid-shift when the Collective defaulted on its mercenary '
+      + 'escort contract. The boards still carry the last rotation; the lifts were left loaded.',
+    why: 'A Free collective extraction floor foreclosed over an unpaid escort contract. The ore '
+      + 'lifts were left loaded mid-shift.',
+  }),
+  poi_colony: Object.freeze({
+    title: 'Abandoned Mining Colony — Evacuated, Not Wrecked',
+    body: 'Charon\u2019s deep-belt intake town: conveyor barges, family bunks, a school roster '
+      + 'pinned in the office. Evacuated in one convoy the day the radiation lane drifted across '
+      + 'the field. Nothing was destroyed; everything was left. The snapped tether below is theirs.',
+    why: 'A deep-belt company town, walked away from in one convoy when the radiation lane '
+      + 'drifted. Nothing wrecked, everything left.',
+  }),
+  poi_claim_morrow: Object.freeze({
+    title: 'Morrow Freehold — the Claim That Paid Its Vouch',
+    body: 'An independent family freehold in the one sector where ownership is a rumor the Reach '
+      + 'permits, because Morrow paid the Bazaar\u2019s vouch-price quarterly, on time, in unmarked '
+      + 'plate. The last quarter came in short; the freehold was chartered out the same week.',
+    why: 'A family freehold that survived Sker by paying the Reach\u2019s vouch-price quarterly. '
+      + 'The last payment came in short.',
+  }),
+  poi_claim_lacuna: Object.freeze({
+    title: 'Lacuna Survey Moon — the Array Outlasted the Crew',
+    body: 'Free surveyors moored this platform to triangulate the Resonance Obelisk through the '
+      + 'murk. The array still pings on schedule; the crew recall order predates the last three. '
+      + 'Station Veil keeps the lease current rather than walk the data out by hand.',
+    why: 'A Free survey platform ranged on the Resonance Obelisk. The array still pings; the '
+      + 'crew was recalled and never argued.',
+  }),
+  poi_claim_cinder_crown: Object.freeze({
+    title: 'Cinder Crown — Fused by the Roaming Burn',
+    body: 'A Vael salvage stake on the highest rock in the Reach, filed to stage vault recovery '
+      + 'clear of the Iron Maw. The Roaming Burn crossed the claim on its third circuit and fused '
+      + 'the crown glass to this depth. The stake was never withdrawn; nobody came back to '
+      + 'withdraw it.',
+    why: 'A Vael vault-recovery stake fused glassy when the Roaming Burn crossed it. Never '
+      + 'withdrawn — nobody returned to withdraw it.',
+  }),
+  poi_claim_blackglass: Object.freeze({
+    title: 'Blackglass Lease — Paper Ends at the Fence',
+    body: 'A Quiet cutting front on the march\u2019s black ice, glass-sheared rock sold at the '
+      + 'Nyx Fence with no origin line on the docket. Lapsed the week the Cut-Runner went down in '
+      + 'the nebula carrying the lease-holder\u2019s only crew. The paper ends where the fence '
+      + 'begins.',
+    why: 'A Quiet cutting front on black ice, sold at the Fence with no origin line. Lapsed the '
+      + 'week its only crew went down in the nebula.',
+  }),
+  poi_claim_cutwater: Object.freeze({
+    title: 'Cutwater Anchorage — Mooring Rings, Empty Now',
+    body: 'The cut\u2019s first anchorage: tie-up rings, an assay scale, bunks for four crews. '
+      + 'Consolidated into the Cut Claim Outpost the season the Caved Shaft took its drift crew. '
+      + 'The rings are still sized for haulers nobody moors anymore.',
+    why: 'The cut\u2019s old crew anchorage, consolidated into the Claim Outpost after the Caved '
+      + 'Shaft. Its rings still fit haulers nobody moors.',
+  }),
+  poi_claim_scarline: Object.freeze({
+    title: 'Scarline Hold — Eleven Owners, Never Abandoned',
+    body: 'A salvage hold filed straight down the Void-Reach\u2019s debris scar, worked by crews '
+      + 'that give the Bazaar first pick of every plate. It has changed hands eleven times without '
+      + 'once being abandoned — under the Flight Deck\u2019s launch rails, ownership is whoever '
+      + 'the stalls vouch for.',
+    why: 'A salvage hold worked down the Void-Reach\u2019s debris scar: eleven owners, never once '
+      + 'abandoned. First pick still goes to the Bazaar stalls.',
+  }),
+  poi_claim_emberwake: Object.freeze({
+    title: 'Emberwake Plot — the Assay Burned With It',
+    body: 'A corner-lot prospect staked off the Cinder Claim, worked until a radiation flare '
+      + 'crossed the plot and took its timbers and its assay office in the same hour. The Claim '
+      + 'bought ore trucks after; nobody re-filed the corner lot.',
+    why: 'A corner-lot prospect burned over by a radiation flare — timbers and assay records in '
+      + 'the same hour. Never re-filed.',
+  }),
+  poi_claim_shoal_exchange: Object.freeze({
+    title: 'Shoal Exchange Rock — Ore Moves Same-Shift',
+    body: 'A barged-in exchange pad where independent ice crews and the Shoal Claim settle on one '
+      + 'scale, same shift, under the Collective\u2019s standing cut. It has outlived two '
+      + 'waystation managers and every attempt to move the trade indoors — the scale on the rock '
+      + 'is the only referee both sides accept.',
+    why: 'The shoal\u2019s neutral ore exchange: ice crews and the Claim settle on one scale, '
+      + 'under the Collective\u2019s cut. Outlived every attempt to move it indoors.',
+  }),
+  poi_claim_wayline: Object.freeze({
+    title: 'Wayline Charter — the Stop Before the Toll Plate',
+    body: 'A chartered staging berth on the southern freight lane, where convoys formed up before '
+      + 'Dione Customs read their plates. Lapsed when the Concord moved the scan line half a lane '
+      + 'inward and the convoys formed at the Exchange instead. The charter clock still runs, on '
+      + 'paper.',
+    why: 'A chartered convoy berth overtaken when Concord moved the scan line inward. Convoys '
+      + 'form at the Exchange now; the charter clock still runs on paper.',
+  }),
+  poi_claim_far_ledger: Object.freeze({
+    title: 'Far Ledger — the Rim Files Its Own Record',
+    body: 'A plinth on the dark rim where far-rim captains file claims the registries won\u2019t '
+      + 'take: plates, bearers, debts, scratched in hull-mark. The Vael survey post reads it and '
+      + 'never amends it. Every entry is honored, for the plain reason that no one has survived '
+      + 'dishonoring one.',
+    why: 'The rim\u2019s unofficial claim record — captains file what registries won\u2019t take, '
+      + 'scratched in hull-mark. Read by the survey post, amended by no one.',
+  }),
+});
+
 export const CLAIMABLE_BODY_SITES = Object.freeze([
   claimSite('sector_ceres_belt', 'poi_claim_rookery', 'Rookery Prospect', 'S', -1900, 1100, 'place_asteroid_rock_a'),
   claimSite('sector_vesta_forge', 'poi_claim_kilnside', 'Kilnside Lease', 'S', 1650, 1350, 'place_asteroid_rock_a'),
@@ -179,6 +313,7 @@ export function applyClaimableBodySites(sector) {
 }
 
 function claimSite(sectorId, id, name, size, x, z, landmarkGlb) {
+  const history = SITE_HISTORIES[id] || {};
   return Object.freeze({
     sectorId,
     id,
@@ -190,6 +325,14 @@ function claimSite(sectorId, id, name, size, x, z, landmarkGlb) {
     landmark: true,
     landmarkGlb,
     visualRadius: size === 'L' ? 32 : size === 'M' ? 26 : 20,
+    // Authored identity (INFERENCE): the arrival plate carries the site's micro-history in the
+    // same { title, body } shape sectors.js plates use; `why` is the Base screen's why-line.
+    // Falling back to the bare name keeps an unauthored future site at today's behavior.
+    discoveryPlate: Object.freeze({
+      title: history.title || name,
+      body: history.body || '',
+    }),
+    why: history.why || '',
   });
 }
 
