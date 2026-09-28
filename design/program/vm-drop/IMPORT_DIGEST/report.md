@@ -1,3 +1,71 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchb, board §1C row 23)
+
+Quiet-latch vein B (`combat-*` / `weapon-*` / `bombs-*` / `bomb-*` / `quarks-*` /
+`wave-presenter-*` / `bounty-hunt-*` / `midflight-*` / `well-distortion-*` /
+`wreck-wisps-*`). Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `combat-prephysics-quiet-residual` | `b6b1cc24c` | focused combat battery 101/101 |
+| `combat-postphysics-quiet-latch` | `d2144d2a9` | focused 38/38 |
+| `combat-postphysics-quiet-skip` | `8cdcea557` | focused 106/106 (test contract widened) |
+| `weapon-ribbon-quiet-live-skip` | `72fb13a88` | focused 57/57 |
+| `weapon-light-quiet-live-skip` | `5f04e0f57` | focused 98/98 |
+| `weapon-discharge-quiet-active-skip` | `d8998d4a7` | focused 36/36 |
+| `well-distortion-quiet-empty-latch` | `c63314bbc` | focused 51/51 |
+| `quarks-quiet-empty-update` | `04d700449` | quarks 26/26 + vfx-techniques 10/10 + debris-sling |
+| `weapon-presenter-composite-quiet-latch` | `351d6ab84` | focused 26/26 |
+| `wreck-wisps-quiet-irrelevant-latch` | `a267379e2` | latch 4/4; named 7-file suite 12/13 (sole red pre-existing at HEAD → D89) |
+| `bomb-presentation-quiet-empty-latch` | `64b8a0869` | focused 9/9 |
+
+Already on master before this pass (verified, no re-import):
+
+- `combat-prephysics-quiet-latch` — `d1aaaace5` + `2b1874f53`
+- `combat-outcome-quiet-latch` — `df8e5f3b9`
+- `combat-actions-advance-quiet-skip` — `2a71dc877`
+- `combat-status-subsystem-quiet-skip` — `8d192bfe1`
+- `combat-subsystem-key-cache` — `f698dc20d`
+- `combat-table-pose-incremental` — `39d58e4f5`
+- `weapons-npc-quiet-latch` — `3c24a1ee9` (D62 carry-note already folded in at that
+  commit; ledger row D62 retired this pass — `_tickLock(e, dt, state)` is live at
+  `src/systems/weapons.js:776`)
+- `bombs-empty-quiet-latch` — `cfc932285`
+- `bounty-hunt-empty-quiet-latch` — `45a2e0897` (+ hardening `cf3f8272f`,
+  republish `24294629b`)
+- `combat-kernel-profile-reuse` — fully superseded on master: `statusChanged`-gated
+  trailing `syncCombatantBounds` (`src/combat/kernel.js:267`), `coolCombatHeat`
+  cooling from the `runtime.heatDissipationPerTick` stash (`kernel.js:422`), the
+  stash stamped/backfilled in `runtime.js:73-96,182`, and the postPhysics ensure
+  skip subsumed by the fresh-cache skip landed in `8cdcea557`. No re-export needed.
+
+Skipped this pass:
+
+- `midflight-wave-hull-decode` — measured miss on the remote host by its own
+  DONE.md (hitch callbacks 253→279, game speed 42.5%→30.8%, peak admission
+  11→22 ms); ships no patches. Deliberate non-import.
+
+Merge notes:
+
+- `combat-prephysics-quiet-residual`, `combat-postphysics-quiet-skip`: hand-merged
+  onto the newer latch/sorted-cache structures the earlier combat packages left;
+  the postphysics test was updated to the widened skip contract (postPhysics may
+  now skip on a tick-fresh sorted cache even when the prePhysics latch is disarmed).
+- `quarks-quiet-empty-update`: gate additionally checks `flow.live` — a live
+  force-transport burst must never be frozen by the ordinary-family latch.
+- `weapon-presenter-composite-quiet-latch`: adapted for `heavyImpacts.live/dirty`
+  (post-export pool) and for `quarks._quietEmpty` arming on zero-dt frames
+  (simTime-frozen frames still record an empty observe); test drain loop advances
+  `state.simTime` to match the current `dt<=0` update guard.
+- `wreck-wisps-quiet-irrelevant-latch`: boundary-reset hunk re-applied onto the
+  current `sector:enter`/`game:newGame`/`save:loaded` flag lists (drifted since
+  export).
+- `bomb-presentation-quiet-empty-latch`: latch additionally requires no live
+  aftermath parcels (`flow.count`) or particles; test drawCall/children-count
+  assertions updated from `== 1` to `>= 1` for the multi-pool pipeline.
+
+Stale board note for the next lane: §1C row 29 (`VM-WEAPONS-D62`) is satisfied —
+`weapons-npc-quiet-latch` landed at `3c24a1ee9` with the carry note applied.
+
 # IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchd, board §1C row 25)
 
 Latch-wave-D batch (docking-*/customs-*/opening-plan-*/undock-host-*/catch-nets-*/

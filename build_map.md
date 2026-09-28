@@ -401,7 +401,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | CLAIMED devin-wave2 |
 | 26 | VM-LATCH-E | Quiet-latch render/HUD wave E | IMPORT | OPEN |
 | 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | OPEN |
 | 28 | VM-HITCH | Hitch/admission batch (~8: hitch-asteroid-cell-key, opening-admission, drain-gate, dynres-target-pool, integrated-quality-preset…) | IMPORT | OPEN |
