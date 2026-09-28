@@ -7591,12 +7591,16 @@ _draw() {
     if (reach.length) {
       candidates = candidates.map((c) => (reach.some((tail) => String(c.id || '').endsWith(tail)) ? { ...c, force: true } : c));
     }
+    // ...and keep off the line being laid (last frame's beam): a name never sits on the Hand
+    const beam = [];
+    const bp = this._line && Array.isArray(this._previewPts) ? this._previewPts : [];
+    for (let i = 1; i < bp.length; i += 1) beam.push({ x1: bp[i - 1].x, y1: bp[i - 1].y, x2: bp[i].x, y2: bp[i].y });
     const placed = placeChartLabels(candidates, {
       bounds: field,
       reserved: this._reservedLabelRects(w, h, reserved.concat(keepOff)),
       discs: marks.concat(discs),
       rings,
-      segments,
+      segments: beam.length ? segments.concat(beam, beam, beam, beam, beam, beam) : segments,
       priorityOf: mapLabelPriority,
       eligible: mapLabelEligible,
       maxLeader: 64,
