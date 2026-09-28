@@ -1,3 +1,41 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchd, board §1C row 25)
+
+Latch-wave-D batch (docking-*/customs-*/opening-plan-*/undock-host-*/catch-nets-*/
+npc-job-signatures/loot-magnet/law-heat/bark-director) processed on master.
+
+Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `docking-cradle-quiet-skip` | content swept into `726c821e8` (sibling vfx amend; original commit `0bcb475f9` orphaned) | focused 2/2 |
+| `loot-magnet-quiet-empty-latch` | src restored+landed by latchc in `30d61a3dc` after a shared-tree checkout wiped my unstaged apply (incl. my hand-merged reset-line insertions); test `2ec74a6d9` | focused 4/4 |
+| `docking-corridor-far-quiet-latch` | `c61cfc085` | focused 6/6; corridor suite 48/51 = bare-master failure set |
+| `bark-director-quiet-latch` | `6e46f9722` | focused 3/3 |
+| `opening-plan-complete` | `c654be977` | focused 23/23 |
+
+Already on master before this pass (verified, no re-import): `law-heat-telegraph-quiet-skip`
+(`546f75f78`), `catch-nets-empty-quiet-latch` (`61724111f`), `docking-corridor-publish-scratch`
+(`977ed0b85`), `customs-scan-cone-scratch` (`dec9613bc`), `npc-jobs-id-list-cache` (`f59b91b49`).
+
+Skipped this pass:
+
+- `npc-job-signatures-quiet-sleep-latch` — still the documented trap, now wider: the vfx.js
+  reset-line hunk still needs sibling resets (`_statusAttachedQuiet*`/`_tumbleBodyQuiet*`/
+  `_trailEmitQuiet*`/`_wreckWispsQuiet*`), and on top of that the `_sleepNpcJobSignatures`/
+  `sub.npcJobSignatures` dispatch region plus `npcJobsRuntime` `_ensureState`/`_byId` hunks have
+  drifted under the fatlist typed-index refactor. Needs sibling latches first / re-export.
+- `customs-cones-empty-quiet-latch` — master's `78fd174b3` empty-payloads early-out now covers the
+  dominant empty case and sits *before* the patch's census-tail arm, so the latch can never arm and
+  its own test would fail. Subsumed by the early-out; re-export only if a residuals profile still
+  shows the census cost (arm would need to live inside the early-out branch).
+- `undock-host-*` — no folder exists on disk or on `origin/vm-drop`; board-list name only.
+
+Shared-tree notes: `docking-corridor-far-quiet-latch` and `bark-director-quiet-latch` were
+hand-merged around post-export drift (`_manifestCache`, `_manifestFor`, `_onVictimKilled`) — all
+`+` insertions preserved verbatim. Stray root `artifacts/` payload from the loot-magnet patch
+removed — identical copies live in the job folder. See latchc's ledger above for their side of
+the mid-flight sweep.
+
 # IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchc, board §1C row 24)
 
 Quiet-latch vein C (`field-force` / `fields-*` / `energy-*` / `flight-*` / `gas` /
