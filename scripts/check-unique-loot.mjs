@@ -56,7 +56,7 @@ for (const row of channelRows) {
 const baseIds = new Set([...WEAPONS, ...MODULES, ...SHIPS, ...COMMODITIES].map((entry) => entry.id));
 const slots = new Set();
 for (const wreck of manifest.wrecks || []) {
-  if (!/^D(?:[1-9]|1[0-2])$/.test(String(wreck.programSlot || ''))) {
+  if (!/^D(?:[1-9]|1[0-6])$/.test(String(wreck.programSlot || ''))) {
     issues.push({ code: 'unique.program-slot', path: wreck.id || '<unknown>', message: `Invalid program slot ${wreck.programSlot || '<none>'}.`, severity: 'error' });
   } else if (slots.has(wreck.programSlot)) {
     issues.push({ code: 'unique.program-slot', path: wreck.programSlot, message: 'Program slot is assigned more than once.', severity: 'error' });
@@ -83,8 +83,8 @@ for (const wreck of manifest.wrecks || []) {
   }
 }
 
-if (slots.size !== 12) {
-  issues.push({ code: 'unique.program-coverage', path: 'wrecks', message: `Expected D1-D12 reservations, found ${slots.size}.`, severity: 'error' });
+if (slots.size !== 16) {
+  issues.push({ code: 'unique.program-coverage', path: 'wrecks', message: `Expected D1-D16 reservations, found ${slots.size}.`, severity: 'error' });
 }
 
 if (issues.length) {

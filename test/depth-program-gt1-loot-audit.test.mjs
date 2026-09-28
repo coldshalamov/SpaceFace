@@ -8,7 +8,7 @@ import { COMMODITIES } from '../src/data/commodities.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
-import { UNIQUE_WRECKS } from '../src/data/uniqueWrecks.js';
+import { SITE_RECOVERED_UNIQUE_IDS, UNIQUE_WRECKS } from '../src/data/uniqueWrecks.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { combat } from '../src/systems/combat.js';
@@ -24,7 +24,7 @@ const catalogs = {
   modules: MODULES,
   ships: SHIPS,
   weapons: WEAPONS,
-  lineageUniqueIds: ACE_TROPHY_HEADS.map((row) => row.id),
+  lineageUniqueIds: [...ACE_TROPHY_HEADS.map((row) => row.id), ...SITE_RECOVERED_UNIQUE_IDS],
 };
 
 function audit(overrides = {}) {
@@ -61,13 +61,13 @@ test('GT1 groundwork audits all live combat loot across 1,000 deterministic seed
 });
 
 test('reserved unique loot never enters normal rolls or station acquisition surfaces', () => {
-  assert.equal(liveReport.reservedUniqueDrops, 16);
-  assert.equal(liveReport.declaredUniqueDrops, 16);
-  assert.equal(liveReport.equipmentUniqueDrops, 14);
-  assert.equal(liveReport.storyUniqueDrops, 2);
+  assert.equal(liveReport.reservedUniqueDrops, 21);
+  assert.equal(liveReport.declaredUniqueDrops, 21);
+  assert.equal(liveReport.equipmentUniqueDrops, 18);
+  assert.equal(liveReport.storyUniqueDrops, 3);
   assert.equal(liveReport.uniqueNormalLootHits, 0);
   assert.deepEqual(liveReport.stationAcquisitionHits, []);
-  assert.match(formatLootAuditSummary(liveReport), /16 reserved uniques \(14 equipment, 2 story\)/);
+  assert.match(formatLootAuditSummary(liveReport), /21 reserved uniques \(18 equipment, 3 story\)/);
 });
 
 test('the live combat roller produces a byte-stable receipt for the same seed interval', () => {
@@ -95,7 +95,7 @@ test('the audit fails closed when a live unique declaration is absent from the r
     ],
   });
   assert.equal(report.ok, false);
-  assert.equal(report.declaredUniqueDrops, 17);
+  assert.equal(report.declaredUniqueDrops, 22);
   assert.ok(report.issues.some((row) => row.code === 'audit.unique-declared-unreserved'
     && row.path === 'unique_fixture_unreserved'));
 });

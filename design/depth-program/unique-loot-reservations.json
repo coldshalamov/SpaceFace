@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "r2-twelve-wreck-data-wired",
+  "status": "r2-sixteen-wreck-data-wired",
   "channels": [
     { "id": "bar", "carrier": "src/ui/station/screens/bar.js" },
     { "id": "news", "carrier": "src/data/newsTemplates.js" },
@@ -161,6 +161,55 @@
       ],
       "rumorSources": [
         { "id": "cassandra_thread_reveal", "channelId": "campaign", "status": "authored", "sourceRef": "campaign.cassandra_reveal" }
+      ]
+    },
+    {
+      "id": "wreck_mts_quadrille",
+      "programSlot": "D13",
+      "sectorId": "sector_io_reach",
+      "status": "wired",
+      "uniqueDrops": [
+        { "id": "unique_quadrille_box_reader", "kind": "module", "baseId": "mod_cargo_scanner_s" },
+        { "id": "unique_quadrille_seal_log", "kind": "story", "baseId": null }
+      ],
+      "rumorSources": [
+        { "id": "sp1_quadrille_assignment", "channelId": "mission", "status": "wired", "sourceRef": "mission.sp1.investigation_chain.quadrille" }
+      ]
+    },
+    {
+      "id": "wreck_isc_double_entry",
+      "programSlot": "D14",
+      "sectorId": "sector_tethys_junction",
+      "status": "wired",
+      "uniqueDrops": [
+        { "id": "unique_double_entry_mask", "kind": "module", "baseId": "mod_sensor_scrambler_m" }
+      ],
+      "rumorSources": [
+        { "id": "sp1_double_entry_assignment", "channelId": "mission", "status": "wired", "sourceRef": "mission.sp1.witness_run.double_entry" }
+      ]
+    },
+    {
+      "id": "wreck_dmc_first_notch",
+      "programSlot": "D15",
+      "sectorId": "sector_vesta_forge",
+      "status": "wired",
+      "uniqueDrops": [
+        { "id": "unique_first_notch_marker", "kind": "module", "baseId": "mod_triangulation_suite_s" }
+      ],
+      "rumorSources": [
+        { "id": "sp1_first_notch_assignment", "channelId": "mission", "status": "wired", "sourceRef": "mission.sp1.hearing.first_notch" }
+      ]
+    },
+    {
+      "id": "wreck_mts_regular",
+      "programSlot": "D16",
+      "sectorId": "sector_pallas_drift",
+      "status": "wired",
+      "uniqueDrops": [
+        { "id": "unique_regular_mass_shifter", "kind": "module", "baseId": "mod_cargo_compactor_l" }
+      ],
+      "rumorSources": [
+        { "id": "sp1_regular_assignment", "channelId": "mission", "status": "wired", "sourceRef": "mission.sp1.blockade_run.regular" }
       ]
     }
   ]

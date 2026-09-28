@@ -142,13 +142,18 @@ test('wreck rumors cover D1-D12 in their native channels and resolve every reser
     wreckId: wreck.id,
     programSlot: wreck.programSlot,
   })));
-  assert.equal(manifestSources.length, 13);
+  assert.equal(manifestSources.length, 17);
   assert.equal(manifestSources.every((source) => source.status === 'authored' || source.status === 'wired'), true);
+  // The wreck_rumors pack carries exactly the D1-D12 reservation refs; the D13-D16 SP1 chain
+  // rumors are authored in the set_piece_missions pack and checked field-for-field below.
+  const wreckRumorManifestSources = manifestSources
+    .filter((source) => FLAVOR_SOURCE_BY_REF[source.sourceRef]?.packId === 'wreck_rumors');
   const wreckSourceRefs = Object.entries(FLAVOR_SOURCE_BY_REF)
     .filter(([, source]) => source.packId === 'wreck_rumors')
     .map(([sourceRef]) => sourceRef)
     .sort();
-  assert.deepEqual(wreckSourceRefs, manifestSources.map((source) => source.sourceRef).sort());
+  assert.deepEqual(wreckSourceRefs, wreckRumorManifestSources.map((source) => source.sourceRef).sort());
+  const chainSlots = new Set(['D13', 'D14', 'D15', 'D16']);
   for (const expected of manifestSources) {
     const authored = FLAVOR_SOURCE_BY_REF[expected.sourceRef];
     assert.ok(authored, `${expected.sourceRef} must resolve to authored copy`);
@@ -156,7 +161,7 @@ test('wreck rumors cover D1-D12 in their native channels and resolve every reser
     assert.equal(authored.wreckId, expected.wreckId);
     assert.equal(authored.programSlot, expected.programSlot);
     assert.equal(authored.channelId, expected.channelId);
-    assert.equal(authored.packId, 'wreck_rumors');
+    assert.equal(authored.packId, chainSlots.has(expected.programSlot) ? 'set_piece_missions' : 'wreck_rumors');
   }
 });
 

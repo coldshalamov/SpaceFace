@@ -588,6 +588,16 @@ const RAW_UNIQUE_WRECKS = [
 ];
 
 export const UNIQUE_WRECKS = deepFreeze(RAW_UNIQUE_WRECKS);
+
+// PQ-133.11 — reserved uniques that never ride a wreck: artifacts recovered at authored sites.
+// The Mirrorjaw Pulse is the Forge's own salvage relic (zone_vesta_forge): the ricochet room's
+// bank-and-relay trick baked into one pulse gun. The loot audit folds these into its non-wreck
+// reservation set alongside the ace trophy lineage, so a unique cannot leak into normal loot or
+// station stock merely because no wreck carries it.
+export const SITE_RECOVERED_UNIQUE_IDS = Object.freeze([
+  'unique_mirrorjaw_pulse',
+]);
+
 const UNIQUE_WRECK_BY_ID = new Map(UNIQUE_WRECKS.map((entry) => [entry.id, entry]));
 const UNIQUE_WRECK_BY_SOURCE = new Map();
 const UNIQUE_WRECK_BY_DROP = new Map();
