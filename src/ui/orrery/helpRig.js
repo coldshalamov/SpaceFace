@@ -631,6 +631,11 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
         const dx = px - cx; const dy = py - cy;
         const dd = Math.hypot(dx, dy);
         if (dd > lim) { px = cx + (dx * lim) / dd; py = cy + (dy * lim) / dd; }
+        // the rim can pull two anchors onto one point (throttle and brake at a small drive): step the
+        // later one a full separation across its column's side
+        for (const [qx, qy] of anchorAt.values()) {
+          if (Math.hypot(qx - px, qy - py) < minSep) { px += side * minSep; break; }
+        }
         anchorAt.set(a.spec.id, [px, py]);
       }
     }

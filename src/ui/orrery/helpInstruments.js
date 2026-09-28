@@ -123,7 +123,8 @@ html.sf-reduce-motion .orr-hloop__orbit-pulse, html.sf-reduce-motion .orr-hloop_
   line-height:1; letter-spacing:-.01em; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 .orr-hdial__g-val small { font-size:.5em; margin-left:4px; ${LABEL} letter-spacing:.14em; color:rgb(${BONE} / .76); }
 .orr-hdial .orr-hdial__gain { fill:none; stroke:rgb(${HOT}); stroke-linecap:butt; }
-.orr-hdial .orr-hdial__gain-bloom { fill:none; stroke:rgb(255 244 222 / .25); stroke-linecap:butt; }
+.orr-hdial .orr-hdial__gain-bloom { fill:none; stroke:rgb(255 244 222 / .25); stroke-linecap:round; }
+.orr-hdial .orr-hi__lit-bloom { stroke-linecap:round; }
 .orr-hdial .orr-hdial__loss { fill:none; stroke:rgb(${BONE} / .9); stroke-linecap:butt; }
 .orr-hdial .orr-hdial__loss-cut { fill:none; stroke:rgb(5 7 10); stroke-linecap:butt; }
 .orr-hdial .orr-hi-svg text.orr-hdial__end, .orr-hdial text.orr-hdial__end { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; letter-spacing:.16em; text-transform:uppercase; fill:rgb(${BONE} / .8); }
@@ -288,9 +289,13 @@ export const LOOP_GLYPHS = Object.freeze({
   track: '<circle cx="12" cy="12" r="6.6"/><circle cx="12" cy="12" r="1.8"/><path d="M12 2.8v3.4M12 17.8v3.4M2.8 12h3.4M17.8 12h3.4"/>',
 });
 
-function loopGlyphSvg(key) {
-  const d = LOOP_GLYPHS[key] || LOOP_GLYPHS.track;
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+// chip-size variants where the hub drawing is too busy to read at ~20px
+const LOOP_GLYPHS_CHIP = Object.freeze({
+  dock: '<path d="M16 8.2A6.4 6.4 0 1 0 16 15.8"/><path d="M21.5 8.6 16.8 12 21.5 15.4"/>',
+});
+function loopGlyphSvg(key, chip = false) {
+  const d = (chip && LOOP_GLYPHS_CHIP[key]) || LOOP_GLYPHS[key] || LOOP_GLYPHS.track;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${chip ? 2 : 1.4}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
 }
 
 /** A step's words, with any key it names drawn as a key glyph ("E near a station", "Mission Log (J)"). */
@@ -353,7 +358,7 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     b.dataset.loop = String(i);
     b.dataset.action = 'help-loop:' + i;
     b.style.pointerEvents = 'auto';
-    const glyph = doc.createElement('span'); glyph.className = 'orr-hloop__glyph'; glyph.innerHTML = loopGlyphSvg(loop.glyph);
+    const glyph = doc.createElement('span'); glyph.className = 'orr-hloop__glyph'; glyph.innerHTML = loopGlyphSvg(loop.glyph, true);
     b.appendChild(glyph);
     b.setAttribute('aria-label', `${i + 1}. ${loop.name}`);
     b.addEventListener('click', () => onPick(i));
@@ -741,8 +746,8 @@ export function createHullDial(host, { maxima = {} } = {}) {
       fills[i] = { bloom, lit, gain, gainBloom, loss, lossCut, ref, bead };
       // the price arc's two ends say which way is which
       if (GAUGES[i].centre) {
-        for (const [deg, word, anchor] of [[startOf(i) - 3, 'cheaper', 'end'], [startOf(i) + span + 3, 'dearer', 'start']]) {
-          const [tx, ty] = polar(cx, cy, R - bandW / 2 - 14, deg);
+        for (const [deg, word, anchor] of [[startOf(i) + 4, 'cheaper', 'end'], [startOf(i) + span - 4, 'dearer', 'start']]) {
+          const [tx, ty] = polar(cx, cy, R + bandW / 2 + 14, deg);
           const t = svg('text', { x: f(tx), y: f(ty), 'text-anchor': anchor, 'dominant-baseline': 'central', class: 'orr-hdial__end' });
           t.textContent = word;
           grp.appendChild(t);
@@ -803,9 +808,8 @@ export function createHullDial(host, { maxima = {} } = {}) {
           // centre-zero on a log scale: how many decades cheaper or dearer than the pinned hull
           const a = Math.log10((Number(ship[gd.key]) || 0) + 1);
           const b = Math.log10((Number(ref[gd.key]) || 0) + 1);
-          const m = Math.log10((Number(maxima[gd.key]) || 1) + 1) || 1;
           refFrac[i] = 0.5;
-          springs[i].set(0.5 + 0.5 * Math.max(-1, Math.min(1, (a - b) / m)));
+          springs[i].set(0.5 + 0.5 * Math.max(-1, Math.min(1, (a - b) / 1.25)));
         } else {
           refFrac[i] = gaugeFraction(gd.key, ref, maxima);
           springs[i].set(gaugeFraction(gd.key, ship, maxima));
