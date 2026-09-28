@@ -51,6 +51,11 @@ export class FieldForcePresentation {
     this.time=0;this.frame=0;this.disposed=false;
     this.frustum=new THREE.Frustum();this.clip=new THREE.Matrix4();this.sphere=new THREE.Sphere();
     this.stats={active:0,releasing:0,surfaces:0,dropped:0,unknown:0,culled:0};
+    // Quiet settled flight: empty field-force still paid frustum rebuild +
+    // 10-slot reserved walk + batch.begin/end commit(0) every tick after
+    // surfaces already hidden. Latch after first empty publish; wake on
+    // fields.active / residual releasing slots. Soft-GPU fps not claimed.
+    this._quietEmpty=false;
   }
   _valid(field){
     return field && field.id!=null && Number.isFinite(field.center?.x) && Number.isFinite(field.center?.z)
@@ -91,8 +96,26 @@ export class FieldForcePresentation {
     slot.angle=Math.abs(dx)+Math.abs(dz)>1e-6?Math.atan2(dz,dx):0;
     this.stats.active++;
   }
+  // Cheap dirty wake for quiet field-force latch — active list, residual slot,
+  // or a live release burst (particles did not exist when the latch shipped).
+  // False-wake falls through to one full update and re-latches when empty.
+  _quietMaybeAwake(state){
+    const list=state&&state.fields&&state.fields.active;
+    if(Array.isArray(list)&&list.length>0)return true;
+    for(let i=0;i<this.slots.length;i++)if(this.slots[i].id!==null)return true;
+    if(this.particles&&this.particles.live>0)return true;
+    return false;
+  }
   update(dt,state={}){
     if(this.disposed)return this.stats;
+    // Quiet settled flight: empty field-force still paid frustum rebuild +
+    // slot reserved walk + batch.begin/end commit(0) every tick with no live
+    // surfaces. Latch after first empty publish; cheap active/slot wake.
+    // Soft-GPU fps not claimed. Release residue must keep updating until slots clear.
+    if(this._quietEmpty){
+      if(!this._quietMaybeAwake(state))return this.stats;
+      this._quietEmpty=false;
+    }
     const clock=Number.isFinite(state.simTime)?state.simTime:this.time+Math.max(0,finite(dt));
     // A restored/new simulation may rewind the clock. Release old purely cosmetic identities.
     const elapsed=Math.max(0,clock-this.time);
@@ -174,6 +197,13 @@ export class FieldForcePresentation {
     this.batch.end();stats.surfaces=this.batch.count;stats.dropped+=this.batch.dropped;
     if(!stats.active&&!stats.releasing)this.particles.clear();
     this.mesh.visible=this.batch.count>0||this.particles.live>0;
+    // Fully idle empty (no active fields, no residual releasing slots, batch empty,
+    // no live particle residue) → quiet latch. Soft-GPU fps not claimed.
+    const activeList=state&&state.fields&&state.fields.active;
+    const hasActive=Array.isArray(activeList)&&activeList.length>0;
+    let slotLive=false;
+    for(let i=0;i<this.slots.length;i++){if(this.slots[i].id!==null){slotLive=true;break;}}
+    this._quietEmpty=!hasActive&&!slotLive&&this.batch.count===0&&!(this.particles&&this.particles.live>0);
     return stats;
   }
   _environment(slot,state){
@@ -389,5 +419,5 @@ export class FieldForcePresentation {
     this.batch.reproject(dx,dz);this.particles.reproject(dx,dz);
     for(const body of this.batch.material.uniforms.uBodies.value)if(body.w>0){body.x+=dx;body.y+=dz;}
   } // Also safe when the next simulation dt is zero.
-  dispose(){if(this.disposed)return;this.disposed=true;this.particles.dispose();this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
+  dispose(){if(this.disposed)return;this.disposed=true;this._quietEmpty=false;this.particles.dispose();this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
 }
