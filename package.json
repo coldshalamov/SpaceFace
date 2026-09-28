@@ -659,7 +659,8 @@
     "playwright": "^1.61.1",
     "pngjs": "^7.0.0",
     "spectorjs": "^0.9.30",
-    "stats-gl": "^4.2.3"
+    "stats-gl": "^4.2.3",
+    "wabt": "^1.0.39"
   },
   "build": {
     "appId": "com.spaceface.game",

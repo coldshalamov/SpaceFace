@@ -466,6 +466,25 @@ function spreadOf(entry, frontierPenalty) {
   return clamp(SPREAD_BASE * ev * (1 + (frontierPenalty || 0)), SPREAD_LO, SPREAD_HI);
 }
 
+// History points stamp their session-only `origin` non-enumerably so saves stay [t, mid]
+// pairs. One shared prototype per origin carries that flag through the prototype chain —
+// `point.origin` reads identically, nothing enumerates or clones it, and the per-point
+// Object.defineProperty call (the measured hotspot in this loop) disappears.
+const PRICE_POINT_PROTOS = Object.freeze({
+  modelled: Object.defineProperty(Object.create(null), 'origin',
+    { value: 'modelled', enumerable: false, writable: true }),
+  observed: Object.defineProperty(Object.create(null), 'origin',
+    { value: 'observed', enumerable: false, writable: true }),
+});
+
+function makePricePoint(t, mid, origin) {
+  const proto = PRICE_POINT_PROTOS[origin];
+  const point = proto ? Object.create(proto) : {};
+  point.t = Number(t) || 0;
+  point.mid = mid;
+  return point;
+}
+
 function pricePointAt(entry, def, cycle, t, origin) {
   const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
   const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
@@ -476,11 +495,23 @@ function pricePointAt(entry, def, cycle, t, origin) {
   // snapshots this small preserves a long lived history without bloating save files.
   // Origin is session display only and non-enumerable, so saves stay [t, mid] pairs and a
   // loaded trace does not pretend to remember which points were backfilled.
-  const point = { t: Number(t) || 0, mid };
-  if (origin === 'modelled' || origin === 'observed') {
-    Object.defineProperty(point, 'origin', { value: origin, enumerable: false, writable: true });
+  return makePricePoint(t, mid, origin);
+}
+
+// History backfill: stockMid/persistentMid are loop-invariant across the seeded timestamps —
+// only the cycle factor moves with t — so evaluate them once rather than per point.
+function pricePointsBackfill(entry, def, cycle, t0, sampleS, count, origin) {
+  const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
+  const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
+  const points = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const t = t0 + i * sampleS;
+    const mid = Math.max(1, round(cycle
+      ? applyCycleToMid(def.basePrice, persistentMid, cycle, t)
+      : persistentMid));
+    points[i] = makePricePoint(t, mid, origin);
   }
-  return point;
+  return points;
 }
 
 function sanitizeHistory(raw) {
@@ -1195,11 +1226,8 @@ export const economy = {
   /** Seed and retain the player-visible history from the actual formula state. */
   seedPriceHistory(entry, def, cycle, simTime) {
     const now = Number(simTime) || 0;
-    entry.history = [];
-    for (let i = 0; i < HISTORY_POINT_LIMIT; i++) {
-      const t = now - HISTORY_SPAN_S + i * HISTORY_SAMPLE_S;
-      entry.history.push(pricePointAt(entry, def, cycle, t, 'modelled'));
-    }
+    entry.history = pricePointsBackfill(
+      entry, def, cycle, now - HISTORY_SPAN_S, HISTORY_SAMPLE_S, HISTORY_POINT_LIMIT, 'modelled');
     return entry.history;
   },
 
