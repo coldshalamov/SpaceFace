@@ -122,7 +122,8 @@ preparation**: parked until there is a release to prepare, and never the dispatc
 work stays in scope only as a development instrument — finding and fixing what makes the game worse
 on a real, busy machine — not as a gate that waits on a quiet host. Until pre-release opens, game
 development runs through §27's lanes (THE MACHINE's development half, THE HAND, THE FIGHT, THE
-WORLD, THE LONG GAME, THE PICTURE, THE EAR); a drained queue means take a lane, not stop.
+WORLD, THE LONG GAME, THE PICTURE, THE EAR); **a drained queue means take the next numbered row
+on the board (§1C) — or a lane for open-ended work — never stop.**
 
 **§23 is the superpower front (owner, 2026-09-22).** The sequential lane is **A2** in the table
 above: [§23.4](#234-actualize-the-tools), `AQ-CAS` then `AQ-LOD` then `AQ-LIGHT` then `AQ-SURFACE`
@@ -249,6 +250,7 @@ procedure:
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
 | "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
+| "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
@@ -350,6 +352,139 @@ units; open the door below only when the owner names the campaign.
 ### 1B.1 Retained campaign laws (verbatim from the previous front door)
 
 Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept verbatim for review. Does not dispatch work.
+
+## 1C. The board — every dispatchable unit, numbered (refreshed 2026-09-27)
+
+`--next` reads `program-queue.json`; **that queue is drained** (0 claimable units — the one
+`ready` row is dep-gated, `PQ-210.08` is parked). The plans did not run out — the counting did.
+This board is the counted front door: **"take the next 10 tasks" means the next 10 numbered
+rows.** Each row points at the plan that owns its detail — do not restate specs here, and do not
+open a second list anywhere else.
+
+How to take a row:
+
+1. Take the lowest-numbered **OPEN** row whose named paths are not in a live `NOW.md` row.
+   `CLAIMED <who>` rows are taken; `PARKED <blocker>` rows wait for the named blocker.
+2. Add your `NOW.md` row and flip this row to `CLAIMED <thread>` in the **same edit**.
+3. On landing, **delete the row** in the landing commit — this board lists open work only;
+   receipts live in git and `01_VERIFIED_DONE.md`.
+4. A defect row also deletes its ledger row in the fixing commit (ledger law, AGENTS §7).
+5. New dispatchable work is appended at the bottom of its kind-group with the next number.
+
+Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-drop package batch ·
+**BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
+**LANE** open-ended area ownership (detail in `FINISH_LANES.md`).
+
+### A. Recover — finished work stranded in the tree
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 1 | ADOPT-FIGHTWORLD | Land the stale fight/world run: ~12 test files + ~14 system hunks uncommitted in the tree (memorial thief, seam mines, thrown-explosive fuse, kill shards, cookoff chains, berth memory, bar desk, bay-7 scan, faction-presence wire, kill replay, set pieces, crucible a-list). Run each focused suite; pathspec-commit green groups. Do **not** revert `536afa04b` (impulseCharges recycled-id fix — already landed). | ADOPT | OPEN |
+| 2 | ADOPT-PERF | Land or close the stale perf-pipeline hunks: dirty files under `src/render/**` + flight/input strays left by `devin-perf-pipeline`. Inspect each hunk, keep what is coherent, commit by pathspec. | ADOPT | OPEN |
+| 3 | ADOPT-CAMPAIGN10 | Land or close `devin-campaign-10` residue — re-check tree for leftover hunks after rows 1–2. | ADOPT | OPEN |
+
+### B. Defect ledger — open rows (ledger: `DEMO_READINESS_2026-09-20.md` §6)
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 4 | D36 | Works-screen tab starves all scheduling under host contention (~2/12 runs) — real scheduler fix, not a throttle | FIX | OPEN |
+| 5 | D38 | First-arrival body undrawn while it compiles — ordering landed; residual is the serial compose/link/upload lane | FIX | OPEN |
+| 6 | D46 | `check:all` foreign-red triage from 2026-09-25 — re-run sweep, re-row what is still red, delete the stale snapshot | FIX | OPEN |
+| 7 | D60 | A6 driver teleported the player ~2.25 M-units in one tick — instrumented, unreproduced in 5 clean runs; prove it dead or find it | FIX | OPEN |
+| 8 | D61 | Sector-jump authored-prewarm invariant race in `renderer.js` publish/generation | FIX | OPEN |
+| 9 | D74 | `SF_FoldedForceSurface` fragment shader fails to link ~1-in-5 (`'patch'` reserved word) | FIX | OPEN |
+| 10 | D80 | Hauler income band vs honest arbitrage — model fixed; structural balance adjudication owed | FIX | OPEN |
+| 11 | D82 | Perf-merge imported reds: `check-vfx-techniques` (programCanon.js unlisted soft-card) + `check:massline:arc-render` (overlaps D85 — take together) | FIX | OPEN |
+| 12 | D85 | Massline release arc: `save:loaded` drains token but not mesh — `_resetMasslineReleaseArc` never resets `arc.mesh.visible`/`drawRange` | FIX | OPEN |
+| 13 | D86 | `selectionSigil.js` has raw GLSL in a JS module — fails `node --check`. **File is foreign-dirty: check whether the dirty hunk already fixes it before editing** | FIX | OPEN |
+| 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
+| 15 | D67 | Market-tab dispatch hang — not reproduced; one quiet-host sweep owed before delete | FIX | PARKED needs quiet host |
+| 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |
+| 17 | D54 | Hero landmarks: dark-freighter place model, Anvil well-edge, ×30 Wreck Cathedral draw scale | ART | CLAIMED devin-graphics |
+| 18 | D72 | Pelican starter hull is blockout-grade | ART | CLAIMED devin-graphics |
+
+### C. vm-drop imports — ~133 DONE packages await import (`VM_LANES.md`, `IMPORT_DIGEST/report.md`)
+
+Remote work is finished and verified `git apply --cached`-clean; importing = apply one folder's
+`patches/`, run the check the folder names, pathspec-commit, update `IMPORT_DIGEST`. Take folders
+in digest order, ≤10 per sitting. **Do not take HOLDs** (listed in the digest) or the 9 `*-chase`
+ship stills (all REVISE — awaiting new remote candidates).
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 19 | VM-HEAD | Digest head-of-queue: #166 render-package-digest-zero-copy → #167 embedded-ktx2 → #168 glb-body-in-place (+patches-after-167) → #169 shader-readiness → #170 retail-gltfloader alias; then #161–#165 quiet-latch ships | IMPORT | OPEN |
+| 20 | VM-PRESTEP-1 | Sim/preStep batch 1 (~10 folders: stamp-near-work series, prestep-movables-trust, npc-field-role-cache…) | IMPORT | OPEN |
+| 21 | VM-PRESTEP-2 | Sim/preStep batch 2 (~13 folders: far-actor-scan, alloc-journal-churn, massline-settext, gamepad-idle…) | IMPORT | OPEN |
+| 22 | VM-LATCH-A | Quiet-latch render/HUD wave A (~10 of ~50: hud-* series, bark-director, optic-lattice…) | IMPORT | OPEN |
+| 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | OPEN |
+| 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | OPEN |
+| 25 | VM-LATCH-D | Quiet-latch render/HUD wave D | IMPORT | OPEN |
+| 26 | VM-LATCH-E | Quiet-latch render/HUD wave E | IMPORT | OPEN |
+| 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | OPEN |
+| 28 | VM-HITCH | Hitch/admission batch (~8: hitch-asteroid-cell-key, opening-admission, drain-gate, dynres-target-pool, integrated-quality-preset…) | IMPORT | OPEN |
+| 29 | VM-WEAPONS-D62 | `weapons-npc-quiet-latch` + apply the D62 carry note (pre-INFERENCE-23 `_tickLock` 2-arg call needs updating on import) | IMPORT+FIX | OPEN |
+| 30 | VM-REPORTS | Reports/stills/doc packages (~20: quiet-witness-baseline, cpu/alloc profiles, boot-times, contact sheets — docs-only imports, lowest production value; do after code batches) | IMPORT | OPEN |
+
+### D. Build — measured-gap rows (§22 wave D), campaign remainders (§23/§24), seams
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 31 | D2 | Zero new program links on first draw of each Crucible hull — residual in-flight links 13→11 (instancing/side/clearcoat/alphaTest pole) | BUILD | OPEN |
+| 32 | D5 | Opening admission finishes before first control — remote measured worst frame ~800 ms after drain-gate (−92 % GPU wait); finish the job | BUILD | OPEN |
+| 33 | D7 | Boot → first control ≤10 s ×3 — remote quiet runs 21–22.6 s; longest stage `loading:entering-flight` → first-playable ~8 s | BUILD | OPEN |
+| 34 | D8 | Crucible fight budget on quiet probe — recorded 12 fps mean / 100 % frames >33 ms on the soft-GPU VM; reproduce on real hardware or prove the VM number is host noise | BUILD | OPEN |
+| 35 | D3 | Same-material hull batching — gated: only if the draw census still names draw count as the pole after VM batches land | BUILD | PARKED gated on import results |
+| 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
+| 37 | HAND-CUTDENIED | `tether:cutDenied` is emitted with zero subscribers — wire one visible/audio response | BUILD | OPEN |
+| 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | OPEN |
+| 39 | CV-GLASS-1 | Belt-tail throughput: serial GLB admission is still seconds per body on a busy host — parallelize/budget the lane (ZERO_TO_HERO §7.3) | BUILD | OPEN |
+| 40 | CV-GLASS-2 | AQ-HIT — three-mesh-bvh hit path, the last unlanded tool in §23.4's order | BUILD | OPEN |
+| 41 | CV-EAR-1 | AQ-VOICE — Elementary continuous voices: rope pitch follows load, engine follows throttle, silence at 0 (the CV-EAR signature) | BUILD | OPEN |
+| 42 | CV-THROW-1 | Cut-grade learnability: nothing teaches why one cut was a razor and the next a tow — build the teaching slice on the default route | BUILD | OPEN |
+| 43 | CV-AMMO-1 | Fields are on the keyboard and untaught — teaching moment + verify the opening no longer spreads bodies to gun range | BUILD | OPEN |
+| 44 | CV-DAY-1 | `sectorActivityPockets.js` is Ceres-only — Helios does not yet feel like a job in progress; extend pockets to named sectors | BUILD | OPEN |
+| 45 | CV-MOTION-1 | The campaign's core invention was never built: one living-machine **score** deciding what stays in motion on the glass vs sleeps | BUILD | OPEN |
+| 46 | CV-QUIET-1 | The three minutes between jobs should be a place — detour texture density on the default route | BUILD | OPEN |
+| 47 | CR-CHAIN-1 | Named rumor-braids not yet built: volatile pod as moving mine, hitch on a working miner, wreck towed through a search, clothesline on existing rocks, planet-well + field-well as one curve — one braid per unit, update count in row | BUILD | OPEN |
+| 48 | CR-FEED-1 | Non-copy kill machines for the remaining named sectors (Vesta, Tethys-adjacent, Veil) | BUILD | OPEN |
+| 49 | CR-CHOIR-1 | Congregation-as-activity: the Choir tend the hurt and remember what you did with their dead — beyond one bar memory | BUILD | OPEN |
+| 50 | CR-ANVIL-1 | Sling variants for Vesta belt / Veil lanes; teach with waiting bodies beyond the Tethys witness | BUILD | OPEN |
+| 51 | CR-HOLLOW-1 | The illegal-pairing payoff: ships that should not be together, docked anyway, with something to steal or join | BUILD | OPEN |
+| 52 | CR-TEXTURE-1 | Per-sector surprise coverage — each named place gets one reachable one-off (rumor or skyline) | BUILD | OPEN |
+| 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | OPEN |
+| 54 | OPTIC-COST | The required Ceres-entry cost trace for 42 optic bodies was never produced — scatter shipped live regardless; produce the artifact or retire the guard | ACCEPT | OPEN |
+| 55 | SEAM-BASE | `combat:baseDestroyed` — no destructible base entities exist (`economy.js:902`); sim/content seam, reachable without UI | BUILD | OPEN |
+| 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
+| 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | OPEN |
+| 58 | P7 | Body-scale bars hold across zoom/speed — first slice landed; verify floors at edge zooms | BUILD | OPEN |
+| 59 | P10 | World-on-the-way remainder: working chain within two screen-depths + raid in progress — partial | BUILD | OPEN |
+
+### E. Acceptance — implemented things awaiting their bar (queue + §25)
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 60 | PQ-050.01–.22 | Fleet remaster acceptance — 22 leaves `implemented` (chase passes recorded REVISE; judge the current bodies at the shipping camera) — one leaf per unit, lowest first | ACCEPT | OPEN |
+| 61 | PQ-038/041 | Native acceptances: PERF-04 dense PresentationWorld + PERF-07 exact-package Electron pair — `implemented`, never run | ACCEPT | PARKED needs quiet host |
+| 62 | PQ-022.h3 | Corridor-asset perf envelope — harness on master; the ~50-min capture was never executed | ACCEPT | PARKED needs quiet host |
+| 63 | PQ-161.00 | Role silhouettes — `implemented`, awaiting readable-at-zoom review | ACCEPT | OPEN |
+| 64 | ZH-STRANGER | §25 stranger passes owed on Phases 1, 2, 3, 5, 6 — open frames and judge; metrics alone don't close | ACCEPT | OPEN |
+| 65 | PQ-042 | Branch selection — `ready` but dep-gated on PERF native acceptances (row 61) | BUILD | PARKED gated on row 61 |
+| 66 | PQ-210.08 | Fifteen-minute demo end-to-end — parked per owner pre-release ruling | ACCEPT | PARKED pre-release |
+
+### F. Lanes — open-ended ownership (detail: `FINISH_LANES.md`; bar: "a stranger calls it done")
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — stale-adoptable |
+| 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — stale-adoptable |
+| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. | LANE | OPEN — stale-adoptable |
+| 70 | L-LONGGAME | Own THE LONG GAME — progression, economy depth, story spine, persistent ship identity. No counted rows yet: the lane's first sitting decomposes its checklist into board rows. | LANE | OPEN — no writer ever |
+| 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — no writer ever |
+| — | L-PICTURE | THE PICTURE — Forge backlog GFX-1, 3–14 | LANE | CLAIMED devin-graphics (live) |
+| — | L-INSTRUMENT | THE INSTRUMENT — all UI | LANE | CLAIMED ORRERY — do not take |
+| — | L-RELEASE | THE RELEASE — demo path, packaging, store | LANE | PARKED pre-release (owner) |
+
+Not on the board: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope not yet decomposed into dispatchable leaves — the owning lane's first sitting turns them into board rows.
 
 ## 2. Product north star
 
