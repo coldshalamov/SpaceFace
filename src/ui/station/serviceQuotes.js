@@ -53,6 +53,29 @@ export function factionPresenceServiceRows(state, stationId) {
   return [];
 }
 
+/** Dock palette / command-dock path into the live factionPresence service writer. */
+export function runFactionPresenceDockAction(bus, state, stationId, serviceId) {
+  const rows = factionPresenceServiceRows(state, stationId);
+  const row = rows.find((entry) => entry && entry.id === serviceId) || null;
+  if (!row || !bus || typeof bus.emit !== 'function') {
+    return { ok: false, targetTab: null };
+  }
+  if (!row.available) {
+    bus.emit('toast', {
+      text: row.disabledReason || 'Faction desk unavailable',
+      kind: 'warn',
+      ttl: 3,
+    });
+    return { ok: false, targetTab: null, reason: row.disabledReason || '' };
+  }
+  bus.emit('ui:factionPresenceService', {
+    stationId,
+    serviceId,
+    targetTab: row.targetTab || null,
+  });
+  return { ok: true, targetTab: row.targetTab || null };
+}
+
 export const AMMO_BATCH = 100;         // munitions per ammo purchase
 const MUNITIONS = COMMODITIES.find((c) => c.id === 'cmdty_munitions') || { volPerU: 1 };
 
