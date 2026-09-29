@@ -510,12 +510,46 @@ export const ZONE_ASHFALL_STERILE_ZONE = Object.freeze({
 });
 
 /**
+ * The Tally — WF-03: the toll/count plaza on Tethys' inbound Helios approach.
+ *
+ * Tethys' way of life is "transit, scan, deal — everything transits; nothing transits unread",
+ * but the sector's only toll grammar used to be two lonely beacons. This zone names the pocket
+ * where the counting actually happens: the scan-gate pins straddle the Helios-gate → Meridian
+ * chord, the queue runs in to the tally post and the held-for-count pen beside the Customs Gate.
+ * A pilot crossing the mouth can name the verb: this is where the core counts your hull.
+ *
+ *  * PLACEMENT. Centred between the scan gate and the Customs Gate, wholly inside
+ *    zone_tethys_checkpoint (centre distance 386 WU + 430 WU radius = 816 ≤ 820), clear of every
+ *    other authored Tethys disc (nearest is the Quiet Cache at ~1436 WU against a 950 WU
+ *    sum-of-radii), so `zoneAt` stays unambiguous and the HUD reads "The Tally" inside the
+ *    checkpoint — approach, interior, exit.
+ *  * NO `presence`. The pocket adds no spawn budget; the only live actor is the tally post's
+ *    discovery plate. Customs procedure is not peril, so the threat tier reads 0 inside the
+ *    parent checkpoint's 1.
+ *  * NO bespoke asset. The furniture reuses the packaged lane-furniture props Helios already
+ *    ships (lane pin, tally post, nav buoy, container rack, worklight, cargo pod); the ropeable
+ *    disputed keg is a WORLD_ONE_OFFS record.
+ */
+export const ZONE_TETHYS_TALLY = Object.freeze({
+  id: 'zone_tethys_tally',
+  name: 'The Tally',
+  type: 'border_checkpoint',
+  factionId: 'faction_scn',
+  reason: 'The toll line on the Helios approach: every inbound hull crosses the scan gate and '
+    + 'holds open for count at the tally post — or cuts wide past the red pin and keeps its '
+    + 'number to itself.',
+  center: Object.freeze({ x: -950, z: -950 }),
+  radius: 430,
+  threat: 0,
+});
+
+/**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
  */
 export const AUTHORED_PLACE_ZONES = Object.freeze({
   sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE, ZONE_CERES_PRISM_GALLERY, ZONE_CERES_CLOSED_REFINERY]),
-  sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL, ZONE_TETHYS_SPLIT_STATION]),
+  sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL, ZONE_TETHYS_SPLIT_STATION, ZONE_TETHYS_TALLY]),
   sector_vesta_forge: Object.freeze([ZONE_VESTA_RED_CABLE_YARD]),
   sector_pallas_drift: Object.freeze([ZONE_PALLAS_EMPTY_HABITAT, ZONE_PALLAS_EMPTY_FOUNDRY]),
   sector_io_reach: Object.freeze([ZONE_IO_SHEPHERDS_RING, ZONE_IO_LISTENING_FIELD]),

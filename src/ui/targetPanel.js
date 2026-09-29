@@ -33,6 +33,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
+import { targetConditionReadout } from './targetCondition.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -467,6 +468,7 @@ export function createTargetPanel(ctx) {
   const elIdentity = el.querySelector('.sf-target__identity');
   const elBounty = el.querySelector('.sf-target__bounty');
   const elIntent = el.querySelector('.sf-target__intent');
+  const elCondition = el.querySelector('.sf-target__condition');
   const elRange = el.querySelector('.sf-target__range');
   const elEngaged = el.querySelector('.sf-target__engaged');
   const elEngagedGlyph = elEngaged.querySelector('[data-glyph]');
@@ -477,6 +479,7 @@ export function createTargetPanel(ctx) {
   let lastBountyKey = null;
   let lastIntelKey = null;
   let lastComponentKey = null;
+  let lastConditionKey = null;
 
   // PQ-015: the component chip is the reachable (DOM) trigger for sub-selecting a target component.
   // pointer-events:auto is set inline so the chip is clickable even inside a pointer-events:none HUD
@@ -704,6 +707,23 @@ export function createTargetPanel(ctx) {
         if (elIntent.style.display !== 'none') elIntent.style.display = 'none';
         setText(elRange, targetRangeBand(dist, p));
       }
+      // Delivered-condition row (PB-ORD-A): what the last bomb/status did to this hull — guns
+      // out vs rearming with its clock, helm vs guns, burn stacks. Rides the slow cadence so
+      // the countdowns tick without per-frame writes; hidden on clean hulls.
+      if (t.type === 'ship' || t.type === 'drone') {
+        const condition = targetConditionReadout(state, t);
+        const conditionText = condition ? condition.text : '';
+        const conditionKey = `${tid}:${conditionText}`;
+        if (conditionKey !== lastConditionKey) {
+          lastConditionKey = conditionKey;
+          setText(elCondition, conditionText);
+          const show = conditionText ? 'block' : 'none';
+          if (elCondition.style.display !== show) elCondition.style.display = show;
+        }
+      } else if (lastConditionKey !== null) {
+        lastConditionKey = null;
+        if (elCondition.style.display !== 'none') elCondition.style.display = 'none';
+      }
       // Threat badge. Tier drives a data attribute so colour AND the printed word both carry it --
       // never colour alone (grammar: no state may be colour-only).
       // contactThreatTier returns a NUMBER 0..3 keyed off mass (scanner.js THREAT_MASS_TIERS),
@@ -749,6 +769,7 @@ export function createTargetPanel(ctx) {
     lastTriKey = null;
     lastIntelKey = null;
     lastEngagedKey = null;
+    lastConditionKey = null;
     tickN = 5;
   }
 

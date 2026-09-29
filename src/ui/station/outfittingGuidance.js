@@ -312,6 +312,7 @@ export function statSnippet(def) {
     const masslineOutcome = masslineHeadOutcome(def);
     if (masslineOutcome) parts.push(masslineOutcome.replace(/^Massline\s+/i, ''));
     if (m.swingDrive) parts.push('dash swings around a taut line');
+    if (m.hullBurst) parts.push('burst key: throws hostile hulls at the nose');
     if (m.cloakBaseRadius) parts.push(m.cloakBaseRadius + ' detection ring');
     if (m.cloakDrainPerS) parts.push(Math.round(m.cloakDrainPerS * 100) + '% cloak drain/s');
     if (m.cloakRechargePerS) parts.push(Math.round(m.cloakRechargePerS * 100) + '% cloak recharge/s');

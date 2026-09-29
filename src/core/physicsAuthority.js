@@ -228,7 +228,19 @@ export function ensurePhysicsBodySpec(entity) {
   if (authoredBody && NORMALIZED_BODY_CACHE.get(entity) === authoredBody) return authoredBody;
   const authored = authoredBody || {};
   const radius = positive(authored.radius, positive(entity.radius, 1));
-  const mass = positive(authored.mass, positive(entity.mass, defaultMass(entity)));
+  const dynamic = authored.dynamic == null ? defaultDynamic(entity) : !!authored.dynamic;
+  let mass;
+  if (authored.mass != null) {
+    mass = positive(authored.mass, 1);
+  } else if (!dynamic) {
+    mass = positive(entity.mass, 1e6);
+  } else if (entity.mass != null && entity.mass > 0 && entity.mass < 1e5 && (entity.type === 'ship' || entity.type === 'drone')) {
+    mass = entity.mass;
+  } else if (entity.mass != null && entity.mass > 0 && entity.mass < 1e5 && !['asteroid', 'wreck', 'pod', 'payload', 'prop'].includes(entity.type)) {
+    mass = entity.mass;
+  } else {
+    mass = defaultMass(entity, radius);
+  }
   const derivedModel = entity.data && entity.data.derived && entity.data.derived.flightModel;
   const modelInertia = finite(entity.flightModel && entity.flightModel.inertia, finite(derivedModel && derivedModel.inertia, 0));
   const inertiaY = positive(authored.inertiaY, positive(modelInertia, 0.5 * mass * radius * radius));
@@ -246,7 +258,7 @@ export function ensurePhysicsBodySpec(entity) {
     centerOfMass: vector3(authored.centerOfMass),
     radius,
     shape,
-    dynamic: authored.dynamic == null ? defaultDynamic(entity) : !!authored.dynamic,
+    dynamic,
     ccd: authored.ccd == null ? defaultCcd(entity) : !!authored.ccd,
     material: String(authored.material || defaultMaterial(entity)),
     attachmentPoints: normalizeAttachmentPoints(authored.attachmentPoints),
@@ -470,11 +482,40 @@ function normalizeAttachmentPoints(points) {
   return out;
 }
 
-function defaultDynamic(entity) {
-  return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'projectile' ||
-    entity.type === 'pickup' || entity.type === 'wreck' ||
-    (entity.type === 'asteroid' && !!(entity.data && entity.data.isChunk)) ||
-    !!(entity.data && (entity.data.majorDebris || entity.data.tetherPayload));
+export const FIXED_BODY_RADIUS_THRESHOLD = 90;
+
+export const SOLID_WORLD_DENSITY = Object.freeze({
+  rock: 0.25,        // asteroids, mining chunks: mass ~ 0.25 * R^3
+  wreck: 0.10,       // spaceframe / armor debris: mass ~ 0.10 * R^3
+  pod: 0.08,         // containers, hab pods: mass ~ 0.08 * R^3
+  payload: 0.08,     // mission payloads: mass ~ 0.08 * R^3
+  buoy: 0.06,        // beacons, nav pins, worklights: mass ~ 0.06 * R^3
+  prop: 0.06,        // dressing props: mass ~ 0.06 * R^3
+  pickup: 0.1,       // cargo / ore pickups: fixed 0.1
+});
+
+export function isFixedPhysicsEntity(entity, radius = null) {
+  if (!entity || typeof entity !== 'object') return false;
+  const data = entity.data || {};
+  // 1. Stations are always fixed
+  if (entity.type === 'station') return true;
+  // 2. Gates and wormholes are always fixed
+  if (entity.type === 'gate' || data.isGate || data.isWormhole || data.placeId === 'place_gate_jump_ring') return true;
+  // 3. Landmark rocks and authored landmark sites are fixed
+  if (data.isLandmark || data.isLandmarkRock || data.landmark || data.archetype === 'landmark' || (typeof data.archetypeGlb === 'string' && data.archetypeGlb.includes('landmark'))) {
+    return true;
+  }
+  // 4. Anything over ~90 WU radius is fixed
+  const r = positive(radius, positive(entity.physicsBody && entity.physicsBody.radius, positive(entity.radius, 0)));
+  if (r > FIXED_BODY_RADIUS_THRESHOLD) return true;
+
+  return false;
+}
+
+function defaultDynamic(entity, radius = null) {
+  if (!entity || typeof entity !== 'object') return false;
+  if (isFixedPhysicsEntity(entity, radius)) return false;
+  return true;
 }
 
 function defaultCcd(entity) {
@@ -489,12 +530,36 @@ function defaultMaterial(entity) {
   if (entity.type === 'wreck') return 'debris';
   if (entity.type === 'pickup') return 'sensor';
   if (entity.type === 'payload') return 'payload';
+  if (entity.type === 'pod') return 'debris';
   return entity.type === 'ship' || entity.type === 'drone' ? 'ship' : 'default';
 }
 
-function defaultMass(entity) {
-  if (entity && entity.type === 'pickup') return 0.1;
-  return 1;
+export function defaultMass(entity, radius = null) {
+  if (!entity || typeof entity !== 'object') return 1;
+  if (entity.type === 'pickup') return SOLID_WORLD_DENSITY.pickup;
+  if (entity.type === 'ship' || entity.type === 'drone') {
+    return positive(entity.mass, 24);
+  }
+  const R = positive(radius, positive(entity.physicsBody && entity.physicsBody.radius, positive(entity.radius, 1)));
+  const vol = R * R * R;
+  const data = entity.data || {};
+
+  if (entity.type === 'asteroid') {
+    return Math.max(1, Math.round(SOLID_WORLD_DENSITY.rock * vol));
+  }
+  if (entity.type === 'wreck' || data.isWreck || (typeof data.placeId === 'string' && data.placeId.startsWith('place_aftermath_'))) {
+    return Math.max(1, Math.round(SOLID_WORLD_DENSITY.wreck * vol));
+  }
+  if (entity.type === 'pod' || data.isPod || (typeof data.placeId === 'string' && (data.placeId.startsWith('place_cargo_pod_') || data.placeId.startsWith('place_habitat_pod_') || data.placeId.startsWith('pod_')))) {
+    return Math.max(1, Math.round(SOLID_WORLD_DENSITY.pod * vol));
+  }
+  if (entity.type === 'payload') {
+    return Math.max(1, Math.round(SOLID_WORLD_DENSITY.payload * vol));
+  }
+  if (entity.type === 'prop' || data.isProp || data.isBuoy || (typeof data.placeId === 'string' && (data.placeId.startsWith('place_lane_') || data.placeId.startsWith('place_nav_') || data.placeId.startsWith('place_whistle')))) {
+    return Math.max(1, Math.round(SOLID_WORLD_DENSITY.buoy * vol));
+  }
+  return Math.max(1, Math.round(0.10 * vol));
 }
 
 /**

@@ -221,6 +221,24 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
     tags: ['critical', 'tether', 'threat'],
   }),
+  // SF-023 (PB-MASS-A) — a committed hostile blade inside the cut window. Same lane family and
+  // material as the umbrella threat, tighter dedupe so a re-committed cutter re-speaks, and the
+  // record's `position` (the bite point on the player's rope) carries the located VFX/where-to-
+  // look read. The HUD's world-anchored X mark owns the persistent "cut lands HERE" signal.
+  'massline.threat.sweep_commit': recipe({
+    importance: 0.82,
+    dedupeWindowTicks: 18,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.massline_threat',
+      audio: 'audio.massline_threat',
+      ui: 'ui.threat_warning',
+      accessibility: 'accessibility.directional_warning',
+    },
+    budgets: { cameraTrauma: 0.08, particles: 20, voices: 2, uiPulses: 1 },
+    tags: ['critical', 'tether', 'threat', 'sweep_commit'],
+  }),
   'massline.counter_tether.cut': recipe({
     importance: 0.9,
     dedupeWindowTicks: 60,

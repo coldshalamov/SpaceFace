@@ -126,7 +126,7 @@ function deriveLabelKey(derived, hullDefId) {
   ) {
     return 'support';
   }
-  if (finite(derived.damageReductionMult, 1) < 1 || finite(derived.ramDamageDealtMult, 0) > 0) {
+  if (finite(derived.damageReductionMult, 1) < 1 || finite(derived.ramDamageDealtMult, 0) > 0 || derived.hullBurstKind) {
     return 'brawler';
   }
   return 'role';

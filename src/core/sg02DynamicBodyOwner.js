@@ -259,7 +259,7 @@ export class Sg02DynamicBodyOwner {
     if (this.world.integrationParameters) {
       this.world.integrationParameters.maxCcdSubsteps = 4;
       this.world.integrationParameters.numSolverIterations = 12;
-      this.world.integrationParameters.normalizedPredictionDistance = 2.5;
+      this.world.integrationParameters.normalizedPredictionDistance = 3.5;
       this.world.integrationParameters.contact_natural_frequency = 240;
     }
     this.quantum = positive(options.quantum, SG02_DYNAMIC_BODY_OWNER_QUANTUM);
@@ -1234,7 +1234,7 @@ export class Sg02DynamicBodyOwner {
     const closingDv = Math.hypot(e.vx, e.vz);
     const baseLimit = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
       ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
-    const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
+    const maxContactDv = Math.max(baseLimit, closingDv + baseLimit, 350);
     if (dv > maxContactDv) {
       const scale = maxContactDv / dv;
       vx = e.vx + dvx * scale;

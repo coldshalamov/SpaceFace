@@ -787,7 +787,11 @@ export const HELIOS_AUTHORED_ACTIVITY_CAPACITY = 4;
 const heliosAnchors = requireRecord(SECTOR_ANCHORS[HELIOS_ACTIVITY_SECTOR_ID], 'Helios sector anchors');
 const heliosZones = requireArray(SECTOR_ZONES[HELIOS_ACTIVITY_SECTOR_ID], 'Helios sector zones');
 const heliosClaimZone = findById(heliosZones, 'zone_helios_claim', 'Helios claim zone');
-const heliosClaimMarkPoi = findById(heliosAnchors.pois, 'poi_helios_claim_mark', 'Helios claim mark POI');
+// P10: the movement half of the Helios chain hangs off the freight-spine tally, one hop from the
+// opening position, so the neighbourhood is already working when you wake up. The tally POI sits
+// inside zone_helios_freight, which is the freight leg's actual fiction.
+const heliosFreightZone = findById(heliosZones, 'zone_helios_freight', 'Helios freight spine zone');
+const heliosTallyPoi = findById(heliosAnchors.pois, 'poi_helios_tally', 'Helios tally post POI');
 
 const heliosSeamId = 'helios_starter_seam';
 const heliosLegId = 'helios_freight_leg';
@@ -808,7 +812,9 @@ const heliosLegObjects = Object.freeze([
     id: 'helios_freight_staging_pod',
     pocketId: heliosLegId,
     kind: 'cargo_staging_pod',
-    offset: point(48, -22),
+    // P10: origin-side of the tally so the pod itself sits inside two screen-depths of the
+    // opening position (144,146) → 205 WU, not just the pocket anchor.
+    offset: point(24, -34),
     runtimeOwner: 'world',
     targetRef: 'object:helios_freight_staging_pod',
   }),
@@ -870,7 +876,9 @@ const heliosLegActors = Object.freeze([
     namespace: 'helios',
     presentationRole: 'hauler',
     jobKind: 'hauler',
-    spawnOffset: point(34, 18),
+    // P10: origin-side spawn so the working hauler body itself sits inside two screen-depths of
+    // the opening position (94,160) → 186 WU, not only the pocket anchor.
+    spawnOffset: point(-26, -20),
     route: route({
       id: 'helios_freight_inbound_run',
       jobKind: 'hauler',
@@ -878,7 +886,9 @@ const heliosLegActors = Object.freeze([
       receiptType: 'freight:arrival',
       // Transit lane, 180.0 deg / 223.3 WU - the only Helios route that runs straight through its
       // anchor, because the freight leg IS the fiction. Inbound resolves to the real Helios berth
-      // (it is coming); outbound resolves to the authored spine mark (it is going).
+      // (it is coming); outbound resolves to the authored spine mark (it is going). The loop
+      // swings past two screen-depths at its far end and comes back — coming or going is the
+      // read; the working body lives inside the opening frame.
       marks: [
         mark('helios_freight_inbound', -105, -38, 'dest:station_helios'),
         mark('helios_freight_outbound', 105, 38, 'activity:helios-freight-outbound'),
@@ -894,15 +904,16 @@ const heliosLegActors = Object.freeze([
     lawful: true,
     spawnOffset: point(-28, -30),
     route: route({
-      id: 'helios_claim_perimeter',
+      id: 'helios_spine_beat',
       jobKind: 'patrol',
       durationS: 28,
-      // Quarter arc, 104.9 deg / 182.5 WU - the Concord keeps the Sanctioned Claim clear so green
-      // pilots can learn to mine, so the beat goes AROUND the work instead of through it. The only
-      // lawful body in the neighbourhood, and the only one whose route never resolves to a cargo.
+      // Quarter arc, 104.9 deg / 182.5 WU - the Concord walks the arrival end of the freight
+      // spine where green pilots wake up, so the beat goes AROUND the tally instead of through
+      // it. The only lawful body in the neighbourhood, and the only one whose route never
+      // resolves to a cargo.
       marks: [
-        mark('helios_claim_beat_a', -58, 100, 'activity:helios-claim-beat-a'),
-        mark('helios_claim_beat_b', -81, -81, 'activity:helios-claim-beat-b'),
+        mark('helios_spine_beat_a', -58, 100, 'activity:helios-spine-beat-a'),
+        mark('helios_spine_beat_b', -81, -81, 'activity:helios-spine-beat-b'),
       ],
     }),
   }),
@@ -924,10 +935,14 @@ export const HELIOS_ACTIVITY_POCKETS = Object.freeze([
   pocket({
     id: heliosLegId,
     label: 'Freight Leg',
-    identity: Object.freeze({ zoneId: heliosClaimZone.id, placeId: heliosClaimMarkPoi.id }),
+    // P10: the movement half hangs off the freight-spine tally (216 WU from the opening
+    // position), not the claim mark (671 WU out). The work stays at the seam; the movement is
+    // what you see first. zone_helios_freight is the leg's own fiction — the spine the tally
+    // counts freight on — not a claim-margin borrow.
+    identity: Object.freeze({ zoneId: heliosFreightZone.id, placeId: heliosTallyPoi.id }),
     anchor: canonicalAnchor({
-      kind: 'poi', id: heliosClaimMarkPoi.id, zoneId: heliosClaimZone.id,
-      placeId: heliosClaimMarkPoi.id, localPos: heliosClaimMarkPoi.pos,
+      kind: 'poi', id: heliosTallyPoi.id, zoneId: heliosFreightZone.id,
+      placeId: heliosTallyPoi.id, localPos: heliosTallyPoi.pos,
     }),
     actorSlots: heliosLegActors,
     objectSlots: heliosLegObjects,

@@ -119,9 +119,11 @@ export const presentationOrchestrator = {
         });
       }),
       // Rung 10 — massline threat feedback, the consume half of masslineThreats' rung-09 emit.
-      // One cue; severity (0..1) drives magnitude so adapters scale sting/warn intensity, and the
-      // threat kind rides the tags for downstream flavor. Sibling of tether.near_break above.
-      this.bus.on('massline:threat', (payload) => this._emitCue('massline.threat', payload || {}, {
+      // Severity (0..1) drives magnitude so adapters scale sting/warn intensity, and the threat
+      // kind rides the tags for downstream flavor. Sibling of tether.near_break above. SF-023:
+      // the sweep-commit kind gets its own cue variant — "a hostile blade is ABOUT to cut the
+      // line at this point" must not read as the generic swing alarm.
+      this.bus.on('massline:threat', (payload) => this._emitCue(masslineThreatCueId(payload && payload.kind), payload || {}, {
         sourceEvent: 'massline:threat',
         targetId: payload && payload.targetId,
         material: 'massline',
@@ -1664,6 +1666,12 @@ export function tetherBreakCueForReason(reason) {
   if (TETHER_BREAK_SEVERED_REASONS.has(reason)) return 'tether.break.severed';
   if (TETHER_BREAK_ENDPOINT_REASONS.has(reason)) return 'tether.break.endpoint';
   return 'tether.break';
+}
+
+// SF-023 — the committed-blade read is its own cue: the banner/marker voice names an inbound
+// cut on the line, while the generic kinds keep the umbrella swing-threat voice.
+export function masslineThreatCueId(kind) {
+  return kind === 'hostile-sweep-commit' ? 'massline.threat.sweep_commit' : 'massline.threat';
 }
 
 function finiteScore(value) {

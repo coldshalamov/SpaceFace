@@ -154,7 +154,7 @@ test('the shove beat extends a shove-class stun to the coast that clears one scr
 });
 
 test('shove-class sources are the delivered-impulse weapon family; throws and terrain keep the base law', () => {
-  for (const source of ['gun', 'weapon', 'bomb', 'impulse_charge']) {
+  for (const source of ['gun', 'weapon', 'bomb', 'impulse_charge', 'hull_burst']) {
     assert.equal(isShoveClassHitstunSource(source), true, `${source} delivers a shove payload`);
   }
   for (const source of ['rope_throw', 'rope_whip', 'collision', 'well', 'tether_share', 'transverse_snare', 'monofilament_sweep', undefined, null]) {

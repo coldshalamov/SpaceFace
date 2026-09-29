@@ -33,41 +33,67 @@ test('each specialist negates only its own plan', () => {
   const entities = new Map([[1, player]]);
   const state = { playerId: 1, entities, entityList: [player] };
   const calls = [];
+  const anchorCalls = [];
   const fieldsPort = {
     disruptNear() {
       calls.push('disrupt');
       return 1;
     },
+    // SF-049: the anchor's arm cycle goes through the field owner; the stub confirms it.
+    setAnchorArmed(_state, _sourceId, armed, _tick) {
+      anchorCalls.push(armed === true ? 'anchor_arm' : 'anchor_disarm');
+      return { fieldId: 'field_anchor_12', armed: armed === true, activateTick: 100, radius: 235 };
+    },
   };
   const attachments = {
     listForEntity() {
-      return [{ id: 'line-1' }];
+      return [{ id: 'line-1', ownerId: 1, targetId: 'rock-x' }];
     },
     breakAttachment() {
       calls.push('cut');
       return { ok: true };
     },
   };
+  // The rope's anchor: the cutter's committed pass reads the live segment player→rock.
+  entities.set('rock-x', { id: 'rock-x', alive: true, pos: { x: 120, z: 0 } });
 
+  // PB-TAC-A: the cut is a committed pass — the first window tick commits, the next lands.
   const cutter = specialist(10, 40, { enemyTypeId: 'tether_control_raider' });
   state.entityList.push(cutter);
-  const cut = applySpecialistCounterplay({
+  const committed = applySpecialistCounterplay({
     state, specialist: cutter, enemyId: 'tether_control_raider',
     doctrinePhase: 'attach_window', tick: 100, attachments, fields: fieldsPort,
+  });
+  assert.equal(committed, null, 'the commit touches no port');
+  const cut = applySpecialistCounterplay({
+    state, specialist: cutter, enemyId: 'tether_control_raider',
+    doctrinePhase: 'attach_window', tick: 101, attachments, fields: fieldsPort,
   });
   assert.equal(cut && cut.verb, 'cut_line');
   assert.deepEqual(calls, ['cut']);
 
+  // SF-052: in this same world the ghost cannot fire inside the cutter's breather, so the
+  // disruptor negation runs in its own state — the matrix is about plan exclusivity, not
+  // about the composed-pair offset.
   calls.length = 0;
+  const loneState = { playerId: 1, entities: new Map([[1, player]]), entityList: [player] };
   const disruptor = specialist(11, 40, { enemyTypeId: 'quiet_ghost' });
+  // PB-TAC-B (SF-047): the collapse is a committed working interval — the ghost acquires at
+  // the charge telegraph and only lands once the wind-up has elapsed inside the fire window.
+  const acquired = applySpecialistCounterplay({
+    state: loneState, specialist: disruptor, enemyId: 'quiet_ghost',
+    doctrinePhase: 'charge_cue', tick: 100, attachments, fields: fieldsPort,
+  });
+  assert.equal(acquired, null, 'the acquire touches no port');
   const disrupted = applySpecialistCounterplay({
-    state, specialist: disruptor, enemyId: 'quiet_ghost',
-    doctrinePhase: 'fire_window', tick: 100, attachments, fields: fieldsPort,
+    state: loneState, specialist: disruptor, enemyId: 'quiet_ghost',
+    doctrinePhase: 'fire_window', tick: 136, attachments, fields: fieldsPort,
   });
   assert.equal(disrupted && disrupted.verb, 'disrupt_field');
   assert.deepEqual(calls, ['disrupt']);
 
   calls.length = 0;
+  anchorCalls.length = 0;
   const anchor = specialist(12, 80, {
     enemyTypeId: 'field_anchor_controller',
     fieldAnchor: { radius: 235, damping: 3.2 },
@@ -75,10 +101,17 @@ test('each specialist negates only its own plan', () => {
   player.pos.x = 100;
   const snare = applySpecialistCounterplay({
     state, specialist: anchor, enemyId: 'field_anchor_controller',
-    doctrinePhase: 'hold', tick: 100, attachments, fields: fieldsPort,
+    doctrinePhase: 'anchor_hold', tick: 100, attachments, fields: fieldsPort,
   });
   assert.equal(snare && snare.verb, 'snare_field');
+  assert.equal(snare.armed, true, 'the hold arms the snare through the field owner');
+  const snareRecovered = applySpecialistCounterplay({
+    state, specialist: anchor, enemyId: 'field_anchor_controller',
+    doctrinePhase: 'recover', tick: 101, attachments, fields: fieldsPort,
+  });
+  assert.equal(snareRecovered.armed, false, 'the recovery disarms the snare');
   assert.deepEqual(calls, [], 'the anchor does not cut a line or collapse a well');
+  assert.deepEqual(anchorCalls, ['anchor_arm', 'anchor_disarm']);
 
   const mule = {
     id: 30, alive: true, type: 'ship', team: 1, pos: { x: 200, z: 0 }, collisionRadius: 16,

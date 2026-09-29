@@ -235,7 +235,7 @@ export const BOMB_DEFS = Object.freeze({
     id: 'bomb_scrambler',
     shortName: 'Spin',
     name: 'Havoc pod',
-    sentence: 'A wild impulse and a scramble: drives tumble, verbs lock out.',
+    sentence: 'A wild impulse: the hull tumbles — helm out and guns locked until it settles.',
     price: 260,
     magazine: 3,
     rackCategory: 'ordnance',

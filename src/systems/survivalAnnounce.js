@@ -203,15 +203,24 @@ export function waveOpeningLine(wave, plan) {
     const where = joinBearings(bearings);
     const arrival = where ? `Contact ${where}.` : 'Contact on every bearing.';
     const newcomer = swarm.newcomer && swarm.newcomer.name ? swarm.newcomer.name : null;
+    // SF-072: when the plan bent its roster toward the run's dominant build family, the banner
+    // says what the room brought — the player should SEE the room answering their habit.
+    const pressure = typeof swarm.pressureLine === 'string' && swarm.pressureLine
+      ? ` ${swarm.pressureLine}`
+      : '';
+    // SF-062: a mass-gap wave names its lesson — the wall is the room, the gaps are the route.
+    const wall = typeof swarm.wallLine === 'string' && swarm.wallLine
+      ? ` ${swarm.wallLine}`
+      : '';
     if (swarm.boss) {
       // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${arrival} ${label}.${line} Survive the minute.`;
+      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure}${wall} Break the pack.`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${arrival}${namecheck} Survive the minute.`;
+    return `Wave ${wave}. ${arrival}${namecheck}${pressure}${wall} Break the pack.`;
   }
 
   let bodies = 0;

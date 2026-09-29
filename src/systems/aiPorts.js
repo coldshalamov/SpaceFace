@@ -924,7 +924,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
   const activity = effectiveActivityForAI(ai);
   const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
   const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands);
-  return freeze({
+  const self = {
     id: entity.id,
     team: entity.team == null ? null : entity.team,
     pos: vec2(entity.pos, freeze),
@@ -958,7 +958,12 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     ramAuthorized,
     woundedFallbackSpent: ai.woundedFallbackSpent === true,
     ...bands,
-  });
+  };
+  // The id allocator recycles numbers. Copy the occupant token the spawn just
+  // stamped; omit it when the body has none so a tokenless self stays tokenless.
+  const generation = entity.occupantGeneration;
+  if (generation != null && generation !== '') self.occupantGeneration = generation;
+  return freeze(self);
 }
 
 /**

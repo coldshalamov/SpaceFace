@@ -56,6 +56,7 @@ import {
   sizeFits,
   stationShopOffer,
 } from '../../../systems/ships.js';
+import { turnRecordText } from '../../../systems/shipCapabilities.js';
 import { SHIPS } from '../../../data/ships.js';
 import { techDisplayName } from '../../../data/tech.js';
 import { describeHullRole } from '../../../data/shipRoleLattice.js';
@@ -1115,7 +1116,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ['Continuous drain', `${Math.round(finite(d.continuousDrain, 0) * 10) / 10}/s`],
       ['Cargo cap', `${fmt(d.cargoCap)} u`],
       ['Operational mass', `${fmt(d.operationalMass)} t`],
-      ['Turn rate', `${Math.round(finite(d.turnRate, 0) * 100) / 100}`],
+      ['Turn rate', turnRecordText(d)],
       ['Thrust', `${fmt(d.thrust)}`],
       ['Top speed', `${fmt(d.maxSpeed)}`],
     ];

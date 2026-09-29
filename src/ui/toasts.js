@@ -316,6 +316,7 @@ export function createToasts(ctx) {
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
   bindJumpDenialToasts(bus, () => ctx.state);
+  bindExportRecoveryToasts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
 
   return { push, tick };
@@ -358,6 +359,60 @@ export function formatCombatActionRejectLine(reason) {
   return raw.replace(/_/g, ' ');
 }
 
+/**
+ * Demo-prep polish seam (headless-testable): combat-denial toast plan.
+ * Pure helper — maps a rejected action into the exact receipt line plus
+ * a short hint, so a waved-off verb always teaches its fix. Unknown or
+ * empty reasons yield null (no toast), never a raw snake_case leak.
+ */
+const REJECT_HINT = Object.freeze({
+  insufficient_capacitor: 'Let the capacitor refill',
+  heat_limit: 'Ease off until heat falls',
+  target_required: 'Lock a contact first',
+  target_missing: 'Lock a contact first',
+  target_out_of_range: 'Close the range',
+  target_not_hostile: 'Pick a hostile contact',
+  attachment_missing: 'Attach a line first',
+  not_attachment_owner: 'Only your own line answers',
+});
+
+export function combatDenialToastSpec(payload) {
+  const reason = payload && payload.reason != null ? String(payload.reason) : '';
+  const text = formatCombatActionRejectLine(reason);
+  if (!text) return null;
+  if (/^[a-z0-9_]+$/.test(reason) && !REJECT_LINE[reason] && !reason.startsWith('cooldown:')
+    && !reason.startsWith('busy:') && !reason.startsWith('disabled:') && !reason.startsWith('physics_')) {
+    return null;
+  }
+  const hint = REJECT_HINT[reason] || '';
+  return { text, kind: 'error', ttl: 3.5, hint };
+}
+
+/**
+ * Demo-prep polish seam (headless-testable): arrival plan for the receipt lane.
+ * Pure helper — newest receipt rises first; grouped repeats carry their count
+ * so a burst (mining yields, rep ticks) reads as one line, not a stack.
+ */
+export function planReceiptArrival(items) {
+  const list = Array.isArray(items) ? items : [];
+  const seen = new Map();
+  const ordered = [];
+  for (const item of list) {
+    const text = String((item && item.text) || '').trim();
+    if (!text) continue;
+    const kind = String((item && item.kind) || 'info');
+    const key = `${kind}::${text}`;
+    const prior = seen.get(key);
+    if (prior) prior.count += 1;
+    else {
+      const rec = { text, kind, count: 1 };
+      seen.set(key, rec);
+      ordered.push(rec);
+    }
+  }
+  return ordered.slice(0, RECEIPT_MAX);
+}
+
 function isPlayerCombatActor(state, payload) {
   if (!payload) return false;
   const playerId = state && state.playerId;
@@ -381,14 +436,37 @@ export function bindCombatDenialToasts(bus, getState) {
   bus.on('combat:actionRejected', (payload) => {
     const state = typeof getState === 'function' ? getState() : getState;
     if (!isPlayerCombatActor(state, payload)) return;
-    const text = formatCombatActionRejectLine(payload && payload.reason);
-    if (!text) return;
-    bus.emit('toast', { text, kind: 'error', ttl: 3.5 });
+    const spec = combatDenialToastSpec(payload);
+    if (!spec) return;
+    // The hint rides the receipt line so a waved-off verb teaches its fix
+    // in the same beat (demo: no dead "can't do that" without a next step).
+    const text = spec.hint ? `${spec.text} — ${spec.hint}` : spec.text;
+    bus.emit('toast', { text, kind: spec.kind, ttl: spec.ttl });
   });
 }
 
 /** WF-14 — `jump:chargeAbort` becomes one receipt naming the refusal's cause and fix. The
  * Choice-C unfiled charge is excluded: its staged prompt owns that moment. */
+/** One line when an export had to use the previous-generation copy. Blank slots say nothing. */
+export function exportRecoveryToast(payload) {
+  const slot = payload && typeof payload.slot === 'string' ? payload.slot.trim() : '';
+  if (!slot) return null;
+  return {
+    text: `Recovery copy exported for ${slot}`,
+    kind: 'warn',
+    ttl: 4,
+  };
+}
+
+export function bindExportRecoveryToasts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('save:exportRecovery', (payload) => {
+    const spec = exportRecoveryToast(payload);
+    if (!spec || typeof bus.emit !== 'function') return;
+    bus.emit('toast', spec);
+  });
+}
+
 export function bindJumpDenialToasts(bus, getState) {
   if (!bus || typeof bus.on !== 'function') return;
   const seen = new Set();

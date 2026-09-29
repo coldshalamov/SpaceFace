@@ -166,6 +166,26 @@ export function allocateEntityId(state) {
   return id;
 }
 
+/**
+ * Bind a fresh occupant token after the id is assigned. allocateEntityId only
+ * returns a number, and that number is reused, so the token has to live on the
+ * body. Non-enumerable so a for-in save of the corpse does not keep it.
+ */
+export function stampOccupantGeneration(state, entity) {
+  if (!state || typeof state !== 'object' || !entity || typeof entity !== 'object') return null;
+  let next = state.nextOccupantGeneration;
+  if (!Number.isSafeInteger(next) || next < 1) next = 1;
+  if (Object.prototype.hasOwnProperty.call(entity, 'occupantGeneration')) delete entity.occupantGeneration;
+  Object.defineProperty(entity, 'occupantGeneration', {
+    value: next,
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+  state.nextOccupantGeneration = next + 1;
+  return next;
+}
+
 function v3(src) {
   return new SimVector3(src && src.x || 0, 0, src && src.z || 0);
 }

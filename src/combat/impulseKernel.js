@@ -71,7 +71,7 @@ export const SHOVE_BEAT_LAW = Object.freeze({
 // The delivered-impulse weapon family: hits whose payload is momentum (concussion slugs, vector
 // mines, bomb blasts, impulse charges). Rope throws, well flings, terrain collisions and tether
 // shares have their own tuned helm economies and keep the base law alone.
-const SHOVE_CLASS_HITSTUN_SOURCES = Object.freeze(new Set(['gun', 'weapon', 'bomb', 'impulse_charge']));
+const SHOVE_CLASS_HITSTUN_SOURCES = Object.freeze(new Set(['gun', 'weapon', 'bomb', 'impulse_charge', 'hull_burst']));
 
 export function isShoveClassHitstunSource(source) {
   return SHOVE_CLASS_HITSTUN_SOURCES.has(source);

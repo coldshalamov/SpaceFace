@@ -299,6 +299,11 @@ export const survivalWave = {
       : null;
     if (entry.entity && holder && holder !== entry.entity) return;
     if (!entry.entity && holder && holder.alive !== false) return;
+    // SF-069: a receipt for a holder that is demonstrably STILL ALIVE is not a death — the same
+    // live-occupant law the destroyed path applies. Every real emitter (combat kill(), kernel
+    // onKill, damage fallbackKill) marks the body dead before emitting, so this only refuses a
+    // manufactured kill: a surviving enemy can never be counted as resolved.
+    if (holder && holder === entry.entity && holder.alive !== false) return;
     this._resolveCohort(id);
   },
 
@@ -344,9 +349,11 @@ export const survivalWave = {
       const emptyBoard = this._cohort.size === 0;
       // A carried reservoir hold is a protected hole. Ordinary opening packages must not refill
       // it. Champions stay owed — they defer until the hold finishes rather than being dropped.
-      // An empty board is the emergency exception.
+      // Debuts, wall heavies, and the lesson rock's body carry the same debt: a staged arrival
+      // that is DROPPED here simply never happens. An empty board is the emergency exception.
       if (this._swarm && holding && !emptyBoard) {
-        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) {
+        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID
+          || entry.debut === true || entry.wall === true || entry.lesson === true) {
           this._pending[write++] = item;
           continue;
         }
@@ -365,7 +372,10 @@ export const survivalWave = {
       // chaff, with no boss ever fielded. The spawn budget (raised to 38 for the run) is the real
       // authority on whether there is room, and it has plenty.
       let count = entry.count;
-      if (this._swarm && entry.champion !== true) {
+      // A debut body is owed like a champion is owed (SF-064): the wave's staged introduction
+      // must not be silently dropped because the room happened to be full when its tick came.
+      // The same debt applies to a mass-gap wall's late heavies (SF-062) — they ARE the lesson.
+      if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true) {
         count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
         if (count <= 0) continue;
       }
@@ -404,7 +414,9 @@ export const survivalWave = {
         if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
       }
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
-      if (this._swarm?.killTarget && entry.champion === true && receipt.admitted < count) {
+      // The same is true of a staged debut or a wall's heavies: a staged body must land, not vanish.
+      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true || entry.wall === true)
+        && receipt.admitted < count) {
         this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted } };
       }
       // A refused swarm batch must never shrink the planned figure — the stream will bring
@@ -466,7 +478,18 @@ export const survivalWave = {
     const index = this._reinforceIndex++;
     const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
     const rng = mulberry32(swarmStreamSeed(seed, this._wave, index));
-    const archetype = pickSwarmArchetype(this._wave, rng());
+    // The plan's roster may carry build-pressure shares (SF-072); an unbent plan roster is
+    // weight-identical to the static one, so an unpressured run picks exactly as before.
+    let roster = this._swarm && this._swarm.roster;
+    // SF-064: while a debut is still owed, the stream must not field the specialist early —
+    // the fresh-silhouette boost would otherwise make its first sighting a mid-room batch.
+    const newcomerId = this._swarm && this._swarm.newcomer && this._swarm.newcomer.enemyId;
+    if (newcomerId && Array.isArray(roster)
+      && this._pending.some((it) => it && it.entry && it.entry.debut === true)) {
+      const held = roster.filter((entry) => entry.enemyId !== newcomerId);
+      if (held.length > 0) roster = held;
+    }
+    const archetype = pickSwarmArchetype(this._wave, rng(), roster);
     const gateGroup = swarmGateFor(this._wave, index + 4);
     const ownerId = waveOwnerId(this._wave);
     if (!this._owners.includes(ownerId)) this._owners.push(ownerId);

@@ -53,6 +53,7 @@ import {
   CRUCIBLE_SLALOM_WELL_COUNT,
 } from '../data/survivalMutators.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { gateBearing } from './waveMaterialization.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { compileSwarmOptic } from '../data/swarmOpticArenas.js';
@@ -104,6 +105,21 @@ export const SWARM_DEBRIS_SIZE_MAX = 44;
 
 /** Rocks further than this from the player are released to the engine's ordinary despawn sweep. */
 export const SWARM_DEBRIS_KEEP_RADIUS = 900;
+
+/**
+ * SF-067 — cover that stays useful. A monolith is not an invulnerable wall: a hard impact
+ * (thrown hull, heavy ram) wears its hull, and the wear is VISIBLE through `miningWear`, the
+ * progressive shrink/darken hint the renderer already reads. At zero the rock does not vanish —
+ * it fractures into two smaller remnant rocks that still collide, still anchor, and carry
+ * `tetherPayload` so the massline can pick one up and throw it. A remnant that breaks again just
+ * dies: one generation of leftovers, then the lane is clear.
+ */
+const SWARM_DEBRIS_WEAR_SPEED = 26;
+const SWARM_DEBRIS_WEAR_DIV = 110;
+const SWARM_DEBRIS_WEAR_TICK_GAP = 10;
+const SWARM_DEBRIS_REMNANTS = 2;
+const SWARM_DEBRIS_REMNANT_RATIO = 0.42;
+const SWARM_DEBRIS_REMNANT_MASS_K = 5;
 
 /**
  * The radius the FIELD IS COUNTED IN, which is deliberately much tighter than the radius rocks are
@@ -415,6 +431,8 @@ export const swarmArena = {
     this._lastTerrainAnchor = null;
     this._nextTerrainCheck = 0;
     this._terrainRetry = false;
+    this._lessonRockId = null;
+    this._wallWave = 0;
     resetSwarmPressureState();
     bindSwarmPressureContext({
       getAlive: () => liveCohortCount(this.state),
@@ -426,6 +444,7 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
+    this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._release('run_ended')));
   },
 
@@ -445,6 +464,7 @@ export const swarmArena = {
     this._nextTerrainCheck = 0;
     this._terrainRetry = false;
     this._lessonRockId = null;
+    this._wallWave = 0;
     this._releaseWells();
     this._restoreCapacity();
     this._pressureAlive = null;
@@ -492,6 +512,8 @@ export const swarmArena = {
     this._installSlalomWells(run);
     const lesson = payload && payload.plan && payload.plan.openingLesson;
     if (lesson && wave <= 1) this._installOpeningLesson(lesson);
+    const massGap = payload && payload.plan && payload.plan.swarm && payload.plan.swarm.massGap;
+    if (massGap) this._installMassGapWall(massGap, wave);
   },
 
   _onWaveStarted() {
@@ -692,38 +714,8 @@ export const swarmArena = {
       });
     const spawnedIds = [];
     for (const spot of spots) {
-      const size = spot.radius;
-      const oreHP = Math.round(360 + size * 14);
-      const spawned = helpers.spawnEntity({
-        type: 'asteroid',
-        pos: { x: spot.x, z: spot.z },
-        vel: { x: 0, z: 0 },
-        radius: size,
-        physicsBody: { radius: asteroidColliderRadius(TYPE_ID, size) },
-        // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
-        mass: Math.round(size * size * 40),
-        angVel: (rng() - 0.5) * 0.12,
-        hull: oreHP,
-        hullMax: oreHP,
-        collides: true,
-        data: withBankStone({
-          typeId: TYPE_ID,
-          tier: 0,
-          tierCap: 0,
-          oreHP,
-          oreHPMax: oreHP,
-          yieldU: Math.round(6 + size * 0.4),
-          size,
-          // Both marks on purpose: ours for census and teardown, terrainAnchor so the massline's
-          // existing anchor logic treats these exactly like the rocks it already knows.
-          [SWARM_DEBRIS_TAG]: true,
-          terrainAnchor: true,
-          terrainAnchorEncounterIds: [],
-          despawnAt: now + SWARM_DEBRIS_TTL_S,
-          ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}),
-        }),
-      });
-      const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
+      const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
+        reef ? { reefLayoutId: REEF_LAYOUT_ID } : undefined);
       if (id != null) spawnedIds.push(id);
     }
     if (spawnedIds.length === 0) return;
@@ -733,6 +725,261 @@ export const swarmArena = {
       added: spawnedIds.length,
       total: this._ids.length,
       layoutId: reef ? REEF_LAYOUT_ID : layout.id,
+    });
+  },
+
+  /**
+   * SF-067 — the fight deforms the cover it hides behind. Only a tagged debris rock takes wear,
+   * only a real hit chips it (a brush under the speed floor is a nudge, not damage), and only
+   * once per few ticks so a hull grinding along the face chips rather than dissolves. Wear is
+   * mirrored into `miningWear` so the rock visibly darkens/shrinks before it lets go.
+   */
+  _onDebrisImpact(payload) {
+    const state = this.state;
+    const run = state && liveSwarmRun(state);
+    // Only a live fight wears cover — paused phases (draft/refit/cleanup/ended) leave it alone.
+    if (!run || run.phase !== 'active') return;
+    const ents = state.entities;
+    if (!ents || typeof ents.get !== 'function') return;
+    const speed = Number(payload && payload.preSolveClosingSpeed);
+    const dp = Number(payload && payload.dp);
+    if (!(speed >= SWARM_DEBRIS_WEAR_SPEED) || !(dp > 0)) return;
+    const tick = Number.isFinite(payload.tick)
+      ? Math.max(0, Math.trunc(payload.tick))
+      : (Number.isFinite(state.tick) ? Math.max(0, Math.trunc(state.tick)) : 0);
+    const a = ents.get(payload.aId);
+    const b = ents.get(payload.bId);
+    for (const rock of [a, b]) {
+      if (!rock || rock.type !== 'asteroid' || rock.alive === false) continue;
+      const d = rock.data;
+      if (!d || d[SWARM_DEBRIS_TAG] !== true) continue;
+      // A rock in its tick-gap skips, but the impact's OTHER rock still earns its check.
+      if (Number.isFinite(d._debrisWornTick) && tick - d._debrisWornTick < SWARM_DEBRIS_WEAR_TICK_GAP) {
+        continue;
+      }
+      d._debrisWornTick = tick;
+      const hullBefore = Math.max(0, Number(rock.hull) || 0);
+      const hullMax = Math.max(1, Number(rock.hullMax) || hullBefore || 1);
+      const hullAfter = hullBefore - dp / SWARM_DEBRIS_WEAR_DIV;
+      rock.hull = Math.max(0, hullAfter);
+      // oreHP is the field the renderer's fracture-progress reads — keep it paired with hull.
+      d.oreHP = Math.max(0, Math.round(hullAfter));
+      d.miningWear = Math.min(1, Math.max(0, 1 - hullAfter / hullMax));
+      if (hullAfter <= 0) this._fractureDebris(rock);
+      return;
+    }
+  },
+
+  /**
+   * A worn-through monolith leaves two smaller rocks where it stood — still solid, still tagged
+   * so census and teardown own them exactly like the parent, and `tetherPayload`-legal so the
+   * rope can pick one up. A remnant (isChunk) that breaks again just dies; leftovers do not
+   * recurse.
+   */
+  _fractureDebris(rock) {
+    const state = this.state;
+    const d = (rock && rock.data) || {};
+    const rng = state && typeof state.rng === 'function' ? state.rng : null;
+    const helpers = this.helpers;
+    const ids = [];
+    if (!d.isChunk && rng && helpers && typeof helpers.spawnEntity === 'function'
+      && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)) {
+      const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+      const parentRadius = Math.max(1, Number(rock.radius) || Number(d.size) || 8);
+      for (let i = 0; i < SWARM_DEBRIS_REMNANTS; i++) {
+        const ang = rng() * Math.PI * 2;
+        const radius = Math.max(6, parentRadius * (SWARM_DEBRIS_REMNANT_RATIO + rng() * 0.08));
+        const dist = parentRadius * 0.55 + radius;
+        const oreHP = Math.max(40, Math.round(parentRadius * 10));
+        const spawned = helpers.spawnEntity({
+          type: 'asteroid',
+          pos: {
+            x: rock.pos.x + Math.cos(ang) * dist,
+            z: rock.pos.z + Math.sin(ang) * dist,
+          },
+          vel: { x: 0, z: 0 },
+          radius,
+          physicsBody: { radius: asteroidColliderRadius(TYPE_ID, radius) },
+          // Remnant mass is written for the rope, not the wall: heavy enough to read as rock,
+          // light enough that the massline can actually pick it up.
+          mass: Math.round(radius * radius * SWARM_DEBRIS_REMNANT_MASS_K),
+          angVel: (rng() - 0.5) * 0.3,
+          hull: oreHP,
+          hullMax: oreHP,
+          collides: true,
+          data: withBankStone({
+            typeId: TYPE_ID,
+            tier: 0,
+            tierCap: 0,
+            oreHP,
+            oreHPMax: oreHP,
+            yieldU: 2,
+            size: radius,
+            [SWARM_DEBRIS_TAG]: true,
+            terrainAnchor: true,
+            terrainAnchorEncounterIds: [],
+            // Inherit the parent's clock — a drift-released rock must not leave orphans behind.
+            despawnAt: Math.min(
+              now + SWARM_DEBRIS_TTL_S,
+              Number.isFinite(d.despawnAt) ? d.despawnAt : Infinity,
+            ),
+            isChunk: true,
+            tetherPayload: true,
+          }),
+        });
+        const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
+        if (id != null) {
+          ids.push(id);
+          this._ids.push(id);
+          this._emit('asteroid:chunked', {
+            parentId: rock.id,
+            chunkId: id,
+            minerId: null,
+            massU: 0,
+            bulkCore: false,
+            commodityId: null,
+          });
+        }
+      }
+    }
+    d.miningWear = 1;
+    rock.alive = false;
+    this._emit('swarmArena:debrisFractured', {
+      id: rock.id,
+      remnantIds: ids,
+      tick: Number.isFinite(state && state.tick) ? state.tick : null,
+    });
+    this._emit('asteroid:destroyed', {
+      id: rock.id,
+      typeId: TYPE_ID,
+      pos: rock.pos ? { x: rock.pos.x, z: rock.pos.z } : null,
+    });
+  },
+
+  /**
+   * One debris monolith: same spec everywhere the system makes cover — the ambient field top-up,
+   * the mass-gap wall, and (by tag, not by shape) SF-067 wear and fracture. Returns the id.
+   */
+  _spawnDebrisRock(x, z, size, rng, now, extraData) {
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return null;
+    const oreHP = Math.round(360 + size * 14);
+    const spawned = helpers.spawnEntity({
+      type: 'asteroid',
+      pos: { x, z },
+      vel: { x: 0, z: 0 },
+      radius: size,
+      physicsBody: { radius: asteroidColliderRadius(TYPE_ID, size) },
+      // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
+      mass: Math.round(size * size * 40),
+      angVel: (rng() - 0.5) * 0.12,
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      data: withBankStone({
+        typeId: TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU: Math.round(6 + size * 0.4),
+        size,
+        // Both marks on purpose: ours for census and teardown, terrainAnchor so the massline's
+        // existing anchor logic treats these exactly like the rocks it already knows.
+        [SWARM_DEBRIS_TAG]: true,
+        terrainAnchor: true,
+        terrainAnchorEncounterIds: [],
+        despawnAt: now + SWARM_DEBRIS_TTL_S,
+        ...(extraData || {}),
+      }),
+    });
+    return spawned && typeof spawned === 'object' ? spawned.id : spawned;
+  },
+
+  /**
+   * SF-062 — the mass-gap wall. A chord of monoliths stands on one bearing from the fight's
+   * anchor with exactly the plan's two slots left open, so the room has a corridor and two
+   * navigable paths around it. The rocks are ordinary debris: they wear, fracture, and sling
+   * exactly like the field the top-up owns. Installs once per planned wave.
+   */
+  _installMassGapWall(massGap, wave) {
+    if (!massGap || this._wallWave === wave) return;
+    const state = this.state;
+    if (!state || !Number.isFinite(massGap.distance) || !Number.isInteger(massGap.rocks)) return;
+    const anchor = playerAnchor(state);
+    const bearing = gateBearing(massGap.gate);
+    // The chord runs perpendicular to its gate bearing, centered on the wall line.
+    const perp = { x: -bearing.z, z: bearing.x };
+    const size = Number.isFinite(massGap.rockRadius) ? massGap.rockRadius : 26;
+    const spacing = size * 2.4;
+    const slotX = (i) => anchor.x + bearing.x * massGap.distance + perp.x * ((i - (massGap.rocks - 1) / 2) * spacing);
+    const slotZ = (i) => anchor.z + bearing.z * massGap.distance + perp.z * ((i - (massGap.rocks - 1) / 2) * spacing);
+    // A slot reads blocked when an ambient rock already fills its corridor — the field debris
+    // skips this machinery, so the wall has to check the room it is landing in. Snapshot the
+    // blockers once: a wall rock must never read its own chordmates as ambient geometry.
+    const blockers = [];
+    for (const e of state.entities.values()) {
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      blockers.push({ x: e.pos.x, z: e.pos.z, r: Number.isFinite(e.radius) ? e.radius : 0 });
+    }
+    const occupied = (i) => {
+      const sx = slotX(i), sz = slotZ(i);
+      for (const b of blockers) {
+        // The rock's disc overlapping this slot's own footprint is what makes it blocked —
+        // one slot over is the corridor's neighbor, not the corridor.
+        const r = b.r + size;
+        const dx = b.x - sx, dz = b.z - sz;
+        if (dx * dx + dz * dz < r * r) return true;
+      }
+      return false;
+    };
+    // A planned gap must be genuinely navigable: when ambient geometry already fills it, the
+    // gap shifts to the nearest open slot on the same side of the chord rather than promising
+    // a corridor that is not there.
+    const planned = Array.isArray(massGap.gapSlots) ? massGap.gapSlots : [];
+    const gaps = new Set();
+    for (const g of planned) {
+      if (!Number.isInteger(g) || !occupied(g)) {
+        if (Number.isInteger(g)) gaps.add(g);
+        continue;
+      }
+      const lo = g < 4 ? 1 : 5, hi = g < 4 ? 3 : 7;
+      let best = null;
+      for (let d = 1; d <= hi - lo; d++) {
+        for (const i of [g - d, g + d]) {
+          if (i < lo || i > hi || gaps.has(i) || planned.includes(i) || occupied(i)) continue;
+          best = i;
+          break;
+        }
+        if (best != null) break;
+      }
+      gaps.add(best == null ? g : best);
+    }
+    const rng = mulberry32(debrisStreamSeed(
+      Number.isInteger(state.run && state.run.seed) ? state.run.seed : 1,
+      Number.isInteger(wave) ? wave : 1,
+    ) ^ 0x5f062);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const ids = [];
+    for (let i = 0; i < massGap.rocks; i++) {
+      if (gaps.has(i)) continue;
+      // An ambient rock sharing a wall slot is fine — it merges into the chord and the solver
+      // separates any overlap. Only the two gap slots carry the navigability contract.
+      const id = this._spawnDebrisRock(slotX(i), slotZ(i), size, rng, now);
+      if (id != null) ids.push(id);
+    }
+    if (ids.length === 0) return;
+    this._wallWave = wave;
+    this._ids = this._ids.concat(ids);
+    // The banner announced the shape at wave start; the drop itself gets its own beat so the
+    // room changing underfoot is a felt event, not a silent edit.
+    this._emit('toast', { text: 'The wall is closing — mind the gaps.', kind: 'warn', ttl: 3.5 });
+    this._emit('swarmArena:massGapWall', {
+      wave,
+      gate: massGap.gate,
+      rocks: ids.length,
+      gaps: [...gaps],
+      ids: ids.slice(),
     });
   },
 
@@ -923,6 +1170,7 @@ export const swarmArena = {
 
   _release(reason) {
     this._lessonRockId = null;
+    this._wallWave = 0;
     this._restoreCapacity();
     this._releaseWells();
     this._releaseOpticIds();

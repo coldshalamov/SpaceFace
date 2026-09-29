@@ -114,12 +114,102 @@ function validateRunModifierInner(entry) {
   return { ok: issues.length === 0, issues };
 }
 
+/**
+ * What one pick says about how the run kills (SF-072). Three families, matching the vocabulary
+ * `applyBuildPressure` already speaks in survivalWavePlanner: `collision` is mass-as-weapon —
+ * thrown hulls, lines, rams, and the room doing the killing. `orbit` is gunnery — the build
+ * wins on shots and positioning. `chain` is multiplication — one hit that spreads, primes, or
+ * herds a pack. Purely defensive cards (Screen/Harden/Chaff) and synthesis records carry no
+ * family on purpose: armor is not a way of killing, and a run that only bought defense has no
+ * dominant verb to test.
+ */
+const VERB_BUILD_FAMILY = Object.freeze({
+  Throw: 'collision',
+  Tag: 'collision',
+  Bind: 'collision',
+  Weight: 'collision',
+  Ram: 'collision',
+  Pull: 'collision',
+  Whip: 'collision',
+  Reel: 'collision',
+  Charges: 'collision',
+  Spool: 'collision',
+  Sweep: 'collision',
+  Snare: 'collision',
+  Bank: 'orbit',
+  Fan: 'orbit',
+  Seek: 'orbit',
+  Pierce: 'orbit',
+  Punch: 'orbit',
+  Sustain: 'orbit',
+  Burn: 'orbit',
+  Volume: 'orbit',
+  Cadence: 'orbit',
+  Sidearm: 'orbit',
+  Burst: 'orbit',
+  Drive: 'orbit',
+  Cool: 'orbit',
+  Arc: 'chain',
+  Fork: 'chain',
+  Twin: 'chain',
+  Web: 'chain',
+  Freeze: 'chain',
+  Short: 'chain',
+  Scramble: 'chain',
+  Unsteer: 'chain',
+  Mine: 'chain',
+  Trap: 'chain',
+});
+
+export const RUN_BUILD_FAMILIES = Object.freeze(['collision', 'orbit', 'chain']);
+
+/** The build family a display verb belongs to, or null for defensive/untyped picks. */
+export function verbBuildFamily(verb) {
+  return typeof verb === 'string' && Object.hasOwn(VERB_BUILD_FAMILY, verb)
+    ? VERB_BUILD_FAMILY[verb]
+    : null;
+}
+
+/**
+ * The run's build summary — the input `planWave` buildSummary was shaped for.
+ *
+ * Reads `state.run.modifiers` verbatim: only the verb on each immutable record is read, so a
+ * stale save or a hand-authored record can never produce a family the catalog does not name.
+ * `dominant` is the family the most picks feed; a tie goes to the family of the most RECENT
+ * pick among the tied families, because the last card bought is the build the player is
+ * actually flying now. A run with no family-bearing picks (or only defense) returns
+ * `dominant: null` — nothing to test, nothing to pressure.
+ */
+export function summarizeRunBuild(modifiers) {
+  const tally = { collision: 0, orbit: 0, chain: 0 };
+  const recency = { collision: -1, orbit: -1, chain: -1 };
+  let picks = 0;
+  const list = Array.isArray(modifiers) ? modifiers : [];
+  for (let i = 0; i < list.length; i++) {
+    const family = verbBuildFamily(list[i] && list[i].verb);
+    if (!family) continue;
+    picks += 1;
+    tally[family] += 1;
+    recency[family] = i;
+  }
+  let dominant = null;
+  let best = 0;
+  for (const family of RUN_BUILD_FAMILIES) {
+    const n = tally[family];
+    if (n > best || (n === best && n > 0 && dominant != null && recency[family] > recency[dominant])) {
+      best = n;
+      dominant = family;
+    }
+  }
+  return { dominant, tally, picks };
+}
+
 /** Build a live-shaped record. Pure: never writes state.
  * Incomplete or null input yields a structurally complete but INVALID record —
  * callers must run it through validateRunModifier. */
 export function runModifierRecord(args) {
   const src = args || {};
-  return {
+  const record = {
     kind: typeof src.kind === 'string' ? src.kind : null,
     offerId: typeof src.offerId === 'string' ? src.offerId : null,
     verb: typeof src.verb === 'string' ? src.verb : null,
@@ -128,4 +218,12 @@ export function runModifierRecord(args) {
     replaced: typeof src.replaced === 'string' ? src.replaced : null,
     wave: Number.isInteger(src.wave) ? src.wave : 0,
   };
+  // Evolution notes remember the parts they spent. A hole in that list drops the
+  // field entirely so a weapon note keeps the seven keys the draft already locks.
+  const consumes = src.consumes;
+  const cleanConsumes = Array.isArray(consumes)
+    && consumes.length > 0
+    && consumes.every((id) => typeof id === 'string' && id.length > 0);
+  if (cleanConsumes) record.consumes = consumes.slice();
+  return record;
 }

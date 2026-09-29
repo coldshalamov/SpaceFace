@@ -31,6 +31,7 @@ import {
   impulseProvenanceGeneration,
   isShoveClassHitstunSource,
   readRecentImpulseProvenance,
+  recordImpulseProvenance,
   resolveHitstunLaw,
   signedHitSide,
 } from '../combat/impulseKernel.js';
@@ -40,6 +41,11 @@ const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
 const RCS_PROVENANCE = 'rcs_disruptor_spike';
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+// The impulse record a rope throw leaves on the thrown hull. `massline` is the rope family's weapon
+// id (collisionConsequences RAM_SHADOW_ROPE_WEAPON) and `massline_throw` its tag, so the ram/flail
+// identity check still treats it as the rope's doing and not as a fresh contact cause.
+const THROW_PROVENANCE_WEAPON = 'massline';
+const THROW_PROVENANCE_TAG = 'massline_throw';
 // INF-027: post-tumble stabilization window. Long enough to read as its own beat (the ship
 // damps spin and thrusts weakly with no guns), short enough to never be helpless. Sim-time
 // stamped on entity data so save/load cannot strand or skip it.
@@ -248,11 +254,29 @@ export const tumbleStates = {
     const state = this.state;
     if (!massline2Flag('tumble') || !state) return;
     const victim = entityById(state, payload.payloadId);
+    const deltaV = finite(payload.payloadSpeed);
+    // Hull-burst overhaul slice A (`combat.tumbleFling`): the hull the player throws leaves the line
+    // as a projectile, and whatever it meets is the player's doing. A weapon hit writes an impulse
+    // record with the shooter's id (damage.js applyImpulse); a rope throw wrote none, so the kill a
+    // thrown hull made on a rock was blamed on the hull itself (killerId === the hull, no loot burst;
+    // measured on the real runtime by feel.fling_scene throwShort / throwLong, flights of 1.2 s and
+    // 3.9 s alike). The record is the same kind a gun hit leaves, so the flight hold below carries it
+    // for the whole tumble plus recovery beat. Flag off (the frozen 47-A profile) writes nothing.
+    const throwTick = combatFlag('tumbleFling') && canCarryThrowCredit(state, victim) ? (state.tick | 0) : null;
+    if (throwTick != null) {
+      recordImpulseProvenance(victim, {
+        actorId: state.playerId,
+        weaponId: THROW_PROVENANCE_WEAPON,
+        tag: THROW_PROVENANCE_TAG,
+        appliedTick: throwTick,
+        magnitude: deltaV * massOf(victim),
+      });
+    }
     this._beginFromImpulse(victim, {
       source: 'rope_throw',
       kind: MASSLINE_TUMBLE_KIND,
       cause: 'thrown',
-      deltaV: finite(payload.payloadSpeed),
+      deltaV,
       attackerId: state.playerId,
       attackerMass: massOf(entityById(state, state.playerId)),
       hitSide: numericParity(payload.payloadId) ? 1 : -1,
@@ -261,8 +285,10 @@ export const tumbleStates = {
         schemaVersion: 1,
         kind: 'massline',
         source: 'throw',
-        tag: 'massline_throw',
+        tag: THROW_PROVENANCE_TAG,
         payloadId: payload.payloadId == null ? null : payload.payloadId,
+        // The hold in _beginFromImpulse extends only the record that caused THIS tumble.
+        ...(throwTick != null ? { appliedTick: throwTick } : {}),
       }),
     });
   },
@@ -542,6 +568,14 @@ export const tumbleStates = {
     return kernel.statuses.clear(victim, runtime, TUMBLE_STATUS_ID, reason);
   },
 };
+
+// A thrown hull carries the thrower's credit only if it is a live non-player ship or drone: the same
+// bodies the tumble itself admits (_beginFromImpulse), and only when there is a player to credit.
+function canCarryThrowCredit(state, victim) {
+  return !!(victim && victim.alive !== false && victim.data
+    && state.playerId != null && victim.id !== state.playerId
+    && (victim.type === 'ship' || victim.type === 'drone'));
+}
 
 function freezeTumbleAnnouncement(payload) {
   const provenance = payload.provenance && typeof payload.provenance === 'object'
