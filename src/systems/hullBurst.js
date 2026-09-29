@@ -32,6 +32,14 @@ function finite(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Same rule the renderer applies: either accessibility flag keeps a danger tell readable, not blinding. */
+function flashReduced(state) {
+  const settings = state && state.settings;
+  const v = settings && settings.video;
+  const a = settings && settings.accessibility;
+  return !!((v && (v.motionReduce || v.flashReduce)) || (a && a.flashReduce));
+}
+
 function simNow(state) {
   return Number.isFinite(state && state.simTime) ? state.simTime : finite(state && state.tick) / 60;
 }
@@ -166,7 +174,10 @@ export const hullBurst = {
         kind: def.id, name: def.name, durationS: def.durationS, cooldownS: def.cooldownS,
         reachWu: def.reachWu, halfAngleRad: def.halfAngleRad,
       });
-      this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: { x: player.pos.x, z: player.pos.z }, gain: 0.4 });
+      // Presentation only (bus events; the sim never reads them back): a gravitic thrum and a flare at the nose.
+      const nose = { x: player.pos.x + Math.cos(finite(player.rot)) * finite(player.radius, 12), z: player.pos.z + Math.sin(finite(player.rot)) * finite(player.radius, 12) };
+      this.bus.emit('audio:cue', { id: 'sfx_wpn_gravitic', position: nose, gain: 0.8 });
+      this.bus.emit('presentation:vfxCue', { id: 'hullburst.ignite', lane: 'hullburst', pos: nose, particles: 20, lights: 1, flashReduced: flashReduced(state) });
     }
     return true;
   },
@@ -193,7 +204,10 @@ export const hullBurst = {
       this.activate();
     }
     const now = simNow(state);
-    if (rt.phase === 'cooling' && now >= rt.readyAt) rt.phase = 'ready';
+    if (rt.phase === 'cooling' && now >= rt.readyAt) {
+      rt.phase = 'ready';
+      if (this.bus) this.bus.emit('audio:cue', { id: 'sfx_wpn_capacitor_ready', gain: 0.6 });
+    }
     if (rt.phase !== 'active') return;
     if (now >= rt.activeUntil) { this._end('expired'); return; }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
@@ -278,7 +292,15 @@ export const hullBurst = {
         kind: def.id, targetId: target.id, hostile, deltaV, closing,
         pos: { x: target.pos.x, z: target.pos.z }, dirX, dirZ,
       });
-      if (hostile) this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: { x: target.pos.x, z: target.pos.z }, gain: 0.7 });
+      if (hostile) {
+        const at = { x: target.pos.x, z: target.pos.z };
+        // Louder and bigger the harder the throw: the cue scales with the delta-V it delivered.
+        const weight = Math.max(0.2, Math.min(1, deltaV / def.maxDeltaVWuS));
+        this.bus.emit('audio:cue', { id: 'sfx_bomb_concussion_shove', position: at, gain: 0.5 + 0.5 * weight });
+        this.bus.emit('presentation:vfxCue', {
+          id: 'hullburst.hit', lane: 'hullburst', pos: at, particles: Math.round(10 + 22 * weight), lights: 1, flashReduced: flashReduced(state),
+        });
+      }
     }
   },
 };

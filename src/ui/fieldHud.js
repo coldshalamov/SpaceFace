@@ -29,6 +29,8 @@ import {
   claimBottomLaneSeat,
   releaseBottomLaneClaim,
 } from './hudLayout.js';
+import { resolveHullBurst } from '../data/hullBurst.js';
+import { resolveActionLabel } from '../systems/input.js';
 
 export const FIELD_HUD_CSS = `
 .sf-field-pill {
@@ -50,6 +52,10 @@ export const FIELD_HUD_CSS = `
 .sf-field-pill.field-repulsor { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-field-pill.field-denied { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
 .sf-field-pill.field-cooldown { color: var(--dp-ink-mute, #96948e); border-left-color: var(--dp-lamp-dim, #8a6b3a); text-shadow: var(--dp-etch-shadow, none); }
+/* the hull burst: LIVE burns like the repulsor's lamp; RECHARGING is a quiet cooldown; the ready hint is bone */
+.sf-field-pill.field-burst { color: var(--dp-lamp-hot, #ffd98c); border-left-color: var(--dp-lamp, #f2b950); text-shadow: var(--dp-emit-lamp, none); }
+.sf-field-pill.field-burst-recharge { color: var(--dp-ink-mute, #96948e); border-left-color: var(--dp-lamp-dim, #8a6b3a); text-shadow: var(--dp-etch-shadow, none); }
+.sf-field-pill.field-burst-ready { border-left-color: var(--hud-line, var(--dp-metal-4, #2f3542)); }
 .sf-field-pill.field-current-warning { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-field-pill.field-current-surge { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
 /* calm current is information: bone ink, no lamp lit */
@@ -65,7 +71,7 @@ const KIND_LABEL = { well: 'WELL', repulsor: 'REPULSOR', cone: 'CONE' };
 // priorities (denial > active > environmental > cooldown) in src/ui/hudLayout.js.
 function fieldLanePriority(cls) {
   if (cls === 'field-denied') return LANE_PRIORITY.denial;
-  if (cls === 'field-cooldown') return LANE_PRIORITY.cooldown;
+  if (cls === 'field-cooldown' || cls === 'field-burst-recharge' || cls === 'field-burst-ready') return LANE_PRIORITY.cooldown;
   if (cls.startsWith('field-current')) return LANE_PRIORITY.environmental;
   return LANE_PRIORITY.active; // '' — the cone / deployed-field voices
 }
@@ -83,6 +89,8 @@ export const fieldHud = {
     this._visible = false;
     this._laneSeat = '';
     this._cinderPhaseOut = {};
+    this._burstReadyUntil = 0;
+    this._burstWasReady = false;
   },
 
   destroy() {
@@ -101,7 +109,8 @@ export const fieldHud = {
     const f = state.fields || null;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const environmental = this._resolveEnvironmental(state, now);
-    const { text, cls } = this._resolve(f, now, environmental);
+    const burst = this._resolveBurst(state, now);
+    const { text, cls } = this._resolve(f, now, environmental, burst);
     if (!text) { this._hide(dom); return; }
     // Lane contract: claim this voice's seat for the frame; a cooldown voice stays silent while
     // a load-bearing pill (planet band, current clock) occupies the shared bottom-center lane.
@@ -113,8 +122,8 @@ export const fieldHud = {
 
   // One-voice resolution: a fresh denial wins for a beat, then an occupied environmental timing
   // corridor, then the primary active player field, then a pending cooldown. Returns { text, cls }.
-  _resolve(f, now, environmental = null) {
-    if (!f && !environmental) return { text: '', cls: '' };
+  _resolve(f, now, environmental = null, burst = null) {
+    if (!f && !environmental && !burst) return { text: '', cls: '' };
     // Denial (transient, ~1.8s): the reason is the HUD's whole job here.
     const denial = f && f.lastDenial;
     if (denial && Number.isFinite(denial.at) && now - denial.at < 1.8) {
@@ -124,6 +133,9 @@ export const fieldHud = {
       }
       return { text: `${label} DENIED`, cls: 'field-denied' };
     }
+    // The hull burst while it is LIVE: a few seconds the player lit on purpose, and the one number they
+    // are racing. It outranks a held cone or a deployed field, never a fresh denial.
+    if (burst && burst.live) return { text: burst.text, cls: burst.cls };
     if (environmental) {
       if (environmental.phase === 'quiet') {
         return { text: 'CINDER SLUICE — CURRENT QUIET', cls: 'field-current-calm' };
@@ -162,6 +174,8 @@ export const fieldHud = {
       const cls = soonest.kind === 'repulsor' ? 'field-repulsor' : '';
       return { text: remain != null ? `${label} — ${stateWord} ${remain}s` : `${label} — ${stateWord}`, cls };
     }
+    // The burst's recharge (and its brief ready hint) sit at cooldown value, below every live voice.
+    if (burst && burst.text) return { text: burst.text, cls: burst.cls };
     // Cooldown readiness (soonest pending).
     const cds = f && f.cooldowns || {};
     let bestKind = null, bestReady = Infinity;
@@ -173,6 +187,41 @@ export const fieldHud = {
       return { text: `${KIND_LABEL[bestKind] || 'FIELD'} READY ${Math.max(0, Math.ceil(bestReady - now))}s`, cls: 'field-cooldown' };
     }
     return { text: '', cls: '' };
+  },
+
+  // Hull-burst voice (slice C): null when no burst module is fitted. Live while the wedge burns; a
+  // quiet recharge countdown after; and a 3 s "ready + key" hint each time it comes back (and once at
+  // the start of a flight), which is how the player learns the key without a permanent legend.
+  _resolveBurst(state, now) {
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const derived = player && player.data && player.data.derived;
+    // resolveHullBurst builds a fresh object; the fitted type changes only at the station, so cache it.
+    let def = null;
+    if (derived && derived.hullBurstKind) {
+      const key = `${derived.hullBurstKind}:${derived.hullBurstRank}`;
+      if (!this._burstDef || this._burstDef.key !== key) {
+        this._burstDef = { key, def: resolveHullBurst(derived.hullBurstKind, derived.hullBurstRank) };
+      }
+      def = this._burstDef.def;
+    }
+    if (!def) { this._burstReadyUntil = 0; this._burstWasReady = false; return null; }
+    const rt = state.hullBurst || null;
+    const name = def.name.toUpperCase();
+    if (rt && rt.phase === 'active') {
+      this._burstWasReady = false;
+      return { live: true, text: `${name} — LIVE ${Math.max(0, Math.ceil(rt.activeUntil - now))}s`, cls: 'field-burst' };
+    }
+    if (rt && rt.phase === 'cooling' && rt.readyAt - now > 0.05) {
+      this._burstWasReady = false;
+      return { live: false, text: `${name} — RECHARGING ${Math.ceil(rt.readyAt - now)}s`, cls: 'field-burst-recharge' };
+    }
+    if (!this._burstWasReady) { this._burstWasReady = true; this._burstReadyUntil = now + 3; }
+    if (now < (this._burstReadyUntil || 0)) {
+      const key = resolveActionLabel(state, 'hullBurst', { empty: '' });
+      return { live: false, text: key ? `${name} — READY  [${key}]` : `${name} — READY`, cls: 'field-burst-ready' };
+    }
+    return null;
   },
 
   _resolveEnvironmental(state, now) {
@@ -200,6 +249,9 @@ export const fieldHud = {
       dom.pill.classList.toggle('field-repulsor', cls === 'field-repulsor');
       dom.pill.classList.toggle('field-denied', cls === 'field-denied');
       dom.pill.classList.toggle('field-cooldown', cls === 'field-cooldown');
+      dom.pill.classList.toggle('field-burst', cls === 'field-burst');
+      dom.pill.classList.toggle('field-burst-recharge', cls === 'field-burst-recharge');
+      dom.pill.classList.toggle('field-burst-ready', cls === 'field-burst-ready');
       dom.pill.classList.toggle('field-current-warning', cls === 'field-current-warning');
       dom.pill.classList.toggle('field-current-surge', cls === 'field-current-surge');
       dom.pill.classList.toggle('field-current-calm', cls === 'field-current-calm');

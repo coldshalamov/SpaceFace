@@ -455,6 +455,7 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (code === 'NumLock') return 'Num Lock';
   if (code === 'CapsLock') return 'Caps Lock';
   if (code === 'Backquote') return '`';
+  if (code === 'Backslash') return '\\';
   if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
   if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
   return code;
