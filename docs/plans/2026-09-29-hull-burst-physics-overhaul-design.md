@@ -1,7 +1,8 @@
 <!-- LIFETIME: DURABLE -->
 # Hull Burst and the physics overhaul — design
 
-Status: owner-validated design, 2026-09-29. Informative rationale: this file does not dispatch work or
+Status: owner-validated design, 2026-09-29 (extended the same day with the arcade loot loop, §7, and the
+open-sandbox rules, §8). Informative rationale: this file does not dispatch work or
 grant a lease. Implementation is admitted through the ordinary program queue (`build_map.md` §1).
 Product authority stays `design/VISION.md` ("The Massline is a signature mechanic", "Combat should feel
 delightfully abusive").
@@ -49,6 +50,9 @@ What already exists and is not a new invention (verified 2026-09-29):
 | 3 | Shape | **Mostly front-facing.** The nose is the weapon; heading, spin and swing arcs matter. Volumes are cone/ring/sheet, never a sphere (field-kernel law). |
 | 4 | Scope | **Full physics overhaul** (ground rules, burst family, tie-ins, enemies, pay, consequences). |
 | 5 | Crash risk | **The player never takes physics or impact damage.** At worst a temporary stun and tumble. Ships that take too much pressure or impact tumble out of control, fly off in a new direction and ping off objects, and are **not acted on by their own propulsion** while tumbling. Nothing should "buzz against the wind." |
+| 6 | Kill loot when the hold is full | **Overflow auto-converts to credits** at a scrap discount. Nothing is ever refused or left floating. Kills should feel like points: shiny winnings burst out and accelerate into the hull; collecting them by hand is a chore. |
+| 7 | Hold size vs the economy | A **separate combat-loot salvage bay** (about 5x a normal hold, upgradeable). The ordinary cargo hold is untouched, because trade and mining income per trip scales with hold size and "5x everywhere" would multiply the whole economy. Raised and replaced after that consequence was explained. |
+| 8 | How the sandbox loosens | **All three:** more things grabbable and throwable, a reaction table so touching primitives trigger each other, and every tool working on every movable object. |
 
 Ruling 5 flips one existing rule: "the player ship never tumbles" (comment in `tumbleStates.js`;
 asserted in `scripts/check-massline2.mjs`, `test/weapon-impulse-consequence.test.mjs`,
@@ -139,12 +143,88 @@ Pay and consequences (credit parity between kill styles is kept):
 - **Collateral is real:** a tumbling hull that strikes a civilian or patrol counts as the player's
   harm (heat, reputation, scattered cargo) under the existing civilian-harm rules.
 
-## 7. Safety, save and testing
+## 7. Arcade payoff loop (stage 2)
+
+Goal (owner): fast, arcade-style, dopamine-forward. A good throw on three enemies into an asteroid field
+should burst them into shiny winnings that accelerate toward the ship and "bling" into it as credits.
+
+What exists (verified 2026-09-29): a player kill of a hostile already emits a victim-scaled burst of
+pickups plus physical credit chips (`src/systems/lootShards.js`, recipes in `src/data/killRewards.js`,
+victim velocity inheritance `KILL_BURST_VEL_INHERIT` 0.4). Every ship already has an 800 WU homing
+pickup magnet (`MAGNET_RANGE`, `playerPickupMagnetRange` in `src/systems/mining.js`). Credit chips are
+currency and never use the hold. The friction is the hold: the starter hull holds 250
+(`src/data/ships.js`), one light-kill burst is about 68 units of material, and a full hold refuses
+pickups (`resolvePickupAcceptance`), which recreates the "weigh the loot against my space" chore.
+
+Rules:
+
+1. **Every kill the player causes pays:** gun, fling, crush, chain. A hull the player flung that dies
+   on a rock pays like a gun kill (same attribution as §5.2). Credit parity between kill styles stays.
+2. **The burst carries the victim's momentum,** so kills over an asteroid field scatter loot across it.
+3. **Beat, then homing.** After a short beat so the burst reads (placeholder 0.5-1.0 s), all loot from
+   the player's kills homes to the hull from anywhere in the sector at rising speed: no radius limit,
+   no expiry during the chase, bounded pickup count.
+4. **Bling feedback.** Pitch-stepping pickup audio and a rolling counter. Chips are the points; chain
+   length multiplies their value through the existing stunt combo bank (`src/systems/stuntCombo.js`).
+5. **Salvage bay.** A separate combat-loot store, base about 5x the ship's ordinary hold
+   (placeholder), upgradeable by module/tech. It auto-fills, is written only by the cargo owner, and
+   never refuses a pickup: overflow is converted to credits by the economy owner at a scrap rate
+   (placeholder 60% of reference value). The ordinary hold and its trade/mining role are unchanged.
+6. **Leaving banks it.** Loot still in flight when the player jumps or docks is banked instantly.
+7. **Salvage skill (optional).** A fresh wreck lingers a few seconds; working it with the beam strips
+   extra rare parts. A bonus for players who like it, never a requirement. The existing wreck-salvage
+   career stays as it is.
+
+Save: the salvage bay is persistent state, so it needs a save-schema version bump and migration
+(`check:save-schema`).
+
+## 8. Every object is a primitive (stages 6-7)
+
+Goal (owner): every object is a primitive and possible ammunition; loosen or expand the rules to
+maximize chaining. All three loosenings were chosen (decision 8).
+
+What exists (verified 2026-09-29): dynamic bodies by default are ship, drone, payload, projectile,
+pickup, wreck and asteroid chunks (`defaultDynamic` in `src/core/physicsAuthority.js`). Whole
+asteroids, stations, beacons and mines are static. Massline tow candidates are wreck, payload, pickup
+or entities flagged towable / fractureChunk / bulkHaul (`TOW_TYPES`, `isTowCandidate` in
+`src/combat/masslineTargetScoring.js`); asteroids and stations serve as anchors. Reaction pieces exist
+but are separate: volatile pod classes (`src/data/commodityVolatileClasses.js`), bomb payloads (frag,
+concussion, singularity, goo, EMP, thermite, scrambler, anchor in `src/data/bombs.js`), and statuses
+including cryo lock (`src/combat/statuses.js`, `src/combat/cryoLock.js`).
+
+Rules:
+
+1. **One physics door.** Every tool (Massline heads, burst wedges, bombs, fields) acts on any movable
+   body through the physics-authority impulse and status seams. No "ships only" special cases inside
+   tools.
+2. **Size classes.** Small and medium asteroids become movable and throwable (dynamic on touch, asleep
+   again afterward, with a hard cap on awake bodies); hard hits fracture them into chunks. Large
+   asteroids stay anchors ("moving terrain"). Stations stay fixed and may shed debris.
+3. **More grabbable things.** Mines, enemy missiles and beacons/buoys can be latched and thrown
+   (catch a missile and return it).
+4. **Reaction table.** One data table, material + state to outcome, driven by an event observer with
+   no per-tick scans. Starter set: explosive (pods, mines, missiles blast and hurl neighbors), fire
+   (ignites fuel and explosives, spreads between touching hulls), cold (freeze, then a hard hit
+   shatters into shards), goo/grip (fuse hulls into one flingable lump), charge (arcs between metal
+   hulls, kills thrust, tumbles them).
+5. **Telegraph and attribution.** Every reaction has a readable telegraph and counts as the player's
+   doing, so it feeds the chain bonus.
+
+Risks to watch: the awake-body budget, reaction runaway (cap chain depth per second), and readability
+of many simultaneous effects.
+
+## 9. Safety, save and testing
 
 - Feature switches default OFF in the frozen `legacy47a` profile so the deterministic goldens stay
   byte-identical; ON in `production`. Never edit `test/*.expected.json` to pass.
 - Burst state is transient and unsaved. A save load, dock, jump or death ends it. It cannot stack.
 - Allies in the wedge are nudged, never flung or harmed.
+- Single writers hold: the economy owns credits (overflow conversion goes through it), the cargo
+  owner writes the salvage bay, and homing loot, awake rocks and reaction chains are capped and
+  event-driven. Frame cost is measured with the runtime witness, not by capture.
+- Added proof numbers for §7-§8: share of kill loot collected with no pilot input (target: all of it),
+  seconds from kill to last chip landing, chain length per fling, and a fixed-seed reaction chain
+  (explosive pod into three hulls) that repeats identically.
 - Frontend changes stay minimal and follow `design/frontend/ORRERY.md`; a HUD indicator is required
   (a feature is not done until it is reachable on the default route: shop, key, HUD, VFX, audio).
 - Proof is a fixed-seed number, not a screenshot: share of light-ship hits that tumble, distance a
@@ -154,13 +234,18 @@ Pay and consequences (credit parity between kill styles is kept):
 Known tuning risks (tune, do not solve now): player stun length, heavy resistance, and whether the
 recharge reads as a special attack or a wait.
 
-## 8. Build order
+## 10. Build order
 
 1. Ground rules: tumble law retune, thrust cut, bounce, capped player stun; update the old
    "player never tumbles" assertions.
-2. Burst framework plus Gravity Bumper, end to end (module, key, HUD, VFX, audio, tiers).
-3. Fire Lance and Grip Bumper.
-4. Speed scaling, fling credit, weak-point contact.
-5. Stabilizer, Skirmisher, physics writs, collateral.
+2. Arcade payoff loop (§7): kill credit for anything the player caused (including flung hulls),
+   homing loot, chain counter and audio, the salvage bay with overflow to credits, save-schema bump.
+   Moved early: it is mostly existing systems and makes every later stage more fun to test.
+3. Burst framework plus Gravity Bumper, end to end (module, key, HUD, VFX, audio, tiers).
+4. Fire Lance and Grip Bumper.
+5. Speed scaling and weak-point contact.
+6. Movable rocks, mines and missiles, and the one physics door for every tool (§8.1-8.3).
+7. The reaction table (§8.4-8.5).
+8. Stabilizer, Skirmisher, physics writs, collateral.
 
 Each stage is reachable in the real game before the next begins.
