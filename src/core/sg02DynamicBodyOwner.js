@@ -1623,9 +1623,12 @@ export class Sg02DynamicBodyOwner {
       let cap = Infinity;
       // A contact with a hull that has lost its helm is a projectile hit: the raised bound applies to
       // BOTH sides, or the struck hull's own 40 WU/s per-tick bound would truncate the knock.
-      const pairBound = recA._tumbling === true || recB._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
-      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * pairBound);
-      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * pairBound);
+      // The player's own record keeps the ordinary bound: its per-contact delta-V feeds the fragile-cargo
+      // and camera-trauma receipts, and a fling must not raise what a hit on the player costs it.
+      const tumbleContact = recA._tumbling === true || recB._tumbling === true;
+      const boundFor = (rec) => (tumbleContact && !(rec.entity && rec.entity.isPlayer === true) ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV);
+      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * boundFor(recA));
+      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * boundFor(recB));
       if (cap === Infinity) return;
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
