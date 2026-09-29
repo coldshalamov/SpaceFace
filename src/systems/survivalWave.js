@@ -205,6 +205,12 @@ export const survivalWave = {
       this._concurrent = Number.isInteger(swarm.concurrent) && swarm.concurrent > 0
         ? swarm.concurrent
         : 8;
+      // The stake's pressure scale, stamped on the plan beside the concurrency it already moved.
+      // Without it the stream would chase the BASELINE pressure curve up to the scaled ceiling —
+      // a contracted 65% room that re-fills to 100% is not the contract anyone picked.
+      this._pressureScale = Number.isFinite(swarm.pressureScale) && swarm.pressureScale > 0
+        ? swarm.pressureScale
+        : 1;
       this._reinforceGap = Number.isInteger(swarm.reinforceGapTicks) && swarm.reinforceGapTicks > 0
         ? swarm.reinforceGapTicks
         : 24;
@@ -451,7 +457,7 @@ export const survivalWave = {
     const progress = this._swarm.killTarget
       ? this._resolved / Math.max(1, this._plannedBodies)
       : (durationSeconds > 0 ? Math.max(0, Math.min(1, this._elapsedSeconds() / durationSeconds)) : 1);
-    const target = Math.min(this._concurrent, swarmPressureAt(this._wave, progress));
+    const target = Math.min(this._concurrent, Math.round(swarmPressureAt(this._wave, progress) * this._pressureScale));
     const alive = this._cohort.size + this._pendingBodies();
     if (alive >= target) return;
 
@@ -599,6 +605,7 @@ export const survivalWave = {
     this._waveStartedSimTime = null;
     this._lastProgressSecond = null;
     this._concurrent = 0;
+    this._pressureScale = 1;
     this._reinforceGap = 24;
     this._reinforceBatch = 3;
     this._reinforceIndex = 0;

@@ -4,7 +4,9 @@ import { admitStuntThreat, threatReward } from '../combat/stuntScoring.js';
 import { bodyLife } from '../combat/stuntEvidence.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
+import { swarmStakeFor } from '../data/swarmStakes.js';
 import { bankActive, resetRound, settleCrash } from './stuntCombo.js';
+import { isSwarmRuleset } from './survivalSwarm.js';
 
 export const KILL_XP_BASE = 2;
 export const KILL_SCORE_PER_LEVEL = 100; // compatibility name; levels do not multiply immutable threat pay
@@ -95,19 +97,28 @@ export const survivalRewards = {
     const killerId = payload.killerId ?? payload.provenance?.actorId;
     const playerOwned = playerId != null && killerId === playerId;
     this._emit('run:awardRequested', { xp: killXpFor(victim.data?.level), score: playerOwned ? threat.baseScore : 0, reason: 'kill', wave: run.wave });
-    r.baseCash += threat.credits;
-    r.entitlements[lifeId] = { credits: threat.credits, settled: false, wave: run.wave };
-    this._dropRunChip(victim, payload, threat);
+    const credits = Math.max(0, Math.round(threat.credits * this._creditScale(run)));
+    r.baseCash += credits;
+    r.entitlements[lifeId] = { credits, settled: false, wave: run.wave };
+    this._dropRunChip(victim, payload, threat, credits);
     this._payStipend();
   },
-  _dropRunChip(victim, payload, threat) {
+  _dropRunChip(victim, payload, threat, credits) {
     const pos = victim.pos || payload.pos;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return; // entitlement remains collectible at clear
     const vel = victim.vel || {};
     this._emit('loot:drop', { pos: { x: pos.x, z: pos.z }, vel: { x: Number(vel.x) || 0, z: Number(vel.z) || 0 }, source: 'kill_burst', items: [{
-      kind: CREDIT_CHIP_KIND, credits: threat.credits, amount: threat.credits, wallet: RUN_WALLET,
+      kind: CREDIT_CHIP_KIND, credits, amount: credits, wallet: RUN_WALLET,
       entitlementId: threat.lifeId, grantReason: `crucible:wave${this._planWave}:chip`,
     }] });
+  },
+  // The stake's earn multiplier rides every credit the run pays — chips, sweeps and the stipend
+  // cap all derive from these entitlements, so scaling the admission is scaling the contract.
+  // An unstaked or non-swarm run reads 1: the threat table stays the price of a body there.
+  _creditScale(run) {
+    return run && isSwarmRuleset(run.ruleset)
+      ? swarmStakeFor(run.telemetry && run.telemetry.swarmStake).earn
+      : 1;
   },
   _onEntitySpawned(payload) {
     const entity = payload?.entity ?? this._entity(payload?.id);

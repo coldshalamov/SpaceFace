@@ -349,6 +349,25 @@ function planSwarmWave({ seed, wave, rng, mutators, swarmStake }) {
   const list = mutatorList(mutators);
   let packages = swarmOpeningPackages(w, rng);
   if (list.includes('heavies_only')) packages = applyHeaviesOnly(packages);
+  const stake = swarmStakeFor(swarmStake);
+  if (stake.pressure !== 1) {
+    // Pressure scales the opening burst itself, not just the ceiling it fills under: champion
+    // bodies are owed exactly as authored (a wing of one is never scaled to zero), while the
+    // chaff groups thin or thicken with the contract. batchSize follows count — in an opening
+    // package one batch is one group.
+    packages = packages.map((pkg) => (pkg && pkg.champion === true
+      ? pkg
+      : { ...pkg, count: Math.max(1, Math.round(pkg.count * stake.pressure)), batchSize: Math.max(1, Math.round(pkg.count * stake.pressure)) }));
+    // The spawn budget stays the hard authority: an over-asked burst trims its tail packages
+    // rather than passing the overflow to dispatch, where a refused batch is dropped not owed.
+    let burst = swarmOpeningCount(packages);
+    for (let i = packages.length - 1; i >= 0 && burst > SPAWN_BUDGET_DEFAULT_MAX; i--) {
+      const pkg = packages[i];
+      if (!pkg || pkg.champion === true) continue;
+      const trim = Math.min(pkg.count - 1, burst - SPAWN_BUDGET_DEFAULT_MAX);
+      if (trim > 0) { pkg.count -= trim; pkg.batchSize = pkg.count; burst -= trim; }
+    }
+  }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w);
@@ -362,13 +381,15 @@ function planSwarmWave({ seed, wave, rng, mutators, swarmStake }) {
   // The stake is the swarm's difficulty contract: pressure moves concurrency and the round
   // quota (bodies, never stats), earn moves what a cleared round pays. Concurrency is still
   // clamped under the arena's own cap — a stake can never ask for a room the budget refuses.
-  const stake = swarmStakeFor(swarmStake);
   if (stake.pressure !== 1) {
     swarm.concurrent = Math.max(1, Math.min(SWARM_SPAWN_CAP, Math.round(swarm.concurrent * stake.pressure)));
-    swarm.openingPressure = Math.max(1, Math.min(swarm.concurrent, Math.round(swarm.openingPressure * stake.pressure)));
+    swarm.openingPressure = Math.max(1, Math.min(swarm.concurrent, swarmOpeningCount(packages)));
     swarm.killTarget = Math.max(1, Math.round(swarm.killTarget * stake.pressure));
     swarm.rewardReferenceKills = Math.max(1, Math.round(swarm.rewardReferenceKills * stake.pressure));
   }
+  // The wave owner paces reinforcement arrivals off the same pressure the packages were
+  // scaled by — stamped raw so the pressure curve the stream chases is the contracted one.
+  swarm.pressureScale = stake.pressure;
   swarm.stake = stake.id;
   const rewards = swarmRewards(w);
   if (stake.earn !== 1) rewards.credits = Math.max(0, Math.round(rewards.credits * stake.earn));
