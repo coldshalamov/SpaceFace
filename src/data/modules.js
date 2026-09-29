@@ -428,6 +428,15 @@ const SHIPPED_MODULES = [
     energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 1 },
   },
   {
+    // FIRE LANCE — the finisher (design doc 2026-09-29 section 4). A narrow, short wedge you must fly straight
+    // at: contact is thermal damage through the combat kernel, credited to you. A light or medium hull dies;
+    // a heavy ignites and burns. Full effect at speed; a crawling touch only scorches. Same key as every hull
+    // burst, one per hull; the type is the build. Tuned in data/hullBurst.js.
+    id: 'mod_fire_lance_s', name: 'Fire Lance S', slotType: 'utility', size: 'S', tier: 3, mass: 5, price: 32000,
+    requiresTech: 'tech_plasma_dynamics',
+    energyDraw: 0, mods: { hullBurst: 'lance', hullBurstRank: 1 },
+  },
+  {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
     energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
   },
@@ -809,6 +818,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_jump_drive_m: 'Jumps you farther than the hull\'s own drive.',
   mod_ram_plate: 'The hull itself hits harder when you mean to ram.',
   mod_gravity_bumper_s: 'Press the burst key and, for a few seconds, the nose throws every hostile hull it touches. The faster you arrive, the farther they fly.',
+  mod_fire_lance_s: 'Press the burst key and, for a few seconds, a narrow lance burns whatever the nose touches: light and medium hulls die, heavies ignite. Fly straight at it, fast.',
   mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
   mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
   mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',

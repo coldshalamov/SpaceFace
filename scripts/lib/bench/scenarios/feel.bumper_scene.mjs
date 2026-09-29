@@ -106,21 +106,26 @@ function spawnHostileHull(host, hullId, pos) {
   return hull;
 }
 
-async function bootBumper(seed, { systems = BUMPER_SYSTEMS, playerPos = { x: 0, z: 0 } } = {}) {
+async function bootBumper(seed, { systems = BUMPER_SYSTEMS, playerPos = { x: 0, z: 0 }, moduleId = 'mod_gravity_bumper_s', kind = 'gravity' } = {}) {
+  const fittings = fittingsFromDefaultModules(PLAYER_HULL, [moduleId]);
   const host = await bootRealPath({
     seed,
     systems: [...systems],
-    hulls: [{
-      hullId: PLAYER_HULL, pos: playerPos, rot: 0, isPlayer: true,
-      fittings: fittingsFromDefaultModules(PLAYER_HULL, ['mod_gravity_bumper_s']),
-    }],
+    // The fitting lives where the game keeps it (the owned ship), not only on the spawned entity: the ships
+    // system recomputes derived stats from ownedShips whenever the hold's mass changes (a pickup), and a
+    // module that only the spawn knew about vanishes on the first chip: the burst then ends 'interrupted'.
+    prepareState: ({ state }) => {
+      state.player.ownedShips = [{ defId: PLAYER_HULL, fittings: [...fittings] }];
+      state.player.activeShipIndex = 0;
+    },
+    hulls: [{ hullId: PLAYER_HULL, pos: playerPos, rot: 0, isPlayer: true, fittings }],
   });
   const features = host.runtime && host.runtime.config && host.runtime.config.features;
   const impulseOn = !!(features && features.combat && features.combat.weaponImpulseConsequences);
   const tumbleOn = !!(features && features.massline2 && features.massline2.enabled && features.massline2.tumble);
   const fitted = host.player && host.player.data && host.player.data.derived && host.player.data.derived.hullBurstKind;
   if (!impulseOn || !tumbleOn) return { host, reason: 'production feel flags off' };
-  if (fitted !== 'gravity') return { host, reason: `the Gravity Bumper is not in the derived stats (${fitted})` };
+  if (fitted !== kind) return { host, reason: `the ${moduleId} burst is not in the derived stats (${fitted})` };
   return { host };
 }
 
@@ -319,6 +324,91 @@ async function runField(seed) {
   };
 }
 
+/**
+ * FIRE LANCE. A full-speed pass down a line of three live Wasps (loot systems live) and one Warden-class heavy:
+ * kills caused by the lance and credited to the player, loot that lands with no pilot input, and whether the
+ * heavy survives the touch and is burning. Damage is the combat kernel's; nothing here writes a hull.
+ */
+async function runLance(seed) {
+  const boot = await bootBumper(seed, {
+    systems: [...BUMPER_SYSTEMS, lootShards, mining, ships, cargo, economy],
+    playerPos: { x: -700, z: 0 },
+    moduleId: 'mod_fire_lance_s',
+    kind: 'lance',
+  });
+  if (boot.reason) return { measured: false, tag: 'lance', reason: boot.reason };
+  const { host } = boot;
+  const player = host.player;
+  const derivedCap = player.data && player.data.derived && player.data.derived.cargoCap;
+  if (Number.isFinite(derivedCap) && host.state.player && host.state.player.cargo) host.state.player.cargo.capVolume = derivedCap;
+  player.vel.x = 200;
+  player.vel.z = 0;
+  // Three Wasps down the line of flight, and a heavy well off it that the pass never reaches, plus a second
+  // heavy squarely in the line last so the lance meets it.
+  const wasps = [-470, -420, -370].map((x) => spawnHostile(host, 'wasp_swarmer', { x, z: 0 }));
+  const warden = spawnHostileHull(host, 'ship_warden', { x: -250, z: 0 });
+  host.step(1);
+  const walletBefore = finite(host.state.player && host.state.player.credits);
+  const waspIds = new Set(wasps.map((w) => w.id));
+  const killed = [];
+  const hits = [];
+  let activated = false;
+  host.bus.on('hullBurst:activated', () => { activated = true; });
+  host.bus.on('entity:killed', (p) => { if (p && waspIds.has(p.id)) killed.push({ id: p.id, killerId: p.killerId == null ? null : p.killerId, tick: host.state.tick | 0 }); });
+  host.bus.on('hullBurst:hit', (p) => { if (p) hits.push({ targetId: p.targetId, damage: round(p.damage, 1), scale: round(p.scale, 2), stacks: p.burnStacks, lethal: !!p.lethal }); });
+  const pool = (e) => finite(e.hull) + finite(e.shield) + finite(e.armorHp);
+  const wardenPool0 = pool(warden);
+  let wardenBurnSeen = false;
+  let lit = false;
+  const pickupLives = new Map();
+  let pickupsSeen = 0;
+  host.step(60 * 20, {
+    before: ({ state }) => {
+      if (!lit) lit = light(host);
+      writeRealPathInput(state, lit && hits.length >= 4 ? { brake: true } : { moveZ: 1, boost: true });
+    },
+    after: ({ state }) => {
+      const list = state.entityList || [];
+      for (let k = 0; k < list.length; k++) {
+        const e = list[k];
+        if (!e || e.type !== 'pickup') continue;
+        const life = pickupLives.get(e.id);
+        if (life && life.entity === e) continue;
+        pickupsSeen++;
+        pickupLives.set(e.id, { entity: e, leftTick: null });
+      }
+      for (const [id, life] of pickupLives) {
+        if (life.leftTick != null) continue;
+        const live = state.entities && state.entities.get ? state.entities.get(id) : null;
+        if (!live || live !== life.entity || live.alive === false) life.leftTick = state.tick | 0;
+      }
+      // Statuses live on the combat runtime's record for the entity, not on the entity.
+      const record = state.combat && state.combat.entities ? state.combat.entities[String(warden.id)] : null;
+      if (!wardenBurnSeen && record && JSON.stringify(record).includes('status_burning')) wardenBurnSeen = true;
+      return undefined;
+    },
+  });
+  const stranded = [...pickupLives.values()].filter((l) => l.leftTick == null).length;
+  return {
+    measured: true,
+    tag: 'lance',
+    lit: activated,
+    hostiles: wasps.length,
+    hits,
+    killed: killed.length,
+    killedCreditedToPlayer: killed.filter((k) => k.killerId === player.id).length,
+    pickupsSeen,
+    pickupsStranded: stranded,
+    landedShare: pickupsSeen > 0 ? round((pickupsSeen - stranded) / pickupsSeen, 3) : null,
+    walletDelta: round(finite(host.state.player && host.state.player.credits) - walletBefore, 1),
+    wardenAlive: warden.alive !== false,
+    wardenPoolLostShare: round(1 - pool(warden) / Math.max(1, wardenPool0), 3),
+    wardenBurnSeen,
+    playerAlive: player.alive !== false,
+    realPathProof: host.proof(),
+  };
+}
+
 export const scenario = {
   id: 'feel.bumper_scene',
   label: 'BUMPER Gravity Bumper yardstick: crawl vs swing fling distance, heavy shrug, three Wasps into a rock wall',
@@ -333,6 +423,7 @@ export const scenario = {
     // player's own ram; the burst has to beat it, not be it.
     const control = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'control_heavy', throttle: 1, boost: true, burst: false });
     const field = await runField(seed);
+    const lance = await runLance(seed);
 
     const targets = [];
     const push = (id, label, value, unit, met, note) => targets.push({ id, label, value, unit, met: !!met, ...(note ? { note } : {}) });
@@ -394,12 +485,24 @@ export const scenario = {
         `${field.pickupsStranded} still floating; ${field.overflowConverted} refused ore paid credits; wallet +${field.walletDelta}`);
     }
 
+    if (lance.measured) {
+      push('lance.kills', 'Fire Lance: kills credited to the player, of three Wasps in the line of flight (no gun fired)',
+        lance.killedCreditedToPlayer, 'kills', lance.killedCreditedToPlayer === lance.hostiles,
+        `${lance.killed} of ${lance.hostiles} died; hits ${JSON.stringify(lance.hits)}`);
+      push('lance.landed', 'Fire Lance: share of spawned loot the hull accepts with no pilot input',
+        lance.landedShare, 'fraction', lance.landedShare === BUMPER_TARGETS.fieldLandedShare,
+        `${lance.pickupsSeen} pickups, ${lance.pickupsStranded} still floating; wallet +${lance.walletDelta}`);
+      push('lance.heavyBurns', 'Fire Lance: a Warden-class hull in the line survives the touch and is burning',
+        lance.wardenAlive && lance.wardenBurnSeen ? 1 : 0, 'bool', lance.wardenAlive && lance.wardenBurnSeen,
+        `alive ${lance.wardenAlive}, burning seen ${lance.wardenBurnSeen}, shield+armour+hull lost ${lance.wardenPoolLostShare}`);
+    }
+
     return {
       metrics: {
         schema: 'spaceface.feel.bumperScene.v1',
         realPathProof: (crawl && crawl.realPathProof) || null,
         targetsDefinition: BUMPER_TARGETS,
-        crawl, swing, medium, heavy, control, field,
+        crawl, swing, medium, heavy, control, field, lance,
         targets,
       },
     };

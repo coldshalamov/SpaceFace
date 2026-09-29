@@ -17,6 +17,7 @@
 // ready). All timing is sim time. The system is absent from the frozen legacy47a list, so the golden
 // cannot see it.
 import { resolveHullBurst } from '../data/hullBurst.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
   publishHitstunImpulse,
   recordImpulseProvenance,
@@ -202,7 +203,7 @@ export const hullBurst = {
     this._latched = new WeakSet();
     const now = simNow(this.state);
     // Cutting it short keeps the recharge honest: the clock always runs from the moment it stopped.
-    const def = resolveHullBurst(rt.kind, 1);
+    const def = fittedHullBurst(this.state) || resolveHullBurst(rt.kind, 1);
     if (reason !== 'expired' && def) rt.readyAt = now + def.cooldownS;
     if (this.bus) this.bus.emit('hullBurst:ended', { kind: rt.kind, reason, hits: rt.hits });
   },
@@ -244,8 +245,67 @@ export const hullBurst = {
       const closing = (finite(player.vel && player.vel.x) - finite(target.vel && target.vel.x)) * geo.radialX
         + (finite(player.vel && player.vel.z) - finite(target.vel && target.vel.z)) * geo.radialZ;
       const hostile = isHostileToPlayer(target, playerTeam, state);
-      this._hurl(state, rt, def, player, target, geo, closing, bumperMass, hostile);
+      this._deliver(state, rt, def, player, target, geo, closing, bumperMass, hostile);
     }
+  },
+
+  /** One hostile (or not) inside the wedge, once: what happens is the fitted type's `effect`. */
+  _deliver(state, rt, def, player, target, geo, closing, bumperMass, hostile) {
+    switch (def.effect) {
+      case 'lance': return this._lance(state, rt, def, player, target, closing, hostile);
+      default: return this._hurl(state, rt, def, player, target, geo, closing, bumperMass, hostile);
+    }
+  },
+
+  /**
+   * FIRE LANCE. Thermal damage through the combat kernel, credited to the player (so a kill is the player's
+   * and pays the ordinary loot burst). Full effect at `fullSpeedWuS` closing; below it the hit scales down but
+   * never to nothing. A light or medium hull takes more than its whole pool and dies; a heavy takes a bounded
+   * share and burns. A non-hostile hull is left alone: a lance does not nudge, it burns, and it burns the
+   * player's enemies only.
+   */
+  _lance(state, rt, def, player, target, closing, hostile) {
+    if (!hostile) return;
+    const mass = massOf(target, 1);
+    const scale = Math.max(def.minScale, Math.min(1, finite(closing) / def.fullSpeedWuS));
+    const pool = Math.max(0, finite(target.hull)) + Math.max(0, finite(target.shield)) + Math.max(0, finite(target.armorHp));
+    const light = mass <= def.lightMediumMaxMass;
+    const full = light
+      ? pool * def.lethalMargin + Math.max(0, finite(target.armorFlat))
+      : Math.min(pool * def.heavyPoolShare, def.heavyDamageCap);
+    const damage = full * scale;
+    if (!(damage > 0)) return;
+    const stacks = Math.max(1, Math.round(def.burnStacks * scale));
+    const at = { x: finite(target.pos.x), z: finite(target.pos.z) };
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'thermal',
+      pos: at,
+      approach: { x: Math.cos(finite(player.rot)), z: Math.sin(finite(player.rot)) },
+      statuses: [{ id: 'status_burning', stacks }],
+      source: { kind: 'hull_burst', burst: def.id, moduleId: def.moduleId },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    rt.hits += 1;
+    this._routeDamage({
+      attackerId: state.playerId,
+      targetId: target.id,
+      packet,
+      origin: { kind: 'hull_burst', id: def.moduleId },
+    });
+    if (this.bus) {
+      this.bus.emit('hullBurst:hit', { kind: def.id, targetId: target.id, hostile: true, damage, closing, scale, burnStacks: stacks, lethal: light && scale >= 0.99, pos: at });
+      this.bus.emit('audio:cue', { id: 'sfx_bomb_thermite_ignite', position: at, gain: 0.5 + 0.5 * scale });
+      this.bus.emit('presentation:vfxCue', { id: 'hullburst.lance', lane: 'hullburst', pos: at, particles: Math.round(10 + 24 * scale), lights: 1, flashReduced: flashReduced(state) });
+    }
+  },
+
+  /** The combat kernel is the only writer of hull, shield and armour: same route the impulse-charge blast takes. */
+  _routeDamage(request) {
+    const helpers = this.helpers;
+    if (helpers && typeof helpers.routeCombatDamage === 'function') return helpers.routeCombatDamage(request);
+    if (this.bus) this.bus.emit('combat:routeDamage', request);
+    return null;
   },
 
   _hurl(state, rt, def, player, target, geo, closing, bumperMass, hostile) {

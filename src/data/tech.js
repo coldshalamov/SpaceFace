@@ -32,7 +32,7 @@ export const TECH_NODES = [
   {
     id: 'tech_plasma_dynamics', name: 'Plasma Dynamics', branch: 'combat', prereqs: ['tech_kinetic_drivers', 'tech_beam_focusing'],
     cost: { credits: 10500, rp: 14 },
-    unlocks: { modules: ['wpn_plasma_cannon_m', 'wpn_emp_disruptor_m', 'wpn_rcs_disruptor_m'] },
+    unlocks: { modules: ['wpn_plasma_cannon_m', 'wpn_emp_disruptor_m', 'wpn_rcs_disruptor_m', 'mod_fire_lance_s'] },
   },
   {
     id: 'tech_deflector_theory', name: 'Deflector Theory', branch: 'combat', prereqs: [],

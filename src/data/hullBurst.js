@@ -19,9 +19,15 @@
 // The wedge is a cone, never a sphere (field-kernel law): reach ahead of the nose, a half angle
 // that opens with distance, and a small nose width so a dead-centre approach can never miss.
 
+// `effect` says what the wedge DOES to a hostile that enters it: 'throw' (momentum, the Gravity Bumper),
+// 'lance' (thermal damage through the combat kernel: contact kills light and medium hulls, heavies burn) or
+// 'grip' (catch one light hull and carry it on the nose). Geometry, timing, latch and the hostile/nudge split
+// are shared; only the delivery differs, so a new type is a data row plus one small delivery function.
 export const HULL_BURST_TYPES = Object.freeze({
   gravity: Object.freeze({
     id: 'gravity',
+    effect: 'throw',
+    blurb: 'throws hostile hulls at the nose, harder the faster you arrive',
     name: 'Gravity Bumper',
     moduleId: 'mod_gravity_bumper_s',
     // Timing. The recharge is clearly longer than the window (design section 4).
@@ -45,6 +51,33 @@ export const HULL_BURST_TYPES = Object.freeze({
     // What a non-hostile hull in the wedge gets instead: a nudge, never a fling or a stun.
     nudgeMaxDeltaVWuS: 12,
     // Per-target latch: a hull is hurled once per activation, never re-hit every tick.
+    hitStunSource: 'hull_burst',
+  }),
+  // FIRE LANCE (design doc section 4): a narrow, short wedge you must fly straight at. Contact is thermal
+  // damage through the combat kernel, credited to the player: a light or medium hull takes more than its whole
+  // pool (shield + armour + hull) and dies (its kill pays the ordinary loot burst); a heavy takes a bounded
+  // share and burns. Scaled by closing speed like every burst: a crawling touch scorches, a full-speed pass
+  // finishes. It never throws (no shove, no tumble): the finisher, where the bumper is the opener.
+  lance: Object.freeze({
+    id: 'lance',
+    effect: 'lance',
+    blurb: 'burns through the hull at the nose: light and medium hulls die, heavies ignite',
+    name: 'Fire Lance',
+    moduleId: 'mod_fire_lance_s',
+    durationS: 4,
+    cooldownS: 16,
+    reachWu: 95,
+    halfAngleRad: 0.16,       // ~9 degrees: a lance, not a cone
+    noseWidthWu: 9,
+    massScale: 1,             // unused by the lance (no momentum), kept so every type carries the same shape
+    lightMediumMaxMass: 100,  // at or under this a full-speed hit kills; above it the hull only burns
+    lethalMargin: 1.25,       // a light/medium hull takes this multiple of its whole pool at full speed
+    fullSpeedWuS: 140,        // closing speed at which the hit is the module's full effect
+    minScale: 0.12,           // even a crawling touch scorches a little
+    heavyPoolShare: 0.3,      // a heavy takes this share of its pool at full speed...
+    heavyDamageCap: 500,      // ...capped
+    burnStacks: 3,            // status_burning stacks at full speed (scaled down with speed, at least 1)
+    nudgeMaxDeltaVWuS: 0,     // a non-hostile hull is simply left alone by a lance
     hitStunSource: 'hull_burst',
   }),
 });

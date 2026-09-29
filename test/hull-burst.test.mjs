@@ -40,13 +40,14 @@ function harness({ fitted = 'gravity', playerVel = { x: 0, z: 0 }, docked = fals
     mode: 'flight', tick: 0, simTime: 0, input: { actions: { hullBurst: false } },
   };
   const impulses = [];
+  const damages = [];
   const events = [];
   const listeners = Object.create(null);
   const bus = {
     on(type, fn) { (listeners[type] = listeners[type] || []).push(fn); return () => {}; },
     emit(type, payload) { events.push({ type, payload }); for (const fn of listeners[type] || []) fn(payload); },
   };
-  const helpers = { combatPhysics: { applyImpulse: (req) => { impulses.push(req); return true; } } };
+  const helpers = { combatPhysics: { applyImpulse: (req) => { impulses.push(req); return true; } }, routeCombatDamage: (req) => { damages.push(req); return null; } };
   hullBurst.init({ state, bus, helpers });
   const add = (over) => {
     const ent = {
@@ -58,7 +59,7 @@ function harness({ fitted = 'gravity', playerVel = { x: 0, z: 0 }, docked = fals
     return ent;
   };
   const tick = (n = 1) => { for (let i = 0; i < n; i++) { state.tick += 1; state.simTime = state.tick / 60; hullBurst.update(1 / 60); } };
-  return { state, player, add, tick, impulses, events, bus };
+  return { state, player, add, tick, impulses, damages, events, bus };
 }
 
 test('the throw is momentum: a crawl is a nudge, a full-speed arrival is the full effect, heavies shrug', () => {
@@ -274,4 +275,86 @@ test('state.hullBurst is plain data: it survives JSON and structuredClone (snaps
   h.tick(3);
   assert.doesNotThrow(() => structuredClone(h.state.hullBurst));
   assert.deepEqual(JSON.parse(JSON.stringify(h.state.hullBurst)).phase, 'active');
+});
+
+// ---- FIRE LANCE ------------------------------------------------------------------------------------------------
+
+const LANCE = resolveHullBurst('lance', 1);
+
+test('the Fire Lance: full speed kills a light hull through the combat kernel, credited to the player, no throw', () => {
+  const h = harness({ fitted: 'lance', playerVel: { x: 160, z: 0 } });
+  const wasp = h.add({ pos: { x: 60, z: 0 }, hull: 150, shield: 110, armorHp: 0, armorFlat: 0 });
+  hullBurst.activate();
+  h.tick();
+  assert.equal(h.damages.length, 1, 'one damage packet');
+  const d = h.damages[0];
+  assert.equal(d.attackerId, 1, 'the player is the attacker (a kill is the players and pays the loot burst)');
+  assert.equal(d.targetId, wasp.id);
+  const thermal = d.packet.channels.thermal;
+  assert.ok(thermal >= (150 + 110) * LANCE.lethalMargin - 1e-6, `more than the whole pool (${thermal.toFixed(0)} vs ${(150 + 110)})`);
+  assert.equal(d.packet.statuses[0].id, 'status_burning');
+  assert.equal(d.packet.statuses[0].stacks, LANCE.burnStacks, 'full burn at full speed');
+  assert.equal(h.impulses.length, 0, 'a lance burns, it never throws');
+  assert.equal(h.events.filter((e) => e.type === HITSTUN_IMPULSE_EVENT).length, 0, 'and never stuns');
+});
+
+test('the Fire Lance: a heavy takes a bounded share and burns; it does not die to one touch', () => {
+  const h = harness({ fitted: 'lance', playerVel: { x: 160, z: 0 } });
+  h.add({ pos: { x: 60, z: 0 }, mass: 300, hull: 1600, shield: 1100, armorHp: 0 });
+  hullBurst.activate();
+  h.tick();
+  const thermal = h.damages[0].packet.channels.thermal;
+  assert.ok(thermal <= LANCE.heavyDamageCap + 1e-6, `capped (${thermal.toFixed(0)})`);
+  assert.ok(thermal < 0.5 * (1600 + 1100), 'a heavy survives a touch');
+  assert.ok(h.damages[0].packet.statuses[0].stacks >= 1, 'and it burns');
+});
+
+test('the Fire Lance is speed-scaled: a crawling touch scorches, it does not finish', () => {
+  const crawl = harness({ fitted: 'lance', playerVel: { x: 15, z: 0 } });
+  crawl.add({ pos: { x: 60, z: 0 }, hull: 150, shield: 110 });
+  hullBurst.activate();
+  crawl.tick();
+  const fast = harness({ fitted: 'lance', playerVel: { x: 160, z: 0 } });
+  fast.add({ pos: { x: 60, z: 0 }, hull: 150, shield: 110 });
+  hullBurst.activate();
+  fast.tick();
+  const slowDamage = crawl.damages[0].packet.channels.thermal;
+  const fastDamage = fast.damages[0].packet.channels.thermal;
+  assert.ok(slowDamage < 0.25 * (150 + 110), `a crawl does not kill (${slowDamage.toFixed(0)})`);
+  assert.ok(fastDamage > 5 * slowDamage, 'and a full-speed pass does far more');
+  assert.equal(crawl.damages[0].packet.statuses[0].stacks, 1, 'the crawl still lights one stack');
+});
+
+test('the Fire Lance never touches a non-hostile hull, and its wedge is narrow', () => {
+  const h = harness({ fitted: 'lance', playerVel: { x: 160, z: 0 } });
+  h.add({ team: 2, data: {}, pos: { x: 60, z: 0 } });
+  hullBurst.activate();
+  h.tick(3);
+  assert.equal(h.damages.length, 0, 'a civilian is left alone');
+  assert.equal(h.impulses.length, 0, 'and is not even nudged');
+
+  const narrow = harness({ fitted: 'lance', playerVel: { x: 100, z: 0 } });
+  narrow.add({ pos: { x: 70, z: 45 } });
+  hullBurst.activate();
+  narrow.tick(3);
+  assert.equal(narrow.damages.length, 0, 'a hull 45 WU off the line is outside a lance');
+  const wide = harness({ fitted: 'gravity', playerVel: { x: 100, z: 0 } });
+  wide.add({ pos: { x: 70, z: 45 } });
+  hullBurst.activate();
+  wide.tick(3);
+  assert.equal(wide.impulses.length, 1, 'the same hull is inside the Gravity Bumper');
+});
+
+test('the Fire Lance module is real: sold, researchable, taught, one hull burst per hull', () => {
+  const mod = MODULES.find((m) => m.id === 'mod_fire_lance_s');
+  assert.ok(mod, 'the module exists');
+  assert.equal(mod.mods.hullBurst, 'lance');
+  assert.equal(HULL_BURST_TYPES.lance.moduleId, mod.id);
+  assert.ok(typeof mod.sentence === 'string' && mod.sentence.length > 0);
+  const tech = TECH_NODES.find((t) => t.id === mod.requiresTech);
+  assert.ok(tech && tech.unlocks.modules.includes(mod.id), 'its tech node lists it');
+  const derived = getDerivedStats('ship_wasp', fittingsFromDefaultModules('ship_wasp', ['mod_fire_lance_s']));
+  assert.equal(derived.hullBurstKind, 'lance');
+  assert.ok(GRAVITY.reachWu > LANCE.reachWu && GRAVITY.halfAngleRad > LANCE.halfAngleRad, 'the lance is the narrow, short wedge');
+  assert.ok(LANCE.cooldownS > LANCE.durationS, 'recharge clearly longer than the window');
 });
