@@ -303,6 +303,7 @@ import {
 } from './startupGpuResidency.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { rehydrateDetachedPackages } from './packageCpuDetach.js';
+import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
   collectOpeningSubmissionLeaves,
   combineOpeningProducerCensuses,
@@ -6909,6 +6910,36 @@ export const render = {
             touchExactTargetSubject(subject);
           } catch (error) {
             console.warn('[render] exact-target admission touch failed', error);
+            // Identify which texture threw on upload and why: package-detach empties a
+            // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
+            // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
+            // on the empty array. Fires only on failure; walks the subject once.
+            try {
+              const rows = [];
+              subject.traverse?.((o) => {
+                const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+                for (const m of mats) for (const k of Object.keys(m)) {
+                  const t = m[k];
+                  if (!t || !t.isTexture || !t.isCompressedTexture) continue;
+                  const empty = !(t.mipmaps && t.mipmaps.length > 0);
+                  let threw = null;
+                  try { renderer.initTexture(t); } catch (e) { threw = String(e && e.message || e); }
+                  if (empty || threw) rows.push({
+                    slot: k, name: t.name || '', src: t.source && t.source.uuid.slice(0, 8),
+                    mips: t.mipmaps ? t.mipmaps.length : -1,
+                    shared: !!(t.userData && t.userData.spacefaceSharedImageSourceKey),
+                    detachMark: t.userData && t.userData.spacefaceCpuDetach || null,
+                    colorSpace: t.colorSpace, flipY: t.flipY, wrapS: t.wrapS, wrapT: t.wrapT,
+                    magFilter: t.magFilter, minFilter: t.minFilter, version: t.version,
+                    users: sharedImageSourceUsers(t) || undefined,
+                    threw,
+                  });
+                }
+              });
+              console.warn('[render] touch-fail texture diag', JSON.stringify(rows));
+            } catch (diagError) {
+              console.warn('[render] touch-fail diag errored', String(diagError && diagError.message || diagError));
+            }
           } finally {
             restore();
           }

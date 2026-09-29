@@ -587,6 +587,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       && texture.isVideoTexture !== true
       && texture.isExternalTexture !== true
       && uploadVersions.get(texture) === texture.version) {
+      // A stamped package texture may still carry its CPU mirror: detach is deferred while
+      // dedupe siblings share its payload records, so retry the release — once this texture is
+      // the entry's last live user the bytes can actually leave.
+      detachPackageTexture(texture);
       residentTextures += 1;
       continue;
     }

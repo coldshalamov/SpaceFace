@@ -19,6 +19,8 @@
 // userData, so a structured manifest reference on userData would throw on its own cycle, and a
 // clone carrying a copied mark is rejected by the entry.texture identity check.
 
+import { sharedImageSourceUserCount } from './imageSourceDedupe.js';
+
 const manifests = new Map();
 const detachedManifests = new Set();
 
@@ -135,6 +137,16 @@ export function detachPackageTexture(texture) {
   if (!manifest || manifest.evicted) return false;
   const entry = manifest.entries[mark.ordinal];
   if (!entry || entry.texture !== texture || entry.detached) return false;
+
+  // A dedupe-shared texture's payload records are physically held by every live user of its
+  // registry entry: Texture.clone() slices the mipmap ARRAY but shares the mip records, and a
+  // source-adopted user shares source.data outright. Emptying this texture's array while
+  // siblings live frees no bytes — it only arms a crash: any later fresh-upload on this texture
+  // (a different upload-cache-key bind on the shared Source, or a dispose/rebind whose cache
+  // entry was freed) reads mipmaps[0] on the empty array and throws inside three's uploader.
+  // Defer the release until this texture is the entry's last live user — which is also the
+  // earliest point the bytes could actually leave.
+  if (sharedImageSourceUserCount(texture) > 1) return false;
 
   let freed = 0;
   let released = false;

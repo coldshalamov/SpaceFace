@@ -172,6 +172,21 @@ test('a payload-released owner is a miss: clones of empty mips would crash the u
   assert.ok(adopted.source && adopted.source.data, 'the adopted texture keeps its own pixels');
 });
 
+test('a fresh decode after owner payload release becomes the new owner', async () => {
+  const key = await imageSourceKeyAsync(bytes(45), 64, 'image/ktx2');
+  const owner = claimSharedImageTexture(key, decodedTexture(1));
+  // packageCpuDetach's release: the source payload is gone but the texture object lives on.
+  owner.source.data = null;
+
+  const fresh = claimSharedImageTexture(key, decodedTexture(2));
+  assert.equal(fresh.userData.spacefaceSharedImageSourceKey, key, 'the fresh decode stays tracked');
+
+  const later = sharedImageTextureFor(key);
+  assert.ok(later, 'the promoted decode serves new hits instead of staying a permanent miss');
+  assert.equal(later.source, fresh.source, 'new hits share the live decode, not the dead owner');
+  assert.ok(later.source.data, 'the clone carries real pixels');
+});
+
 test('a payload-released owner keeps later PNG adopters on their own source', async () => {
   const { dedupeGltfTextureSources } = await import('../src/render/imageSourceDedupe.js');
   const imageBytes = bytes(43, 96);
