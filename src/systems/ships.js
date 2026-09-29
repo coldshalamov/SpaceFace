@@ -1858,7 +1858,7 @@ export const ships = {
 
   /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
    *  pushes a new instance into moduleInventory. Returns true on success. */
-  buyModule({ defId, fitSlotIndex = null, shipIndex = null }) {
+  buyModule({ defId, fitSlotIndex = null, shipIndex = null, expectedPrice = null, hullDefId = null }) {
     const def = defById(defId);
     const p = this.state.player;
     if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return false; }
@@ -1866,8 +1866,27 @@ export const ships = {
       this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
       return false;
     }
+    if (hullDefId != null) {
+      const namedHull = this.ownedShip(shipIndex);
+      if (!namedHull || namedHull.defId !== hullDefId) {
+        this.bus.emit('toast', {
+          text: 'That confirmation was for a different hull. Review it and confirm again.',
+          kind: 'error',
+          ttl: 3,
+        });
+        return false;
+      }
+    }
     const offer = stationShopOffer(def, dockedShopStationId(this.state));
     const price = offer ? offer.price : (def.price || 0);
+    if (expectedPrice != null && Number.isFinite(Number(expectedPrice)) && Math.round(Number(expectedPrice)) !== Math.round(Number(price) || 0)) {
+      this.bus.emit('toast', {
+        text: `Price changed since the quote (${Math.round(Number(price) || 0)} vs ${Math.round(Number(expectedPrice))} cr) — review and confirm again.`,
+        kind: 'error',
+        ttl: 3,
+      });
+      return false;
+    }
     if (price > 0 && p.credits < price) {
       this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
       return false;
@@ -2174,10 +2193,18 @@ export const ships = {
     return true;
   },
 
-  deleteLoadoutPreset({ shipIndex, presetId } = {}) {
+  deleteLoadoutPreset({ shipIndex, presetId, hullDefId = null } = {}) {
     if (typeof presetId !== 'string' || !presetId) return false;
     const owned = this.ownedShip(shipIndex);
     if (!owned) return false;
+    if (hullDefId != null && owned.defId !== hullDefId) {
+      this.bus.emit('toast', {
+        text: 'That confirmation was for a different hull. Review it and confirm again.',
+        kind: 'error',
+        ttl: 3,
+      });
+      return false;
+    }
     const presets = this.loadoutPresets();
     const index = presets.findIndex((row) => row && row.id === presetId && row.hullDefId === owned.defId);
     if (index < 0) {

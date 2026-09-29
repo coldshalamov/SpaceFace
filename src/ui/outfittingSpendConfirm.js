@@ -18,6 +18,59 @@ export function isOutfittingSpendDanger(price, credits) {
   return remaining >= 0 && remaining <= OPS_RISK_BALANCE_CR;
 }
 
+/** The confirmation named this module, hull, slot, and price. A later read must still match. */
+export function statedModulePurchaseStillMatches(stated, live) {
+  if (!stated || !live) return false;
+  if (stated.defId !== live.defId) return false;
+  if (stated.shipIndex !== live.shipIndex) return false;
+  const statedSlot = stated.fitSlotIndex == null ? null : stated.fitSlotIndex;
+  const liveSlot = live.fitSlotIndex == null ? null : live.fitSlotIndex;
+  if (statedSlot !== liveSlot) return false;
+  if (stated.hullDefId != null && live.hullDefId != null && stated.hullDefId !== live.hullDefId) return false;
+  const statedPrice = Math.round(Number(stated.price));
+  const livePrice = Math.round(Number(live.price));
+  return Number.isFinite(statedPrice) && Number.isFinite(livePrice) && statedPrice === livePrice;
+}
+
+/**
+ * The dialog named this hull. A screen that has closed, or a different hull now on
+ * the bench, cannot commit that confirmation.
+ */
+export function statedHullStillViewed(stated, live) {
+  if (!stated || !live) return false;
+  if (live.connected === false) return false;
+  if (stated.shipIndex !== live.shipIndex) return false;
+  if (stated.hullDefId != null && live.hullDefId != null && stated.hullDefId !== live.hullDefId) return false;
+  return true;
+}
+
+/** Move the Hand onto a connected control whose box meets the list. The page body, a hidden node, and the hold gauge are not targets. */
+export function focusNamedStationControl(node, list) {
+  if (!node || typeof node.focus !== 'function') return false;
+  if (node.isConnected === false) return false;
+  if (node.hidden === true) return false;
+  if (typeof document !== 'undefined' && node === document.body) return false;
+  if (typeof node.getAttribute === 'function' && node.getAttribute('aria-hidden') === 'true') return false;
+  const cls = node.classList;
+  if (cls && typeof cls.contains === 'function' && (cls.contains('orr-mkt-holdarc') || cls.contains('sx-hold-gauge'))) return false;
+  if (list && node !== list) {
+    const inside = typeof list.contains === 'function' && list.contains(node);
+    if (!inside && typeof node.getBoundingClientRect === 'function' && typeof list.getBoundingClientRect === 'function') {
+      const box = node.getBoundingClientRect();
+      const host = list.getBoundingClientRect();
+      const laidOut = (Number(box.width) || 0) + (Number(box.height) || 0) > 0
+        && (Number(host.width) || 0) + (Number(host.height) || 0) > 0;
+      const meets = box.bottom > host.top && box.top < host.bottom && box.right > host.left && box.left < host.right;
+      if (laidOut && !meets) return false;
+    }
+  }
+  if (typeof node.scrollIntoView === 'function') {
+    try { node.scrollIntoView({ block: 'nearest' }); } catch (_) { /* focus still lands */ }
+  }
+  try { node.focus(); } catch (_) { return false; }
+  return true;
+}
+
 /** Build shared confirm() options for a paid module purchase. Zero-cost actions skip the dialog. */
 export function describeOutfittingSpendConfirm(def, credits, opts = {}) {
   if (!def) return null;
