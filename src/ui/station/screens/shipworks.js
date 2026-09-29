@@ -20,7 +20,8 @@ import { icon as stationIcon, hasIcon as hasStationIcon } from '../icons.js';
 // Make active stay the same verbs.
 // Emits ui:buyShip / ui:setActiveShip / ui:sellShip / ui:buyModule / ui:fitModule / ui:unfitModule
 // plus the PQ-205.03 rack intents: ui:buyPayload / ui:fitPayload / ui:unfitPayload /
-// ui:sellPayload / ui:restockBombRack / ui:upgradeBombRack (the bombs system owns the writes).
+// ui:sellPayload / ui:restockBombRack / ui:upgradeBombRack (the bombs system owns the writes)
+// and the paint-rack intent ui:setShipAppearance (the ships system owns the appearance record).
 //
 // Engineering numbers come only from presenters/engineeringPreview.js → ships.getDerivedStats.
 // Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
@@ -28,6 +29,15 @@ import { icon as stationIcon, hasIcon as hasStationIcon } from '../icons.js';
 // `.sx-hardpoint[data-spatial-slot]`, `.sx-hardpoint__copy`, `.sx-modrow[data-preview-module]`,
 // `[data-buyfit]`, `[data-buyship]`, `[data-verb]`, `.sx-sw__acquiring` are hooks the checks query.
 import { modelTruthMountFractions } from '../../../data/modelTruth.js';
+import {
+  SHIP_HULL_PAINTS,
+  SHIP_ACCENT_PAINTS,
+  SHIP_FINISH_STOCK,
+  SHIP_WEAR_STOCK,
+  buildPaintAppearance,
+  shipPaintRow,
+} from '../../../data/shipPaints.js';
+import { normalizeShipAppearance, shipAppearanceSignature } from '../../../core/shipAppearance.js';
 import {
   buildSlotList,
   dryRunLoadoutPresetApply,
@@ -531,6 +541,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let ghostSource = null;
   let selectedSlot = -1;
   let payloadSocket = -1;  // rack socket index while the ordnance chooser is open
+  let paintOpen = false;   // the paint rack occupies the hang column while true
   let chooserAnchor = null;
   let projectionFrame = 0;
   let pinnedSideTop = -1;
@@ -550,6 +561,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let recordOpen = false;
   let selectedBand = 'handling'; // which of the four foot heroes explains itself beneath
   let rangeIntentUnsub = null;
+  let appearanceSavedUnsub = null;
   const handlingDomain = handlingProfileDomain();
   const powerBeam = createRouteBeam(powerOverlayEl, { width: 400, height: 240 });
   const gaugeByKey = {};
@@ -635,6 +647,28 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const manager = ctx && ctx.screenManager;
       if (!manager || typeof manager.pushScreen !== 'function') return;
       try { manager.pushScreen('range'); } catch (_) {}
+    });
+  }
+
+  // The ships system answers every accepted ui:setShipAppearance with ship:appearanceSaved —
+  // repaint the stage and the rack marks here so the screen never shows a stale coat, whoever
+  // changed the appearance (the paint rack, a preset, a future habit system).
+  function refreshPaintedPreview() {
+    const viewed = viewedShip();
+    if (!viewed || !owned().length) return;
+    if (paintOpen) renderPaintChooser();
+    const c = currentPreviewContext();
+    if (c) previewShip(c.defId, c.fittings, c.isPlayer, null, c.appearance);
+  }
+
+  function ensureAppearanceSavedHandler() {
+    if (appearanceSavedUnsub || !ctx.bus || typeof ctx.bus.on !== 'function') return;
+    appearanceSavedUnsub = ctx.bus.on('ship:appearanceSaved', (payload = {}) => {
+      const index = Number(payload && payload.shipIndex);
+      const viewed = viewedShip();
+      if (!viewed || !owned().length) return;
+      if (Number.isFinite(index) && index !== owned().indexOf(viewed)) return;
+      refreshPaintedPreview();
     });
   }
 
@@ -946,7 +980,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     ui.stageRequest = { ...request, hullDefId: defId, __lastStatus: undefined };
   }
 
-  function previewShip(defId, fittings, isPlayer, meta) {
+  function previewShip(defId, fittings, isPlayer, meta, appearance = null) {
     poster.setHull(defId || null, posterViewFor(defId));
     ensureMount();
     writeCanvasPreviewMeta(defId, fittings, meta);
@@ -968,7 +1002,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const gated = (!sameHull && !(meta && meta.mode === 'module')) || !assetStableNow;
     stageEl.dataset.revealWasGated = gated ? 'true' : 'false';
     const revealGeneration = beginPreviewReveal(defId, gated);
-    const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base');
+    const appearanceSig = appearance ? shipAppearanceSignature(appearance, defId) : '';
+    const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base') + (appearanceSig ? '|' + appearanceSig : '');
     if (key === curPreviewKey) {
       mount.setActive(true);
       const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
@@ -981,7 +1016,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const preserveView = sameHull;
       // Shipworks is direct manipulation: the settled ship does not burn a render loop merely to
       // prove it is alive. Drag, zoom, selection and authored-asset upgrades render on demand.
-      mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: false, preserveView });
+      mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: false, preserveView, appearance: appearance || null });
       if (!preserveView) mount.setZoom(1.68);
       mount.setActive(true);
       mount.resize();
@@ -1002,6 +1037,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         isPlayer: true,
         player: ctx.state.player,
         stock: false,
+        // The paint rack's look rides the preview like the fittings do.
+        appearance: s.appearance || null,
       };
     }
     const def = SHIP_BY_ID.get(buyId);
@@ -1501,6 +1538,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const makeActiveLabel = makeActiveEnabled
       ? 'Make active'
       : (model.availability && model.availability.hullLabel ? model.availability.hullLabel : 'Make active');
+    // The paint rack is a berth verb like Make active: dock-side fleet hulls only, gated by the
+    // same hull-service access (the yard mixes and cures while you are berthed).
+    const paintVisible = host === 'dock' && mode === 'fleet';
+    const paintEnabled = paintVisible && model.availability && model.availability.hullEnabled;
     statsEl.innerHTML =
       `<div class="sx-sw-bands" role="group" aria-label="Ship bands">` +
         heroHtml('handling', topSpeed ? barValueText(topSpeed) : fmt(model.derived.maxSpeed), 'top speed', { selected: selectedBand === 'handling', why: topSpeed && topSpeed.why }) +
@@ -1521,6 +1562,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<li><button type="button" ${stationControlAttrs('fit')} class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
           (makeActiveVisible
             ? `<li><button type="button" ${stationControlAttrs('activate')} class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
+            : '') +
+          (paintVisible
+            ? `<li><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--body sx-sw-verb${paintOpen ? ' is-active' : ''}" data-verb="paint" aria-pressed="${paintOpen ? 'true' : 'false'}"${paintEnabled ? '' : ` disabled aria-label="${escapeHtml((model.availability && model.availability.hullLabel) || 'Dock at a shipyard to paint')}"`}>${stationControlLabel('paint')}</button></li>`
             : '') +
         `</ul>` +
       `</div>` +
@@ -1611,7 +1655,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       scarfieldEl.innerHTML = '';
       return;
     }
-    previewShip(ctxPrev.defId, ctxPrev.fittings, ctxPrev.isPlayer, null);
+    previewShip(ctxPrev.defId, ctxPrev.fittings, ctxPrev.isPlayer, null, ctxPrev.appearance);
     activeBandModel = deriveBandModel(ctxPrev);
     renderCrest(activeBandModel);
     renderApron(activeBandModel);
@@ -3243,7 +3287,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       activeBandModel = null;
       return;
     }
-    previewShip(previewCtx.defId, previewCtx.fittings, previewCtx.isPlayer, null);
+    previewShip(previewCtx.defId, previewCtx.fittings, previewCtx.isPlayer, null, previewCtx.appearance);
     activeBandModel = deriveBandModel(previewCtx);
     renderCrest(activeBandModel);
     renderApron(activeBandModel);
@@ -3749,6 +3793,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
     selectedSlot = slotIndex;
+    payloadSocket = -1;
+    paintOpen = false;
     // Exploded-view focus (feature 15): the selected bay lifts its plate and glows cyan on the
     // 3D preview. spatialAnchors carries the same authored local point the DOM pin projects from.
     if (mount && typeof mount.setExplodedFocus === 'function') {
@@ -3799,6 +3845,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     explodeHome();
     selectedSlot = -1;
     payloadSocket = -1;
+    paintOpen = false;
     if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
     chooserAnchor = null;
     slotfieldEl.classList.remove('is-focusing');
@@ -3825,6 +3872,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     emitUiCue(UI_SWITCH_DETENT_CUE);
     payloadSocket = socketIndex;
     selectedSlot = -1;
+    paintOpen = false;
     syncSystemSelection();
     if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
     chooserAnchor = anchorEl || sideEl.querySelector(`[data-rack-socket="${socketIndex}"]`);
@@ -3917,7 +3965,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     previewShip(ghost.defId, ghost.afterFittings, true, {
       mode: 'module',
       moduleId: ghost.moduleId || moduleId,
-    });
+    }, viewedShip() && viewedShip().appearance || null);
     ghostBandModel = deriveBandModel({
       defId: ghost.defId,
       fittings: ghost.afterFittings,
@@ -3961,6 +4009,153 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     scheduleSpatialProjection();
   }
 
+  // ---- paint rack chooser ---------------------------------------------------------------------------------
+  // The paint rack rides the same hang-column grammar as the module and ordnance choosers: the
+  // PAINT verb opens the rack in place of the hulls; Back returns them. Every swatch is an
+  // intent — ui:setShipAppearance — and the ships system owns the appearance record; the save
+  // pipeline already keys off ship:appearanceSaved. The yard's mix-and-cure is included berth
+  // work, so the rack charges nothing; what the player buys here is the look that then flies.
+  function currentPaintedAppearance() {
+    const s = viewedShip();
+    if (!s) return null;
+    return normalizeShipAppearance(s.appearance, s.defId);
+  }
+
+  function openPaintChooser(anchorEl) {
+    emitUiCue(UI_SWITCH_DETENT_CUE);
+    selectedSlot = -1;
+    payloadSocket = -1;
+    paintOpen = true;
+    syncSystemSelection();
+    if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
+    chooserAnchor = anchorEl || sideEl.querySelector('[data-verb="paint"]');
+    renderPaintChooser();
+    chooserEl.hidden = false;
+    el.classList.add('is-choosing');
+    requestAnimationFrame(() => {
+      chooserEl.classList.add('is-open');
+      const first = chooserEl.querySelector('button:not([disabled])');
+      if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
+    });
+  }
+
+  function paintSwatchChip(hex) {
+    // Fully inline: the chip answers from the catalog row itself and adds no stylesheet surface.
+    const bg = hex ? escapeHtml(hex) : 'transparent';
+    const border = hex ? 'solid' : 'dashed';
+    return `<span aria-hidden="true" style="display:inline-block;flex:0 0 auto;width:13px;height:13px;margin-right:9px;border:1px ${border} rgba(255,255,255,0.55);background:${bg};"></span>`;
+  }
+
+  function paintGroupHtml(kicker, rows) {
+    return (
+      `<p class="k-caps sx-chooser__kicker">${escapeHtml(kicker)}</p>` +
+      `<ul class="k-rows sx-chooser__list">${rows.join('')}</ul>`
+    );
+  }
+
+  function renderPaintChooser() {
+    if (!paintOpen) return;
+    const ship = viewedShip();
+    const def = ship ? SHIP_BY_ID.get(ship.defId) : null;
+    if (!def) { closeChooser(); return; }
+    const availability = shipworksActionAvailability(ctx.state);
+    const outfit = availability.hullEnabled;
+    const current = currentPaintedAppearance();
+    const dis = () => (outfit ? '' : ` disabled aria-label="${escapeHtml(availability.hullLabel)}"`);
+    const mark = (on) => (on ? ' is-eq' : '');
+
+    const hullRows = SHIP_HULL_PAINTS.map((p) => {
+      const on = (current.hullColor || null) === (p.hex || null);
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(p.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">${paintSwatchChip(p.hex)}` +
+            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(p.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-paint-hull="${escapeHtml(p.id)}"${dis()}>${on ? 'Wearing' : 'Paint'}</button></span>` +
+        `</li>`
+      );
+    });
+    const accentRows = SHIP_ACCENT_PAINTS.map((p) => {
+      const on = (current.accentColor || null) === (p.hex || null);
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(p.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">${paintSwatchChip(p.hex)}` +
+            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(p.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-accent="${escapeHtml(p.id)}"${dis()}>${on ? 'Wearing' : 'Trim'}</button></span>` +
+        `</li>`
+      );
+    });
+    const finishRows = SHIP_FINISH_STOCK.map((f) => {
+      const on = current.finish === f.id;
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(f.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">` +
+            `<span class="sx-modrow__name">${escapeHtml(f.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(f.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-finish="${escapeHtml(f.id)}"${dis()}>${on ? 'Cured' : 'Cure'}</button></span>` +
+        `</li>`
+      );
+    });
+    const wearRows = SHIP_WEAR_STOCK.map((w) => {
+      const on = Math.abs(current.wear - w.wear) < 0.001;
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(w.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">` +
+            `<span class="sx-modrow__name">${escapeHtml(w.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(w.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-wear="${escapeHtml(w.id)}"${dis()}>${on ? 'At this wear' : 'Work'}</button></span>` +
+        `</li>`
+      );
+    });
+
+    chooserEl.innerHTML =
+      `<div class="sx-chooser__panel" role="region" aria-label="Paint rack for the ${escapeHtml(def.name || def.id)}">` +
+        `<header class="sx-chooser__head">` +
+          `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
+          `<p class="k-caps sx-chooser__kicker">Paint rack · ${escapeHtml(def.name || def.id)}</p>` +
+          `<h3 class="k-t-sub">The yard mixes while you dock</h3>` +
+        `</header>` +
+        (outfit ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.hullLabel)}</p>`) +
+        paintGroupHtml('Coat', hullRows) +
+        paintGroupHtml('Trim', accentRows) +
+        paintGroupHtml('Finish', finishRows) +
+        paintGroupHtml('Wear', wearRows) +
+        `<p class="k-sentence sx-muted">Berth work, no charge — the finish is painted into the hull record and flies with you.</p>` +
+      `</div>`;
+    dressChooser();
+  }
+
+  /** One swatch intent: patch the viewed hull's current appearance with the chosen row and emit
+   * the live seam. Returns true when an intent went out. */
+  function emitPaintIntent(kind, rowId) {
+    const ship = viewedShip();
+    if (!ship) return false;
+    const current = currentPaintedAppearance();
+    let patch = null;
+    if (kind === 'hull') {
+      const row = shipPaintRow(SHIP_HULL_PAINTS, rowId);
+      if (row) patch = { hullColor: row.hex };
+    } else if (kind === 'accent') {
+      const row = shipPaintRow(SHIP_ACCENT_PAINTS, rowId);
+      if (row) patch = { accentColor: row.hex };
+    } else if (kind === 'finish') {
+      const row = shipPaintRow(SHIP_FINISH_STOCK, rowId);
+      if (row) patch = { finish: row.id };
+    } else if (kind === 'wear') {
+      const row = shipPaintRow(SHIP_WEAR_STOCK, rowId);
+      if (row) patch = { wear: row.wear };
+    }
+    if (!patch) return false;
+    if (!ctx.bus) return false;
+    ctx.bus.emit('ui:setShipAppearance', {
+      shipIndex: viewIdx,
+      appearance: buildPaintAppearance(current, patch),
+    });
+    ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+    return true;
+  }
+
   function applyPresetGhost(preset) {
     const s = viewedShip();
     const def = s ? SHIP_BY_ID.get(s.defId) : null;
@@ -3970,7 +4165,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     previewShip(def.id, preset.fittings, true, {
       mode: 'preset',
       moduleId: null,
-    });
+    }, s.appearance || null);
     ghostBandModel = deriveBandModel({
       defId: def.id,
       fittings: preset.fittings,
@@ -4292,6 +4487,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       setTimeout(refresh, 60);
       return true;
     }
+    if (action === 'paint') {
+      const availability = shipworksActionAvailability(ctx.state);
+      if (host !== 'dock' || mode !== 'fleet' || !availability.hullEnabled) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return true;
+      }
+      openPaintChooser(verb);
+      return true;
+    }
     return false;
   }
   if (statsEl.parentElement) statsEl.parentElement.addEventListener('click', onVerbClick);
@@ -4437,6 +4641,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       return;
     }
+    // Paint rack: one swatch, one intent. The chooser stays open and re-reads the appearance so
+    // the "Wearing" marks and the stage hull repaint in place (ship:appearanceSaved below).
+    const paintIntent = (node, kind) => {
+      if (node.disabled || !emitPaintIntent(kind, node.getAttribute(`data-paint-${kind}`))) return;
+      // refreshPaintedPreview repaints both the rack marks and the stage; the focus restore has
+      // to come after it — the re-render replaced the button under the pointer/keys.
+      refreshPaintedPreview();
+      const again = chooserEl.querySelector(`[data-paint-${kind}="${node.getAttribute(`data-paint-${kind}`)}"]`);
+      if (again && typeof again.focus === 'function') again.focus({ preventScroll: true });
+    };
+    const paintHull = ev.target.closest('[data-paint-hull]');
+    if (paintHull) { paintIntent(paintHull, 'hull'); return; }
+    const paintAccent = ev.target.closest('[data-paint-accent]');
+    if (paintAccent) { paintIntent(paintAccent, 'accent'); return; }
+    const paintFinish = ev.target.closest('[data-paint-finish]');
+    if (paintFinish) { paintIntent(paintFinish, 'finish'); return; }
+    const paintWear = ev.target.closest('[data-paint-wear]');
+    if (paintWear) { paintIntent(paintWear, 'wear'); return; }
     const bf = ev.target.closest('[data-buyfit]');
     if (bf && !bf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
       if (buyConfirmBusy || isConfirmOpen()) return;
@@ -4552,6 +4774,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     onShow() {
       restoreShipView();
       ensureRangeIntentHandler();
+      ensureAppearanceSavedHandler();
       refresh();
       if (mount) mount.setActive(true);
       powerBeam.setActive(true);
@@ -4568,6 +4791,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       if (projectionFrame) cancelAnimationFrame(projectionFrame);
+      if (appearanceSavedUnsub) { try { appearanceSavedUnsub(); } catch (_) {} appearanceSavedUnsub = null; }
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;
