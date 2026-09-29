@@ -292,9 +292,12 @@ const VERB_BINDINGS = {
   // Hull-burst overhaul slice C: light the fitted hull-burst module's wedge (Gravity Bumper). Every
   // left-hand key and every standard pad button is already spoken for, and Backslash is referenced
   // nowhere (audited 2026-09-29 against both scheme tables, ui/bindings.js and ui/input.js), so the
-  // default is Backslash and the verb is rebindable like every other. No default pad button: the
-  // pad has none unclaimed (same posture as the field tools). The hullBurst system owns timing.
-  hullBurst: ['Backslash'],   // edge: light the hull-burst wedge (needs a fitted hull-burst module)
+  // default is Backslash and the verb is rebindable like every other. IntlBackslash is the same printed key
+  // on ISO layouts (the one next to left Shift; `Backslash` there is the key above Enter), so a UK/EU player
+  // who presses the key the pill prints is not ignored. Middle-click is a second trigger (mouse hand, and the
+  // middle button has no other flight authority). The pad has no unclaimed button: the verb is rebindable
+  // there (Settings > Controller) and unbound by default. The hullBurst system owns timing.
+  hullBurst: ['Backslash', 'IntlBackslash'],   // edge: light the hull-burst wedge (needs a fitted hull-burst module)
   // Travel Burn latch (atlas D5 / W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
@@ -455,7 +458,7 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (code === 'NumLock') return 'Num Lock';
   if (code === 'CapsLock') return 'Caps Lock';
   if (code === 'Backquote') return '`';
-  if (code === 'Backslash') return '\\';
+  if (code === 'Backslash' || code === 'IntlBackslash') return '\\';
   if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
   if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
   return code;
@@ -471,7 +474,8 @@ export function resolveActionLabel(state, action, { sep = '/', arrows = 'glyph',
     if (action === 'fire') return MOUSE_ACTION_LABELS.fire;
     return empty;
   }
-  return codes.map((c) => formatBindingCode(c, { arrows })).filter(Boolean).join(sep);
+  // Two codes that print the same glyph (Backslash / IntlBackslash) are one label, not "\/\\".
+  return Array.from(new Set(codes.map((c) => formatBindingCode(c, { arrows })).filter(Boolean))).join(sep);
 }
 
 const KEY_CODE_FALLBACKS = {
@@ -918,7 +922,7 @@ export const input = {
         return;
       }
       if (e.button === 0) this._m0 = true;
-      if (e.button === 1) this._m1 = true;
+      if (e.button === 1) { this._m1 = true; if (typeof e.preventDefault === 'function') e.preventDefault(); } // no autoscroll cursor
       if (e.button === 2) this._m2 = true;
       this._kbmActivityPending = true;
     });
@@ -1514,7 +1518,14 @@ export const input = {
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
     acts.jettisonLot = edge('jettisonLot');
-    acts.hullBurst = edge('hullBurst');
+    // Keyboard edge, a controller edge (unbound unless the player binds it), or a middle-click press. The
+    // middle button's own previous-frame flag is kept here: _prevM1 is refreshed earlier in this tick.
+    const burstMmb = !!this._m1;
+    const burstMmbEdge = burstMmb && !this._burstMmbPrev;
+    this._burstMmbPrev = burstMmb;
+    acts.hullBurst = edge('hullBurst') || burstMmbEdge || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('hullBurst')
+      && gp.actions.hullBurst && gp.actions.hullBurst.pressed);
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must

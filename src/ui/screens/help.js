@@ -192,7 +192,7 @@ export function controlSections(state) {
       ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
       ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
-      ['Hull burst (needs a Gravity Bumper: for a few seconds the nose throws hostile hulls — harder the faster you arrive)', 'hullBurst'],
+      ['Hull burst (a Gravity Bumper, Fire Lance or Grip Bumper: for a few seconds the nose throws, burns or catches hostile hulls; middle-click also lights it)', 'hullBurst'],
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],

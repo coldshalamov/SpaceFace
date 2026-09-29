@@ -134,8 +134,10 @@ export const fieldHud = {
       return { text: `${label} DENIED`, cls: 'field-denied' };
     }
     // The hull burst while it is LIVE: a few seconds the player lit on purpose, and the one number they
-    // are racing. It outranks a held cone or a deployed field, never a fresh denial.
-    if (burst && burst.live) return { text: burst.text, cls: burst.cls };
+    // are racing. It outranks a held cone or a deployed field and the calm state of a hazard clock, never a
+    // fresh denial and never a hazard's WARNING or SURGE (that timer is about staying alive).
+    const hazardHot = !!environmental && (environmental.phase === 'warning' || environmental.phase === 'surge');
+    if (burst && burst.live && !hazardHot) return { text: burst.text, cls: burst.cls };
     if (environmental) {
       if (environmental.phase === 'quiet') {
         return { text: 'CINDER SLUICE — CURRENT QUIET', cls: 'field-current-calm' };
@@ -174,9 +176,8 @@ export const fieldHud = {
       const cls = soonest.kind === 'repulsor' ? 'field-repulsor' : '';
       return { text: remain != null ? `${label} — ${stateWord} ${remain}s` : `${label} — ${stateWord}`, cls };
     }
-    // The burst's recharge (and its brief ready hint) sit at cooldown value, below every live voice.
-    if (burst && burst.text) return { text: burst.text, cls: burst.cls };
-    // Cooldown readiness (soonest pending).
+    // Cooldown readiness (soonest pending). The older field tools keep their voice: the burst's recharge must not
+    // hide "WELL READY 4s" for a player carrying both.
     const cds = f && f.cooldowns || {};
     let bestKind = null, bestReady = Infinity;
     for (const kind of Object.keys(cds)) {
@@ -186,6 +187,8 @@ export const fieldHud = {
     if (bestKind) {
       return { text: `${KIND_LABEL[bestKind] || 'FIELD'} READY ${Math.max(0, Math.ceil(bestReady - now))}s`, cls: 'field-cooldown' };
     }
+    // The burst's recharge (and its brief ready hint) sit at cooldown value, below every other voice.
+    if (burst && burst.text) return { text: burst.text, cls: burst.cls };
     return { text: '', cls: '' };
   },
 

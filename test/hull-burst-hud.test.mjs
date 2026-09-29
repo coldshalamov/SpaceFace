@@ -75,3 +75,20 @@ test('the ready hint follows a rebind', () => {
   const burst = h._resolveBurst(stateWith({ phase: 'ready', bindings: { hullBurst: ['KeyJ'] } }), 1);
   assert.match(burst.text, /READY {2}\[J\]/);
 });
+
+test('a hazard WARNING or SURGE outranks the live burst; a calm hazard does not', () => {
+  const h = hud();
+  const burst = h._resolveBurst(stateWith({ phase: 'active', activeUntil: 6 }), 1);
+  const env = (phase) => ({ phase, remainingS: 4 });
+  assert.match(h._resolve({ active: [], cooldowns: {} }, 1, env('warning'), burst).text, /WARNING/);
+  assert.match(h._resolve({ active: [], cooldowns: {} }, 1, env('surge'), burst).text, /SURGE/);
+  assert.equal(h._resolve({ active: [], cooldowns: {} }, 1, env('calm'), burst).cls, 'field-burst', 'a calm hazard yields to the live burst');
+});
+
+test('the burst recharge never hides an older field tool’s readiness', () => {
+  const h = hud();
+  const burst = h._resolveBurst(stateWith({ phase: 'cooling', activeUntil: 6, readyAt: 24 }), 10);
+  const withWellCooling = { active: [], cooldowns: { well: 14 } };
+  assert.match(h._resolve(withWellCooling, 10, null, burst).text, /^WELL READY/, 'the well keeps its voice');
+  assert.match(h._resolve({ active: [], cooldowns: {} }, 10, null, burst).text, /RECHARGING/, 'and the burst speaks when nothing else is waiting');
+});

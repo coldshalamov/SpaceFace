@@ -17,7 +17,15 @@
 // swing) is the full effect, and a heavy hull shrugs because the ratio shrinks with its mass.
 //
 // The wedge is a cone, never a sphere (field-kernel law): reach ahead of the nose, a half angle
-// that opens with distance, and a small nose width so a dead-centre approach can never miss.
+// that opens with distance, and a small nose width so a dead-centre approach can never miss. The reach IS the
+// strike zone: a hit lands the moment a hull's edge is inside it, with the closing speed at that instant, so it
+// is short (about 70 WU, a quarter of a second of travel at boost speed) and what is drawn is what hits. (A
+// long reach threw hulls 150 WU away, before anything visibly touched them, and latched a hull already inside
+// at ignition at its crawling speed for the rest of the window: found in review.)
+//
+// A hull is hit ONCE per activation, except that a much stronger hit can follow a weak one (`rehitFactor`,
+// `rehitMinGain`, `rehitGapS`): a press with a hostile already inside the wedge at a crawl gives it a nudge, and
+// accelerating into it afterwards is worth the full effect, not nothing.
 
 // `effect` says what the wedge DOES to a hostile that enters it: 'throw' (momentum, the Gravity Bumper),
 // 'lance' (thermal damage through the combat kernel: contact kills light and medium hulls, heavies burn) or
@@ -34,9 +42,12 @@ export const HULL_BURST_TYPES = Object.freeze({
     durationS: 6,
     cooldownS: 18,
     // The wedge.
-    reachWu: 150,
+    reachWu: 75,
     halfAngleRad: 0.5,        // ~29 degrees each side at the far edge
     noseWidthWu: 18,
+    rehitFactor: 2,           // a second hit needs at least this multiple of the first hit's delta-V...
+    rehitMinGain: 40,         // ...and at least this many WU/s more,
+    rehitGapS: 0.25,          // ...and this long since it
     // The hurl.
     massScale: 4,             // the player counts as this much heavier while it runs
     kickWuS: 8,               // delta-V of a touch at zero closing speed, before the mass ratio: below the
@@ -66,9 +77,12 @@ export const HULL_BURST_TYPES = Object.freeze({
     moduleId: 'mod_fire_lance_s',
     durationS: 4,
     cooldownS: 16,
-    reachWu: 95,
+    reachWu: 60,
     halfAngleRad: 0.16,       // ~9 degrees: a lance, not a cone
     noseWidthWu: 9,
+    rehitFactor: 2,           // a second burn needs at least this multiple of the first one's scale...
+    rehitMinGain: 0.3,        // ...and at least this much more of a full-effect hit,
+    rehitGapS: 0.25,          // ...and this long since it
     massScale: 1,             // unused by the lance (no momentum), kept so every type carries the same shape
     lightMediumMaxMass: 100,  // at or under this a full-speed hit kills; above it the hull only burns
     lethalMargin: 1.25,       // a light/medium hull takes this multiple of its whole pool at full speed
@@ -94,9 +108,12 @@ export const HULL_BURST_TYPES = Object.freeze({
     moduleId: 'mod_grip_bumper_s',
     durationS: 6,
     cooldownS: 20,
-    reachWu: 110,
+    reachWu: 80,
     halfAngleRad: 0.35,
     noseWidthWu: 16,
+    rehitFactor: 1e9,         // a catch happens once (a caught hull is held, not re-hit); a refused heavy stays refused
+    rehitMinGain: 1e9,
+    rehitGapS: 0.25,
     massScale: 4,             // the player counts this much heavier: the hitstun mass factor on the catch and release
     gripMaxMass: 40,          // a Wasp (16) or Hornet (24) is catchable; a Drifter (48) and up is not
     gapWu: 4,                 // clear space between the two hulls' edges while carried (so they never overlap)

@@ -446,6 +446,24 @@ const SHIPPED_MODULES = [
     requiresTech: 'tech_tractor_systems',
     energyDraw: 0, mods: { hullBurst: 'grip', hullBurstRank: 1 },
   },
+  // HULL-BURST RANK 2 (the owner's "upgradeable to last longer"). The same three modules one research step
+  // higher, same S bay so a starter hull can carry them: rank 2 lasts 25% longer, reaches 20% farther and hits
+  // 15% harder (data/hullBurst.js HULL_BURST_RANK_GAIN). One hull burst per hull; the higher rank wins.
+  {
+    id: 'mod_gravity_bumper_s_mk2', name: 'Gravity Bumper S Mk2', slotType: 'utility', size: 'S', tier: 3, mass: 5, price: 52000,
+    requiresTech: 'tech_impulse_ballistics',
+    energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 2 },
+  },
+  {
+    id: 'mod_fire_lance_s_mk2', name: 'Fire Lance S Mk2', slotType: 'utility', size: 'S', tier: 4, mass: 5, price: 72000,
+    requiresTech: 'tech_payload_conduction',
+    energyDraw: 0, mods: { hullBurst: 'lance', hullBurstRank: 2 },
+  },
+  {
+    id: 'mod_grip_bumper_s_mk2', name: 'Grip Bumper S Mk2', slotType: 'utility', size: 'S', tier: 3, mass: 5, price: 48000,
+    requiresTech: 'tech_drone_control',
+    energyDraw: 0, mods: { hullBurst: 'grip', hullBurstRank: 2 },
+  },
   {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
     energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
@@ -830,6 +848,9 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_gravity_bumper_s: 'Press the burst key and, for a few seconds, the nose throws every hostile hull it touches. The faster you arrive, the farther they fly.',
   mod_fire_lance_s: 'Press the burst key and, for a few seconds, a narrow lance burns whatever the nose touches: light and medium hulls die, heavies ignite. Fly straight at it, fast.',
   mod_grip_bumper_s: 'Press the burst key and the nose catches the first light hostile hull it meets and carries it: ram things with it, then press again to let it go.',
+  mod_gravity_bumper_s_mk2: 'The Gravity Bumper, refined: it lasts a quarter longer, reaches a fifth farther and throws harder.',
+  mod_fire_lance_s_mk2: 'The Fire Lance, refined: it lasts a quarter longer, reaches a fifth farther and burns hotter.',
+  mod_grip_bumper_s_mk2: 'The Grip Bumper, refined: it lasts a quarter longer and reaches a fifth farther, so the catch is easier and the ride longer.',
   mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
   mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
   mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',

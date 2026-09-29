@@ -126,10 +126,11 @@ export const hullBurst = {
     this.helpers = ctx.helpers;
     this._scratch = [];
     this._unsubs = [];
-    // The once-per-activation latch is a WeakSet of ENTITY OBJECTS, not ids: this runtime recycles entity ids,
-    // so an id latch would skip a new hull that reused a dead hull's id inside one window. It lives on the
-    // system, not in state, so nothing that snapshots or clones state ever meets a Set.
-    this._latched = new WeakSet();
+    // The once-per-activation record is a WeakMap keyed by ENTITY OBJECT (not id: this runtime recycles entity ids,
+    // so an id key would skip a new hull that reused a dead hull's id inside one window) holding what the hull was
+    // last given and when. It lives on the system, not in state, so nothing that snapshots or clones state ever
+    // meets a Map. A hull is hit again only by a much stronger hit (see hullBurst.js rehit rule).
+    this._latched = new WeakMap();
     // The hull the Grip Bumper is carrying (an entity object; state.hullBurst.grip holds only its id, as plain data).
     this._held = null;
     this._ensureRuntime();
@@ -162,7 +163,7 @@ export const hullBurst = {
     if (!rt) return;
     rt.phase = 'ready'; rt.kind = null; rt.activeUntil = 0; rt.readyAt = 0; rt.hits = 0; rt.grip = null;
     this._held = null;
-    this._latched = new WeakSet();
+    this._latched = new WeakMap();
   },
 
   /**
@@ -185,7 +186,7 @@ export const hullBurst = {
     rt.activeUntil = now + def.durationS;
     rt.readyAt = rt.activeUntil + def.cooldownS;
     rt.hits = 0;
-    this._latched = new WeakSet();
+    this._latched = new WeakMap();
     if (this.bus) {
       this.bus.emit('hullBurst:activated', {
         kind: def.id, name: def.name, durationS: def.durationS, cooldownS: def.cooldownS,
@@ -204,7 +205,7 @@ export const hullBurst = {
     if (!rt || rt.phase !== 'active') return;
     if (this._held) this._release(reason);
     rt.phase = 'cooling';
-    this._latched = new WeakSet();
+    this._latched = new WeakMap();
     const now = simNow(this.state);
     // Cutting it short keeps the recharge honest: the clock always runs from the moment it stopped.
     const def = fittedHullBurst(this.state) || resolveHullBurst(rt.kind, 1);
@@ -246,18 +247,41 @@ export const hullBurst = {
     for (const target of near) {
       if (!target || !target.alive || target.id === player.id) continue;
       if (!CANDIDATE_TYPES.has(target.type)) continue;
-      if (this._latched.has(target)) continue;
       const geo = hullBurstWedgeHit(def, player, target);
       if (!geo) continue;
-      this._latched.add(target);
       const closing = (finite(player.vel && player.vel.x) - finite(target.vel && target.vel.x)) * geo.radialX
         + (finite(player.vel && player.vel.z) - finite(target.vel && target.vel.z)) * geo.radialZ;
       const hostile = isHostileToPlayer(target, playerTeam, state);
-      this._deliver(state, rt, def, player, target, geo, closing, bumperMass, hostile);
+      // Once per activation, unless a MUCH stronger hit is now possible (a hostile already inside the wedge at
+      // ignition, at a crawl, must not stay a dud for the whole window once the player drives into it).
+      const strength = this._strength(def, closing, massOf(target, 1), bumperMass, hostile);
+      const prior = this._latched.get(target);
+      const now = simNow(state);
+      if (prior && !(strength >= Math.max(prior.strength * def.rehitFactor, prior.strength + def.rehitMinGain) && now - prior.at >= def.rehitGapS)) continue;
+      // Latch only what the port accepted: a hull with no body yet (just spawned) is retried next tick.
+      if (this._deliver(state, rt, def, player, target, geo, closing, bumperMass, hostile) !== false) {
+        this._latched.set(target, { strength, at: now });
+      }
     }
   },
 
-  /** One hostile (or not) inside the wedge, once: what happens is the fitted type's `effect`. */
+  /**
+   * How strong a hit this would be, in the units the re-hit rule compares (delta-V for a throw, the scale of a
+   * full-effect hit for a lance, 1 for a catch). Pure; the same closing speed the delivery will use.
+   */
+  _strength(def, closing, targetMass, bumperMass, hostile) {
+    if (!hostile && def.effect !== 'throw') return 0;
+    switch (def.effect) {
+      case 'lance': return Math.max(def.minScale, Math.min(1, finite(closing) / def.fullSpeedWuS));
+      case 'grip': return 1;
+      default: {
+        const dv = hullBurstDeltaV(def, closing, bumperMass, targetMass);
+        return hostile ? dv : Math.min(dv, def.nudgeMaxDeltaVWuS);
+      }
+    }
+  },
+
+  /** One hostile (or not) inside the wedge: what happens is the fitted type's `effect`. Returns false if nothing was delivered. */
   _deliver(state, rt, def, player, target, geo, closing, bumperMass, hostile) {
     switch (def.effect) {
       case 'lance': return this._lance(state, rt, def, player, target, closing, hostile);
@@ -274,7 +298,7 @@ export const hullBurst = {
    * player's enemies only.
    */
   _lance(state, rt, def, player, target, closing, hostile) {
-    if (!hostile) return;
+    if (!hostile) return false;
     const mass = massOf(target, 1);
     const scale = Math.max(def.minScale, Math.min(1, finite(closing) / def.fullSpeedWuS));
     const pool = Math.max(0, finite(target.hull)) + Math.max(0, finite(target.shield)) + Math.max(0, finite(target.armorHp));
@@ -283,7 +307,7 @@ export const hullBurst = {
       ? pool * def.lethalMargin + Math.max(0, finite(target.armorFlat))
       : Math.min(pool * def.heavyPoolShare, def.heavyDamageCap);
     const damage = full * scale;
-    if (!(damage > 0)) return;
+    if (!(damage > 0)) return false;
     const stacks = Math.max(1, Math.round(def.burnStacks * scale));
     const at = { x: finite(target.pos.x), z: finite(target.pos.z) };
     const packet = scalarHitToDamagePacket({
@@ -307,6 +331,7 @@ export const hullBurst = {
       this.bus.emit('audio:cue', { id: 'sfx_bomb_thermite_ignite', position: at, gain: 0.5 + 0.5 * scale });
       this.bus.emit('presentation:vfxCue', { id: 'hullburst.lance', lane: 'hullburst', pos: at, particles: Math.round(10 + 24 * scale), lights: 1, flashReduced: flashReduced(state) });
     }
+    return true;
   },
 
   /**
@@ -315,8 +340,8 @@ export const hullBurst = {
    * while a hull is held (one hostage), and a hull too heavy to catch is not touched at all.
    */
   _grip(state, rt, def, player, target, closing, hostile) {
-    if (!hostile || this._held) return;
-    if (massOf(target, 1) > def.gripMaxMass) return;
+    if (!hostile || this._held) return false;
+    if (massOf(target, 1) > def.gripMaxMass) return true; // not catchable: refused for good (latched), never touched
     this._held = target;
     rt.grip = { targetId: target.id, since: simNow(state), refreshAt: simNow(state) + def.refreshS };
     rt.hits += 1;
@@ -327,6 +352,7 @@ export const hullBurst = {
       this.bus.emit('audio:cue', { id: 'sfx_tether_latch_lock', position: at, gain: 0.9 });
       this.bus.emit('presentation:vfxCue', { id: 'hullburst.catch', lane: 'hullburst', pos: at, particles: 16, lights: 1, flashReduced: flashReduced(state) });
     }
+    return true;
   },
 
   /**
@@ -453,7 +479,7 @@ export const hullBurst = {
     const targetMass = massOf(target, 1);
     let deltaV = hullBurstDeltaV(def, closing, bumperMass, targetMass);
     if (!hostile) deltaV = Math.min(deltaV, def.nudgeMaxDeltaVWuS);
-    if (!(deltaV > 0)) return;
+    if (!(deltaV > 0)) return false;
     // Forward-biased throw: mostly where the nose points, some spread from the centres.
     let dirX = def.forwardBias * geo.fx + (1 - def.forwardBias) * geo.radialX;
     let dirZ = def.forwardBias * geo.fz + (1 - def.forwardBias) * geo.radialZ;
@@ -461,16 +487,18 @@ export const hullBurst = {
     dirX /= len; dirZ /= len;
     const magnitude = deltaV * targetMass;
     const physics = this.helpers && this.helpers.combatPhysics;
-    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    if (!physics || typeof physics.applyImpulse !== 'function') return false;
     const accepted = physics.applyImpulse({
       entityId: target.id,
       impulse: { x: dirX * magnitude, z: dirZ * magnitude },
       point: null,
       reason: 'hull_burst',
       tick: state.tick,
-      provenance: { actorId: state.playerId, weaponId: def.moduleId, tag: 'hull_burst' },
+      // A nudge (an ally, a civilian, a neutral) carries no provenance: it is not the player's doing and must
+      // not open a stunt-journal root for a hull the player is not fighting.
+      ...(hostile ? { provenance: { actorId: state.playerId, weaponId: def.moduleId, tag: 'hull_burst' } } : {}),
     });
-    if (accepted === false) return;
+    if (accepted === false) return false;
     rt.hits += 1;
     if (hostile) {
       // The victim's shove is attributed to the player, so the flight, the rock it meets and the

@@ -120,7 +120,7 @@ test('the wedge is a cone in front of the nose', () => {
   assert.equal(at(-60, 0), null, 'behind is out');
   assert.equal(at(0, 80), null, 'abeam is out (never a ring)');
   assert.equal(at(60, 90), null, 'far to the side is out');
-  assert.ok(at(100, 40), 'the wedge opens with distance: 40 WU off the line at 100 WU is in');
+  assert.ok(at(80, 35), 'the wedge opens with distance: 35 WU off the line at 80 WU is in');
   assert.equal(at(20, 60), null, 'but a hull beside the nose is not');
   const turned = hullBurstWedgeHit(GRAVITY, { pos: { x: 0, z: 0 }, rot: Math.PI / 2, radius: 12 }, { pos: { x: 0, z: 60 }, radius: 9 });
   assert.ok(turned, 'the wedge follows the heading');
@@ -192,7 +192,7 @@ test('a hostile hull in the wedge is thrown ONCE, through the ordinary impulse r
 test('every hull is thrown once per activation, and a new activation re-arms them', () => {
   const h = harness();
   const a = h.add({ pos: { x: 60, z: 0 } });
-  const b = h.add({ pos: { x: 100, z: 20 } });
+  const b = h.add({ pos: { x: 85, z: 20 } });
   hullBurst.activate();
   h.tick(5);
   assert.deepEqual(h.impulses.map((i) => i.entityId).sort(), [a.id, b.id].sort());
@@ -236,12 +236,92 @@ test('hulls behind, beside or past the reach are left alone', () => {
   assert.equal(h.impulses.length, 0);
 });
 
-test('docking or dying ends the burst and starts the recharge', () => {
+test('docking, jumping, leaving the sector or dying ends the burst and the recharge runs from THAT moment', () => {
+  for (const event of ['dock:docked', 'jump:start', 'sector:exit', 'player:death']) {
+    const h = harness();
+    h.tick(600); // sim time 10 s: the recharge clock must be read from the cut, not from time 0
+    assert.equal(hullBurst.activate(), true);
+    h.tick(30);
+    const cutAt = h.state.simTime;
+    h.bus.emit(event, {});
+    assert.equal(h.state.hullBurst.phase, 'cooling', `${event} ends the burst`);
+    assert.ok(Math.abs(h.state.hullBurst.readyAt - (cutAt + GRAVITY.cooldownS)) < 1e-6, `${event}: the recharge starts at the cut (${h.state.hullBurst.readyAt} vs ${cutAt + GRAVITY.cooldownS})`);
+    assert.ok(h.events.some((e) => e.type === 'hullBurst:ended' && e.payload.reason === 'interrupted'), `${event} says why`);
+  }
+});
+
+test('a save load or a new game comes back ready, whatever was running', () => {
+  for (const event of ['save:loaded', 'save:restoring', 'game:new']) {
+    const h = harness();
+    hullBurst.activate();
+    h.tick(30);
+    h.bus.emit(event, {});
+    assert.equal(h.state.hullBurst.phase, 'ready', event);
+    assert.equal(h.state.hullBurst.readyAt, 0, `${event}: no stale recharge`);
+    assert.equal(hullBurst.activate(), true, `${event}: it can be lit again`);
+  }
+});
+
+test('a hull the physics owner has no body for yet is retried, not latched as thrown', () => {
   const h = harness();
+  const wasp = h.add({ pos: { x: 60, z: 0 } });
+  let accept = false;
+  h.helpers = null;
+  const original = h.impulses;
+  // The stub port in the harness always accepts; swap in a refusing one for the first ticks.
+  const port = hullBurst.helpers.combatPhysics;
+  const realApply = port.applyImpulse;
+  port.applyImpulse = (req) => { if (!accept) return false; return realApply(req); };
   hullBurst.activate();
-  h.bus.emit('dock:docked', {});
-  assert.equal(h.state.hullBurst.phase, 'cooling');
-  assert.ok(h.state.hullBurst.readyAt >= GRAVITY.cooldownS - 1e-9, 'a cut-short burst still owes the full recharge');
+  h.tick(3);
+  assert.equal(original.length, 0, 'refused: nothing landed');
+  accept = true;
+  h.tick(2);
+  assert.equal(original.filter((i) => i.entityId === wasp.id).length, 1, 'thrown as soon as the body exists');
+});
+
+test('a hostile already inside the wedge at ignition, at a crawl, is not a dud for the whole window', () => {
+  const h = harness({ playerVel: { x: 0, z: 0 } });
+  const wasp = h.add({ pos: { x: 45, z: 0 } });
+  hullBurst.activate();
+  h.tick(2);
+  const first = h.impulses.filter((i) => i.entityId === wasp.id);
+  assert.equal(first.length, 1, 'the press at a standstill gives a nudge');
+  const firstDv = Math.hypot(first[0].impulse.x, first[0].impulse.z) / 16;
+  assert.ok(firstDv < 15, `a small one (${firstDv.toFixed(1)} WU/s)`);
+  h.tick(20);
+  assert.equal(h.impulses.filter((i) => i.entityId === wasp.id).length, 1, 'and no repeat while nothing has changed');
+  // The player now drives into it: a much stronger hit is worth the full effect.
+  h.player.vel.x = 250;
+  wasp.vel.x = 0;
+  h.tick(2);
+  const all = h.impulses.filter((i) => i.entityId === wasp.id);
+  assert.equal(all.length, 2, 'the second, much stronger hit lands');
+  assert.ok(Math.hypot(all[1].impulse.x, all[1].impulse.z) / 16 > 4 * firstDv, 'and it is the strong one');
+});
+
+test('a hull that enters the wedge late is hit with the closing speed at ENTRY, not from across the room', () => {
+  const h = harness({ playerVel: { x: 150, z: 0 }, integrate: true });
+  const wasp = h.add({ pos: { x: 260, z: 0 } });
+  hullBurst.activate();
+  h.tick(10);
+  assert.equal(h.impulses.filter((i) => i.entityId === wasp.id).length, 0, 'still far outside the strike zone: nothing touched it');
+  h.tick(80);
+  const hit = h.impulses.filter((i) => i.entityId === wasp.id);
+  assert.equal(hit.length, 1, 'it is thrown when its edge crosses the reach');
+  const gap = wasp.pos.x - h.player.pos.x;
+  assert.ok(gap > 0, 'ahead of the player');
+  const dv = Math.hypot(hit[0].impulse.x, hit[0].impulse.z) / 16;
+  assert.ok(dv > 150, `and given the full-arrival throw for a 150 WU/s closing, not a crawl's (${dv.toFixed(0)} WU/s)`);
+});
+
+test('a nudge carries no provenance: it is not the player\u2019s doing', () => {
+  const h = harness({ playerVel: { x: 250, z: 0 } });
+  h.add({ team: 2, data: {}, pos: { x: 60, z: 0 } });
+  hullBurst.activate();
+  h.tick(2);
+  assert.equal(h.impulses.length, 1);
+  assert.equal(h.impulses[0].provenance, undefined, 'no stunt-journal root for a hull the player is not fighting');
 });
 
 test('the module is real: sold, researchable, and one per hull', () => {
@@ -467,4 +547,23 @@ test('the Grip Bumper module is real: sold, researchable, taught', () => {
   assert.ok(tech && tech.unlocks.modules.includes(mod.id), 'its tech node lists it');
   assert.equal(getDerivedStats('ship_wasp', fittingsFromDefaultModules('ship_wasp', ['mod_grip_bumper_s'])).hullBurstKind, 'grip');
   assert.ok(GRIP.cooldownS > GRIP.durationS);
+});
+
+test('rank 2 (the Mk2 modules) lasts longer, reaches farther and hits harder, and the higher rank wins', () => {
+  for (const [id, kind] of [['mod_gravity_bumper_s_mk2', 'gravity'], ['mod_fire_lance_s_mk2', 'lance'], ['mod_grip_bumper_s_mk2', 'grip']]) {
+    const mod = MODULES.find((m) => m.id === id);
+    assert.ok(mod, `${id} exists`);
+    assert.equal(mod.mods.hullBurst, kind);
+    assert.equal(mod.mods.hullBurstRank, 2);
+    assert.equal(mod.size, 'S', 'a starter hull can carry it');
+    assert.ok(typeof mod.sentence === 'string' && mod.sentence.length > 0, `${id} has a sentence`);
+    const tech = TECH_NODES.find((t) => t.id === mod.requiresTech);
+    assert.ok(tech && tech.unlocks.modules.includes(id), `${id}: its tech node lists it`);
+    const base = resolveHullBurst(kind, 1);
+    const upgraded = resolveHullBurst(kind, 2);
+    assert.ok(upgraded.durationS > base.durationS * 1.2, `${kind}: lasts longer`);
+    assert.ok(upgraded.reachWu > base.reachWu * 1.15, `${kind}: reaches farther`);
+    assert.equal(getDerivedStats('ship_wasp', fittingsFromDefaultModules('ship_wasp', [id])).hullBurstRank, 2);
+  }
+  assert.ok(resolveHullBurst('gravity', 2).maxDeltaVWuS > resolveHullBurst('gravity', 1).maxDeltaVWuS, 'and hits harder');
 });

@@ -90,7 +90,7 @@ export const TECH_NODES = [
   {
     id: 'tech_payload_conduction', name: 'Payload Conduction', branch: 'combat', prereqs: ['tech_attack_topology', 'tech_plasma_dynamics'],
     cost: { credits: 17500, rp: 21 },
-    unlocks: { modules: ['mod_ion_payload', 'mod_incendiary_payload', 'mod_gravity_tag', 'mod_relay_arc', 'mod_conductive_path', 'mod_cryo_payload'] },
+    unlocks: { modules: ['mod_ion_payload', 'mod_incendiary_payload', 'mod_gravity_tag', 'mod_relay_arc', 'mod_conductive_path', 'mod_cryo_payload', 'mod_fire_lance_s_mk2'] },
   },
   {
     id: 'tech_orbit_cryo', name: 'Cryo Orbitals', branch: 'combat', prereqs: ['tech_payload_conduction'],
@@ -134,7 +134,7 @@ export const TECH_NODES = [
   {
     id: 'tech_impulse_ballistics', name: 'Impulse Ballistics', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 7500, rp: 10 },
-    unlocks: { modules: ['mod_charge_vector_rack'] },
+    unlocks: { modules: ['mod_charge_vector_rack', 'mod_gravity_bumper_s_mk2'] },
   },
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],
@@ -160,7 +160,7 @@ export const TECH_NODES = [
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'logistics', prereqs: ['tech_tractor_systems'],
     cost: { credits: 9000, rp: 12 },
-    unlocks: { modules: ['mod_drone_bay_l'], droneTierCap: 1 },
+    unlocks: { modules: ['mod_drone_bay_l', 'mod_grip_bumper_s_mk2'], droneTierCap: 1 },
   },
   {
     id: 'tech_drone_swarm', name: 'Drone Swarm', branch: 'logistics', prereqs: ['tech_drone_control'],

@@ -521,7 +521,7 @@ export const scenario = {
   async run(seed) {
     // A real crawl: the target starts OUTSIDE the wedge's reach and the player closes on it slowly, so the hit
     // lands at a small but real closing speed (not a stationary player, which is a different case).
-    const crawl = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 20, targetX: 200, tag: 'crawl', throttle: 0.1 });
+    const crawl = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 20, targetX: 150, tag: 'crawl', throttle: 0.1 });
     const swing = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 200, targetX: 260, tag: 'swing', throttle: 1, boost: true });
     const medium = await runThrow(seed, { hullId: 'ship_drifter', playerSpeed: 200, targetX: 260, tag: 'swing_medium', throttle: 1, boost: true });
     const heavy = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'swing_heavy', throttle: 1, boost: true });
