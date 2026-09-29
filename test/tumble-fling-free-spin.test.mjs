@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
+import { COMBAT_FLAGS, MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { HITSTUN_IMPULSE_EVENT } from '../src/combat/impulseKernel.js';
 import { createCombatKernel } from '../src/combat/kernel.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -97,14 +97,17 @@ test('with tumbleFling on, the recovery beat still damps the spin with real thru
     const h = harness();
     const { recovering } = torqueThroughTumble(h, 4);
     assert.ok(recovering.length > 10, `a recovery beat follows the tumble (${recovering.length} ticks)`);
-    const opposing = recovering.filter((row) => row.torqueY < 0);
-    assert.ok(opposing.length > 0 && opposing.every((row) => row.torqueY < 0),
-      'spin is +4 rad/s, so every recovery torque opposes it: the thrusters that damp the spin are the recovery beat\'s');
-    assert.ok(Math.abs(opposing[0].torqueY) > 0.1, 'and it is a real commanded torque, not a rounding residue');
+    // The fixture pins the spin at +4 rad/s every tick, so EVERY recovery row must command opposing
+    // torque: a zero or positive row would mean the recovery beat is not damping the spin.
+    for (const row of recovering) {
+      assert.equal(row.mode, 'tumbling');
+      assert.ok(row.torqueY < -0.1, `recovery torque opposes the +4 rad/s spin with real magnitude (got ${row.torqueY})`);
+      assert.equal(row.source, 'hitstun', 'the recovery beat is the ordinary recovery control, not the free tumble');
+    }
   });
 });
 
-test('with tumbleFling off (the frozen 47-A profile) the tumble keeps its counter-torque, byte for byte', () => {
+test('with tumbleFling off (the frozen 47-A profile) the tumble keeps its full counter-torque and control source', () => {
   withFlags({ weaponImpulseConsequences: true, tumbleFling: false }, () => {
     const h = harness();
     const { active } = torqueThroughTumble(h, 5);
@@ -112,4 +115,25 @@ test('with tumbleFling off (the frozen 47-A profile) the tumble keeps its counte
     assert.ok(active.every((row) => row.torqueY < 0), 'flag off: full counter-torque opposing +5 rad/s spin');
     assert.ok(active.every((row) => row.source === 'hitstun'), 'flag off: the old control source');
   });
+});
+
+test('a rope-thrown hull (massline tumble kind) also spins free, under its own control source', () => {
+  const previousMassline = { enabled: MASSLINE2_FLAGS.enabled, tumble: MASSLINE2_FLAGS.tumble };
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, tumble: true });
+  try { withFlags({ weaponImpulseConsequences: true, tumbleFling: true }, () => {
+    const h = harness();
+    h.bus.emit('massline:throw', { payloadId: h.victim.id, payloadSpeed: 250 });
+    consumePhysicsCommand(h.victim);
+    let sawTumble = 0;
+    for (let i = 0; i < 120; i++) {
+      h.victim.angVel = 3;
+      tick(h);
+      const command = consumePhysicsCommand(h.victim);
+      if (!command || !command.control || !readTumbleStatus(h.state, h.victim)) continue;
+      sawTumble++;
+      assert.equal(command.control.torque.y, 0, 'a thrown hull is out of control too: no counter-torque');
+      assert.equal(command.control.source, 'massline_tumble_free');
+    }
+    assert.ok(sawTumble > 30, `the throw must tumble the hull for a while (${sawTumble} ticks)`);
+  }); } finally { Object.assign(MASSLINE2_FLAGS, previousMassline); }
 });

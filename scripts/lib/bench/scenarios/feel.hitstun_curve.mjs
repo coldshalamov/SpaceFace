@@ -16,7 +16,7 @@ import {
   readPhysicsTelemetry,
 } from '../../../../src/core/physicsAuthority.js';
 import { HITSTUN_IMPULSE_EVENT, hitstunMassFactor, recordImpulseProvenance, resolveHitstunLaw } from '../../../../src/combat/impulseKernel.js';
-import { readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
+import { isRecovering, readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
 import { combat } from '../../../../src/systems/combat.js';
 import { impulseCharges } from '../../../../src/systems/impulseCharges.js';
 import { tumbleStates } from '../../../../src/systems/tumbleStates.js';
@@ -477,11 +477,12 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
               } else if (sinceEvent > 0) {
                 helmRecovered = true;
                 recoveredAtTick = tick;
-                sampleOpposingTorque();
+                if (isRecovering(host.state, victim)) sampleOpposingTorque();
               }
             } else {
               recoveryObserveTicks += 1;
-              sampleOpposingTorque();
+              // Only the real recovery beat (0.9 s) counts; ordinary AI steering torque after it does not.
+              if (isRecovering(host.state, victim)) sampleOpposingTorque();
             }
           }
 
