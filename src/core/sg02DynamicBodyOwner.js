@@ -13,6 +13,7 @@ import {
 } from './physicsAuthority.js';
 import {
   expandProxyPrimitives,
+  isCompoundSkinDynamicEligible,
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
@@ -2868,13 +2869,14 @@ function recordMatchesSpec(rec, spec) {
     rec.spec.material === spec.material;   // material drives collider friction/restitution/groups
 }
 
-// Measured skins (`skin:<census row>`) are fixed-body geometry only. The resolver already refuses
-// them on dynamic bodies; the builder refuses too, keyed on the very spec it is building, so a
-// dynamic hull can never get the compound collider (which ignores centerOfMass and whose
-// multi-contact solve order did not survive a save/reload rebuild). It keeps its capsule/ball.
+// Measured skins (`skin:<census row>`) default to fixed bodies, but are permitted on dynamic
+// bodies where one capsule cannot reach tolerance (capital ships, dreadnought, big wrecks, or explicit
+// compoundSkin opt-in), proven deterministic across save/reload rebuilds (Package C).
 function proxyManifestForBody(entity, spec) {
   const manifest = resolveCollisionProxyManifest(entity);
-  if (manifest && spec && spec.dynamic && typeof manifest.id === 'string' && manifest.id.startsWith('skin:')) return null;
+  if (manifest && spec && spec.dynamic && typeof manifest.id === 'string' && manifest.id.startsWith('skin:')) {
+    if (!isCompoundSkinDynamicEligible(entity)) return null;
+  }
   return manifest;
 }
 
