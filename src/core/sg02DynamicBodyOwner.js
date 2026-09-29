@@ -256,6 +256,12 @@ export class Sg02DynamicBodyOwner {
     this.world = new RAPIER.World({ x: 0, y: 0, z: 0 });
     this.fixedDt = positive(options.fixedDt, SG02_DYNAMIC_BODY_OWNER_DT);
     this.world.timestep = this.fixedDt;
+    if (this.world.integrationParameters) {
+      this.world.integrationParameters.maxCcdSubsteps = 4;
+      this.world.integrationParameters.numSolverIterations = 12;
+      this.world.integrationParameters.normalizedPredictionDistance = 2.5;
+      this.world.integrationParameters.contact_natural_frequency = 240;
+    }
     this.quantum = positive(options.quantum, SG02_DYNAMIC_BODY_OWNER_QUANTUM);
     this.records = new Map();
     this.dynamicRecords = new Set();
@@ -1225,8 +1231,10 @@ export class Sg02DynamicBodyOwner {
     const dvx = vx - e.vx;
     const dvz = vz - e.vz;
     const dv = Math.hypot(dvx, dvz);
-    const maxContactDv = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
+    const closingDv = Math.hypot(e.vx, e.vz);
+    const baseLimit = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
       ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
+    const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
     if (dv > maxContactDv) {
       const scale = maxContactDv / dv;
       vx = e.vx + dvx * scale;
@@ -1390,7 +1398,7 @@ export class Sg02DynamicBodyOwner {
       } else if (spec.shape === 'capsule' || entity.type === 'ship' || entity.type === 'drone') {
         colliderDescs = [buildCraftCapsuleColliderDesc(this.RAPIER, entity, spec, material, this.captureContactImpacts)];
       } else {
-        colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts)];
+        colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts, entity)];
       }
       colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
     }
@@ -2808,11 +2816,6 @@ function setZero3(value) {
 
 function contactMaterialFor(entity, spec) {
   const base = CONTACT_MATERIALS[(spec && spec.material) || 'default'] || CONTACT_MATERIALS.default;
-  // Pickup collection is a JS overlap test. A solver contact on a crate spawned inside a hull
-  // launches both bodies; ghosting keeps the pickup in the world without knocking the ship.
-  if (entity && entity.type === 'pickup' && !base.ghost) {
-    return Object.freeze({ ...base, ghost: true });
-  }
   return base;
 }
 
@@ -2984,6 +2987,29 @@ export function resolveCraftProportions(entity, spec = null) {
   return { length: 1.35, halfWidth: 0.42, height: 0.30 };
 }
 
+const COLLISION_GROUP_SOLID   = 0x0001; // stations, rocks
+const COLLISION_GROUP_CRAFT   = 0x0002; // ships, drones, pods
+const COLLISION_GROUP_DEBRIS  = 0x0004; // wrecks, payloads
+const COLLISION_GROUP_PICKUP  = 0x0008; // pickups (cargo, ore)
+
+function computeCollisionGroups(entity, spec, material) {
+  if (material && material.ghost) return 0;
+  if (entity && entity.type === 'pickup') {
+    // Pickups collide with solids and debris, but pass through craft for JS collection
+    return (COLLISION_GROUP_PICKUP << 16) | (COLLISION_GROUP_SOLID | COLLISION_GROUP_DEBRIS);
+  }
+  if (entity && (entity.type === 'ship' || entity.type === 'drone')) {
+    // Craft collide with solids, other craft, and debris, but exclude pickups (avoiding solver knock)
+    return (COLLISION_GROUP_CRAFT << 16) | (COLLISION_GROUP_SOLID | COLLISION_GROUP_CRAFT | COLLISION_GROUP_DEBRIS);
+  }
+  if (entity && (entity.type === 'wreck' || entity.type === 'payload')) {
+    // Debris/payloads collide with everything
+    return (COLLISION_GROUP_DEBRIS << 16) | (COLLISION_GROUP_SOLID | COLLISION_GROUP_CRAFT | COLLISION_GROUP_DEBRIS | COLLISION_GROUP_PICKUP);
+  }
+  // Solids (stations, rocks, default) collide with everything
+  return (COLLISION_GROUP_SOLID << 16) | (COLLISION_GROUP_SOLID | COLLISION_GROUP_CRAFT | COLLISION_GROUP_DEBRIS | COLLISION_GROUP_PICKUP);
+}
+
 function buildCraftCapsuleColliderDesc(R, entity, spec, material, captureContactImpacts = true) {
   const proportions = resolveCraftProportions(entity, spec);
   const R_ref = positive(spec && spec.radius, positive(entity && entity.radius, 14));
@@ -3001,18 +3027,18 @@ function buildCraftCapsuleColliderDesc(R, entity, spec, material, captureContact
     .setDensity(0);
   applyColliderContactMaterial(R, colliderDesc, material);
 
-  if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
-    colliderDesc.setCollisionGroups(0);
+  if (typeof colliderDesc.setCollisionGroups === 'function') {
+    colliderDesc.setCollisionGroups(computeCollisionGroups(entity, spec, material));
   }
   if (captureContactImpacts) configureContactEvents(R, colliderDesc, material);
   return colliderDesc;
 }
 
-function buildBallColliderDesc(R, spec, material, captureContactImpacts = true) {
+function buildBallColliderDesc(R, spec, material, captureContactImpacts = true, entity = null) {
   const colliderDesc = R.ColliderDesc.ball(spec.radius).setDensity(0);
   applyColliderContactMaterial(R, colliderDesc, material);
-  if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
-    colliderDesc.setCollisionGroups(0);   // member of nothing, filters nothing → zero contacts
+  if (typeof colliderDesc.setCollisionGroups === 'function') {
+    colliderDesc.setCollisionGroups(computeCollisionGroups(entity, spec, material));
   }
   if (captureContactImpacts) configureContactEvents(R, colliderDesc, material);
   return colliderDesc;
@@ -3056,11 +3082,14 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
     if (!desc) continue;
     desc.setDensity(0);
     applyColliderContactMaterial(R, desc, material);
+    if (typeof desc.setCollisionGroups === 'function') {
+      desc.setCollisionGroups(computeCollisionGroups(entity, spec, material));
+    }
     if (captureContactImpacts) configureContactEvents(R, desc, material);
     descs.push(desc);
   }
   // Fail-closed: a malformed manifest must not remove collision — fall back to the legacy ball.
-  if (!descs.length) return [buildBallColliderDesc(R, spec, material, captureContactImpacts)];
+  if (!descs.length) return [buildBallColliderDesc(R, spec, material, captureContactImpacts, entity)];
   return descs;
 }
 
