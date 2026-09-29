@@ -228,17 +228,31 @@ export function asteroidScanGlyph(typeId) {
 
 /** Glyph of the heaviest commodity in an ore table. Ties keep the earlier id. */
 export function dominantOreScanGlyph(oreTable) {
-  if (!oreTable || typeof oreTable !== 'object') return 'Ore';
-  let bestId = null;
-  let bestW = -Infinity;
+  const mix = oreTableByWeight(oreTable);
+  return mix.length ? (COMMODITY_SCAN_GLYPH[mix[0].commodityId] || 'Ore') : 'Ore';
+}
+
+/**
+ * The ore table as an ordered yield mix: heaviest first, ties keeping the earlier id. This is the
+ * one ordering rule every surface that reports a body's contents uses, so a lock line, a scan
+ * glyph and a chart note can never disagree about what a rock is worth.
+ */
+export function oreTableByWeight(oreTable) {
+  if (!oreTable || typeof oreTable !== 'object') return [];
+  const rows = [];
   for (const id of Object.keys(oreTable).sort()) {
     const w = Number(oreTable[id]);
-    if (!Number.isFinite(w) || w <= bestW) continue;
-    bestW = w;
-    bestId = id;
+    if (!Number.isFinite(w) || w <= 0) continue;
+    rows.push({ commodityId: id, weight: w });
   }
-  if (!bestId || !(bestW > 0)) return 'Ore';
-  return COMMODITY_SCAN_GLYPH[bestId] || 'Ore';
+  rows.sort((a, b) => (b.weight - a.weight) || a.commodityId.localeCompare(b.commodityId));
+  return rows;
+}
+
+/** The authored ore table for an asteroid type id, or null. */
+export function oreTableForAsteroidType(typeId) {
+  const def = ASTEROIDS.find((row) => row && row.id === typeId);
+  return (def && def.oreTable) || null;
 }
 
 // Per-sector-tier field generation parameters.

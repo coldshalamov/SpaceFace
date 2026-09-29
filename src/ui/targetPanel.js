@@ -26,6 +26,7 @@ import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactH
 import { contactThreatTier, contactStateWord, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { oreTableByWeight, oreTableForAsteroidType } from '../data/mining.js';
 import { listSelectableComponents } from '../systems/interactionDescriptors.js';
 import { glyphSvg } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -155,8 +156,25 @@ export function targetInteractionClass(e) {
   const interaction = interactionProfileForEntity(e);
   if (interaction.kind === 'unstable_reactor_wreck') return 'Hazardous Salvage';
   if (interaction.kind === 'wreck') return 'Salvage';
-  if (interaction.kind === 'asteroid') return 'Mineable Asteroid';
+  if (interaction.kind === 'asteroid') return asteroidClassLine(e);
   return '';
+}
+
+/**
+ * The lock's CLASS line used to read "Mineable Asteroid" - the verb, restated, next to a name
+ * that already said "Silicate Asteroid". The information a stranger actually wants is inside the
+ * rock, and the type's own ore table has always had it. The class line now reports the yield mix
+ * in the one chart language, heaviest first, derived from that table rather than hand-written so
+ * it cannot drift from what mining will actually release.
+ */
+function asteroidClassLine(e) {
+  const mix = oreTableByWeight(oreTableForAsteroidType(e.data && e.data.typeId));
+  if (!mix.length) return 'Mineable Asteroid';
+  const yields = mix.map((row) => {
+    const commodity = COMMODITY_BY_ID.get(row.commodityId);
+    return (commodity && commodity.name) || row.commodityId;
+  });
+  return `Mineable · ${yields.join(' / ')}`;
 }
 
 export function richSeamTargetReadout(target, state) {
