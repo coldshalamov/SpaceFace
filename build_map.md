@@ -428,7 +428,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
 | 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | OPEN |
 | 58 | P7 | Body-scale bars hold across zoom/speed — first slice landed; verify floors at edge zooms | BUILD | OPEN |
-| 59 | P10 | World-on-the-way remainder: working chain within two screen-depths + raid in progress — partial | BUILD | CLAIMED pb-ten-lanes |
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
 
