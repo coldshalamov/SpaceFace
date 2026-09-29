@@ -6,9 +6,9 @@
 //     bounty work are legal force; the law clears the shooter on the record when it could see.
 //   * A target that only turned hostile because the player shot first is NOT a clear hostile —
 //     retaliation cannot launder a murder into self-defense (frozen first-hit truth).
-//   * A non-hostile kill is a crime ONLY when the law can see it: inside a lawful station's
-//     protection ring, under a lawful/marked witness, under a protected civilian's eyes, or when
-//     the victim itself belonged to the law network (the law always records its own dead).
+//   * A non-hostile kill is a crime ONLY when someone saw it: a lawful or marked witness, or a
+//     protected civilian. A protection ring and a lawful-network victim are place and class, not
+//     eyes. An unseen patrol death is a pending case, not a charge.
 //   * An unseen crime cannot be charged — unwitnessed kills mint no heat.
 //   * Heat reaches heat ONLY through the law-signed receipt. Nothing else writes player.heat.
 //   * SCAN/BOUNTY clear lawfully at a lawful dock: real credits through the economy owner, then
@@ -154,17 +154,25 @@ test('a civilian who only fought back is still a murder victim, not a hostile', 
   run.sim.dispose();
 });
 
-test('a lawful-network victim is always visible to the law, even with no eyes present', () => {
+test('a lawful-network victim with no eyes is a pending case, not a charge', () => {
   const run = boot({ withStation: false });
   const victim = lawfulWitness(run, { x: 80, z: 0 }); // a patrol hull — the law's own
+  victim.alive = false;
+  victim.hull = 0;
   victim.pos.x = 4000; victim.pos.z = 4000; // drag the scene far from every other actor
   run.bus.emit('entity:killed', killPayload(run, victim, {
     pos: { x: 4000, z: 4000 }, factionLawful: true,
   }));
 
-  assert.ok(run.state.player.heat >= WANTED_THRESHOLD,
-    'the law network records its own dead — murdering a patrol needs no bystander');
-  assert.equal(run.receipts[0].kind, 'lawful_kill');
+  assert.equal(run.state.player.heat, 0,
+    'the network does not accuse from the fact that the victim was lawful');
+  assert.equal(run.receipts.length, 0, 'no validated crime without an eye');
+  const unwitnessed = run.lawResponses.find((r) => r.action === 'kill_unwitnessed');
+  assert.ok(unwitnessed, 'the law records the no-charge outcome explicitly');
+  const pending = run.state.lawSecurity && run.state.lawSecurity.unreportedKills;
+  assert.ok(pending && Object.keys(pending).length === 1, 'the unseen patrol death stays a case');
+  assert.equal(victim.alive, false, 'the unseen kill still destroys the hull');
+  assert.equal(victim.hull, 0);
   run.sim.dispose();
 });
 

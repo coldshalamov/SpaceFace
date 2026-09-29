@@ -445,10 +445,15 @@ function readRebound(run) {
   const path = trace.filter((s, i) => i % 12 === 0)
     .map((s) => ({ t: round((s.tick - trace.hitTick) * DT, 2), x: round(s.x, 0), z: round(s.z, 0), vx: round(s.vx, 0), w: round(s.w, 1), tumbling: s.tumbling }));
   const survived = victim.alive !== false;
+  // Tick-by-tick around the contact: what the hull's velocity and control state actually did.
+  const contactWindow = contactTick == null ? null : trace
+    .filter((sample) => sample.tick >= contactTick - 2 && sample.tick <= contactTick + 10)
+    .map((sample) => ({ dt: sample.tick - contactTick, x: round(sample.x, 1), vx: round(sample.vx, 1), w: round(sample.w, 2), tumbling: sample.tumbling, recovering: sample.recovering }));
   return {
     measured: true,
     realPathProof: run.proof,
     path,
+    contactWindow,
     contact: collision,
     survived,
     hullAtEnd: round(victim.hull, 1),
@@ -473,11 +478,12 @@ function readRebound(run) {
 async function runChain(seed, eventTrace) {
   const run = await runFling(seed, {
     playerPos: { x: -760, z: 0 },
-    // A is flung -x into B, 140 WU down the line; B is a live hostile hunting the player, which
-    // is behind it on the same line, so B holds its line rather than leaving it.
+    // A is flung -x into B, 140 WU down the line. Both hold still until hit: a live B hunting the
+    // player runs away down the same line at ~80 WU/s and the closing speed collapses to ~30, which
+    // measures the geometry, not the law.
     hostiles: [
-      { pos: { x: -400, z: 0 }, vel: { x: 0, z: 0 } },
-      { pos: { x: -540, z: 0 }, vel: { x: 0, z: 0 } },
+      { pos: { x: -400, z: 0 }, vel: { x: 0, z: 0 }, passive: true },
+      { pos: { x: -540, z: 0 }, vel: { x: 0, z: 0 }, passive: true },
     ],
     hit: { dir: { x: -1, z: 0 }, deltaV: 110, tick: 3, only: [0] },
     ticks: 3 + 60 * 6,
@@ -596,8 +602,10 @@ export const scenario = {
 
     // Lethal fling (a Wasp dies to a rock at about 0.5 cruise closing): attribution inside 3 s.
     const lethal = readRebound(await runRock(seed, { flightWu: 150, deltaV: 100, eventTrace, tag: 'rock_lethal' }));
-    // Survivor fling (about 0.27 cruise closing): the only case where a bounce can exist.
-    const survivor = readRebound(await runRock(seed, { flightWu: 60, deltaV: 28, eventTrace, tag: 'rock_survivor' }));
+    // Survivor fling (about 0.27 cruise closing): the only case where a bounce can exist. A 28 WU/s
+    // hit stuns for ~0.8 s, so the rock is 15 WU away: contact must land while the hull is still
+    // tumbling (a hull that has already recovered scrapes by design; only a loose hull bounces).
+    const survivor = readRebound(await runRock(seed, { flightWu: 15, deltaV: 28, eventTrace, tag: 'rock_survivor' }));
     // 300 WU at 90 WU/s is 3.3 s of flight: past the 3 s (180 tick) life of the impulse record, and
     // still inside the 3.5 s stun cap, so the hull is tumbling when it lands.
     const longFlight = readRebound(await runRock(seed, { flightWu: 300, deltaV: 90, eventTrace, tag: 'long_flight' }));

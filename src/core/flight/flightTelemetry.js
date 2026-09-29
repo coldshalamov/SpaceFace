@@ -382,7 +382,10 @@ function computeActuatorDemand(control, axes, localVelocity) {
   const assist = t && t.assistLocal ? t.assistLocal : null;
   const governor = t && t.governor && typeof t.governor === 'object' ? t.governor : null;
   const reason = t && typeof t.assistReason === 'string' ? t.assistReason : 'none';
-  const driveState = t && typeof t.driveState === 'string' ? t.driveState : 'idle';
+  // A missing state is idle only when nobody asked for thrust. An explicit disabled
+  // token, or a missing state while a request produces nothing, is not a coast.
+  const explicitDriveState = !!(t && typeof t.driveState === 'string' && t.driveState.length > 0);
+  const publishedDriveState = explicitDriveState ? t.driveState : 'idle';
   // Two different questions, deliberately two flags. `braking` is the physical one — is this
   // drive spending authority against its own velocity — and is derived here because it is true
   // for every family regardless of what the kernel chose to publish. `pilotBrake` is the
@@ -392,10 +395,31 @@ function computeActuatorDemand(control, axes, localVelocity) {
   // whole point of moving this off the renderer's guesswork.
   const braking = forward * finite(localVelocity && localVelocity.forward)
     + lateral * finite(localVelocity && localVelocity.lateral) < -EPS;
-  const pilotBrake = reason === 'pilot-brake' || driveState === 'flip-burn';
+  const pilotBrake = reason === 'pilot-brake' || publishedDriveState === 'flip-burn';
   const governorEngaged = !!(governor && governor.engaged);
   const overspeed = !!(governor && governor.overspeed);
   const boostFraction = clamp(finite(t && t.boostFraction), 0, 1);
+  const manualForward = finite(manual && manual.forward);
+  const manualLateral = finite(manual && manual.lateral);
+  const requested = Math.hypot(manualForward, manualLateral);
+  const achieved = Math.hypot(forward, lateral);
+  const unavailableToken = explicitDriveState && (
+    publishedDriveState === 'disabled'
+    || publishedDriveState === 'offline'
+    || publishedDriveState === 'damaged'
+    || publishedDriveState === 'unavailable'
+  );
+  // Held denial only. A released stick, a real pilot brake, a flip-burn, an engaged
+  // governor, or any working kernel token keeps its own cause.
+  const heldDenial = (unavailableToken || !explicitDriveState)
+    && requested > EPS
+    && achieved <= EPS
+    && reason !== 'pilot-brake'
+    && publishedDriveState !== 'flip-burn'
+    && !governorEngaged;
+  const driveState = heldDenial && !explicitDriveState ? 'unavailable' : publishedDriveState;
+  const assistReason = heldDenial ? 'drive-unavailable' : reason;
+  const coastHelm = heldDenial ? false : !!(t && t.coastHelm);
 
   return {
     forward,
@@ -408,8 +432,8 @@ function computeActuatorDemand(control, axes, localVelocity) {
     port: Math.max(0, -lateral),
     yawCw: Math.max(0, yaw),
     yawCcw: Math.max(0, -yaw),
-    manual: { forward: finite(manual && manual.forward), lateral: finite(manual && manual.lateral) },
-    assist: { forward: finite(assist && assist.forward), lateral: finite(assist && assist.lateral), reason },
+    manual: { forward: manualForward, lateral: manualLateral },
+    assist: { forward: finite(assist && assist.forward), lateral: finite(assist && assist.lateral), reason: assistReason },
     governor: {
       engaged: governorEngaged,
       overspeed,
@@ -420,17 +444,20 @@ function computeActuatorDemand(control, axes, localVelocity) {
       physicsEarned: !!(governor && governor.physicsEarned),
     },
     // Applied-versus-requested authority. The speed governor is the only demand clamp the
-    // kernel publishes; the hard per-axis envelope clamp is not observable from here, so it is
-    // deliberately not claimed rather than guessed at from a residual.
-    limited: governorEngaged,
-    limitReason: governorEngaged ? (overspeed ? 'governor-overspeed' : 'governor-cap') : 'none',
+    // kernel publishes. drive-unavailable is the explicit disabled token, or a missing
+    // state, when a held request achieves nothing. A working driveState is never guessed
+    // into that cause from a residual.
+    limited: heldDenial || governorEngaged,
+    limitReason: heldDenial
+      ? 'drive-unavailable'
+      : (governorEngaged ? (overspeed ? 'governor-overspeed' : 'governor-cap') : 'none'),
     driveState,
     assistMode: t && typeof t.assistMode === 'string' ? t.assistMode : 'none',
     braking,
     pilotBrake,
     boosting: boostFraction > 0,
     boostFraction,
-    coastHelm: !!(t && t.coastHelm),
+    coastHelm,
     impulseDeltaV: Math.max(0, finite(t && t.firedDeltaV)),
   };
 }

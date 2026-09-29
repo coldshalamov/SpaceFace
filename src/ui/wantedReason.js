@@ -12,9 +12,14 @@ export const WANTED_KIND_LABELS = Object.freeze({
 });
 
 export function wantedReasonText(packet, player) {
-  const inc = (packet && typeof packet === 'object' && packet.incident)
-    || (player && typeof player === 'object' && player.heatLastIncident)
-    || null;
+  // An explicit null incident on a heat packet is the answer: the explanation has
+  // expired. Do not fall back to a player record the packet just superseded.
+  let inc = null;
+  if (packet && typeof packet === 'object' && Object.prototype.hasOwnProperty.call(packet, 'incident')) {
+    inc = packet.incident;
+  } else if (player && typeof player === 'object') {
+    inc = player.heatLastIncident || null;
+  }
   if (!inc || typeof inc !== 'object' || !inc.incidentReceiptId) return '';
   const parts = [WANTED_KIND_LABELS[inc.kind]
     || (typeof inc.kind === 'string' && inc.kind ? inc.kind.toUpperCase().slice(0, 32) : 'INCIDENT')];

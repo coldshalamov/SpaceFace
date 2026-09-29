@@ -272,10 +272,14 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
   await page.waitForFunction(() => !!window.SF?.state, null, { timeout: APP_SURFACE_TIMEOUT_MS });
   await waitForMenuAction(page, 'newGame');
-  await page.getByRole('button', { name: /^New Game$/i }).click({ timeout: 30_000 });
-  await waitForScreenVisible(page, 'newGame');
-  await page.fill('#sf-ng-seed', String(SEED), { timeout: 30_000 });
-  await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
+  // Every actionability wait on the menu path shares the menu budget, not Playwright's implicit
+  // 30 s: the gate above only proves the button was mounted and armed at poll time — the click's
+  // own stability/hit-test polls still need two produced frames, which a contended software-GL
+  // host can starve for tens of seconds while the menu finishes its registration transitions.
+  await page.getByRole('button', { name: /^New Game$/i }).click({ timeout: MENU_READY_TIMEOUT_MS });
+  await waitForScreenVisible(page, 'newGame', MENU_READY_TIMEOUT_MS);
+  await page.fill('#sf-ng-seed', String(SEED), { timeout: MENU_READY_TIMEOUT_MS });
+  await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: MENU_READY_TIMEOUT_MS });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 180_000 });
   stamp('flight');
   await page.waitForFunction(() => {
@@ -321,7 +325,7 @@ try {
   if (VIA_CONTINUE) {
     // Save in the destination sector, then reload the page and Continue into it. The load path
     // must publish the same bodies the jump path does.
-    await page.waitForFunction(() => window.SF.state.simTime > 0, null, { timeout: 30_000 });
+    await page.waitForFunction(() => window.SF.state.simTime > 0, null, { timeout: MENU_READY_TIMEOUT_MS });
     // The F5 keybinding's own event. `save:request` does not exist; emitting it wrote nothing and
     // the reload then Continued into the ORIGIN sector, which is a silent false pass.
     await page.evaluate(() => window.SF.bus.emit('game:save', { slot: 'quick' }));
@@ -332,7 +336,7 @@ try {
         const parsed = JSON.parse(raw);
         return parsed?.data?.world?.currentSectorId || parsed?.world?.currentSectorId || 'unknown';
       } catch { return 'unparsed'; }
-    }, null, { timeout: 30_000 }).then((handle) => handle.jsonValue());
+    }, null, { timeout: MENU_READY_TIMEOUT_MS }).then((handle) => handle.jsonValue());
     assert.equal(savedSector, TARGET_SECTOR,
       `the quick save must be written in ${TARGET_SECTOR}, not ${savedSector}`);
     stamp(`quick save written at the destination (${savedSector})`);
@@ -342,7 +346,7 @@ try {
     // the "Checking saves" window is a silent no-op and the flight wait below would burn its whole
     // budget for nothing. The gate waits for the armed button, not just the mounted menu.
     await waitForMenuAction(page, 'continue');
-    await page.getByRole('button', { name: /^Continue$/i }).click({ timeout: 30_000 });
+    await page.getByRole('button', { name: /^Continue$/i }).click({ timeout: MENU_READY_TIMEOUT_MS });
     await page.waitForFunction((sectorId) => window.SF.state.mode === 'flight'
       && window.SF.state.world.currentSectorId === sectorId, TARGET_SECTOR, { timeout: 240_000 });
     stamp('continued into the destination sector');

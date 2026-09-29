@@ -51,8 +51,22 @@ function boot(seed, systems = [heat, lawSecurity, bountyHunt, spawnBudget]) {
   };
 }
 
-function killCivilian(bus, state, id = 404) {
-  bus.emit('entity:killed', {
+function withLawfulEye(sim, state, emit) {
+  const player = state.entities && state.entities.get(state.playerId);
+  const pos = player && player.pos ? player.pos : { x: 0, z: 0 };
+  const eye = sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: pos.x + 30, z: pos.z },
+    hull: 80, hullMax: 80, radius: 8,
+    data: { ai: { lawful: true }, witnessEye: true },
+  });
+  emit();
+  eye.alive = false;
+  eye.hull = 0;
+}
+
+function killCivilian(sim, state, id = 404) {
+  withLawfulEye(sim, state, () => sim.bus.emit('entity:killed', {
     id,
     killerId: state.playerId,
     type: 'ship',
@@ -60,11 +74,11 @@ function killCivilian(bus, state, id = 404) {
     factionId: 'faction_free',
     factionLawful: false,
     targetHostileToPlayer: false,
-  });
+  }));
 }
 
-function killLawman(bus, state, id = 505) {
-  bus.emit('entity:killed', {
+function killLawman(sim, state, id = 505) {
+  withLawfulEye(sim, state, () => sim.bus.emit('entity:killed', {
     id,
     killerId: state.playerId,
     type: 'ship',
@@ -72,7 +86,7 @@ function killLawman(bus, state, id = 505) {
     factionId: 'faction_scn',
     factionLawful: true,
     targetHostileToPlayer: false,
-  });
+  }));
 }
 
 function liveHunters(state) {
@@ -109,7 +123,7 @@ test('four WANTED tiers are named from existing heat levels', () => {
 
 test(`seed ${SEED_SCAN}: scan-tier escape is leave the search zone so heat drops`, () => {
   const { sim, state, player, changes } = boot(SEED_SCAN);
-  killCivilian(sim.bus, state);
+  killCivilian(sim, state);
 
   assert.ok(state.player.heat >= THRESHOLD, `civilian kill heat ${state.player.heat} must cross WANTED`);
   assert.equal(state.player.wantedTier, WANTED_TIER.SCAN);
@@ -135,7 +149,7 @@ test(`seed ${SEED_SCAN}: scan-tier escape is leave the search zone so heat drops
 
 test(`seed ${SEED_BOUNTY}: bounty-tier posts a hunter that arrives from a reserve point`, () => {
   const { sim, state, player, changes, warrants } = boot(SEED_BOUNTY);
-  killLawman(sim.bus, state);
+  killLawman(sim, state);
   sim.step();
   if (sim.registry.get('bountyHunt')) sim.registry.get('bountyHunt').update(SIM_DT, state);
 
@@ -202,7 +216,7 @@ test(`seed ${SEED_BOUNTY}: warrant hunter flies inward from the reserve point`, 
   const physicsSys = sim.registry.get('physics');
   assert.equal(await physicsSys.prepareBackend(state), true, 'rapier-dynamic should initialize');
 
-  killLawman(sim.bus, state);
+  killLawman(sim, state);
   sim.step();
   const hunter = liveHunters(state)[0];
   assert.ok(hunter, 'bounty band must post the hunter before we measure the flight');
@@ -224,7 +238,7 @@ test(`seed ${SEED_BOUNTY}: warrant hunter flies inward from the reserve point`, 
 
 test(`seed ${SEED_BOUNTY}: leaving the search zone drops bounty to scan and the hunter breaks off`, () => {
   const { sim, state, player } = boot(SEED_BOUNTY);
-  killLawman(sim.bus, state);
+  killLawman(sim, state);
   sim.step();
   if (sim.registry.get('bountyHunt')) sim.registry.get('bountyHunt').update(SIM_DT, state);
 
