@@ -10,7 +10,7 @@
 // Re-shoot the baseline after UI changes:
 //   node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 \
 //     --budgets-out=test/ui-frame-references/budgets.json
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -71,12 +71,37 @@ if (baseline) {
     console.error(`  FAIL ${failure}`);
     if (failure.startsWith('baseline:stale')) {
       // A stale verdict means the digest over the working tree no longer matches the
-      // committed baseline. Name the drift rather than guessing: untracked/modified files
-      // under the digest roots are the only thing that can move the hash.
-      const dirty = spawnSync('git', ['status', '--porcelain', '--', 'src/ui', 'styles', 'src/core', 'src/render'],
-        { cwd: ROOT, encoding: 'utf8' }).stdout || '';
+      // committed baseline. Name the drift rather than guessing: the digest walks the
+      // filesystem, so .gitignore'd strays (which `git status` never shows) move the hash
+      // just as surely as tracked edits. Diff the walked set against the tracked set —
+      // the strays ARE the drift.
+      const roots = ['src/ui', 'styles', 'src/core', 'src/render'];
+      const walked = new Set();
+      const collect = (dir) => {
+        let entries = [];
+        try { entries = readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
+        for (const entry of entries) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) collect(full);
+          else walked.add(path.relative(ROOT, full).replaceAll('\\', '/'));
+        }
+      };
+      for (const root of roots) collect(path.join(ROOT, root));
+      const tracked = new Set(
+        (spawnSync('git', ['ls-files', '--', ...roots], { cwd: ROOT, encoding: 'utf8' }).stdout || '')
+          .split('\n').filter(Boolean),
+      );
+      const strays = [...walked].filter((p) => !tracked.has(p)).sort();
+      const missing = [...tracked].filter((p) => !walked.has(p)).sort();
       console.error(`  digest computed: ${uiSourceDigest(ROOT)} vs baseline ${baseline.uiSourceDigest}`);
-      console.error(`  digest-root deviations vs index:\n${dirty.trim() || '    (none — working tree matches the index)'}`);
+      console.error(`  digest inputs: ${walked.size} walked vs ${tracked.size} tracked`);
+      if (strays.length) console.error(`  strays hashed but not tracked: ${strays.slice(0, 12).join(', ')}`);
+      if (missing.length) console.error(`  tracked but absent: ${missing.slice(0, 12).join(', ')}`);
+      if (!strays.length && !missing.length) {
+        const dirty = spawnSync('git', ['status', '--porcelain', '--', ...roots],
+          { cwd: ROOT, encoding: 'utf8' }).stdout || '';
+        console.error(`  identical file set; tracked-byte drift:\n${dirty.trim() || '    (none — content matches the index; drift is inside the hash inputs)'}`);
+      }
     }
   }
   for (const breach of verdict.breaches) console.error(`  REGRESSION ${breach}`);
