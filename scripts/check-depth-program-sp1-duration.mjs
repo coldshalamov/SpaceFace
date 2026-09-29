@@ -30,6 +30,7 @@ const NATIVE_OBJECTIVE_EVENTS = new Set([
   'salvage:completed',
   'dock:docked',
   'entity:killed',
+  'tether:reel',
   'uniqueWreck:bearingFixed',
   'uniqueWreck:complicationTriggered',
   'uniqueWreck:decisionReady',
@@ -321,6 +322,36 @@ function driveOrdinaryObjective(state, missionSystem, bus, mission) {
       if (target) target.alive = false;
       bus.emit('entity:killed', { id, killerId: state.playerId });
     }
+    return elapsed;
+  }
+  if (mission.type === 'rescue_under_fire') {
+    // The Lung Run's rescue spine resolves through its own native corridor_pull verb: the
+    // tagged raider escorts fall to player kills, then a tether reel takes a life pod from
+    // stand-off. Spawn counts are asserted, not driven — the density is authored content.
+    // Kills and reel land in ONE native pass because the runner's target top-up replaces a
+    // downed raider on the next retry tick — the corridor verb is a burst, and the audit
+    // models the same burst window the live runner honors.
+    const liveTargets = (mission.targetEntityIds || [])
+      .map((id) => state.entities.get(id))
+      .filter((entity) => entity && entity.alive !== false);
+    const pods = liveTargets.filter((entity) => (
+      entity.data && entity.data.physicalRole === 'life_pod'
+    ));
+    const escorts = liveTargets.filter((entity) => (
+      entity.data && entity.data.physicalRole === 'rescue_escort'
+    ));
+    assert.ok(pods.length >= 1,
+      `rescue stage spawns tagged life pods (want >=1, got ${pods.length})`);
+    assert.ok(escorts.length >= 1,
+      `rescue stage spawns tagged raider escorts (want >=1, got ${escorts.length})`);
+    for (const escort of escorts) {
+      escort.alive = false;
+      bus.emit('entity:killed', { id: escort.id, killerId: state.playerId });
+    }
+    bus.emit('tether:reel', { targetId: pods[0].id, actorId: state.playerId });
+    const modeledS = MODELED_COMBAT_KILL_S * escorts.length + MODELED_DOCK_S;
+    advanceClock(state, missionSystem, modeledS);
+    elapsed += modeledS;
     return elapsed;
   }
   if (mission.params && mission.params.setPieceObjective === 'investigation_recover_box') {

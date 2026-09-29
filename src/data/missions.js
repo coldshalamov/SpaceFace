@@ -1,5 +1,5 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (17), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (11),
+// Exports: MISSION_TYPES (17), SET_PIECE_MISSIONS (6), AUTHORED_SET_PIECES (11),
 // STORY_BEATS (8), OFFER_MIX, MISSION_TUNING. Capital boss is its own type, not an 11th authored row.
 // PQ-152.03 twist clauses live in missionConditions.js and stamp onto these types; they do not
 // add an 11th authored row or a second capital type.
@@ -314,7 +314,9 @@ export const MISSION_TYPES = [
 // and canonical receipts remain the only save authority. A route consists of commonStages followed
 // by exactly one of two branch stage lists. Every route is intentionally 3-4 accepted missions.
 // Original three (long_read, witness_run, hearing) plus depth-shape expansion (blockade_run,
-// investigation_chain): each multiplies board variety via stage *graphs*, not single-threshold reskins.
+// investigation_chain): each multiplies board variety via stage *graphs*, not single-threshold
+// reskins. lung_run is the kind rotation into emergency/response — the chain family's first
+// rescue spine, and the first authored work hosted by Charon Expanse.
 function setPieceCopyRefs(archetypeId, stageId) {
   const root = `mission.sp1.${archetypeId}.${stageId}`;
   return {
@@ -942,6 +944,118 @@ export const SET_PIECE_MISSIONS = [
       },
     ],
   },
+  // The Lung Run — the chain family's first emergency/response kind, and the first authored
+  // work Charon Expanse ever hosts (its board profile is the writ wall: bounty_board). A DMC
+  // intake haul broke up on the radiation lane the locals call the Lung. Assess the break-up,
+  // pull the crews off it under raider fire (the family's first rescue_under_fire stage —
+  // stage_tow or corridor_pull both stay honest because the stage carries no kill clause),
+  // then choose who keeps the crews: the company tender home clean (escort, no_kills), or
+  // their sealed indenture ledger to the Nyx Fence (smuggling, no_scan) so the Quiet erases
+  // the debt. No wreckId: the scene is the break-up line, not a reserved hull.
+  {
+    id: 'lung_run',
+    title: 'The Lung Run',
+    startStationId: 'station_expanse',
+    repeatable: true,
+    commonStages: [
+      {
+        id: 'read_the_break',
+        title: 'Read the Break-Up',
+        type: 'recon_scan',
+        boardStationId: 'station_expanse',
+        destSectorId: 'sector_charon_expanse',
+        factionId: 'faction_dmc',
+        riskTier: 2,
+        rewardCr: 780,
+        collateralCr: 0,
+        durationS: 1500,
+        distance: 900,
+        params: {
+          scanTargets: 3,
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('lung_run', 'read_the_break'),
+      },
+      {
+        id: 'pull_the_crews',
+        title: 'Pull the Crews Off the Lung',
+        type: 'rescue_under_fire',
+        boardStationId: 'station_expanse',
+        destStationId: 'station_expanse',
+        destSectorId: 'sector_charon_expanse',
+        factionId: 'faction_dmc',
+        riskTier: 2,
+        rewardCr: 1320,
+        collateralCr: 300,
+        durationS: 1800,
+        distance: 800,
+        params: {
+          podCount: 3,
+          escortCount: 2,
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('lung_run', 'pull_the_crews'),
+      },
+    ],
+    branches: [
+      {
+        id: 'tender',
+        label: 'Keep Them On the Books',
+        tradeoff: 'Escort the collection tender home clean. The crews stay on the intake rolls, and so does your standing with the refinery.',
+        stages: [
+          {
+            id: 'run_the_tender',
+            title: 'Run the Company Tender',
+            type: 'escort',
+            boardStationId: 'station_expanse',
+            destStationId: 'station_expanse',
+            destSectorId: 'sector_charon_expanse',
+            factionId: 'faction_dmc',
+            riskTier: 2,
+            rewardCr: 1560,
+            collateralCr: 420,
+            durationS: 1800,
+            distance: 700,
+            params: {
+              convoySize: 2,
+              ambushSize: 3,
+              targetStrength: 1.2,
+            },
+            clauseIds: ['no_kills'],
+            ...setPieceCopyRefs('lung_run', 'run_the_tender'),
+          },
+        ],
+      },
+      {
+        id: 'march',
+        label: 'Lose Them in the March',
+        tradeoff: 'Run the crews sealed ledger to the Nyx Fence. The Quiet erases the debt, the crews vanish free, and the refinery never learns your name.',
+        stages: [
+          {
+            id: 'march_the_ledger',
+            title: 'March the Ledger to Nyx',
+            type: 'smuggling_run',
+            boardStationId: 'station_expanse',
+            destStationId: 'station_nyx_march',
+            destSectorId: 'sector_nyx_march',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 2150,
+            collateralCr: 560,
+            durationS: 2000,
+            distance: 2600,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+            },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('lung_run', 'march_the_ledger'),
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 const SET_PIECE_ARCHETYPE_IDS = [
@@ -950,6 +1064,7 @@ const SET_PIECE_ARCHETYPE_IDS = [
   'hearing',
   'blockade_run',
   'investigation_chain',
+  'lung_run',
 ];
 const SET_PIECE_CLAUSE_IDS = new Set(['no_kills', 'cargo_intact', 'no_scan']);
 const SET_PIECE_COMMODITY_IDS = new Set(['cmdty_classified_salvage']);

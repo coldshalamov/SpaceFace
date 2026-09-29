@@ -201,6 +201,31 @@ export default defineFlavorPack({
       recovery: 'NYX REOPENED A NARROWER BLIND WINDOW FOR THE SAME LOT.',
     }),
 
+    ...stageCopy('lung_run', 'read_the_break', {
+      instruction: 'Fly the Lung line at Charon and put a hard reading on the three break-up marks.',
+      success: 'BREAK-UP READ. THREE MARKS, ONE HULL, CREW SIGNALS STILL MOVING INSIDE IT.',
+      failure: 'SURVEY CLOSED. THE LUNG KEEPS ITS WRECK LINE AND ITS CREWS.',
+      recovery: 'THE LINE HOLDS ITS SHAPE. THE SAME THREE MARKS MAY BE READ AGAIN.',
+    }),
+    ...stageCopy('lung_run', 'pull_the_crews', {
+      instruction: 'Reach the breaking hulk and get the crews out — tow a pod to the refinery, or clear the raiders and reel from stand-off.',
+      success: 'CREWS OUT. THE INTAKE OWNS THREE MORE NAMES AND OWES FOR THEM.',
+      failure: 'THE LUNG CLOSED OVER THE PODS. THE INTAKE WROTE THE NAMES OFF.',
+      recovery: 'ONE POD WINDOW REMAINS. THE RAIDERS ARE STILL WORKING THE HULL.',
+    }),
+    ...stageCopy('lung_run', 'run_the_tender', {
+      instruction: 'Meet the company tender and bring its collection convoy home without a kill. The crews stay on the books.',
+      success: 'TENDER BERTHED. THE CREWS ARE INTAKE PROPERTY AGAIN, LAWFULLY.',
+      failure: 'THE TENDER LOST HULLS ON THE APPROACH. THE INTAKE DOUBLED ITS BOUNTY WALL INSTEAD.',
+      recovery: 'THE TENDER RETRIES AT A REDUCED STAKE. THE AMBUSH KNOWS THE LANE NOW.',
+    }),
+    ...stageCopy('lung_run', 'march_the_ledger', {
+      instruction: 'Take the crews’ sealed indenture ledger to the Nyx Fence without a scan. The Quiet strikes them from the rolls.',
+      success: 'LEDGER DELIVERED. THREE NAMES LEFT THE INTAKE ROLLS WITHOUT LEAVING THE GALAXY.',
+      failure: 'THE LEDGER WAS READ AT A CHECKPOINT. THE MARCH PRICE NOW INCLUDES THE READING.',
+      recovery: 'A SECOND SEAL HOLDS. THE FENCE WILL STILL TAKE THE LEDGER QUIETLY.',
+    }),
+
     travelLine('dorin', '01', 'They made the seal clean after they made the corridor quiet.'),
     travelLine('dorin', '02', 'The first list named the missing. The second named authorized witnesses.'),
     travelLine('dorin', '03', 'Not courage. I exhausted every department willing to lose that page.'),
