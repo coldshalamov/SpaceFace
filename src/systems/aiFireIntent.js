@@ -92,6 +92,18 @@ export function applyAIFiringIntent(decision, state) {
     clearFire(intent);
     return;
   }
+  // SF-057 bounded-search residual: the squad's merged focus can be pure memory — every member's
+  // contact stale — yet targetId resolves to the LIVE entity below, so firing would aim at a
+  // position nobody currently holds. The member still flies the search leg toward the last fix
+  // (the objective survives; the squad vote is advisory); the gun channel alone closes until a
+  // fresh sighting. A dispatched mark sustains the maneuver objective but is not a sighting —
+  // fire waits for a member to actually see the target. PD screen actors resolve their own
+  // track targets and are exempt.
+  if (!pdActor && objective.targetObserved === false) {
+    combat.aimCommit = null;
+    clearFire(intent, 'target_unobserved');
+    return;
+  }
   // A doctrine fire window authorizes action selection; the SG-03 executor remains the canonical
   // proof that the action was actually accepted. Keep visible weapon intent closed while the
   // predictive gate is blocked so it cannot lead the corresponding action.requested event.

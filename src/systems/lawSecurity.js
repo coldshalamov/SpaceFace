@@ -2129,10 +2129,10 @@ export const lawSecurity = {
   // the law clears it on the record when it could see the act. Everything else is a crime
   // candidate, and a crime the law cannot see is a crime it cannot charge:
   //
-  //   * inside a lawful station's protection ring (jurisdiction), or
   //   * seen by a lawful unit or marked witness (`lawWitnessesNear`), or
-  //   * seen by a protected civilian who watched it happen, or
-  //   * the victim itself was lawful-faction — the law network always records its own dead.
+  //   * seen by a protected civilian who watched it happen.
+  // A protection ring and a lawful-network victim name the place and the class. They are
+  // not eyes. An empty witness list stays empty: the player's id is never written in to fill it.
   //
   // A validated kill reports through the same receipt contract as a witnessed theft
   // (`law:reportIncidentReceipt` + `validatedCrime`) so the HEAT OWNER — and only the heat
@@ -2184,31 +2184,33 @@ export const lawSecurity = {
       pos, offenderEntityId: state.playerId, radius: LAW_KILL_WITNESS_RADIUS,
     }).filter((w) => w.entityId !== payload.id); // the dead cannot testify
     const civilians = civilianKillWitnessesNear(state, pos, state.playerId, witnesses, payload.id);
-    const seen = !!jurisdiction || witnesses.length > 0 || civilians.length > 0;
-    const witnessStableIds = witnesses.map((w) => w.stableId)
-      .concat(civilians.map((w) => w.stableId))
-      .slice(0, LAW_INCIDENT_WITNESS_CAP);
+    const witnessStableIds = directWitnessIds(state, [witnesses, civilians]);
+    const eyes = witnessStableIds.length > 0;
     const victimStableId = victimStableIdOf(victim, payload);
     const victimFactionId = (victim && victim.factionId) || payload.factionId || null;
-    // Lawful-network victims still charge as lawful_kill. Collision deaths of ordinary victims
-    // charge as reckless_kill — the witnessed outcome is materially lighter than murder, and the
-    // heat owner prices the kind, not this file.
+    // Lawful-network victims still charge as lawful_kill when someone saw the act. Collision
+    // deaths of ordinary victims charge as reckless_kill — the witnessed outcome is materially
+    // lighter than murder, and the heat owner prices the kind, not this file.
     const chargeKind = factionLawful ? 'lawful_kill'
       : collisionKill ? 'reckless_kill' : 'unlawful_kill';
 
     // THE ONE WITNESS TRUTH. factions.js consumes this receipt instead of running its own
-    // witness query: whatever the law decided about who saw the act is the answer reputation
-    // acts on. `witnessed` here means "someone who matters recorded it" — lawful victims are
-    // always known to their own network even when no eye was in range.
+    // witness query. `witnessed` means a person on the list saw it. The ring and the victim's
+    // network do not. evidenceClass is stamped once; a later relay must not upgrade it.
     const publishTruth = (outcome, reportId = null) => {
+      const evidenceClass = (outcome === 'charged' || outcome === 'lawful') && eyes
+        ? 'direct' : 'unwitnessed';
+      const witnessed = evidenceClass === 'direct';
       this._emit('law:killedAdjudicated', {
         outcome,
         victimEntityId: payload.id,
         victimStableId,
         victimClass: payload.victimClass || null,
         factionId: victimFactionId,
-        witnessed: seen || factionLawful,
-        witnessCount: witnessStableIds.length,
+        witnessed,
+        witnessCount: witnessed ? witnessStableIds.length : 0,
+        witnessStableIds: witnessed ? witnessStableIds.slice() : [],
+        evidenceClass,
         factionLawful,
         clearlyHostile,
         cause: causality.cause,
@@ -2224,12 +2226,11 @@ export const lawSecurity = {
 
     // A lawful-network victim never takes the cleared early-out, even mid-enforcement: a
     // patrol engaging a WANTED player is hostile in the combat sense, but destroying it is
-    // still a lawful_kill the network records. Otherwise a wanted player could cull patrols
-    // for free, and first-shot aggression against the law would launder into self-defense.
+    // still a lawful_kill when someone saw it. An unseen patrol death stays a pending case.
     if (clearlyHostile && !factionLawful) {
-      // Lawful force: no crime, no heat. Where the law could see the kill it clears the
-      // shooter on the record — the lawful-defense leg is an outcome the player can observe.
-      if (seen) {
+      // Lawful force: no crime, no heat. Where someone saw the kill, the law clears the
+      // shooter on the record. That clear does not rewrite a receipt already stored.
+      if (eyes) {
         this._lawResponse('kill_adjudicated', {
           outcome: 'lawful',
           victimEntityId: payload.id,
@@ -2239,13 +2240,14 @@ export const lawSecurity = {
           witnessCount: witnessStableIds.length,
         });
       }
-      publishTruth('lawful');
+      publishTruth(eyes ? 'lawful' : 'unwitnessed');
       return;
     }
 
-    if (!factionLawful && !seen) {
-      // Nobody saw it — the law cannot act. But this is a recorded case, not a licence: the
-      // wreck's aftermath provenance can surface the kill later through the discovery intake.
+    if (!eyes) {
+      // Nobody saw it — the law cannot act, including when the victim flies for the network
+      // or the body lies inside a protection ring. The wreck can still testify later. The
+      // hull stays destroyed; this only records the case.
       this._recordUnreportedKill({
         victimEntityId: payload.id,
         victimStableId,
@@ -2270,17 +2272,42 @@ export const lawSecurity = {
     }
 
     if (victimStableId == null) {
-      publishTruth(seen ? 'charged_unstable' : 'unwitnessed');
+      publishTruth(eyes ? 'charged_unstable' : 'unwitnessed');
       return;
     } // no stable identity — a colliding 'kill:null' key would re-emit a stranger's receipt
     const reportId = cleanLawId(`kill:${victimStableId}`);
     if (!reportId) {
-      publishTruth(seen ? 'charged_unstable' : 'unwitnessed');
+      publishTruth(eyes ? 'charged_unstable' : 'unwitnessed');
       return;
     }
     const existing = readReportedIncident(state, reportId);
     if (existing) {
-      publishTruth('charged', reportId);
+      // The stored receipt is the historical fact. Republish it; do not rebuild the witness list.
+      const discovered = existing.discovery === true
+        || existing.evidence === 'wreck_provenance'
+        || existing.evidenceClass === 'discovered';
+      const storedIds = Array.isArray(existing.witnessStableIds) ? existing.witnessStableIds : [];
+      this._emit('law:killedAdjudicated', {
+        outcome: discovered ? 'discovered' : 'charged',
+        victimEntityId: payload.id,
+        victimStableId: existing.victimStableId || victimStableId,
+        victimClass: existing.victimClass || payload.victimClass || null,
+        factionId: existing.factionId || victimFactionId,
+        witnessed: discovered ? false : storedIds.length > 0,
+        witnessCount: discovered ? 0 : storedIds.length,
+        witnessStableIds: discovered ? [] : storedIds.slice(),
+        evidenceClass: discovered ? 'discovered' : (existing.evidenceClass || 'direct'),
+        factionLawful,
+        clearlyHostile,
+        cause: existing.killCause || causality.cause,
+        surface: causality.surface,
+        playerCaused: causality.playerCaused === true,
+        kind: existing.kind || (discovered ? null : chargeKind),
+        reportId,
+        stationId: existing.stationId || (jurisdiction ? jurisdiction.stationId : null),
+        pos: { x: pos.x, z: pos.z },
+        tick: state.tick | 0,
+      });
       this._emit('law:reportIncidentReceipt', existing);
       return;
     }
@@ -2306,7 +2333,8 @@ export const lawSecurity = {
         || payload.factionId
         || null,
       witnessCount: witnessStableIds.length,
-      witnessStableIds: Object.freeze(witnessStableIds),
+      witnessStableIds: Object.freeze(witnessStableIds.slice()),
+      evidenceClass: 'direct',
       // Kill receipts carry validatedCrime, not validatedWitnessedTheft — the heat owner
       // prices either fact through the same single-writer door.
       validatedWitnessedTheft: false,
@@ -2352,8 +2380,9 @@ export const lawSecurity = {
   // resolved — a targeted scan pulse reading the hull, or the salvage beam finishing — the black
   // box names the killer and the pending case becomes a real charge through the SAME stable
   // reportId the witnessed path uses.
-  // Lawful kills and already-priced crimes never enter the pending ledger, so this door can only
-  // reopen a kill the law already evaluated as a crime it could not yet prove.
+  // Only a kill the law could not see enters the pending ledger, including a lawful-network
+  // victim with no eye in range. A witnessed charge and a seen lawful clear never do, so this
+  // door reopens a case the law already evaluated and could not yet prove.
 
   _recordUnreportedKill(entry) {
     const own = ensureState(this.state);
@@ -2458,6 +2487,7 @@ export const lawSecurity = {
       discovery: true,
       discoveryVia: via,
       evidence: 'wreck_provenance',
+      evidenceClass: 'discovered',
       markerId: markerId || null,
       source: 'lawSecurity',
     });
@@ -4752,6 +4782,38 @@ export const LAW_INCIDENT_RESPONDER_MARGIN = 1000;
 /** Hard cap on witnesses carried in a receipt. The query is bounded work, not an all-pairs scan. */
 export const LAW_INCIDENT_WITNESS_CAP = 8;
 const REPORTED_INCIDENT_CAP = 16;
+
+/**
+ * Stable ids of people who saw the act. The player, the offender, and a blank name are
+ * dropped. An empty result is the record: nothing here invents a witness or copies the
+ * player id in because it happens to be known.
+ */
+function directWitnessIds(state, groups) {
+  const playerId = state && state.playerId;
+  const banned = new Set(['player']);
+  if (playerId != null) {
+    banned.add(String(playerId));
+    banned.add(`entity:${playerId}`);
+  }
+  const out = [];
+  const seenIds = new Set();
+  const lists = Array.isArray(groups) ? groups : [];
+  for (let g = 0; g < lists.length; g++) {
+    const group = lists[g];
+    if (!group) continue;
+    for (let i = 0; i < group.length; i++) {
+      const witness = group[i];
+      if (!witness) continue;
+      if (playerId != null && witness.entityId != null && witness.entityId === playerId) continue;
+      const id = witness.stableId != null ? String(witness.stableId) : '';
+      if (!id || banned.has(id) || seenIds.has(id)) continue;
+      seenIds.add(id);
+      out.push(id);
+      if (out.length >= LAW_INCIDENT_WITNESS_CAP) return out;
+    }
+  }
+  return out;
+}
 
 /** Entity kinds a player kill can be adjudicated over. Wrecks/pickups/rocks are not victims. */
 const LAW_KILL_ADJUDICATION_TYPES = new Set(['ship', 'fighter', 'drone', 'hauler', 'capital', 'station']);

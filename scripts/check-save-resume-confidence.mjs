@@ -54,14 +54,27 @@ assert.doesNotMatch(menu, /boots straight into flight/,
 for (const field of ['savedAt', 'playtimeS', 'credits', 'sectorName', 'shipName', 'objectiveSummary', 'version']) {
   assert.match(save, new RegExp(field), `save index should include ${field} metadata`);
 }
-assert.match(save, /idx\[slot\]\s*=\s*\{[\s\S]*sectorName[\s\S]*shipName[\s\S]*navObjectiveSummary[\s\S]*missionSummary[\s\S]*storySummary[\s\S]*objectiveSummary[\s\S]*version/s,
-  'save index metadata should include sector, ship, and objective context for the main menu');
-assert.match(save, /const navSummary = navObjectiveSummary\(state\.nav\)/,
-  'save index should preserve active navigation as the first resume hint');
-assert.match(save, /const missionSummary = missionObjectiveSummary\(state\.missions,\s*state\.ui && state\.ui\.trackedMissionId\)/,
-  'save index should fall back to active mission context when nav is clear');
-assert.match(save, /const storySummary = storyObjectiveSummary\(state\.story\)/,
-  'save index should fall back to story context when no nav or active mission exists');
+assert.match(save, /idx\[slot\]\s*=\s*fromFile\s*\|\|\s*liveSlotSummary\(slot,\s*envelope,\s*this\.state\)/,
+  'save index write should prefer the card frozen from the written envelope, with live state as fallback');
+assert.match(save, /slotCardFromEnvelopeData\(slot,\s*envelope/,
+  'save index card should be built from the envelope that was just written, not post-encode live state');
+// Both index-card builders must emit the full resume context the menu reads.
+for (const builder of ['liveSlotSummary', 'slotCardFromEnvelopeData']) {
+  assert.match(save, new RegExp(`function ${builder}\\([\\s\\S]*?return \\{[\\s\\S]*?sectorName[\\s\\S]*?shipName[\\s\\S]*?navObjectiveSummary[\\s\\S]*?missionSummary[\\s\\S]*?storySummary[\\s\\S]*?objectiveSummary[\\s\\S]*?version`),
+    `save index card builder ${builder} should include sector, ship, and objective context for the main menu`);
+}
+assert.match(save, /const navSummary = navObjectiveSummary\(state && state\.nav\)/,
+  'live save index fallback should preserve active navigation as the first resume hint');
+assert.match(save, /const navSummary = navObjectiveSummary\(data\.nav\)/,
+  'envelope-frozen save card should read navigation from the written save bytes');
+assert.match(save, /const missionSummary = missionObjectiveSummary\(state && state\.missions,\s*state && state\.ui && state\.ui\.trackedMissionId\)/,
+  'live save index fallback should fall back to active mission context when nav is clear');
+assert.match(save, /const missionSummary = missionObjectiveSummary\(missions,\s*null\)/,
+  'envelope-frozen save card should read mission context from the written save bytes');
+assert.match(save, /const storySummary = storyObjectiveSummary\(state && state\.story\)/,
+  'live save index fallback should fall back to story context when no nav or active mission exists');
+assert.match(save, /const storySummary = storyObjectiveSummary\(story\)/,
+  'envelope-frozen save card should read story context from the written save bytes');
 assert.match(save, /objectiveSummary:\s*resumeObjectiveSummary\(\{\s*navSummary,\s*missionSummary,\s*storySummary\s*\}\)/,
   'save index objective metadata should pick nav, then active mission, then story');
 assert.match(save, /import \{ STORY_BEATS \} from '\.\.\/data\/missions\.js'/,

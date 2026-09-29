@@ -226,6 +226,11 @@ body.k-screen-top #screens::before { display: none !important; }
   transition: transform var(--k-d-focus) var(--k-ease), background-color var(--k-d-temp) var(--k-ease); }
 .k-word:hover, .k-word:focus-visible, .k-word[aria-current="true"], .k-word[aria-pressed="true"] { color: var(--k-text-live); }
 .k-word:hover::after, .k-word:focus-visible::after, .k-word[aria-current="true"]::after, .k-word[aria-pressed="true"]::after { transform: scaleX(1); }
+/* Demo-prep microinteraction: a pressed word dips one pixel so taps read as
+   physical, not flat. Transform-only, collapsed under reduced motion. */
+.k-word:active { transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) { .k-word:active { transform: none; } }
+html.sf-reduce-motion .k-word:active { transform: none; }
 .k-word:disabled, .k-word[aria-disabled="true"] { color: var(--k-bone-38); cursor: default; }
 .k-word:disabled::after, .k-word[aria-disabled="true"]::after { display: none; }
 .k-word--emph { font-size: var(--k-fs-emph); }

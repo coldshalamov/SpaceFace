@@ -174,6 +174,19 @@ export function publishHitstunImpulse(bus, payload = {}) {
   return true;
 }
 
+// Hull-burst overhaul slice A, `combat.tumbleFling`: a hull that has lost its helm is a projectile.
+// Craft-on-craft consequences used to read only the FIRST solver tick's momentum exchange (a flung
+// Wasp meeting a second Wasp at 110 WU/s registered ~12 WU/s of knock and ~0.7 damage, so "flinging
+// enemies into each other" did nothing). When the STRIKER is loose the struck hull's knock comes from
+// the closing speed and both masses, as a bouncy (restitution) two-body collision:
+//   deltaV = (1 + e) * closing * mStriker / (mStriker + mTarget)
+// Placeholders; nothing has tuned them (design doc section 11.6).
+export const PROJECTILE_HULL_LAW = Object.freeze({
+  restitution: 0.6,
+  // Below this closing speed a loose hull only brushes its neighbour.
+  minClosingSpeed: 20,
+});
+
 export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
   minMomentum: 1,
   staggerDeltaV: 3,
@@ -367,7 +380,19 @@ export function resolveCollisionConsequence(input = {}) {
   if (exchangedMomentum < COLLISION_CONSEQUENCE_LIMITS.minMomentum) return null;
 
   const mass = positive(target.mass, 1);
-  const deltaV = exchangedMomentum / mass;
+  let deltaV = exchangedMomentum / mass;
+  // A loose striker's knock (see PROJECTILE_HULL_LAW). Only ever RAISES the knock the solver reported.
+  const strike = input.projectileStrike;
+  let projectileKnock = false;
+  if (strike && positive(strike.strikerMass, 0) > 0 && Number.isFinite(strike.closingSpeed)
+    && strike.closingSpeed >= PROJECTILE_HULL_LAW.minClosingSpeed) {
+    const knock = (1 + PROJECTILE_HULL_LAW.restitution) * strike.closingSpeed
+      * strike.strikerMass / (strike.strikerMass + mass);
+    if (knock > deltaV) {
+      deltaV = knock;
+      projectileKnock = true;
+    }
+  }
   const surface = collisionSurface(other);
   const provenance = normalizeProvenance(input.provenance, input.tick);
   let control = deltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV
@@ -444,6 +469,7 @@ export function resolveCollisionConsequence(input = {}) {
     surface,
     exchangedMomentum,
     deltaV,
+    ...(projectileKnock ? { projectileKnock: true } : {}),
     control,
     staggerTicks,
     impactDamage,

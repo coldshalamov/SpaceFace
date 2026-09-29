@@ -6,14 +6,18 @@
 // transient episode/control state stays outside the entity graph.
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { readTumbleStatus } from '../combat/tumbleStatus.js';
+import { isRecovering, readTumbleStatus } from '../combat/tumbleStatus.js';
 import { bodyLife, evidenceForConsequence } from '../combat/stuntEvidence.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
   isWorldHitstunBody,
+  holdImpulseProvenance,
+  IMPULSE_PROVENANCE_MAX_AGE_TICKS,
   publishHitstunImpulse,
   readRecentImpulseProvenance,
+  readRecentImpulseProvenanceHistory,
+  recordImpulseProvenance,
   resolveCollisionConsequence,
   signedHitSide,
 } from '../combat/impulseKernel.js';
@@ -200,11 +204,17 @@ export const collisionConsequences = {
   },
 
   _resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
-    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
-    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
+    // Who is loose is read ONCE, before either side resolves: resolving one side tumbles it, and
+    // reading the flag afterwards would let the striker take its own projectile knock whenever it
+    // happened to be resolved second (id order), which is neither symmetric nor intended.
+    const projectiles = combatFlag('tumbleFling');
+    const looseA = projectiles && isLooseHull(this.state, a);
+    const looseB = projectiles && isLooseHull(this.state, b);
+    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseB);
+    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseA);
   },
 
-  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
+  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false) {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const player = entityById(state, state.playerId);
@@ -227,6 +237,8 @@ export const collisionConsequences = {
       surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
     const provenance = ramPlate?.provenance || (observed?{actorId:observed.root.actorId,weaponId:observed.root.weaponId,
       tag:observed.root.kind==='constraint'?'massline':'weapon_hit',tick:observed.root.tick,rootId:observed.root.id}:causalProvenance);
+    // Hull-burst overhaul slice A (`combat.tumbleFling`): a hull that has lost its helm is a projectile,
+    // so what it strikes is knocked by the closing speed and both masses, not by one solver tick.
     const receipt = resolveCollisionConsequence({
       target,
       other,
@@ -238,8 +250,31 @@ export const collisionConsequences = {
       pos: payload.pos,
       normal: payload.normal,
       preSolveClosingSpeed: payload.preSolveClosingSpeed,
+      projectileStrike: strikerLoose
+        ? { strikerMass: positiveMass(other), closingSpeed: payload.preSolveClosingSpeed }
+        : null,
     });
     if (!receipt) return;
+    // The struck hull is now loose because of whoever knocked the striker loose: that credit chains.
+    // The struck hull gets its OWN fresh record (this contact is a new cause on it) so the flight hold
+    // in tumbleStates can carry the credit through ITS flight too; without it the second hull in a
+    // chain dies on a rock credited to nobody.
+    let hitProvenance = receipt.provenance;
+    if (strikerLoose && receipt.projectileKnock === true) {
+      const actorId = receipt.provenance.actorId;
+      const tag = receipt.provenance.tag;
+      if (actorId != null && actorId !== target.id && actorId !== other.id
+        && tag && tag !== 'environment' && tag !== 'direct_contact') {
+        recordImpulseProvenance(target, {
+          actorId,
+          weaponId: receipt.provenance.weaponId,
+          tag,
+          appliedTick: tick,
+          magnitude: receipt.exchangedMomentum,
+        });
+        hitProvenance = Object.freeze({ ...receipt.provenance, appliedTick: tick });
+      }
+    }
 
     publishHitstunImpulse(this.bus, {
       source: 'collision',
@@ -252,7 +287,7 @@ export const collisionConsequences = {
       dirZ: finite(receipt.normal && receipt.normal.z),
       hitSide: signedHitSide(target, receipt.normal, { pos: receipt.pos }, target.id),
       worldBody: isWorldHitstunBody(other),
-      provenance: receipt.provenance,
+      provenance: hitProvenance,
       tick,
     });
     const helmLossSeconds = helmLossFromTumbleStatus(readTumbleStatus(state, target), tick);
@@ -407,18 +442,67 @@ function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-function contactImpulseProvenance(a, b, tick) {
-  const aProvenance = readRecentImpulseProvenance(a, tick);
-  const bProvenance = readRecentImpulseProvenance(b, tick);
-  if (!aProvenance) return bProvenance;
-  if (!bProvenance) return aProvenance;
-  if (aProvenance.appliedTick !== bProvenance.appliedTick) {
-    return aProvenance.appliedTick > bProvenance.appliedTick ? aProvenance : bProvenance;
+// A hull that has lost its helm: tumbling, or in the recovery beat that follows.
+function isLooseHull(state, entity) {
+  if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) return false;
+  return readTumbleStatus(state, entity) !== null || isRecovering(state, entity);
+}
+
+// Higher appliedTick, else higher magnitude, else the stable provenance key.
+// History order and argument order are not a vote.
+function preferImpulseProvenance(left, right) {
+  if (!left) return right || null;
+  if (!right) return left;
+  if (left.appliedTick !== right.appliedTick) {
+    return left.appliedTick > right.appliedTick ? left : right;
   }
-  if (aProvenance.magnitude !== bProvenance.magnitude) {
-    return aProvenance.magnitude > bProvenance.magnitude ? aProvenance : bProvenance;
+  if (left.magnitude !== right.magnitude) {
+    return left.magnitude > right.magnitude ? left : right;
   }
-  return provenanceKey(aProvenance) <= provenanceKey(bProvenance) ? aProvenance : bProvenance;
+  return provenanceKey(left) <= provenanceKey(right) ? left : right;
+}
+
+function bestImpulseProvenance(entity, tick) {
+  // History first. A stale latest read clears both maps, and the held copy is not in history.
+  const history = readRecentImpulseProvenanceHistory(entity, tick);
+  let best = null;
+  for (const record of history) best = preferImpulseProvenance(best, record);
+  const latest = readRecentImpulseProvenance(entity, tick);
+  if (!latest) {
+    // The latest slot was an older expired record, so that read deleted the in-window winner
+    // along with it. Put the winner back before the next read.
+    if (best) recordImpulseProvenance(entity, best);
+    return best;
+  }
+  const chosen = preferImpulseProvenance(best, latest);
+  return retargetHeldProvenance(entity, latest, chosen, tick);
+}
+
+// A flight hold latches whichever write is in the latest slot. When that write loses the
+// equal-tick comparison, move the hold onto the winner so the long flight names the same actor
+// either write order would have named while both records were still in the window.
+// A same-actor hold keeps its slot object.
+function retargetHeldProvenance(entity, latest, chosen, tick) {
+  if (!latest || latest.holdUntilTick == null || !chosen || chosen === latest) return chosen;
+  const now = Number.isInteger(tick) ? tick : 0;
+  if (now > latest.holdUntilTick) return chosen;
+  if ((chosen.actorId ?? null) === (latest.actorId ?? null)) return chosen;
+  const age = now - chosen.appliedTick;
+  if (age < 0 || age > IMPULSE_PROVENANCE_MAX_AGE_TICKS) return chosen;
+  const until = latest.holdUntilTick;
+  const restored = recordImpulseProvenance(entity, {
+    actorId: chosen.actorId,
+    weaponId: chosen.weaponId,
+    tag: chosen.tag,
+    appliedTick: chosen.appliedTick,
+    magnitude: chosen.magnitude,
+  });
+  if (!restored) return chosen;
+  return holdImpulseProvenance(entity, until, now, restored.appliedTick) || restored;
+}
+
+export function contactImpulseProvenance(a, b, tick) {
+  return preferImpulseProvenance(bestImpulseProvenance(a, tick), bestImpulseProvenance(b, tick));
 }
 
 function provenanceKey(value) {

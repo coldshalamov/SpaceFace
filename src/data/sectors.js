@@ -203,6 +203,37 @@ const CORE_SECTORS = [
       { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Buoy', factionId: 'faction_mts' },
       { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Log Relay', factionId: 'faction_scn' },
       { id: 'poi_tethys_split_station', type: 'anomaly', name: 'The Split Station', pos: { x: -800, z: 1600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      // WF-03 — The Tally (zone_tethys_tally, authoredPlaces.js): the toll/count plaza on the
+      // inbound Helios approach. The scan gate pins straddle the Helios-gate -> Meridian chord
+      // (~109 WU off the poi_tethys_customs_log relay, the last log before the line); the queue
+      // runs in past the tally post and the held-for-count pen to the Customs Gate scan face, so
+      // inbound traffic physically crosses the count. Lane-furniture grammar from
+      // design/fiction/LANE_FURNITURE.md (WT-TETH desk codes, green/red pass chevrons, gold tally
+      // lamps) using the packaged props Helios already ships. Inline `pos` for the same reason as
+      // the Vesta landmark below: sectorAnchors.js is a contended table; applySectorAnchors
+      // leaves unanchored pois untouched, and a pos means _spawnPOIs scatters nothing.
+      { id: 'poi_tethys_tally_queue_head', type: 'beacon', name: 'Queue Head Buoy', pos: { x: -1341, z: -901 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10 },
+      { id: 'poi_tethys_tally_queue_inner', type: 'beacon', name: 'Queue Inner Buoy', pos: { x: -1245, z: -1065 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10 },
+      { id: 'poi_tethys_tally_gate_red', type: 'beacon', name: 'Scan Gate — Red Side', pos: { x: -1100, z: -795 }, landmarkGlb: 'place_lane_pin', visualRadius: 10 },
+      { id: 'poi_tethys_tally_gate_green', type: 'beacon', name: 'Scan Gate — Green Side', pos: { x: -1033, z: -907 }, landmarkGlb: 'place_lane_pin', visualRadius: 10 },
+      {
+        id: 'poi_tethys_tally_post',
+        type: 'beacon',
+        name: 'The Tally Post',
+        pos: { x: -770, z: -885 },
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 12,
+        factionId: 'faction_mts',
+        discoveryPlate: {
+          title: 'The Tally Post — WT-TETH-19',
+          body: 'Meridian gold on a Concord frame. Every hull inbound from Helios crosses the '
+            + 'scan gate and holds open for count here; the queue lamps run group-of-three for '
+            + 'the standard limit. The desk codes it WT-TETH-19 — the lane just calls it the Tally.',
+        },
+      },
+      { id: 'poi_tethys_tally_rack', type: 'derelict', name: 'Held-for-Count Rack', pos: { x: -710, z: -990 }, landmarkGlb: 'place_container_rack', visualRadius: 14 },
+      { id: 'poi_tethys_tally_pod', type: 'derelict', name: 'Seized Cargo Pod', pos: { x: -660, z: -1050 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8 },
+      { id: 'poi_tethys_tally_light', type: 'beacon', name: 'Count-Face Worklight', pos: { x: -650, z: -950 }, landmarkGlb: 'place_worklight_tower', visualRadius: 8 },
     ],
   },
   {

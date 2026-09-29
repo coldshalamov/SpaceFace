@@ -182,6 +182,29 @@ export function stableId(value) {
   return `s:${String(value)}`;
 }
 
+/**
+ * SF-057 member-level sighting check, for directive overrides that re-point an objective at a
+ * target the squad's merged record does not describe (a dispatched mark, an ambush's prey, a
+ * doctrine-selected kill). The member's own contact row is the only honest evidence available
+ * at that seam. Returns true when the member's contact is a live sighting, false when a
+ * visibility-tracking producer reports it stale or not at all, and undefined when the producer
+ * never publishes `visible` — legacy fixtures keep their pre-gate shape.
+ */
+export function memberObservedTarget(perception, targetId) {
+  if (!perception || !Array.isArray(perception.contacts) || targetId == null) return undefined;
+  const key = stableId(targetId);
+  let tracked = false;
+  let contact = null;
+  for (const row of perception.contacts) {
+    if (!row) continue;
+    if (row.visible !== undefined && row.visible !== null) tracked = true;
+    if (row.id != null && stableId(row.id) === key) contact = row;
+  }
+  if (!tracked) return undefined;
+  if (!contact) return false;
+  return contact.visible === true;
+}
+
 export function hashUnit(seed, ...parts) {
   let h = (Number(seed) >>> 0) || 0x9e3779b9;
   const text = parts.map(stableId).join('|');
@@ -266,7 +289,7 @@ function neutralSelf(entityId) {
 
 function normalizeSelf(value, entityId) {
   if (!value || typeof value !== 'object') return neutralSelf(entityId);
-  return {
+  const self = {
     id: value.id == null ? entityId : value.id,
     team: value.team == null ? null : value.team,
     pos: freezeVec(value.pos),
@@ -298,6 +321,12 @@ function normalizeSelf(value, entityId) {
     cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
     tetherabilityBand: normalizeBand(value.tetherabilityBand, ['poor', 'fair', 'good', 'excellent'], 'good'),
   };
+  // Keep a carried occupant token and an explicit alive flag. A missing flag stays missing
+  // so an id-only sensor self is still the same body; inventing either field would retarget the wing.
+  const generation = value.occupantGeneration;
+  if (generation != null && generation !== '') self.occupantGeneration = generation;
+  if (Object.prototype.hasOwnProperty.call(value, 'alive')) self.alive = value.alive;
+  return self;
 }
 
 function normalizeContact(value) {

@@ -525,6 +525,36 @@ test('one post-route dispatcher keeps warm-up and opening frames on canonical pr
   assert.deepEqual(lostContext.renderCalls, [], 'context loss selects the fallback but submits no unsafe draw');
 });
 
+test('dynamic-resolution tiers stay on the bloom path even when the render graph is requested', () => {
+  // The graph owns its internal renderScale and ignores state.render.dynResScale, so a live
+  // dyn-res controller (integrated opt-in or the software emergency floor) would silently pin
+  // full resolution on the exact hardware that needs the escape hatch. The route gate keeps
+  // those tiers on bloom, whose content sub-rect honours every scale step.
+  const dynResUser = createPostRouteHarness({ renderGraph: true });
+  dynResUser.owner.state.render.dynResAllowed = true;
+  dynResUser.owner.state.settings.video.dynamicResolution = true;
+  assert.equal(dynResUser.owner._selectPostRoute(), POST_PROCESS_ROUTE.BLOOM,
+    'integrated opt-in dynamicResolution keeps the bloom route');
+
+  const softwareUser = createPostRouteHarness({ renderGraph: true });
+  softwareUser.owner.state.render.dynResAllowed = true;
+  softwareUser.owner.state.render.gpu = { tier: 'software', software: true };
+  assert.equal(softwareUser.owner._selectPostRoute(), POST_PROCESS_ROUTE.BLOOM,
+    'software emergency floor keeps the bloom route even with dynamicResolution untouched');
+
+  const dynResDefaultOff = createPostRouteHarness({ renderGraph: true });
+  dynResDefaultOff.owner.state.render.dynResAllowed = true;
+  dynResDefaultOff.owner.state.settings.video.dynamicResolution = false;
+  assert.equal(dynResDefaultOff.owner._selectPostRoute(), POST_PROCESS_ROUTE.GRAPH,
+    'a dyn-res tier with the controller disabled still honours the graph request');
+
+  const discreteGraph = createPostRouteHarness({ renderGraph: true });
+  discreteGraph.owner.state.render.dynResAllowed = false;
+  discreteGraph.owner.state.render.gpu = { tier: 'discrete', software: false };
+  assert.equal(discreteGraph.owner._selectPostRoute(), POST_PROCESS_ROUTE.GRAPH,
+    'discrete tier — dyn-res never allowed — honours the graph request');
+});
+
 test('post-route compilation targets the graph scene target or the bloom HDR admission seam', async () => {
   const graph = createPostRouteHarness({ renderGraph: true, bloom: false, bloomStrength: 0 });
   await graph.owner._compilePostRoute(
@@ -1231,7 +1261,9 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
     /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?ignoreResidentStamps:\s*true,[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'context-restore GPU residency must publish initTexture slices');
   assert.match(source,
-    /firstFrameResidency = await prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    // The options literal nests `{ sliceMs }` inside createSlicedYield, so the scan must allow
+    // braces — `[^}]*` stopped matching the day the sliced yield landed.
+    /firstFrameResidency = await prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'first-picture GPU residency must publish initTexture slices');
   assert.match(source,
     /createPipelineAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,

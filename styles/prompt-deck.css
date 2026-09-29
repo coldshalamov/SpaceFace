@@ -40,6 +40,13 @@
   pointer-events: auto;
   padding: 11px 13px 12px;
 }
+/* Demo-prep microinteraction: a decision arrives with a 140ms settle slide
+   instead of snapping in — compositor transform/opacity only, and the
+   leaving beat below already owns the exit. Reduced motion cuts it. */
+.sf-prompt:not(.sf-prompt--leaving) { animation: sf-prompt-in 150ms ease-out 1; }
+@keyframes sf-prompt-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sf-prompt:not(.sf-prompt--leaving) { animation: none; } }
+html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
 
 .sf-prompt__head {
   display: flex;

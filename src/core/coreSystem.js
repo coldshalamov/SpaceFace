@@ -9,6 +9,7 @@ import { packCombatTable } from './combatTable.js';
 import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
 import { stampNearWorkBudget, refreshNearWorkAlwaysAwake } from './activityScheduler.js';
 import { modelTruthProxyManifest } from '../data/modelTruth.js';
+import { measuredSkinAllowedFor } from '../data/collisionProxyManifests.js';
 
 
 // Bench A/B: production default ON. Quiet Ceres keeps short-lived lanes empty; the clocks walk
@@ -91,10 +92,9 @@ export const core = {
       const index = ensureEntityIndex(state);
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
-      // Measured skins are fixed-body geometry only: a body the physics authority builds as
-      // dynamic (every ship incl. the player, drones, payloads, wrecks, chunks) is never stamped
-      // and keeps its capsule/ball. Same predicate SG-02 uses to choose dynamic vs fixed.
-      const measuredSkin = e && e.collides !== false && !isDynamicPhysicsBodyEntity(e)
+      // Measured skins default to fixed bodies, and are permitted on dynamic bodies only where one
+      // capsule cannot reach tolerance (capital ships, dreadnought, big wrecks, or data.compoundSkin) — Package C.
+      const measuredSkin = e && e.collides !== false && measuredSkinAllowedFor(e)
         ? modelTruthProxyManifest(e)
         : null;
       if (measuredSkin) {

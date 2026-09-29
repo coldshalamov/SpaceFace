@@ -15,6 +15,8 @@
 //   import { confirm } from './confirm.js';
 //   if (await confirm({ title: 'Sell ship?', body: 'Refund: 12,500 CR (50%).', confirmLabel: 'Sell', danger: true })) { ... }
 
+import { planConfirmCopy } from './kit/motion.js';
+
 let _openResolver = null;   // tracks the currently-open dialog's resolver so only one is live at a time
 // True while the live confirm chain owns body.ui-modal-open (vs. a screen/dock session).
 // Inherited across supersession so B does not steal teardown rights from a screen-owned class.
@@ -122,12 +124,15 @@ export function confirm(opts) {
     `</ul>`;
   dialog.setAttribute('aria-labelledby', 'sf-confirm-title');
   dialog.setAttribute('aria-describedby', 'sf-confirm-body');
-  dialog.querySelector('#sf-confirm-title').textContent = opts.title || 'Confirm';
-  dialog.querySelector('#sf-confirm-body').textContent = opts.body || '';
+  // Demo-prep: copy runs through the pure plan so blank titles/labels can
+  // never ship blank chrome — the helper owns the safe defaults in one place.
+  const copy = planConfirmCopy(opts);
+  dialog.querySelector('#sf-confirm-title').textContent = copy.title;
+  dialog.querySelector('#sf-confirm-body').textContent = copy.body;
   const cancelBtn = dialog.querySelector('.sf-confirm__cancel');
   const okBtn = dialog.querySelector('.sf-confirm__ok');
   cancelBtn.textContent = opts.cancelLabel || 'Cancel';
-  okBtn.textContent = opts.confirmLabel || 'Confirm';
+  okBtn.textContent = copy.confirmLabel;
   // the destructive word is red; otherwise the confirming word is the primary (signal) one
   okBtn.className = 'k-word k-word--emph ' + (opts.danger ? 'k-word--danger' : 'k-word--primary') + ' sf-confirm__ok';
 

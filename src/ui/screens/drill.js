@@ -7,6 +7,8 @@ import {
   avatarDrawPos,
   avatarMoveProgress,
 } from '../../systems/drill.js';
+import { BEAMS, ORES } from '../../data/mining.js';
+import { MODULES } from '../../data/modules.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
@@ -28,6 +30,40 @@ export function drillCargoFullActivity(name) {
 export function drillCargoFullAnnouncement(name) {
   const ore = name || 'That';
   return `Cargo holds full. ${ore} ore is still in that vein.`;
+}
+
+const DRILL_ORE_IDS = new Set(ORES.map((ore) => ore.id));
+
+function miningHeadForTier(tier) {
+  const beam = BEAMS.find((row) => row.tier === tier);
+  const mod = MODULES.find((row) => row.slotType === 'mining' && row.tier === tier);
+  if (!beam || !mod) return null;
+  return mod;
+}
+
+/**
+ * The published mining head this ore is asking for.
+ * Row is ignored: depth never renames the head. A tile's own tierReq is not an input.
+ * The starter head (requirement 1) and an id absent from ORES name nothing.
+ */
+export function drillTierBlockLabel(oreId, _row) {
+  if (!DRILL_ORE_IDS.has(oreId)) return '';
+  const req = drillTierReqForOre(oreId);
+  if (!(req > 1)) return '';
+  const head = miningHeadForTier(req);
+  return head ? head.name : '';
+}
+
+/** Tier-refusal copy. Names the published head instead of the simulator warning. */
+export function drillTierWarnCopy(oreId, row) {
+  const label = drillTierBlockLabel(oreId, row);
+  return label ? `Needs ${label}` : '';
+}
+
+/** Equipped-head readout, including the starter. An unknown tier names nothing. */
+export function drillFittedHeadName(tier) {
+  const head = miningHeadForTier(Number(tier));
+  return head ? head.name : '';
 }
 
 function bindingCodes(state, action) {
@@ -617,9 +653,10 @@ function renderDrillLegend(gridEl, field, drillTier = 1) {
   for (const oreId of ores) {
     const req = drillTierReqForOre(oreId);
     const locked = drillTier < req;
+    const head = drillTierBlockLabel(oreId);
     const legendItem = makeLegendItem(commodityName(oreId), oreId, {
       locked,
-      badge: locked ? `MK${req}` : null,
+      badge: locked && head ? head : null,
     });
     decorateEntityNode(legendItem.querySelector('.drill-legend-label'), 'commodity:' + oreId);
     gridEl.appendChild(legendItem);
@@ -1289,7 +1326,7 @@ export const drillScreen = {
     engineSec.className = 'drill-deck';
     engineSec.innerHTML = `
       <div class="sec-title">Drill assembly</div>
-      <div class="readout-row"><span class="lbl">DRILL HEAD</span><span class="val" data-drill-tier>BASIC MK1</span></div>
+      <div class="readout-row"><span class="lbl">DRILL HEAD</span><span class="val" data-drill-tier>—</span></div>
       <div class="readout-row"><span class="lbl">DRILL RATE</span><span class="val" data-drill-dps>8 HP/s</span></div>
     `;
     rightPanel.appendChild(engineSec);
@@ -1572,9 +1609,10 @@ export const drillScreen = {
       }
 
       if (surveyed && t.type === 'vein' && t.ore) {
-        const req = t.tierReq || drillTierReqForOre(t.ore);
+        const head = drillTierBlockLabel(t.ore, row);
+        const req = drillTierReqForOre(t.ore);
         const tier = drillScreen._drillTier || 1;
-        if (tier < req) {
+        if (head && tier < req) {
           strataCtx.save();
           strataCtx.fillStyle = paint(roles.surface, 0.55);
           strataCtx.fillRect(x, y, TILE, TILE);
@@ -1582,9 +1620,18 @@ export const drillScreen = {
           strataCtx.lineWidth = 1.5;
           strataCtx.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
           strataCtx.fillStyle = roles.foe;
-          strataCtx.font = 'bold 12px ' + monoFamily;
+          strataCtx.font = 'bold 8px ' + monoFamily;
           strataCtx.textAlign = 'center';
-          strataCtx.fillText(`MK${req}`, x + TILE / 2, y + TILE / 2 + 3);
+          const words = head.split(' ');
+          const mid = Math.ceil(words.length / 2);
+          const lineA = words.slice(0, mid).join(' ');
+          const lineB = words.slice(mid).join(' ');
+          if (lineB) {
+            strataCtx.fillText(lineA, x + TILE / 2, y + TILE / 2 - 1);
+            strataCtx.fillText(lineB, x + TILE / 2, y + TILE / 2 + 9);
+          } else {
+            strataCtx.fillText(lineA, x + TILE / 2, y + TILE / 2 + 3);
+          }
           strataCtx.restore();
         }
       }
@@ -1692,14 +1739,25 @@ export const drillScreen = {
     }
 
     unsubs.push(ctx.bus.on('drill:warn', (p) => {
-      pushActivity(p.text, p.reason === 'cargoFull' ? 'bad' : 'warn');
-      if (p.reason === 'tier' && p.pos) {
-        const px = (p.pos.col ?? 0) * TILE + TILE / 2;
-        const py = (p.pos.row ?? 0) * TILE + TILE / 2;
-        spawnParticleBurst(particles, {
-          x: px, y: py - 6, count: 2, color: roles.goal, life: 1.0, size: 1.5,
-          speed: 6, kind: 'floater', text: `MK${p.tierReq || 2} LOCKED`, vy0: -16,
-        });
+      if (p.reason === 'tier') {
+        const col = p.pos?.col;
+        const row = p.pos?.row;
+        const tile = (col != null && row != null) ? state.drill?.field?.[col]?.[row] : null;
+        const copy = drillTierWarnCopy(tile?.ore, row);
+        if (copy) {
+          pushActivity(copy, 'warn');
+          announce(copy);
+          if (p.pos) {
+            const px = (col ?? 0) * TILE + TILE / 2;
+            const py = (row ?? 0) * TILE + TILE / 2;
+            spawnParticleBurst(particles, {
+              x: px, y: py - 6, count: 2, color: roles.goal, life: 1.0, size: 1.5,
+              speed: 6, kind: 'floater', text: drillTierBlockLabel(tile?.ore, row), vy0: -16,
+            });
+          }
+        }
+      } else {
+        pushActivity(p.text, p.reason === 'cargoFull' ? 'bad' : 'warn');
       }
       if (p.reason === 'depleted' && p.pos) {
         const px = (p.pos.col ?? 0) * TILE + TILE / 2;
@@ -1710,7 +1768,7 @@ export const drillScreen = {
         });
       }
       canvasDirty = true;
-      announce(p.text);
+      if (p.reason !== 'tier') announce(p.text);
       updateHud();
     }));
 
@@ -2338,21 +2396,22 @@ export const drillScreen = {
         ctx2d.moveTo(tx, ty + TILE - 10); ctx2d.lineTo(tx, ty + TILE); ctx2d.lineTo(tx + 10, ty + TILE);
         ctx2d.moveTo(tx + TILE, ty + TILE - 10); ctx2d.lineTo(tx + TILE, ty + TILE); ctx2d.lineTo(tx + TILE - 10, ty + TILE);
         ctx2d.stroke();
-        
-        // Warning text block
-        ctx2d.fillStyle = paint(roles.surface, 0.9);
-        ctx2d.fillRect(tx - 30, ty - 18, TILE + 60, 14);
-        ctx2d.strokeStyle = roles.foe;
-        ctx2d.lineWidth = 1;
-        ctx2d.strokeRect(tx - 30, ty - 18, TILE + 60, 14);
-        
-        ctx2d.fillStyle = roles.foe;
-        ctx2d.font = 'bold 12px ' + monoFamily;
-        ctx2d.textAlign = 'center';
-        
-        const names = { 2: 'MK2 DRILL REQ', 3: 'MK3 DRILL REQ', 4: 'MK4 DRILL REQ' };
-        const req = d.field[tc][tr]?.tierReq || 1;
-        ctx2d.fillText(names[req] || 'UPGRADE DRILL', tx + TILE / 2, ty - 8);
+
+        const tile = d.field?.[tc]?.[tr];
+        const head = drillTierBlockLabel(tile?.ore, tr);
+        if (head) {
+          ctx2d.font = 'bold 11px ' + monoFamily;
+          ctx2d.textAlign = 'center';
+          const plateW = Math.max(TILE + 8, Math.ceil(ctx2d.measureText(head).width) + 12);
+          const plateX = tx + (TILE - plateW) / 2;
+          ctx2d.fillStyle = paint(roles.surface, 0.9);
+          ctx2d.fillRect(plateX, ty - 18, plateW, 14);
+          ctx2d.strokeStyle = roles.foe;
+          ctx2d.lineWidth = 1;
+          ctx2d.strokeRect(plateX, ty - 18, plateW, 14);
+          ctx2d.fillStyle = roles.foe;
+          ctx2d.fillText(head, tx + TILE / 2, ty - 8);
+        }
         ctx2d.restore();
       }
 
@@ -2385,7 +2444,7 @@ export const drillScreen = {
           let my = hoveredTile.mouseY + 12;
           
           // Keep tooltip on screen
-          const tw = 168;
+          const tw = 260;
           const th = 72;
           if (mx + tw > canvas.width) mx = hoveredTile.mouseX - tw - 12;
           if (my + th > canvas.height) my = hoveredTile.mouseY - th - 12;
@@ -2407,9 +2466,10 @@ export const drillScreen = {
           
           let name = 'UNKNOWN STRATA';
           let subtitle = '';
-          let reqText = 'Drill Head: Basic MK1';
+          const fittedHead = drillFittedHeadName(drillScreen._drillTier || 1);
+          let reqText = fittedHead ? `Head: ${fittedHead}` : '';
           let valueText = '';
-          let isBlocked = false;
+          let blockedHead = '';
           const surveyed = drillSys.isTileSurveyed(col, row);
 
           if (!surveyed) {
@@ -2432,11 +2492,15 @@ export const drillScreen = {
             valueText = `Market Price: ${basePrice} Cr`;
             
             const tier = drillScreen._drillTier || 1;
-            const req = t.tierReq || 1;
-            const names = { 1: 'Basic MK1', 2: 'Carbon MK2', 3: 'Diamond MK3', 4: 'Ind. Heavy MK4' };
-            reqText = `Min Engine: ${names[req] || 'MK' + req}`;
-            if (tier < req) {
-              isBlocked = true;
+            const req = drillTierReqForOre(t.ore);
+            const head = drillTierBlockLabel(t.ore, row);
+            if (head && tier < req) {
+              blockedHead = head;
+              reqText = `LOCKED — ${head}`;
+            } else if (head) {
+              reqText = head;
+            } else {
+              reqText = fittedHead ? `Head: ${fittedHead}` : '';
             }
           }
           
@@ -2449,11 +2513,11 @@ export const drillScreen = {
             ctx2d.fillText(valueText, mx + 8, my + 44);
           }
           
-          if (isBlocked) {
+          if (blockedHead) {
             ctx2d.fillStyle = roles.foe;
             ctx2d.font = 'bold 12px ' + monoFamily;
-            ctx2d.fillText('LOCKED — UPGRADE DRILL', mx + 8, my + 60);
-          } else {
+            ctx2d.fillText(`LOCKED — ${blockedHead}`, mx + 8, my + 60);
+          } else if (reqText) {
             ctx2d.fillStyle = paint(roles.you, 0.8);
             ctx2d.fillText(reqText, mx + 8, my + 60);
           }
@@ -2616,9 +2680,8 @@ export const drillScreen = {
         drillScreen._drillDps = drillSys.getDrillDPS();
       }
       if (hudEls.tier) {
-        const names = { 1: 'BASIC MK1', 2: 'CARBON MK2', 3: 'DIAMOND MK3', 4: 'IND. HEAVY MK4' };
         const tier = drillScreen._drillTier || 1;
-        setText(hudEls.tier, 'tier', names[tier] || `TIER MK${tier}`);
+        setText(hudEls.tier, 'tier', drillFittedHeadName(tier) || '—');
       }
       if (hudEls.dps) {
         const dps = drillScreen._drillDps || 8;
@@ -2660,17 +2723,21 @@ export const drillScreen = {
           } else if (t.type === 'vein' && t.ore) {
             const name = commodityName(t.ore);
             const basePrice = COMMODITY_BY_ID.get(t.ore)?.basePrice || 0;
-            const req = t.tierReq || drillTierReqForOre(t.ore);
+            const req = drillTierReqForOre(t.ore);
+            const head = drillTierBlockLabel(t.ore, nr);
             const tier = drillScreen._drillTier || 1;
-            const blocked = tier < req;
+            const blocked = head && tier < req;
             const rockEmpty = Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0;
-            const tierLine = blocked
-              ? `<strong style="color:var(--sf-foe);">LOCKED — needs Drill MK${req}</strong>`
-              : `Drill MK${req}`;
+            const tierLine = !head
+              ? ''
+              : blocked
+                ? `<strong style="color:var(--sf-foe);">LOCKED — needs ${escapeHtml(head)}</strong>`
+                : escapeHtml(head);
             const payLine = rockEmpty
               ? '<br><strong style="color:var(--sf-goal);">ROCK PLAYED OUT — this vein pays 0 until recovery</strong>'
               : '';
-            html = `<strong>${entitySpanHtml('commodity:' + t.ore, escapeHtml(name.toUpperCase()))} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'} · ${tierLine}${payLine}`;
+            const tierBit = tierLine ? ` · ${tierLine}` : '';
+            html = `<strong>${entitySpanHtml('commodity:' + t.ore, escapeHtml(name.toUpperCase()))} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'}${tierBit}${payLine}`;
           }
         } else {
           html = '<span style="color:var(--sf-calm);">Target</span><br>Asteroid boundary';

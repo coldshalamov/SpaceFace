@@ -6,7 +6,9 @@ catch (error) {
   ({ createBus } = await import('../../../fixtures/eventBus.js'));
 }
 export { createBus };
-export const OUTPUTS = ['chronicler:story', 'news:publish', 'chronicler:legend',
+// `chronicler:legend` is gone: a public legend publishes through `news:publish` (kind
+// 'chronicler-legend') like a story does, so the watch list carries the seam it lands on.
+export const OUTPUTS = ['chronicler:story', 'news:publish',
   'chronicler:radio', 'chronicler:recall', 'chronicler:voiceAccepted', 'chronicler:voiceRejected'];
 export function harness(options = {}, seed = 4242, beforeInit = null) {
   const bus = createBus();

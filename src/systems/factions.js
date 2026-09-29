@@ -41,6 +41,7 @@ const COLLISION_KILL_CAUSES = new Set([KillCause.TERRAIN_COLLISION, KillCause.SH
 function isCollisionKillCause(cause) { return COLLISION_KILL_CAUSES.has(cause); }
 const LAW_TRUTH_CAP = 32;          // bounded per-tick adjudication receipts (victimId -> truth)
 const DISCOVERY_REP_LEDGER_CAP = 64; // reportIds already answered with a rep hit
+const KILL_STANDING_CAP = 64; // victim ids whose direct hit and rival bonus already fired once
 // WF-09 — the register keeps the deeds. Bounded per-faction ring of standing receipts the
 // Standing & Relations tab reads back ("distress rescue · +20 · 2 h ago"). The clock never
 // enters it: decay and baseline seeding move the number without being something the player did.
@@ -228,6 +229,7 @@ export const factions = {
     // the rep listener below runs, the law's verdict for that victim is already here.
     this._lawKillTruth = new Map();
     this._appliedDiscoveryReports = new Set();
+    this._appliedKillStanding = new Set();
 
     const state = this.state, bus = this.bus;
 
@@ -255,9 +257,9 @@ export const factions = {
       while (map.size > LAW_TRUTH_CAP) map.delete(map.keys().next().value);
     });
 
-    // Killing a ship: lower rep with the victim's faction (if the law's witness truth says the
-    // act was seen — or the victim's own lawful network always records its dead), raise rep a
-    // little with that faction's enemies. Only the player's own kills move the player's standing.
+    // Killing a ship: lower rep with the victim's faction only when the law's witness truth
+    // is a direct observation with a real eye. A lawful network and a relay do not accuse.
+    // Rivals still hear that an enemy died. Only the player's own kills move standing.
     bus.on('entity:killed', (p) => {
       if (!p || p.type !== 'ship' || !p.factionId) return;
       if (p.killerId !== state.playerId) return; // NPC-on-NPC kills don't touch player rep
@@ -271,29 +273,47 @@ export const factions = {
       // no spatial query fail CLOSED — unseen blood does not move standing.
       const witnessed = truth ? truth.witnessed === true
         : (p.witnessed != null ? p.witnessed === true : this._witnessed(p.pos, victim));
-      // The verdict narrows "seen" to "charged": kind:null means the law CLEARED the act on the
-      // record (lawful self-defense, blameless) or could not prove it — the blameless-none tier
-      // pays no standing for a kill the law itself refused to price. Compatibility payloads keep
-      // the witnessed gate.
-      const charged = truth ? truth.kind != null : witnessed;
-      if (charged) {
-        const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : 1.0;
-        const causeMult = collision ? COLLISION_REP_MULT : 1;
-        this.applyRep(victim, KILL_BASE * mult * causeMult,
-          collision ? 'kill_faction_ship_collision' : 'kill_faction_ship');
-      }
-      // Rivals of the victim approve regardless of witness (word travels among enemies).
-      for (const other of FACTION_IDS) {
-        if (other === victim) continue;
-        if (spilloverWeight(victim, other) < 0) {
-          this.applyRep(other, ENEMY_KILL_BONUS, 'kill_faction_enemy_ship');
+      // A stamped class is direct only when the law named eyes and a charge. An older truth
+      // with no class keeps the kind gate. kind:null is a clear or an unproven act.
+      const charged = truth
+        ? (truth.evidenceClass == null
+          ? truth.kind != null
+          : truth.evidenceClass === 'direct'
+            && truth.witnessed === true
+            && Number(truth.witnessCount) > 0
+            && truth.kind != null)
+        : witnessed;
+      const standingKey = truth && truth.victimStableId
+        ? String(truth.victimStableId)
+        : (p.victimStableId ? String(p.victimStableId)
+          : (p.id != null ? `entity:${p.id}` : null));
+      const standing = this._appliedKillStanding || (this._appliedKillStanding = new Set());
+      if (standingKey != null && standing.has(standingKey)) {
+        // This body already moved standing once. A replay or a later clear adds nothing.
+      } else {
+        if (charged) {
+          const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : 1.0;
+          const causeMult = collision ? COLLISION_REP_MULT : 1;
+          this.applyRep(victim, KILL_BASE * mult * causeMult,
+            collision ? 'kill_faction_ship_collision' : 'kill_faction_ship');
+        }
+        // Rivals of the victim approve once, witness or not. A later clear does not pay it again.
+        for (const other of FACTION_IDS) {
+          if (other === victim) continue;
+          if (spilloverWeight(victim, other) < 0) {
+            this.applyRep(other, ENEMY_KILL_BONUS, 'kill_faction_enemy_ship');
+          }
+        }
+        // Pirate/law kills feed inter-faction tension around contested space.
+        this._feedTensionForKill(victim, p.pos);
+        // PQ-170.00: the same kill ON a contested front is a physical tilt of the war — blockade
+        // lanes, siege kills and wrecking-ball throws bank momentum toward the flip.
+        this._feedFrontForKill(victim, p);
+        if (standingKey != null) {
+          standing.add(standingKey);
+          while (standing.size > KILL_STANDING_CAP) standing.delete(standing.values().next().value);
         }
       }
-      // Pirate/law kills feed inter-faction tension around contested space.
-      this._feedTensionForKill(victim, p.pos);
-      // PQ-170.00: the same kill ON a contested front is a physical tilt of the war — blockade
-      // lanes, siege kills and wrecking-ball throws bank momentum toward the flip.
-      this._feedFrontForKill(victim, p);
     });
 
     // Wrecking-ball clause: a thrown mass or a caused slam can kill with no conventional
@@ -309,13 +329,18 @@ export const factions = {
       this._feedFrontForKill(p.factionId, p, causality);
     });
 
-    // Discovered crime → delayed standing answer. When an unwitnessed kill comes back through
-    // wreck provenance, the law's discovery receipt carries the same cause-scaled rep price it
-    // would have charged at the scene. `reportId` dedupe makes scan+salvage of the same hulk
-    // (or a replayed receipt) cost standing exactly once.
+    // Discovered crime → delayed standing answer. When an unseen kill comes back through wreck
+    // provenance, the receipt keeps the discovered class even if a later relay claims eyes.
+    // The price matches the scene, including a lawful-network victim, and the reason stays
+    // kill_discovered. `reportId` dedupe makes scan+salvage cost standing exactly once.
     bus.on('law:reportIncidentReceipt', (p) => {
-      if (!p || p.accepted !== true || p.discovery !== true) return;
-      if (p.kind !== 'unlawful_kill' && p.kind !== 'reckless_kill') return;
+      if (!p || p.accepted !== true) return;
+      // A relay that adds witnessed:true or the player's id does not upgrade hearsay.
+      const discovered = p.discovery === true
+        || p.evidence === 'wreck_provenance'
+        || p.evidenceClass === 'discovered';
+      if (!discovered) return;
+      if (p.kind !== 'unlawful_kill' && p.kind !== 'reckless_kill' && p.kind !== 'lawful_kill') return;
       const factionId = p.factionId;
       if (!factionId || !META_BY_ID[factionId]) return;
       const reportId = typeof p.reportId === 'string' ? p.reportId : null;
@@ -848,6 +873,8 @@ export const factions = {
   newGame() {
     const state = this.state || _state;
     if (!state) return;
+    if (this._appliedKillStanding) this._appliedKillStanding.clear();
+    if (this._appliedDiscoveryReports) this._appliedDiscoveryReports.clear();
     state.factions = {};
     state.conflicts = {};
     for (const id of FACTION_IDS) {

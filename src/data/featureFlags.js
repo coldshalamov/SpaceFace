@@ -62,10 +62,16 @@ export const COMBAT_FLAGS = {
   weaponHeatVent: _initial.combat.weaponHeatVent,
   // Hull-burst overhaul, slice A (docs/plans/2026-09-29-hull-burst-physics-overhaul-design.md §3,
   // §10): the rules that make a hull the player knocked loose a projectile. Landed so far: its kill
-  // credit is held for the whole flight, and the tumble commands no counter-torque (free spin). Each
-  // further slice-A rule (bounce, hull-on-hull knock, outbound floor) ships behind this same switch.
+  // credit is held for the whole flight, the tumble commands no counter-torque (free spin), it bounces
+  // and spins off what it meets, and it knocks the next hull loose. Each further slice-A rule
+  // (outbound floor) ships behind this same switch.
   // Production ON; legacy47a OFF so the 47-A golden stays byte-identical.
   tumbleFling: _initial.combat.tumbleFling,
+  // Hull-burst overhaul, slice A arcade loot (design doc section 7): loot from the player's kills
+  // waits a short beat so the burst reads, then homes to the hull from any distance, and ore a full
+  // hold refuses converts to credits through the economy owner instead of sitting there.
+  // Production ON; legacy47a OFF (47-A predates kill bursts).
+  arcadeLoot: _initial.combat.arcadeLoot,
 };
 
 /** Read a combat flag by name; unknown names read false. Pure over the MAP (or instance features). */

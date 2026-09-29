@@ -43,8 +43,16 @@ function boot(seed = SEED) {
   return { sim, state, bus, player, offers, recovered };
 }
 
-function killLawman(bus, state, id) {
-  bus.emit('entity:killed', {
+function killLawman(sim, state, id) {
+  const player = state.entities && state.entities.get(state.playerId);
+  const pos = player && player.pos ? player.pos : { x: 0, z: 0 };
+  const eye = sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: pos.x + 30, z: pos.z },
+    hull: 80, hullMax: 80, radius: 8,
+    data: { ai: { lawful: true }, witnessEye: true },
+  });
+  sim.bus.emit('entity:killed', {
     id,
     killerId: state.playerId,
     type: 'ship',
@@ -53,12 +61,14 @@ function killLawman(bus, state, id) {
     factionLawful: true,
     targetHostileToPlayer: false,
   });
+  eye.alive = false;
+  eye.hull = 0;
 }
 
-function raiseToImpound(bus, state) {
-  bus.emit('faction:aggro', { isAggro: true, factionId: 'faction_scn' });
-  killLawman(bus, state, 701);
-  killLawman(bus, state, 702);
+function raiseToImpound(sim, state) {
+  sim.bus.emit('faction:aggro', { isAggro: true, factionId: 'faction_scn' });
+  killLawman(sim, state, 701);
+  killLawman(sim, state, 702);
 }
 
 function liveClerk(state) {
@@ -69,7 +79,7 @@ function liveClerk(state) {
 
 test('clerk pad offers the bill once per arrival — edge, not a per-tick shout', () => {
   const { sim, state, player, offers } = boot();
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
   sim.step();
   const clerk = liveClerk(state);
@@ -159,7 +169,7 @@ test('production wiring: the manifest materializes the adapter — a lookup-only
 
 test('end to end: arrive, choose pay, the engine charges the bill and releases the hull', () => {
   const { sim, state, player, recovered } = boot();
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
   sim.step();
   const clerk = liveClerk(state);

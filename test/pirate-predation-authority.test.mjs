@@ -1067,27 +1067,41 @@ test('pressure during the escape knocks the loot loose piecemeal — a pursuit r
     'pods + remaining ledger == the stolen total');
 });
 
-test('player fire mid-escape converts the raider and the kept loot still drops on the kill', () => {
+test('player fire on a laden raider accelerates the escape; only an emptied hold converts', () => {
   const harness = bootAmbient(47078);
   ambientPair(harness);
-  const { raidId, raider } = boundAmbientRaid(harness);
+  const { raider } = boundAmbientRaid(harness);
   const ai = raider.data.ai;
   ai.predationStatus = 'cargo_escape';
   ai.predationObjective.secured = [{ commodityId: 'cmdty_ore_iron', qty: 7 }];
   ai.predationObjective.securedQty = 7;
-
-  harness.bus.emit('combat:damage', {
+  const accelerated = [];
+  harness.bus.on('encounter:ambientEscapeAccelerated', (p) => accelerated.push(p));
+  const hit = () => harness.bus.emit('combat:damage', {
     targetId: raider.id, attackerId: harness.player.id, applied: 9, pos: { ...raider.pos },
   });
-  assert.equal(ai.motive, 'self_defense', 'player intervention still converts the raider');
-  // The first hit also knocked one lump loose; the rest transferred into the durable ledger.
-  const dumps = [...harness.state.entities.values()].filter((e) => (
-    e.type === 'payload' && e.data && e.data.spillCause === 'pressure_jettison'));
-  const spilledQty = dumps.reduce((sum, e) => sum + e.data.salvagePool.cmdty_ore_iron, 0);
-  const aboard = ai.stolenLoot
-    ? ai.stolenLoot.lines.reduce((sum, l) => sum + l.qty, 0) : 0;
-  assert.equal(spilledQty + aboard, 7, 'hit-ditch + kept ledger == the stolen total');
 
+  // SF-055: while the take is still aboard a hit buys speed, not revenge — the escape leg
+  // re-aims off the shooter's bearing and the jettison sheds one lump per cooldown window.
+  hit();
+  assert.equal(ai.motive, 'ambient_cargo_raid', 'a laden raider does not trade the take for revenge');
+  assert.equal(ai.predationStatus, 'cargo_escape');
+  assert.equal(accelerated.length, 1, 'the hit accelerated the escape leg');
+  assert.equal(accelerated[0].attackerId, harness.player.id);
+
+  // Sustained pressure drains the hold piecemeal — the hit that sheds the last lump also frees
+  // the conversion. An emptied hold has nothing left worth the run, so it fights.
+  for (let i = 0; i < 8 && ai.predationObjective; i++) {
+    harness.state.simTime += 5; // jettisonCooldownS — one ditch per window
+    hit();
+    if (ai.motive === 'self_defense') break;
+  }
+  assert.equal(ai.motive, 'self_defense', 'an emptied hold earns the ordinary retaliation conversion');
+  assert.equal(ai.engagementTrigger, 'player_attack');
+  assert.equal(ai.retaliationTargetId, harness.player.id);
+
+  // Every lump the chase knocked loose is a physical pod; killing the converted raider drops
+  // whatever it still had aboard. The whole take stays in the world end to end.
   raider.alive = false;
   harness.bus.emit('entity:killed', {
     id: raider.id, killerId: harness.player.id, sectorId: AMBIENT_SECTOR, pos: { ...raider.pos },

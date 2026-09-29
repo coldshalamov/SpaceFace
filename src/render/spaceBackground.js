@@ -363,6 +363,7 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
   uniform float uPaintedSkyBlend;
   uniform vec2 uPaintedSkyOffset;
   uniform vec2 uPaintedSkyScale;
+  uniform float uPaintedSkySat;
   uniform vec2 uRepeat0;
   uniform vec2 uRepeat1;
   uniform vec2 uRepeat2;
@@ -412,6 +413,9 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
       if (uPaintedSkyBlend > 0.0) {
         plate = mix(plate, texture2D(uPaintedSkyNext, skyUv).rgb, uPaintedSkyBlend);
       }
+      // Per-sector desaturation: the far sky reads in value, not chroma, so authored color in the
+      // plate never competes with hull paint.
+      plate = mix(vec3(dot(plate, vec3(0.2126, 0.7152, 0.0722))), plate, uPaintedSkySat);
       color = mix(color, plate, uPaintedSkyStrength);
     }
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
@@ -1888,6 +1892,7 @@ export class SpaceBackground {
         uPaintedSkyBlend: { value: 0 },
         uPaintedSkyOffset: { value: new THREE.Vector2() },
         uPaintedSkyScale: { value: new THREE.Vector2(0.88, 0.88) },
+        uPaintedSkySat: { value: 1 },
         uRepeat0: { value: new THREE.Vector2(this.quadSize / l0.tile, this.quadSize / l0.tile) },
         uRepeat1: { value: new THREE.Vector2(this.quadSize / l1.tile, this.quadSize / l1.tile) },
         uRepeat2: { value: new THREE.Vector2(this.quadSize / l2.tile, this.quadSize / l2.tile) },
@@ -2236,8 +2241,13 @@ export class SpaceBackground {
         if (r() >= this.backgroundComposition.planetChance) continue;
         const bx = (cx + r()) * planetCellW;
         const bz = (cz + r()) * planetCellW;
+        // A sector may restrict the procedural body grammar (planetTypes) — e.g. a debris belt
+        // rolls only rocky planetoids so the clip-art ringed giant stays Helios's signature.
+        const allowedTypes = this.backgroundComposition && this.backgroundComposition.planetTypes;
         const typeRoll = r();
-        const type = typeRoll < 0.45 ? 'gas' : (typeRoll < 0.80 ? 'rocky' : 'ice');
+        const type = allowedTypes && allowedTypes.length
+          ? allowedTypes[Math.min(allowedTypes.length - 1, Math.floor(typeRoll * allowedTypes.length))]
+          : (typeRoll < 0.45 ? 'gas' : (typeRoll < 0.80 ? 'rocky' : 'ice'));
         const giant = r() < 0.03;
         const frac = giant ? 0.34 : (0.09 + r() * 0.10);
         const seed = (r() * 99999) | 0;
@@ -3367,6 +3377,10 @@ export class SpaceBackground {
     if (!this.deepSkyPlates) return;
     const art = resolveBackgroundPaintedSky(visualProfile);
     this._paintedSkyArt = art;
+    const skyUniforms = this.layerMaterial && this.layerMaterial.uniforms;
+    if (skyUniforms && skyUniforms.uPaintedSkySat) {
+      skyUniforms.uPaintedSkySat.value = art && Number.isFinite(art.saturation) ? art.saturation : 1;
+    }
     // Anchor the plate's parallax where the player entered, so every region presents the frame it
     // was authored for rather than an arbitrary slice chosen by the world coordinate. The camera
     // position is only trustworthy once update() has run, so latch the intent and take it there.

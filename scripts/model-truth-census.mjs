@@ -470,7 +470,7 @@ async function measureRow(row) {
     let evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
     const gasBloom = row.id === 'ast_gas_cloud' ? evaluated.silhouetteRadius * 1.22 : evaluated.silhouetteRadius;
     let skin = null;
-    if (row.solid && row.opening !== 'gas-soft') {
+    if (row.solid) {
       skin = buildPlanarSkin(evaluated.slice, { referenceRadius: radius, opening: row.opening || null });
       const fitted = scaleProxyPrimitives(skin.primitives, radius);
       const gap = radialGap(evaluated.outline, fitted, evaluated.toleranceWu, null);
@@ -632,7 +632,7 @@ async function measureRow(row) {
     ? (worst.dockRadius || row.dockRadius || worst.entityRadius)
     : (worst.entityRadius || row.entityRadius || 1);
   let skin = null;
-  if (row.solid && row.opening !== 'gas-soft' && worstEval.slice && worstEval.slice.length) {
+  if (row.solid && worstEval.slice && worstEval.slice.length) {
     skin = buildPlanarSkin(worstEval.slice, { referenceRadius: reference, opening: row.opening || null });
     const fitted = scaleProxyPrimitives(skin.primitives, reference);
     const opening = skin.mouthBearingDeg == null ? null : {

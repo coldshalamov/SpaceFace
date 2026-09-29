@@ -199,7 +199,23 @@ export function createChronicler(options = {}) {
       for (const legend of m.legends) {
         if (legend.announced || legend.visibility !== 'public') continue;
         legend.announced = true;
-        this._emit('chronicler:legend', legend);
+        // A legend IS public memory: it rides the same news seam as a story. The old
+        // `chronicler:legend` emission had no consumer anywhere in the tree — the sector's
+        // record of your deeds (three rescues → "A Hand in the Dark") formed, persisted,
+        // woke this publisher, and then reached nobody. Publication carries the citation
+        // fields the news surface gates on (sourceRef), and stays one announcement per
+        // legend for its whole life (the `announced` latch above, persisted in the save).
+        this._emit('news:publish', {
+          id: legend.id,
+          eventId: legend.id,
+          source: 'chronicler',
+          sourceRef: `${legend.id}:a${legend.count}`,
+          kind: 'chronicler-legend',
+          text: `${legend.title} — ${legend.text}`,
+          headline: legend.title,
+          formedAt: legend.formedAt,
+          evidence: clone(legend.evidence || []),
+        });
         if (this._memory !== m || !this._bus) return;
         if (++legends >= 2) break;
       }

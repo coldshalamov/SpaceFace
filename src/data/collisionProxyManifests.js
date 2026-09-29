@@ -212,13 +212,24 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
 // allocates, so a fixed body resolves it once. A replaced data object or proxy id re-resolves.
 const MEASURED_PROXY_CACHE = new WeakMap();
 
-/** True when the measured skin may stand in for this body's collider. Skins are fixed-body
- * geometry only: a body the physics authority builds as DYNAMIC (ships incl. the player, drones,
- * payloads, wrecks, chunks, pickups, projectiles) keeps its craft capsule or ball until the
- * compound-dynamic path is proven deterministic across save/reload. Same rule SG-02 uses to
- * choose RigidBodyDesc.dynamic() vs fixed(). */
+export function isCompoundSkinDynamicEligible(entity) {
+  if (!entity) return false;
+  const data = entity.data || {};
+  if (data.compoundSkin === true) return true;
+  if (data.defId === 'ship_atlas' || data.defId === 'ship_colossus' || data.defId === 'ship_leviathan') return true;
+  if (data.defId === 'dreadnought_boss' || data.typeId === 'dreadnought_boss' || data.silhouette === 'dreadnought_enemy' || data.defId === 'dreadnought_enemy') return true;
+  if (data.isMajorWreck === true || (entity.type === 'wreck' && typeof data.placeId === 'string' && data.placeId.startsWith('place_aftermath_wreck_'))) return true;
+  return false;
+}
+
+/** True when the measured skin may stand in for this body's collider. Fixed bodies (stations,
+ * landmark rocks) always take their skin; dynamic bodies keep their capsule/ball by default,
+ * with compound skins permitted only where one capsule cannot reach tolerance (capital ships,
+ * dreadnought, big wrecks, or explicit compoundSkin opt-in), proven deterministic across save/reload. */
 export function measuredSkinAllowedFor(entity) {
-  return !!entity && !isDynamicPhysicsBodyEntity(entity);
+  if (!entity) return false;
+  if (!isDynamicPhysicsBodyEntity(entity)) return true;
+  return isCompoundSkinDynamicEligible(entity);
 }
 
 /** Manifest declared on an entity via data.collisionProxy, else null. Manifests activate ONLY for

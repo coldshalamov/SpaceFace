@@ -18,11 +18,12 @@ import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { combatFlag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
-import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity, readPhysicsTelemetry } from '../core/physicsAuthority.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   clearPickupAcceptanceRetry,
@@ -90,6 +91,13 @@ export const BULK_CORE_MASS_FRAC = 0.6;    // parent mass; strictly lighter than
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_COLLECT_PAD = 14;  // ship-radius pad for scoop contact (generous so flybys don't miss)
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
+// Hull-burst overhaul slice A (combat.arcadeLoot, design doc section 7). Placeholders; untuned.
+const LOOT_HOMING_BEAT_S = 0.5;          // the burst reads before it starts to fall toward the hull
+// Refused combat ore pays this share of its reference value. Deliberately deep: a light kill's
+// materials are worth ~1,200 cr at reference against a ~65 cr chip (hauled ore is this economy's real
+// payoff, chips are the points), so 8% keeps a fully refused burst at CHIP scale (~100 cr) and a full
+// hold never turns combat into the dominant income. Untuned; design doc section 11.6.
+const LOOT_OVERFLOW_SCRAP_RATE = 0.08;
 // F6: a credit-chip body pays exactly once, however its collection receipt repeats. The
 // settled-receipt ledger below is session-scoped (reset in init) and capped; each settled
 // chip records its grant reason plus its body id for receipts that carry no reason.
@@ -191,6 +199,10 @@ export const mining = {
     // Collect ore/cargo pickups into the hold (physics emits this on contact; we also self-emit).
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
+    // Hull-burst overhaul slice A (combat.arcadeLoot): leaving banks the loot still in flight.
+    bus.on('dock:docked', () => this._bankCombatLoot());
+    bus.on('jump:start', () => this._bankCombatLoot());
+    bus.on('sector:exit', () => this._bankCombatLoot());
     // Fresh sector → drop the stale beam lock (world regenerates the field).
     bus.on('sector:enter', () => { this._setLockTargetId(null); this._stopBeam(); this._resetBeamHeat(); });
   },
@@ -1120,9 +1132,14 @@ export const mining = {
     this._diag.pickupsCollected = 0;
     const pvx = finiteNum(player.vel && player.vel.x);
     const pvz = finiteNum(player.vel && player.vel.z);
+    const arcadeLoot = combatFlag('arcadeLoot');
     for (const e of pickups) {
       if (!e.alive || (e.type !== 'pickup' && e.type !== 'payload')) continue;
       const pickupData = e.data || {};
+      // Combat loot (the player's own kill burst) waits out its beat, then homes from ANY distance;
+      // everything else keeps the ordinary magnet range.
+      const combatLoot = arcadeLoot && pickupData.combatLoot === true;
+      const beatPending = combatLoot && state.simTime < finiteNum(pickupData.homeAt);
       if (pickupData.anchored) continue;
       // A towable body (47-A evidence spindle, rescue pods, the swing-lesson rock) is moved by the
       // tether, never vacuumed: it carries no salvage to collect, so the homing write only rammed a
@@ -1157,7 +1174,7 @@ export const mining = {
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
-      if (dist <= magnet) {
+      if (combatLoot ? !beatPending : dist <= magnet) {
         // Homing vacuum: inherit player velocity, then accelerate relative approach.
         // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
         // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.
@@ -1195,7 +1212,15 @@ export const mining = {
         // same way it is for bombs.js effectiveMass. The e.vel write above stays for the
         // compatibility backend and body-less test entities; the impulse is only queued for a
         // bound DYNAMIC spec — a spec'd-but-static body has no consumer for it.
-        if (e.physicsBody && typeof e.physicsBody === 'object' && isDynamicPhysicsBodyEntity(e)) {
+        // Combat loot homes from any distance, but the physics owner only admits bodies near the player,
+        // so a far pickup has no body for an impulse to act on and nothing else integrates it. It has no
+        // live body, so it is stepped directly (measured: 1500 and 3000 WU pickups never moved before);
+        // once it comes inside the physics ring the owner builds its body from this pose and takes over.
+        const looseCombatLoot = combatLoot && readPhysicsTelemetry(e) == null;
+        if (looseCombatLoot) {
+          e.pos.x += finiteNum(e.vel.x) * dt;
+          e.pos.z += finiteNum(e.vel.z) * dt;
+        } else if (e.physicsBody && typeof e.physicsBody === 'object' && isDynamicPhysicsBodyEntity(e)) {
           const specMass = finiteNum(e.physicsBody.mass, 0);
           const entityMass = finiteNum(e.mass, 0);
           const baseMass = specMass > 0 ? specMass : entityMass > 0 ? entityMass : 1;
@@ -1728,12 +1753,15 @@ export const mining = {
     const inheritX = (Number.isFinite(p.vel && p.vel.x) ? p.vel.x : 0) * KILL_BURST_VEL_INHERIT;
     const inheritZ = (Number.isFinite(p.vel && p.vel.z) ? p.vel.z : 0) * KILL_BURST_VEL_INHERIT;
     const burst = p.source === 'kill_burst' || (Array.isArray(p.items) && p.items.some(isCreditChipPickup));
+    // Only the player's own kill burst (lootShards) is combat loot: it homes and converts overflow.
+    const combatLoot = p.source === 'kill_burst';
     for (const it of (p.items || [])) {
       if (!it) continue;
       if (isCreditChipPickup(it)) {
         const credits = finiteWholePickupAmount(it.credits != null ? it.credits : it.amount);
         if (credits <= 0) continue;
         this._spawnLootBurstPickup(stub, {
+          combatLoot,
           kind: CREDIT_CHIP_KIND,
           amount: credits,
           credits,
@@ -1751,6 +1779,7 @@ export const mining = {
         const rights = finiteWholePickupAmount(it.salvageRights != null ? it.salvageRights : it.amount);
         if (rights <= 0) continue;
         this._spawnLootBurstPickup(stub, {
+          combatLoot,
           kind: SALVAGE_RIGHTS_KIND,
           amount: rights,
           grantReason: typeof it.grantReason === 'string' ? it.grantReason : null,
@@ -1762,6 +1791,7 @@ export const mining = {
       if (!it.commodityId) continue;
       if (burst) {
         this._spawnLootBurstPickup(stub, {
+          combatLoot,
           kind: 'ore',
           commodityId: it.commodityId,
           amount: it.qty || 1,
@@ -1791,6 +1821,10 @@ export const mining = {
       despawnAt: this.state.simTime + PICKUP_TTL,
     };
     if (opts.commodityId) data.commodityId = opts.commodityId;
+    if (opts.combatLoot === true && combatFlag('arcadeLoot')) {
+      data.combatLoot = true;
+      data.homeAt = this.state.simTime + LOOT_HOMING_BEAT_S;
+    }
     if (opts.kind === CREDIT_CHIP_KIND || opts.kind === 'credits') {
       data.credits = amount;
       if (opts.grantReason) data.grantReason = opts.grantReason;
@@ -2147,6 +2181,9 @@ export const mining = {
     if (acceptance.rejected <= 0) {
       pickup.alive = false;
       clearPickupAcceptanceRetry(pickup.data);
+    } else if (this._convertOverflowToCredits(pickup, acceptance.rejected)) {
+      pickup.alive = false;
+      clearPickupAcceptanceRetry(pickup.data);
     } else {
       if (acceptance.accepted > 0) pickup.data.amount = acceptance.rejected;
       const ownerRetryAt = Number(payload.acceptanceRetryAt);
@@ -2159,6 +2196,56 @@ export const mining = {
       );
     }
     return acceptance;
+  },
+
+  // Hull-burst overhaul slice A (combat.arcadeLoot): docking or jumping banks the combat loot still
+  // in flight, so the payoff of a fight is never lost to a sector change. Every in-flight combat pickup
+  // goes through the ordinary collection path (chips pay through the economy owner, ore goes into the
+  // hold, refused ore converts to credits), so nothing here writes credits or cargo directly.
+  _bankCombatLoot() {
+    if (!combatFlag('arcadeLoot')) return 0;
+    const state = this.state;
+    const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || !Array.isArray(state.entityList)) return 0;
+    let banked = 0;
+    for (let i = 0; i < state.entityList.length && banked < 256; i++) {
+      const e = state.entityList[i];
+      if (!e || e.alive === false || e.type !== 'pickup' || !e.data || e.data.combatLoot !== true) continue;
+      clearPickupAcceptanceRetry(e.data);
+      this._collectPickupViaEvent(e, player);
+      banked++;
+    }
+    return banked;
+  },
+
+  // Hull-burst overhaul slice A (combat.arcadeLoot): combat ore a full hold refuses pays credits
+  // instead of floating and re-announcing itself every retry ("I don't want to weigh loot against my
+  // pack"). Credits go through the economy owner (sole writer of state.player.credits). Run wallets
+  // (Survival/Crucible) are never touched, and only the player's own kill burst is eligible.
+  _convertOverflowToCredits(pickup, rejectedUnits) {
+    if (!combatFlag('arcadeLoot')) return false;
+    const data = pickup && pickup.data;
+    if (!data || data.combatLoot !== true) return false;
+    if (data.kind !== 'ore' && data.kind !== 'cargo') return false;
+    if (data.wallet === 'run') return false;
+    const units = finiteWholePickupAmount(rejectedUnits);
+    if (units <= 0) return false;
+    const commodity = COMMODITY_BY_ID.get(data.commodityId);
+    const unitValue = commodity && Number.isFinite(commodity.basePrice) ? commodity.basePrice : 0;
+    const credits = Math.max(1, Math.floor(units * unitValue * LOOT_OVERFLOW_SCRAP_RATE));
+    this.bus.emit('economy:grantCredits', {
+      amount: credits,
+      reason: `salvage:overflow:${data.commodityId || 'unknown'}`,
+      receiptId: `salvage_overflow:${pickup.id}`,
+    });
+    this.bus.emit('loot:overflowConverted', {
+      pickupId: pickup.id,
+      commodityId: data.commodityId || null,
+      units,
+      credits,
+      pos: { x: pickup.pos.x, z: pickup.pos.z },
+    });
+    return true;
   },
 
   // ---- cargo bridge (single-writer aware) -----------------------------------

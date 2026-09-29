@@ -19,13 +19,19 @@
 //     once per obstacle per latch.
 //   • 'hostile-sweep'    — a taut hostile monofilament blade is crossing (or just severed) the
 //     player's Massline. Observer only: tetherGameplay remains the cutter.
+//   • 'hostile-sweep-commit' (SF-023) — a taut hostile blade will reach the player's line inside
+//     the commit window. Carries `position` = the bite point on the player's rope so the cue is a
+//     located warning on the threatened segment, not a general enemy alarm. Re-arms only after
+//     the cutter leaves the window for ~0.5 s.
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { readTautHostileSweepCrossing } from './tetherGameplay.js';
+import { readTautHostileSweepCrossing, readHostileSweepCommit } from './tetherGameplay.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 export const HOSTILE_SWEEP_THREAT_KIND = 'hostile-sweep';
+export const HOSTILE_SWEEP_COMMIT_KIND = 'hostile-sweep-commit';
+const COMMIT_REARM_TICKS = 30;             // ~0.5 s — a cutter clear of the window earns a fresh warning
 
 const THREAT_NEAR_BREAK_STRAIN = 0.75;   // overload floor — mirrors REEL_PUMP_RISK_HIGH (telemetry)
 const THREAT_SWING_MIN_TANGENTIAL = 25;  // wu/s — mirrors SNAP_CATCH_MIN_SPEED ("genuinely moving")
@@ -63,6 +69,12 @@ export const masslineThreats = {
     this._warnedCollisions = new Set();
     this._warnedSweep = new Set();
     this._sweepReadScratch = { cutterId: null, bladeId: null, playerLineId: null, taut: false };
+    this._commitScratch = {
+      active: false, cutterId: null, bladeId: null, playerLineId: null,
+      etaS: Infinity, severity: 0, x: 0, z: 0,
+    };
+    this._commitHeld = new Map();
+    this._sweepCommitMirror = null;
   },
 
   update(dt, state) {
@@ -117,6 +129,9 @@ export const masslineThreats = {
     // count); collision candidates are physical bodies inside THREAT_SCAN_RADIUS
     // via the live spatial hash — a body that cannot collide cannot be a collision
     // course. The unindexed fallback keeps the original full sweep.
+    // Clear the commit mirror before ANY early return below — a skipped flag block or a missing
+    // entities map can never leave last tick's bite point painted.
+    runtime.sweepCommit = null;
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     const playerTeam = player.team;
@@ -163,6 +178,44 @@ export const masslineThreats = {
         this._warnedSweep.add(crossing.cutterId);
         this._emitThreat(runtime, state, HOSTILE_SWEEP_THREAT_KIND, crossing.cutterId, 1);
       }
+      // SF-023: the pre-contact read. The same published rows answer WHERE the bite lands while
+      // the blade is still inbound — the record carries the bite point so presentation can mark
+      // the threatened segment itself. Held per cutter until it leaves the window; re-armed only
+      // after ~0.5 s clear, so a hovering blade does not re-alert every tick.
+      // The re-arm latch needs an advancing clock: prefer state.tick, fall back to simTime at
+      // the sim's 60 Hz so a tick-less harness still re-arms instead of latching at 0 forever.
+      const tick = Number.isFinite(state.tick)
+        ? state.tick
+        : Math.floor(finite(state.simTime, 0) * 60);
+      const commit = readHostileSweepCommit(state, player, this._commitScratch);
+      if (commit && commit.active) {
+        const lastSeen = this._commitHeld.get(commit.cutterId);
+        if (lastSeen == null || tick - lastSeen > COMMIT_REARM_TICKS) {
+          const severity = Math.max(THREAT_SEVERITY_FLOOR, clamp01(commit.severity));
+          this._emitThreat(runtime, state, HOSTILE_SWEEP_COMMIT_KIND, commit.cutterId, severity, {
+            position: { x: commit.x, z: commit.z },
+            etaS: commit.etaS,
+          });
+        }
+        this._commitHeld.set(commit.cutterId, tick);
+        const mirror = this._sweepCommitMirror || (this._sweepCommitMirror = {
+          cutterId: null, playerLineId: null, etaS: 0, severity: 0, x: 0, z: 0,
+        });
+        mirror.cutterId = commit.cutterId;
+        mirror.playerLineId = commit.playerLineId;
+        mirror.etaS = commit.etaS;
+        mirror.severity = commit.severity;
+        mirror.x = commit.x;
+        mirror.z = commit.z;
+        // Shared mutable mirror — readers (the HUD) consume it per frame and never retain it.
+        runtime.sweepCommit = mirror;
+      }
+      // A cutter absent longer than the rearm window earns a fresh warning when it recommits.
+      if (this._commitHeld.size) {
+        for (const [id, last] of this._commitHeld) {
+          if (tick - last > COMMIT_REARM_TICKS) this._commitHeld.delete(id);
+        }
+      }
     }
   },
 
@@ -184,12 +237,13 @@ export const masslineThreats = {
     if (this._warnedHostiles) this._warnedHostiles.clear();
     if (this._warnedCollisions) this._warnedCollisions.clear();
     if (this._warnedSweep) this._warnedSweep.clear();
+    if (this._commitHeld) this._commitHeld.clear();
   },
 
   // The single documented emit. The record is mirrored at runtime.latest + runtime.threats (this
   // system's own subtree) and the emitted payload IS the mirrored record (single source of truth,
   // same discipline as telemetry.snapCatch/reelPump).
-  _emitThreat(runtime, state, kind, targetId, severity) {
+  _emitThreat(runtime, state, kind, targetId, severity, extra) {
     const tick = Number.isFinite(state.tick) ? state.tick : null;
     const time = Number.isFinite(state.simTime) ? state.simTime
       : (tick != null ? tick / 60 : null);
@@ -209,6 +263,9 @@ export const masslineThreats = {
       tick,
       time,
     };
+    // SF-023: a located threat (the sweep-commit bite point) rides the record through to the cue
+    // lane — positionFrom picks it up for the VFX/where-to-look path without a second channel.
+    if (extra) Object.assign(record, extra);
     runtime.threats.push(record);
     if (runtime.threats.length > THREAT_LOG_CAP) runtime.threats.shift();
     runtime.latest = record;
@@ -266,6 +323,7 @@ function freshRuntime() {
     active: false,
     threats: [],
     latest: null,
+    sweepCommit: null,
   };
 }
 
@@ -275,6 +333,7 @@ function writeInactive(runtime) {
   // accumulators (same discipline as telemetry's max*SinceLatch).
   runtime.threats.length = 0;
   runtime.latest = null;
+  runtime.sweepCommit = null;
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }

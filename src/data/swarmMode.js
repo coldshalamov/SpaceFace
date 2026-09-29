@@ -115,6 +115,14 @@ export function swarmPressureAt(wave, progress) {
 export const SWARM_REINFORCE_GAP_TICKS = 12;
 export const SWARM_REINFORCE_BATCH = 3;
 /**
+ * SF-064 — a specialist's first body arrives alone, on its own bearing, a readable beat after
+ * the opening burst lands (~4 s) and far enough out that its approach is the tell (210 WU vs the
+ * ordinary 165). It is one of the wave's bodies — the planner gives its seat back from the
+ * largest ordinary group — not an extra on top of the pressure math.
+ */
+export const SWARM_DEBUT_TICKS = 4 * 60;
+export const SWARM_DEBUT_DISTANCE = 210;
+/**
  * Ceiling on ONE telegraphed spend. Not an instant catch-up. The old deficit-adaptive surge
  * patched a big hole with half of itself the moment the gap elapsed, so a fast player never
  * outran replacement and never got a visible empty beat. The reservoir keeps this as the size
@@ -584,25 +592,39 @@ export function swarmArenaPhase(wave) {
  * Weights are biased toward the newest unlock for its first two waves, so a fresh silhouette
  * actually shows up in the wave that introduced it rather than losing a dice roll to chaff.
  */
-export function pickSwarmArchetype(wave, roll) {
-  const roster = swarmRosterFor(wave);
-  if (roster.length === 0) return SWARM_ROSTER[0];
-  const w = swarmWaveOf(wave);
+export function pickSwarmArchetype(wave, roll, roster) {
+  // A roster override carries the plan's own shares — build pressure may have bent the weights,
+  // a mutator may have re-timed an unlock (heavies_only fields heavies from wave 1, which the
+  // plan declares with an earlier fromWave). Unknown enemy ids are still never trusted, and an
+  // entry's role always comes from the canonical roster: the plan can bend shares and timing,
+  // never an archetype's identity.
+  const w = swarmWaveOf(Number.isInteger(wave) && wave >= 1 ? wave : 1);
+  const base = Array.isArray(roster) && roster.length > 0
+    ? roster.flatMap((entry) => {
+        if (!entry || typeof entry.enemyId !== 'string') return [];
+        const canonical = SWARM_ROSTER.find((r) => r.enemyId === entry.enemyId);
+        if (!canonical) return [];
+        const unlock = Number.isInteger(entry.fromWave) ? entry.fromWave : canonical.fromWave;
+        if (unlock > w) return [];
+        return [{ ...entry, role: canonical.role, fromWave: unlock }];
+      })
+    : swarmRosterFor(w);
+  if (base.length === 0) return SWARM_ROSTER[0];
   let total = 0;
-  const weights = roster.map((entry) => {
+  const weights = base.map((entry) => {
     const fresh = w - entry.fromWave;
     const boost = fresh >= 0 && fresh < 2 ? 2.5 : 1;
-    const weight = Math.max(0.001, entry.weight * boost);
+    const weight = Math.max(0.001, (Number(entry.weight) || 0) * boost);
     total += weight;
     return weight;
   });
   const r = (Number.isFinite(roll) ? Math.abs(roll) % 1 : 0) * total;
   let acc = 0;
-  for (let i = 0; i < roster.length; i++) {
+  for (let i = 0; i < base.length; i++) {
     acc += weights[i];
-    if (r < acc) return roster[i];
+    if (r < acc) return base[i];
   }
-  return roster[roster.length - 1];
+  return base[base.length - 1];
 }
 
 /** Gate for the nth arrival of a wave. Walks the ring so pressure never settles on one bearing. */
@@ -637,7 +659,7 @@ export function swarmRewards(wave) {
  * Returns plan `packages` (the schema survivalWaves.js validates) so nothing downstream needs a
  * second shape.
  */
-export function swarmOpeningPackages(wave, rng) {
+export function swarmOpeningPackages(wave, rng, roster) {
   const w = swarmWaveOf(wave);
   const roll = typeof rng === 'function' ? rng : () => 0.5;
   // The wave opens at its OPENING pressure, not its ceiling — see swarmPressureAt. Arriving at
@@ -675,7 +697,7 @@ export function swarmOpeningPackages(wave, rng) {
 
   // Two or three arrival groups from different bearings: a swarm wave is surrounded from tick 0.
   // More bearings as the wave count climbs: at ten on you it is two doors, at thirty it is four.
-  const groups = w <= 2 ? 2 : (w < 8 ? 3 : 4);
+  const groups = swarmOpeningGroupCount(w);
   const bossBodies = boss
     ? boss.packages.reduce((sum, pkg) => sum + pkg.count, 0)
     : 0;
@@ -684,7 +706,7 @@ export function swarmOpeningPackages(wave, rng) {
     const share = g === groups - 1 ? left : Math.max(1, Math.round(left / (groups - g)));
     const count = Math.min(left, share);
     left -= count;
-    const archetype = pickSwarmArchetype(w, roll());
+    const archetype = pickSwarmArchetype(w, roll(), roster);
     packages.push({
       // Tight: every opening group is on the board inside 24 ticks (0.4s), so "surrounded" is the
       // first thing the wave says rather than something it works up to.
@@ -698,6 +720,27 @@ export function swarmOpeningPackages(wave, rng) {
     });
   }
   return packages;
+}
+
+/**
+ * The first bearing no package already uses — the debut gate. `swarmGateFor`'s stride walk can
+ * revisit a gate inside a single wave (a stride sharing a factor with 8 never covers the ring),
+ * so "first unused" falls back to a literal sweep of the gate list.
+ */
+export function swarmFreeGateFor(wave, used) {
+  const taken = used instanceof Set ? used : new Set(Array.isArray(used) ? used : []);
+  for (let k = 0; k < GATES.length; k++) {
+    const gate = swarmGateFor(wave, k);
+    if (!taken.has(gate)) return gate;
+  }
+  for (const gate of GATES) if (!taken.has(gate)) return gate;
+  return swarmGateFor(wave, 0);
+}
+
+/** How many bearings the opening burst arrives on. */
+export function swarmOpeningGroupCount(wave) {
+  const w = swarmWaveOf(wave);
+  return w <= 2 ? 2 : (w < 8 ? 3 : 4);
 }
 
 /** Total bodies in the opening burst. */
@@ -745,7 +788,14 @@ export function swarmPlanBlock(wave) {
     clearKills: SWARM_CLEAR_KILLS,
     breathTicks: SWARM_BREATH_TICKS,
     spawnDistance: SWARM_SPAWN_DISTANCE,
-    roster: roster.map((entry) => ({ enemyId: entry.enemyId, role: entry.role, weight: entry.weight })),
+    roster: roster.map((entry) => ({
+      enemyId: entry.enemyId,
+      role: entry.role,
+      weight: entry.weight,
+      // `fromWave` rides along so a biased roster fed back into pickSwarmArchetype keeps the
+      // fresh-silhouette boost honest instead of treating every entry as veteran.
+      fromWave: entry.fromWave,
+    })),
     newcomer: newcomer ? { enemyId: newcomer.enemyId, name: newcomer.name } : null,
   };
 }

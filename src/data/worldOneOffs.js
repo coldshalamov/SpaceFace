@@ -133,6 +133,23 @@ export const WORLD_ONE_OFFS = Object.freeze([
     why: 'A memorial array parked off the customs gate, lit so the lane can find the toll.',
   }),
   Object.freeze({
+    // WF-03 — The Tally (zone_tethys_tally): the pocket's one ropeable body. The count at the
+    // tally post is stuck on this keg — two desks claim it, the queue waits — and the Massline
+    // can settle the dispute by moving it. Anchored inside the toll pocket, off the queue line,
+    // beside the held-for-count pen.
+    id: 'oneoff_tethys_tally_keg',
+    name: 'The Disputed Keg — an impounded ore bulk stuck mid-count',
+    placeId: 'place_ore_bulk_container',
+    sectorId: 'sector_tethys_junction',
+    anchor: { type: 'station', id: 'station_customs' },
+    offsetLocal: Object.freeze({ x: -240, z: 170 }),
+    rot: 2.0,
+    spin: 0,
+    radius: 12,
+    physicalBody: Object.freeze({ mass: 140 }),
+    why: 'Concord seized it, Meridian billed for it, and the count will not run until the desks agree. It has been "temporary" for a year.',
+  }),
+  Object.freeze({
     // 2026-09-28 INFERENCE — the contested floor's own texture. A customs pinnace died holding
     // the Reach dock early in the fighting; whoever holds the dock this week keeps her lit
     // rather than salvage her, because the pylon beside her is the only approach marker every

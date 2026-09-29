@@ -140,7 +140,7 @@ export function createFloatingText(ctx) {
     n.wx = wx; n.wz = wz;
     n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
     n.vx = (Math.random() - 0.5) * 26;
-    n.el.className = 'sf-ft ' + cls;
+    n.el.className = 'sf-ft sf-ft--rise ' + cls;
     n.el.textContent = text;
     n.el.style.display = 'block';
     n.el.style.opacity = '1';
@@ -174,7 +174,7 @@ export function createFloatingText(ctx) {
       if (!e || !n.alive || n.entity !== e || n.damageClass !== cls || n.age > 0.14 || !n.damage) continue;
       n.damage += amount;
       n.el.textContent = String(Math.round(n.damage));
-      n.el.className = 'sf-ft ' + cls + (n.damage >= 25 ? ' sf-ft--big' : '');
+      n.el.className = 'sf-ft sf-ft--rise ' + cls + (n.damage >= 25 ? ' sf-ft--big' : '');
       return;
     }
     const big = amount >= 25 || p.killing;
@@ -210,6 +210,10 @@ export function createFloatingText(ctx) {
     });
   });
   bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
+  // Combat ore a full hold refused pays credits (combat.arcadeLoot): show the payout where it landed.
+  bus.on('loot:overflowConverted', (p) => {
+    if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
+  });
   // A rated trick mints its claim chit at the contact site — mark the mint so the payout reads
   // where it happened, not only when the chit is later scooped.
   bus.on('loot:drop', (p) => {
@@ -328,6 +332,10 @@ function injectStyle() {
   .sf-ft { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%); font-family:var(--mono,Consolas,monospace);
     font-weight:700; font-size:16px; letter-spacing:.02em; white-space:nowrap; will-change:transform,opacity;
     text-shadow:0 0 6px rgba(0,0,0,.9), 0 1px 2px rgba(0,0,0,.9); }
+  /* Demo-prep microinteraction: numbers arrive with a short rise instead of
+     popping at full size — margin-top keeps the owned transform untouched. */
+  .sf-ft--rise { animation:sf-ft-rise 220ms ease-out 1; }
+  @keyframes sf-ft-rise { from { margin-top:6px; } to { margin-top:0; } }
   .sf-ft--hull { color:#ffd24a; }
   .sf-ft--shield { color:#7fe0ff; font-size:14px; }
   .sf-ft--player { color:#ff5470; font-size:18px; }
