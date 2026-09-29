@@ -73,19 +73,20 @@ test('INF-098 reconnect with buttons down reports holds, never fresh presses', (
     live.tick = 2;
     gp.tick(0.016, live, null);
     assert.equal(gp.isConnected(), false);
-    pads[0] = fakePad([0, 7]); // replug with A + RT already down
+    pads[0] = fakePad([0, 7]); // replug with A + RT already down — not a new gesture
     live.tick = 3;
     gp.tick(0.016, live, null);
     assert.ok(events.some((e) => e.name === 'gamepad:connected'));
-    assert.equal(gp.actions.fire.held, true, 'live hold still reads held');
-    assert.equal(gp.actions.fire.pressed, false, 'but not as a fresh press');
+    assert.equal(gp.isConnected(), false, 'a reused slot is not adopted while its buttons are already down');
+    assert.equal(gp.actions.fire.held, false, 'no inherited held thrust or trigger');
+    assert.equal(gp.actions.fire.pressed, false, 'and not a fresh press');
     assert.equal(gp.actions.accept.pressed, false, 'no phantom confirm/buy edge');
     assert.ok(!anyPressed(gp), 'no action anywhere reports pressed on the reconnect frame');
     assert.deepEqual(gp.drainButtonPresses(), [], 'no phantom remap-capture edge');
-    // Next frame with the same hold stays edge-free; axes were never latched.
+    // The same hold on the next sample is still not thrust. A new press is required.
     live.tick = 4;
     gp.tick(0.016, live, null);
-    assert.equal(gp.actions.fire.held, true);
+    assert.equal(gp.actions.fire.held, false);
     assert.equal(gp.actions.fire.pressed, false);
   } finally { restore(); }
 });

@@ -287,6 +287,178 @@ function applyDeadzone(v, d) {
   return sign * ((a - d) / (1 - d));
 }
 
+const PAD_SLOT_LIMIT = 8;
+
+function buttonDown(pad, name) {
+  const idx = STD[name];
+  if (idx == null || !pad || !pad.buttons) return false;
+  const b = pad.buttons[idx];
+  if (!b) return false;
+  const value = typeof b.value === 'number' ? b.value : (b.pressed ? 1 : 0);
+  return !!(b.pressed || value > 0.5);
+}
+
+function stickOutOf(pad, dz) {
+  if (!pad) return false;
+  const axes = pad.axes || [];
+  // Left stick is the movement takeover. The right stick is aim and must not acquire the helm.
+  return Math.hypot(applyDeadzone(axes[0] || 0, dz), applyDeadzone(axes[1] || 0, dz)) > 0;
+}
+
+function blankSlot() {
+  return {
+    generation: 0,
+    present: false,
+    id: '',
+    stickOut: false,
+    fresh: true,
+    buttons: Object.create(null),
+  };
+}
+
+function inheritedHold(pad, names, inherited) {
+  if (!inherited || !pad || !names) return false;
+  let any = false;
+  for (const name of names) {
+    if (!buttonDown(pad, name)) continue;
+    any = true;
+    if (!inherited[name]) return false;
+  }
+  return any;
+}
+
+/**
+ * Choose the one pad allowed to publish axes and buttons.
+ * Identity is slot generation plus id. A reused array index is a new device.
+ * Sub-deadzone noise and a stick already sitting past the deadzone do not acquire.
+ */
+function selectActivePad(gp, list, dz) {
+  gp.helmGestureEdge = false;
+  gp.deviceLostThisFrame = false;
+  const pads = list || [];
+  const seen = Math.min(pads.length, PAD_SLOT_LIMIT);
+  const slots = gp._slots || (gp._slots = []);
+  let lost = false;
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const pad = i < seen ? pads[i] : null;
+    const up = !!(pad && pad.connected);
+    if (slot && slot.present && !up) {
+      slot.present = false;
+      slot.generation += 1;
+      slot.stickOut = false;
+      slot.fresh = true;
+      slot.id = '';
+      slot.buttons = Object.create(null);
+      if (gp._active && gp._active.index === i) lost = true;
+    }
+  }
+  let gesture = null;
+  for (let i = 0; i < seen; i++) {
+    const pad = pads[i];
+    if (!pad || !pad.connected) continue;
+    while (slots.length <= i) slots.push(blankSlot());
+    const slot = slots[i];
+    const id = pad.id || '';
+    if (!slot.present || slot.id !== id) {
+      if (slot.present && slot.id !== id && gp._active && gp._active.index === i) lost = true;
+      if (slot.present && slot.id !== id) slot.generation += 1;
+      slot.present = true;
+      slot.id = id;
+      slot.fresh = true;
+      slot.stickOut = false;
+      slot.buttons = Object.create(null);
+    }
+    const out = stickOutOf(pad, dz);
+    let edgeName = null;
+    if (!slot.fresh) {
+      for (const name in STD) {
+        if (buttonDown(pad, name) && !slot.buttons[name]) {
+          edgeName = name;
+          break;
+        }
+      }
+    }
+    const stickEdge = !!(out && !slot.stickOut && !slot.fresh);
+    const nextButtons = Object.create(null);
+    for (const name in STD) nextButtons[name] = buttonDown(pad, name);
+    slot.buttons = nextButtons;
+    slot.stickOut = out;
+    const wasFresh = slot.fresh;
+    slot.fresh = false;
+    const isActive = !!(gp._active
+      && gp._active.index === i
+      && gp._active.generation === slot.generation
+      && gp._active.id === id);
+    if (!lost && !isActive && !wasFresh && (stickEdge || edgeName) && !gesture) {
+      gesture = { index: i, pad, id, generation: slot.generation, edgeName };
+    }
+  }
+  if (lost) {
+    gp._active = null;
+    gp.deviceLostThisFrame = true;
+    gp._sawDisconnect = true;
+    gp._armStickEdge = false;
+    gp._sampledStickOut = false;
+    gp._inheritedButtons = null;
+    return null;
+  }
+  if (gesture) {
+    beginPadGesture(gp, gesture.pad, gesture.edgeName, dz);
+    gp._active = { index: gesture.index, id: gesture.id, generation: gesture.generation };
+    return gesture.pad;
+  }
+  if (gp._active) {
+    const slot = slots[gp._active.index];
+    const pad = pads[gp._active.index];
+    if (pad && pad.connected && slot && slot.present
+      && slot.generation === gp._active.generation
+      && (pad.id || '') === gp._active.id) {
+      return pad;
+    }
+    gp._active = null;
+    gp.deviceLostThisFrame = true;
+    gp._sawDisconnect = true;
+    gp._armStickEdge = false;
+    gp._sampledStickOut = false;
+    gp._inheritedButtons = null;
+    return null;
+  }
+  if (!gp._sawDisconnect) {
+    for (let i = 0; i < seen; i++) {
+      const pad = pads[i];
+      if (!pad || !pad.connected) continue;
+      const slot = slots[i];
+      gp._active = {
+        index: i,
+        id: pad.id || '',
+        generation: slot ? slot.generation : 0,
+      };
+      return pad;
+    }
+  }
+  return null;
+}
+
+function beginPadGesture(gp, pad, edgeName, dz) {
+  const inherited = Object.create(null);
+  const prevButtons = gp._prevButtons || (gp._prevButtons = {});
+  for (const name in STD) {
+    const down = buttonDown(pad, name);
+    if (down && name !== edgeName) inherited[name] = true;
+    prevButtons[name] = !!(down && name !== edgeName);
+  }
+  gp._inheritedButtons = inherited;
+  const prev = gp._prev || (gp._prev = {});
+  for (const key in prev) prev[key] = false;
+  if (Array.isArray(gp._pressQueue)) gp._pressQueue.length = 0;
+  gp._suppressEdgesOnce = false;
+  gp._sawDisconnect = false;
+  gp.helmGestureEdge = true;
+  gp._armStickEdge = true;
+  gp._sampledStickOut = stickOutOf(pad, dz);
+}
+
 function readButton(pad, name) {
   const idx = STD[name];
   if (idx == null || !pad || !pad.buttons) return null;
@@ -342,6 +514,15 @@ export function createGamepad(ctx) {
     lastActiveTick: -1,
     lastActiveSeq: -1,
     _wasActive: false,
+    // NXB-001: one sampled pad. Generation + id, never the array index alone.
+    helmGestureEdge: false,
+    deviceLostThisFrame: false,
+    _active: null,
+    _slots: [],
+    _sawDisconnect: false,
+    _armStickEdge: false,
+    _sampledStickOut: false,
+    _inheritedButtons: null,
     /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
 
@@ -400,57 +581,30 @@ export function createGamepad(ctx) {
       const dz = typeof cfg.deadzone === 'number' ? cfg.deadzone : DEFAULT_DEADZONE;
       const invertY = !!cfg.invertY;
 
-      let pad = null;
-      if (enabled && typeof navigator !== 'undefined' && navigator.getGamepads) {
-        const pads = navigator.getGamepads();
-        for (let i = 0; i < pads.length; i++) {
-          const p = pads[i];
-          if (p && p.connected) {
-            pad = p;
-            break;
-          }
-        }
-      }
+      const padList = (enabled && typeof navigator !== 'undefined' && navigator.getGamepads)
+        ? (navigator.getGamepads() || [])
+        : [];
+      const pad = selectActivePad(this, padList, dz);
 
       const wasConnected = this.connected;
-      if (!pad && wasConnected) {
+      if (this.deviceLostThisFrame || (!pad && wasConnected)) {
         this.connected = false;
         this.id = '';
-        // INF-098: genuine disconnect seen — the next acquisition is a REconnect, so
-        // buttons already down then are live holds, not fresh presses. Boot-time first
-        // acquisition keeps the historical first-tick edge contract (PQ-164.00).
+        // The dropped device publishes nothing this sample. Another occupied slot waits
+        // for its own later gesture. Boot-time first acquisition is unchanged (PQ-164.00).
         this._sawDisconnect = true;
         this._resetState();
         this._idleClean = true;
+        this.helmGestureEdge = false;
+        this.deviceLostThisFrame = true;
         if (bus && bus.emit) bus.emit('gamepad:disconnected', {});
         return;
       }
       if (pad && !wasConnected) {
         this.connected = true;
         this.id = pad.id || 'gamepad';
-        // INF-098: buttons already down at (re)connect are live holds, not fresh presses.
-        // Prime raw-button memory so the remap queue sees no phantom edge, and suppress
-        // action `pressed` for this one frame so reconnecting cannot fire, buy, or confirm
-        // by itself. `prev` still records held, so the next frame reports honestly, and a
-        // release + re-press produces a real fresh edge. Boot-time first acquisition
-        // keeps the historical edge (PQ-164.00); only a post-disconnect reconnect primes.
-        if (this._sawDisconnect) {
-          this._sawDisconnect = false;
-          for (const name in STD) {
-            const b = pad.buttons && pad.buttons[STD[name]];
-            this._prevButtons[name] = !!(b && (b.pressed || b.value > 0.5));
-          }
-          this._suppressEdgesOnce = true;
-        }
-        // G9: connection is a discrete activity event — bump shared sequence.
-        if (inputHost && typeof inputHost._bumpActivityStamp === 'function') {
-          const stamp = inputHost._bumpActivityStamp(live);
-          this.lastActiveTick = stamp.tick;
-          this.lastActiveSeq = stamp.seq;
-        } else {
-          this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
-        }
-        this.lastActiveMs = nowMs(); // diagnostic only
+        // Connecting is not a helm gesture and does not bump lastActiveTick. A deliberate
+        // reacquire publishes only its new edge; buttons already held stay silent.
         if (bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
         // PQ-164.04: offer the twin-stick scheme once per profile on pad connect — a toast,
         // never a silent default change; 'drive' stays the shipping pad feel until picked.
@@ -483,6 +637,16 @@ export function createGamepad(ctx) {
       this.axes.rightY = applyDeadzone(pad.axes[3] || 0, dz) * (invertY ? -1 : 1);
       this.axes.l2 = Math.max(0, pad.buttons[6] ? pad.buttons[6].value : 0);
       this.axes.r2 = Math.max(0, pad.buttons[7] ? pad.buttons[7].value : 0);
+      this.id = pad.id || this.id || 'gamepad';
+      const stickOut = Math.hypot(this.axes.leftX, this.axes.leftY) > 0;
+      if (this._armStickEdge && stickOut && !this._sampledStickOut) this.helmGestureEdge = true;
+      this._sampledStickOut = stickOut;
+      this._armStickEdge = true;
+      if (this._inheritedButtons) {
+        for (const name in this._inheritedButtons) {
+          if (!buttonDown(pad, name)) delete this._inheritedButtons[name];
+        }
+      }
 
       // PQ-164.01: resolved binding map, rebuilt only when the stored override object changes.
       const customBindings = cfg.bindings;
@@ -510,9 +674,7 @@ export function createGamepad(ctx) {
         Math.abs(this.axes.leftX) > 0.001 ||
         Math.abs(this.axes.leftY) > 0.001 ||
         Math.abs(this.axes.rightX) > 0.001 ||
-        Math.abs(this.axes.rightY) > 0.001 ||
-        this.axes.l2 > 0.001 ||
-        this.axes.r2 > 0.001;
+        Math.abs(this.axes.rightY) > 0.001;
 
       const actions = {};
       const prev = this._prev;
@@ -526,15 +688,21 @@ export function createGamepad(ctx) {
           if (btn.pressed) held = true;
           if (btn.value > value) value = btn.value;
         }
-        if (held) activity = true;
         const was = !!prev[action];
-        actions[action] = {
-          held,
-          pressed: held && !was && !this._suppressEdgesOnce,
-          released: !held && was,
-          value,
-        };
-        prev[action] = held;
+        if (inheritedHold(pad, names, this._inheritedButtons)) {
+          // A trigger already down on the acquiring pad is not activity and not a press.
+          actions[action] = { held: false, pressed: false, released: false, value: 0 };
+          prev[action] = false;
+        } else {
+          if (held) activity = true;
+          actions[action] = {
+            held,
+            pressed: held && !was && !this._suppressEdgesOnce,
+            released: !held && was,
+            value,
+          };
+          prev[action] = held;
+        }
       }
       if (this.captureMode) {
         // Remap capture: edges still reach the queue above, but every action reports inert so

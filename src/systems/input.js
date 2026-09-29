@@ -149,7 +149,7 @@ function finiteOr(v, fallback) { return Number.isFinite(v) ? v : fallback; }
  * Everything here is gated on `travelFlag('travelBurn')` read at CALL TIME. Under node the flag is
  * false, so not one key is written and the sim goldens cannot see this system.
  */
-function stepTravelLatch(host, state, inp, dt) {
+function stepTravelLatch(host, state, inp, dt, lineOwnsAxis = false) {
   if (!travelFlag('travelBurn')) {
     // Flag off: leave no trace at all, and drop any latch state a flag flip mid-session left behind.
     if (inp.travelDrive) delete inp.travelDrive;
@@ -162,7 +162,9 @@ function stepTravelLatch(host, state, inp, dt) {
   const pressed = host._travelEdge;
   const disrupted = travelDisrupted(state);
   const disruptionReason = travelDisruptionReason(state);
-  const braking = travelBrakeBreaks(inp);
+  // Line control spends reverse on the rope. That axis is not a decision to drop the burn.
+  // A dedicated brake button still breaks it, because the caller leaves lineOwnsAxis false then.
+  const braking = lineOwnsAxis ? false : travelBrakeBreaks(inp);
   // Forward the LEVEL flag on the published block, not just the one-shot latch transition: the
   // kernel's normalizeTravelDrive consumes `disrupted` to hold the ramp down AND (D8) to treat
   // the dead beacon as the environmental force that spends overspeed toward the falling ceiling.
@@ -791,7 +793,7 @@ export const input = {
         this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
       }
       syncPointerScreen(this.state, this._screen.x, this._screen.y);
-      this._kbmActivityPending = true;
+      noteFlightPointer(this, e.target);
     };
     // Capture pointer truth before overlays can consume the event. Electron focus/activation can
     // otherwise leave the software cursor at its fallback center until a later unhandled move.
@@ -1122,10 +1124,10 @@ export const input = {
       kbdLineOrbit = kbdTurn;
       kbdMoveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
     }
-    const kbdMoveZ = pilotProjection
+    let kbdMoveZ = pilotProjection
       ? pilotProjection.moveZ
       : (up ? 1 : 0) - (down ? 1 : 0);
-    const kbdBoost = pilotProjection ? pilotProjection.boost : kbdBoostHeld;
+    let kbdBoost = pilotProjection ? pilotProjection.boost : kbdBoostHeld;
     const kbdFire = this._m0 || this._held(state, 'fire');
 
     // --- gamepad merge (drive: left stick = yaw/throttle; twinstick: left = world-frame
@@ -1171,8 +1173,8 @@ export const input = {
     }
 
     // --- touch merge (P1-12): virtual dual-stick. Left stick = yaw/throttle (same as gamepad),
-    //     right stick = aim, on-screen buttons = fire/mine/boost. A touch modality is the most
-    //     deliberate input (a thumb on a stick), so when touch is active it wins over kbm/gp. ---
+    //     right stick = aim, on-screen buttons = fire/mine/boost. Touch writes movement only
+    //     while it owns the helm. An idle contact does not take it. ---
     let tpTurn = 0, tpMoveZ = 0, tpMoveX = 0;
     let tpBoost = false, tpFire = false, tpMine = false;
     let tpAimActive = false;
@@ -1195,6 +1197,26 @@ export const input = {
     const kbmRecent = activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, gpTick, gpSeq)
       && activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, tpTick, tpSeq);
 
+    const kbdDrive = !!(kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
+    const pointerOwnsHelm = !!(helm && kbmRecent && this._screen && this._screen.active);
+    const pointerHelmEdge = !!(this._pointerHelmEdge && pointerOwnsHelm);
+    this._pointerHelmEdge = false;
+    resolveMovementOwner(this, { kbdDrive, gp, tp, pointerHelmEdge, pointerOwnsHelm });
+    let keyboardBrake = (helm || pilot)
+      ? !!(pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld))
+      : !!(down || kbdBrakeHeld);
+    if (this._movementSource === 'gamepad' || this._movementSource === 'touch') {
+      kbdTurn = 0; kbdMoveX = 0; kbdMoveZ = 0; kbdBoost = false;
+      kbdLineOrbit = 0;
+      keyboardBrake = false;
+    }
+    if (this._movementSource !== 'gamepad') {
+      gpTurn = 0; gpMoveX = 0; gpMoveZ = 0; gpBoost = false; gpBrake = false;
+    }
+    if (this._movementSource !== 'touch') {
+      tpTurn = 0; tpMoveZ = 0; tpMoveX = 0; tpBoost = false;
+    }
+
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
     inp.moveX = kbdMoveX || gpMoveX || tpMoveX;
     // Twin-stick keeps the authored drive vector under the brake — LB decomposes counter-
@@ -1202,9 +1224,9 @@ export const input = {
     // drive direction, not the drive scheme's brake gesture.
     inp.moveZ = kbdMoveZ || (gpBrake && padScheme !== 'twinstick' ? -1 : gpMoveZ) || tpMoveZ;
     inp.boost = kbdBoost || gpBoost || tpBoost;
-    inp.brake = (helm || pilot)
-      ? ((pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld)) || gpBrake)
-      : (down || gpBrake || (padScheme !== 'twinstick' && gpMoveZ < -0.55) || tpMoveZ < -0.55);
+    inp.brake = keyboardBrake || gpBrake
+      || (this._movementSource === 'gamepad' && padScheme !== 'twinstick' && gpMoveZ < -0.55)
+      || (this._movementSource === 'touch' && tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
     // Explicit device input interrupts the drawn route without switching off gun targeting.
     // Do not infer this from the auto pilot's axes one system later: those include reverse
@@ -1317,6 +1339,7 @@ export const input = {
         orbitDirection: rawOrbitDirection,
         pump: inp.boost,
         source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : null),
+        silentRelease: !!(gp && gp.deviceLostThisFrame) && !tetherHeld,
       });
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
     acts.massline = masslineCommand;
@@ -1369,13 +1392,17 @@ export const input = {
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
     // not also fire full thrust against the reel. Scale the flight channel to 25 % so the line
     // grammar wins the axis and the ship keeps a finesse whisper instead of a second opposed force.
-    if (masslineCommand.lineControl) inp.moveZ *= 0.25;
+    let lineOwnsTravelAxis = false;
+    if (masslineCommand.lineControl) {
+      inp.moveZ *= 0.25;
+      if (!(kbdBrakeHeld || gpBrake)) lineOwnsTravelAxis = true;
+    }
     // The Massline key adds reel/orbit intent; it does not replace the flight controls. The same
     // forward/turn chord remains ordinary thrust and yaw, which lets the orbit detector observe
     // what the pilot is actually doing instead of manufacturing a second control mode.
     acts.brake = inp.brake;
     // Travel reads the same ordinary flight intent after the Massline adds its independent verbs.
-    stepTravelLatch(this, state, inp, dt);
+    stepTravelLatch(this, state, inp, dt, lineOwnsTravelAxis);
 
     // --- Helm Assist steering (GDD §4.1): the nose chases the cursor unless direct yaw is held.
     // Gamepad/touch players keep stick-yaw even in helm scheme (kbmRecent gates the override).
@@ -1489,6 +1516,70 @@ function isThrowArmPayload(state) {
  * Higher tick wins; on equal tick, higher sequence wins (strict — no device-type priority).
  * @returns {boolean} true when A is strictly more recent than B
  */
+/**
+ * Pointer motion over a control does not become helm activity. A flight-surface
+ * pointer still marks the keyboard/mouse device so aim can follow it.
+ */
+export function noteFlightPointer(host, target) {
+  if (!host) return false;
+  if (isUiCommandTarget(target)) return false;
+  host._kbmActivityPending = true;
+  host._pointerHelmEdge = true;
+  return true;
+}
+
+function touchHelmEdge(host, tp) {
+  if (!tp || typeof tp.isConnected !== 'function' || !tp.isConnected()) {
+    host._touchStickArmed = false;
+    host._touchStickOut = false;
+    return false;
+  }
+  const out = Math.hypot(tp.axes.leftX || 0, tp.axes.leftY || 0) > 0.001
+    || Math.hypot(tp.axes.rightX || 0, tp.axes.rightY || 0) > 0.001;
+  let edge = false;
+  if (host._touchStickArmed && out && !host._touchStickOut) edge = true;
+  const boost = tp.actions && tp.actions.boost;
+  // Fire and mine stay independent of the helm. Boost is a movement action, so it can take it.
+  if (boost && boost.pressed) edge = true;
+  host._touchStickOut = out;
+  host._touchStickArmed = true;
+  return edge;
+}
+
+function resolveMovementOwner(host, {
+  kbdDrive, gp, tp, pointerHelmEdge = false, pointerOwnsHelm = false,
+}) {
+  let source = host._movementSource || null;
+  if (source === 'gamepad' && !(gp && typeof gp.isConnected === 'function' && gp.isConnected())) {
+    source = null;
+  }
+  if (source === 'touch' && !(tp && typeof tp.isConnected === 'function' && tp.isConnected())) {
+    source = null;
+  }
+  const gpEdge = !!(gp && gp.helmGestureEdge);
+  const tpEdge = touchHelmEdge(host, tp);
+  const kbdEdge = !!(kbdDrive && !host._kbdDrivePrev);
+  const gpStick = !!(gp && typeof gp.isConnected === 'function' && gp.isConnected()
+    && (Math.abs(gp.axes.leftX) > 0.001 || Math.abs(gp.axes.leftY) > 0.001));
+  const tpStick = !!(tp && typeof tp.isConnected === 'function' && tp.isConnected()
+    && Math.hypot(tp.axes.leftX || 0, tp.axes.leftY || 0) > 0.001);
+  let next = source;
+  if (gpEdge) next = 'gamepad';
+  else if (tpEdge) next = 'touch';
+  else if (kbdEdge || pointerHelmEdge) next = 'keyboard';
+  else if (next == null) {
+    if (kbdDrive || pointerOwnsHelm) next = 'keyboard';
+    else if (gpStick) next = 'gamepad';
+    else if (tpStick) next = 'touch';
+  }
+  if (next !== (host._movementSource || null)) {
+    host.movementSourceChanges = (host.movementSourceChanges | 0) + 1;
+  }
+  host._movementSource = next;
+  host.movementSource = next;
+  host._kbdDrivePrev = !!kbdDrive;
+}
+
 export function activityStampMoreRecent(tickA, seqA, tickB, seqB) {
   const ta = Number.isFinite(tickA) ? tickA : -1;
   const tb = Number.isFinite(tickB) ? tickB : -1;
