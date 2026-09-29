@@ -24,6 +24,7 @@ import {
   pallasHiddenCacheSignalAvailable,
   pallasHiddenCacheSignalCopy,
 } from '../data/pallasHiddenCache.js';
+import { kettleLineSignalCopy } from '../data/kettleLine.js';
 import {
   PLANET_STATE_DEFS,
   PLANET_SIGNAL_RANGE,
@@ -1141,7 +1142,8 @@ export const scanner = {
       // A world names itself once the signature resolves — until then it reads as its kind class.
       if (stage >= 3 && candidate.planetName) record.classification = candidate.planetName;
       const discoveryCopy = vestaOreCacheSignalCopy(candidate.sourceId)
-        || pallasHiddenCacheSignalCopy(candidate.sourceId);
+        || pallasHiddenCacheSignalCopy(candidate.sourceId)
+        || kettleLineSignalCopy(candidate.sourceId);
       if (discoveryCopy) {
         record.classification = discoveryCopy.classification;
         record.detail = discoveryCopy.detail;
