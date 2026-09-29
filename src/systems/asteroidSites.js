@@ -206,7 +206,16 @@ export const asteroidSites = {
       // owner's deserialize. Never rematerialize the pre-load record in that ordering window.
       if (!this._worldRestoreActive) this._syncWorldSites(sectorId);
     });
-    this.bus.on('sector:exit', ({ sectorId } = {}) => this._unmaterializeWorldSector(sectorId));
+    this.bus.on('sector:exit', ({ sectorId } = {}) => {
+      // SF-294: snapshot each anchored claim's consequence counters as the player leaves — the
+      // return line on rematerialize diffs against this so it reports what actually changed
+      // while they were away, never a standing inventory restated as news.
+      for (const siteId of (state.sites && state.sites.order) || []) {
+        const site = state.sites.byId[siteId];
+        if (site && site.anchored && site.sectorId === sectorId) this._snapshotReturnBaseline(site);
+      }
+      this._unmaterializeWorldSector(sectorId);
+    });
     this.bus.on('save:restoring', () => {
       this._captureWorldSitePayloads(null, { force: true });
       this._worldRestoreActive = true;
@@ -251,6 +260,9 @@ export const asteroidSites = {
       // only if their entity does, and entity links can't be trusted across arbitrary loads.
       // First-machine claims are anchored; ship those. Legacy pre-claim work still dies with the rock.
       if (!site || !site.anchored) continue;
+      // The save boundary is a witnessed moment: everything already accrued was last seen
+      // now, so a post-load return line must not re-report it (SF-294).
+      this._snapshotReturnBaseline(site);
       byId[id] = JSON.parse(JSON.stringify(site));
       order.push(id);
     }
@@ -915,9 +927,60 @@ export const asteroidSites = {
       : 'Claim staked — this rock will be here when you come back.';
     this._ledger(site, 'good', line);
     this.bus.emit('site:anchored', { siteId: site.id, asteroidId: site.asteroidId, sectorId: site.sectorId, reason: reason || 'first-install' });
+    // The anchor moment is witnessed, so it becomes the return baseline.
+    this._snapshotReturnBaseline(site);
     // The exterior relay is deliberately NOT projected here: it is the producing site's visible
     // industrial consequence (PQ-024 lifecycle cold -> committed -> producing) and appears only
     // with the first real positive output. See _acceptProductionReceipt/_repairAnchors.
+  },
+
+  /**
+   * SF-294. The durable numbers a quiet return can honestly diff: production ticks and courier
+   * flights resolve while the player is elsewhere, so the delta against this snapshot is what
+   * the claim did unwitnessed. Snapshot at anchor (witnessed), at sector exit (last seen), and
+   * after each return line (just reported). Plain fields — they ride the site's JSON-cloned
+   * save path like every other record field.
+   */
+  _snapshotReturnBaseline(site) {
+    if (!site) return;
+    site.returnBaseline = {
+      exportedU: Number(site.stats && site.stats.exportedU) || 0,
+      delivered: site.fleet && Number(site.fleet.delivered) || 0,
+      lost: site.fleet && Number(site.fleet.lost) || 0,
+      bufferU: Object.keys(site.exportBuffer || {})
+        .reduce((sum, id) => sum + (Number(site.exportBuffer[id]) || 0), 0),
+    };
+  },
+
+  /** One concise comms line on rematerialize: what the claim did since the player last saw it. */
+  _returnVisitLine(site, sectorId) {
+    if (!site || !this.bus || typeof this.bus.emit !== 'function') return;
+    const sector = (this.state.world && this.state.world.sectors
+      && this.state.world.sectors[sectorId]) || SECTOR_BY_ID.get(sectorId);
+    const place = (sector && sector.name) || 'the belt';
+    const base = site.returnBaseline || null;
+    const parts = [];
+    // No baseline means the player never witnessed a reference state (pre-packet saves,
+    // restored records) — diffing against zero would restate lifetime totals as fresh work,
+    // so the only honest line is continuity.
+    if (base) {
+      const delta = (cur, key) => Math.max(0, Math.round((Number(cur) || 0) - (Number(base[key]) || 0)));
+      const bufferU = Object.keys(site.exportBuffer || {})
+        .reduce((sum, id) => sum + (Number(site.exportBuffer[id]) || 0), 0);
+      const shipped = delta(site.stats && site.stats.exportedU, 'exportedU');
+      const delivered = delta(site.fleet && site.fleet.delivered, 'delivered');
+      const lost = delta(site.fleet && site.fleet.lost, 'lost');
+      const waiting = Math.max(0, Math.round(bufferU - (Number(base.bufferU) || 0)));
+      if (shipped > 0) parts.push(`${shipped}u shipped`);
+      if (delivered > 0) parts.push(`${delivered} courier${delivered === 1 ? '' : 's'} home`);
+      if (lost > 0) parts.push(`${lost} courier${lost === 1 ? '' : 's'} lost`);
+      if (waiting > 0) parts.push(`${waiting}u in the hopper`);
+    }
+    const machines = Array.isArray(site.machines) ? site.machines.length : 0;
+    const text = parts.length
+      ? `Your claim at ${place} kept working — ${parts.join(', ')}.`
+      : `Your claim at ${place} still stands — ${machines} machine${machines === 1 ? '' : 's'} on the face.`;
+    this.bus.emit('comms:log', { from: 'CLAIM', text, kind: 'site' });
   },
 
   // ------------------------------------------------------------ claim survey (PQ-024)
@@ -1416,6 +1479,7 @@ export const asteroidSites = {
 
   /** Anchored sites in the CURRENT sector re-materialize their rock if it is missing. */
   _repairAnchors() {
+    if (this._worldRestoreActive) return;
     const state = this.state;
     const sectorId = state.world && state.world.currentSectorId;
     if (!sectorId) return;
@@ -1453,6 +1517,8 @@ export const asteroidSites = {
         site.asteroidId = rock.id;
         this._rt.delete(site.id);
         this.bus.emit('site:rematerialized', { siteId: site.id, asteroidId: rock.id, sectorId });
+        this._returnVisitLine(site, sectorId);
+        this._snapshotReturnBaseline(site);
       }
     }
     for (const siteId of state.sites.order) {
