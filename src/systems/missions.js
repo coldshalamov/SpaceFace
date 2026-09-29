@@ -932,6 +932,9 @@ function isFingerprintBoardSource(source) {
     // BP-01.1: a wreck-communicator offer's identity is its stable salvage-point id — receipts
     // dedupe a completed contract on replay/re-entry while distinct points still board.
     || source === 'salvage'
+    // Ecology desks carry stable per-mission ids and no cause — per-identity dedupe, not
+    // one-row-per-source, so a site holding several contracts surfaces all of them.
+    || source === 'ecology'
     || source === SET_PIECE_FOLLOW_ON_SOURCE;
 }
 
@@ -1657,6 +1660,12 @@ export const missions = {
       offer && offer.source === 'salvage'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 4);
+    // Ecology site offers are one-shot per visit — keep them through epoch refresh so the
+    // contract the site emitted survives the trip back to dock.
+    const retainedEcologyOffers = previousSlots.filter((offer) => (
+      offer && offer.source === 'ecology'
+      && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
+    )).slice(0, 4);
     // B7 follow-ons are the contract the set piece just became. A refresh must not
     // eat them before the player can take the salvage, the escape, or the tow.
     const retainedSetPieceFollowOns = previousSlots.filter((offer) => (
@@ -1713,6 +1722,7 @@ export const missions = {
         ...retainedGhostConvoyOffers,
         ...retainedCargoKillOffers,
         ...retainedSalvageOffers,
+        ...retainedEcologyOffers,
         ...retainedSetPieceFollowOns,
       ],
     };
@@ -2262,6 +2272,9 @@ export const missions = {
       // supplies id/type/stationId/params) — the wreck's signal becomes a real board row, so
       // "failure creates content" also means discovery creates playable work.
       || rawOffer.source === 'salvage'
+      // Alien Ecology AE-067/068/069/087/088/089: colonized sites emit fieldwork contracts on
+      // close approach — the site IS the giver (alienEcology.emitEcologyOffer builds the row).
+      || rawOffer.source === 'ecology'
     );
     if (!allowedSource) return false;
     if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;

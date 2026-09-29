@@ -3,7 +3,7 @@ export const faction = {
   personality: 'xenophobic', startingRep: -120,
   homeSectors: ['sector_veil_nebula', 'sector_ashfall_reach'],
   controls: ['far-rim sectors', 'exotic tech', 'unique commodities'],
-  fleetClass: 'alien',
+  fleetClass: 'contractual', // Vael are HUMAN (alien-ecology doc 12): contractual far-rim culture, not an alien species
   relations: { faction_scn: -0.5, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0, faction_quiet: 0.0, faction_free: 0.0, faction_choir: -0.6, faction_helix: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },
   // Mirrors FACTION_PALETTES["faction_vael"] in src/data/palettes.js, which is what the
   // renderer actually reads. Two six-key palettes for one faction would drift silently.

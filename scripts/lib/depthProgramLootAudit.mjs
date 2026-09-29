@@ -91,6 +91,13 @@ export function runDepthProgramLootAudit({
     if (typeof id === 'string' && id) lineageUniqueIds.push(id);
   }
   for (const id of lineageUniqueIds) uniqueIds.add(id);
+  // Non-wreck authored grants (alien-ecology program): declared unique equipment earned
+  // at authored sites/beats rather than salvageable wrecks — reserved all the same.
+  const siteUniqueIds = [];
+  for (const id of catalogs.siteUniqueIds || []) {
+    if (typeof id === 'string' && id) siteUniqueIds.push(id);
+  }
+  for (const id of siteUniqueIds) uniqueIds.add(id);
   const authoritativeRows = declaredRows.length ? declaredRows : reservedRows;
 
   const modules = catalogs.modules || [];
@@ -118,6 +125,20 @@ export function runDepthProgramLootAudit({
     const equipment = equipmentById.get(id);
     if (!equipment) {
       issues.push(issue('audit.lineage-missing', id, 'Lineage unique equipment is absent from the live equipment catalogs.'));
+      continue;
+    }
+    if (equipment.unique !== true || equipment.purchasable !== false || equipment.salvageOnly !== true || Number(equipment.price) !== 0) {
+      issues.push(issue(
+        'audit.unique-flags',
+        id,
+        'Unique equipment must set unique:true, purchasable:false, salvageOnly:true, and price:0.',
+      ));
+    }
+  }
+  for (const id of siteUniqueIds) {
+    const equipment = equipmentById.get(id);
+    if (!equipment) {
+      issues.push(issue('audit.site-unique-missing', id, 'Site-granted unique equipment is absent from the live equipment catalogs.'));
       continue;
     }
     if (equipment.unique !== true || equipment.purchasable !== false || equipment.salvageOnly !== true || Number(equipment.price) !== 0) {

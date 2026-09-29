@@ -181,7 +181,7 @@ export function selectDoctrineTarget(doctrineId, perception) {
       || (contact.visible !== true && contact.dispatchedTarget !== true)) continue;
     if (finite(contact.confidence, 0) < 0.55) continue;
     const score = targetScore(doctrine, contact, ward);
-    if (score > bestScore || (score === bestScore && stableId(contact.id) < stableId(best && best.id))) {
+    if (score > bestScore || (score === bestScore && best && compareIds(contact.id, best.id) < 0)) {
       best = contact;
       bestScore = score;
     }
@@ -204,7 +204,7 @@ function escortWard(perception, self) {
     const d = selfPos
       ? Math.hypot(contact.pos.x - selfPos.x, contact.pos.z - selfPos.z)
       : 0;
-    if (d < bestDist || (d === bestDist && best && stableId(contact.id) < stableId(best.id))) {
+    if (d < bestDist || (d === bestDist && best && compareIds(contact.id, best.id) < 0)) {
       best = contact;
       bestDist = d;
     }
@@ -1504,5 +1504,8 @@ function frozenRecord(record) {
 }
 
 function compareIds(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
   return stableId(a).localeCompare(stableId(b));
 }

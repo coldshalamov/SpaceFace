@@ -33,6 +33,8 @@ import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialR
 import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
 import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell, opticCellPoolResources } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
+import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
+import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
 import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
@@ -5105,6 +5107,10 @@ export function createVisualFactory() {
           case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
           case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
           case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), wreckPackagedFile(e), e));
+          // Alien Ecology: organic fauna — procedural bodies, no authored GLB in the slice.
+          case 'fauna': return stampBuiltVisual(buildFaunaMesh(e));
+          // Verge-Layer: machine entities — kinematic procedural bodies (prism/custodian/auditor).
+          case 'machine': return stampBuiltVisual(buildMachineMesh(e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);

@@ -21,8 +21,11 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // moved embedded release hashes and the measured-skin collider count (184 → 190); this local
 // pin had drifted stale since the optic-structure re-pin. Prior digest
 // efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0.
+// Re-pinned 2026-09-28 for the alien-ecology additive seam (PR #170): the Closed Refinery's
+// 12-fauna colony joins the structural census (entities 23 → 35, byType +fauna:12); colliders
+// unchanged at 190. Prior digest daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188';
+  '1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -137,9 +140,11 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // and one POI marker are far-actor rows until the player approaches, so they are not on the
   // combat list. They are still materialized as planned (worldSite below counts live + shelved).
   // Pre-shelf this was total 38 / fx 10 / wreck 14 / collidable 21.
+  // PR #170: the Closed Refinery colony adds 12 fauna bodies to the live core census
+  // (23 → 35); they are not collider-backed, so `collidable` stays at 14.
   assert.deepEqual(first.structuralCost.entities, {
-    total: 23,
-    byType: { asteroid: 6, fx: 9, ship: 2, station: 6 },
+    total: 35,
+    byType: { asteroid: 6, fauna: 12, fx: 9, ship: 2, station: 6 },
     collidable: 14,
   });
   // Colliders went 14 → 66 with the compound-collision rollout, then kept moving as measured

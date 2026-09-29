@@ -100,8 +100,13 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // (colliders 184 → 190) plus embedded release hashes. Every authored-topology, exact-agreement and
 // additive-census assertion still passes; cathedral 15/15 materialized (14 shelved), sluice 5/5.
 // Prior digest was db16cacc9f0af7a764c4be8157c9fc0db3d60839a545deb99ed4f8e2fa24cd08.
+// 2026-09-28: re-pinned for the alien-ecology additive seam (PR #170): the Closed Refinery
+// (closed_refinery, zone_ceres_closed_refinery) casts a 12-fauna colony into the structural
+// census and adds one authored POI + one appended zone (pois 5→6, zones 6→7, entities
+// 23→35, colliders unchanged at 190). No cathedral/route/pocket geometry moved.
+// Prior digest was daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188';
+  '1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({

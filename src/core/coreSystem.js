@@ -1009,6 +1009,10 @@ function isMovableEntity(e) {
     // earns prevPos snapshots so renderer interpolation doesn't judder the travel animation.
     case 'massSeed':
       return true;
+    // Alien Ecology: fauna are kinematic (physicsBody:false, collides:false) but move every
+    // tick — movable membership keeps their spatial bucket + prevPos interpolation honest.
+    case 'fauna':
+      return true;
     // PQ-205.02: kinematic drift bombs participate in the spatial-dynamic layer so the
     // projectile-sweep hash follows the capsule. Pose is still bomb-owned (physicsBody:false).
     case 'bomb':

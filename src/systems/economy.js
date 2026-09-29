@@ -67,6 +67,7 @@ import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandMode
 import { priceModForState } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -1328,11 +1329,23 @@ export const economy = {
       result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
     }
     const prevMult = Number(entry.demandMult) || 1;
-    const nextMult = Number(result.multiplier) || 1;
+    let nextMult = Number(result.multiplier) || 1;
+    // Alien Ecology AE-077/078 — biohazard lots price off the station faction's
+    // contamination policy (custody refusal deep-discounts; Meridian/Understory pay premiums).
+    let biohazardPolicy = null;
+    if (def.biohazard === true && info && info.factionId) {
+      biohazardPolicy = contaminationSaleMult(this.state, sectorId, info.factionId);
+      if (biohazardPolicy && Number.isFinite(biohazardPolicy.priceMult)) {
+        nextMult *= biohazardPolicy.priceMult;
+      }
+    }
     // demandModel returns fresh frozen driver rows per projection and every consumer reads or
     // clones them — nothing mutates — so store the projection's rows directly instead of
     // re-cloning them into every listing on every tick.
-    const nextDrivers = Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS;
+    const nextDrivers = biohazardPolicy
+      ? [...(Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS),
+        { kind: 'contamination_policy', note: biohazardPolicy.note || 'biohazard pricing policy' }]
+      : (Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS);
     const changed = Math.abs(prevMult - nextMult) > 1e-9
       || !demandDriversEqual(entry.demandDrivers, nextDrivers);
     entry.demandMult = nextMult;
@@ -1456,6 +1469,9 @@ export const economy = {
       if (def.legality === 'contraband' || def.legality === 'illegal') {
         if (!allowContraband) continue;
       }
+      // noMarketSeed goods exist only as player-brought stock (cradled specimens, one-off
+      // recoveries): the station mints a neutral listing on first quote instead of seeding one.
+      if (def.noMarketSeed === true) continue;
       // 'none'-role goods have no produce/consume pull, so drift them toward a neutral baseEq stock
       // (price settles near basePrice; player can both buy and sell). Produce/consume keep their
       // role-driven surplus/shortage targets so A->B routes stay profitable.
@@ -1485,6 +1501,37 @@ export const economy = {
     }
     markets[stationId] = market;
     return market;
+  },
+
+  /**
+   * Mint a neutral 'none'-role listing for a noMarketSeed commodity on first quote — the
+   * station has never stocked it, so it opens at rest rather than pretending inventory exists.
+   */
+  mintUnseededListing(stationId, def) {
+    const state = this.state;
+    const market = state.economy.markets[stationId];
+    if (!market || !def) return null;
+    const info = stationInfo(state, stationId);
+    const sz = (info && info.size) || 'M';
+    const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[sz] || 1);
+    const equilibrium = economyEquilibriumForListing(info, def.id, 'none', baseEqRef);
+    const entry = {
+      stock: 0, equilibrium, baseEq: baseEqRef, role: 'none',
+      lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: [],
+      demandMult: 1, demandDrivers: [],
+    };
+    const frontier = info ? this.frontierPenalty(info) : 0;
+    if (!state.economy.cycles) state.economy.cycles = {};
+    if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
+    const now = state.simTime || 0;
+    const cycle = createCycle(() => this._rng(), def, now - HISTORY_REGIME_AGE_MIN_S);
+    cycle.cmdtyId = def.id;
+    state.economy.cycles[stationId][def.id] = cycle;
+    this.refreshListingDemand(entry, def, stationId);
+    this.recomputePrices(entry, def, frontier, cycle, now);
+    this.seedPriceHistory(entry, def, cycle, now);
+    market[def.id] = entry;
+    return entry;
   },
 
   /** Build markets for all stations whose ids we are told about (a single station). */
@@ -1634,9 +1681,16 @@ export const economy = {
       return { ok: false, reason: 'black_market_locked', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
-    const entry = market && market[commodityId];
+    let entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
-    if (!entry || !def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: entry ? entry.stock : 0 };
+    if (!def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+    if (!entry) {
+      if (def.noMarketSeed !== true) {
+        return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+      }
+      entry = this.mintUnseededListing(stationId, def);
+      if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+    }
     if (side === 'sell' && isUnsellableCargo(state, commodityId)) {
       return {
         ok: false, reason: 'mission_cargo_locked', unitAvg: entry.lastSell || 0, total: 0,
@@ -1644,6 +1698,23 @@ export const economy = {
       };
     }
     const info = stationInfo(state, stationId);
+    // Alien Ecology AE-077 — a faction with `refuses` will not intake biohazard lots at all:
+    // custody refusal, not a price. Recomputed listings still carry the policy driver as the
+    // explanation; execution and automation intake both flow through this quote gate.
+    if (side === 'sell' && def.biohazard === true && info && info.factionId) {
+      const policy = contaminationSaleMult(state, info.sectorId, info.factionId);
+      // AE-128 (K03): a fitted Containment Seal carries registry quarantine paperwork —
+      // refusing stations accept the lot under sealed custody instead of turning you away.
+      const sealed = policy && policy.refuses === true
+        && fittedModuleDefs(state).some((d) => d && d.mods && d.mods.containmentSeal === true);
+      if (policy && policy.refuses === true && !sealed) {
+        return {
+          ok: false, reason: 'contamination_refusal', policyNote: policy.note || null,
+          unitAvg: entry.lastSell || 0, total: 0, priceImpactPct: 0, stockAfter: entry.stock,
+          legalityWarning: def.legality !== 'legal' ? def.legality : null,
+        };
+      }
+    }
     const standing = priceModForState(state, info && info.factionId);
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
     const marketTier = Math.max(0, Number(def.marketTier) || 0);
@@ -1951,6 +2022,16 @@ export const economy = {
       tradeSequence: receipt && receipt.tradeSequence,
       seenAt: receipt && receipt.seenAt,
     });
+    // AE-138/139 — a biohazard lot that settles is a faction-consequence datum the ecology
+    // layer records (sealed custody reads differently than an open-mesh sale).
+    if (side === 'sell' && def && def.biohazard === true) {
+      const sealed = fittedModuleDefs(state).some((d) => d && d.mods && d.mods.containmentSeal === true);
+      this.bus.emit('ecology:factionOutcome', {
+        factionId: info ? info.factionId : null,
+        outcome: sealed ? 'sealed_sale' : 'biohazard_sale',
+        commodityId,
+      });
+    }
     if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty);
     return receipt;
   },
@@ -2195,6 +2276,16 @@ export const economy = {
         expectedTotal: res.expectedTotal,
         liveTotal: res.liveTotal,
       });
+      // AE-139 — the refusal itself is a remembered datum: the ecology layer tallies it
+      // under the station's faction.
+      if (res.reason === 'contamination_refusal') {
+        const info = stationInfo(state, stationId);
+        this.bus.emit('ecology:factionOutcome', {
+          factionId: info ? info.factionId : null,
+          outcome: 'custody_refused',
+          commodityId,
+        });
+      }
     }
     return res;
   },

@@ -402,6 +402,16 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
       next.payloads[def.id].settledReceiptId = settlement.receiptId;
     } else if (release) {
       next.payloads[def.id].status = 'released';
+      // Collection depletion is durable: a partially-drained pod rematerializes only what the
+      // record says was left; an empty map means harvested clean and respawns nothing.
+      if (isPlainObject(prior) && isPlainObject(prior.remainingPool)) {
+        const remaining = {};
+        for (const [commodityId, qty] of Object.entries(prior.remainingPool)) {
+          const amount = Math.floor(Number(qty));
+          if (commodityId && Number.isFinite(amount) && amount > 0) remaining[commodityId] = amount;
+        }
+        next.payloads[def.id].remainingPool = remaining;
+      }
     }
   }
   for (const def of manifest.receivers) {
@@ -697,9 +707,15 @@ export function planWorldSiteMaterialization(manifest, record) {
   const payloads = manifest.payloads
     .filter((payload) => record.payloads[payload.id] && record.payloads[payload.id].status === 'released')
     .map((payload) => {
+      const durable = record.payloads[payload.id];
       const mountProxy = manifest.proxies.find((candidate) => candidate.componentId === payload.componentId);
       const fallbackMotion = initialPayloadMotion(manifest, payload);
-      const motion = normalizeMotion(record.payloads[payload.id].motion, fallbackMotion);
+      const motion = normalizeMotion(durable.motion, fallbackMotion);
+      // A recorded remainder outranks the authored pool: it carries what was actually left
+      // aboard after partial harvest. An empty remainder means the pod is consumed — no respawn.
+      const hasDurablePool = isPlainObject(durable.remainingPool);
+      const pool = hasDurablePool ? durable.remainingPool : (payload.salvagePool || {});
+      if (hasDurablePool && Object.keys(pool).length === 0) return null;
       return {
         worldRecordId: payload.worldObjectId,
         type: 'payload',
@@ -708,9 +724,10 @@ export function planWorldSiteMaterialization(manifest, record) {
         vel: clonePlain(motion.vel),
         radius: payload.radius,
         mass: payload.mass,
-        salvagePool: clonePlain(payload.salvagePool || {}),
+        salvagePool: clonePlain(pool),
       };
-    });
+    })
+    .filter(Boolean);
   const entities = [root, ...components, ...collisionProxies, ...payloads];
   if (entities.length > WORLD_SITE_LIMITS.maxEntities) throw new RangeError('World Site materialization exceeds entity limit');
   return {
@@ -789,8 +806,8 @@ function intentsForOperation(manifest, operation, receiptId) {
         domain: intent.domain,
         type: intent.type,
         payload: {
-          ...clonePlain(intent.payload || {}),
           siteId: manifest.id,
+          ...clonePlain(intent.payload || {}),
           worldObjectId: manifest.worldObjectId,
           operationId: operation.id,
           receiptId,

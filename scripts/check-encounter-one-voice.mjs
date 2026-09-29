@@ -108,7 +108,11 @@ function assertNoModal(emitted, label) {
   // moved seed 9's haven proximity cover out of the window again — its two-day schedule still
   // fires eight shapes but all proximity-exempt. Seed 8 schedules ambush_snare in the haven with
   // the richest scanned two-day schedule (6 fired, seeds 1-24). Floor unchanged.
-  const SOAK_SEED = 8;
+  // 2026-09-28: 8 -> 22. The alien-ecology catalog wave (PR #170) consumed seeded composition
+  // draws again — seed 8's haven schedule now fires once, all proximity-exempt. Seed 22 is the
+  // only seed of 1-24 still scheduling ambush_snare inside the haven (3 fired incl. the snare).
+  // Floor unchanged.
+  const SOAK_SEED = 22;
   const { sim, state, bus, emitted, voice } = boot(SOAK_SEED, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
   const firedKinds = [];

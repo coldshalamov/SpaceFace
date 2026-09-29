@@ -159,6 +159,14 @@ export function repulsionTrapFitted(state) {
   return !!ship?.fittings?.some(id => MODULE_BY_ID.get(id)?.mods?.repulsionTrap);
 }
 
+// AE-124 (G10) — a fitted Heat Lure Beacon turns the same charge throw into bait: the
+// ecology layer registers a burn-flag at the throw point that predators prefer.
+export function heatLureFitted(state) {
+  const p = state?.player;
+  const ship = p?.ownedShips?.[p.activeShipIndex || 0];
+  return !!ship?.fittings?.some(id => MODULE_BY_ID.get(id)?.mods?.heatLure);
+}
+
 /** Maximum simultaneously deployed charges for the active player fit.
  *
  * The unfitted launcher keeps the authored four-charge limit. A fitted rack replaces that
@@ -974,6 +982,15 @@ export const impulseCharges = {
 
     rt.throwCdT = def.armTimeS;
     this.bus.emit('charge:thrown', { chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z } });
+    // AE-124: the lure is registered at the throw point — where the charge leaves the hull.
+    if (heatLureFitted(state)) {
+      this.bus.emit('alienEcology:lureDropped', {
+        x: charge.pos.x, z: charge.pos.z,
+        sectorId: state.world && state.world.currentSectorId,
+        chargeId: charge.id,
+        burnS: 60,
+      });
+    }
     if (aftDrop) {
       const root = state.massline2 || (state.massline2 = {});
       root.bombPropulsion = { lastDropTick: state.tick, chargeId: charge.id, standoff: spawnDistance };
