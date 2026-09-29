@@ -26,6 +26,12 @@
 //   long      the same fling but more than 3 s of flight: is the kill still the player's (loot)?
 //   money     three Wasps flung into a rock cluster with the loot systems live: kills credited,
 //             loot that lands with no pilot input, seconds from the last kill to the last chip.
+//
+// Three more arms use the REAL Massline throw (the pilot latches a hostile, swings it, and presses
+// the throw key on the release-window marker; no gun, no written impulse):
+//   throwShort  a thrown Wasp meets a rock inside 3 s: is the kill the player's, does the loot burst?
+//   throwLong   the same throw with the rock far enough that the flight passes 3 s (180 ticks).
+//   throwMoney  three thrown Wasps into the rock cluster: kills credited, loot landed, inputs needed.
 
 import { resolveWeaponImpulseForHit } from '../../../../src/combat/impulseKernel.js';
 import { isRecovering, readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
@@ -36,7 +42,13 @@ import { economy } from '../../../../src/systems/economy.js';
 import { lootShards } from '../../../../src/systems/lootShards.js';
 import { mining } from '../../../../src/systems/mining.js';
 import { ships } from '../../../../src/systems/ships.js';
-import { bootRealPath } from '../realPath.mjs';
+import { createMasslineInputGrammar } from '../../../../src/systems/masslineInputGrammar.js';
+import { masslineImpactDamage } from '../../../../src/systems/masslineImpactDamage.js';
+import { masslineImpacts } from '../../../../src/systems/masslineImpacts.js';
+import { masslineTelemetry } from '../../../../src/systems/masslineTelemetry.js';
+import { masslineThrow } from '../../../../src/systems/masslineThrow.js';
+import { tetherGameplay } from '../../../../src/systems/tetherGameplay.js';
+import { bootRealPath, writeRealPathInput } from '../realPath.mjs';
 import {
   GUN_PROVENANCE_TAG,
   GUN_WEAPON_ID,
@@ -66,6 +78,9 @@ export const FLING_TARGETS = Object.freeze({
   moneyLandedShare: 1,
   moneySecondsKillToLastChip: 8,
   moneyPilotInputs: 0,
+  // The real-throw arms: a thrown hull's kill is the player's, and its loot bursts.
+  throwKillIsPlayers: true,
+  throwMoneyCredited: 3,
 });
 
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
@@ -77,7 +92,7 @@ function concussionImpulseMagnitude() {
   return resolved && Number.isFinite(resolved.magnitude) ? resolved.magnitude : 0;
 }
 
-function spawnHostile(host, pos, vel, { passive = false } = {}) {
+function spawnHostile(host, pos, vel, { passive = false, holdFire = false } = {}) {
   const spec = makeEnemySpawnSpec('wasp_swarmer', 1, { x: pos.x, z: pos.z }, {
     motive: 'motion_lab',
     engagementTrigger: 'authorized_hostile_spawn',
@@ -95,10 +110,13 @@ function spawnHostile(host, pos, vel, { passive = false } = {}) {
   };
   // A passive hostile holds still until hit, so the fling line is exactly the hit line. Live AI
   // (the default) is what the head-on arms need: the AI's answer after the hit IS the measurement.
-  spec.data.ai.roe = passive ? 'hold_fire' : 'weapons_free';
+  // `holdFire` is a hostile hull (it still counts as the player's enemy, so a kill pays a loot
+  // burst) that neither shoots nor hunts: the tethered-prey posture the real-throw arms need so the
+  // line is the only thing acting on it.
+  spec.data.ai.roe = passive || holdFire ? 'hold_fire' : 'weapons_free';
   spec.data.ai.passive = passive;
-  spec.data.ai.huntPlayer = !passive;
-  spec.data.ai.forcePlayerTarget = !passive;
+  spec.data.ai.huntPlayer = !passive && !holdFire;
+  spec.data.ai.forcePlayerTarget = !passive && !holdFire;
   spec.data.ai.spawnContext = 'zone_hostile';
   spec.data.intent = emptyIntent();
   spec.data.combat = spec.data.combat || {};
@@ -124,6 +142,11 @@ async function runFling(seed, {
   eventTrace,
   tag,
   holdPrefillUnits = 0,
+  // The real-throw arms: `hit` is null (nobody shoots), a `pilot` writes the player's input every
+  // tick, and `until` lets a run stop once its outcome is settled. Omitted, a run is exactly the
+  // fixed-tick gun-hit run the first five arms have always been.
+  pilot = null,
+  until = null,
 }) {
   const host = await bootRealPath({
     seed,
@@ -141,15 +164,29 @@ async function runFling(seed, {
   const rockEntities = rocks.map((r) => host.spawnObstacle({
     pos: r.pos, radius: r.radius || ROCK_RADIUS_WU, mass: 5000, inertiaY: 5000, hull: 4000,
   }));
-  const victims = hostiles.map((h) => spawnHostile(host, h.pos, h.vel, { passive: h.passive === true }));
+  const victims = hostiles.map((h) => spawnHostile(host, h.pos, h.vel, { passive: h.passive === true, holdFire: h.holdFire === true }));
   const cruise = readCruiseSpeed(victims[0]).cruiseSpeed;
 
   const events = {
     killed: [], collisions: [], drops: [], collected: [], tumbled: [], overflow: [], spawnedPickups: new Set(),
+    throws: [], latches: [],
   };
   host.bus.on('entity:killed', (p) => {
     if (!p) return;
     events.killed.push({ id: p.id, killerId: p.killerId == null ? null : p.killerId, tick: host.state.tick | 0 });
+  });
+  host.bus.on('massline:throw', (p) => {
+    if (!p) return;
+    events.throws.push({
+      tick: host.state.tick | 0,
+      payloadId: p.payloadId,
+      mode: p.mode || null,
+      payloadSpeed: finite(p.payloadSpeed),
+      aimTargetId: p.aimTargetId == null ? null : p.aimTargetId,
+    });
+  });
+  host.bus.on('tether:latched', (p) => {
+    if (p) events.latches.push({ tick: host.state.tick | 0, targetId: p.targetId });
   });
   host.bus.on('combat:collisionConsequence', (p) => {
     if (!p) return;
@@ -184,7 +221,7 @@ async function runFling(seed, {
     });
   });
   host.bus.on('loot:overflowConverted', (p) => {
-    if (p) events.overflow.push({ pickupId: p.pickupId, units: finite(p.units), credits: finite(p.credits) });
+    if (p) events.overflow.push({ tick: host.state.tick | 0, pickupId: p.pickupId, units: finite(p.units), credits: finite(p.credits) });
   });
   host.bus.on('combat:tumbled', (p) => {
     if (p) events.tumbled.push({ victimId: p.victimId, tick: p.tick, durationS: p.durationS, spin: p.spin, source: p.source });
@@ -210,13 +247,17 @@ async function runFling(seed, {
   const masses = victims.map((v) => finite(v.mass, 1));
   let hitDone = false;
   let pickupsSeen = 0;
-  const seenPickupIds = new Set();
   // Each pickup's life: what it is and the tick it left the world. A `pickup:collected` event is
   // NOT a landing (a full hold refuses the pickup and it keeps floating); leaving the world is.
-  const pickupLives = new Map();
+  // Entity ids are recycled by the runtime (a collected pickup's id comes back on the next kill
+  // burst), so a pickup is identified by its id AND its entity, and a life ends the tick it leaves.
+  const pickupLives = [];
+  const activePickupLife = new Map();
   host.step(ticks, {
-    before: ({ state }) => {
-      if (hitDone || (state.tick - startTick) < (hit.tick != null ? hit.tick : HIT_TICK)) return;
+    before: (ctx) => {
+      const { state } = ctx;
+      if (pilot) pilot(ctx, { victims, events, traces });
+      if (!hit || hitDone || (state.tick - startTick) < (hit.tick != null ? hit.tick : HIT_TICK)) return;
       hitDone = true;
       victims.forEach((victim, i) => {
         if (Array.isArray(hit.only) && !hit.only.includes(i)) return;
@@ -257,21 +298,27 @@ async function runFling(seed, {
       const list = state.entityList || [];
       for (let k = 0; k < list.length; k++) {
         const e = list[k];
-        if (e && e.type === 'pickup' && !seenPickupIds.has(e.id)) {
-          seenPickupIds.add(e.id);
-          pickupsSeen++;
-          pickupLives.set(e.id, { id: e.id, kind: (e.data && e.data.kind) || e.kind || 'unknown', seenTick: state.tick | 0, leftTick: null });
-        }
+        if (!e || e.type !== 'pickup') continue;
+        const current = activePickupLife.get(e.id);
+        if (current && current.entity === e) continue;
+        if (current) current.leftTick = state.tick | 0;
+        pickupsSeen++;
+        const life = { id: e.id, kind: (e.data && e.data.kind) || e.kind || 'unknown', seenTick: state.tick | 0, leftTick: null, entity: e };
+        pickupLives.push(life);
+        activePickupLife.set(e.id, life);
       }
-      for (const [id, life] of pickupLives) {
-        if (life.leftTick != null) continue;
+      for (const [id, life] of activePickupLife) {
         const live = state.entities && state.entities.get ? state.entities.get(id) : null;
-        if (!live || live.alive === false) life.leftTick = state.tick | 0;
+        if (live && live === life.entity && live.alive !== false) continue;
+        life.leftTick = state.tick | 0;
+        activePickupLife.delete(id);
       }
+      if (until && until({ state, host, victims, events, traces }) === true) return false;
+      return undefined;
     },
   });
   events.pickupsSeen = pickupsSeen;
-  events.pickupLives = [...pickupLives.values()];
+  events.pickupLives = pickupLives.map(({ id, kind, seenTick, leftTick }) => ({ id, kind, seenTick, leftTick }));
   const typeHistogram = {};
   for (const e of (host.state.entityList || [])) typeHistogram[e && e.type || 'none'] = (typeHistogram[e && e.type || 'none'] || 0) + 1;
   events.entityTypesAtEnd = typeHistogram;
@@ -530,6 +577,15 @@ async function runMoney(seed, eventTrace, { holdPrefillUnits = 0, tag = 'money' 
     tag,
     holdPrefillUnits,
   });
+  return readMoney(run);
+}
+
+/**
+ * What a money run produced, read off its events: physics kills credited to the player, loot that
+ * landed with no pilot input, seconds from the last kill to the last chip. Shared by the gun-hit
+ * arm and the real-throw arm so both are judged by one reader.
+ */
+function readMoney(run) {
   if (!run.measured) return { measured: false, reason: run.reason };
   const playerId = run.player.id;
   const victimIds = new Set(run.victims.map((v) => v.id));
@@ -538,11 +594,11 @@ async function runMoney(seed, eventTrace, { holdPrefillUnits = 0, tag = 'money' 
   const lastKillTick = kills.reduce((m, k) => Math.max(m, k.tick), 0);
   // Acceptance is the cargo owner's word (acceptedAmount on the collect payload), not the collect
   // event itself: a refused pickup announces "collected" again every retry.
-  const accepted = new Map();
-  for (const c of run.events.collected) {
-    if (c.collectorId !== playerId || c.pickupId == null) continue;
-    accepted.set(c.pickupId, Math.max(accepted.get(c.pickupId) || 0, c.accepted));
-  }
+  // Ids are recycled, so a collect event belongs to the pickup life whose window holds its tick.
+  const acceptedFor = (life) => run.events.collected.reduce((most, c) => (
+    c.collectorId === playerId && c.pickupId === life.id
+      && c.tick >= life.seenTick - 2 && (life.leftTick == null || c.tick <= life.leftTick + 2)
+      ? Math.max(most, c.accepted) : most), 0);
   const spawned = run.events.pickupsSeen;
   const lives = run.events.pickupLives || [];
   const landedLives = [];
@@ -550,11 +606,12 @@ async function runMoney(seed, eventTrace, { holdPrefillUnits = 0, tag = 'money' 
   const vanishedLives = [];
   // A refused pickup that the arcade-loot rule turned into credits also counts as landed: nothing is
   // left floating and the pilot did nothing.
-  const overflowIds = new Set(run.events.overflow.map((o) => o.pickupId));
+  const overflowFor = (life) => run.events.overflow.some((o) => o.pickupId === life.id
+    && o.tick >= life.seenTick - 2 && (life.leftTick == null || o.tick <= life.leftTick + 2));
   for (const l of lives) {
-    const acc = accepted.get(l.id) || 0;
+    const acc = acceptedFor(l);
     if (l.leftTick == null) strandedLives.push(l);
-    else if (acc > 0 || l.kind === 'credit_chip' || overflowIds.has(l.id)) landedLives.push(l);
+    else if (acc > 0 || l.kind === 'credit_chip' || overflowFor(l)) landedLives.push(l);
     else vanishedLives.push(l);
   }
   const tally = (list) => list.reduce((o, l) => { o[l.kind] = (o[l.kind] || 0) + 1; return o; }, {});
@@ -589,6 +646,340 @@ async function runMoney(seed, eventTrace, { holdPrefillUnits = 0, tag = 'money' 
   };
 }
 
+// --- real Massline throw arms -------------------------------------------------------------------
+//
+// The owner's verbs: F frees you, RMB throws them, LMB shoots. These arms use the first two and
+// never the third. The pilot latches a hostile Wasp with the Massline key, flies the circle (thrust
+// plus a held turn: the orbit assist holds the nose tangent), puts the cursor on a rock, and presses
+// the throw key the tick the game's own release-window read says the hull is on solution. Nothing
+// here writes a velocity, an impulse or a provenance record: the hull leaves the line with the speed
+// the swing earned, and whatever credit it carries into the rock is what the runtime gave it.
+//
+// Two SG-02 facts shape the geometry. Bodies exist only within ~420 WU of the player, so a long
+// flight is a rock placed far from the RELEASE point with the pilot flying after the hull (as a
+// player does; the camera follows); and static rocks publish no telemetry, so only ships are
+// asserted to have bodies.
+const THROW_SYSTEMS = Object.freeze([
+  ...SHOVE_SYSTEMS,
+  tetherGameplay, masslineTelemetry, masslineImpacts, masslineThrow, masslineImpactDamage,
+  lootShards, mining, ships, cargo, economy,
+]);
+const THROW_LATCH_RETRY_TICKS = 24;
+const THROW_LATCH_REACH_WU = 230;
+const THROW_SWING_GIVE_UP_TICKS = 60 * 12;
+const THROW_FLIGHT_WATCH_TICKS = 60 * 8;
+const THROW_FOLLOW_STANDOFF_WU = 200;
+const THROW_SETTLE_TICKS = 60 * 12;
+const THROW_CENTRE_FRACTION = 0.4;
+// About 0.65 of a Wasp's cruise: the swing has to have earned a throw a rock will notice.
+const THROW_MIN_SPEED_WU = 70;
+const THROW_SHORT_FLIGHT_MAX_S = 3;
+const THROW_LONG_FLIGHT_MIN_S = 3;
+
+function wrapAngle(a) {
+  let out = a;
+  while (out > Math.PI) out -= TWO_PI;
+  while (out < -Math.PI) out += TWO_PI;
+  return out;
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/**
+ * A closed-loop pilot for one or more real throws. It reads what a player reads (where the hulls
+ * are, whether the line is on, the release-window marker) and writes only what a player writes:
+ * the Massline key, thrust, turn, the cursor and the throw key. `aimAt(state)` names the cursor
+ * position (a rock). Counters report the inputs the pilot needed.
+ */
+function makeThrowPilot({ aimAt, turnDir = 1 }) {
+  const grammar = createMasslineInputGrammar();
+  const inputs = { latchPresses: 0, releasePresses: 0, thrustTicks: 0, turnTicks: 0, cursorTicks: 0, keyEvents: 0 };
+  const done = new Set(); // payloads already released or given up on
+  let phase = 'pick';
+  let payload = null;
+  let phaseTick = 0;
+  let throwsBefore = 0;
+  let pressLast = false;
+  let releaseTick = null;
+  let finishedTick = null;
+  const flights = [];
+
+  function write(state, { moveZ = 0, turn = 0, massHeld = false, throwArm = false, cursor = null }) {
+    writeRealPathInput(state, { moveZ, turnIntent: turn });
+    const acts = state.input.actions;
+    const attached = !!(state.player && state.player.tether && state.player.tether.active);
+    // The real grammar turns the Massline key into latch / cut / line-control, so a one-tick tap
+    // while unattached is a latch and nothing else, exactly as at the keyboard.
+    const command = grammar.step(DT, {
+      attached, held: massHeld, lineLength: 0, orbitDirection: turn, pump: false, source: 'keyboard',
+    });
+    acts.massline = command;
+    acts.tetherFire = command.latch;
+    acts.tetherCut = command.cut;
+    acts.reelDelta = 0;
+    acts.throwArm = !!throwArm && attached;
+    state.input.aimIntentActive = !!cursor;
+    if (cursor) {
+      const w = state.input.aimWorld || (state.input.aimWorld = { x: 0, z: 0 });
+      w.x = cursor.x;
+      w.z = cursor.z;
+      inputs.cursorTicks++;
+    }
+    if (massHeld && !attached) { inputs.latchPresses++; inputs.keyEvents++; }
+    if (acts.throwArm && !pressLast) { inputs.releasePresses++; inputs.keyEvents++; }
+    if (moveZ !== 0) inputs.thrustTicks++;
+    if (turn !== 0) inputs.turnTicks++;
+    pressLast = acts.throwArm;
+  }
+
+  function steer(player, pos, standoff = 0) {
+    const dx = pos.x - player.pos.x;
+    const dz = pos.z - player.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const err = wrapAngle(Math.atan2(dz, dx) - finite(player.rot));
+    const aligned = Math.abs(err) < 0.5;
+    return { turn: clamp(err / 0.32, -1, 1), moveZ: aligned && dist > standoff ? 1 : 0, dist };
+  }
+
+  function setPhase(next, tick) { phase = next; phaseTick = tick; }
+
+  function tick(ctx, { victims, events }) {
+    const { state, host } = ctx;
+    const player = host.player;
+    const now = state.tick | 0;
+    const tether = state.player && state.player.tether;
+    const attached = !!(tether && tether.active);
+    if (phase === 'pick') {
+      const live = victims.filter((v) => v.alive !== false && !done.has(v.id));
+      live.sort((a, b) => Math.hypot(a.pos.x - player.pos.x, a.pos.z - player.pos.z)
+        - Math.hypot(b.pos.x - player.pos.x, b.pos.z - player.pos.z) || a.id - b.id);
+      payload = live[0] || null;
+      if (!payload) {
+        setPhase('done', now);
+        finishedTick = now;
+      } else {
+        setPhase('latch', now);
+        throwsBefore = events.throws.length;
+      }
+    }
+    if (phase === 'done') { write(state, {}); return; }
+    if (phase === 'latch') {
+      if (payload.alive === false) { done.add(payload.id); setPhase('pick', now); write(state, {}); return; }
+      if (attached && tether.targetId === payload.id) { setPhase('swing', now); }
+      else {
+        const s = steer(player, payload.pos, THROW_LATCH_REACH_WU);
+        state.player.targetId = payload.id;
+        const near = s.dist <= THROW_LATCH_REACH_WU;
+        const tap = near && ((now - phaseTick) % THROW_LATCH_RETRY_TICKS) === 3;
+        write(state, { moveZ: near ? 0 : s.moveZ, turn: near ? 0 : s.turn, massHeld: tap });
+        return;
+      }
+    }
+    if (phase === 'swing') {
+      if (events.throws.length > throwsBefore) {
+        releaseTick = events.throws[events.throws.length - 1].tick;
+        done.add(payload.id);
+        flights.push({ payloadId: payload.id, releaseTick });
+        setPhase('flight', now);
+      } else if (!attached || payload.alive === false) {
+        // The line is gone before a throw: latch again (or move on if the hull died).
+        if (payload.alive === false) done.add(payload.id);
+        setPhase(payload.alive === false ? 'pick' : 'latch', now);
+        write(state, {});
+        return;
+      } else if (now - phaseTick > THROW_SWING_GIVE_UP_TICKS) {
+        done.add(payload.id);
+        setPhase('pick', now);
+        write(state, { massHeld: true });
+        return;
+      } else {
+        const sol = state.massline2 && state.massline2.throw && state.massline2.throw.solution;
+        // The marker lights anywhere inside the tolerance band, and a release at its edge only
+        // grazes the rock. A pilot presses near the middle of the band, where the marker is
+        // brightest, so the throw is aimed and not merely permitted.
+        // A pilot also keeps swinging until the hull is really moving: a slow throw lands as a nudge.
+        const on = !!(sol && sol.valid === true && sol.onSolution === true
+          && finite(sol.relativeSpeed) >= THROW_MIN_SPEED_WU
+          && Math.abs(finite(sol.errorRad, Infinity)) <= THROW_CENTRE_FRACTION * finite(sol.tolRad, 0));
+        write(state, { moveZ: 1, turn: turnDir, cursor: aimAt(state), throwArm: on && !pressLast });
+        return;
+      }
+    }
+    if (phase === 'flight') {
+      const rockHit = events.collisions.some((c) => c.targetId === payload.id && c.otherType === 'asteroid' && c.tick >= releaseTick);
+      const overdue = now - phaseTick > THROW_FLIGHT_WATCH_TICKS;
+      const settled = payload.alive === false || (rockHit && now - phaseTick > 120) || overdue;
+      if (settled) { setPhase('pick', now); write(state, {}); return; }
+      const s = steer(player, payload.pos, THROW_FOLLOW_STANDOFF_WU);
+      write(state, { moveZ: s.moveZ, turn: s.turn });
+    }
+  }
+
+  return {
+    tick,
+    isDone: () => phase === 'done',
+    finishedTick: () => finishedTick,
+    summary: () => ({ ...inputs, flights: flights.slice() }),
+  };
+}
+
+/** One real-throw run: hold-fire hostile hulls, static rocks, the pilot above, loot systems live. */
+async function runThrow(seed, { tag, hostiles, rocks, aimRock, playerPos, turnDir = 1, maxTicks, eventTrace }) {
+  const pilot = makeThrowPilot({ aimAt: (state) => aimRock(state), turnDir });
+  let settleFrom = null;
+  const run = await runFling(seed, {
+    playerPos,
+    hostiles: hostiles.map((h) => ({ ...h, holdFire: true })),
+    rocks,
+    hit: null,
+    ticks: maxTicks,
+    systems: THROW_SYSTEMS,
+    eventTrace,
+    tag,
+    pilot: (ctx, extra) => pilot.tick(ctx, extra),
+    until: ({ state }) => {
+      if (!pilot.isDone()) return false;
+      if (settleFrom == null) settleFrom = state.tick | 0;
+      return (state.tick | 0) - settleFrom >= THROW_SETTLE_TICKS;
+    },
+  });
+  if (!run.measured) return run;
+  run.pilotSummary = pilot.summary();
+  return run;
+}
+
+/** One thrown hull, read off a run's events. */
+function readThrownHull(run, index) {
+  const victim = run.victims[index];
+  const events = run.events;
+  const trace = run.traces[index];
+  const playerId = run.player.id;
+  const throwEv = events.throws.find((t) => t.payloadId === victim.id) || null;
+  const contacts = events.collisions.filter((c) => c.targetId === victim.id && (!throwEv || c.tick >= throwEv.tick));
+  const rockHit = contacts.find((c) => c.otherType === 'asteroid') || null;
+  const killed = events.killed.find((k) => k.id === victim.id) || null;
+  const killingContact = contacts.find((c) => c.targetKilled) || null;
+  const sampleAt = (tick) => trace.find((s) => s.tick >= tick) || null;
+  const release = throwEv ? sampleAt(throwEv.tick + 1) : null;
+  // The contact tick already carries the solver's answer to the impact, so what the hull ARRIVED
+  // with is read two ticks earlier (as readRebound does).
+  const atContact = rockHit ? sampleAt(rockHit.tick - 2) : null;
+  const burst = events.drops.filter((d) => d.source === 'kill_burst');
+  const tumbleEv = events.tumbled.find((t) => t.victimId === victim.id && t.source === 'rope_throw') || null;
+  return {
+    id: victim.id,
+    threw: !!throwEv,
+    throwMode: throwEv ? throwEv.mode : null,
+    throwTick: throwEv ? throwEv.tick : null,
+    releaseSpeed: release ? round(Math.hypot(release.vx, release.vz), 1) : null,
+    helmLossS: tumbleEv ? round(tumbleEv.durationS, 3) : null,
+    hitRock: !!rockHit,
+    flightSeconds: rockHit && throwEv ? round((rockHit.tick - throwEv.tick) * DT, 3) : null,
+    stillLooseAtContact: atContact ? (atContact.tumbling || atContact.recovering) : null,
+    speedAtContact: rockHit && atContact ? round(Math.hypot(atContact.vx, atContact.vz), 1) : null,
+    killed: !!killed,
+    killedByRock: !!(killingContact && killingContact.otherType === 'asteroid'),
+    killerId: killed ? killed.killerId : null,
+    killerIsPlayer: killed ? killed.killerId === playerId : null,
+    collisionProvenance: rockHit ? { actorId: rockHit.provenanceActorId, tag: rockHit.provenanceTag } : null,
+    killingProvenance: killingContact ? { actorId: killingContact.provenanceActorId, tag: killingContact.provenanceTag } : null,
+    // The kill burst is emitted synchronously inside the kill, so it belongs to this hull when it
+    // lands on the hull's own kill tick.
+    killBurstDrops: killed ? burst.filter((d) => d.tick === killed.tick).length : 0,
+    contacts: contacts.map((c) => ({
+      dt: throwEv ? round((c.tick - throwEv.tick) * DT, 2) : null,
+      other: c.otherType,
+      deltaV: round(c.deltaV, 1),
+      killed: c.targetKilled,
+      actorId: c.provenanceActorId,
+      tag: c.provenanceTag,
+    })).slice(0, 8),
+    hullAtEnd: (events.hullAtEnd || []).find((h) => h.id === victim.id) || null,
+    // Coarse path (every 6 ticks = 0.1 s) from the release to the first rock contact: the speed the
+    // hull actually carried, and whether it was still loose (tumbling or recovering) on the way.
+    path: throwEv ? trace
+      .filter((sample) => sample.tick >= throwEv.tick && sample.tick <= (rockHit ? rockHit.tick : throwEv.tick + 240) && (sample.tick - throwEv.tick) % 6 === 0)
+      .map((sample) => ({ dt: round((sample.tick - throwEv.tick) * DT, 2), speed: round(Math.hypot(sample.vx, sample.vz), 1), x: round(sample.x, 0), z: round(sample.z, 0), tumbling: sample.tumbling, recovering: sample.recovering })) : null,
+    contactWindow: rockHit ? trace
+      .filter((sample) => sample.tick >= rockHit.tick - 3 && sample.tick <= rockHit.tick + 8)
+      .map((sample) => ({ dt: sample.tick - rockHit.tick, x: round(sample.x, 1), z: round(sample.z, 1), vx: round(sample.vx, 1), vz: round(sample.vz, 1), alive: sample.alive })) : null,
+  };
+}
+
+const THROW_ROCK = Object.freeze({ radius: ROCK_RADIUS_WU });
+// Geometry. The single-rock arms differ only in where the rock sits: the release point is wherever
+// the swing puts it (about 160 WU up the line), so 300 WU is a ~1.2 s flight and 520 WU a ~3.9 s one.
+// Each arm reports the flight it actually got, and its target is only met inside its own class.
+const THROW_SHORT_ROCK = Object.freeze({ x: 150, z: 300 });
+const THROW_LONG_ROCK = Object.freeze({ x: 150, z: 520 });
+const THROW_CLUSTER_Z = 250;
+const THROW_MONEY_WASPS = Object.freeze([{ x: -50, z: 60 }, { x: 0, z: 80 }, { x: 50, z: 60 }]);
+
+// One Wasp 60 WU off the player's beam, one rock. `rockAt` decides the flight: the release point is
+// wherever the swing puts it, so the class of the flight (under or over 3 s) is MEASURED and the arm
+// reports whether it landed in the class it was built for.
+async function runThrowSingle(seed, { tag, rockAt, eventTrace, maxTicks = 60 * 40 }) {
+  const rockPos = { x: rockAt.x, z: rockAt.z };
+  const run = await runThrow(seed, {
+    tag,
+    playerPos: { x: 0, z: 0 },
+    hostiles: [{ pos: { x: 0, z: 60 }, vel: { x: 0, z: 0 } }],
+    rocks: [{ pos: rockPos, radius: THROW_ROCK.radius }],
+    aimRock: () => rockPos,
+    maxTicks,
+    eventTrace,
+  });
+  if (!run.measured) return { measured: false, reason: run.reason };
+  return {
+    measured: true,
+    realPathProof: run.proof,
+    hull: readThrownHull(run, 0),
+    pilot: run.pilotSummary,
+    lootDrops: run.events.drops.map((d) => ({ source: d.source || null, items: d.items })),
+    ticksRun: (run.host.state.tick | 0) - run.startTick,
+    playerId: run.player.id,
+  };
+}
+
+// Three Wasps around the player and a three-rock cluster to their north: the owner's sentence with
+// the throw as the verb.
+async function runThrowMoney(seed, eventTrace, geometry = {}) {
+  const clusterZ = geometry.clusterZ != null ? geometry.clusterZ : THROW_CLUSTER_Z;
+  const cluster = [-90, 0, 90].map((x) => ({ pos: { x, z: clusterZ }, radius: THROW_ROCK.radius }));
+  const centre = { x: 0, z: clusterZ };
+  const wasps = geometry.wasps || THROW_MONEY_WASPS;
+  const run = await runThrow(seed, {
+    tag: 'throw_money',
+    playerPos: { x: 0, z: 0 },
+    hostiles: wasps.map((pos) => ({ pos: { x: pos.x, z: pos.z }, vel: { x: 0, z: 0 } })),
+    rocks: cluster,
+    aimRock: () => centre,
+    maxTicks: 60 * 90,
+    eventTrace,
+  });
+  if (!run.measured) return { measured: false, reason: run.reason };
+  const hulls = run.victims.map((_, i) => readThrownHull(run, i));
+  const money = readMoney(run);
+  // readMoney's `pilotInputs` means inputs spent on LOOT. Here the pilot's key presses are the
+  // latches and the throws (reported under `pilot`); none of them collects anything: the loot homes.
+  money.pilotInputsNote = 'key presses are the latches and throws; none collects loot';
+  return {
+    measured: true,
+    realPathProof: run.proof,
+    hulls,
+    thrown: hulls.filter((h) => h.threw).length,
+    rockHits: hulls.filter((h) => h.hitRock).length,
+    pilot: run.pilotSummary,
+    money,
+    killBurstDrops: run.events.drops.filter((d) => d.source === 'kill_burst').length,
+    drops: run.events.drops.map((d) => ({ tick: d.tick - run.startTick, source: d.source || null, items: d.items, kinds: d.kinds })),
+    ticksRun: (run.host.state.tick | 0) - run.startTick,
+  };
+}
+
+/** The real-throw arms, for a focused runner that wants one without the whole scene. */
+export const THROW_ARMS = Object.freeze({ runThrowSingle, runThrowMoney });
+
 // --- the scenario -----------------------------------------------------------------------------
 
 export const scenario = {
@@ -622,6 +1013,10 @@ export const scenario = {
     // A pilot who has been mining: 60% of the 250 hold already used. This is where the design says
     // a full hold recreates the weigh-the-loot chore.
     const moneyBusyHold = await runMoney(seed, eventTrace, { holdPrefillUnits: 150, tag: 'money_busy_hold' });
+    // The real Massline throw: nobody shoots, the pilot swings a hostile on the line and throws it.
+    const throwShort = await runThrowSingle(seed, { tag: 'throw_short', rockAt: THROW_SHORT_ROCK, eventTrace });
+    const throwLong = await runThrowSingle(seed, { tag: 'throw_long', rockAt: THROW_LONG_ROCK, eventTrace });
+    const throwMoney = await runThrowMoney(seed, eventTrace);
 
     const targets = [];
     const push = (id, label, value, unit, met, note) => targets.push({
@@ -678,11 +1073,49 @@ export const scenario = {
         `${moneyBusyHold.pickupsStranded} still floating (${JSON.stringify(moneyBusyHold.strandedKinds)}); hold ${moneyBusyHold.holdBefore ? moneyBusyHold.holdBefore.used : '?'} -> ${moneyBusyHold.holdAfter ? `${moneyBusyHold.holdAfter.used}/${moneyBusyHold.holdAfter.cap}` : '?'}; ${moneyBusyHold.overflowConverted} refused ore paid ${moneyBusyHold.overflowCredits} cr; wallet +${moneyBusyHold.walletDelta} of ${moneyBusyHold.chipCreditsDropped} chips + ${moneyBusyHold.overflowCredits} overflow`);
     }
 
+    // --- the real-throw arms ---
+    const pilotNote = (pilot) => (pilot
+      ? `pilot: ${pilot.latchPresses} latch press, ${pilot.releasePresses} throw press, ${pilot.thrustTicks} thrust ticks, ${pilot.turnTicks} turn ticks, cursor on the rock ${pilot.cursorTicks} ticks`
+      : 'no pilot');
+    const throwNote = (h) => `${h.throwMode || 'no throw'} release at ${h.releaseSpeed} wu/s; flight ${h.flightSeconds} s; hit rock ${h.hitRock}; loose at contact ${h.stillLooseAtContact}; killed ${h.killed}; killer ${h.killerId}; collision provenance ${h.collisionProvenance ? `${h.collisionProvenance.tag}/actor ${h.collisionProvenance.actorId}` : 'none'}; kill_burst loot ${h.killBurstDrops}`;
+    if (throwShort.measured) {
+      const h = throwShort.hull;
+      const inClass = h.flightSeconds != null && h.flightSeconds < THROW_SHORT_FLIGHT_MAX_S;
+      push('throw.short', "a hostile the player really throws (Massline, throw key) into a rock inside 3 s is the player's kill and its loot bursts",
+        h.killerIsPlayer === true ? 1 : 0, 'bool',
+        inClass && h.killed && h.killerIsPlayer === true && h.killBurstDrops > 0,
+        `${inClass ? '' : 'ARM NOT IN CLASS (flight must be under 3 s); '}${throwNote(h)}; ${pilotNote(throwShort.pilot)}`);
+    }
+    if (throwLong.measured) {
+      const h = throwLong.hull;
+      const inClass = h.flightSeconds != null && h.flightSeconds > THROW_LONG_FLIGHT_MIN_S;
+      push('throw.long', "a hostile the player really throws into a rock after more than 3 s of flight is the player's kill and its loot bursts",
+        h.killerIsPlayer === true ? 1 : 0, 'bool',
+        inClass && h.killed && h.killerIsPlayer === true && h.killBurstDrops > 0,
+        `${inClass ? '' : 'ARM NOT IN CLASS (flight must be over 3 s); '}${throwNote(h)}; ${pilotNote(throwLong.pilot)}`);
+    }
+    if (throwMoney.measured) {
+      const m = throwMoney.money;
+      push('throw.money.credited', 'three Wasps really thrown into the rock cluster: kills credited to the player',
+        m.physicsKillsCreditedToPlayer, 'kills', throwMoney.thrown === 3 && m.physicsKillsCreditedToPlayer === FLING_TARGETS.throwMoneyCredited,
+        `thrown ${throwMoney.thrown}; hit a rock ${throwMoney.rockHits}; ${throwMoney.hulls.map((h) => `#${h.id} ${h.releaseSpeed} wu/s ${h.flightSeconds} s killer ${h.killerId}`).join(' | ')}; ${pilotNote(throwMoney.pilot)}`);
+      push('throw.money.burst', 'kill_burst loot drops fired for the thrown hulls',
+        throwMoney.killBurstDrops, 'drops', m.physicsKillsCreditedToPlayer > 0 && throwMoney.killBurstDrops === m.physicsKillsCreditedToPlayer,
+        `${m.physicsKillsCreditedToPlayer} credited kills`);
+      push('throw.money.landed', "share of the thrown hulls' spawned loot the hull accepts with no pilot input after the last throw",
+        m.landedShare, 'fraction', m.landedShare === FLING_TARGETS.moneyLandedShare,
+        `${m.pickupsSpawned} pickups, ${m.pickupsStranded} still floating (${JSON.stringify(m.strandedKinds)}); hold ${m.holdAfter ? `${m.holdAfter.used}/${m.holdAfter.cap}` : '?'}; wallet +${m.walletDelta} of ${m.chipCreditsDropped} chip credits`);
+      push('throw.money.seconds', 'seconds from the last thrown kill to the last loot landing',
+        m.secondsLastKillToLastLanding, 's',
+        m.secondsLastKillToLastLanding != null && m.secondsLastKillToLastLanding <= FLING_TARGETS.moneySecondsKillToLastChip,
+        `target <= ${FLING_TARGETS.moneySecondsKillToLastChip} s`);
+    }
+
     const realPathProof = (headOn[0] && headOn[0].realPathProof) || null;
     return {
       eventTrace,
       metrics: {
-        schema: 'spaceface.feel.flingScene.v2',
+        schema: 'spaceface.feel.flingScene.v3',
         realPathProof,
         targetsDefinition: FLING_TARGETS,
         headOn,
@@ -693,6 +1126,9 @@ export const scenario = {
         chain,
         money,
         moneyBusyHold,
+        throwShort,
+        throwLong,
+        throwMoney,
         targets,
       },
     };
