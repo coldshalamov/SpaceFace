@@ -179,7 +179,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 #screens .orr-crucible .sf-crd-share .orr-input, #screens .orr-crucible input.orr-input:not(#sf-crd-seed):not([inputmode="numeric"]) {
   font-size:clamp(16px, 2vh, 22px) !important; }
 /* the stake tile names its whole contract under its word: purse · pressure · earn */
-#screens .orr-crucible .sf-crd-stake-nums { display:block; font-family:var(--dp-face-label, "Archivo"); font-size:11px;
+#screens .orr-crucible .sf-crd-stake-nums { display:block; font-family:var(--dp-face-label, "Archivo"); font-size:12px;
   font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(232 226 212 / .55); text-align:center; }
 #screens .orr-crucible .orr-tile[aria-pressed="true"] .sf-crd-stake-nums { color:rgb(242 185 80 / .9); }
 /* the any-hull grid: a caption line, then tier marks with ship names as plain words */
