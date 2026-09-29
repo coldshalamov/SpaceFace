@@ -361,3 +361,61 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
 
   return { tow, slam, line, field, rows: [tow, slam, line, field] };
 }
+
+const CARGO_BASIS = new Set(['empty', 'current', 'specified']);
+
+function cargoBasisName(derived, basis) {
+  const cargoMass = finite(derived && derived.cargoMass, 0);
+  const asked = CARGO_BASIS.has(basis) ? basis : 'current';
+  if (!(cargoMass > 0)) return 'empty';
+  if (asked === 'empty') return 'current';
+  return asked;
+}
+
+/**
+ * Name the cargo the derived block was computed for, and read the turn the
+ * propulsion profile already publishes. Tow, slam and line are copied from
+ * the verbs for this same block. Mass is not a cargo cap.
+ *
+ * @param {object} args
+ * @param {object} args.derived a derived-stat block from `getDerivedStats`
+ * @param {'empty'|'current'|'specified'} [args.basis]
+ * @param {Array<string|null>} [args.fittings]
+ */
+export function estimateAtCargoBasis({ derived, basis, fittings = [] } = {}) {
+  if (!derived) return null;
+  const cargoMass = finite(derived.cargoMass, 0);
+  // Zero cargo is an empty hold, even if the caller asked for a full load.
+  // A loaded block is not relabeled empty.
+  const named = cargoBasisName(derived, basis);
+  const verbs = shipCapabilityVerbs({ derived, fittings });
+  const propulsion = derived.propulsion || {};
+  const fightSpeed = finite(propulsion.combatSpeed, finite(propulsion.maxSpeed, NaN));
+  const yawCap = finite(propulsion.maxYawRate, NaN);
+  const turnRadiusWu = fightSpeed > 0 && yawCap > 0 ? fightSpeed / yawCap : null;
+  const meters = turnRadiusWu == null ? null : Math.round(turnRadiusWu);
+  const sentence = named === 'specified'
+    ? (meters == null ? 'Loaded-hold turn is not available.' : `Loaded hold: the turn radius at fight speed is ${meters} m.`)
+    : named === 'current'
+      ? (meters == null ? 'Turn with the cargo aboard is not available.' : `With the cargo aboard, the turn radius at fight speed is ${meters} m.`)
+      : (meters == null ? 'Empty-hold turn is not available.' : `Empty hold: the turn radius at fight speed is ${meters} m.`);
+  return {
+    basis: named,
+    cargoMass,
+    fullHold: named === 'specified',
+    turnRadiusWu,
+    turnRate: finite(derived.turnRate, 0),
+    tow: verbs.tow,
+    slam: verbs.slam,
+    line: verbs.line,
+    sentence,
+  };
+}
+
+/** The Shipworks turn row: the published rate, named by the hold it was computed for. */
+export function turnRecordText(derived) {
+  const rate = Math.round(finite(derived && derived.turnRate, 0) * 100) / 100;
+  const named = cargoBasisName(derived, finite(derived && derived.cargoMass, 0) > 0 ? 'current' : 'empty');
+  const word = named === 'empty' ? 'empty hold' : named === 'specified' ? 'loaded hold' : 'cargo aboard';
+  return `${rate} · ${word}`;
+}
