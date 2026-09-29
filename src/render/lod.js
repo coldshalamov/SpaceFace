@@ -87,6 +87,14 @@ export function createLodState() {
       lastPx = width;
       return level;
     },
+    // Seed continuity when a swap rebinding hands the boundary a different root's resolver:
+    // the incoming level is already presented, so the new resolver must remember it (and the
+    // latest px) instead of waking at lod0. Without this a ship parked inside the hysteresis
+    // band reads a different level off each root's resolver and swaps the family every frame.
+    adopt(nextLevel, px) {
+      if (nextLevel === 'lod0' || nextLevel === 'lod1' || nextLevel === 'lod2') level = nextLevel;
+      if (Number.isFinite(px)) lastPx = px;
+    },
   };
 }
 

@@ -6265,6 +6265,16 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     next.visible = true;
     if (next.parent !== boundary) boundary.add(next);
     if (typeof setActive === 'function') setActive(next);
+    // setActive → syncActiveSurface points boundary.userData.lod at the incoming root's own
+    // resolver, which holds whatever level it last resolved — fresh roots wake at lod0. Seed it
+    // with the level now presented and the outgoing resolver's px, or a hull parked inside the
+    // hysteresis band reads the opposite level off each root's resolver and swaps back every
+    // frame (the probe's visible-lod-thrashing).
+    const nextLod = next.userData && next.userData.lod;
+    const prevLod = prev && prev !== next && prev.userData ? prev.userData.lod : null;
+    if (nextLod && typeof nextLod.adopt === 'function') {
+      nextLod.adopt(level, prevLod && Number.isFinite(prevLod.lastPx) ? prevLod.lastPx : undefined);
+    }
     activeLevel = level;
     boundary.userData.wholeShipLodActiveLevel = level;
     return true;

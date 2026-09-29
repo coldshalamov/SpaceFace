@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { LOD_THRESHOLDS } from '../src/render/lod.js';
+import { createLodState, LOD_THRESHOLDS } from '../src/render/lod.js';
 import {
+  installWholeShipLodFamilyController,
   isPackagedLiveWholeShipFile,
   wholeShipLodFileForEntity,
   wholeShipVisualForEntity,
@@ -122,4 +123,51 @@ test('detached whole-ship lod loads never commit onto a disposed boundary', () =
   assert.equal(detached.pendingLevel, null);
   assert.equal(shouldCommitWholeShipLodLoad('lod2', 'lod2', false), false);
   assert.equal(shouldCommitWholeShipLodLoad('lod2', 'lod2', true), true);
+});
+
+test('a resident whole-ship lod swap keeps the resolver level inside the hysteresis band', () => {
+  // The boundary's `userData.lod` is rebound to the incoming root's own resolver on every
+  // swap (setActive → syncActiveSurface). Each root's resolver wakes at lod0, so a ship parked
+  // in the hysteresis dead band (95–145 px) used to read lod0 off the swapped-in resolver and
+  // swap straight back — the every-frame lod0↔lod1 flicker the stability probe reports.
+  const lod0Root = { userData: { lod: createLodState() }, visible: true, parent: null };
+  const lod1Root = { userData: { lod: createLodState() }, visible: false, parent: null };
+  const boundary = {
+    userData: {},
+    children: [lod0Root],
+    parent: {},
+    add(child) { this.children.push(child); child.parent = this; },
+    remove(child) {
+      this.children = this.children.filter((entry) => entry !== child);
+      if (child.parent === this) child.parent = null;
+    },
+  };
+  lod0Root.parent = boundary;
+  const setActive = (next) => {
+    boundary.userData.lod = (next.userData && next.userData.lod) || null;
+  };
+  const npc = { type: 'ship', isPlayer: false, data: { defId: 'ship_atlas' } };
+  assert.equal(installWholeShipLodFamilyController(boundary, npc, setActive, {}), true);
+  boundary.userData.lod = lod0Root.userData.lod;
+  boundary.userData.wholeShipLodRoots.lod1 = lod1Root;
+
+  // px dropped below the lod0 floor earlier: the live resolver holds 'lod1' and the last
+  // projected width it saw.
+  assert.equal(boundary.userData.lod.resolve(80), 'lod1');
+  boundary.userData.updateLod('lod1');
+  assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod1');
+  assert.equal(lod1Root.parent, boundary);
+
+  // The swapped-in resolver must answer as the level now presented: inside the dead band it
+  // stays lod1 instead of waking at lod0 and demanding a swap back.
+  assert.equal(boundary.userData.lod, lod1Root.userData.lod);
+  assert.equal(boundary.userData.lod.resolve(110), 'lod1');
+  boundary.userData.updateLod('lod1');
+  assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod1');
+
+  // The return trip carries the same continuity — lod0 keeps answering lod0 at 110 px.
+  boundary.userData.updateLod('lod0');
+  assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod0');
+  assert.equal(boundary.userData.lod, lod0Root.userData.lod);
+  assert.equal(boundary.userData.lod.resolve(110), 'lod0');
 });
