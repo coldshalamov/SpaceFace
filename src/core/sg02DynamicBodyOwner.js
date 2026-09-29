@@ -232,6 +232,7 @@ export class Sg02DynamicBodyOwner {
     this.RAPIER = RAPIER;
     this.world = new RAPIER.World({ x: 0, y: 0, z: 0 });
     this.fixedDt = positive(options.fixedDt, SG02_DYNAMIC_BODY_OWNER_DT);
+    this.world.timestep = this.fixedDt;
     this.quantum = positive(options.quantum, SG02_DYNAMIC_BODY_OWNER_QUANTUM);
     this.records = new Map();
     this.dynamicRecords = new Set();
@@ -695,7 +696,11 @@ export class Sg02DynamicBodyOwner {
       const continuation = consumeProjectileContinuation(rec.entity);
       rec._hadCommand = !!command;
       if (!command && !continuation && this._sleepingRecordSkipsCpu(rec, false)) continue;
-      resetBodyForces(rec.body);
+      // resetForces/resetTorques carry a wake arg, so they are only safe to skip when the body
+      // is provably awake (canSleep=false steady state) and the force accumulator is provably
+      // zero — i.e. no addForce/addTorque landed since the last reset (rec._forcesDirty).
+      if (rec._forcesDirty === true || rec._sleepAllowed !== false) resetBodyForces(rec.body);
+      rec._forcesDirty = false;
       this._applyBodyResponse(rec, command && command.bodyResponse);
       if (command) this._applyCommand(rec, command);
       if (continuation) this._applyProjectileContinuation(rec, continuation);
@@ -711,7 +716,6 @@ export class Sg02DynamicBodyOwner {
       this._captureExpectedKinematics(rec);
     }
 
-    this.world.timestep = this.fixedDt;
     let stepReceipts = [];
     if (this._eventQueue) {
       this.world.step(this._eventQueue);
@@ -808,12 +812,23 @@ export class Sg02DynamicBodyOwner {
         rec._sleepAllowed = allow;
         if (rec.body && typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(allow);
       }
-      if (!allow && rec.body && typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
+      // Compat RigidBody exposes no setCanSleep, so WASM canSleep is fixed at creation by
+      // desc.setCanSleep. A body created while sleep-eligible keeps canSleep=true for life:
+      // while ineligible it is kept awake by waking it every tick — the same hammer the old
+      // unconditional wakeUp() applied (a body that slept would surface physicsSleeping=true).
+      // A body created with canSleep=false can never sleep; the hammer was always a no-op for it.
+      if (!allow && rec._createdCanSleep === true
+          && rec.body && typeof rec.body.wakeUp === 'function') {
+        rec.body.wakeUp();
+      }
     }
   }
 
   _sleepingRecordSkipsCpu(rec, afterStep) {
     if (!rec || !rec.body || typeof rec.body.isSleeping !== 'function') return false;
+    // Ineligible bodies are provably awake at this point: either created canSleep=false
+    // (cannot sleep) or woken by the keep-awake hammer in _refreshSleepPolicy this tick.
+    if (rec._sleepAllowed === false) return false;
     if (rec.body.isSleeping() !== true) return false;
     return shouldSkipSleepingKinematics(rec.entity, rec.spec, {
       sleeping: true,
@@ -834,7 +849,12 @@ export class Sg02DynamicBodyOwner {
     for (const rec of this.dynamicRecords) {
       if (rec._skippedSleepKinematics === true) continue;
       if (!rec.entity || !rec.body || typeof rec.body.isSleeping !== 'function') continue;
-      this._stampIslandSleep(rec, rec.body.isSleeping() === true);
+      // Ineligible bodies are provably awake (canSleep=false for life, or woken by the
+      // keep-awake hammer this same tick) — the WASM read is provably false.
+      const sleeping = rec._sleepAllowed === false
+        ? false
+        : rec.body.isSleeping() === true;
+      this._stampIslandSleep(rec, sleeping);
     }
   }
 
@@ -1298,6 +1318,7 @@ export class Sg02DynamicBodyOwner {
       collider,
       colliders,
       ccdEnabled,
+      _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
       proxyId: proxyManifest ? proxyManifest.id : null,
       ghostPoolKey,
       appliedForce: zero3(),
@@ -1731,6 +1752,7 @@ export class Sg02DynamicBodyOwner {
       const torque = yawTorqueInto(command.control.torque, _yawTorqueScratch);
       rec.body.addForce(force, true);
       rec.body.addTorque(torque, true);
+      rec._forcesDirty = true;
       add3Into(rec.appliedForce, force);
       add3Into(rec.appliedTorque, torque);
       add3Into(rec.controlForce, force);     // continuous-only tracker for the structural-give
