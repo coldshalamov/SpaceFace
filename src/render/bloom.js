@@ -36,6 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
@@ -486,7 +487,13 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
       try { waiter(result); } catch (_) { /* a waiter's own cleanup must not strand the rest */ }
     }
   };
+  // Serial-route queue pacer (null when KHR_parallel_shader_compile is present — that route's
+  // links overlap on purpose and pacing would serialize them). Each call yields one task-queue
+  // slot then finishes the GL queue while it is still ~one unit deep, so a whole cohort never
+  // drains inside one compositor readback. Callers invoke it between issued units.
+  const paceQueue = makeGpuQueuePacer(renderer);
   batch.handle = {
+    paceQueue,
     join(gl, programs, settle) {
       if (!batch.accepting) return false;
       if (gl && !batch.gl) {

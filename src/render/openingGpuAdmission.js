@@ -370,6 +370,13 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   }
 
   const batch = beginBatch();
+  // Serial-route queue pacing (see gpuQueuePace.js). On a driver with
+  // KHR_parallel_shader_compile this is null and the loop is unchanged; without it, nothing
+  // else drains the command buffer until the next forced finish, so the whole cohort's GL cost
+  // would serialize inside one compositor readback and starve the page's task queue for tens of
+  // seconds (headless SwiftShader, CI run 36486329212). Pacing after each unit keeps the
+  // backlog ~one unit deep — the same work happens, spread over task-queue slots.
+  const paceQueue = batch && typeof batch.paceQueue === 'function' ? batch.paceQueue : null;
   const issued = [];
   let compiled = [];
   let drained = null;
@@ -408,6 +415,9 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       }
       if (issueKey) seenIssueKeys.add(issueKey);
       issued.push(compileOne ? compileOne(subject) : null);
+      // Pace before the scheduled yield: the pacer drains everything queued so far behind a
+      // task-queue slot, so the drain stays bounded to this unit instead of the whole cohort.
+      if (paceQueue) await paceQueue();
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
     issueMs = now() - issueStarted;
@@ -456,6 +466,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       for (let offset = 0; offset < group.length; offset++) {
         results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
       }
+      if (paceQueue) await paceQueue();
       if (yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
     }
   } else {
@@ -473,6 +484,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         touched,
         touchError,
       });
+      if (paceQueue) await paceQueue();
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
   }

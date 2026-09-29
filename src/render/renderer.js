@@ -292,6 +292,7 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
+import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { rehydrateDetachedPackages } from './packageCpuDetach.js';
 import {
   collectOpeningSubmissionLeaves,
@@ -6112,7 +6113,13 @@ export const render = {
       try {
         const delayCompleted = await lifecycle.wait(140);
         if (!delayCompleted || !lifecycle.isActive()) return;
+        // Serial-route queue pacer (null where KHR_parallel_shader_compile exists — there the
+        // cohort overlap is the point). On software GL the coarse phases below queue whole
+        // bursts into the command buffer; draining each phase behind a task-queue slot keeps any
+        // single forced drain bounded instead of draining the whole boot inside one frame.
+        const paceBootQueue = makeGpuQueuePacer(renderer);
         if (typeof this._bakeEnv === 'function') this._bakeEnv();
+        if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
         compileShadowDepthPipelines({
@@ -6140,6 +6147,7 @@ export const render = {
           if (now - vfxWaitStarted >= 2000) break;
           await yieldToBrowser();
         }
+        if (paceBootQueue) await paceBootQueue();
         const leaves = collectOpeningSubmissionLeaves(scene, { includeOffscreen: true });
         const extraVfx = [];
         const extraVfxSet = new Set();
@@ -6189,6 +6197,7 @@ export const render = {
           await prepareStartupGeometryResidency(renderer, scene, {
             includeEmpty: true,
             yieldToMain: yieldToBrowser,
+            paceQueue: paceBootQueue,
           });
         }
       } catch (error) {
@@ -8899,6 +8908,10 @@ export const render = {
                 } finally {
                   restoreSubject();
                 }
+                // Serial-route queues (no KHR_parallel_shader_compile) would otherwise
+                // accumulate the whole cook in the command buffer and drain it inside one
+                // compositor readback — pacing keeps each forced drain bounded to one unit.
+                if (typeof cohort.paceQueue === 'function') await cohort.paceQueue();
                 if (compileYield) await compileYield();
               }
               cohortDrain = await cohort.drain({
@@ -8947,6 +8960,9 @@ export const render = {
             if (drawMs > maxTouchMs) maxTouchMs = drawMs;
             if (subjectProgramAtTouch(subject).program !== before.program) switched += 1;
             touched += 1;
+            // Same queue pacing as the cohort compile above: on the serial route each touch's
+            // draws must drain before the next queues, or the cook rebuilds the backlog.
+            if (cohort && typeof cohort.paceQueue === 'function') await cohort.paceQueue();
             if (touchYield) await touchYield();
           }
           recordOpeningCookStep(state.render, 'cook.touch', touchStarted,

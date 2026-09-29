@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import {
   detachPackageTexture,
@@ -444,6 +445,13 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
     ? options.onBlockingSlice
     : null;
   const now = typeof options.now === 'function' ? options.now : clockNow;
+  // Serial-route queue pacing: null where KHR_parallel_shader_compile exists. Each 1x1 upload
+  // pass queues GL work; without a per-batch drain the whole census piles into the command
+  // buffer and drains inside one forced compositor finish (headless SwiftShader starved the
+  // page's task queue for ~25 s this way — CI run 36486329212).
+  const paceQueue = typeof options.paceQueue === 'function'
+    ? options.paceQueue
+    : makeGpuQueuePacer(renderer);
   const batches = partitionGeometryWork(work, options);
   const material = residencyMaterialFor(renderer);
   const target = residencyScratchTargetFor(renderer);
@@ -458,6 +466,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
     await enqueueGeometryResidencyBatches(renderer, async () => {
       for (let index = 0; index < batches.length; index++) {
       const batch = batches[index];
+      if (paceQueue) await paceQueue();
       await yieldToMain();
       const scene = new THREE.Scene();
       scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
@@ -544,6 +553,11 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     ? options.onBlockingSlice
     : null;
   const now = typeof options.now === 'function' ? options.now : clockNow;
+  // Same serial-route pacing as the geometry census: every initTexture queues a GL upload, and
+  // without a per-texture drain the queue drains inside one forced finish downstream.
+  const paceQueue = typeof options.paceQueue === 'function'
+    ? options.paceQueue
+    : makeGpuQueuePacer(renderer);
   const textures = collectStartupTextures(subjects);
   for (const texture of Array.isArray(options.textures) ? options.textures : []) {
     if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
@@ -616,6 +630,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
         success,
       });
     }
+    if (paceQueue) await paceQueue();
   }
   let geometryResidency;
   if (hitDeadline) {
@@ -627,6 +642,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       ...options,
       yieldToMain,
       onBlockingSlice,
+      paceQueue,
       now,
     });
   }
