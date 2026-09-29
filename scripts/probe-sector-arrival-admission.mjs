@@ -409,6 +409,11 @@ try {
     console.log('--- console tail ---');
     for (const line of logs.slice(-30)) console.log('  ', line);
   }
-  await browser.close().catch(() => {});
-  if (typeof server.close === 'function') await server.close().catch(() => {});
+  // Both closes are bounded: a wedged software-GL browser or a lingering keep-alive socket
+  // must not hold the event loop past the command timeout (the CI SIGKILL reads as failure
+  // even after the PASS line printed).
+  const bounded = (promise) => Promise.race([promise, new Promise((resolve) => setTimeout(resolve, 10_000))]);
+  await bounded(browser.close()).catch(() => {});
+  if (typeof server.close === 'function') await bounded(server.close()).catch(() => {});
 }
+process.exit(process.exitCode ?? 0);

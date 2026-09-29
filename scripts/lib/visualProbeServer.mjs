@@ -58,6 +58,9 @@ function listenOnEphemeralLoopback(server) {
 
 function closeServer(server) {
   if (!server.listening) return Promise.resolve();
+  // Chromium keep-alive sockets outlive the page that opened them; without destroying them
+  // server.close waits for a drain that never comes and the probe hangs to the command timeout.
+  if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
   return new Promise((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
   });
