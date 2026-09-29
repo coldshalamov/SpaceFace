@@ -9,6 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
 import {
   SWEEP_CIRCUMFERENCE,
   RAIL_SLOTS,
@@ -214,7 +215,9 @@ test('readRailModel answers WHY a verb is not ready, not only that it is not', (
     entityList: [],
   };
   const model = readRailModel(state, 1);
-  assert.equal(model[1].why, 'No impulse charges in cargo');
+  const capacity = resolveImpulseChargeCapacity(state);
+  assert.equal(model[1].capacity, capacity);
+  assert.equal(model[1].why, `No impulse charges in cargo · up to ${capacity}`);
   assert.equal(model[2].why, 'Nothing armed to detonate');
   assert.equal(model[3].why, 'Ready');
   assert.equal(model[5].why, 'Recharging — 3s');
