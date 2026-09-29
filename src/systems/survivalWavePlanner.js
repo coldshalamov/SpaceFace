@@ -26,6 +26,7 @@ import {
 import {
   SWARM_CLEANUP_TICKS,
   SWARM_RULESET,
+  SWARM_SPAWN_CAP,
   SWARM_WAVE_DURATION_TICKS,
   isSwarmDraftWave,
   isSwarmRefitWave,
@@ -37,6 +38,7 @@ import {
   swarmRewards,
   swarmWaveOf,
 } from '../data/swarmMode.js';
+import { swarmStakeFor } from '../data/swarmStakes.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
@@ -342,7 +344,7 @@ export function resolvePlanMode(input) {
  * blocking role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty
  * on purpose: a swarm wave must never be able to stall on one straggler flying home.
  */
-function planSwarmWave({ seed, wave, rng, mutators }) {
+function planSwarmWave({ seed, wave, rng, mutators, swarmStake }) {
   const w = swarmWaveOf(wave);
   const list = mutatorList(mutators);
   let packages = swarmOpeningPackages(w, rng);
@@ -357,6 +359,19 @@ function planSwarmWave({ seed, wave, rng, mutators }) {
       weight: entry.weight,
     }));
   }
+  // The stake is the swarm's difficulty contract: pressure moves concurrency and the round
+  // quota (bodies, never stats), earn moves what a cleared round pays. Concurrency is still
+  // clamped under the arena's own cap — a stake can never ask for a room the budget refuses.
+  const stake = swarmStakeFor(swarmStake);
+  if (stake.pressure !== 1) {
+    swarm.concurrent = Math.max(1, Math.min(SWARM_SPAWN_CAP, Math.round(swarm.concurrent * stake.pressure)));
+    swarm.openingPressure = Math.max(1, Math.min(swarm.concurrent, Math.round(swarm.openingPressure * stake.pressure)));
+    swarm.killTarget = Math.max(1, Math.round(swarm.killTarget * stake.pressure));
+    swarm.rewardReferenceKills = Math.max(1, Math.round(swarm.rewardReferenceKills * stake.pressure));
+  }
+  swarm.stake = stake.id;
+  const rewards = swarmRewards(w);
+  if (stake.earn !== 1) rewards.credits = Math.max(0, Math.round(rewards.credits * stake.earn));
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
     return invalid([issue('packages', `swarm opening burst ${opening} exceeds 24`)]);
   }
@@ -370,7 +385,7 @@ function planSwarmWave({ seed, wave, rng, mutators }) {
     packages,
     schedule,
     arenaPhase: swarmArenaPhase(w),
-    rewards: swarmRewards(w),
+    rewards,
     draftExpectation: isSwarmRefitWave(w)
       ? { kind: 'refit', choices: null }
       : (isSwarmDraftWave(w) ? { kind: 'draft', choices: 3 } : { kind: 'none', choices: null }),
@@ -592,6 +607,7 @@ function planWaveInner(input) {
       seed,
       wave,
       mutators,
+      swarmStake: typeof input.swarmStake === 'string' ? input.swarmStake : null,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
     const finished = input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error

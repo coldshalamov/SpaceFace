@@ -34,6 +34,7 @@ import { getCombatKernel } from '../../combat/kernel.js';
 import { mulberry32 } from '../../core/rng.js';
 import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
 import { SWARM_RULESET } from '../../data/swarmMode.js';
+import { normalizeSwarmStake, swarmStakeFor } from '../../data/swarmStakes.js';
 import {
   COMBAT_LAB_ARENAS,
   COMBAT_LAB_ENEMY_PACKAGES,
@@ -161,6 +162,12 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
       // has no rulesets. Unknown values are dropped, so a bad string can never reach runSession.
       if (SURVIVAL_LAUNCH_RULESETS.has(overrides.survivalRuleset)) {
         out.survivalRuleset = overrides.survivalRuleset;
+      }
+      // The swarm stake rides beside the setup the same way the ruleset does — it is a run
+      // contract (purse + pressure + earn), not launch geometry, and unknown ids normalize
+      // to the tuned baseline at consume time.
+      if (typeof overrides.swarmStake === 'string' && overrides.swarmStake) {
+        out.swarmStake = overrides.swarmStake;
       }
       if (overrides.openingLesson === true) out.openingLesson = true;
     }
@@ -1132,13 +1139,30 @@ export function applySandboxSetup(ctx, config) {
       //    what stops an arena position and a run loadout from landing in the Adventure slot.
       //    runSession accepts a begin only from phase inactive, i.e. only off a real New Game.
       if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        const launchRuleset = SURVIVAL_LAUNCH_RULESETS.has(cfg.survivalRuleset)
+          ? cfg.survivalRuleset
+          : 'scored';
         ctx.bus.emit('run:beginRequested', {
           kind: 'survival',
-          ruleset: SURVIVAL_LAUNCH_RULESETS.has(cfg.survivalRuleset) ? cfg.survivalRuleset : 'scored',
+          ruleset: launchRuleset,
           seed: setup.seed,
           arenaId: setup.arenaId,
           openingLesson: cfg.openingLesson === true,
+          swarmStake: launchRuleset === SWARM_RULESET && typeof cfg.swarmStake === 'string'
+            ? cfg.swarmStake
+            : undefined,
         });
+        // The purse is the difficulty you bought at the door: it lands in the run wallet
+        // through the wallet's own award seam, BEFORE the opening armory can spend it.
+        if (launchRuleset === SWARM_RULESET) {
+          const purse = swarmStakeFor(cfg.swarmStake).purse;
+          if (purse > 0) {
+            ctx.bus.emit('run:awardRequested', {
+              credits: purse,
+              reason: 'swarm:stake:' + normalizeSwarmStake(cfg.swarmStake),
+            });
+          }
+        }
       }
       // 3. Hull and fittings through the ships writers.
       applyCombatLabSetup(ctx, setup);

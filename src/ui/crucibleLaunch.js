@@ -9,7 +9,10 @@
 // the run as it BEGAN — before any drafted weapon changed the loadout.
 
 import { validateCombatLabSetup } from '../contracts/combatLabSetupSchema.js';
-import { COMBAT_LAB_STARTER_PACKAGES } from '../data/combatLabSetups.js';
+import { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
+import { normalizeSwarmStake } from '../data/swarmStakes.js';
+import { SHIPS } from '../data/ships.js';
+import { buildSlotList } from '../systems/ships.js';
 import { applyWeaponsColdLoadout } from '../systems/survivalMutators.js';
 import { buildSandboxLaunchConfig, requestSandboxGame } from './sandbox/sandboxSetup.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
@@ -50,7 +53,7 @@ let lastSetup = null;
 
 /** Build (and validate) a Crucible setup from a starter package id and a seed. */
 export function crucibleSetupFor({
-  starterId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET,
+  starterId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
 } = {}) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId)
     || COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.id === CRUCIBLE_DEFAULT_STARTER_ID);
@@ -74,6 +77,44 @@ export function crucibleSetupFor({
   return result;
 }
 
+/**
+ * The bare-hull launch: any ship in the catalog, an empty fit, and the armory for the kit.
+ * `hull:<shipId>` is the door's own starter id for it — never a COMBAT_LAB package id. The
+ * loadout is EMPTY on purpose: the swarm's purse buys the kit in the opening armory, which is
+ * the whole point of the sandbox. Null when the hull id is unknown, so the door cannot launch
+ * a ship that does not exist.
+ */
+export function crucibleHullSetupFor({
+  hullId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET,
+} = {}) {
+  const shipDef = SHIPS.find((entry) => entry && entry.id === hullId);
+  if (!shipDef) return { ok: false, issues: [{ path: 'hullId', message: 'Unknown hull' }] };
+  const result = validateCombatLabSetup({
+    schema: 'spaceface.combatLabSetup.v1',
+    hullId,
+    loadout: [],
+    enemyPackageId: 'wasp_flight',
+    arenaId,
+    seed: normalizeSeed(seed),
+    wave: 1,
+  });
+  if (result && result.ok && result.value) {
+    result.ruleset = normalizeCrucibleRuleset(ruleset);
+  }
+  return result;
+}
+
+/** Every player hull the door can field, cheapest first. */
+export function crucibleHullChoices() {
+  return SHIPS.map((ship) => ({
+    id: `hull:${ship.id}`,
+    hullId: ship.id,
+    name: ship.name,
+    tier: Number.isInteger(ship.tier) ? ship.tier : 0,
+    slotCount: buildSlotList(ship).length,
+  })).sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+}
+
 export function normalizeSeed(seed) {
   const n = Number(seed);
   if (!Number.isFinite(n)) return CRUCIBLE_SEED_MIN;
@@ -88,6 +129,7 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
   return buildSandboxLaunchConfig({}, {
     survivalSetup: setup,
     survivalRuleset: normalizeCrucibleRuleset(ruleset),
+    swarmStake: typeof extras.swarmStake === 'string' ? extras.swarmStake : undefined,
     openingLesson: extras.openingLesson === true,
   });
 }
@@ -121,6 +163,9 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   delete launchSetup.dailyDateKey;
   delete launchSetup.weeklyMutatorId;
   delete launchSetup.ghostHash;
+  delete launchSetup.swarmStake;
+  // The stake travels beside the setup like the ruleset — never inside the closed schema.
+  const swarmStake = typeof setup.swarmStake === 'string' ? normalizeSwarmStake(setup.swarmStake) : null;
   if (weeklyMutatorId === 'weapons_cold') {
     launchSetup.loadout = applyWeaponsColdLoadout(launchSetup.loadout);
   }
@@ -132,6 +177,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   if (dailyDateKey) lastSetup.dailyDateKey = dailyDateKey;
   if (weeklyMutatorId) lastSetup.weeklyMutatorId = weeklyMutatorId;
   if (ghostHash != null) lastSetup.ghostHash = ghostHash;
+  if (swarmStake) lastSetup.swarmStake = swarmStake;
   let openingLesson = false;
   if (resolved === SWARM_RULESET && !dailyDateKey && !weeklyMutatorId && ghostHash == null) {
     try {
@@ -142,7 +188,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
       openingLesson = false;
     }
   }
-  requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, { openingLesson }));
+  requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, { openingLesson, swarmStake }));
   return true;
 }
 

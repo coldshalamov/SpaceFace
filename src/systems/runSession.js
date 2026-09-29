@@ -10,6 +10,7 @@ import {
   runLevelForXp,
   validateRunState,
 } from '../core/runState.js';
+import { normalizeSwarmStake } from '../data/swarmStakes.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
 
@@ -82,6 +83,12 @@ export const runSession = {
     const next = createRunState({ kind, ruleset, seed });
     next.phase = 'loadout';
     if (request && request.arenaId != null) next.arenaId = request.arenaId;
+    // The swarm stake rides telemetry (schema-free, run-lifelong, never serialized): the wave
+    // planner reads it to scale pressure, and the results surface reads it to say what the
+    // run cost. Absent means the tuned baseline — the door only sends it for swarm runs.
+    if (request && typeof request.swarmStake === 'string') {
+      next.telemetry.swarmStake = normalizeSwarmStake(request.swarmStake);
+    }
     this._commitRun(next, 'run:started', {
       schemaVersion: next.schemaVersion,
       kind: next.kind,
