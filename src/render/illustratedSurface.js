@@ -166,16 +166,24 @@ export function installIllustratedSurface(material) {
       `)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float sfSurfaceRelief = 0.0;
-        float sfAlbedoY = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-        float sfChroma = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))
-          - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
-        float sfNeutralPaint = 1.0 - smoothstep(0.70, 1.45, sfChroma / max(sfAlbedoY, 0.02));
-        // Pigment carries its own value. Normalizing it to the source's white roof value
-        // clips the coloured channels into pastel under the sector key light.
-        float sfDepthTone = 1.0 - 0.10 * smoothstep(0.12, 0.60, 1.0 - sfAlbedoY);
-        vec3 sfLacquer = sfPaintPigment * ((1.65 * sfAlbedoY / (0.32 + sfAlbedoY)) * sfDepthTone);
-        diffuseColor.rgb = mix(diffuseColor.rgb, sfLacquer, sfNeutralPaint * sfPaintStrength);
-        if (sfLayoutStrength > 0.0) { ${HULL_LAYOUT_GLSL} }
+        // Materials carrying neither pigment nor layout produce only identity contributions
+        // here (mix(c, x, 0) == c), so the whole chain skips under one uniform-coherent
+        // predicate — no new program key, no per-pixel branch. Layout still reads
+        // sfAlbedoY/sfNeutralPaint, so the shared terms sit inside the disjunction.
+        if (sfPaintStrength > 0.0 || sfLayoutStrength > 0.0) {
+          float sfAlbedoY = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+          float sfChroma = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))
+            - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
+          float sfNeutralPaint = 1.0 - smoothstep(0.70, 1.45, sfChroma / max(sfAlbedoY, 0.02));
+          if (sfPaintStrength > 0.0) {
+            // Pigment carries its own value. Normalizing it to the source's white roof value
+            // clips the coloured channels into pastel under the sector key light.
+            float sfDepthTone = 1.0 - 0.10 * smoothstep(0.12, 0.60, 1.0 - sfAlbedoY);
+            vec3 sfLacquer = sfPaintPigment * ((1.65 * sfAlbedoY / (0.32 + sfAlbedoY)) * sfDepthTone);
+            diffuseColor.rgb = mix(diffuseColor.rgb, sfLacquer, sfNeutralPaint * sfPaintStrength);
+          }
+          if (sfLayoutStrength > 0.0) { ${HULL_LAYOUT_GLSL} }
+        }
       `)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         // Recessed paint-panel joints catch light through the existing material normal. Their
