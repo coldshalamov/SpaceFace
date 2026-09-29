@@ -2,6 +2,7 @@
 //   node scripts/fleet-look.mjs --file=wholeships/hornet_production_v1.glb --views=chase,close,inspect
 //   node scripts/fleet-look.mjs --def=ship_kestrel --views=close,inspect
 //   node scripts/fleet-look.mjs --fleet            # every live wholeship, contact sheet per view
+//   node scripts/fleet-look.mjs --fleet --sector=sector_vesta_forge   # under that sector's light rig
 // Output: .devshots/fleet-look/<name>_<view>.png (+ report.json). Crops chase/close to the ship.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -102,6 +103,12 @@ try {
   // SwiftShader; scripts run fine once navigation commits (same workaround as flight-look).
   await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'commit', timeout: 180000 });
   await page.waitForFunction(() => window.SF_fleetLookReady === true, null, { timeout: Number(args.timeout || 600) * 1000 });
+  // --sector=<id> applies that sector's authored light rig (sectorVisualProfiles) to the live
+  // lights so bodies can be judged under e.g. Vesta's hot key or Pallas's cold one.
+  if (args.sector) {
+    const ok = await page.evaluate((id) => window.SF_fleetLook.setSector(id), String(args.sector));
+    console.log('sector', args.sector, ok ? 'rig applied' : 'UNKNOWN SECTOR — Helios rig kept');
+  }
   // let env map bake
   await page.waitForTimeout(3000);
 

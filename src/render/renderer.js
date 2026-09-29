@@ -5634,16 +5634,10 @@ export const render = {
     // below reads state.render.gpu (the ?perf overlay closure reads it lazily, per frame).
     const gpu = detectGpu(renderer);
     state.render.gpu = gpu;
-    // Discrete-tier shadow default (assessment packet B3): the texel-snapped 2048 depth pass is a
-    // bounded extra raster on hardware GL and only re-renders while a caster moves, so shadows opt
-    // in once per profile on discrete GPUs. The stamp protects every choice made afterwards — a
-    // player who turns shadows off, or a preset that writes them off, is never re-flipped — and
-    // integrated/software keep the opt-in default (SwiftShader measured ~2.3x frame cost at z144).
+    // Shadows stay opt-in on every tier (owner report 2026-09-21: sun shadow maps read as crawling
+    // clumps). The texel-snapped 2048 pass (assessment packet B3) improves the opt-in look; the
+    // measured on-screen gain at the chase camera was too small to override that ruling by default.
     const video = state.settings && state.settings.video;
-    if (gpu.tier === 'discrete' && video && video.shadowsDiscreteTierDefault !== true) {
-      if (video.shadows !== true) video.shadows = true;
-      video.shadowsDiscreteTierDefault = true;
-    }
     const shadowsOn = !(video && video.shadows === false);
     // The tier now bounds the pixel ratio (applyRendererSize); re-apply before the bloom chain
     // and LOD viewport below are sized from drawSize (the shared _drawSize vector).
@@ -10315,7 +10309,9 @@ export const render = {
         this._ensureKeyLightShadows();
         this._syncShadowMapEnabled();
       }
-      if (p.key === 'renderScale' || p.key === 'pixelRatioCap'
+      // dynamicResolution flips the graph-route gate (renderGraphDynResBlocked), so the buffer
+      // scale must be re-derived too — not just the adaptive controller's enabled flag.
+      if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key === 'dynamicResolution'
         || p.key === 'renderGraph' || p.key == null) this.onResize();
       if ((p.key === 'dynamicResolution' || p.key == null) && this._adaptive) {
         this._adaptive.setEnabled(this._dynResAllowed === true && vd.dynamicResolution !== false);

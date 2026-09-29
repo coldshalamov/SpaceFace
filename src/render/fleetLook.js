@@ -11,7 +11,8 @@
 // Driver: scripts/fleet-look.mjs. Verification harness, not a shipped feature.
 import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
-import { SECTOR_VISUAL_PROFILES } from '../data/sectorVisualProfiles.js';
+import { SECTORS } from '../data/sectors.js';
+import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 
@@ -41,17 +42,41 @@ function renderOnce(renderer, scene, cam) {
   renderer.render(scene, cam);
 }
 
-// Flight lights, not the boot rig: the sector profile (Helios) is what the player sees.
-function applySectorLighting(scene, profile) {
+// Flight lights, not the boot rig: the resolved sector profile is what the player sees.
+// `sector` selects which rig; default is the Helios opening the rest of the harness assumed.
+// Prefer the live transition path (`_beginSectorPaletteTransition` + snap) so authored key/fill
+// colour overrides and the signature-hero light aim are exactly the production result; the direct
+// intensity write below is only a fallback for harnesses without a render system.
+let activeSector = null;
+let appliedSector = null;
+function applySectorLighting(scene, sector, profile, palette) {
+  if (renderSystem && typeof renderSystem._beginSectorPaletteTransition === 'function') {
+    renderSystem._beginSectorPaletteTransition(sector, profile);
+    // The harness cannot wait out the 1.5 s lerp: drive the transition to completion now so the
+    // still lands on the sector's authored rig rather than a mid-blend frame.
+    if (typeof renderSystem._updateSectorPaletteTransition === 'function') {
+      renderSystem._updateSectorPaletteTransition(Number.MAX_SAFE_INTEGER);
+    }
+    return;
+  }
   const lighting = profile && profile.lighting;
   if (!lighting) return;
   const dirs = [];
   for (const child of scene.children) {
-    if (child.isAmbientLight) child.intensity = lighting.ambient;
+    if (child.isAmbientLight) {
+      child.intensity = lighting.ambient;
+      if (Number.isFinite(lighting.ambientColor)) child.color.setHex(lighting.ambientColor);
+      else if (palette) child.color.setHex(palette.ambient);
+    }
     if (child.isDirectionalLight) dirs.push(child);
   }
   const order = ['key', 'rim', 'fill'];
-  dirs.slice(0, 3).forEach((light, i) => { light.intensity = lighting[order[i]]; });
+  dirs.slice(0, 3).forEach((light, i) => {
+    const channel = order[i];
+    light.intensity = lighting[channel];
+    if (Number.isFinite(lighting[channel + 'Color'])) light.color.setHex(lighting[channel + 'Color']);
+    else if (palette) light.color.setHex(palette[channel]);
+  });
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -129,11 +154,20 @@ export function installFleetLook(SF) {
   }
 
   function isolate(scene) {
-    if (hidden) return;
+    const sector = activeSector || SECTORS.find((s) => s.id === 'sector_helios_prime') || null;
+    if (hidden) {
+      // A mid-run sector swap still needs the rig re-applied; entity hiding is already done.
+      if (appliedSector !== sector) {
+        applySectorLighting(scene, sector, resolveSectorVisualProfile(sector), sector && sector.palette);
+        appliedSector = sector;
+      }
+      return;
+    }
     renderSystem = SF.registry && typeof SF.registry.get === 'function' ? SF.registry.get('render') : null;
     try { renderSystem?._adaptive?.setEnabled(false); } catch (_) {}
     try { renderSystem?.bloom?.setOptions({ bloom: true }); } catch (_) {}
-    applySectorLighting(scene, SECTOR_VISUAL_PROFILES.helios_core);
+    applySectorLighting(scene, sector, resolveSectorVisualProfile(sector), sector && sector.palette);
+    appliedSector = sector;
     hidden = [];
     for (const child of scene.children) {
       if (child === holder || child.isLight) continue;
@@ -250,6 +284,17 @@ export function installFleetLook(SF) {
     return out;
   }
 
-  window.SF_fleetLook = { shoot, ships: () => SHIPS.map((s) => s.id) };
+  window.SF_fleetLook = {
+    shoot,
+    ships: () => SHIPS.map((s) => s.id),
+    // --sector=<id>: apply that sector's authored visual-profile rig (intensity + key/fill tint +
+    // signature-hero aim) to the live lights before the next shot.
+    setSector: (sectorId) => {
+      const sector = SECTORS.find((s) => s.id === sectorId) || null;
+      if (!sector) return false;
+      activeSector = sector;
+      return true;
+    },
+  };
   window.SF_fleetLookReady = true;
 }

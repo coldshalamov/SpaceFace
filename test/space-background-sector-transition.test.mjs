@@ -57,7 +57,9 @@ const before = {
 };
 
 const targetSector = sector('sector_ceres_belt');
-bg.onSectorEnter(targetSector, resolveSectorVisualProfile(targetSector));
+const targetProfile = resolveSectorVisualProfile(targetSector);
+const targetIntensity = targetProfile.background.intensity;
+bg.onSectorEnter(targetSector, targetProfile);
 
 assert.equal(bg.bakeCalls, before.bakeCalls, 'a live sector seam must not synchronously rebake GPU tiles');
 assert.equal(bg.starBuildCalls, before.starBuildCalls, 'a live sector seam must retain the continuous starfield');
@@ -69,10 +71,10 @@ assert.equal(bg._sectorTransition.active, true);
 
 for (let frame = 0; frame < 7; frame++) bg.update(0.1, 0.1 + frame * 0.1, { x: 0, z: 0 });
 assert.ok(bg.bgIntensity < before.intensity, 'background intensity should move continuously toward the next sector');
-assert.ok(bg.bgIntensity > 0.55, 'the midpoint should not click all the way to the target');
+assert.ok(bg.bgIntensity > targetIntensity, 'the midpoint should not click all the way to the target');
 
 for (let frame = 0; frame < 8; frame++) bg.update(0.1, 0.8 + frame * 0.1, { x: 0, z: 0 });
 assert.equal(bg._sectorTransition.active, false);
-assert.equal(bg.bgIntensity, 0.55, 'the eased transition should land on the authored target');
+assert.equal(bg.bgIntensity, targetIntensity, 'the eased transition should land on the authored target');
 
 console.log('space background sector transition: OK');

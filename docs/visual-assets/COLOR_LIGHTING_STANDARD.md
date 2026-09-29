@@ -14,10 +14,18 @@ and what just flashed. Nothing else earns brightness.
 ## 2. Light rig (authored source: `src/data/sectorVisualProfiles.js`)
 
 - Four lights only: ambient + key + rim + fill. No per-object lights in normal play.
-- Helios reference (`helios_core`): ambient 0.20 / key 3.4 / rim 1.65 / fill 0.72.
+- Helios reference (`helios_core`): ambient 0.16 / key 3.4 / rim 1.72 / fill 0.55.
 - Bounds: ambient 0.12–0.25, key 2.2–3.6, rim 0.9–1.8, fill 0.35–0.8.
+- Contrast law: ambient/fill sit at the low end of their bands and the rim near
+  the top — hulls must separate from space by silhouette light, not ambient lift.
 - Key color warm white (≈ 0xffe2bd core); rim cool blue (≈ 0x82baf0 core);
   fill is planet bounce (sector fill hue), placed low on the landmark side.
+- Way-of-life sectors carry their own tinted key via `lighting.keyColor` /
+  `fillColor` / `rimColor` / `ambientColor` overrides (the palette class still
+  owns nebula/dust/fog): Vesta Forge hot orange-white `0xffc98f`, Pallas Drift
+  cold blue-white `0xd9e6ff`, Sker Haven sodium amber `0xffb45e`, Ceres belt
+  dusty neutral `0xf0e2c8`. Tints stay near warm white — the key never goes
+  fully saturated.
 - Key direction follows the sector signature hero screen position
   (`renderer._aimKeyLightAtSignatureHero`): screen +x is world +x, screen +y is
   world −z. A sector without a hero keeps the construction rig.
