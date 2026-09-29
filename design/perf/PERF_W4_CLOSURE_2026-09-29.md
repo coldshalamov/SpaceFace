@@ -69,3 +69,8 @@ REVERT/DOCUMENTED with citations. Per-lane reports live beside this file (`w4-*-
   launch failures, master-identical timeouts).
 - `depth-program-k1` tactical tests (`extend` vs `breakaway`, pitborn egress) fail on
   clean `origin/master` — upstream PB-TAC-C suite regression, outside this campaign's scope.
+- `check-depth-program-k1-behavior` fails byte-identically on clean master tip:
+  `faction_fulfillment must produce a canonical drive-disabled transition` — upstream.
+- `check-sg06-production-ports` fails identically on clean master tip: PB-TAC-C
+  `c19e77b9c` added `aimProjectileSpeed` to `aiPorts` `sensorSelf` without updating the
+  SG-06 whitelist — upstream ratchet bookkeeping for that wave's author.
