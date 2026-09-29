@@ -33,6 +33,7 @@ import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
+  settleRequiredPackageAdmission,
   waitForCurrentRenderPipelines as waitForRenderPipelineWarmup,
   waitForOpeningGpuResources,
 } from './render/pipelineReadiness.js';
@@ -228,6 +229,7 @@ async function boot() {
     bus.on('game:new', (opts) => {
       const startNewGameTransition = () => {
         const transitionToken = runTransitionGuard.begin('new-game');
+        if (state.render) state.render.admissionRunGeneration = transitionToken.generation;
         startNewGame(
           state, helpers, bus, registry, runTransitionGuard, transitionToken, opts || {},
         ).catch((error) => {
@@ -644,9 +646,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         return false;
       }
     },
+    readPackageAdmission: () => (state.render && state.render.requiredPackageAdmission) || null,
+    awaitSettledPackageAdmission: () => settleRequiredPackageAdmission(state),
     reportProgress: (stage) => bus.emit('game:loadingProgress', {
       ...stage,
-      detail: loadingDetailForStage(stage && stage.id),
+      detail: loadingDetailForStage(stage),
       transition: 'new-game',
     }),
     yieldForPresentation: nextPaint,
@@ -993,7 +997,10 @@ function authoredVisualReadiness(state) {
   return authoredCriticalVisualReadiness(state);
 }
 
-function loadingDetailForStage(stageId) {
+function loadingDetailForStage(stageOrId) {
+  const stage = stageOrId && typeof stageOrId === 'object' ? stageOrId : null;
+  if (stage && typeof stage.detail === 'string' && stage.detail) return stage.detail;
+  const stageId = stage ? stage.id : stageOrId;
   if (stageId === 'preparing-run') return 'Creating the pilot, ship, and starting sector';
   if (stageId === 'authored-library') return 'Loading only what the opening scene needs';
   if (stageId === 'authored-visuals') return 'Placing ships and stations before you arrive';

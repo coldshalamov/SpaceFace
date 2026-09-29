@@ -305,7 +305,10 @@ test('GPU residency still cooks the live sector when opening prepare times out',
       },
     },
   };
-  assert.equal(await waitForOpeningGpuResources(state, 20), true);
+  assert.equal(await waitForOpeningGpuResources(state, 20), false);
+  assert.equal(state.render.requiredPackageAdmission.status, 'pending');
+  assert.equal(state.render.requiredPackageAdmission.ready, false);
+  assert.notEqual(state.render.requiredPackageAdmission.status, 'rejected');
   assert.ok(timeline.includes('live-sector'));
 });
 
@@ -315,6 +318,14 @@ test('same-sector F9 recook skips the opening GPU 1x1 and still cooks the live s
     mode: 'loading',
     world: { currentSectorId: 'sector_helios_prime' },
     render: {
+      admissionRunGeneration: 4,
+      requiredPackageAdmission: {
+        status: 'accepted',
+        ready: true,
+        packageId: 'ship_kestrel',
+        reason: '',
+        generation: 4,
+      },
       sessionLiveSectorCookedId: 'sector_helios_prime',
       prepareOpeningGpuResources: async () => {
         timeline.push('gpu');
