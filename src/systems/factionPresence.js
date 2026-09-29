@@ -43,6 +43,15 @@ export function getFactionPresenceQuietLatchForBench() {
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const FACTION_PRESENCE_QUIET_RESCAN_TICKS = 30;
 
+// Entity ids sort numerically when both sides carry one (spawn counters reach two digits);
+// string compare alone would order '10' before '9' and bind first-fire targets to the wrong hull.
+function comparePresenceEntityIds(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+  return String(a).localeCompare(String(b));
+}
+
 function publishPresenceQuiet(state, latched) {
   if (!state) return;
   const rt = state.factionPresenceRuntime || (state.factionPresenceRuntime = {});
@@ -720,7 +729,7 @@ export const factionPresence = {
     const entities = indexedShipLikeScan(this.state);
     const concord = entities
       .filter((entity) => entity.alive !== false && entity.id !== this.state.playerId && entity.type === 'ship' && entity.factionId === 'faction_scn')
-      .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0] || null;
+      .sort((a, b) => comparePresenceEntityIds(a.id, b.id))[0] || null;
     for (const pitborn of entities) {
       const marker = pitborn.data && pitborn.data.factionPresence;
       const ai = pitborn.data && pitborn.data.ai;
