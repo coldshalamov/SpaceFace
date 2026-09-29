@@ -640,13 +640,21 @@ function resetAutoTargetPath(host, state = host && host.state) {
   }
 }
 
+function stickViewport() {
+  // Pass a collapsed window through as itself. viewportSize() floors at 1px for the pointer,
+  // which would turn a minimize into a real radius and keep commanding thrust.
+  const width = typeof innerWidth === 'number' ? innerWidth : 1;
+  const height = typeof innerHeight === 'number' ? innerHeight : 1;
+  return { width, height };
+}
+
 function recordAutoTargetStick(host, movementX, movementY) {
-  const { width, height } = viewportSize();
+  const { width, height } = stickViewport();
   return recordDynamicFlightStick(host, movementX, movementY, width, height);
 }
 
 function publishAutoTargetStick(host, inp) {
-  const { width, height } = viewportSize();
+  const { width, height } = stickViewport();
   const vector = projectDynamicFlightStick(host, width, height);
   return writeAutoTargetVector(
     inp,
