@@ -1315,16 +1315,19 @@ export const input = {
     let keyboardBrake = (helm || pilot)
       ? !!(pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld))
       : !!(down || kbdBrakeHeld);
+    // Ownership gates the drive vector only (turn/move axes). Boost and brake are modifiers,
+    // not drive authority — like fire and mine they merge from whichever device holds them,
+    // owner or not. Gating them by owner made a boot-claimed pad's boost unreachable whenever
+    // a stale source (e.g. keyboard) was latched.
     if (this._movementSource === 'gamepad' || this._movementSource === 'touch') {
-      kbdTurn = 0; kbdMoveX = 0; kbdMoveZ = 0; kbdBoost = false;
+      kbdTurn = 0; kbdMoveX = 0; kbdMoveZ = 0;
       kbdLineOrbit = 0;
-      keyboardBrake = false;
     }
     if (this._movementSource !== 'gamepad') {
-      gpTurn = 0; gpMoveX = 0; gpMoveZ = 0; gpBoost = false; gpBrake = false;
+      gpTurn = 0; gpMoveX = 0; gpMoveZ = 0;
     }
     if (this._movementSource !== 'touch') {
-      tpTurn = 0; tpMoveZ = 0; tpMoveX = 0; tpBoost = false;
+      tpTurn = 0; tpMoveZ = 0; tpMoveX = 0;
     }
 
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
@@ -1655,9 +1658,9 @@ function touchHelmEdge(host, tp) {
     || Math.hypot(tp.axes.rightX || 0, tp.axes.rightY || 0) > 0.001;
   let edge = false;
   if (host._touchStickArmed && out && !host._touchStickOut) edge = true;
-  const boost = tp.actions && tp.actions.boost;
-  // Fire and mine stay independent of the helm. Boost is a movement action, so it can take it.
-  if (boost && boost.pressed) edge = true;
+  // Boost/brake are helm-independent modifiers (like fire and mine): a solo press merges
+  // without needing ownership, and pressing one while another device drives must not steal
+  // the helm out from under its drive vector. Only a stick edge takes the helm.
   host._touchStickOut = out;
   host._touchStickArmed = true;
   return edge;
