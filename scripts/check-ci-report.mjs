@@ -174,7 +174,9 @@ export function formatCiReportMarkdown(report) {
       lines.push(`### \`${r.id || '?'}\``);
       lines.push('');
       lines.push('```');
-      lines.push(String(r.tail || r.stderr || r.stdout || '(no output captured)').trim() || '(no output captured)');
+      const tail = [r.stdoutTail, r.stderrTail].filter(Boolean).join('\n--- stderr ---\n')
+        || r.tail || r.stderr || r.stdout || '';
+      lines.push(String(tail).trim() || '(no output captured)');
       lines.push('```');
       lines.push('');
     }
