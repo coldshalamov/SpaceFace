@@ -413,6 +413,17 @@ const SHIPPED_MODULES = [
     visuals: { part: 'greebles/greeble_armor_plates.glb' },
   },
   {
+    // GRAVITY BUMPER — the first HULL BURST (design doc 2026-09-29 section 4). A timed, front-facing
+    // special attack: press the burst key and for a few seconds the nose throws away every hostile
+    // hull it touches, harder the faster you arrive (a Massline swing is the fastest way to arrive).
+    // The hull counts as much heavier while it runs; nothing pushes back on you. Consumed via
+    // derived.hullBurstKind (systems/ships.js), driven by systems/hullBurst.js, tuned in data/hullBurst.js.
+    // One hull-burst module per hull: the type is the build.
+    id: 'mod_gravity_bumper_s', name: 'Gravity Bumper S', slotType: 'utility', size: 'S', tier: 2, mass: 5, price: 24000,
+    requiresTech: 'tech_graviton_drives',
+    energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 1 },
+  },
+  {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
     energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
   },
@@ -793,6 +804,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_drone_bay_l: 'Puts a drone in the water.',
   mod_jump_drive_m: 'Jumps you farther than the hull\'s own drive.',
   mod_ram_plate: 'The hull itself hits harder when you mean to ram.',
+  mod_gravity_bumper_s: 'Press the burst key and, for a few seconds, the nose throws every hostile hull it touches. The faster you arrive, the farther they fly.',
   mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
   mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
   mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',

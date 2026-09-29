@@ -58,6 +58,7 @@ import { masslineThreats } from '../systems/masslineThreats.js';
 import { masslineImpacts } from '../systems/masslineImpacts.js';
 import { masslineSnares } from '../systems/masslineSnares.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
+import { hullBurst } from '../systems/hullBurst.js';                   // hull-burst overhaul slice C: timed front-wedge hurl (Gravity Bumper)
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
@@ -404,6 +405,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['weapons', weapons],
     ['countermeasures', countermeasures],
     ['impulseCharges', impulseCharges],
+    ['hullBurst', hullBurst],
     ['mines', mines],
     ['bombs', bombs],
     ['massSeed', massSeed],

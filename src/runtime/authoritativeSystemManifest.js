@@ -30,7 +30,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
-  'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'bombs', 'emergentPrimitives', 'massSeed',
+  'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'massSeed',
   'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
@@ -87,7 +87,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'nemesis', 'nemesisEncounter', 'capitalBossEncounters', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   // Bombs and emergent primitives read the shared chargeDetonate edge before impulseCharges consumes it.
-  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'mines', 'massSeed',
+  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   'survivalArena', 'fields', 'planetRuntime', 'physics', 'combat',

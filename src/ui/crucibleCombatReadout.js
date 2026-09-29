@@ -34,6 +34,7 @@ export function crucibleFittingDescription(defId, state) {
   if (mods.boostTopSpeedPct) return `Boost — ${binding(state, 'boost')}`;
   if (mods.countermeasure) return `Countermeasure — ${binding(state, 'countermeasure')}`;
   if (mods.ramDamageDealtMult) return 'Ram — fly into a hull';
+  if (mods.hullBurst) return `Burst — ${binding(state, 'hullBurst')} lights the nose for a few seconds`;
   return mod ? 'Always active while fitted' : '';
 }
 
