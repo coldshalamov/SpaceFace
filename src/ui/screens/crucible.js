@@ -2033,6 +2033,18 @@ export function resultStamp(result) {
   return 'CRUCIBLE / FLIGHT RECORD';
 }
 
+/**
+ * The run-identity signature refresh() compares against the mount's own stamp: the seed, where
+ * the run stopped, how it ended, and its end mark. Two runs back to back always differ — the
+ * plate is never allowed to show the previous one's numbers.
+ */
+function resultSignature(result) {
+  if (!result) return 'none';
+  const mark = result.endedAt || {};
+  return `${result.seed}|${result.wave}|${result.deepestWave}|${result.outcome}|${result.stopReason}`
+    + `|${mark.tick}|${mark.simTime}`;
+}
+
 /** The band name for a section. The damage band means something different after a clear. */
 export function sectionTitle(id, outcome) {
   if (id === 'story') return 'The run';
@@ -2643,6 +2655,10 @@ export const crucibleResultsScreen = {
 
     const owner = resultsOwner(ctx);
     const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
+    // The screen manager mounts a screen once and re-shows the cached root on every later push.
+    // The plate's signature is what refresh() compares — a new run always ends at a new mark.
+    this._root = rootEl;
+    this._resultSig = resultSignature(result);
     rootEl.dataset.stamp = resultStamp(result);
     rootEl.dataset.outcome = (result && result.outcome) || 'empty';
 
@@ -2920,6 +2936,21 @@ export const crucibleResultsScreen = {
 
   onHide() {
     if (canAnimate()) cue('close');
+  },
+
+  /**
+   * The manager mounts a screen once and re-shows the cached root on every later push — so a
+   * second results plate would stand on the previous run's DOM. When lastResult's signature has
+   * moved, the plate tears down the same way its dispose() does and rebuilds on the fresh run.
+   */
+  refresh(ctx) {
+    const root = this._root;
+    if (!root) return;
+    const owner = resultsOwner(ctx);
+    const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
+    if (resultSignature(result) === this._resultSig) return;
+    this.dispose();
+    this.mount(root, ctx);
   },
 
   dispose() {
