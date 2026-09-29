@@ -677,6 +677,10 @@ export const save = {
     const c = this.state.player.cargo || {};
     const out = { items: clonePlain(c.items || {}), capVolume: c.capVolume, capMass: c.capMass };
     if (Array.isArray(c.richLots) && c.richLots.length) out.richLots = clonePlain(c.richLots);
+    // Hull-burst overhaul slice D: the salvage bay rides the cargo record as an OPTIONAL key (absent = empty), so old
+    // saves load unchanged and a save without one is byte-identical to before.
+    const bay = this.state.player.salvageBay;
+    if (bay && bay.items && Object.keys(bay.items).length) out.salvageBay = { items: clonePlain(bay.items) };
     return out;
   },
 
@@ -3286,6 +3290,10 @@ export const save = {
     if (typeof c.capMass === 'number') cargo.capMass = c.capMass;
     if (Array.isArray(c.richLots)) cargo.richLots = clonePlain(c.richLots);
     else if (Object.hasOwn(cargo, 'richLots')) delete cargo.richLots;
+    if (c.salvageBay && typeof c.salvageBay === 'object' && c.salvageBay.items && typeof c.salvageBay.items === 'object') {
+      // usedVolume is a cache: the cargo owner recomputes it from the items right after the restore.
+      this.state.player.salvageBay = { items: clonePlain(c.salvageBay.items), usedVolume: 0 };
+    } else if (Object.hasOwn(this.state.player, 'salvageBay')) delete this.state.player.salvageBay;
   },
 
   _restoreFlight(flight) {
@@ -4215,6 +4223,8 @@ function serializePlayerRecord(state, capturedCollections = null) {
     out.loadoutPresets = [];
   }
   delete out.cargo;
+  // The salvage bay is saved once, as an optional key of the cargo record (_serializeCargo), never twice.
+  delete out.salvageBay;
   return out;
 }
 
