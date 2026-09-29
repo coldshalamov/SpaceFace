@@ -145,8 +145,8 @@ export function collectStatusAttachedVictims(state, out = []) {
 /**
  * One cadence decision for a live victim. Sprite life is clipped to the status remaining time
  * so thermite from a bomb and thermite from another weapon share the same truthful duration.
- * Goo residue scales with actual stacks. Reduced motion drops travelling accents; reduced flash
- * keeps the hull mark and dims it.
+ * Goo and burn residue scale with actual stacks. Reduced motion drops travelling accents; reduced
+ * flash keeps the hull mark and dims it.
  */
 export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, dt = 0) {
   const row = victim && STATUS_ROWS[victim.statusId];
@@ -184,7 +184,14 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
   const radius = Math.max(2, Number(victim.radius) || 6);
   const sprites = [];
   if (row.kind === STATUS_ATTACHED_KIND.BURN) {
-    const count = motionReduce ? 1 : (flashReduce ? 1 : 2);
+    // PB-ORD-A (SF-036): the burn reads as committed only when the picture carries the actual
+    // stacks — the same law goo already follows. One stack stays a thin splash; sustained
+    // contact (max 3) burns wider, brighter, with more fronts. Sprite life stays clipped to
+    // the status's true remaining time above; the stacks never invent extra time.
+    const burnStacks = clamp(victim.stacks, 1, 3);
+    const burnScale = 0.70 + 0.30 * (burnStacks / 3);
+    const burnOpacity = 0.78 + 0.22 * (burnStacks / 3);
+    const count = motionReduce ? 1 : (flashReduce ? 1 : Math.min(3, burnStacks));
     for (let i = 0; i < count; i++) {
       const angle = phase + i * 2.7;
       const fold = 0.9 + 0.1 * Math.sin(angle * 1.31);
@@ -192,9 +199,9 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
       sprites.push({
         kind: 'combustion',
         life,
-        size0: 0.7 * sizeScale * radius * 0.12 * fold,
-        size1: 1.8 * sizeScale * radius * 0.18 * fold,
-        opacity0: 0.62 * flashScale,
+        size0: 0.7 * sizeScale * burnScale * radius * 0.12 * fold,
+        size1: 1.8 * sizeScale * burnScale * radius * 0.18 * fold,
+        opacity0: 0.62 * flashScale * burnOpacity,
         opacity1: 0,
         color: i % 2 ? row.altColor : row.color,
         vx: travelling ? carryX + Math.cos(angle) * jet : 0,
