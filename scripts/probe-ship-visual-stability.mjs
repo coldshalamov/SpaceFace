@@ -102,6 +102,36 @@ async function sampleVisualStability(page, options) {
     let maxShipCount = 0;
     let finalShips = [];
 
+    // Pending-admission boundaries present the ship's designed low-detail stand-in (GFX-12)
+    // while its authored body lands — a placeholder, not the authored identity the asserts below
+    // prove. Whether a pending ship should resolve inside this window is the renderer's own
+    // policy question: isEntityAuthoredUpgradeRelevant is the same gate canRequestAuthoredUpgrade
+    // applies, so a ship beyond the approach runway reads as deferred-by-design instead of
+    // failing an assert it can never satisfy, while a relevant ship stuck pending still fails
+    // at the end of the window.
+    let isAuthoredPendingStatus = (status) =>
+      status === 'awaiting-authored-admission' || status === 'loading' || status === 'compiling-pipelines';
+    let isEntityAuthoredUpgradeRelevant = null;
+    let isEntityRenderRelevant = null;
+    try {
+      const [rendererModule, meshVisibilityModule] = await Promise.all([
+        import('./src/render/renderer.js'),
+        import('./src/render/entityMeshVisibility.js'),
+      ]);
+      if (typeof rendererModule.isEntityAuthoredUpgradeRelevant === 'function') {
+        isEntityAuthoredUpgradeRelevant = rendererModule.isEntityAuthoredUpgradeRelevant;
+      }
+      if (typeof rendererModule.isEntityRenderRelevant === 'function') {
+        isEntityRenderRelevant = rendererModule.isEntityRenderRelevant;
+      }
+      if (typeof meshVisibilityModule.isAuthoredPendingStatus === 'function') {
+        isAuthoredPendingStatus = meshVisibilityModule.isAuthoredPendingStatus;
+      }
+    } catch (_) {}
+    // Frames a ship may sit upgrade-relevant and still pending before it counts as stuck. A
+    // relevant admission job is designed to finish in seconds, not across a full window.
+    const pendingRelevantGraceFrames = Math.min(120, Math.max(1, inspectedFrameCount - 1));
+
     if (inspectedFrameCount < minInspectedFrames) {
       failures.push({
         frame: null,
@@ -119,6 +149,18 @@ async function sampleVisualStability(page, options) {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
     inspectFinalPlayer(finalShips, Math.max(0, frames - 1));
+    for (const track of tracks.values()) {
+      if (track.sawTerminal !== false) continue;
+      const unresolvedRelevantFrames = track.relevantPendingFrames + track.meshlessRelevantFrames;
+      if (unresolvedRelevantFrames <= pendingRelevantGraceFrames) continue;
+      fail(track.lastFrame, track.lastShip, 'ship-never-resolved-past-window', {
+        authoredState: track.lastAuthoredState,
+        relevantPendingFrames: track.relevantPendingFrames,
+        meshlessRelevantFrames: track.meshlessRelevantFrames,
+        deferredPendingFrames: track.deferredPendingFrames,
+        graceFrames: pendingRelevantGraceFrames,
+      });
+    }
 
     return {
       ok: failures.length === 0,
@@ -142,17 +184,56 @@ async function sampleVisualStability(page, options) {
         // renderable surfaces. They are not a visual identity and cannot flicker or swap on screen.
         // Begin stability tracking only when the entity is in the camera runway or has actually
         // published pixels; once that happens, every authored/root/LOD invariant below is strict.
+        // A ship the residency policy has not mounted owes no pixels — even when its sim
+        // position happens to project onto the glass. Meshless-while-render-relevant and
+        // pending-admission are both designed unresolved states (nothing / the stand-in draws;
+        // there is no authored identity to flicker or swap). Count them per frame and let the
+        // window-end check enforce that relevant ships actually resolve.
+        if (!ship.meshExists && ship.renderRelevant === false) continue;
         if (!ship.inView && ship.visibleRenderableCount <= 0) continue;
         const key = trackKey(ship);
         let track = tracks.get(key);
+
+        if (!ship.meshExists || isAuthoredPendingStatus(ship.authoredState)) {
+          if (track && track.sawTerminal) {
+            // A published authored identity regressing to pending or losing its mesh is the
+            // swap/flicker class this probe exists to catch — not a designed transition. Mark
+            // the track unresolved again so the slip reports once here instead of every frame,
+            // and so a ship that never recovers still lands in the window-end check.
+            fail(frame, ship, 'authored-state-regressed-to-pending', {
+              was: track.lastAuthoredState,
+              now: ship.meshExists ? ship.authoredState : 'missing',
+            });
+            track.sawTerminal = false;
+          }
+          if (!track) {
+            track = makeTrack(ship, frame, false);
+            tracks.set(key, track);
+          }
+          noteTrack(track, ship);
+          track.lastFrame = frame;
+          track.lastShip = ship;
+          track.lastAuthoredState = ship.authoredState;
+          if (!ship.meshExists) track.meshlessRelevantFrames++;
+          else if (ship.upgradeRelevant) track.relevantPendingFrames++;
+          else track.deferredPendingFrames++;
+          continue;
+        }
         if (!track) {
-          track = makeTrack(ship, frame);
+          track = makeTrack(ship, frame, true);
           tracks.set(key, track);
         }
-
-        if (ship.inView && !ship.meshExists) {
-          fail(frame, ship, 'visible-ship-has-no-root-mesh', {});
+        if (track.sawTerminal === false) {
+          // First terminal sighting after the pending stand-in: the pending→authored commit is
+          // the designed upgrade swap, so the identity baseline forms here rather than firing
+          // every "-changed-after-warmup" assert on the stand-in's placeholder counts.
+          rebaseTrackIdentity(track, ship);
+          track.sawTerminal = true;
         }
+        track.lastFrame = frame;
+        track.lastShip = ship;
+        track.lastAuthoredState = ship.authoredState;
+
         if (ship.meshExists !== track.meshExists) {
           fail(frame, ship, 'mesh-existence-changed-after-warmup', { was: track.meshExists, now: ship.meshExists });
         }
@@ -161,9 +242,6 @@ async function sampleVisualStability(page, options) {
         }
         if (ship.authoredState !== track.authoredState) {
           fail(frame, ship, 'authored-state-changed-after-warmup', { was: track.authoredState, now: ship.authoredState });
-        }
-        if (ship.compositionId !== track.compositionId) {
-          fail(frame, ship, 'composition-changed-after-warmup', { was: track.compositionId, now: ship.compositionId });
         }
         if (ship.lodLevel !== track.lodLevel) {
           if (ship.inView) {
@@ -177,9 +255,22 @@ async function sampleVisualStability(page, options) {
               });
             }
           }
-          // A single distance-driven LOD transition is expected. Keep the live baseline so one
-          // transition does not get reported again on every subsequent frame.
+          // A single distance-driven LOD transition is expected — and a designed whole-ship
+          // level swap presents a different authored root under the same boundary: mesh,
+          // authored-surface, batch, and composition counts legitimately differ per level.
+          // Rebase them together with the level so the churn asserts below still fire only
+          // when a root mutates within a level (the flicker class), not on the designed swap.
           track.lodLevel = ship.lodLevel;
+          track.meshCount = ship.meshCount;
+          track.authoredSurfaceCount = ship.authoredSurfaceCount;
+          track.authoredBodySurfaceCount = ship.authoredBodySurfaceCount;
+          track.staticBatchCount = ship.staticBatchCount;
+          track.instanceProxyCount = ship.instanceProxyCount;
+          track.compositionId = ship.compositionId;
+          track.slotsKey = ship.slotsKey;
+        }
+        if (ship.compositionId !== track.compositionId) {
+          fail(frame, ship, 'composition-changed-after-warmup', { was: track.compositionId, now: ship.compositionId });
         }
         if (ship.slotsKey !== track.slotsKey) {
           fail(frame, ship, 'authored-slots-changed-after-warmup', { was: track.slotsKey, now: ship.slotsKey });
@@ -321,7 +412,7 @@ async function sampleVisualStability(page, options) {
       }
     }
 
-    function makeTrack(ship, frame) {
+    function makeTrack(ship, frame, sawTerminal) {
       return {
         id: ship.id,
         defId: ship.defId,
@@ -342,6 +433,13 @@ async function sampleVisualStability(page, options) {
         framesSeen: 0,
         inViewFrames: 0,
         missingMeshFrames: 0,
+        sawTerminal: sawTerminal === undefined ? !isAuthoredPendingStatus(ship.authoredState) : sawTerminal,
+        relevantPendingFrames: 0,
+        meshlessRelevantFrames: 0,
+        deferredPendingFrames: 0,
+        lastFrame: frame,
+        lastShip: ship,
+        lastAuthoredState: ship.authoredState,
         rootUuids: new Set(),
         authoredStates: new Set(),
         compositionIds: new Set(),
@@ -350,6 +448,24 @@ async function sampleVisualStability(page, options) {
         authoredBodySurfaceCounts: new Set(),
         staticBatchCounts: new Set(),
       };
+    }
+
+    // The pending stand-in shares the boundary root but not the authored identity. When the
+    // body commits, re-seed every identity baseline so the designed swap is not reported as
+    // composition/LOD/surface churn.
+    function rebaseTrackIdentity(track, ship) {
+      track.rootUuid = ship.rootUuid;
+      track.meshExists = ship.meshExists;
+      track.authoredState = ship.authoredState;
+      track.authoredMode = ship.authoredMode;
+      track.compositionId = ship.compositionId;
+      track.slotsKey = ship.slotsKey;
+      track.lodLevel = ship.lodLevel;
+      track.meshCount = ship.meshCount;
+      track.authoredSurfaceCount = ship.authoredSurfaceCount;
+      track.authoredBodySurfaceCount = ship.authoredBodySurfaceCount;
+      track.staticBatchCount = ship.staticBatchCount;
+      track.instanceProxyCount = ship.instanceProxyCount;
     }
 
     function noteTrack(track, ship) {
@@ -391,14 +507,22 @@ async function sampleVisualStability(page, options) {
       const playerId = state && state.playerId;
       return entities
         .filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
-        .map((entity) => inspectShip(entity, frame, camera, viewport, playerId))
+        .map((entity) => inspectShip(entity, frame, camera, viewport, playerId, state))
         .filter(Boolean);
     }
 
-    function inspectShip(entity, frame, camera, viewport, playerId) {
+    function inspectShip(entity, frame, camera, viewport, playerId, state) {
       const root = entity.mesh || (entity.view && entity.view.root) || null;
       if (!root || !root.userData) {
         const projectedFallback = projectEntityPosition(entity, camera);
+        // Whether the residency policy owes this entity a mesh at all. Fail closed (relevant)
+        // when the policy import failed so a genuinely missing mount still fails.
+        let renderRelevant = null;
+        try {
+          renderRelevant = isEntityRenderRelevant ? !!isEntityRenderRelevant(entity, state) : true;
+        } catch (_) {
+          renderRelevant = true;
+        }
         return {
           frame,
           id: entity.id,
@@ -413,6 +537,8 @@ async function sampleVisualStability(page, options) {
           rootVisible: false,
           authoredState: 'missing',
           authoredMode: null,
+          upgradeRelevant: null,
+          renderRelevant,
           compositionId: null,
           slotsKey: '{}',
           lodLevel: null,
@@ -554,6 +680,19 @@ async function sampleVisualStability(page, options) {
         }
       }
 
+      const authoredState = data.authoredAssetState || 'unknown';
+      // Only pending ships need the answer; fail closed (relevant) if the policy import failed.
+      let upgradeRelevant = null;
+      if (isAuthoredPendingStatus(authoredState)) {
+        try {
+          upgradeRelevant = isEntityAuthoredUpgradeRelevant
+            ? !!isEntityAuthoredUpgradeRelevant(entity, state)
+            : true;
+        } catch (_) {
+          upgradeRelevant = true;
+        }
+      }
+
       return {
         frame,
         id: entity.id,
@@ -566,8 +705,10 @@ async function sampleVisualStability(page, options) {
         rootUuid: root.uuid || null,
         rootName: root.name || '',
         rootVisible: visibleThroughRoot(root, root),
-        authoredState: data.authoredAssetState || 'unknown',
+        authoredState,
         authoredMode: data.authoredAssetMode || null,
+        upgradeRelevant,
+        renderRelevant: null,
         wholeShip: Object.values(data.authoredSlots || {}).flat()
           .some((url) => String(url || '').includes('/wholeships/')),
         compositionId: data.authoredCompositionId || null,
@@ -691,6 +832,8 @@ async function sampleVisualStability(page, options) {
         meshExists: ship.meshExists,
         authoredState: ship.authoredState,
         authoredMode: ship.authoredMode,
+        upgradeRelevant: ship.upgradeRelevant,
+        renderRelevant: ship.renderRelevant,
         wholeShip: ship.wholeShip,
         compositionId: ship.compositionId,
         lodLevel: ship.lodLevel,
@@ -726,6 +869,12 @@ async function sampleVisualStability(page, options) {
         framesSeen: track.framesSeen,
         inViewFrames: track.inViewFrames,
         missingMeshFrames: track.missingMeshFrames,
+        sawTerminal: track.sawTerminal,
+        relevantPendingFrames: track.relevantPendingFrames,
+        meshlessRelevantFrames: track.meshlessRelevantFrames,
+        deferredPendingFrames: track.deferredPendingFrames,
+        lastFrame: track.lastFrame,
+        lastAuthoredState: track.lastAuthoredState,
         rootUuids: Array.from(track.rootUuids).sort(),
         authoredStates: Array.from(track.authoredStates).sort(),
         compositionIds: Array.from(track.compositionIds).sort(),
