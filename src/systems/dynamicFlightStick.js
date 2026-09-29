@@ -44,21 +44,40 @@ export function resetDynamicFlightStick(host, width = 1, height = 1) {
   return host._autoTargetStick;
 }
 
+function viewportUsable(width, height) {
+  return Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0;
+}
+
+/**
+ * One radius write. The stored knob fraction is kept; the packet's own pixels are not scaled.
+ * A second call at the same radius is a no-op because the ratio uses the radius just stored.
+ */
+function adoptRadius(stick, width, height) {
+  const next = dynamicFlightStickRadius(width, height);
+  const prev = stick.radiusPx;
+  if (Number.isFinite(prev) && prev > 0 && Number.isFinite(next) && Math.abs(next - prev) > 1e-12) {
+    const ratio = next / prev;
+    stick.xPx = finite(stick.xPx) * ratio;
+    stick.yPx = finite(stick.yPx) * ratio;
+  }
+  stick.radiusPx = next;
+  return next;
+}
+
 /**
  * Accumulate one relative pointer packet into the bounded virtual stick.
  * Returns true when the packet was accepted.
  */
 export function recordDynamicFlightStick(host, dx, dy, width, height) {
   if (!host || !Number.isFinite(dx) || !Number.isFinite(dy) || (!dx && !dy)) return false;
-  const w = Math.max(1, finite(width, 1));
-  const h = Math.max(1, finite(height, 1));
-  if (Math.hypot(dx, dy) > Math.max(w, h) * DYNAMIC_FLIGHT_STICK_TUNING.corruptPacketViewportMult) {
+  // A collapsed or corrupt viewport is not a gesture and not a resize.
+  if (!viewportUsable(width, height)) return false;
+  if (Math.hypot(dx, dy) > Math.max(width, height) * DYNAMIC_FLIGHT_STICK_TUNING.corruptPacketViewportMult) {
     return false;
   }
 
-  const radiusPx = dynamicFlightStickRadius(w, h);
-  const stick = host._autoTargetStick || resetDynamicFlightStick(host, w, h);
-  stick.radiusPx = radiusPx;
+  const stick = host._autoTargetStick || resetDynamicFlightStick(host, width, height);
+  const radiusPx = adoptRadius(stick, width, height);
   stick.xPx = finite(stick.xPx) + dx;
   stick.yPx = finite(stick.yPx) + dy;
 
@@ -88,8 +107,13 @@ export function projectDynamicFlightStick(host, width, height) {
   if (!stick || !inp?.autoFire) {
     return { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
   }
+  // CSS pixels only. devicePixelRatio sizes the backing buffer and is not an input.
+  // A minimized viewport commands nothing and does not move the stored knob.
+  if (!viewportUsable(width, height)) {
+    return { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+  }
 
-  const radiusPx = Math.max(1, finite(stick.radiusPx, dynamicFlightStickRadius(width, height)));
+  const radiusPx = Math.max(1, adoptRadius(stick, width, height));
   const sx = clamp(finite(stick.xPx) / radiusPx, -1, 1);
   const sy = clamp(finite(stick.yPx) / radiusPx, -1, 1);
   const rawMagnitude = Math.min(1, Math.hypot(sx, sy));

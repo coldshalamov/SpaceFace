@@ -578,8 +578,6 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 
 | # | Kind | Unit | Decided player outcome | Prerequisite / prior owner | Status |
 |---|---|---|---|---|---|
-| 159 | BUILD | [NXB-001](design/program/next-wave-2026-09-28/build/NXB-001.md) | One pilot: deliberate device takeover without competing helm inputs | Existing owners; SF-014, SF-276, PQ-164 | OPEN |
-| 160 | BUILD | [NXB-002](design/program/next-wave-2026-09-28/build/NXB-002.md) | Keep the G-stick response stable through resize, zoom and display-density changes | Existing owners; SF-001, SF-002, SF-010 | OPEN |
 | 161 | BUILD | [NXB-003](design/program/next-wave-2026-09-28/build/NXB-003.md) | Make simultaneous input edges mean the same thing at different render rates | Existing owners; SF-269, PQ-189 | OPEN |
 | 162 | BUILD | [NXB-010](design/program/next-wave-2026-09-28/build/NXB-010.md) | Overlapping fields produce a predictable net force without stealing the controls | Existing owners; SF-034, SF-038, SF-039, SF-040 | OPEN |
 | 163 | BUILD | [NXB-014](design/program/next-wave-2026-09-28/build/NXB-014.md) | Lawful combat stands down when the specific surrender is accepted | Existing owners; SF-058, SF-151, SF-161, CR-WEIR-1 | OPEN |
