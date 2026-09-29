@@ -139,6 +139,10 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   // hull:fractured is a brittle rock/hull split: the mining fracture break (sub + noise) reads
   // as breakage, not combustion, and stays distinct from sfx_explosion_small.
   'hull:fractured': 'sfx_mining_fracture_break',
+  // cargo:hotDockSpill announces through cargo's own undock receipt (toast + audio:cue 'alert'):
+  // the spill lands under the dock clunk with the station hub up, so a verb-route sting here
+  // would play into the hub instead of the moment the player can act on it.
+  'cargo:hotDockSpill': SILENT('The spill receipt is the undock toast + alert cue; the dock clunk owns the arrival moment.'),
   // jump start/arrive own semantic journey voices (travel.jump.committed / travel.arrival ->
   // sfx_travel_commit / sfx_travel_arrival). The raw bus rows deliberately stay out of the
   // verb-cue route so the audio lane never stacks a direct voice with the journey voice.
