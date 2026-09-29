@@ -26,6 +26,7 @@ import {
 } from '../combat/tumbleStatus.js';
 import {
   HITSTUN_IMPULSE_EVENT,
+  holdImpulseProvenance,
   impulseProvenanceGeneration,
   isShoveClassHitstunSource,
   readRecentImpulseProvenance,
@@ -365,6 +366,18 @@ export const tumbleStates = {
     // A fresh forced tumble cancels any stabilization already in progress: the helm is
     // decontrolled again, not recovering. Stacking and cap rules above are untouched.
     clearRecovery(victim);
+    // Hull-burst overhaul slice A: whoever knocked this hull loose keeps the credit for as long as
+    // it is flying loose — the tumble plus its recovery beat — so a rock or a second hull met after
+    // a long flight is still the knocker's kill. This runs for every source: a rock bounce mid-flight
+    // extends the tumble, so it extends the credit of the hit that started it (the hold itself only
+    // ever extends a live record that is this tumble's cause or is already held; it cannot invent,
+    // revive, or transfer credit).
+    if (combatFlag('tumbleFling')) {
+      const holdTicks = Math.ceil((until - now + TUMBLE_RECOVERY_S) * 60) + 1;
+      const cause = input.provenance && Number.isFinite(input.provenance.appliedTick)
+        ? input.provenance.appliedTick : null;
+      holdImpulseProvenance(victim, (state.tick | 0) + holdTicks, state.tick | 0, cause);
+    }
 
     const profile = resolveFlightProfile(victim, state);
     const body = ensurePhysicsBodySpec(victim);
