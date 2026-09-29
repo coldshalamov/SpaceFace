@@ -66,6 +66,11 @@ try {
     await clickButton(cdp, 'Launch');
   }
 
+  const midLoad = await evalJson(cdp, snapshotExpression());
+  if (!midLoad.bootOverlayHidden) {
+    assert.equal(midLoad.bootBarVisible, false, 'the retired 2px boot bar must stay hidden while the ring owns progress');
+  }
+
   const flight = await waitFor(cdp, () => snapshotExpression(), (snap) => snap.flightPlayable, 45000, 'playable flight HUD');
   assert.equal(flight.emptyPreGameHud, false, 'flight should not be the empty pre-game HUD');
 
@@ -276,6 +281,7 @@ function snapshotExpression() {
     const flightPlayable = flightPlayableState || hudPlayableDom;
     return {
       bootOverlayHidden: !bootOverlay || bootOverlay.classList.contains('hidden'),
+      bootBarVisible: visible(document.querySelector('#boot-overlay .boot-progress')),
       cinematicVisible,
       mainMenuVisible,
       newGameVisible,

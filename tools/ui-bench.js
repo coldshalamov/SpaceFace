@@ -488,7 +488,7 @@ let baseBaseline = null;
 
 async function ensureClaimsOwner() {
   if (benchClaimsOwner) return benchClaimsOwner;
-  const [{ claims }] = await import('../src/systems/claims.js');
+  const { claims } = await import('../src/systems/claims.js');
   benchClaimsOwner = Object.create(claims);
   benchClaimsOwner.init({ state, bus, registry });
   return benchClaimsOwner;
@@ -518,8 +518,8 @@ async function seedBaseShot(gameState, kind = 'claimed') {
     pendingClaim: gameState.ui.pendingClaimBodyId || null,
     simTime: gameState.simTime,
   };
-  const [{ CLAIMABLE_BODY_SITES }] = await import('../src/data/claimableBodies.js');
-  const [{ stableRecordId, RECORD_KIND }] = await import('../src/world/worldRecords.js');
+  const { CLAIMABLE_BODY_SITES } = await import('../src/data/claimableBodies.js');
+  const { stableRecordId, RECORD_KIND } = await import('../src/world/worldRecords.js');
   // The run is 72 minutes in (footprint precedent): receipts read minutes old, the convoy mid-leg.
   gameState.simTime = 4320;
   gameState.player.credits = 200000;
@@ -570,10 +570,10 @@ async function seedBaseShot(gameState, kind = 'claimed') {
  * the bench (the canvas guard hands the presenter this same instance).
  */
 const BENCH_LOADING_STAGES = Object.freeze([
-  Object.freeze({ id: 'restoring-save', progress: 0.08, label: 'Restoring flight state', detail: 'Rebuilding the saved sector and critical visuals' }),
-  Object.freeze({ id: 'authored-library', progress: 0.25, label: 'Loading critical flight assets', detail: 'Keeping authored visuals intact while the saved sector returns' }),
-  Object.freeze({ id: 'authored-visuals', progress: 0.5, label: 'Building the opening scene', detail: 'Committing authored objects before the first playable frame' }),
-  Object.freeze({ id: 'restoring-flight', progress: 0.62, label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' }),
+  Object.freeze({ id: 'restoring-save', progress: 0.08, label: 'Restoring flight state', detail: 'Rebuilding the saved sector' }),
+  Object.freeze({ id: 'authored-library', progress: 0.25, label: 'Loading the ships', detail: 'Bringing the saved sector back with its ships intact' }),
+  Object.freeze({ id: 'authored-visuals', progress: 0.5, label: 'Building the opening scene', detail: 'Placing ships and stations before you arrive' }),
+  Object.freeze({ id: 'restoring-flight', progress: 0.62, label: 'Restoring flight state', detail: 'Rebuilding the current sector' }),
 ]);
 
 let benchLoadingPresenter = null;
