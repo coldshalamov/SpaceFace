@@ -1193,28 +1193,17 @@ export const save = {
       // The fallback scanner is for Continue/list repair, not the write hot path. Re-validating every
       // primary and recovery envelope here made one autosave pay an O(all save bytes) index tax.
       // A corrupt/missing index safely rebuilds when listSlots/_latestSlot next requests fallback.
+      // The card itself is the envelope just written. Live credits, sector, and objectives can move
+      // during the chunked encode, and the slot list prefers this card when the timestamps tie.
       const idx = normalizeSlotIndex(this._readIndex());
-      const state = this.state;
-      const sectorId = state.world.currentSectorId;
-      const sector = sectorId && state.world.sectors[sectorId];
-      const shipDef = (state.player.ownedShips[state.player.activeShipIndex] || {}).defId || null;
-      const navSummary = navObjectiveSummary(state.nav);
-      const missionSummary = missionObjectiveSummary(state.missions, state.ui && state.ui.trackedMissionId);
-      const storySummary = storyObjectiveSummary(state.story);
-      idx[slot] = {
-        slot,
-        savedAt: envelope.savedAt,
-        playtimeS: envelope.playtimeS,
-        credits: state.player.credits,
-        sectorName: (sector && sector.name) || sectorId || '',
-        shipName: shipDef || '',
-        navObjectiveSummary: navSummary,
-        missionSummary,
-        storySummary,
-        objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
-        endingChoice: completedEndingChoiceFromStory(state.story) || undefined,
-        version: envelope.version,
-      };
+      const fromFile = envelope && envelope.data
+        ? slotCardFromEnvelopeData(slot, envelope, (sectorId) => {
+          const known = sectorId && this.state && this.state.world && this.state.world.sectors
+            && this.state.world.sectors[sectorId];
+          return known && (known.name || known.id) || '';
+        })
+        : null;
+      idx[slot] = fromFile || liveSlotSummary(slot, envelope, this.state);
       localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
     } catch (err) { /* index is best-effort; never fail a save over it */ }
   },
@@ -4627,23 +4616,47 @@ function compareOccupiedSlotNewestFirst(a, b) {
   return 0;
 }
 
-function slotMetaFromEnvelope(slot, env) {
+function liveSlotSummary(slot, envelope, state) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const sector = sectorId && state.world.sectors && state.world.sectors[sectorId];
+  const shipDef = (state && state.player && state.player.ownedShips && state.player.ownedShips[state.player.activeShipIndex] || {}).defId || null;
+  const navSummary = navObjectiveSummary(state && state.nav);
+  const missionSummary = missionObjectiveSummary(state && state.missions, state && state.ui && state.ui.trackedMissionId);
+  const storySummary = storyObjectiveSummary(state && state.story);
+  return {
+    slot,
+    savedAt: envelope && envelope.savedAt,
+    playtimeS: envelope && envelope.playtimeS,
+    credits: state && state.player ? state.player.credits : undefined,
+    sectorName: (sector && sector.name) || sectorId || '',
+    shipName: shipDef || '',
+    navObjectiveSummary: navSummary,
+    missionSummary,
+    storySummary,
+    objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
+    endingChoice: completedEndingChoiceFromStory(state && state.story) || undefined,
+    version: envelope && envelope.version,
+  };
+}
+
+/**
+ * Menu card for one written envelope. Credits, ship, route, and story come from that envelope,
+ * not from whatever the live run did while the bytes were encoding. `sectorNameOf` resolves the
+ * frozen sector id against the authored table; it must not read the live current sector.
+ * Untrusted disk scans keep the checksum gate in `slotMetaFromEnvelope` so this write path does
+ * not stringify the whole save a second time.
+ */
+export function slotCardFromEnvelopeData(slot, env, sectorNameOf = null) {
   if (!env || typeof env !== 'object' || env.fmt !== FMT) return null;
   const versionRead = readSaveVersion(env.version);
   if (!versionRead.ok) return null;
   const data = env.data;
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  if (env.checksum) {
-    try {
-      if (fnv1a(safeStringify(data)) !== env.checksum) return null;
-    } catch (err) {
-      return null;
-    }
-  }
   const player = data.player && typeof data.player === 'object' && !Array.isArray(data.player) ? data.player : {};
   const world = data.world && typeof data.world === 'object' && !Array.isArray(data.world) ? data.world : {};
   const meta = data.meta && typeof data.meta === 'object' && !Array.isArray(data.meta) ? data.meta : {};
-  const sectorId = world.currentSectorId || '';
+  const sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+  const named = typeof sectorNameOf === 'function' ? sectorNameOf(sectorId) : '';
   const sector = sectorId && world.sectors && world.sectors[sectorId];
   const activeIndex = Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
   const ownedShips = Array.isArray(player.ownedShips) ? player.ownedShips : [];
@@ -4659,7 +4672,7 @@ function slotMetaFromEnvelope(slot, env) {
     savedAt: env.savedAt || meta.lastSavedAt || meta.savedAt || '',
     playtimeS: Number.isFinite(playtimeS) ? playtimeS : 0,
     credits: Number.isFinite(player.credits) ? player.credits : undefined,
-    sectorName: (sector && (sector.name || sector.id)) || sectorId || '',
+    sectorName: named || (sector && (sector.name || sector.id)) || sectorId || '',
     shipName: activeShip.defId || '',
     navObjectiveSummary: navSummary,
     missionSummary,
@@ -4668,6 +4681,22 @@ function slotMetaFromEnvelope(slot, env) {
     endingChoice: completedEndingChoiceFromSaveData(data) || undefined,
     version: env.version,
   };
+}
+
+function slotMetaFromEnvelope(slot, env) {
+  if (!env || typeof env !== 'object' || env.fmt !== FMT) return null;
+  const versionRead = readSaveVersion(env.version);
+  if (!versionRead.ok) return null;
+  const data = env.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  if (env.checksum) {
+    try {
+      if (fnv1a(safeStringify(data)) !== env.checksum) return null;
+    } catch (err) {
+      return null;
+    }
+  }
+  return slotCardFromEnvelopeData(slot, env, null);
 }
 
 function readableMissionType(value) {
