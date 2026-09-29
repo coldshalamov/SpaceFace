@@ -69,16 +69,25 @@ export function fittedHullBurst(state) {
 
 /**
  * What one hit delivers. Pure so the scene, the tests and the HUD tip read the same law.
- *   raw = (kick + (1 + bounce) * closing) * bumperMass / (bumperMass + targetMass)
- *   deltaV = max * tanh(raw / max)
- * The ceiling is soft on purpose: a hard clamp gives a light hull, a medium and a Bastion the same
- * number once the arrival is fast, and "a heavy shrugs" stops being true exactly when it matters.
+ *   raw = (kick + (1 + bounce) * eff) * bumperMass / (bumperMass + targetMass),  eff = c^2 / (c + toe)
+ *   deltaV = raw up to the knee, then knee + (max - knee) * tanh((raw - knee) / (max - knee))
+ * Two properties matter. The ceiling is soft: a hard clamp gives a light hull, a medium and a Bastion the
+ * same number once the arrival is fast, and "a heavy shrugs" stops being true exactly when it matters.
+ * And the knee is above the arrival speeds the module rewards: a thrown light hull must leave the nose
+ * FASTER than the player is flying (about 1.2 x closing for a Wasp), or the player rams it again.
  */
 export function hullBurstDeltaV(def, closing, bumperMass, targetMass) {
   const c = Math.max(0, finite(closing));
   const share = bumperMass / (bumperMass + Math.max(0.1, targetMass));
-  const raw = (def.kickWuS + (1 + def.bounce) * c) * share;
-  return def.maxDeltaVWuS * Math.tanh(Math.max(0, raw) / def.maxDeltaVWuS);
+  // The toe keeps a crawl a nudge: the shove beat (SHOVE_BEAT_LAW) gives ANY shove-class hit past u = 0.3 about a
+  // screen of travel, so the only way to have a touch that is smaller than a screen is to stay under it.
+  const eff = c * c / (c + Math.max(1e-6, finite(def.toeClosingWuS, 0)));
+  const raw = (def.kickWuS + (1 + def.bounce) * eff) * share;
+  const r = Math.max(0, raw);
+  const knee = Math.min(def.kneeWuS, def.maxDeltaVWuS);
+  if (r <= knee) return r;
+  const span = def.maxDeltaVWuS - knee;
+  return span > 0 ? knee + span * Math.tanh((r - knee) / span) : knee;
 }
 
 /**
@@ -116,6 +125,10 @@ export const hullBurst = {
     this.helpers = ctx.helpers;
     this._scratch = [];
     this._unsubs = [];
+    // The once-per-activation latch is a WeakSet of ENTITY OBJECTS, not ids: this runtime recycles entity ids,
+    // so an id latch would skip a new hull that reused a dead hull's id inside one window. It lives on the
+    // system, not in state, so nothing that snapshots or clones state ever meets a Set.
+    this._latched = new WeakSet();
     this._ensureRuntime();
     if (this.bus && typeof this.bus.on === 'function') {
       for (const event of ['game:new', 'save:loaded', 'save:restoring']) {
@@ -136,7 +149,7 @@ export const hullBurst = {
     const state = this.state;
     if (!state) return null;
     if (!state.hullBurst) {
-      state.hullBurst = { phase: 'ready', kind: null, activeUntil: 0, readyAt: 0, hits: 0, latched: new Set() };
+      state.hullBurst = { phase: 'ready', kind: null, activeUntil: 0, readyAt: 0, hits: 0 };
     }
     return state.hullBurst;
   },
@@ -145,7 +158,7 @@ export const hullBurst = {
     const rt = this._ensureRuntime();
     if (!rt) return;
     rt.phase = 'ready'; rt.kind = null; rt.activeUntil = 0; rt.readyAt = 0; rt.hits = 0;
-    rt.latched.clear();
+    this._latched = new WeakSet();
   },
 
   /**
@@ -168,7 +181,7 @@ export const hullBurst = {
     rt.activeUntil = now + def.durationS;
     rt.readyAt = rt.activeUntil + def.cooldownS;
     rt.hits = 0;
-    rt.latched.clear();
+    this._latched = new WeakSet();
     if (this.bus) {
       this.bus.emit('hullBurst:activated', {
         kind: def.id, name: def.name, durationS: def.durationS, cooldownS: def.cooldownS,
@@ -186,7 +199,7 @@ export const hullBurst = {
     const rt = this.state && this.state.hullBurst;
     if (!rt || rt.phase !== 'active') return;
     rt.phase = 'cooling';
-    rt.latched.clear();
+    this._latched = new WeakSet();
     const now = simNow(this.state);
     // Cutting it short keeps the recharge honest: the clock always runs from the moment it stopped.
     const def = resolveHullBurst(rt.kind, 1);
@@ -224,10 +237,10 @@ export const hullBurst = {
     for (const target of near) {
       if (!target || !target.alive || target.id === player.id) continue;
       if (!CANDIDATE_TYPES.has(target.type)) continue;
-      if (rt.latched.has(target.id)) continue;
+      if (this._latched.has(target)) continue;
       const geo = hullBurstWedgeHit(def, player, target);
       if (!geo) continue;
-      rt.latched.add(target.id);
+      this._latched.add(target);
       const closing = (finite(player.vel && player.vel.x) - finite(target.vel && target.vel.x)) * geo.radialX
         + (finite(player.vel && player.vel.z) - finite(target.vel && target.vel.z)) * geo.radialZ;
       const hostile = isHostileToPlayer(target, playerTeam, state);

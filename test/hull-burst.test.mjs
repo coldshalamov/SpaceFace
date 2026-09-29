@@ -79,6 +79,17 @@ test('the throw is momentum: a crawl is a nudge, a full-speed arrival is the ful
   assert.equal(hullBurstDeltaV(GRAVITY, -80, bumper, 16), hullBurstDeltaV(GRAVITY, 0, bumper, 16), 'a hull pulling away is a touch, never a negative throw');
 });
 
+test('a thrown light hull leaves the nose FASTER than the player is flying, so the player does not ram it again', () => {
+  const bumper = 18 * GRAVITY.massScale;
+  for (const arrival of [120, 200, 281, 400]) {
+    const wasp = hullBurstDeltaV(GRAVITY, arrival, bumper, 16);
+    assert.ok(wasp > arrival, `a Wasp thrown by a ${arrival} WU/s arrival leaves at ${wasp.toFixed(0)} (> ${arrival})`);
+  }
+  const boost = hullBurstDeltaV(GRAVITY, 281, bumper, 16);
+  const sling = hullBurstDeltaV(GRAVITY, 450, bumper, 16);
+  assert.ok(sling > boost * 1.15, `there is headroom above boost speed: a 450 WU/s arrival throws ${sling.toFixed(0)} vs ${boost.toFixed(0)} at 281`);
+});
+
 test('the wedge is a cone in front of the nose', () => {
   const player = { pos: { x: 0, z: 0 }, rot: 0, radius: 12 };
   const at = (x, z, radius = 9) => hullBurstWedgeHit(GRAVITY, player, { pos: { x, z }, radius });
@@ -239,4 +250,28 @@ test('the first station stocks it at first-haul terms; everywhere else the catal
   assert.equal(mod.requiresTech, 'tech_graviton_drives', 'catalog research gate');
   assert.equal(stationShopOffer(mod, 'station_helios').price, 12000, 'the rack at Helios');
   assert.equal(stationShopOffer(mod, 'station_tethys'), null, 'no special listing elsewhere');
+});
+
+test('the latch is per entity OBJECT: a new hull that reuses a dead hull id in the same window is still thrown', () => {
+  const h = harness();
+  const first = h.add({ pos: { x: 60, z: 0 } });
+  hullBurst.activate();
+  h.tick(2);
+  assert.equal(h.impulses.length, 1);
+  // The first hull dies and the runtime hands its id to a new one.
+  first.alive = false;
+  h.state.entities.delete(first.id);
+  h.state.entityList.splice(h.state.entityList.indexOf(first), 1);
+  const reborn = h.add({ id: first.id, pos: { x: 70, z: 0 } });
+  assert.equal(reborn.id, first.id, 'setup: the id is recycled');
+  h.tick(2);
+  assert.equal(h.impulses.filter((i) => i.entityId === first.id).length, 2, 'the recycled id is thrown again');
+});
+
+test('state.hullBurst is plain data: it survives JSON and structuredClone (snapshot code may meet it)', () => {
+  const h = harness();
+  hullBurst.activate();
+  h.tick(3);
+  assert.doesNotThrow(() => structuredClone(h.state.hullBurst));
+  assert.deepEqual(JSON.parse(JSON.stringify(h.state.hullBurst)).phase, 'active');
 });

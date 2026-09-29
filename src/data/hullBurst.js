@@ -7,8 +7,11 @@
 //
 // THE HURL IS MOMENTUM, NOT A FORCE FIELD. While the burst runs the player counts as `massScale`
 // times heavier and the wedge behaves like an elastic bumper: what it touches is thrown away with
-//   raw = (kick + (1 + bounce) * closing) * bumperMass / (bumperMass + targetMass)
-//   deltaV = maxDeltaV * tanh(raw / maxDeltaV)          (a soft ceiling: order by mass survives)
+//   raw = (kick + (1 + bounce) * eff) * bumperMass / (bumperMass + targetMass),  eff = closing^2 / (closing + toe)
+//   deltaV = raw up to a knee, then a soft ceiling toward maxDeltaV (order by mass survives)
+// The knee sits ABOVE the arrival speeds the module is meant to reward: a thrown hull must leave the
+// nose faster than the player is flying, or the player rams what it just threw and the measured "throw"
+// is the player's own bulldozer (found in review: every swing arm converged on the player's speed).
 // where `closing` is how fast the target and the nose were coming together along the throw. That is
 // the whole point of the module: a crawling touch is a nudge, a full-speed arrival (a Massline
 // swing) is the full effect, and a heavy hull shrugs because the ratio shrinks with its mass.
@@ -29,11 +32,15 @@ export const HULL_BURST_TYPES = Object.freeze({
     halfAngleRad: 0.5,        // ~29 degrees each side at the far edge
     noseWidthWu: 18,
     // The hurl.
-    massScale: 2.5,           // the player counts as this much heavier while it runs
+    massScale: 4,             // the player counts as this much heavier while it runs
     kickWuS: 8,               // delta-V of a touch at zero closing speed, before the mass ratio: below the
                               // hitstun floor for a light hull, so a crawl is a shove, never a stun
-    bounce: 0.6,              // restitution of the bumper: (1 + bounce) x closing
-    maxDeltaVWuS: 260,        // soft ceiling (asymptote) on what one hit delivers
+    bounce: 1.0,              // restitution of the bumper: (1 + bounce) x the effective closing speed
+    toeClosingWuS: 60,        // a low-speed toe: eff = c^2 / (c + toe), so a crawl (c ~ 20) counts as ~5 and a
+                              // boost-speed arrival (c ~ 280) as ~230. A touch stays a nudge (the shove beat
+                              // gives ANY shove-class hit about a screen of travel, so a nudge has to stay under it)
+    kneeWuS: 300,             // below this a throw is exactly the momentum law
+    maxDeltaVWuS: 480,        // the soft ceiling's asymptote: a hard safety bound, not a tuning knob
     forwardBias: 0.65,        // throw direction = 0.65 x nose heading + 0.35 x centre-to-centre
     // What a non-hostile hull in the wedge gets instead: a nudge, never a fling or a stun.
     nudgeMaxDeltaVWuS: 12,
@@ -63,6 +70,7 @@ export function resolveHullBurst(kind, rank = 1) {
     rank: r + 1,
     durationS: type.durationS * (1 + HULL_BURST_RANK_GAIN.durationPerRank * r),
     reachWu: type.reachWu * (1 + HULL_BURST_RANK_GAIN.reachPerRank * r),
+    kneeWuS: type.kneeWuS * (1 + HULL_BURST_RANK_GAIN.deltaVPerRank * r),
     maxDeltaVWuS: type.maxDeltaVWuS * (1 + HULL_BURST_RANK_GAIN.deltaVPerRank * r),
   });
 }

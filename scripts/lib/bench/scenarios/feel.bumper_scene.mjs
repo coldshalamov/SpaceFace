@@ -44,7 +44,8 @@ const BUMPER_SYSTEMS = Object.freeze(SHOVE_SYSTEMS.flatMap((s) => (s === impulse
 export const BUMPER_TARGETS = Object.freeze({
   swingToCrawlDistanceRatio: 4,   // "a crawling touch is a nudge; a full-speed hit is the full effect"
   lightSwingFlightWu: 200,        // a light hull is thrown about two screens in 3 s
-  heavyShrugRatio: 0.6,           // a Warden-class hull is given at most 60% of the delta-V a Wasp is
+  heavyShrugRatio: 0.5,           // a Warden-class hull is given at most half the delta-V a Wasp is
+  heavyHelmLossShare: 0.6,        // and keeps flying: it loses its helm for at most 60% as long as a light hull
   outboundAtHelmReturnWuS: 40,    // no buzz: a thrown hull is still leaving when its helm returns
   fieldKillsCreditedToPlayer: 2,  // of three, by the wedge and the hulls it flings
   fieldLandedShare: 1,
@@ -127,7 +128,7 @@ async function bootBumper(seed, { systems = BUMPER_SYSTEMS, playerPos = { x: 0, 
  * One throw. The player closes on a parked hostile at `playerSpeed`, the burst is lit on tick 1, and
  * the hostile is traced until FLIGHT_S after the hit lands.
  */
-async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0, boost = false }) {
+async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0, boost = false, burst = true }) {
   const boot = await bootBumper(seed);
   if (boot.reason) return { measured: false, tag, reason: boot.reason };
   const { host } = boot;
@@ -145,6 +146,12 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
   host.bus.on('hullBurst:activated', () => { activated = true; });
   host.bus.on('hullBurst:hit', (p) => { if (p && p.targetId === target.id) hits.push({ tick: host.state.tick | 0, ...p }); });
   host.bus.on('combat:tumbled', (p) => { if (p && p.victimId === target.id) tumbled.push({ tick: p.tick, durationS: p.durationS, source: p.source }); });
+  // Every contact the target has with another ship (the player is the only other ship in these arms): the
+  // player's own ram. A throw is only a throw if the hull is not rammed again afterwards.
+  const rams = [];
+  host.bus.on('combat:collisionConsequence', (p) => {
+    if (p && p.targetId === target.id && p.otherType === 'ship') rams.push({ tick: p.tick == null ? (host.state.tick | 0) : p.tick, deltaV: finite(p.deltaV) });
+  });
 
   const startTick = host.state.tick | 0;
   const trace = [];
@@ -156,14 +163,14 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
   let playerSpeedBeforeHit = 0;
   host.step(60 * 12, {
     before: ({ state }) => {
-      if (!lit) { lit = light(host); }
+      if (burst && !lit) { lit = light(host); }
       // Hands off unless the arm says otherwise: the flight assist settles a hull to rest, so an
       // arm that needs an ARRIVAL SPEED keeps its throttle open until the wedge has hit.
-      writeRealPathInput(state, hits.length ? {} : { moveZ: throttle, boost });
+      writeRealPathInput(state, (hits.length || rams.length) ? {} : { moveZ: throttle, boost });
     },
     after: ({ state }) => {
       const tick = state.tick | 0;
-      if (!hits.length) playerSpeedBeforeHit = Math.hypot(finite(player.vel.x), finite(player.vel.z));
+      if (!hits.length && !rams.length) playerSpeedBeforeHit = Math.hypot(finite(player.vel.x), finite(player.vel.z));
       trace.push({
         tick, x: finite(target.pos.x), z: finite(target.pos.z),
         vx: finite(target.vel.x), vz: finite(target.vel.z),
@@ -171,7 +178,8 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
         tumbling: readTumbleStatus(state, target) !== null, recovering: isRecovering(state, target),
         alive: target.alive !== false,
       });
-      if (hits.length && !hitPos) {
+      // The reference is the burst's hit; with no burst lit (the control arm) it is the first contact.
+      if ((hits.length || (!burst && rams.length)) && !hitPos) {
         hitPos = { x: finite(target.pos.x), z: finite(target.pos.z) };
         readTick = tick + Math.round(FLIGHT_S / DT);
         endTick = tick + Math.round(TRACE_S / DT);
@@ -185,9 +193,12 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
   });
 
   const hit = hits[0] || null;
-  const distance = hit && hitPos ? distanceAtRead : 0;
+  const distance = hitPos ? distanceAtRead : 0;
+  const hitTick = hit ? hit.tick : (rams[0] ? rams[0].tick : null);
+  // Contacts AFTER the burst's hit: the player bulldozing the hull it just threw.
+  const ramsAfterHit = hit ? rams.filter((r) => r.tick > hit.tick) : rams;
   let peakSpeed = 0;
-  for (const s of trace) if (hit && s.tick >= hit.tick) peakSpeed = Math.max(peakSpeed, s.speed);
+  for (const s of trace) if (hitTick != null && s.tick >= hitTick) peakSpeed = Math.max(peakSpeed, s.speed);
   const stun = tumbled[0] || null;
   // The buzz test: after the helm returns, is the hull still moving away from the player?
   let outboundAtStunEnd = null;
@@ -207,6 +218,8 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
     stunS: stun ? round(stun.durationS, 3) : 0,
     flightDistanceWu: round(distance, 1),
     peakSpeed: round(peakSpeed, 1),
+    playerRams: ramsAfterHit.length,
+    playerRamDeltaV: round(ramsAfterHit.reduce((m, r) => Math.max(m, r.deltaV), 0), 1),
     outboundAtStunEnd,
     alive: target.alive !== false,
     realPathProof: host.proof(),
@@ -310,14 +323,24 @@ export const scenario = {
   id: 'feel.bumper_scene',
   label: 'BUMPER Gravity Bumper yardstick: crawl vs swing fling distance, heavy shrug, three Wasps into a rock wall',
   async run(seed) {
-    const crawl = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 15, targetX: 120, tag: 'crawl' });
+    // A real crawl: the target starts OUTSIDE the wedge's reach and the player closes on it slowly, so the hit
+    // lands at a small but real closing speed (not a stationary player, which is a different case).
+    const crawl = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 20, targetX: 200, tag: 'crawl', throttle: 0.1 });
     const swing = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 200, targetX: 260, tag: 'swing', throttle: 1, boost: true });
     const medium = await runThrow(seed, { hullId: 'ship_drifter', playerSpeed: 200, targetX: 260, tag: 'swing_medium', throttle: 1, boost: true });
     const heavy = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'swing_heavy', throttle: 1, boost: true });
+    // The control: the same approach at the same Warden with the burst NEVER lit. Whatever this hull does is the
+    // player's own ram; the burst has to beat it, not be it.
+    const control = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'control_heavy', throttle: 1, boost: true, burst: false });
     const field = await runField(seed);
 
     const targets = [];
     const push = (id, label, value, unit, met, note) => targets.push({ id, label, value, unit, met: !!met, ...(note ? { note } : {}) });
+    if (crawl.measured && crawl.hit) {
+      push('crawl.valid', 'the crawl arm really is a slow approach: closing speed at the hit (WU/s)',
+        crawl.hit.closing, 'WU/s', crawl.hit.closing >= 5 && crawl.hit.closing <= 40,
+        `player ${crawl.playerSpeedAtHit} WU/s at the hit; wanted between 5 and 40`);
+    }
     if (crawl.measured && swing.measured) {
       const ratio = swing.flightDistanceWu / Math.max(1, crawl.flightDistanceWu);
       push('ratio.swingToCrawl', 'flight distance in 3 s: full-speed arrival over a crawl-speed touch',
@@ -332,13 +355,34 @@ export const scenario = {
         swing.outboundAtStunEnd, 'WU/s', swing.outboundAtStunEnd >= BUMPER_TARGETS.outboundAtHelmReturnWuS,
         `target >= ${BUMPER_TARGETS.outboundAtHelmReturnWuS}`);
     }
+    if (swing.measured && medium.measured) {
+      // The player must not bulldoze what it just threw: a thrown hull leaves the nose faster than the
+      // player flies, so there is no second contact. If there is, the "flight distance" is the player's own
+      // ram, not the burst (found in review: every swing arm had converged on the player's speed). Light
+      // and medium hulls must clear the nose. A heavy is thrown slower than the player flies BY DESIGN
+      // ("shoved hard but keeps flying") and may be caught: the control arm shows what that means.
+      push('noRam', 'contacts between the player and a light / medium hull the wedge just threw',
+        swing.playerRams + medium.playerRams, 'contacts', swing.playerRams === 0 && medium.playerRams === 0,
+        `light ${swing.playerRams} (leaves at ${swing.peakSpeed} WU/s), medium ${medium.playerRams} (leaves at ${medium.peakSpeed}), both vs the player's ${swing.playerSpeedAtHit}/${medium.playerSpeedAtHit}; heavy ${heavy.measured ? heavy.playerRams : '?'} contacts`);
+    }
     if (swing.measured && heavy.measured && swing.hit && heavy.hit) {
-      // What the WEDGE delivers, not how far the hull ends up: the player keeps flying at the hull it
-      // just threw and can hit it again, so a flight distance mixes in a second, ordinary contact.
+      // What the WEDGE delivers (the player keeps flying at whatever it just threw and can hit a slow one
+      // again, so a flight distance mixes in an ordinary contact), and whether the heavy keeps its helm.
       const shrug = heavy.hit.deltaV / Math.max(1e-6, swing.hit.deltaV);
       push('heavy.shrug', 'delta-V the wedge gives a heavy hull, as a share of what it gives a light hull at the same arrival speed',
         round(shrug, 3), 'fraction', shrug <= BUMPER_TARGETS.heavyShrugRatio,
-        `light ${swing.hit.deltaV} WU/s (mass ${swing.targetMass}), medium ${medium.hit ? medium.hit.deltaV : '?'} (mass ${medium.targetMass}), heavy ${heavy.hit.deltaV} (mass ${heavy.targetMass}); heavy helm lost ${heavy.stunS} s vs ${swing.stunS} s; flights ${swing.flightDistanceWu}/${medium.flightDistanceWu}/${heavy.flightDistanceWu} WU; target <= ${BUMPER_TARGETS.heavyShrugRatio}`);
+        `light ${swing.hit.deltaV} WU/s (mass ${swing.targetMass}), medium ${medium.hit ? medium.hit.deltaV : '?'} (mass ${medium.targetMass}), heavy ${heavy.hit.deltaV} (mass ${heavy.targetMass}); target <= ${BUMPER_TARGETS.heavyShrugRatio}`);
+      push('heavy.keepsHelm', 'a heavy hull loses its helm for this share of what a light hull does to the same hit',
+        round(heavy.stunS / Math.max(1e-6, swing.stunS), 3), 'fraction', heavy.stunS <= BUMPER_TARGETS.heavyHelmLossShare * swing.stunS,
+        `heavy ${heavy.stunS} s vs light ${swing.stunS} s; target <= ${BUMPER_TARGETS.heavyHelmLossShare}`);
+      if (control.measured) {
+        // Informational, not a target: with the burst NEVER lit the player still carries a Warden along at
+        // its own speed (a light ship shoves a heavy one at 280 WU/s), because the player is not slowed by
+        // what it touches (the no-physics-damage ruling). That bulldozer is the baseline the burst adds to.
+        push('control.bulldozer', 'INFO: with no burst, a Warden the player rams at speed is carried along at (WU/s peak)',
+          control.peakSpeed, 'WU/s', true,
+          `${control.playerRams} contacts, ${control.flightDistanceWu} WU in 3 s; with the burst: ${heavy.flightDistanceWu} WU after a ${heavy.stunS} s helm loss`);
+      }
     }
     if (field.measured) {
       push('field.hits', 'hostile hulls the wedge threw, of three', field.burstHits, 'hulls', field.burstHits === field.hostiles);
@@ -355,7 +399,7 @@ export const scenario = {
         schema: 'spaceface.feel.bumperScene.v1',
         realPathProof: (crawl && crawl.realPathProof) || null,
         targetsDefinition: BUMPER_TARGETS,
-        crawl, swing, medium, heavy, field,
+        crawl, swing, medium, heavy, control, field,
         targets,
       },
     };
