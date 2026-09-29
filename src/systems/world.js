@@ -4637,7 +4637,9 @@ export const world = {
     const sector = state.world.sectors[cur] || SECTOR_BY_ID.get(cur);
     const target = state.world.sectors[targetSectorId] || SECTOR_BY_ID.get(targetSectorId);
 
-    const reject = (reason) => this.bus.emit('jump:chargeAbort', { reason });
+    // Refusals may carry the world's own numbers (fuelNeeded/creditsNeeded/cooldownS) so the
+    // receipt lane can say the cause AND the fix (WF-14) without mirroring jump math in the UI.
+    const reject = (reason, extra) => this.bus.emit('jump:chargeAbort', { reason, ...(extra || {}) });
 
     // A jump request issued while docked (or outside flight) is rejected outright: the charge
     // state machine ticks under the flight sim, so accepting here would wedge CHARGING with no
@@ -4645,7 +4647,7 @@ export const world = {
     if ((state.ui && state.ui.docked) || state.mode !== 'flight') return reject('docked');
     if (!target) return reject('unknown_target');
     if (jump.state !== 'IDLE') return reject('busy');
-    if (jump.cooldownT > 0) return reject('cooldown');
+    if (jump.cooldownT > 0) return reject('cooldown', { cooldownS: Math.ceil(jump.cooldownT) });
 
     // must be a graph neighbor (or the wormhole edge if unlocked)
     const isNeighbor = !!(sector && (sector.neighbors || []).includes(targetSectorId));
@@ -4662,7 +4664,9 @@ export const world = {
 
     const edgeDist = this._edgeDist(sector, target);
     const fuelCost = via === 'gate' ? 0 : Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
-    if (via === 'drive' && state.fuel.current < fuelCost) return reject('low_fuel');
+    if (via === 'drive' && state.fuel.current < fuelCost) {
+      return reject('low_fuel', { fuelNeeded: fuelCost, fuelHeld: Math.floor(state.fuel.current) });
+    }
 
     // Gate toll (high-sec customs) is validated before the departure preflight, but charged only
     // after it. Contextual story choices may defer a valid departure without consuming credits or
@@ -4670,7 +4674,12 @@ export const world = {
     let gateToll = 0;
     if (via === 'gate') {
       gateToll = this._gateToll(target);
-      if (gateToll > 0 && ((state.player && state.player.credits) | 0) < gateToll) return reject('credits');
+      if (gateToll > 0 && ((state.player && state.player.credits) | 0) < gateToll) {
+        return reject('credits', {
+          creditsNeeded: gateToll,
+          creditsHeld: Math.floor((state.player && state.player.credits) || 0),
+        });
+      }
     }
 
     const preflight = { targetSectorId, via, deferred: false };
@@ -4719,7 +4728,9 @@ export const world = {
     if (this._combatLock && !drive.hotJump) return reject('combat_lock');
     const edgeDist = this._edgeDist(source, target);
     const fuelCost = Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
-    if (state.fuel.current < fuelCost) return reject('low_fuel');
+    if (state.fuel.current < fuelCost) {
+      return reject('low_fuel', { fuelNeeded: fuelCost, fuelHeld: Math.floor(state.fuel.current) });
+    }
 
     jump.state = 'CHARGING';
     jump.targetSectorId = UNFILED_JUMP_RETURN;
@@ -4763,7 +4774,11 @@ export const world = {
     jump.chargeT = 0; jump.chargeNeeded = 0; jump._fuelCost = 0;
     const unfiled = jump._unfiled === true;
     jump._unfiled = false; jump._unfiledConfirmed = false;
-    this.bus.emit('jump:chargeAbort', { reason, ...(unfiled ? { unfiled: true } : {}) });
+    this.bus.emit('jump:chargeAbort', {
+      reason,
+      fuelHeld: Math.floor(this.state.fuel.current) || 0,
+      ...(unfiled ? { unfiled: true } : {}),
+    });
   },
 
   // =========================================================================================

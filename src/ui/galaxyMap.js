@@ -2201,14 +2201,34 @@ export function isPlayerInGateRange(state, gateTarget) {
 export function emitGalaxyMapPrimaryAction(bus, action) {
   if (!bus || !action) return false;
   if (action.kind === 'jump' && action.targetSectorId) {
+    // The world validates on this same bus synchronously: acceptance answers `jump:chargeStart`,
+    // a refusal `jump:chargeAbort` — both DURING the requestJump emit below. Ask before claiming
+    // success: a refusal is voiced once by the receipt lane (bindJumpDenialToasts), and this
+    // toast must never promise a jump the drive just refused. A bus without listeners (headless
+    // fixtures, the shipped seam test) counts as accepted and keeps the old shape.
+    let accepted = true;
+    const onChargeStart = () => { accepted = true; };
+    const onChargeAbort = () => { accepted = false; };
+    if (typeof bus.on === 'function') {
+      accepted = false;
+      bus.on('jump:chargeStart', onChargeStart);
+      bus.on('jump:chargeAbort', onChargeAbort);
+    }
     bus.emit('world:requestJump', { targetSectorId: action.targetSectorId, via: 'gate' });
+    if (typeof bus.off === 'function') {
+      bus.off('jump:chargeStart', onChargeStart);
+      bus.off('jump:chargeAbort', onChargeAbort);
+    }
     const course = action.coursePayload || { type: 'sector', sectorId: action.targetSectorId, path: null };
     bus.emit('ui:setCourse', course);
-    bus.emit('toast', {
-      text: `Course set: jump to ${action.targetSectorId}`,
-      kind: 'info',
-      ttl: 3,
-    });
+    if (accepted) {
+      const label = (action.coursePayload && action.coursePayload.label) || action.targetSectorId;
+      bus.emit('toast', {
+        text: `Course set: jump to ${label}`,
+        kind: 'info',
+        ttl: 3,
+      });
+    }
     return true;
   }
   if (!action.coursePayload) return false;
