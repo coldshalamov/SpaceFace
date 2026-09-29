@@ -2327,6 +2327,55 @@ here and there in the fixing commit.
 | Row | Outcome |
 |---|---|
 
+### Wave GFX-2 — the graphics assessment, implemented (2026-09-28/29) — IN PROGRESS, handoff
+
+Source of every row: [`GRAPHICS_ASSESSMENT_2026-09-28.md`](./design/program/GRAPHICS_ASSESSMENT_2026-09-28.md)
+(evidence sheets under `.devshots/assess/`). Owner asked for all of it. Packets run in order A→F;
+delete a row in the commit that finishes it.
+
+**Landed and pushed:**
+- **A — visual bugs** (`cbce4123a`): dynamic resolution no longer draws into the bottom-left corner
+  (D97 deleted); the purple disc under ships was the contact-shadow ink (now black); Wreck Cathedral
+  draws at authored size (D54 keeps only the Anvil item); sector-jump prewarm treats superseded
+  entries as withdrawal (6 jumps, 0 fallbacks); Pelican posters re-rendered (D72 deleted).
+- **B — runtime lighting + composition** (`52008a734`): per-sector rigs with key-colour moods (Vesta
+  hot, Pallas cold, Sker sodium, Ceres dusty) inside the colour standard; `fleet-look --sector=`;
+  per-sector sky bodies + desaturated painted sky; `src/render/cameraOccluders.js` dips bodies out
+  of the camera→player corridor. Shadows stay opt-in (owner ruling 2026-09-21); 2048 texel-snapped
+  map for the opt-in. Render graph (GTAO) stays opt-in: same picture, 1.4–1.9× cost.
+
+**C — kit surface + motion + fleet republish: UNCOMMITTED in the tree, interrupted before its checks.**
+What is in the working tree (verify, then commit by pathspec — foreign dirty files sit beside it):
+- C1 baked per-body AO: `tools/blender/forge/forge_export.py` (second UV + Cycles AO bake → glTF
+  occlusionTexture texCoord 1), forge-v1 material path applies AO to direct light
+  (`src/render/illustratedSurface.js`, `src/render/authoredMaterialProfiles.js`).
+- C2 panel grid broken up: `tools/blender/forge/forge_textures.py` + regenerated
+  `tools/blender/forge/textures/*.png`; UV rotation/offset jitter in `forge.py`.
+- C3 window/beacon emission for places: state unknown — check `forge.py` FINISHES and a hub z330 still.
+- C4 motion: `s.anim(...)` in `forge.py`/`forge_export.py` (ANIM_ nodes), 29 ship/place sources
+  tagged, ANIM_ driver in `src/render/infrastructureMotion.js` (+ place branch in `renderer.js`),
+  ANIM_ lane allowed in flight-static packages (`scripts/build-render-package-pilots.mjs`, `publish.mjs`).
+- C5 republish ran over 67 wholeship + 66 place GLBs (+ release mirrors, 447 render-package files,
+  manifests, census). `check-parts-manifest`: 5766 ok / 0 fail. The parts-manifest text corruption
+  from the Windows publish ("â€”") is repaired; confirm its writer is UTF-8-explicit before the next publish.
+- NOT yet run: `check-render-package-pilots`, `check-graphics-asset-receipts`,
+  `node --test test/model-truth-census.test.mjs test/render-package-pilots.test.mjs test/live-ship-visual-package-coverage.test.mjs`,
+  the ANIM/AO focused tests, `check:baseline`, and before/after sheets (partial captures in
+  `.devshots/c5-after-ships/`). Next session: run those, open the sheets (AO must darken recesses
+  without muddying; hub dock lights must chase), fix, then commit C.
+
+**Not started (in order):**
+- **E — models:** rebuild the 29 blockout "everyday space kit" props in Forge (same slots, pack
+  pipeline like the wreck pack); wreck fragments (floating pieces, too-clean "fresh", plank-like
+  cable/pipe); optic crystals as faceted glass not white cards; claim outposts heavier; transponder
+  gate not a sliver; rocks less lumpy; distinct grit/military dock interiors; Wreck Cathedral rebuild
+  to the 40–100k landmark budget; Quiessence freighters to ~15–20k; faction variants of Span/Wasp get
+  silhouette changes (not recolours); spread the civilian ivory-and-orange palette.
+- **F — effects at chase zoom:** record a real fight and prove flash/tracer/impact/death burst read at
+  144 WU; mining beam with body + contact spray + heat on the rock; white-hot Massline core; sector
+  arrival wake/flash; visible retro jet.
+- Also from the assessment: Sker Haven's purple soft-sphere crystals read as blobs (part of E).
+
 ### Wave D — shelf that beats live
 
 Reuse before authoring. A variant counts.
