@@ -58,10 +58,38 @@ export function settle(element, { from = 'left', delay = 0, state } = {}) {
 export function stamp(elements, { gap = 60, state } = {}) {
   stateName(state);
   if (!Number.isFinite(gap) || gap < 0) throw new RangeError('Kit stamp gap must be non-negative');
-  const list = Array.from(elements);
+  const list = Array.from(elements || []);
   if (Math.max(0, list.length - 1) * gap > 1000) throw new RangeError('Kit stamp sequence exceeds the delay budget');
   const cancellations = list.map((element, index) => settle(element, { from: 'stamp', delay: index * gap, state }));
   return () => cancellations.forEach(cancel => cancel());
+}
+
+/**
+ * Demo-prep polish seam (headless-testable): arrival stagger plan for a row of controls.
+ * Pure helper — assigns each item a delay in [0, budgetMs] so screens can cascade
+ * without hand-rolled timing. Empty input yields an empty plan; never throws on junk.
+ */
+export function planArrivalStagger(count, { gap = 60, budget = 1000 } = {}) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  const step = Math.max(0, Number(gap) || 0);
+  const cap = Math.max(0, Number(budget) || 0);
+  const delays = [];
+  for (let i = 0; i < n; i += 1) delays.push(Math.min(cap, i * step));
+  return delays;
+}
+
+/**
+ * Demo-prep polish seam (headless-testable): confirm-dialog copy plan.
+ * Pure helper — a danger dialog names the irreversible verb once in the title
+ * and keeps the body to the consequence, so a stray Elsewhere click never
+ * reads a wall of text. Empty input yields a safe default, never blank chrome.
+ */
+export function planConfirmCopy({ title = '', body = '', confirmLabel = 'Confirm' } = {}) {
+  const clean = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  const safeTitle = clean(title) || 'Confirm';
+  const safeBody = clean(body);
+  const safeConfirm = clean(confirmLabel) || 'Confirm';
+  return { title: safeTitle, body: safeBody, confirmLabel: safeConfirm };
 }
 
 /** Synchronous visibility change; a later settle is optional, never an exit fade. */
