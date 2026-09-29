@@ -1042,7 +1042,8 @@ function classifyWorld(state, runtime) {
       }
     }
     const signature = cachedActivitySignature(runtime, entity.id, stamp);
-    if (runtime.signaturesById.get(entity.id) !== signature) {
+    // '' is a valid sentinel: real signatures always contain '|' separators.
+    if ((runtime.signaturesById.get(entity.id) ?? '') !== signature) {
       runtime.signaturesById.set(entity.id, signature);
       runtime.changedIds.push(entity.id);
     }
