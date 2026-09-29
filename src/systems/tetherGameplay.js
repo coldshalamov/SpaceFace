@@ -199,6 +199,7 @@ export const tetherGameplay = {
       this._cancelDrillApproach('save_loaded');
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
+      this._releaseSnagLatch(this.state, this._snag, 'ended');
       this._snag = null;
     };
     const resetForNewGame = () => {
@@ -211,6 +212,7 @@ export const tetherGameplay = {
       this._monofilamentLatchId = null;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
+      this._releaseSnagLatch(this.state, this._snag, 'ended');
       this._snag = null;
     };
     const endForSectorBoundary = (reason) => {
@@ -218,6 +220,7 @@ export const tetherGameplay = {
       this._cancelDrillApproach(reason);
       this._resetAcquisitionRuntime(this.state);
       this._endTwinBridleForBoundary(this.state, reason);
+      this._releaseSnagLatch(this.state, this._snag, 'ended');
       this._snag = null;
     };
     this._insideTetherUpdate = false;
@@ -1947,10 +1950,12 @@ export const tetherGameplay = {
       this._releaseSnagLatch(state, snag, 'ended');
       return;
     }
-    if (snag.attachmentId !== attachment.id || snag.targetId !== this._active.targetId) {
+    const activeTargetId = this._active && this._active.targetId != null
+      ? this._active.targetId : attachment.targetId;
+    if (snag.attachmentId !== attachment.id || snag.targetId !== activeTargetId) {
       this._releaseSnagLatch(state, snag, 'ended');
       snag.attachmentId = attachment.id;
-      snag.targetId = this._active.targetId;
+      snag.targetId = activeTargetId;
     }
     const dx = finite(target.pos.x) - finite(player.pos.x);
     const dz = finite(target.pos.z) - finite(player.pos.z);
@@ -2028,6 +2033,7 @@ export const tetherGameplay = {
         mirror.kind = snag.obstacleKind;
         mirror.x = snag.x;
         mirror.z = snag.z;
+        // Shared mutable mirror — readers (the HUD) consume it per frame and never retain it.
         playerTether.snag = mirror;
       } else {
         playerTether.snag = null;
@@ -2119,6 +2125,10 @@ export const tetherGameplay = {
   },
 
   _releaseSnagLatch(state, snag, reason) {
+    // Clear the mirror even when the latch is already gone: reset handlers and the inactive
+    // _mirror path call this with this._snag === null, and a stale mirror must never outlive it.
+    const t = state && state.player && state.player.tether;
+    if (t) t.snag = null;
     if (!snag) return;
     if (snag.active && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('tether:snagCleared', {
@@ -2138,8 +2148,6 @@ export const tetherGameplay = {
     snag.stallTicks = 0;
     snag.clearTicks = 0;
     snag.active = false;
-    const t = state && state.player && state.player.tether;
-    if (t) t.snag = null;
   },
 
   _mirror(
@@ -3473,7 +3481,9 @@ export function readTautHostileSweepCrossing(state, player, out) {
   if (!byId || typeof byId !== 'object') return null;
   const tick = Number.isFinite(state.tick) ? state.tick : null;
   const published = hostileSweepReads.get(state);
-  if (published && published.tick === tick) {
+  // tick null means this state's clock is unreadable — the slot's freshness cannot be trusted,
+  // so fall through to the direct compute instead of accepting a possibly-stale published read.
+  if (published && tick !== null && published.tick === tick) {
     if (!published.taut) return null;
     result.cutterId = published.cutterId;
     result.bladeId = published.bladeId;
@@ -3630,7 +3640,7 @@ export function readHostileSweepCommit(state, player, out) {
   if (!byId || typeof byId !== 'object') return null;
   const tick = Number.isFinite(state.tick) ? state.tick : null;
   const published = hostileSweepReads.get(state);
-  if (published && published.tick === tick) {
+  if (published && tick !== null && published.tick === tick) {
     const commit = published.commit;
     if (!commit || commit.active !== true) return null;
     result.active = true;
@@ -3657,7 +3667,7 @@ function orient2d(a, b, p) {
   return (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x);
 }
 
-// Closest point on segment (a→b) to p, 2D XZ. Returns {x, z, t} or null for a degenerate span.
+// Closest point on segment (a→b) to p, 2D XZ. Returns {x, z, t}; a degenerate span returns a.
 function closestPointOnSegment(px, pz, ax, az, bx, bz) {
   const dx = bx - ax;
   const dz = bz - az;

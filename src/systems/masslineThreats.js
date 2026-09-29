@@ -129,6 +129,9 @@ export const masslineThreats = {
     // count); collision candidates are physical bodies inside THREAT_SCAN_RADIUS
     // via the live spatial hash — a body that cannot collide cannot be a collision
     // course. The unindexed fallback keeps the original full sweep.
+    // Clear the commit mirror before ANY early return below — a skipped flag block or a missing
+    // entities map can never leave last tick's bite point painted.
+    runtime.sweepCommit = null;
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     const playerTeam = player.team;
@@ -169,9 +172,6 @@ export const masslineThreats = {
       }
     }
 
-    // Any early return above leaves last tick's commit mirror in place — clear it up front so a
-    // skipped flag block or missing entities map can never paint a dead bite point.
-    runtime.sweepCommit = null;
     if (massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) {
       const crossing = readTautHostileSweepCrossing(state, player, this._sweepReadScratch);
       if (crossing && crossing.cutterId != null && !this._warnedSweep.has(crossing.cutterId)) {
@@ -182,7 +182,11 @@ export const masslineThreats = {
       // the blade is still inbound — the record carries the bite point so presentation can mark
       // the threatened segment itself. Held per cutter until it leaves the window; re-armed only
       // after ~0.5 s clear, so a hovering blade does not re-alert every tick.
-      const tick = Number.isFinite(state.tick) ? state.tick : 0;
+      // The re-arm latch needs an advancing clock: prefer state.tick, fall back to simTime at
+      // the sim's 60 Hz so a tick-less harness still re-arms instead of latching at 0 forever.
+      const tick = Number.isFinite(state.tick)
+        ? state.tick
+        : Math.floor(finite(state.simTime, 0) * 60);
       const commit = readHostileSweepCommit(state, player, this._commitScratch);
       if (commit && commit.active) {
         const lastSeen = this._commitHeld.get(commit.cutterId);
@@ -203,6 +207,7 @@ export const masslineThreats = {
         mirror.severity = commit.severity;
         mirror.x = commit.x;
         mirror.z = commit.z;
+        // Shared mutable mirror — readers (the HUD) consume it per frame and never retain it.
         runtime.sweepCommit = mirror;
       }
       // A cutter absent longer than the rearm window earns a fresh warning when it recommits.

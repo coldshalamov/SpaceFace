@@ -16,6 +16,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 import { masslineThreats } from '../src/systems/masslineThreats.js';
+import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
+import { masslineHud } from '../src/ui/masslineHud.js';
 import {
   SWEEP_COMMIT_WINDOW_S,
   tetherGameplay,
@@ -321,7 +323,7 @@ function rigSnagScene({ reel = true, obstacle = true, targetVel = null } = {}) {
   const { system, attachments } = makeTetherSystem(state, bus, helpers);
   const line = rigPlayerLine(attachments, state, player, load, 60); // span 120, rest 60 -> loaded
   if (reel) state.input.actions.reelDelta = -1;               // commanded pull-in
-  return { state, system, attachments, events, player, load, rock, line };
+  return { state, bus, system, attachments, events, player, load, rock, line };
 }
 
 test('a reeled load pinned against a body snags once, mirrors the foul point, then clears', () => {
@@ -361,6 +363,27 @@ test('a cut line releases the snag latch with the line', () => {
   assert.equal(state.player.tether.snag, null);
 });
 
+test('sector boundaries and new games release the latch AND the mirror', () => {
+  const { state, bus, system, events } = rigSnagScene();
+  for (let i = 0; i < 30; i++) tick(state, system);
+  assert.equal(events.snagged.length, 1);
+  assert.ok(state.player.tether.snag);
+
+  // A sector boundary ends the line: the latch releases with a real 'ended' event
+  // and the HUD mirror clears — no stale SNAGGED can ride into the next sector.
+  bus.emit('sector:exit', {});
+  assert.equal(events.cleared.length, 1);
+  assert.equal(events.cleared[0].reason, 'ended');
+  assert.equal(state.player.tether.snag, null, 'the boundary clears the mirror');
+
+  // A save-restore residue — a mirror on the record with NO live latch behind it —
+  // must still clear on game:new and must NOT emit (there is nothing to announce).
+  state.player.tether.snag = { obstacleId: 7, kind: 'contact', x: 1, z: 2 };
+  bus.emit('game:new', {});
+  assert.equal(state.player.tether.snag, null, 'a stale mirror is dropped on reset');
+  assert.equal(events.cleared.length, 1, 'no phantom cleared event without a latch');
+});
+
 test('no snag without pull intent, without an obstacle, or while the load is moving', () => {
   // Slack parked line resting against the same rock — no commanded pull.
   const parked = rigSnagScene({ reel: false });
@@ -380,4 +403,160 @@ test('no snag without pull intent, without an obstacle, or while the load is mov
   for (let i = 0; i < 30; i++) tick(moving.state, moving.system);
   assert.equal(moving.events.snagged.length, 0,
     'a load gaining span on the pull is working, not snagged');
+});
+
+// --- the marks themselves ---------------------------------------------------------
+// The sim-side tests above never paint DOM; this one mounts the real HUD over a stub
+// document so the world-anchored mark path is exercised — a thrown ReferenceError in
+// the paint path would close the sim runner, not just hide a mark.
+
+function fakeDocument() {
+  const makeNode = (tagName) => {
+    const node = {
+      tagName,
+      id: '',
+      className: '',
+      children: [],
+      parentNode: null,
+      isConnected: true,
+      textContent: '',
+      attributes: {},
+      style: {
+        display: '',
+        transform: '',
+        setProperty(name, value) { this[name] = value; },
+      },
+      appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
+      removeChild(child) { this.children = this.children.filter((e) => e !== child); child.parentNode = null; },
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+        if (name === 'class') this.className = String(value);
+        if (name === 'id') this.id = String(value);
+      },
+    };
+    node.classList = {
+      contains(name) { return node.className.split(/\s+/).includes(name); },
+      add(name) { if (!this.contains(name)) node.className = `${node.className} ${name}`.trim(); },
+      remove(name) { node.className = node.className.split(/\s+/).filter((e) => e && e !== name).join(' '); },
+      toggle(name, force) {
+        const want = force === undefined ? !this.contains(name) : !!force;
+        if (want) this.add(name); else this.remove(name);
+        return want;
+      },
+    };
+    return node;
+  };
+  const body = makeNode('body');
+  const head = makeNode('head');
+  const hud = makeNode('div');
+  hud.id = 'hud';
+  body.appendChild(hud);
+  const roots = [head, body];
+  const byId = (id) => {
+    const visit = (node) => {
+      if (node.id === id) return node;
+      for (const child of node.children) {
+        const found = visit(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    for (const root of roots) {
+      const found = visit(root);
+      if (found) return found;
+    }
+    return null;
+  };
+  return {
+    body,
+    head,
+    createElement: makeNode,
+    createElementNS: (_ns, tagName) => makeNode(tagName),
+    getElementById: byId,
+  };
+}
+
+function findByClass(root, className) {
+  if (!root) return null;
+  if (root.classList && root.classList.contains(className)) return root;
+  for (const child of root.children || []) {
+    const found = findByClass(child, className);
+    if (found) return found;
+  }
+  return null;
+}
+
+test('the commit and snag mirrors paint world-anchored marks on the HUD', () => {
+  const previousEnabled = MASSLINE2_FLAGS.enabled;
+  const previousDocument = globalThis.document;
+  const previousWindow = globalThis.window;
+  globalThis.document = fakeDocument();
+  globalThis.window = { innerWidth: 1440, innerHeight: 900 };
+  MASSLINE2_FLAGS.enabled = true;
+  try {
+    const p = spawn(1, 'ship', { x: 0, z: 0 }, { team: 0 });
+    const state = {
+      mode: 'flight',
+      simTime: 1,
+      tick: 60,
+      playerId: p.id,
+      player: {
+        tether: {
+          active: true,
+          targetId: 9,
+          snag: { obstacleId: 7, kind: 'contact', x: 40, z: 30 },
+        },
+        masslineThreats: {
+          active: true,
+          sweepCommit: { cutterId: 5, playerLineId: 2, etaS: 0.6, severity: 0.8, x: 20, z: 10 },
+        },
+      },
+      entities: new Map([[p.id, p]]),
+      entityList: [p],
+      settings: { video: { motionReduce: true }, accessibility: { motionPreference: 'reduce' } },
+      massline2: {},
+    };
+    const hud = Object.assign({}, masslineHud);
+    hud.init({
+      state,
+      helpers: { worldToScreen: ({ x, z }) => ({ x: x + 300, y: z + 200, onScreen: true }) },
+    });
+    hud.update(1 / 60, state);
+
+    const root = globalThis.document.getElementById('sf-ml2');
+    const threatMark = findByClass(root, 'ml2-threat-mark');
+    const snagMark = findByClass(root, 'ml2-snag-mark');
+    assert.ok(threatMark, 'the cutter-commit mark must be mounted');
+    assert.ok(snagMark, 'the snag mark must be mounted');
+    assert.equal(threatMark.style.display, 'block',
+      'a live commit mirror paints the CUT mark');
+    assert.equal(snagMark.style.display, 'block',
+      'a live snag mirror paints the SNAGGED mark');
+    assert.ok(/translate3d/.test(threatMark.style.transform),
+      'the mark is positioned at the projected bite point');
+    assert.ok(/320/.test(threatMark.style.transform) && /210/.test(threatMark.style.transform),
+      'the bite point projects to its screen position');
+    assert.equal(threatMark.attributes['role'], 'status');
+    assert.equal(snagMark.attributes['role'], 'status');
+
+    // Mirrors clear -> marks hide; mirrors move -> marks repaint (the signature covers them).
+    state.player.masslineThreats.sweepCommit = null;
+    state.player.tether.snag = null;
+    hud.update(1 / 60, state);
+    assert.equal(threatMark.style.display, 'none', 'a cleared commit hides the mark');
+    assert.equal(snagMark.style.display, 'none', 'a cleared snag hides the mark');
+
+    state.player.tether.snag = { obstacleId: 7, kind: 'span', x: 60, z: 90 };
+    hud.update(1 / 60, state);
+    assert.equal(snagMark.style.display, 'block', 'a moved snag repaints');
+    assert.ok(/360/.test(snagMark.style.transform) && /290/.test(snagMark.style.transform),
+      'the snag mark tracks the foul point');
+    hud.destroy();
+  } finally {
+    MASSLINE2_FLAGS.enabled = previousEnabled;
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });

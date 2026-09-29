@@ -1432,21 +1432,21 @@ export const masslineHud = {
   _updateThreatMark(dom, state, w2s) {
     const commit = state.player && state.player.masslineThreats
       && state.player.masslineThreats.sweepCommit;
-    if (!this._updateWorldMark(dom.threatMark, dom.threatMarkLabel, commit, 'CUT')) return;
+    if (!this._updateWorldMark(dom.threatMark, dom.threatMarkLabel, commit, 'CUT', w2s)) return;
     setAttr(dom.threatMark, 'aria-label',
       'Enemy cutter committed to your Massline — the mark sits where the line will be cut.');
   },
 
   _updateSnagMark(dom, state, w2s) {
     const snag = state.player && state.player.tether && state.player.tether.snag;
-    if (!this._updateWorldMark(dom.snagMark, dom.snagMarkLabel, snag, 'SNAGGED')) return;
+    if (!this._updateWorldMark(dom.snagMark, dom.snagMarkLabel, snag, 'SNAGGED', w2s)) return;
     setAttr(dom.snagMark, 'aria-label',
       'Massline snagged — haul through, reposition, or cut free.');
   },
 
   // Shared placement for a world-anchored live-line mark: project, pin to the cue ring when it
   // leaves the viewport, paint the label once. Returns false when the mark is hidden.
-  _updateWorldMark(markEl, labelEl, point, label) {
+  _updateWorldMark(markEl, labelEl, point, label, w2s) {
     if (!markEl) return false;
     const px = point && point.x;
     const pz = point && point.z;
