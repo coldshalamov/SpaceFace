@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "15b4fcef3229c6a2e01aabc93954b47964d1e19a0ff3f4d9278459fcddf3662f",
+  "contentHash": "34d66b0309800fb4bda0b46ecfe9df55ba65058138a788da2850ff85ce4401d5",
   "dynamicGroups": [
     {
       "id": "sf.render.whistle.node.lod0-hook-nav-port.dynamic",
@@ -1899,8 +1899,8 @@
       "uri": "place_whistle.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 213988,
+      "sha256": "b36166a3a8725cddc38c7a9d943ed84da80f9d26f86ba23f8f7c4460485e77eb",
       "uri": "pilots.json"
     }
   },
@@ -2632,7 +2632,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_whistle.glb"
   },
-  "runtimeHash": "bb4f8a4ca2d416ecd7c7cda9d13a7c10ee57227fcc42141c085dfc5a47464f7c",
+  "runtimeHash": "70b371056956863d26606e0477483b62879690b1642b132516e32d4317047eb2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

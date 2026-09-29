@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "50132d96fae31eb7762a559088d9041f3c77d7a8e4a6b98368fc011854a28060",
+  "contentHash": "c423e97f317a49eb8f76e228c3bc9253e29b500c2399df22cece201c2b4023b4",
   "dynamicGroups": [
     {
       "id": "sf.render.candle-fleet.node.lod0-hook-nav-port.dynamic",
@@ -3808,8 +3808,8 @@
       "uri": "place_landmark_candle_fleet.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 213988,
+      "sha256": "b36166a3a8725cddc38c7a9d943ed84da80f9d26f86ba23f8f7c4460485e77eb",
       "uri": "pilots.json"
     }
   },
@@ -5324,7 +5324,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb"
   },
-  "runtimeHash": "0c3b1392d35cc0ce559425b12b6b81ef8d5bb034bfec87c90c6e6c4ff4c82419",
+  "runtimeHash": "0a35798127c3184c9865f639173514478a173e29797519c89c395781158328a2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
