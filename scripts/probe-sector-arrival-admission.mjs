@@ -21,7 +21,9 @@
 //   node scripts/probe-sector-arrival-admission.mjs --shot out.png  # still at the shipping camera
 //
 // Headed is the default because the admission machinery only runs with a real
-// `state.render.scene`; `--headless` is available for triage, not for proof.
+// `state.render.scene`; `--headless` is available for triage, not for proof. CI runners have
+// no X server, so the probe goes headless there automatically (`process.env.CI`) — the same
+// software-GL path every sibling browser check takes — while local runs keep the real GPU.
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -41,7 +43,11 @@ const readOption = (flag, fallback = null) => {
   if (index < 0 || index + 1 >= argv.length) return fallback;
   return argv[index + 1];
 };
-const HEADLESS = argv.includes('--headless');
+// Headed is the local default for real-GPU proof (see header). On a CI runner there is no
+// X server, so a headed launch dies at ozone_platform_x11 before the page exists — the same
+// `$DISPLAY` failure sibling headed-default probes hit. `CI` is set by GitHub Actions (and
+// every other CI host); `--headless` stays the explicit opt-in anywhere.
+const HEADLESS = argv.includes('--headless') || !!process.env.CI;
 const VIA_TELEPORT = argv.includes('--teleport');
 /**
  * `--teleport` drops the player into the destination through `world.enterSector` without the gate
