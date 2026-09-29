@@ -1926,7 +1926,7 @@ export function liveSolidGlbCatalog() {
       fit: 'ship',
       entityRadius: 18,
       colliderKind: 'capsule',
-      proportionsKey: 'ship_mule',
+      proportionsKey: `span:${faction}`,
       solid: true,
       packagedLive: isPackagedLiveWholeShipFile(kit.file),
     });
@@ -1958,10 +1958,8 @@ export function liveSolidGlbCatalog() {
       placeScale: 1,
       entityRadius: family === 'drone' ? 2.4 : dressingRadius,
       colliderKind: 'none',
-      solid: family !== 'sign' && family !== 'drone',
-      nonSolidReason: family === 'drone'
-        ? 'Mining drones stay collides:false so they are not pickup collectors.'
-        : (family === 'sign' ? 'Billboards are signage, not a flight obstacle.' : null),
+      solid: true,
+      nonSolidReason: null,
     });
   }
 
@@ -1975,8 +1973,8 @@ export function liveSolidGlbCatalog() {
       placeScale: 1,
       entityRadius: model.radius,
       colliderKind: 'none',
-      solid: model.spawn !== false,
-      nonSolidReason: model.spawn === false ? 'Heavy wreck mesh is routed but not spawned as a solid.' : null,
+      solid: true,
+      nonSolidReason: null,
     });
   }
 
@@ -1989,8 +1987,8 @@ export function liveSolidGlbCatalog() {
       placeScale: 1,
       entityRadius: model.radius || 12,
       colliderKind: 'none',
-      solid: !String(id).includes('worklight') && !String(id).includes('billboard'),
-      nonSolidReason: String(id).includes('worklight') ? 'Worklights are lamps, not hull.' : null,
+      solid: true,
+      nonSolidReason: null,
     });
   }
 
@@ -2012,7 +2010,7 @@ export function liveSolidGlbCatalog() {
       fit: 'asteroid',
       entityRadius: 12,
       colliderKind: 'ball',
-      solid: typeId !== 'ast_gas_cloud',
+      solid: true,
       opening: typeId === 'ast_gas_cloud' ? 'gas-soft' : null,
     });
   }
@@ -11164,9 +11162,15 @@ function syncSceneStateFromFrame(state, context, stats) {
     if (!owner || !ownerState) continue;
     context.recordsByOwner.set(owner, record);
     nextOwners.add(owner);
+    // Sightline-duck: the owner root's y moved outside the pose path, so the frame record is
+    // clean while every descendant matrixWorld changed. Track the applied depth per owner.
+    const occluderSink = context.occluderSinks ? context.occluderSinks.get(owner) || 0 : 0;
+    const occluderMoved = occluderSink !== (ownerState.occluderSink || 0);
+    if (occluderMoved) ownerState.occluderSink = occluderSink;
     const needsSync = context.cameraDirty
       || record.renderDirty === true
       || ownerState.dirty
+      || occluderMoved
       || !state.activeFrameOwners.has(owner);
     if (!needsSync) {
       stats.matrixReuses += ownerState.submittedCount;
@@ -11566,6 +11570,10 @@ function buildInstanceCullContext(state, opts) {
     ? Number(opts.castRadius)
     : null;
   context.consolidateOpaqueBatches = opts && opts.consolidateOpaqueBatches === true;
+  // Owner roots the camera-sightline duck moved this frame (renderer cameraOccluders.js). Their
+  // proxies must re-submit even when pose/camera are otherwise clean — a ducked root changes
+  // every descendant matrixWorld but touches no dirty flag the frame records carry.
+  context.occluderSinks = opts && opts.occluderSinks instanceof Map ? opts.occluderSinks : null;
   context.farCullWu = instanceFarCullWuFromOpts(opts, camera);
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
@@ -11603,6 +11611,7 @@ function createInstanceCullContext() {
     castRadiusSq: null,
     castRadius: null,
     consolidateOpaqueBatches: false,
+    occluderSinks: null,
     farCullWu: INSTANCE_FAR_CULL_RADIUS,
   };
 }
