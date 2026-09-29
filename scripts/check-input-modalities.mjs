@@ -867,13 +867,19 @@ const TOUCH_MENU_VERBS = ['dock', 'localmap', 'missionLog', 'starmap', 'pause'];
   const pad = makeFakePad();
   s.dom.setPads([pad]);
   s.tick();
-  s.dom.key('keydown', 'KeyW');
+  // NXB-001 one-pilot contract: a deliberate edge takes the helm, so two devices cannot
+  // write movement verbs in the same tick — each modality is proven live in its own window.
+  // Pad fire stays helm-independent, so it rides alongside whichever device steers.
   pad.buttons[(PAD_ACTION_BUTTONS.get('fire') || [7])[0]].pressed = true;
   pad.buttons[(PAD_ACTION_BUTTONS.get('fire') || [7])[0]].value = 1;
   s.dom.touchPress('boost');
   s.tick();
-  check(s.state.input.moveZ > 0.5 && s.state.input.fire === true && s.state.input.boost === true,
-    'all three modalities are live in flight before the modal opens');
+  check(s.state.input.fire === true && s.state.input.boost === true,
+    'pad fire and the touch boost verb are live in flight before the modal opens');
+  s.dom.key('keydown', 'KeyW');
+  s.tick();
+  check(s.state.input.moveZ > 0.5 && s.state.input.fire === true,
+    'the keyboard drive edge takes the helm while pad fire stays live');
 
   s.state.ui.screenStack.push('pause');
   s.tick();

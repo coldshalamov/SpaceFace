@@ -1663,6 +1663,19 @@ function touchHelmEdge(host, tp) {
   return edge;
 }
 
+// A stick cross or an acquire gesture is the pad's helm claim, but a deliberate press on a
+// pad-owned movement verb is one too — the same rule touch uses ("boost is a movement
+// action, so it can take it"). Fire, mine and the UI verbs stay independent of the helm:
+// they read the pad regardless of who is steering, so their edges never claim it.
+function gamepadHelmEdge(gp) {
+  if (!gp || typeof gp.isConnected !== 'function' || !gp.isConnected()) return false;
+  if (gp.helmGestureEdge) return true;
+  const actions = gp.actions || {};
+  const boost = actions.boost;
+  const brake = actions.brake;
+  return !!(boost && boost.pressed) || !!(brake && brake.pressed);
+}
+
 function resolveMovementOwner(host, {
   kbdDrive, gp, tp, pointerHelmEdge = false, pointerOwnsHelm = false,
 }) {
@@ -1673,7 +1686,7 @@ function resolveMovementOwner(host, {
   if (source === 'touch' && !(tp && typeof tp.isConnected === 'function' && tp.isConnected())) {
     source = null;
   }
-  const gpEdge = !!(gp && gp.helmGestureEdge);
+  const gpEdge = gamepadHelmEdge(gp);
   const tpEdge = touchHelmEdge(host, tp);
   const kbdEdge = !!(kbdDrive && !host._kbdDrivePrev);
   const gpStick = !!(gp && typeof gp.isConnected === 'function' && gp.isConnected()
