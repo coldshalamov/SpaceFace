@@ -347,6 +347,311 @@ function seedCrucibleShot(screenId, shot) {
   }
 }
 
+/**
+ * Populated drill shots (catalog `drill: 'claimed' | 'build'`). The drill screen reads the drill
+ * and asteroid-site owners through the registry; the bench wired neither, so every drill shot was
+ * the "No claim" shell. These owners are the game's own systems over the bench state and bus
+ * (Object.create, the way the Crucible and economy owners are built), and the seed below works a
+ * claim through their own intents: a session, a staked site with a committed survey, Core + 2
+ * machines joined by one lane, staged gauges, a half-full hold, and one ledger event.
+ */
+let benchDrillOwner = null;
+let benchSitesOwner = null;
+let drillBaseline = null;
+/** Bench rock id: nowhere near the seeded hull (0/1), the contacts, or the chart's traffic. */
+const BENCH_DRILL_ASTEROID_ID = 5001;
+/** The build row, just under the rover spawn (col 14, row 0): Core, lane, extractor, lane, refinery. */
+const BENCH_DRILL_ROW = Object.freeze([[14, 1], [15, 1], [16, 1], [17, 1], [18, 1]]);
+
+async function ensureDrillOwners() {
+  if (benchDrillOwner && benchSitesOwner) return;
+  const [{ drill }, { asteroidSites }] = await Promise.all([
+    import('../src/systems/drill.js'),
+    import('../src/systems/asteroidSites.js'),
+  ]);
+  benchDrillOwner = Object.create(drill);
+  benchDrillOwner.init({ state, bus, registry });
+  benchSitesOwner = Object.create(asteroidSites);
+  benchSitesOwner.init({ state, bus, registry });
+}
+
+function unseedDrillShot(gameState) {
+  if (!drillBaseline) return;
+  const base = drillBaseline;
+  drillBaseline = null;
+  gameState.drill = base.drill;
+  gameState.sites = base.sites;
+  gameState.player.cargo = base.cargo;
+  gameState.player.credits = base.credits;
+  gameState.player.researchedNodes = base.researched;
+  gameState.ui.pendingDrillAsteroidId = base.pendingDrill;
+  gameState.entities.delete(BENCH_DRILL_ASTEROID_ID);
+  gameState.entityList = gameState.entityList.filter((e) => e && e.id !== BENCH_DRILL_ASTEROID_ID);
+  // The owners cache per-site runtimes by site id; a re-seed mints the same ids, so drop them.
+  try { benchSitesOwner?._rt?.clear?.(); } catch { /* a bench without the owner has no cache */ }
+  try { benchSitesOwner?._surveyByAsteroid?.clear?.(); } catch { /* same */ }
+}
+
+async function seedDrillShot(gameState, kind = 'claimed') {
+  await ensureDrillOwners();
+  // Idempotent: a walk re-mounts the same shot, and installs are not re-runnable (the Core is
+  // unique, the first install needs the rover beside it, materials are consumed) — restore the
+  // baseline, then seed fresh.
+  unseedDrillShot(gameState);
+  drillBaseline = {
+    drill: gameState.drill,
+    sites: structuredClone(gameState.sites),
+    cargo: structuredClone(gameState.player.cargo),
+    credits: gameState.player.credits,
+    researched: (gameState.player.researchedNodes || []).slice(),
+    pendingDrill: gameState.ui.pendingDrillAsteroidId || null,
+  };
+  const { tileIndex } = await import('../src/systems/drill.js');
+  const asteroidId = BENCH_DRILL_ASTEROID_ID;
+  const ent = {
+    id: asteroidId, type: 'asteroid', alive: true, team: 0, radius: 26,
+    pos: { x: 1200, y: 0, z: -600 }, vel: { x: 0, y: 0, z: 0 },
+    data: { typeId: 'ast_common_rock', yieldU: 240 },
+  };
+  gameState.entities.set(asteroidId, ent);
+  gameState.entityList.push(ent);
+  // Fund the Core + extractor + refinery out of the hold, the way a prepared launch would.
+  const items = gameState.player.cargo.items;
+  items.cmdty_regocrete = (items.cmdty_regocrete || 0) + 40;
+  items.cmdty_control_unit = (items.cmdty_control_unit || 0) + 10;
+  items.cmdty_refined_metals = (items.cmdty_refined_metals || 0) + 20;
+  // (a) open a drill session via the drill sys (tethered rover, approach complete).
+  if (!benchDrillOwner.begin(asteroidId)) throw new Error('seedDrillShot: drill.begin refused the bench rock');
+  // Hollow the build row — the bore the session's first minutes cut — and record it the way
+  // drill.js does, so the durable runtime field agrees with the live one.
+  const d = gameState.drill;
+  const cleared = new Set(ent.data.drillCleared || []);
+  for (const [col, row] of BENCH_DRILL_ROW) {
+    if (d.field[col] && d.field[col][row]) {
+      d.field[col][row] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+    }
+    cleared.add(tileIndex(col, row));
+  }
+  ent.data.drillCleared = [...cleared].sort((a, b) => a - b);
+  // (b)+(c) stake the claim — the first install anchors the site and commits the survey with its
+  // formation cells — and raise Core + 2 machines, joined by one lane.
+  const core = benchSitesOwner.installMachine({ asteroidId, defId: 'sm_massline_core', col: 14, row: 1 });
+  if (!core.ok) throw new Error('seedDrillShot: Core refused (' + core.reason + ')');
+  const ext = benchSitesOwner.installMachine({ asteroidId, defId: 'sm_extractor', col: 16, row: 1 });
+  if (!ext.ok) throw new Error('seedDrillShot: extractor refused (' + ext.reason + ')');
+  const ref = benchSitesOwner.installMachine({ asteroidId, defId: 'sm_refinery', col: 18, row: 1 });
+  if (!ref.ok) throw new Error('seedDrillShot: refinery refused (' + ref.reason + ')');
+  const site = benchSitesOwner.getSite(core.siteId);
+  benchSitesOwner.setOverlay(site.id, 'lane', 15, 1, true);
+  benchSitesOwner.setOverlay(site.id, 'lane', 17, 1, true);
+  // (d) heat ~40%, charge ~65%, half-full hold, one ledger event. The build-row bore paid
+  // ore — the crest yield reads it, and the ore sits in the half-full hold below.
+  d.drillTemp = 40;
+  d.drillEnergy = 65;
+  d.yieldLog = { cmdty_ore_iron: 12 };
+  items.cmdty_ore_iron = (items.cmdty_ore_iron || 0) + 24;
+  gameState.player.cargo.usedVolume = Math.round((gameState.player.cargo.capVolume || 40) / 2);
+  site.ledger = [{
+    t: Math.round((gameState.simTime || 0) * 10) / 10,
+    kind: 'good',
+    text: 'Massline Core online — this asteroid is now a permanent site.',
+  }];
+  gameState.ui.pendingDrillAsteroidId = asteroidId;
+  return kind;
+}
+
+/** After mount: the screen's own begin() re-opened the session, resetting gauges and yield —
+ *  re-assert them, open the build palette for the -build variant, and refresh so the still is
+ *  the state. */
+function settleDrillShot(gameState, shot, screen, ctx) {
+  if (gameState.drill) {
+    gameState.drill.drillTemp = 40;
+    gameState.drill.drillEnergy = 65;
+    gameState.drill.yieldLog = { cmdty_ore_iron: 12 };
+  }
+  if (shot.drill === 'build') {
+    // The console's own build toggle (asteroidController: KeyB), the way a player opens it.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB', key: 'b', bubbles: true, cancelable: true }));
+  }
+  screen.refresh?.(ctx);
+}
+
+/**
+ * Populated base shots (catalog `base: 'claimed'`). The base screen reads the claims owner for
+ * the body named by state.ui.pendingClaimBodyId; the bench wired neither, so every base shot was
+ * the "No body selected" card. This stakes an authored L-class site through the owner's own
+ * intents, builds 2 of 5 module slots, commissions a relay identity, stocks the store through
+ * the hold, and puts a convoy mid-leg in the exact shape a dispatch writes.
+ */
+let benchClaimsOwner = null;
+let baseBaseline = null;
+
+async function ensureClaimsOwner() {
+  if (benchClaimsOwner) return benchClaimsOwner;
+  const [{ claims }] = await import('../src/systems/claims.js');
+  benchClaimsOwner = Object.create(claims);
+  benchClaimsOwner.init({ state, bus, registry });
+  return benchClaimsOwner;
+}
+
+function unseedBaseShot(gameState) {
+  if (!baseBaseline) return;
+  const base = baseBaseline;
+  baseBaseline = null;
+  gameState.claims = base.claims;
+  gameState.player.credits = base.credits;
+  gameState.player.cargo = base.cargo;
+  gameState.player.researchedNodes = base.researched;
+  gameState.ui.pendingClaimBodyId = base.pendingClaim;
+  gameState.simTime = base.simTime;
+}
+
+async function seedBaseShot(gameState, kind = 'claimed') {
+  const owner = await ensureClaimsOwner();
+  // Idempotent (see seedDrillShot): claim() refuses an already-claimed POI.
+  unseedBaseShot(gameState);
+  baseBaseline = {
+    claims: structuredClone(gameState.claims),
+    credits: gameState.player.credits,
+    cargo: structuredClone(gameState.player.cargo),
+    researched: (gameState.player.researchedNodes || []).slice(),
+    pendingClaim: gameState.ui.pendingClaimBodyId || null,
+    simTime: gameState.simTime,
+  };
+  const [{ CLAIMABLE_BODY_SITES }] = await import('../src/data/claimableBodies.js');
+  const [{ stableRecordId, RECORD_KIND }] = await import('../src/world/worldRecords.js');
+  // The run is 72 minutes in (footprint precedent): receipts read minutes old, the convoy mid-leg.
+  gameState.simTime = 4320;
+  gameState.player.credits = 200000;
+  const researched = new Set(gameState.player.researchedNodes || []);
+  researched.add('tech_outpost_charter');
+  gameState.player.researchedNodes = [...researched];
+  const poi = CLAIMABLE_BODY_SITES.find((s) => s.id === 'poi_claim_lacuna');
+  if (!poi || !owner.claim(poi)) throw new Error('seedBaseShot: claim refused');
+  const body = gameState.claims.bodies[gameState.claims.bodies.length - 1];
+  body.slots = 5;
+  if (!owner.buildModule(body.id, 'mod_depot')) throw new Error('seedBaseShot: depot refused');
+  if (!owner.buildModule(body.id, 'mod_defense')) throw new Error('seedBaseShot: defense refused');
+  if (!owner.specialize(body.id, 'spec_relay')) throw new Error('seedBaseShot: specialize refused');
+  // Stored goods travel the owner path (hold → site store).
+  gameState.player.cargo.items.cmdty_ore_iron = (gameState.player.cargo.items.cmdty_ore_iron || 0) + 200;
+  owner.deliverToClaim(body.id, 'cmdty_ore_iron', 150);
+  // One convoy in flight, in the exact shape a relay dispatch writes (claims.js).
+  const t = gameState.simTime || 0;
+  const qty = 60;
+  const dest = 'station_helios';
+  body.spec.store.input.cmdty_ore_iron = Math.max(0, (body.spec.store.input.cmdty_ore_iron || 0) - qty);
+  if (body.spec.store.input.cmdty_ore_iron <= 0) delete body.spec.store.input.cmdty_ore_iron;
+  body.spec.convoySeq = 1;
+  body.spec.convoy = {
+    goodId: 'cmdty_ore_iron', qty, destStationId: dest, departedAt: t - 30, arriveAt: t + 60,
+    convoyId: body.id + ':cv1',
+    bodyId: body.id,
+    worldRecordId: stableRecordId(
+      (gameState.meta && gameState.meta.seed) || 1,
+      body.sectorId || gameState.world.currentSectorId || 'sector',
+      RECORD_KIND.CONVOY,
+      'claim-convoy:' + body.id + ':1',
+    ),
+    manifested: false,
+    entityId: null,
+  };
+  owner._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (owner._stationName(dest) || dest),
+    { goodId: 'cmdty_ore_iron', qty, destStationId: dest });
+  gameState.ui.pendingClaimBodyId = body.id;
+  return kind;
+}
+
+/**
+ * The loading shot (catalog id 'loading'). Not a screen: it stages #boot-overlay — the game's own
+ * markup, styled by the same intro.css — with createLoadingPresenter on the bench bus, fires the
+ * scripted stage sequence so the ring carries 4 ticks + a 62% arc, and waits for the smoothed
+ * value to settle before capture. The tableaux run on the main-thread 2D engine: no worker in
+ * the bench (the canvas guard hands the presenter this same instance).
+ */
+const BENCH_LOADING_STAGES = Object.freeze([
+  Object.freeze({ id: 'restoring-save', progress: 0.08, label: 'Restoring flight state', detail: 'Rebuilding the saved sector and critical visuals' }),
+  Object.freeze({ id: 'authored-library', progress: 0.25, label: 'Loading critical flight assets', detail: 'Keeping authored visuals intact while the saved sector returns' }),
+  Object.freeze({ id: 'authored-visuals', progress: 0.5, label: 'Building the opening scene', detail: 'Committing authored objects before the first playable frame' }),
+  Object.freeze({ id: 'restoring-flight', progress: 0.62, label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' }),
+]);
+
+let benchLoadingPresenter = null;
+
+function ensureBenchLoadingDom() {
+  let overlay = document.getElementById('boot-overlay');
+  if (overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'boot-overlay';
+  overlay.setAttribute('role', 'status');
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.setAttribute('aria-busy', 'true');
+  // index.html's overlay minus the intro video (a bench still never plays it).
+  overlay.innerHTML = `
+      <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
+      <div class="boot-scrim" aria-hidden="true"></div>
+      <header class="boot-meta" aria-hidden="true">
+        <span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span>
+        <span class="boot-meta__clock" data-loading-clock>00:00:00.0</span>
+      </header>
+      <div class="boot-lockup">
+        <span class="boot-wordmark">SPACEFACE</span>
+        <span class="boot-label" data-loading-label>Initializing systems…</span>
+        <span class="boot-detail" data-loading-detail>Preparing your next departure</span>
+        <div class="boot-progress-row" aria-hidden="true">
+          <span class="boot-progress"><span data-loading-progress></span></span>
+          <span class="boot-progress-pct" data-loading-pct>0%</span>
+        </div>
+      </div>`;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function hideBenchLoading() {
+  try { benchLoadingPresenter?.destroy(); } catch { /* overlay teardown is best-effort */ }
+  benchLoadingPresenter = null;
+  const overlay = document.getElementById('boot-overlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+  }
+}
+
+async function mountLoadingShot() {
+  const overlay = ensureBenchLoadingDom();
+  overlay.classList.remove('hidden');
+  overlay.style.display = 'flex';
+  const [{ createLoadingPresenter }, { createTerminalArtwork, ensureBootTerminalCanvas }] = await Promise.all([
+    import('../src/ui/loadingPresenter.js'),
+    import('../src/ui/loadingTerminalArt.js'),
+  ]);
+  const canvas = ensureBootTerminalCanvas(document);
+  if (canvas && !canvas.__sfTerminalArt) {
+    // Hide the worker while the artwork is acquired so the factory takes the main-thread path,
+    // and ask for the 2D engine outright. Restored before anything else runs.
+    const RealWorker = globalThis.Worker;
+    try {
+      globalThis.Worker = undefined;
+      const art = createTerminalArtwork({ canvas, waveformCanvas: null, overlay, force2D: true, document });
+      art.start();
+    } catch (error) {
+      note(`loading art: ${error && error.message ? error.message : String(error)}`);
+    } finally {
+      globalThis.Worker = RealWorker;
+    }
+  }
+  try { benchLoadingPresenter?.destroy(); } catch { /* a re-mounted shot replaces the presenter */ }
+  benchLoadingPresenter = createLoadingPresenter({ document, bus, state });
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  for (const stage of BENCH_LOADING_STAGES) {
+    bus.emit('game:loadingProgress', { ...stage });
+    await sleep(100);
+  }
+  // The bar chases each stage through the presenter's easing; hold the shot until it has settled.
+  await sleep(1500);
+  note('— loading mounted (4 stages, ring at 62%)');
+}
+
 function closeTopScreen(next) {
   screensEl.innerHTML = '';
   currentScreen = null;
@@ -474,6 +779,10 @@ const registry = {
     if (name === 'ui') return { screenManager: manager, manager };
     if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
     if (name === 'survivalDraft') return benchDraftOwner;
+    // Populated drill/base shots mount over real owners (seedDrillShot / seedBaseShot below).
+    if (name === 'drill') return benchDrillOwner;
+    if (name === 'asteroidSites') return benchSitesOwner;
+    if (name === 'claims') return benchClaimsOwner;
     // A shot marked `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js).
     if (name === 'save') return benchSaves;
     // A chart shot plans with the game's own route planner (tools/ui-bench-chart.js).
@@ -524,6 +833,12 @@ async function finishShot(shot) {
   } catch (error) {
     showBroken(shot.screen || shot.id, `mount threw: ${error && error.message ? error.message : String(error)}`);
   }
+  if (shot.screen === 'drill') {
+    // Bench-only: the authored conduit templates never settle on the bench, so on slow runs the
+    // renderer's watchdog raises its fault strip before capture. The strip reports a bench
+    // condition, not the claim's state — keep it out of the frame. Game behavior untouched.
+    for (const el of document.querySelectorAll('.ast3d-conduit-fault')) el.style.display = 'none';
+  }
   try { await document.fonts.ready; } catch { /* fonts are best-effort */ }
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   window.__BENCH_READY = true;
@@ -548,9 +863,24 @@ async function goto(rawId) {
   state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
   state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;
   clearOverlayHost();
+  if (id !== 'bootOverlay') hideBenchLoading();
   try {
-    if (id === 'flight' || id === 'crucibleHud') {
+    if (id === 'bootOverlay') {
       restoreBaseline();
+      unseedFootprintShot(state);
+      unseedDrillShot(state);
+      unseedBaseShot(state);
+      hudEl.innerHTML = '';
+      screensEl.innerHTML = '';
+      document.body.classList.add('k-screen-top');
+      document.body.dataset.kScreen = id;
+      await mountLoadingShot();
+      current = id;
+      currentScreen = null;
+    } else if (id === 'flight' || id === 'crucibleHud') {
+      restoreBaseline();
+      unseedDrillShot(state);
+      unseedBaseShot(state);
       screensEl.innerHTML = '';
       state.ui.docked = false;
       state.ui.dockedStationId = null;
@@ -596,12 +926,21 @@ async function goto(rawId) {
       }
       // A footprint shot mounts over a lived-in record (tools/ui-bench-footprint.js); every other shot over none.
       if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
+      // A drill shot with `drill:` mounts over a worked claim, a base shot with `base:` over a
+      // managed body; every other shot over the seeded state.
+      if (id === 'drill' && shot.drill) await seedDrillShot(state, shot.drill);
+      else unseedDrillShot(state);
+      if (id === 'base' && shot.base) await seedBaseShot(state, shot.base);
+      else unseedBaseShot(state);
       const screen = await loader();
       const ctx = { state, bus, screenManager: manager, registry, writeStorePage() {}, publishStoreStill() {} };
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
       // An ORRERY screen arrives with choreography (rings draw, springs settle); shoot it at rest.
       if (typeof screen.settled === 'function') await screen.settled();
+      // A populated drill shot re-asserts its staged gauges (mount re-opened the session) and,
+      // for -build, opens the palette the way a player does.
+      if (id === 'drill' && shot.drill) settleDrillShot(state, shot, screen, ctx);
       benchOwnerLive = !!benchDraftOwner;
       currentScreen = screen;
       current = id;
@@ -629,6 +968,10 @@ async function openOverlay(kind) {
     if (!state.entityList.some((entity) => entity.id === 7)) state.entityList.push(contact);
     const { createCommsRadial } = await import('../src/ui/commsRadial.js');
     createCommsRadial(ctx);
+    // The fan's key listeners register synchronously in create (verified in commsRadial.js), but
+    // the hail plate staged on the same tick won the race in the w3a stills — let one frame paint
+    // between create and the hold-Alt that opens the fan.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', bubbles: true, cancelable: true }));
     const fan = document.getElementById('sf-commsfan');
     window.__BENCH_OVERLAY = fan && !fan.hidden ? 'comms open' : 'comms did not open (no hail on this still)';

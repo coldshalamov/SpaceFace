@@ -10,7 +10,8 @@ export const BACKDROPS = Object.freeze({
 });
 
 /** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
- *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string}[]} */
+ *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot).
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
@@ -86,7 +87,18 @@ export const UI_BENCH_SHOTS = Object.freeze([
 
   { id: 'asteroid-works', screen: 'drill', backdrop: 'world' },
   { id: 'drill', screen: 'drill', backdrop: 'world' },
+  // A worked claim: staked site with a survey, Core + 2 machines on one lane, heat ~40%,
+  // charge ~65%, half-full hold, one ledger event (tools/ui-bench.js seedDrillShot). -build
+  // is the same claim with the build palette open.
+  { id: 'drill-claimed', screen: 'drill', backdrop: 'world', drill: 'claimed' },
+  { id: 'drill-build', screen: 'drill', backdrop: 'world', drill: 'build' },
   { id: 'base', screen: 'base', backdrop: 'shell' },
+  // A managed body: one staked claim, 2/5 module slots built, a relay identity with stored
+  // goods and a convoy in flight (tools/ui-bench.js seedBaseShot).
+  { id: 'base-claimed', screen: 'base', backdrop: 'shell', base: 'claimed' },
+  // The boot overlay mid-load: ring at 62% with 4 stage ticks over the tableaux field.
+  // Not a screen — the bench stages #boot-overlay directly (mountLoadingShot).
+  { id: 'loading', screen: 'bootOverlay', backdrop: 'title' },
   { id: 'automation', screen: 'automation', backdrop: 'shell' },
 
   { id: 'replay', screen: 'replay', backdrop: 'title' },
