@@ -4,6 +4,7 @@
 
 import { deriveVfxAdmissionMetadata } from '../presentation/vfxAdmissionPriority.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
+import { SECTOR_ARRIVAL_CUES } from '../data/audioRecipes.js';
 
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
 
@@ -524,7 +525,13 @@ export const presentationAdapters = {
   _applyAudio(cue) {
     const mappedAudioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
     if (!mappedAudioId) return null;
-    const audioId = subsystemAudioId(cue, doctrineAudioId(cue, mappedAudioId));
+    // WF-13 sector arrival identity: the sector id riding the cue (targetId) picks that sector's
+    // own arrival voice instead of the one shared identity cue; a first visit announces fuller
+    // than a return nod. Unknown sector keeps the original shared voice (mappedAudioId).
+    const arrival = sectorArrivalAudio(cue);
+    const audioId = arrival
+      ? arrival.id
+      : subsystemAudioId(cue, doctrineAudioId(cue, mappedAudioId));
     if (cue.id.startsWith('travel.') && !this._claimTravelAudioFloor(cue)) return null;
     if (cue.id.startsWith('mining.') && !this._claimMiningAudioFloor(cue)) return null;
     if (cue.id.startsWith('combat.doctrine.') && !doctrineCueOwnsAudio(cue)) return null;
@@ -536,7 +543,7 @@ export const presentationAdapters = {
       cueId: cue.id,
       lane: cue.lanes && cue.lanes.audio || null,
       position: scenarioAudioPosition(cue),
-      gain: combatAftermathGain(cue),
+      gain: arrival ? arrival.gain : combatAftermathGain(cue),
       rate: combatAftermathRate(cue),
       duck: shouldDuckAudio(cue),
       // Preserve the semantic audio route for observability while the earlier raw shieldDown event
@@ -703,6 +710,18 @@ function subsystemAudioId(cue, fallback) {
   if (subsystemId.includes('sensor') || subsystemId.includes('comms')) return 'presentation.subsystem.sensor_disabled';
   if (subsystemId.includes('weapon') || subsystemId.includes('hardpoint')) return 'presentation.subsystem.weapon_disabled';
   return fallback;
+}
+
+// WF-13 sector arrival identity (see SECTOR_ARRIVAL_CUES in src/data/audioRecipes.js): the
+// orchestrator emits 'travel.arrival.sector_identity' with targetId = the sector just entered and
+// tags first_visit/return. A known sector gets its own arrival voice, a first visit louder than a
+// return nod; null keeps the original shared identity voice for unknown sectors.
+function sectorArrivalAudio(cue) {
+  if (!cue || cue.id !== 'travel.arrival.sector_identity') return null;
+  const recipeId = SECTOR_ARRIVAL_CUES[cue.targetId] || null;
+  if (!recipeId) return null;
+  const firstVisit = Array.isArray(cue.tags) && cue.tags.includes('first_visit');
+  return { id: recipeId, gain: firstVisit ? 0.78 : 0.52 };
 }
 
 function doctrineCueOwnsAudio(cue) {

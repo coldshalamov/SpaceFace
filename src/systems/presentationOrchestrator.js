@@ -829,8 +829,12 @@ export const presentationOrchestrator = {
       sequence,
       tags: ['arrival', 'oriented', continuous ? 'continuous' : cycle.via],
     });
+    // Deliberately a DIFFERENT audio-floor claim key than the oriented receipt above: both cues are
+    // authored to be audible at the same arrival (the oriented layered landing AND the identity
+    // voice), and a shared sourceEvent let the first receipt claim the travel audio floor and mute
+    // the second — the identity stinger never reached the speakers.
     this._emitCue('travel.arrival.sector_identity', enriched, {
-      sourceEvent: 'sector:enter',
+      sourceEvent: 'sector:enter:identity',
       sourceId: this.state.playerId,
       targetId: sectorId,
       material: 'sector',
