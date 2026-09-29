@@ -9,6 +9,7 @@ import { WEAPONS } from '../data/weapons.js';
 import {
   ensurePhysicsBodySpec,
   measureThrusterAuthority,
+  queuePhysicsImpulse,
   queuePhysicsTorqueImpulse,
   writePhysicsControl,
 } from '../core/physicsAuthority.js';
@@ -313,6 +314,8 @@ export const tumbleStates = {
       attackerId: payload.attackerId,
       attackerMass: payload.attackerMass,
       hitSide: payload.hitSide === -1 ? -1 : 1,
+      dirX: finite(payload.dirX),
+      dirZ: finite(payload.dirZ),
       worldBody: payload.worldBody === true,
       requireMassline: false,
       provenance: payload.provenance && typeof payload.provenance === 'object' ? payload.provenance : null,
@@ -366,6 +369,17 @@ export const tumbleStates = {
     // A fresh forced tumble cancels any stabilization already in progress: the helm is
     // decontrolled again, not recovering. Stacking and cap rules above are untouched.
     clearRecovery(victim);
+    // Hull-burst overhaul slice A, "the fly buzzing against the wind" (owner, 2026-09-29): a shove
+    // that takes a hull's helm sends it OUT along the push, whatever it was doing. Momentum
+    // arithmetic alone leaves a hostile that was closing on you at 0.6 of its cruise moving at
+    // (deltaV - closing) after a 0.55-of-cruise concussion hit: still coming, or hovering
+    // (feel.fling_scene head-on: -9.5, +24, +5.8 WU/s outbound when the helm returned). So a
+    // shove-class hit that tumbles the hull first cancels the hull's INBOUND velocity along the
+    // push direction, and the hit's own delta-V then lands on a hull that starts from rest along it.
+    // A hull already moving with the push, or across it, is untouched (B4/B5 clauses unchanged).
+    if (combatFlag('tumbleFling') && isShoveClassHitstunSource(input.source)) {
+      this._cancelInboundVelocity(victim, input);
+    }
     // Hull-burst overhaul slice A: whoever knocked this hull loose keeps the credit for as long as
     // it is flying loose — the tumble plus its recovery beat — so a rock or a second hull met after
     // a long flight is still the knocker's kill. This runs for every source: a rock bounce mid-flight
@@ -424,6 +438,29 @@ export const tumbleStates = {
         particles: 16,
         lights: 1,
       });
+    }
+  },
+
+  _cancelInboundVelocity(victim, input) {
+    const dx = finite(input.dirX);
+    const dz = finite(input.dirZ);
+    const len = Math.hypot(dx, dz);
+    if (!(len > 1e-9)) return;
+    const nx = dx / len;
+    const nz = dz / len;
+    // entity.vel is the previous step's mirror: the hit's own impulse has not been folded into it.
+    const along = finite(victim.vel && victim.vel.x) * nx + finite(victim.vel && victim.vel.z) * nz;
+    if (!(along < -1e-6)) return;
+    const mass = massOf(victim);
+    const impulse = { x: nx * -along * mass, y: 0, z: nz * -along * mass };
+    const state = this.state;
+    const tick = state.tick | 0;
+    const port = this.helpers && this.helpers.combatPhysics;
+    const provenance = input.provenance && typeof input.provenance === 'object' ? input.provenance : null;
+    if (port && typeof port.applyImpulse === 'function') {
+      port.applyImpulse({ entityId: victim.id, impulse, point: null, reason: 'hitstun_outbound_floor', tick, provenance });
+    } else {
+      queuePhysicsImpulse(victim, impulse, { provenance, tick, kind: 'hitstun_outbound_floor' });
     }
   },
 
