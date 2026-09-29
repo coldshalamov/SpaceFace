@@ -580,7 +580,6 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 |---|---|---|---|---|---|
 | 162 | BUILD | [NXB-010](design/program/next-wave-2026-09-28/build/NXB-010.md) | Overlapping fields produce a predictable net force without stealing the controls | Existing owners; SF-034, SF-038, SF-039, SF-040 | OPEN |
 | 163 | BUILD | [NXB-014](design/program/next-wave-2026-09-28/build/NXB-014.md) | Lawful combat stands down when the specific surrender is accepted | Existing owners; SF-058, SF-151, SF-161, CR-WEIR-1 | OPEN |
-| 164 | BUILD | [NXB-022](design/program/next-wave-2026-09-28/build/NXB-022.md) | Extraction never loses material merely because the hold fills mid-bite | Existing owners; SF-096, SF-098, SF-111, SF-273 | OPEN |
 | 165 | BUILD | [NXB-025](design/program/next-wave-2026-09-28/build/NXB-025.md) | Sell your own units of a commodity while preserving its sealed contract units | Existing owners; SF-108, SF-111, SF-241, SF-273 | OPEN |
 | 166 | BUILD | [NXB-027](design/program/next-wave-2026-09-28/build/NXB-027.md) | Physical freight, market supply and station growth settle one transaction once | Existing owners; SF-095, SF-106, SF-116, SF-120, SF-290 | OPEN |
 | 167 | BUILD | [NXB-035](design/program/next-wave-2026-09-28/build/NXB-035.md) | A claim raid has one outcome whether the player arrives or stays away | Existing owners; SF-101, SF-105, SF-165, PQ-170 | OPEN |

@@ -26,6 +26,17 @@ for (const sec of SECTORS) {
 }
 const STYLE_ID = 'sf-floattext-style';
 
+/** Direct-to-cargo yield names what the hold took. Loose ore keeps the released quantity. */
+export function miningYieldReportedAmount(payload) {
+  if (!payload || typeof payload !== 'object') return 0;
+  if (Object.prototype.hasOwnProperty.call(payload, 'acceptedAmount')) {
+    const requested = Math.max(Number(payload.qty) || 0, Number(payload.acceptedAmount) || 0);
+    return successfulPickupAmount(payload, requested);
+  }
+  const qty = Number(payload.qty);
+  return Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 0;
+}
+
 export function pickupFloatingTextSpec(payload) {
   const qty = successfulPickupAmount(payload);
   if (qty <= 0) return null;
@@ -183,7 +194,8 @@ export function createFloatingText(ctx) {
   // Direct-to-cargo mining never fires pickup:collected, so this is the only on-screen yield
   // receipt — always name the commodity (bare "+1" is opaque; cargo hold is the real ledger).
   bus.on('mining:yield', (p) => {
-    if (!p || !p.pos || !(p.qty > 0)) return;
+    const reported = miningYieldReportedAmount(p);
+    if (!p || !p.pos || !(reported > 0)) return;
     if (p.minerId != null && p.minerId !== state.playerId) return;
     const def = CMDTY_BY_ID[p.commodityId];
     const name = def ? def.name : (p.commodityId || 'Ore');
@@ -192,7 +204,7 @@ export function createFloatingText(ctx) {
       : cat === 'exotic' ? 'sf-ft--exotic'
       : 'sf-ft--pickup';
     const rich = p.richCore ? ' sf-ft--big' : '';
-    spawn('+' + p.qty + ' ' + name, cls + rich, p.pos.x, p.pos.z, null, {
+    spawn('+' + reported + ' ' + name, cls + rich, p.pos.x, p.pos.z, null, {
       life: p.richCore ? 1.35 : 1.05,
       vy: p.richCore ? 48 : 40,
     });

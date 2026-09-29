@@ -223,9 +223,12 @@ test('budget remaining after a session is lower on the next begin (depletion per
   assert.ok(asteroid.data.drillDepletion > 0, 'depletion fraction written to entity');
 
   assert.equal(drill.begin(42), true);
+  // Re-entry applies richness once to the unscaled remainder. It must stay under the fresh pool.
+  // Comparing it to the already-scaled mid-session budget would require scaling richness twice.
   assert.ok(
-    state.drill.rockBudget <= budgetMid + 1,
+    state.drill.rockBudget < budgetStart,
     `re-entry must not restore full budget (start ${budgetStart}, mid ${budgetMid}, reentry ${state.drill.rockBudget})`,
   );
+  assert.ok(state.drill.rockBudget > 0, 'a rock that still had budget must not read empty');
   drill.end();
 });
