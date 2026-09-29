@@ -8,6 +8,7 @@ import {
   finite,
   hashUnit,
   stableId,
+  wrapAngle,
 } from './contracts.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
@@ -77,6 +78,15 @@ const RANGED_RESET_TICKS = 18;
 // faction presence standoffs sample inside it, so the press trigger must sit below the lowest
 // authored standoff band (170 WU) instead of above the doctrine's own 240 WU default orbit.
 const RANGED_PRESS_FLOOR_WU = 140;
+// A committed corridor is owed its volley once announced. A window measured in ticks assumed the
+// standoff's faceTarget tracking left the nose nearly aligned at cue time; a heavy hull handed the
+// telegraph mid heading-flip (an enemy-mind crossing can carry well over 1 rad/s) slews onto the
+// announced line long after 18 ticks — every such cycle ended committed_aim_off_bore and the
+// volley never existed. While the corridor is still unborne the window stays open so the shot
+// releases the moment a mount cone covers the line, bounded so a corridor the hull can never
+// reach still ends the cycle.
+const RANGED_CORRIDOR_BORE_RAD = 0.3;
+const RANGED_FIRE_MAX_TICKS = 160;
 // Swarm pack: the light-hull identity. Short synchronized passes instead of the raider flyby's
 // measured cycle — the fight reads as a swarm, not as three lone interceptors taking turns.
 // The strike window has to outlive the action cooldown race (burst cooldown 12t + executor
@@ -678,7 +688,16 @@ function updateRanged(record, tick, self, target, distance) {
     record.aimCommitBearing = corridorBearing(self, target);
   }
   else if (record.phase === 'charge_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'fire_window', tick, null);
-  else if (record.phase === 'fire_window' && age >= RANGED_FIRE_TICKS) enter(record, 'reset', tick, null);
+  else if (record.phase === 'fire_window' && age >= RANGED_FIRE_TICKS) {
+    // While the announced corridor is still outside every mount cone the hull is mid-slew onto
+    // the committed line — the window holds open so the volley releases the moment the guns
+    // bear, instead of stranding the cue's commitment. Bounded: a corridor the hull can never
+    // reach still ends the cycle.
+    const corridorUnborne = Number.isFinite(record.aimCommitBearing)
+      && Number.isFinite(self && self.rot)
+      && Math.abs(wrapAngle(record.aimCommitBearing - self.rot)) > RANGED_CORRIDOR_BORE_RAD;
+    if (!corridorUnborne || age >= RANGED_FIRE_MAX_TICKS) enter(record, 'reset', tick, null);
+  }
   else if (record.phase === 'reset' && age >= RANGED_RESET_TICKS) advanceCycle(record, tick, 'outer_standoff');
 }
 
