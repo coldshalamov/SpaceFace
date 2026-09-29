@@ -171,3 +171,77 @@ test('only the player\'s own kill burst spawns combat loot', () => {
     for (const spec of drop('kill_burst')) assert.equal(spec.data.combatLoot, undefined, 'flag off: identical spawn data as before');
   });
 });
+
+function multiHarness(pickups, { acceptUnits = null } = {}) {
+  const player = { id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, flags: {} };
+  const list = pickups.map((data, i) => ({
+    id: 10 + i, alive: true, type: 'pickup', pos: { x: 1800 + i * 40, z: 0 }, vel: { x: 0, z: 0 }, radius: 2.2, mass: 0.1, collides: true, data,
+  }));
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], ...list.map((e) => [e.id, e])]),
+    entityList: [player, ...list],
+    entityIndex: { __spacefaceEntityIndexV1: true, ready: true, pickups: list },
+    player: { magnetRange: 0, miningBeam: { tierId: 'beam_mk1' }, cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 250 }, credits: 0 },
+    mode: 'flight', input: { fireGroup: 0 }, simTime: 5, rng: () => 0.5,
+  };
+  const listeners = Object.create(null);
+  const grants = [];
+  const bus = {
+    on(type, fn) { (listeners[type] = listeners[type] || []).push(fn); return () => {}; },
+    emit(type, payload) {
+      if (type === 'economy:grantCredits') grants.push(payload);
+      for (const fn of listeners[type] || []) fn(payload);
+    },
+  };
+  mining.init({ state, bus, helpers: { spawnEntity: () => null }, registry: { get: () => null } });
+  if (acceptUnits != null) {
+    // The cargo owner only answers for ore/cargo; credit chips are the economy's concern.
+    bus.on('pickup:collected', (payload) => {
+      if (payload.kind !== 'ore' && payload.kind !== 'cargo') return;
+      const accepted = Math.min(payload.amount, acceptUnits);
+      payload.acceptedAmount = accepted;
+      payload.rejectedAmount = payload.amount - accepted;
+    });
+  }
+  return { state, list, grants, bus };
+}
+
+test('docking or jumping banks every in-flight combat pickup: chips pay, ore is held or converts, nothing is lost', () => {
+  for (const event of ['dock:docked', 'jump:start', 'sector:exit']) {
+    withFlag(true, () => {
+      const h = multiHarness([
+        { kind: 'credit_chip', amount: 60, credits: 60, combatLoot: true, homeAt: 6 },
+        { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 15, combatLoot: true, homeAt: 6 },
+        { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 15, combatLoot: true, homeAt: 6 },
+        { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 15 }, // an ordinary pickup is left alone
+      ], { acceptUnits: 10 });
+      h.bus.emit(event, { stationId: 'station_test' });
+      const [chip, oreA, oreB, ordinary] = h.list;
+      assert.equal(chip.alive, false, `${event}: the chip is banked`);
+      assert.equal(oreA.alive, false, `${event}: ore is banked (10 held, 5 converted)`);
+      assert.equal(oreB.alive, false);
+      assert.equal(ordinary.alive, true, `${event}: an ordinary pickup is the pilot's business`);
+      assert.ok(h.grants.some((g) => g.amount === 60), `${event}: the chip paid through the economy owner`);
+      assert.ok(h.grants.some((g) => /^salvage:overflow:/.test(g.reason)), `${event}: refused ore paid credits`);
+    });
+  }
+  withFlag(false, () => {
+    const h = multiHarness([{ kind: 'credit_chip', amount: 60, credits: 60, combatLoot: true, homeAt: 6 }]);
+    h.bus.emit('dock:docked', { stationId: 'station_test' });
+    assert.equal(h.list[0].alive, true, 'flag off: unchanged');
+  });
+});
+
+test('a Survival/Crucible run-wallet chip is combat loot for homing only; its wallet is untouched', () => {
+  withFlag(true, () => {
+    const h = harness({ pickupX: 10, pickupData: { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 1 } });
+    h.bus.emit('loot:drop', {
+      pos: { x: 5, z: 5 }, vel: { x: 0, z: 0 }, source: 'kill_burst',
+      items: [{ kind: 'credit_chip', credits: 50, wallet: 'run', grantReason: 'run:chip:test' }],
+    });
+    assert.equal(h.spawned.length, 1);
+    assert.equal(h.spawned[0].data.combatLoot, true, 'it homes like any kill loot');
+    assert.equal(h.spawned[0].data.wallet, 'run', 'and still settles into the run wallet, never the campaign purse');
+  });
+});
