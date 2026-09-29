@@ -89,9 +89,10 @@ rather than silently borrowing the capital row.
 ### Ship roster + lattice — `src/data/ships.js`, `src/data/shipRoleLattice.js`
 
 `ship_saucer`: T5 `role: 'exotic'` — the first hull of a new role class. mass 520,
-cargo 120, handling 2.2, designMass 780 (the drive is rated well above the hull's own
-operational mass: loading cargo or hanging a tow never wallows it — the inertialess field
-reads the same to the pilot), hull 2200 / shield 2600 / regen 30, energyCap 2200 /
+cargo 120, handling 2.2, designMass 760 — mass + full outfit space, the maximum legal
+rating under the mass-is-the-law check (a fully outfitted saucer is still at 100 % drive;
+only carried cargo or a tow can push it past rating, and the inertialess field never
+wallows to the pilot), hull 2200 / shield 2600 / regen 30, energyCap 2200 /
 regen 170, collisionRadius 19, price 4.2 M, bankFactor 0.10 (saucers bank almost
 imperceptibly — the field doesn't roll to turn), outfitSpace 240 / weaponCapacity 96 /
 engineCapacity 14.

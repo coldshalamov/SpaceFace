@@ -385,7 +385,7 @@ export const SHIPS = [
     // or tows like a ragdoll. No heavyMotion: the field never wallows, whatever the load.
     id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, requiresTech: 'tech_graviton_drives',
     hull: 2200, shield: 2600, baseShieldRegen: 30, cargo: 120, mass: 520, handling: 2.2,
-    outfitSpace: 240, weaponCapacity: 96, engineCapacity: 14, designMass: 780,
+    outfitSpace: 240, weaponCapacity: 96, engineCapacity: 14, designMass: 760,
     bankFactor: 0.10,
     driveId: 'drive_inertialess_s',  // gravimetric envelope tuned past the fleet — the inertialess hull
     energyCap: 2200, energyRegen: 170, collisionRadius: 19, price: 4200000,
