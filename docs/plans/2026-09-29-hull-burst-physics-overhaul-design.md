@@ -7,6 +7,65 @@ grant a lease. Implementation is admitted through the ordinary program queue (`b
 Product authority stays `design/VISION.md` ("The Massline is a signature mechanic", "Combat should feel
 delightfully abusive").
 
+## 0. Read this first (handoff)
+
+**Where this came from.** One owner conversation on 2026-09-29, run as a structured brainstorm: one
+question at a time, every design section shown in plain language and approved before the next. Do not
+re-run the brainstorm. Reopen only what is listed in §11.
+
+**The owner's intent, in their own words** (quoted or closely paraphrased; this is the "why" that the
+tables below compress):
+
+- *The worry.* The game "sometimes veers into being" an Endless Sky clone. They want it to "lean into
+  its lane": combat and gameplay "very in-tune with the physics of this game", "a lot of the combat and
+  gameplay … playing with physics". Existing seeds they named: attacks that "make other ships fly off or
+  stick to different locations".
+- *The diagnosis.* The Massline's value is capped because the only relevance of the ship's location is
+  "where you take damage" and "where your bullets come from". So it is a "one-trick pony to avoid
+  things". "If we make the ship's location more important, then maybe the massline, which exists to
+  manipulate the ship's location, becomes immediately more important."
+- *The shield idea.* "A gravity/magnet shield that threw enemies off at high speeds if it just touched
+  them"; "a fire shield that basically just does so much damage it's an instant kill"; "maybe not a
+  full shield all around but a front sort of bumper with a cooler name, a front cone with cool VFX that
+  does different things that would be useful to manipulate the environment or attack enemies".
+- *The tumble feel.* "If I blast an enemy ship I don't want him flying against the impact and staying
+  roughly still like a fly buzzing against the wind. I'd want a satisfying effect and the ship tumbling
+  out of control off into another direction and pinging off of objects."
+- *The arcade feel (second message).* "More like the type of fun fast paced sort of almost arcade-style
+  gameplay." Enemies "drop things and magnet them into the ship's hull". The hold should be "only a
+  vague sometimes problem that's cool to upgrade"; "I don't want to make this the kind of game wherein
+  you kill something and then look at its loot and weigh its value against how much room you have in
+  your pack and then decide to leave it there". Post-processing wrecks (a salvage skill) is fine as a
+  secondary thing, "not the primary thing when you kill something". The dopamine target: "you get a good
+  throw on 3 enemies and they blast into an asteroid field and they burst, and there's shiny winnings
+  that come out of them and accelerate towards you and bling into you … it's like points … it's a pain in
+  the ass to have to collect them manually".
+- *The sandbox.* "Every object being a primitive and possible ammunition"; "loosen or expand the rules or
+  possibilities to maximize the fun of this sandbox and increase the number of things a player can do
+  within it by chaining these primitives".
+
+**Status.** Design only. No code, data or tests have changed. No implementation plan exists yet. The
+next step is a detailed task plan for stage 1, then stage 2 (§10), then build. This file has a pointer row
+in `docs/TASK_ROUTER.md` but is not yet a queue packet: whoever starts stage 1 admits it through the
+`build_map.md` §1 flow.
+
+**How to read the certainty.** §2's table is explicit owner choices. Everything in §3-§8 was shown to the
+owner and approved as written, but every *number* in it (durations, ratios, percentages, radii) is an
+agent placeholder that nothing has tuned. "Verified <date>" means read from code that day. Anything
+marked "unverified" or "hypothesis" is exactly that: check it before building on it.
+
+**Working agreement for whoever builds this** (repo rules, restated because they bite):
+
+- No git worktrees (owner rule 2026-08-23: each costs 4-16 GB). Sections of the tree are kept isolated
+  by exact paths instead.
+- The tree is shared and hot with other lanes: stage exact paths, commit by pathspec, `git add -N` new
+  files, and read `git show --stat HEAD` afterward (`AGENTS.md` §3).
+- Finish each stage end to end and reachable on the default route (`AGENTS.md` §6, "Wired features").
+- The owner does not read code. Report in plain language, leading with done / not done.
+- No long test or soak runs in session; goldens are never re-recorded to pass; frontend edits stay
+  minimal and follow ORRERY (`design/frontend/ORRERY.md`, library `src/ui/orrery/`, lane status
+  `design/frontend/ORRERY_HANDOFF.md` §2).
+
 ## 1. The problem
 
 The Massline is a one-trick pony. The only thing the player's *position* does is decide where damage
@@ -28,10 +87,21 @@ What already exists and is not a new invention (verified 2026-09-29):
   high-speed fling, no kill, and no Massline coupling.
 - The hitstun law (`HITSTUN_LAW`, `SHOVE_BEAT_LAW` in `src/combat/impulseKernel.js`): a hull loses the
   helm only when ΔV ≥ ~14% of its cruise speed (`uFloor` 0.14), the stun is short (1.0 s at k = 0.30,
-  cap 3.5 s), and heavies (mass ≥ 150, `HEAVY_AS_TERRAIN_MASS`) shrug. This is why enemies "buzz
-  against the wind."
+  cap 3.5 s), and heavies (mass ≥ 150, `HEAVY_AS_TERRAIN_MASS`) shrug; a heavy gun-scale hit is
+  u≈0.13, below the floor, so exactly zero stun. Delivered-impulse sources (`gun`, `weapon`, `bomb`,
+  `impulse_charge`) also get the **shove beat** (owner direction 2026-09-21: a shove-class hit knocks a
+  light hull about one screen, 126 WU, off its line, and the helm stays lost for that coast). Rope
+  throws, well flings and terrain collisions keep their own tuned helm economies. Preserve all of that
+  when retuning.
 - Tumble is one helm-override writer for every delivered impulse (`src/systems/tumbleStates.js`) with a
-  0.9 s recovery window at 0.35 thrust.
+  0.9 s recovery window at 0.35 thrust and no guns. Tumble kinds: collision, massline, weapon, well
+  (`src/combat/tumbleStatus.js`), plus the RCS-disruptor exception.
+- **Correction to an early assumption (verified 2026-09-29):** engines are already off while a hull is
+  tumbling. The tumble control literal is `mode: 'tumbling'` with zero force (`tumbleStates.js`, near
+  the end of the file). So the owner's "fly buzzing against the wind" is most likely (hypothesis,
+  unmeasured) some mix of sub-floor hits that never stun at all, stuns that are too short, and the
+  35% thrust returning in the recovery beat while the hull is still moving fast. Stage 1 starts by
+  measuring which, with a fixed-seed harness, not by assuming.
 - Weak arcs on big hulls (`src/data/weakPoints.js`, mostly rear) that only bullets can use.
 - Stunt scoring with cause chains (`src/systems/stuntGrammar.js`, `src/combat/stuntTaxonomy.js`) and
   Open Line Contracts (`src/combat/stuntContracts.js`); credit parity between gun and physics kills
@@ -60,6 +130,25 @@ asserted in `scripts/check-massline2.mjs`, `test/weapon-impulse-consequence.test
 worked around. "Never damaged by physics" stays true and stays asserted
 (`masslineImpactDamage.js` invariant).
 
+**Alternatives the owner declined** (so nobody re-litigates them):
+
+1. *Power source* (owner's words: "a kind of special attack that lasts however long, and it can be
+   upgraded to last longer maybe, but not a constant thing"). Declined: energy/heat budget; always on but
+   wearing down; and "charged by motion", which the agent had recommended so the Massline would power
+   the shield. The Massline link is carried by speed-scaled hits instead (§5.1).
+2. *Types.* Declined: several at once on separate keys; one ability with a mode dial.
+3. *Shape.* Declined: mostly all-around ring; per-type free choice. Front-facing is the rule, with one or
+   two ring exceptions allowed.
+4. *Scope.* Declined: hull burst alone; hull burst plus three small connective rules. The owner took the
+   full overhaul.
+5. *Crash risk.* Declined, all three: real-but-forgiving damage (shield then hull); self-inflicted
+   Massline mishaps only; shield-only damage. The owner wants **no physics damage to the player**.
+6. *Full hold.* Declined: overflow stays as floating pickups; a full hold blocks materials only.
+7. *Hold size.* The owner's first idea was "make the hold 5x bigger in all cases". Replaced with a
+   separate salvage bay once the economy consequence was explained (trade and mining income scales with
+   hold size). Also declined: combat loot never enters any hold.
+8. *Sandbox loosening.* Nothing declined: all three were chosen.
+
 ## 3. The ground rules (stage 1)
 
 **Nothing is hurt by physics. Everything can lose control.**
@@ -71,14 +160,16 @@ worked around. "Never damaged by physics" stays true and stays asserted
 2. **Enemies lose control more easily.** Lower `uFloor` and lengthen the stun for light and medium
    hulls. Heavies keep shrugging (moving terrain); a heavy is shoved and briefly stunned but does not
    spin off.
-3. **A tumbling ship is a projectile.** During a tumble all thrust is off, including AI thrust, so
-   nothing fights the knockback. The hull carries its new velocity, bounces off rocks and other hulls
-   and can knock others into tumbles. Its damage is what it hits while tumbling, attributed to the
-   player.
+3. **A tumbling ship is a projectile.** Thrust is already zero during a tumble (verified), so keep it
+   that way and make sure nothing pushes back: the recovery beat's 35% thrust must not begin while the
+   hull is still travelling fast. The hull carries its new velocity, pings off rocks and other hulls
+   (check that the physics material table gives a visible bounce: `defaultMaterial` in
+   `src/core/physicsAuthority.js`) and can knock others into tumbles. Its damage is what it hits while
+   tumbling, attributed to the player.
 4. **Recovery is a beat.** Damped spin, weak thrust, no guns: the window to finish or re-fling.
 
-Retune-first: most of this is constants in the existing law plus a thrust cut and restitution on the
-existing tumble writer. Determinism: sim uses `state.rng` / `state.simTime`; no new ambient random.
+Retune-first: most of this is constants in the existing law plus a bounce check and the player's capped
+stun, all on the existing tumble writer. Determinism: sim uses `state.rng` / `state.simTime`; no new ambient random.
 
 ## 4. Hull Burst modules (stages 2-3)
 
@@ -164,8 +255,14 @@ Rules:
 3. **Beat, then homing.** After a short beat so the burst reads (placeholder 0.5-1.0 s), all loot from
    the player's kills homes to the hull from anywhere in the sector at rising speed: no radius limit,
    no expiry during the chase, bounded pickup count.
-4. **Bling feedback.** Pitch-stepping pickup audio and a rolling counter. Chips are the points; chain
-   length multiplies their value through the existing stunt combo bank (`src/systems/stuntCombo.js`).
+4. **Bling feedback.** Pitch-stepping pickup audio and a rolling counter that escalates with chain
+   length. Chips are the points. **Conflict to resolve (§11.2):** the repo deliberately keeps credits
+   equal across kill styles (`src/data/killRewards.js` header, AC-01) and pays stunts only as
+   reputation + salvage-rights chits, never credits (`trickPay` in `src/systems/stuntCombo.js`,
+   PQ-155.03). An earlier draft of this line said chain length "multiplies chip value"; that would break
+   both rulings. Default proposal: per-kill credit chips stay flat by hull class, and the chain bonus
+   rides the existing stunt-pay channel, shown as extra bonus chips of that kind landing with the same
+   bling. Paying extra credits per chain needs the owner to override those two rulings.
 5. **Salvage bay.** A separate combat-loot store, base about 5x the ship's ordinary hold
    (placeholder), upgradeable by module/tech. It auto-fills, is written only by the cargo owner, and
    never refuses a pickup: overflow is converted to credits by the economy owner at a scrap rate
@@ -177,6 +274,30 @@ Rules:
 
 Save: the salvage bay is persistent state, so it needs a save-schema version bump and migration
 (`check:save-schema`).
+
+Scope boundary: **not changing** trading, mining (ore pickups stay hold-gated), the ordinary cargo
+hold, the wreck-salvage career, or credit parity between kill styles. The Loot Magnet Ring
+(`mod_loot_magnet_s`) and tractor heads (`magnetRange`) keep their job for non-kill pickups; homing only
+makes them redundant for kill loot.
+
+Traps found while reading the loot code (verified 2026-09-29 unless noted):
+
+- `lootShards` pays the hostile burst only when `entity:killed.killerId === playerId`
+  (`src/systems/lootShards.js`, `_onKilled`). `masslineImpactDamage` routes its kinetic damage with
+  `attackerId: playerId`, so whip, tumble and sweep kills likely qualify. **Unverified** for pure
+  collision-consequence kills (`src/systems/collisionConsequences.js` provenance): confirm the
+  `killerId` a rock-crush kill actually carries before promising "flung ships pay".
+- `lootShards` returns early for victims that `missionOwnsReward` or `runOwnsReward` (Survival /
+  Crucible). Those pay through a separate run-wallet path (`mining.js`, run chips; PQ-133 ruling 2:
+  a run never touches the campaign wallet). The loop must be built for those paths on purpose, never by
+  leaking run loot into campaign credits. The Crucible is also the natural first playground: endless
+  arena, constant kills.
+- Homing exclusions: facility-owned heist capsules are custody freight, and freshly jettisoned pods need
+  separation time. The magnet code already special-cases both (`mining.js`, `_updatePickups`, near the
+  `jettisonedCargo` handling). Do not home them.
+- Anti-farm: chain pay must go through the existing threat admission and reward gates
+  (`admitStuntThreat` in `src/combat/stuntScoring.js`, `runOwnsReward`, the one-authoritative-death
+  ledger in `rewardEligibility.js`) so flinging spawned fodder cannot be farmed.
 
 ## 8. Every object is a primitive (stages 6-7)
 
@@ -236,7 +357,7 @@ recharge reads as a special attack or a wait.
 
 ## 10. Build order
 
-1. Ground rules: tumble law retune, thrust cut, bounce, capped player stun; update the old
+1. Ground rules: measure the "buzz" first, then tumble law retune, bounce check, capped player stun; update the old
    "player never tumbles" assertions.
 2. Arcade payoff loop (§7): kill credit for anything the player caused (including flung hulls),
    homing loot, chain counter and audio, the salvage bay with overflow to credits, save-schema bump.
@@ -249,3 +370,80 @@ recharge reads as a special attack or a wait.
 8. Stabilizer, Skirmisher, physics writs, collateral.
 
 Each stage is reachable in the real game before the next begins.
+
+## 11. Open questions (settle these; nothing else is open)
+
+1. **An unfinished owner sentence.** During the session the owner sent a message that read "The player
+   should sti" and was cut off (it ran into the word "continue"). It was probably a note about how the
+   player's stun should behave ("should still …"). Its content is unknown. Ask the owner one plain
+   question at the start of stage 1 (for example: while stunned, can the player still steer or shoot?)
+   and do not guess beyond the placeholders in §3.1.
+2. **Chain-bonus currency.** See §7.4: flat credits plus a chain bonus on the stunt-pay channel
+   (proposed default), or the owner overrides credit parity.
+3. **Which key fires the burst.** Digit0-9 are all taken (0 brake, 1-3 ordnance, 4-9 deployables such as
+   Well/Repulsor/Cone/Skim/bomb), Space/F is the Massline, Q/E strafe, R detonate, Y charge throw,
+   C scan pulse, V cruise, X countermeasure, G auto-fire, B site beam
+   (`src/systems/input.js`, verified 2026-09-29). Audit free keys against both scheme tables and
+   `ui/bindings.js` the way the Digit4-9 audits did. Editing `input.js` needs task ownership and focused
+   input/rebind/sim validation (`AGENTS.md` §6).
+4. **The engine for the hurl:** field kernel or impulse kernel (§12).
+5. **Player stun shape and length:** placeholders only (≤ 1.0 s, 2 s immunity).
+6. **Numbers nobody has tuned:** the 5x salvage bay (small hulls hold only 120-160, so a 5x bay may
+   want a flat floor), the 60% scrap rate, the 0.5-1.0 s homing beat, the burst recharge ratio, wedge
+   size, and how hard heavies resist.
+7. **Allies in the wedge** are nudged, never flung or harmed: an agent proposal, approved with the
+   section but never discussed on its own.
+8. **HUD.** A burst indicator, a salvage-bay meter and a chain counter are needed. Build them from ORRERY
+   library elements; the existing number-key power rail (`src/ui/powerRail.js`) is the likely home for
+   the indicator.
+
+## 12. Implementation notes, seams and traps
+
+- **Reference trail for a fitted module.** Follow `ramDamageDealtMult` end to end: definition and
+  plain-words description in `src/data/modules.js`; derived stat in `src/systems/ships.js`; the effect in
+  `src/systems/collisionConsequences.js` (`playerRamPlateImpact`, with its provenance tag); and the UI
+  surfaces that list a module's verb, `src/ui/ship/shipBandModels.js`,
+  `src/ui/station/outfittingGuidance.js`, `src/ui/ship/loadoutPresets.js`,
+  `src/systems/buildIdentity.js`, `src/ui/crucibleCombatReadout.js`. A module that skips these is not
+  wired. Tech gating is `requiresTech` in `src/data/tech.js`.
+- **Field kernel or impulse kernel for the hurl.** The field cone is a sustained acceleration system
+  built to be gentle: summed acceleration capped at `FIELD_MAX_ACCEL` 820 wu/s², heavy hulls shrug by
+  mass coupling, at most `FIELD_MAX_ACTIVE` 6 fields (`src/data/fields.js`). A hurl "at high speed" that
+  kills and tumbles probably wants a delivered impulse through the impulse kernel and hitstun law (a
+  source kind like `impulse_charge`), using the cone only as the hit-test volume. Decide in stage 3 with
+  a fixed-seed number. Either is acceptable if the visible result is the fling.
+- **Heavier while the burst is on.** Candidate seam: the combat runtime's `physicsResponse.massScale`,
+  already used by the pickup magnet and bombs (`mining.js`, near the `queuePhysicsImpulse` call).
+  `hitstunMassFactor` caps the advantage at 2.2, so heavies need the module's own kick.
+- **Fire Lance damage** goes through the combat kernel like `masslineImpactDamage._routeKinetic`
+  (`scalarHitToDamagePacket`, `attackerId: playerId`), never direct hull writes; burn uses the existing
+  status effects.
+- **Grip Bumper** is a candidate for a short rigid attachment via `src/combat/attachments.js` (sockets,
+  `sourceWorld`, the tow attach) or the existing Frame Coupler head (`masslineHeadFrameCoupler`).
+  Release keeps the player's velocity.
+- **Player tumble** must go through the physics command membrane (`writePhysicsControl`,
+  `queuePhysicsTorqueImpulse` in `src/core/physicsAuthority.js`), not by editing `input.js` or flight.
+  Live flight is `flightV3`; the compatibility `flight.js` is off-limits for gameplay fixes
+  (`AGENTS.md` §5). Earned speed (slingshot, Massline) must not be clamped before contact: wave M2 left
+  an open item, a speed-governor exemption for slingshot-tagged velocity (`tether.slingshot`,
+  `massline:selfSling`). Check its current state before speed-scaled hits are tuned.
+- **Checks that encode today's rules** and need deliberate updates, not workarounds:
+  `scripts/check-massline2.mjs` (player never tumbles), `test/weapon-impulse-consequence.test.mjs`,
+  `test/massline-presentation-uvp.test.mjs`, and the feel-contract bars that pin the tumble law
+  (`design/FEEL_CONTRACT.md`; the shove screen of 126 WU and "a heavy keeps its helm at the speed a
+  light hull loses it" are documented in `src/combat/impulseKernel.js`). Run `npm run check:baseline`,
+  `npm run check:massline2` and the focused tests; do not re-record goldens.
+- **Golden safety.** New switches are OFF in the frozen `legacy47a` profile and ON in `production`
+  (`src/runtime/runtimeProfiles.js`, `src/data/featureFlags.js`); new systems stay out of the curated
+  sf-sim list; new runtime state is unsaved except the salvage bay.
+- **Objects.** The dynamic set is `defaultDynamic` (`src/core/physicsAuthority.js`); Massline tow
+  candidates are `isTowCandidate` (`src/combat/masslineTargetScoring.js`); per-type behavior comes from
+  `substanceFor`. Sleeping-rock design must respect the physics body budget; measure with
+  `npm run probe:runtime-witness`.
+- **Determinism.** Loot rolls are stateless (`createVictimRewardRng`: run seed plus victim identity);
+  keep homing timing on `state.simTime`.
+- **Related reading.** `design/revamp/MASSLINE_PHYSICS_IDENTITY.md` (wave M2: F frees you, RMB throws
+  them, LMB shoots via tether fire control; `check:massline2`), `docs/MASSLINE_MECHANICS.md`,
+  `design/VISION.md`, `design/program/INFERENCE_INTENTIONAL_FUN.md`, `design/FEEL_CONTRACT.md`.
+- **Doc hygiene.** This file is `DURABLE`: rationale only, never a lease or dispatch. If it becomes a
+  packet, follow the lifetimes in `docs/POLICY_MANIFEST.md`.

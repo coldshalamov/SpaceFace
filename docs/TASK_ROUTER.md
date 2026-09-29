@@ -28,6 +28,7 @@ Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Event or update-order trace | Generated `docs/EVENT_ROUTING.md` / `docs/SYSTEM_REGISTRY.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
+| Make the ship's position matter / hull burst, gravity bumper, fire lance / physics-first combat / arcade kill loot that homes into the hull / salvage bay / "every object is a primitive" reaction chains | [`plans/2026-09-29-hull-burst-physics-overhaul-design.md`](./plans/2026-09-29-hull-burst-physics-overhaul-design.md) — owner-validated design, read its §0 first. Design only: admit a stage through `build_map.md` §1 |
 | Any player-facing graphics or visual asset | **`docs/visual-assets/README.md` first**, then `assets/AGENTS.md` or the owning runtime/UI route it names |
 | Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md` |
 | Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` → ship/root maps in `src/render/partsLibrary.js`; never infer from a screenshot or legacy filename |
