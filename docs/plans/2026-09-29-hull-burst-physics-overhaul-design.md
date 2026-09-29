@@ -44,10 +44,13 @@ tables below compress):
   possibilities to maximize the fun of this sandbox and increase the number of things a player can do
   within it by chaining these primitives".
 
-**Status.** Design only. No code, data or tests have changed. No implementation plan exists yet. The
-next step is a detailed task plan for stage 1, then stage 2 (§10), then build. This file has a pointer row
-in `docs/TASK_ROUTER.md` but is not yet a queue packet: whoever starts stage 1 admits it through the
-`build_map.md` §1 flow.
+**Status.** Build is under way as of 2026-09-29 (owner goal: implement the whole design while preparing
+the demo). §10 is the build order: vertical slices A-H, each a playable piece of the owner's
+"throw three enemies into an asteroid field and the winnings bling into you" sentence, judged by one
+fixed-seed scene. The owner delegated the plan's ordering ("the advisor can write a better plan"), so the
+slice order in §10 replaced an earlier layered order the same day; the owner rulings in §2 did not change.
+This file has a pointer row in `docs/TASK_ROUTER.md` but is not a queue packet: whoever starts a slice
+admits it through the `build_map.md` §1 flow.
 
 **How to read the certainty.** §2's table is explicit owner choices. Everything in §3-§8 was shown to the
 owner and approved as written, but every *number* in it (durations, ratios, percentages, radii) is an
@@ -60,7 +63,7 @@ marked "unverified" or "hypothesis" is exactly that: check it before building on
   by exact paths instead.
 - The tree is shared and hot with other lanes: stage exact paths, commit by pathspec, `git add -N` new
   files, and read `git show --stat HEAD` afterward (`AGENTS.md` §3).
-- Finish each stage end to end and reachable on the default route (`AGENTS.md` §6, "Wired features").
+- Finish each slice end to end and reachable on the default route (`AGENTS.md` §6, "Wired features").
 - The owner does not read code. Report in plain language, leading with done / not done.
 - No long test or soak runs in session; goldens are never re-recorded to pass; frontend edits stay
   minimal and follow ORRERY (`design/frontend/ORRERY.md`, library `src/ui/orrery/`, lane status
@@ -100,7 +103,7 @@ What already exists and is not a new invention (verified 2026-09-29):
   tumbling. The tumble control literal is `mode: 'tumbling'` with zero force (`tumbleStates.js`, near
   the end of the file). So the owner's "fly buzzing against the wind" is most likely (hypothesis,
   unmeasured) some mix of sub-floor hits that never stun at all, stuns that are too short, and the
-  35% thrust returning in the recovery beat while the hull is still moving fast. Stage 1 starts by
+  35% thrust returning in the recovery beat while the hull is still moving fast. Slice A starts by
   measuring which, with a fixed-seed harness, not by assuming.
 - Weak arcs on big hulls (`src/data/weakPoints.js`, mostly rear) that only bullets can use.
 - Stunt scoring with cause chains (`src/systems/stuntGrammar.js`, `src/combat/stuntTaxonomy.js`) and
@@ -126,7 +129,7 @@ What already exists and is not a new invention (verified 2026-09-29):
 
 Ruling 5 flips one existing rule: "the player ship never tumbles" (comment in `tumbleStates.js`;
 asserted in `scripts/check-massline2.mjs`, `test/weapon-impulse-consequence.test.mjs`,
-`test/massline-presentation-uvp.test.mjs`). Those assertions are updated as part of stage 1, not
+`test/massline-presentation-uvp.test.mjs`). Those assertions are updated as part of slice B, not
 worked around. "Never damaged by physics" stays true and stays asserted
 (`masslineImpactDamage.js` invariant).
 
@@ -149,7 +152,7 @@ worked around. "Never damaged by physics" stays true and stays asserted
    hold size). Also declined: combat loot never enters any hold.
 8. *Sandbox loosening.* Nothing declined: all three were chosen.
 
-## 3. The ground rules (stage 1)
+## 3. The ground rules (slices A and B)
 
 **Nothing is hurt by physics. Everything can lose control.**
 
@@ -171,7 +174,7 @@ worked around. "Never damaged by physics" stays true and stays asserted
 Retune-first: most of this is constants in the existing law plus a bounce check and the player's capped
 stun, all on the existing tumble writer. Determinism: sim uses `state.rng` / `state.simTime`; no new ambient random.
 
-## 4. Hull Burst modules (stages 2-3)
+## 4. Hull Burst modules (slices C and E)
 
 A fitted `utility` module (pattern: Ram Plate, Swing Drive). Activated on a key. Runs for a duration,
 then recharges for clearly longer than it lasted. Tech-tree tiers add duration, wedge length and
@@ -198,20 +201,21 @@ Starter roster:
 
 Later types follow the same pattern (for example a cryo plow: freeze, then shatter on impact).
 
-## 5. Tie-ins that make position matter (stage 4)
+## 5. Tie-ins that make position matter (slice C; the fling-credit half is slice A)
 
 1. **Speed scaling.** Burst effect scales with closing speed along the wedge. A crawling touch is a
    nudge; a full-speed hit is the module's full effect. A Massline swing is the fastest way to arrive
    at speed and aimed, so the loop is swing, ignite mid-swing, release into the group.
 2. **Everything you fling is your weapon.** Hulls the burst sends tumbling count as the player's for
-   what they hit. The stunt system already tracks cause chains and pays credits, reputation and
-   salvage rights, so "burst, ricochet, second ship dies" is a recognized trick with a chain bonus.
+   what they hit. The stunt system already tracks cause chains and pays reputation and salvage-rights
+   chits (never credits, §7.4), so "burst, ricochet, second ship dies" is a recognized trick with a
+   chain bonus.
 3. **Burst contact is a hit at the contact point.** Contact on a weak arc gets the weak-point bonus
    (`weakPoints.js`), so flying around to a big ship's rear becomes a hull skill.
 4. **Position has four uses:** approach angle (the nose), arrival speed (the Massline), what is behind
    the target (rocks, hazards, other hulls), and which arc of the enemy is exposed.
 
-## 6. Enemies, pay and consequences (stage 5)
+## 6. Enemies, pay and consequences (slice H)
 
 Enemies that answer the burst (same pattern as `specialistPlans.js`: each names the player plan it
 breaks, has a verb and a telegraph):
@@ -234,7 +238,7 @@ Pay and consequences (credit parity between kill styles is kept):
 - **Collateral is real:** a tumbling hull that strikes a civilian or patrol counts as the player's
   harm (heat, reputation, scattered cargo) under the existing civilian-harm rules.
 
-## 7. Arcade payoff loop (stage 2)
+## 7. Arcade payoff loop (slice A; the salvage bay is slice D)
 
 Goal (owner): fast, arcade-style, dopamine-forward. A good throw on three enemies into an asteroid field
 should burst them into shiny winnings that accelerate toward the ship and "bling" into it as credits.
@@ -299,7 +303,7 @@ Traps found while reading the loot code (verified 2026-09-29 unless noted):
   (`admitStuntThreat` in `src/combat/stuntScoring.js`, `runOwnsReward`, the one-authoritative-death
   ledger in `rewardEligibility.js`) so flinging spawned fodder cannot be farmed.
 
-## 8. Every object is a primitive (stages 6-7)
+## 8. Every object is a primitive (slices F and G)
 
 Goal (owner): every object is a primitive and possible ammunition; loosen or expand the rules to
 maximize chaining. All three loosenings were chosen (decision 8).
@@ -355,29 +359,82 @@ of many simultaneous effects.
 Known tuning risks (tune, do not solve now): player stun length, heavy resistance, and whether the
 recharge reads as a special attack or a wait.
 
-## 10. Build order
+## 10. Build order: vertical slices
 
-1. Ground rules: measure the "buzz" first, then tumble law retune, bounce check, capped player stun; update the old
-   "player never tumbles" assertions.
-2. Arcade payoff loop (§7): kill credit for anything the player caused (including flung hulls),
-   homing loot, chain counter and audio, the salvage bay with overflow to credits, save-schema bump.
-   Moved early: it is mostly existing systems and makes every later stage more fun to test.
-3. Burst framework plus Gravity Bumper, end to end (module, key, HUD, VFX, audio, tiers).
-4. Fire Lance and Grip Bumper.
-5. Speed scaling and weak-point contact.
-6. Movable rocks, mines and missiles, and the one physics door for every tool (§8.1-8.3).
-7. The reaction table (§8.4-8.5).
-8. Stabilizer, Skirmisher, physics writs, collateral.
+Reordered the same day the design was written (advisor review, at the owner's request that the plan be
+built from the core intent). The first draft built in layers (rules, loot, burst framework, two more
+bursts, speed scaling at stage 5), which left the owner's own sentence unplayable until late and shipped
+the one mechanic that makes the Massline matter (arrival speed scaling the hit) after two bursts that
+did not use it. Each slice below is a playable piece of: *"you get a good throw on 3 enemies and they
+blast into an asteroid field and they burst, and there's shiny winnings that come out of them and
+accelerate towards you and bling into you."*
 
-Each stage is reachable in the real game before the next begins.
+**The yardstick: one fixed-seed scene.** Three light hostiles in front of an asteroid cluster, built in
+slice A and re-run after every slice. Four numbers:
+
+1. kills caused by physics, not guns;
+2. **buzz count**: velocity reversals during a tumble (target 0);
+3. seconds from the last kill to the last chip landing;
+4. pilot inputs needed to collect the loot (target 0).
+
+**A. The money shot with the verbs that already exist** (Massline throw, ramming; no new module). Behind
+one production flag that is OFF in `legacy47a`. Demo-worthy on its own.
+
+1. Measure the buzz first: each source (gun, bomb, repulsor, well, rope throw, ram) against light,
+   medium and heavy hulls. Record stunned or not, stun length, distance travelled before the helm returns,
+   and any velocity reversal. Bring the numbers to review before retuning.
+2. Retune from those numbers (§3). Hold recovery thrust until speed has decayed, not for a fixed time.
+3. Verify each link of the kill chain and fix whichever is broken: a tumbling hull that hits a rock takes
+   speed-scaled damage; that damage names the player as attacker when the player caused the tumble;
+   `killerId === playerId` so the loot burst fires; a tumbling hull that hits another hull stuns it (the
+   "three enemies" chain). If any link is missing, the scene fails whatever bumpers come later.
+4. Check that bounces are visible (`defaultMaterial`).
+5. Loot homes to the hull after the short beat, from anywhere in the sector, for campaign kills and
+   run-wallet kills (destination wallet unchanged), with overflow converted to credits through the economy
+   owner. This alone removes the hold chore; the salvage bay is not needed for it.
+6. Bling: pitch-stepping pickup audio and a rolling counter.
+
+**B. Player stun, its own packet and flag.** Capped duration, immunity window, conservative threshold,
+and the three "player never tumbles" assertions flipped (§2). Separate so it can be switched off for the
+demo without touching A. The owner's cut-off sentence (§11.1) is answered here.
+
+**C. Gravity Bumper, with speed scaling and weak-arc contact from day one.** Without speed scaling it is
+a louder Clearing Cone and the Massline stays optional.
+
+- Precondition: check the speed-governor exemption for Massline and slingshot velocity (§12). If earned
+  speed is clamped before contact, speed scaling does nothing.
+- Engine: leaning to the impulse kernel with the cone as the hit-test volume (§12); decide from the scene
+  numbers.
+- Wiring, all of it: the module definition and the UI surfaces §12 lists; a key and a gamepad binding
+  (confirm whether `check-input-modalities` requires each verb reachable on every modality); the
+  power-rail indicator; VFX, audio, one tech tier.
+- Done when: the fling-distance ratio for a crawl-speed touch versus a full-swing hit is measured.
+
+**D. Salvage bay.** The save-schema bump and a floor so small hulls get a usable bay. The chain bonus
+rides the stunt-pay channel as the documented default (§7.4, §11.2).
+
+**E. Fire Lance and Grip Bumper,** on C's framework.
+
+**F. Movable small rocks, grabbable mines and missiles, and the one physics door (§8.1-8.3).** Gated on
+runtime-witness numbers and a cap on awake bodies.
+
+**G. The reaction table (§8.4-8.5),** with a cap on chain depth per second.
+
+**H. Stabilizer, Skirmisher, physics writs, collateral (§6).**
+
+Each slice is reachable in the real game before the next begins, and each ends with: focused test, the
+47a golden hash unchanged, `check:baseline`, an independent reviewer who is handed the owner quotes from
+§0 and the slice's done-when number and asked whether the slice delivers the owner's sentence, then a
+pathspec commit. Where a file carries another lane's uncommitted edits, stage only your own hunks.
 
 ## 11. Open questions (settle these; nothing else is open)
 
 1. **An unfinished owner sentence.** During the session the owner sent a message that read "The player
    should sti" and was cut off (it ran into the word "continue"). It was probably a note about how the
    player's stun should behave ("should still …"). Its content is unknown. Ask the owner one plain
-   question at the start of stage 1 (for example: while stunned, can the player still steer or shoot?)
-   and do not guess beyond the placeholders in §3.1.
+   question in the first report after slice B is built (for example: while stunned, can the player still
+   steer or shoot?), do not block on it, and do not guess beyond the placeholders in §3.1. Slice B has its
+   own flag so the answer can change it without touching slice A.
 2. **Chain-bonus currency.** See §7.4: flat credits plus a chain bonus on the stunt-pay channel
    (proposed default), or the owner overrides credit parity.
 3. **Which key fires the burst.** Digit0-9 are all taken (0 brake, 1-3 ordnance, 4-9 deployables such as
@@ -410,7 +467,7 @@ Each stage is reachable in the real game before the next begins.
   built to be gentle: summed acceleration capped at `FIELD_MAX_ACCEL` 820 wu/s², heavy hulls shrug by
   mass coupling, at most `FIELD_MAX_ACTIVE` 6 fields (`src/data/fields.js`). A hurl "at high speed" that
   kills and tumbles probably wants a delivered impulse through the impulse kernel and hitstun law (a
-  source kind like `impulse_charge`), using the cone only as the hit-test volume. Decide in stage 3 with
+  source kind like `impulse_charge`), using the cone only as the hit-test volume. Decide in slice C with
   a fixed-seed number. Either is acceptable if the visible result is the fling.
 - **Heavier while the burst is on.** Candidate seam: the combat runtime's `physicsResponse.massScale`,
   already used by the pickup magnet and bombs (`mining.js`, near the `queuePhysicsImpulse` call).
