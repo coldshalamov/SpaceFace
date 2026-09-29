@@ -63,8 +63,9 @@ function setWordShown(button, show) {
   }
 }
 
-// The armory's shelf row: 'All' plus the six shelves the catalog files every card under.
-const ARMORY_CATEGORIES = Object.freeze(['All', ...SWARM_CATEGORIES]);
+// The armory's shelf row: 'All', the six fitting shelves, then the two non-fitting counters
+// the swarm owner stocks (hull offers file under 'Hulls', service work under 'Service').
+const ARMORY_CATEGORIES = Object.freeze(['All', ...SWARM_CATEGORIES, 'Hulls', 'Service']);
 const ARMORY_CATEGORY_SET = new Set(ARMORY_CATEGORIES);
 
 /** A kit word (`button.k-word`). The caller appends it. */
@@ -225,12 +226,15 @@ function railVerbDisplay(verb, compact) {
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
   if (!offer) return null;
-  const slot = Array.isArray(offer.consumes) && offer.consumes.length
-    // A synthesis says its whole trade: the parts it eats and the slot the product lands in.
-    ? `Consumes ${offer.consumes.map(fittingName).join(' + ')} — lands on hardpoint ${offer.slotIndex + 1}`
-    : offer.replaces
-      ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
-      : `Hardpoint ${offer.slotIndex + 1} — empty`;
+  const slot = typeof offer.slotLabel === 'string' && offer.slotLabel
+    // Non-fitting offers (a hull, a weld) carry their own "where it lands" line; fittings
+    // derive theirs from the hardpoint the legality pass picked.
+    ? offer.slotLabel
+    : Array.isArray(offer.consumes) && offer.consumes.length
+      ? `Consumes ${offer.consumes.map(fittingName).join(' + ')} — lands on hardpoint ${offer.slotIndex + 1}`
+      : offer.replaces
+        ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
+        : Number.isInteger(offer.slotIndex) ? `Hardpoint ${offer.slotIndex + 1} — empty` : '';
   return {
     verb: offer.verb || offer.id || '',
     name: offer.name || offer.defId || '',
@@ -675,9 +679,10 @@ export const crucibleDraftScreen = {
         compare: el('div', 'orr-armory-reading__compare'),
         budget: el('div', 'orr-armory-reading__budget'),
         buy: el('p', 'orr-armory-reading__buy', ''),
+        demo: el('p', 'orr-armory-reading__demo', ''),
       };
       const words = el('div', 'orr-armory-reading__words');
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, parts.demo);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
@@ -1063,6 +1068,21 @@ export const crucibleDraftScreen = {
       parts.buy.appendChild(el('span', 'orr-armory-keycap', 'Enter'));
     } else parts.buy.textContent = offer.unavailableReason || '';
     parts.buy.classList.toggle('is-off', !offer.available);
+    // The demo word: a fitting the reading is on can fly one round for free — the showcase half
+    // of the sandbox. Hulls and the service counter carry no hardpoint, so nothing to demo.
+    parts.demo.textContent = '';
+    if (!offer.purchased && Number.isInteger(offer.slotIndex) && typeof offer.defId === 'string'
+        && offer.kind !== 'hull' && offer.kind !== 'service') {
+      const demo = el('button', 'orr-armory-reading__demo-word');
+      demo.type = 'button';
+      demo.textContent = offer.demoed ? 'On trial' : 'Demo — fly it one round';
+      demo.disabled = offer.demoed === true;
+      demo.addEventListener('click', () => {
+        context.bus.emit('run:draftPickRequested', { offerId: offer.id, demo: true });
+        this.refresh(context);
+      });
+      parts.demo.appendChild(demo);
+    }
     // the rail's Hand sits on the row being read
     if (this._cards) {
       for (const card of this._cards.querySelectorAll('.sf-cru-card')) {

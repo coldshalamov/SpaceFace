@@ -533,6 +533,14 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
   font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.06em; text-transform:none; font-variation-settings:normal;
   color:rgb(236 230 216 / .62); border:0; box-shadow:none; border-radius:0; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-hintword { margin:0 16px 0 4px; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
+/* the demo word rides under the buy line in the reading — the showcase verb of the sandbox.
+   Quieter than BUY: a trial is a look, not a purchase. */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo { margin:6px 0 0; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo:empty { display:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo-word { margin:0; padding:0; background:none; border:0; box-shadow:none; cursor:pointer;
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo-word:is(:hover, :focus-visible) { color:rgb(246 241 230); outline:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo-word:disabled { color:var(--dp-ice, #8fcbff); cursor:default; }
 /* the rail: its Hand on the row being read; that row at full bone, the rest quieter; the price only
    on the lit row (the dividers carry it for the rest), and there it says BUY and names its key */
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card { opacity:.8; transition:opacity .16s linear; }

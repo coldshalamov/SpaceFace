@@ -48,9 +48,21 @@ import {
 } from '../data/survivalEvolutions.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits } from './ships.js';
+import { swarmHullPrice } from '../data/swarmCatalog.js';
+import { addCargo } from './cargo.js';
 
 export const CRUCIBLE_DRAFT_SCREEN_ID = 'crucibleDraft';
 export const CRUCIBLE_REFIT_SCREEN_ID = 'crucibleRefit';
+
+/** Offer kinds that are not fittings: the shelf's hull row and its service counter. */
+export const SWARM_HULL_OFFER_KIND = 'hull';
+export const SWARM_SERVICE_OFFER_KIND = 'service';
+
+/** Wallet prices for the service counter, in the same short-round economy as the shelf. */
+export const SWARM_WELD_PRICE = 40;
+export const SWARM_ORDNANCE_PRICE = 15;
+/** swarmSupply's own rack ceiling — the service tops up to what the mode already calls full. */
+const SWARM_ORDNANCE_RACK_MAX = 6;
 
 /**
  * Stamped on the wallet charge and checked on the way back. runSession echoes `reason` onto both
@@ -137,6 +149,7 @@ export const survivalDraft = {
       const current = legalById.get(offer.id);
       const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
       return { ...offer, ...(current || {}), price, purchased,
+        demoed: Number.isInteger(offer.slotIndex) && this._trials?.get(offer.slotIndex) === offer.defId,
         available: !purchased && !!current && price != null && run.credits >= price,
         unavailableReason: purchased ? 'Fitted' : !current ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null };
@@ -146,8 +159,27 @@ export const survivalDraft = {
       if (shown.has(entry.id)) continue;
       const purchased = this._purchased?.has(entry.id) === true;
       rows.push({ ...entry, purchased,
+        demoed: Number.isInteger(entry.slotIndex) && this._trials?.get(entry.slotIndex) === entry.defId,
         available: !purchased && run.credits >= entry.price,
         unavailableReason: purchased ? 'Fitted' : run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null });
+    }
+    // Hull and service rows never come out of offerDraft's slot legality — each carries its own
+    // live check, re-read on every refresh so a weld stops offering once the hull is sound and a
+    // hull row goes quiet while you are standing in it.
+    for (const entry of this._armoryExtras(loadout, run)) {
+      if (shown.has(entry.id)) continue;
+      const purchased = this._purchased?.has(entry.id) === true;
+      const blocked = entry.kind === SWARM_HULL_OFFER_KIND && entry._flying
+        ? 'In the cradle'
+        : entry.service === 'weld' && !entry._serviceHurt
+          ? 'Hull already sound'
+          : entry.service === 'ordnance' && (entry._serviceCharges || 0) >= SWARM_ORDNANCE_RACK_MAX
+            ? 'Rack already full'
+            : null;
+      rows.push({ ...entry, purchased,
+        available: !purchased && !blocked && run.credits >= entry.price,
+        unavailableReason: purchased ? 'Done' : blocked
+          || (run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null) });
     }
     return rows;
   },
@@ -189,6 +221,7 @@ export const survivalDraft = {
     this._notice = null;
     this._pendingPurchase = null;
     this._purchased = new Set();
+    this._trials = new Map();
   },
 
   _onTransitioned(payload) {
@@ -244,6 +277,9 @@ export const survivalDraft = {
     this._notice = null;
     this._pendingPurchase = null;
     this._purchased = new Set();
+    // A trial fit lives exactly one round: what was demoed at the last armory comes off here,
+    // before the offers draw, so the cards price the build as it stands.
+    this._clearTrials();
     const result = offerDraft(this._draftInput);
     const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
     this._wave = run.wave;
@@ -260,7 +296,7 @@ export const survivalDraft = {
     // Named syntheses ride the armory list, gated to swarm: the gauntlet draft grants its pick
     // outright and has no run wallet, so "explicit conversion and cost" cannot exist there.
     if (isSwarmRuleset(run.ruleset)) {
-      this._offers = this._offers.concat(this._evolutionOffers(loadout));
+      this._offers = this._offers.concat(this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
     }
     this._emit('run:draftOffered', {
       wave: run.wave, offers: this._offers.map((o) => ({ ...o })), rerolls: 0,
@@ -383,6 +419,14 @@ export const survivalDraft = {
         this._resolveEvolutionPurchase(pending);
         return;
       }
+      if (pending.kind === SWARM_HULL_OFFER_KIND) {
+        this._resolveHullPurchase(pending);
+        return;
+      }
+      if (pending.kind === SWARM_SERVICE_OFFER_KIND) {
+        this._resolveServicePurchase(pending);
+        return;
+      }
       // Fitting by definition is the existing ships-owner purchase route. There is no temporary
       // inventory grant to leak if fitting is refused after the wallet authorizes the purchase.
       const fitted = !!this._ships()?.fitModule({ slotIndex: pending.slotIndex, defId: pending.defId });
@@ -392,6 +436,8 @@ export const survivalDraft = {
         return;
       }
       this._purchased.add(pending.id);
+      // Buying the real copy of a slot on trial retires the demo — the run keeps it for good.
+      if (Number.isInteger(pending.slotIndex)) this._trials.delete(pending.slotIndex);
       this._notice = `${pending.name} fitted. Buy again or launch the next round.`;
       this._emit('run:modifierRecordRequested', {
         record: { kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
@@ -471,6 +517,9 @@ export const survivalDraft = {
     if (this._resolved) return false;
     const offers = this._offers || [];
     const offerId = request && request.offerId;
+    if (isSwarmRuleset(run.ruleset) && offerId != null && request && request.demo === true) {
+      return this._demoFit(offerId);
+    }
     if (isSwarmRuleset(run.ruleset) && offerId != null) return this._purchase(offerId);
     const offer = offers.find((entry) => entry.id === offerId) || null;
     this._offers = null;
@@ -548,10 +597,14 @@ export const survivalDraft = {
         }
       }
     }
-    const blocker = ships.moduleFitBlocker?.({ slotIndex: offer.slotIndex, def: MODULE_DEF_BY_ID.get(offer.defId) });
-    if (blocker) {
-      this._notice = blocker.text || 'That item no longer fits. Your money is safe.';
-      return false;
+    // Hulls and services never meet the hardpoint blocker — their legality was judged live in
+    // currentOffers, and their own resolvers know why they might refuse.
+    if (offer.kind !== SWARM_HULL_OFFER_KIND && offer.kind !== SWARM_SERVICE_OFFER_KIND) {
+      const blocker = ships.moduleFitBlocker?.({ slotIndex: offer.slotIndex, def: MODULE_DEF_BY_ID.get(offer.defId) });
+      if (blocker) {
+        this._notice = blocker.text || 'That item no longer fits. Your money is safe.';
+        return false;
+      }
     }
     this._pendingPurchase = offer;
     this._emit('run:spendRequested', { credits: offer.price, reason: CRUCIBLE_PURCHASE_SPEND_REASON });
@@ -561,6 +614,56 @@ export const survivalDraft = {
       return false;
     }
     return this._purchased.has(offer.id);
+  },
+
+  /**
+   * The hull and service rows of the armory — every player ship on the shelf plus the counter
+   * work no fitting slot can hold. They are offers like any other card: priced in the short-round
+   * economy, bought through the wallet, and legality-judged live so a mid-shop hull swap
+   * re-shelves the fittings the new hull can carry.
+   */
+  _armoryExtras(loadout, run) {
+    if (!isSwarmRuleset(run.ruleset)) return [];
+    const extras = [];
+    const player = this.state && this.state.player;
+    const entity = this._playerEntity();
+    const hullMax = Number.isFinite(entity && entity.hullMax) ? entity.hullMax : 0;
+    const armorMax = Number.isFinite(entity && entity.armorMax) ? entity.armorMax : 0;
+    const hurt = !!entity && ((hullMax > 0 && (Number(entity.hull) || 0) < hullMax)
+      || (armorMax > 0 && (Number(entity.armorHp) || 0) < armorMax));
+    extras.push({
+      id: 'svc_weld', kind: SWARM_SERVICE_OFFER_KIND, service: 'weld',
+      verb: 'Weld', name: 'Hull weld',
+      blurb: 'Plate, weld and rinse the scars. Back to full before the next pack.',
+      price: SWARM_WELD_PRICE, category: 'Service', slotLabel: 'Hull & armor',
+      _serviceHurt: hurt,
+    });
+    const held = player && player.cargo && player.cargo.items
+      ? (player.cargo.items.cmdty_impulse_charge || 0) : 0;
+    extras.push({
+      id: 'svc_ordnance', kind: SWARM_SERVICE_OFFER_KIND, service: 'ordnance',
+      verb: 'Rack', name: 'Ordnance top-up',
+      blurb: 'Impulse charges racked to full for the charge-rack builds.',
+      price: SWARM_ORDNANCE_PRICE, category: 'Service', slotLabel: 'Cargo',
+      _serviceCharges: held,
+    });
+    for (const ship of SHIPS) {
+      if (!ship || typeof ship.id !== 'string') continue;
+      extras.push({
+        id: `hull_${ship.id}`, kind: SWARM_HULL_OFFER_KIND, defId: ship.id,
+        verb: 'Hull', name: ship.name,
+        blurb: `${ship.role} hull · tier ${ship.tier} · ${buildSlotList(ship).length} hardpoints`,
+        price: swarmHullPrice(ship), category: 'Hulls', slotLabel: 'Ship cradle',
+        _flying: ship.id === (loadout && loadout.hullId),
+      });
+    }
+    return extras;
+  },
+
+  _playerEntity() {
+    const state = this.state;
+    if (!state || state.playerId == null || !state.entities) return null;
+    return typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
   },
 
   /**
@@ -625,6 +728,150 @@ export const survivalDraft = {
       wave: this._wave,
     });
     this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+  },
+
+  /**
+   * The hull row, after the wallet has said yes: a real hull grant through the ships owner,
+   * set active so the armory's next refresh re-shelves every card against the new hardpoints.
+   * The fittings a hull swap cannot carry stay in the run's hold — never lost, only unmounted.
+   */
+  _resolveHullPurchase(pending) {
+    const ships = this._ships();
+    const refund = (text) => {
+      this._emit('run:awardRequested', { credits: pending.price, reason: 'crucible:purchaseRefund' });
+      this._notice = text;
+    };
+    if (!ships || typeof ships.buyShip !== 'function') {
+      refund(`The cradle could not answer. ${pending.price} cr refunded.`);
+      return;
+    }
+    if (!ships.buyShip({ defId: pending.defId, setActive: true, grant: true })) {
+      refund(`${pending.name} would not leave the cradle. ${pending.price} cr refunded.`);
+      return;
+    }
+    this._purchased.add(pending.id);
+    // A hull swap is also where trial marks stop meaning anything: the fittings they named live
+    // on the hull you just left, so the ledger is simply closed rather than half-honoured.
+    this._trials.clear();
+    this._notice = `${pending.name} is yours for the run. The shelf just re-priced your hardpoints — build it.`;
+    this._emit('run:modifierRecordRequested', {
+      record: { kind: 'hull', offerId: pending.id, defId: pending.defId, wave: this._wave },
+      draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id },
+      wave: this._wave,
+    });
+    this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+  },
+
+  /**
+   * The service counter: counter work, not a fitting. Weld restores the ENTITY's own numbers the
+   * same way swarmSupply's repair cell does (there is no healing kernel; the clamp is the whole
+   * contract), then reports the yard receipt on the shipped service channel so the living-hull
+   * ledger patches the scars. Ordnance adds what the rack is missing, nothing more.
+   */
+  _resolveServicePurchase(pending) {
+    const entity = this._playerEntity();
+    const refund = (text) => {
+      this._emit('run:awardRequested', { credits: pending.price, reason: 'crucible:purchaseRefund' });
+      this._notice = text;
+    };
+    if (pending.service === 'weld') {
+      if (!entity) {
+        refund(`No hull in the cradle. ${pending.price} cr refunded.`);
+        return;
+      }
+      const hullMax = Number.isFinite(entity.hullMax) ? entity.hullMax : 0;
+      const armorMax = Number.isFinite(entity.armorMax) ? entity.armorMax : 0;
+      const restoredHull = Math.max(0, hullMax - (Number(entity.hull) || 0));
+      const restoredArmor = Math.max(0, armorMax - (Number(entity.armorHp) || 0));
+      if (restoredHull <= 0 && restoredArmor <= 0) {
+        refund(`The hull is already sound. ${pending.price} cr refunded.`);
+        return;
+      }
+      entity.hull = hullMax;
+      entity.armorHp = armorMax;
+      this._emit('service:completed', { type: 'repair', restoredHull, restoredArmor });
+      this._purchased.add(pending.id);
+      this._notice = 'Welded to full — the scars read as patched, not new.';
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    if (pending.service === 'ordnance') {
+      const player = this.state && this.state.player;
+      const held = player && player.cargo && player.cargo.items
+        ? (player.cargo.items.cmdty_impulse_charge || 0) : 0;
+      const missing = SWARM_ORDNANCE_RACK_MAX - held;
+      if (missing <= 0) {
+        refund(`The rack is already full. ${pending.price} cr refunded.`);
+        return;
+      }
+      const added = addCargo(this.state, 'cmdty_impulse_charge', missing) || 0;
+      if (added <= 0) {
+        refund(`The rack would not take the charges. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._purchased.add(pending.id);
+      this._notice = `${added} impulse charge${added === 1 ? '' : 's'} racked.`;
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    refund(`The counter does not know that service. ${pending.price} cr refunded.`);
+  },
+
+  /**
+   * The demo: a fitting you fly for one round without paying for it. Fits free through the same
+   * ships owner the purchases use — if it would refuse the real fit it refuses the demo — then
+   * comes off when the next armory opens, unless you bought it. Only fittings can be demoed:
+   * a hull you fly is a hull you own, and a weld you use is used.
+   */
+  _demoFit(offerId) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.phase !== 'draft' || this._resolved) return false;
+    const offer = this.currentOffers().find(entry => entry.id === offerId);
+    if (!offer || !Number.isInteger(offer.slotIndex) || typeof offer.defId !== 'string') {
+      this._notice = 'That is not a part you can fly on trial.';
+      return false;
+    }
+    const ships = this._ships();
+    if (!ships || typeof ships.fitModule !== 'function') {
+      this._notice = 'Fitting is unavailable.';
+      return false;
+    }
+    if (this._trials.get(offer.slotIndex) === offer.defId) {
+      this._notice = `${offer.name} is already on trial.`;
+      return false;
+    }
+    const blocker = ships.moduleFitBlocker?.({ slotIndex: offer.slotIndex, def: MODULE_DEF_BY_ID.get(offer.defId) });
+    if (blocker) {
+      this._notice = blocker.text || 'That item no longer fits.';
+      return false;
+    }
+    if (!ships.fitModule({ slotIndex: offer.slotIndex, defId: offer.defId })) {
+      this._notice = `${offer.name} could not be fitted for the trial.`;
+      return false;
+    }
+    this._trials.set(offer.slotIndex, offer.defId);
+    this._notice = `${offer.name} on trial — it comes off at the next armory unless you buy it.`;
+    return true;
+  },
+
+  /** Trials end where they began: at the next armory the demo copies come off, paid or not. */
+  _clearTrials() {
+    if (!(this._trials instanceof Map) || this._trials.size === 0) return;
+    const ships = this._ships();
+    const player = this.state && this.state.player;
+    const inventory = Array.isArray(player && player.moduleInventory) ? player.moduleInventory : [];
+    const fittings = this._activeLoadout().fittings;
+    for (const [slotIndex, defId] of this._trials) {
+      // If the slot still wears the demo, strip it. If it wears something else, the demo was
+      // bumped into the hold already — either way exactly one copy of that defId leaves the run.
+      if (fittings[slotIndex] === defId && ships && typeof ships.unfitModule === 'function') {
+        ships.unfitModule({ slotIndex });
+      }
+      for (let i = inventory.length - 1; i >= 0; i--) {
+        if (inventory[i] && inventory[i].defId === defId) { inventory.splice(i, 1); break; }
+      }
+    }
+    this._trials.clear();
   },
 
   /**

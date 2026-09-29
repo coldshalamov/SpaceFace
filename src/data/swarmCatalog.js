@@ -25,6 +25,17 @@ import { MODULES } from './modules.js';
 
 export const SWARM_CATALOG_SCHEMA_VERSION = 1;
 
+/**
+ * Wallet prices for the hull row — the same tier ladder shape as the fittings', but a hull is
+ * the most consequential purchase in the sandbox so it prices an order bigger.
+ */
+export const SWARM_HULL_PRICES = Object.freeze([40, 80, 130, 190, 260, 340]);
+export function swarmHullPrice(shipDef) {
+  const tier = Math.max(0, Math.min(SWARM_HULL_PRICES.length - 1,
+    Math.trunc(Number(shipDef && shipDef.tier) || 0)));
+  return SWARM_HULL_PRICES[tier];
+}
+
 /** Armory shelf: the coarse group a card browses under. Stamped on every eligible offer. */
 export const SWARM_CATEGORIES = Object.freeze([
   'Weapons',
