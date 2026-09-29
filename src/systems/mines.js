@@ -20,6 +20,42 @@ export const MINE_TELEGRAPH_CUE = 'wake_mines';
 export const MINE_TYPE = 'mine';
 export const MINE_THROW_GRACE_S = 0.5;
 
+// SF-041 (PB-ORD-C) — the wake-corridor law: a seeded fence hugs ONE flank of the approach
+// line, leaving the opposite flank an open, readable safe lane. Solutions are physical:
+// thread the open flank, displace the fence with a field/blast, or throw a body through.
+// Pure geometry from the two endpoints — no rng, so browser/Electron/probes seed the same
+// corridor from the same standoff.
+export const MINE_CORRIDOR_COUNT = 3;
+export const MINE_CORRIDOR_FLANK_WU = 56;   // first hull's lateral offset: its trigger disc
+                                            // (55 wu) just kisses the approach centreline
+export const MINE_CORRIDOR_RISE_WU = 46;    // each next hull steps further across (overlapping
+                                            // discs: the hugged flank is a wall, not a sieve)
+
+/**
+ * Seed positions for one corridor fence between two endpoints (e.g. jackal → player approach).
+ * Deterministic in the endpoints; the caller places each through the ordinary placeMine law.
+ * @returns {Array<{x:number,z:number}>}
+ */
+export function mineCorridorLayout(fromPos, toPos, count = MINE_CORRIDOR_COUNT) {
+  if (!fromPos || !toPos || !(count > 0)) return [];
+  const dx = (toPos.x || 0) - (fromPos.x || 0);
+  const dz = (toPos.z || 0) - (fromPos.z || 0);
+  const len = Math.hypot(dx, dz) || 1;
+  const ux = dx / len, uz = dz / len;
+  const px = -uz, pz = ux; // perpendicular: the flank the fence hugs
+  const depth0 = 80, depthStep = 70; // strung along the approach, as the wake always was
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const along = depth0 + i * depthStep;
+    const side = MINE_CORRIDOR_FLANK_WU + i * MINE_CORRIDOR_RISE_WU;
+    out.push({
+      x: (fromPos.x || 0) + ux * along + px * side,
+      z: (fromPos.z || 0) + uz * along + pz * side,
+    });
+  }
+  return out;
+}
+
 const TRIGGER_TYPES = new Set(['ship', 'drone']);
 
 export const mines = {
