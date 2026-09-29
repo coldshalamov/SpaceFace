@@ -338,7 +338,9 @@ function recomputeOpen(chain, state) {
   const open = hasAggro || hasBounty || chain.amendsActive === true;
   chain.open = open;
   if (open) chain.settledAt = null;
-  else if (!Number.isFinite(Number(chain.settledAt))) chain.settledAt = nowTime(state);
+  else if (chain.settledAt == null || !Number.isFinite(Number(chain.settledAt))) {
+    chain.settledAt = latestNodeTime(chain);
+  }
 }
 
 function recomputeAllOpen(own, state) {
@@ -358,10 +360,14 @@ function chooseEvictionIndex(own) {
   for (let i = 0; i < own.chains.length; i += 1) {
     const chain = own.chains[i];
     if (!chain || chain.open) continue;
-    const stamp = Number.isFinite(Number(chain.settledAt))
-      ? Number(chain.settledAt)
+    // Number(null) is 0, which is finite. A missing stamp is not time zero,
+    // or every closed chain ties and the newest one is the one that leaves.
+    const raw = chain.settledAt;
+    const stamp = raw != null && Number.isFinite(Number(raw))
+      ? Number(raw)
       : latestNodeTime(chain);
-    if (stamp < bestStamp) {
+    const olderTie = stamp === bestStamp && index >= 0 && i > index;
+    if (stamp < bestStamp || olderTie) {
       bestStamp = stamp;
       index = i;
     }
@@ -513,6 +519,15 @@ function makeRoomForChain(state, own) {
       }
     }
   }
+  // Aggro, bounty, or amends can refuse the settle above. The cap still holds:
+  // the oldest chain leaves so the new one has a seat.
+  if (own.chains.length >= PROVENANCE_CHAIN_CAP) {
+    const oldest = own.chains[own.chains.length - 1];
+    if (oldest) {
+      own.chains.pop();
+      dropIncidentsForChain(own, oldest.id);
+    }
+  }
 }
 
 function nextChainId(state, own, rootTick, rootKind, actorKey) {
@@ -656,6 +671,36 @@ function latestChainForSector(own, sectorId) {
   return null;
 }
 
+function settlementTime(receiptId, settlementKey) {
+  if (!receiptId || !settlementKey) return NaN;
+  const prefix = `${receiptId}@`;
+  if (!settlementKey.startsWith(prefix)) return NaN;
+  const value = Number(settlementKey.slice(prefix.length));
+  return Number.isFinite(value) ? value : NaN;
+}
+
+function custodyActAlreadyRecorded(own, receiptId, settlementKey) {
+  if (!own || !Array.isArray(own.chains)) return false;
+  if (!receiptId && !settlementKey) return false;
+  const at = settlementTime(receiptId, settlementKey);
+  for (const chain of own.chains) {
+    const nodes = chain && chain.nodes;
+    if (!Array.isArray(nodes)) continue;
+    for (const node of nodes) {
+      if (!node || node.k !== 'act') continue;
+      if (sanitizeOutcome(node.outcome) !== 'surrendered_secured') continue;
+      const incident = asString(node.incidentId);
+      const target = asString(node.targetId);
+      if (settlementKey && (incident === settlementKey || target === settlementKey)) return true;
+      // The same-tick twin stores the bare receipt. That is this settlement
+      // only at the same time. A recycled hull id is a later capture.
+      const namesReceipt = receiptId && (incident === receiptId || target === receiptId);
+      if (namesReceipt && Number.isFinite(at) && Number(node.t) === at) return true;
+    }
+  }
+  return false;
+}
+
 export const provenanceLedger = {
   name: 'provenanceLedger',
 
@@ -669,7 +714,8 @@ export const provenanceLedger = {
     this._listen('faction:repChanged', (payload) => this._onRepChanged(payload || {}));
     this._listen('faction:repSpillover', (payload) => this._onRepSpillover(payload || {}));
     this._listen('faction:aggro', (payload) => this._onFactionAggro(payload || {}));
-    this._listen('law:custodyTransfer', (payload) => this._onActOutcome(payload || {}, 'surrendered_secured'));
+    this._listen('law:custodyTransfer', (payload) => this._onCustodyClosed(payload || {}));
+    this._listen('custody:recorded', (payload) => this._onCustodyClosed(payload || {}));
     this._listen('combat:nonlethalResolution', (payload) => this._onActOutcome(payload || {}, 'surrendered_secured'));
     this._listen('surrender:secured', (payload) => this._onActOutcome(payload || {}, 'surrendered_secured'));
     this._listen('surrender:escaped', (payload) => this._onActOutcome(payload || {}, 'surrendered_escaped'));
@@ -1071,6 +1117,35 @@ export const provenanceLedger = {
     const nodeIndex = addNode(chain, consequence);
     addEdge(chain, anchor, nodeIndex, 'caused');
     recomputeOpen(chain, this.state);
+  },
+
+  _onCustodyClosed(payload) {
+    const source = payload || {};
+    const receiptId = asString(source.receiptId) || asString(source.id);
+    const tSource = source.t != null ? source.t : source.capturedAt;
+    const tNum = Number(tSource);
+    const t = Number.isFinite(tNum) ? tNum : 0;
+    const settlementKey = asString(source.settlementKey)
+      || (receiptId ? `${receiptId}@${t}` : null);
+    if ((receiptId || settlementKey)
+      && custodyActAlreadyRecorded(ensureState(this.state), receiptId, settlementKey)) {
+      return;
+    }
+    // A numeric entity id is not a ledger string. The live transfer already
+    // names the same hull by its receipt id, so the same-tick nonlethal twin
+    // still collapses onto one act.
+    const stringEntity = asString(source.entityId) || asString(source.targetId);
+    this._onActOutcome({
+      entityId: stringEntity || receiptId,
+      factionId: asString(source.factionId) || asString(source.offenderFactionId),
+      stationId: source.stationId,
+      sectorId: source.sectorId,
+      t: source.t != null ? source.t : source.capturedAt,
+      tick: source.tick,
+      id: settlementKey || receiptId,
+      text: source.text,
+      reason: source.reason,
+    }, 'surrendered_secured');
   },
 
   _onActOutcome(payload, outcome) {
