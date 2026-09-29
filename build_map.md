@@ -2477,6 +2477,33 @@ re-shoots the newest head, restarts on digest drift; wins → `scratch/budget-lo
 lands, copy `budgets.json` to main, commit, push immediately. Headed is a hard integrity gate —
 headless numbers are not evidence.
 
+### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
+
+Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
+
+- **Package A & B: Measured Truth Scoreboard (`check-solid-truth.mjs --strict`)**
+  - Scoreboard: **196/196 rows clean**, 0 findings (`node scripts/check-solid-truth.mjs --strict` exits 0).
+  - Craft colliders match measured silhouettes. Decoupled craft collision proportions from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS` in `src/core/sg02DynamicBodyOwner.js`, protecting physical hitboxes against visual tuning (resolves D99).
+  - 10 COARSE/NOSKIN rows resolved with truthful skins and collider kinds.
+- **Package C: Dynamic Compound Colliders (`test/dynamic-compound-colliders-determinism.test.mjs`)**
+  - Compound skins enabled on dynamic bodies (capital ships, dreadnought, heavy wrecks) behind bit-for-bit determinism proof (`test/dynamic-compound-colliders-determinism.test.mjs` PASS). Identical sim hash with/without save-reload, CCD active, primitive count <= 32.
+- **Package D: Zero Overlap & Tunnelling (`scripts/probe-solid-overlap.mjs`)**
+  - Swept headless probe: **480/480 test scenarios PASS**, **0 tunnelling**, worst penetration depth 5.67 WU (all within census row tolerances).
+  - Tested body pairs across speeds 30, 150, 400, 550 WU/s across multiple approach bearings.
+  - Isolated pickup sensor triggers from physical craft knock reactions; capsule spine degenerate window solver ladder added for coincident spawns (`test/sg02-coincident-spawn.test.mjs` 10/10 PASS).
+- **Package E: Universal Dynamics for Solids <= 90 WU (`src/core/physicsAuthority.js`)**
+  - Authoritative physics threshold: structures > 90 WU remain fixed landmarks (stations, jump gates, giant rock cathedrals); non-landmark rocks, wrecks, pods, props, payloads, and buoys are dynamic with volume-proportional mass table.
+- **Package F: Predictive Camera Clearance (`src/render/cameraGlide.js`, `src/render/camera.js`, `src/render/renderer.js`)**
+  - Large moving hulls (capital ships) added to `CAMERA_CLEARANCE_KINDS` with height gate and defId/silhouette/radius filtering.
+  - Reactive clearance paths (`keepOut`, floor easing in `camera.js`) removed; predictive glide is the sole authority.
+  - Headless structure sweep (`scripts/probe-camera-clearance-sweep.mjs`): **7,320 scenarios evaluated** across 122 structural models x 4 zooms [45, 58, 144, 330] x 3 speeds [40, 195, 400 WU/s] x 5 approach bearings: **0 inside frames everywhere**, **4 hard clamp frames total** (~0.0005/scenario), peak vertical acceleration gentle, returns smoothly to zoom.
+  - Camera test suite: **94/94 PASS** (`test/camera-*.test.mjs`).
+- **Ledger Total-Fixes:**
+  - D97 fixed: `BINDINGS.claimBase.label` restored in `src/ui/screens/base.js` (`scripts/check-ui-screen-imports.mjs` 56/56 PASS).
+  - D98 fixed: `maxContactDv` clamped by closing $\Delta v$ in `src/core/sg02DynamicBodyOwner.js` (`test/tumble-fling-bounce.test.mjs` 6/6 PASS); Hitch cruise base speed aligned in `test/pq-029-00-tractor-throw.test.mjs` (10/10 PASS).
+  - D99 fixed: Craft collision dimensions decoupled from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS`.
+  - Rows D97, D98, D99 deleted from `design/program/DEMO_READINESS_2026-09-20.md` per §7 total-fix rule.
+
 ### Wave D — shelf that beats live
 
 Reuse before authoring. A variant counts.
