@@ -145,7 +145,7 @@ async function runFling(seed, {
   const cruise = readCruiseSpeed(victims[0]).cruiseSpeed;
 
   const events = {
-    killed: [], collisions: [], drops: [], collected: [], tumbled: [], spawnedPickups: new Set(),
+    killed: [], collisions: [], drops: [], collected: [], tumbled: [], overflow: [], spawnedPickups: new Set(),
   };
   host.bus.on('entity:killed', (p) => {
     if (!p) return;
@@ -182,6 +182,9 @@ async function runFling(seed, {
       rejected: finite(p && p.rejectedAmount),
       collectorId: p && p.collectorId,
     });
+  });
+  host.bus.on('loot:overflowConverted', (p) => {
+    if (p) events.overflow.push({ pickupId: p.pickupId, units: finite(p.units), credits: finite(p.credits) });
   });
   host.bus.on('combat:tumbled', (p) => {
     if (p) events.tumbled.push({ victimId: p.victimId, tick: p.tick, durationS: p.durationS, spin: p.spin, source: p.source });
@@ -545,10 +548,13 @@ async function runMoney(seed, eventTrace, { holdPrefillUnits = 0, tag = 'money' 
   const landedLives = [];
   const strandedLives = [];
   const vanishedLives = [];
+  // A refused pickup that the arcade-loot rule turned into credits also counts as landed: nothing is
+  // left floating and the pilot did nothing.
+  const overflowIds = new Set(run.events.overflow.map((o) => o.pickupId));
   for (const l of lives) {
     const acc = accepted.get(l.id) || 0;
     if (l.leftTick == null) strandedLives.push(l);
-    else if (acc > 0 || l.kind === 'credit_chip') landedLives.push(l);
+    else if (acc > 0 || l.kind === 'credit_chip' || overflowIds.has(l.id)) landedLives.push(l);
     else vanishedLives.push(l);
   }
   const tally = (list) => list.reduce((o, l) => { o[l.kind] = (o[l.kind] || 0) + 1; return o; }, {});
@@ -571,6 +577,8 @@ async function runMoney(seed, eventTrace, { holdPrefillUnits = 0, tag = 'money' 
     holdBefore: run.events.cargo.before,
     holdAfter: run.events.cargo.after,
     chipCreditsDropped: chipCredits,
+    overflowConverted: run.events.overflow.length,
+    overflowCredits: run.events.overflow.reduce((sum, o) => sum + o.credits, 0),
     walletDelta: round(run.events.wallet.after - run.events.wallet.before, 1),
     collectEventsRaw: run.events.collected.length,
     secondsLastKillToLastLanding: kills.length && landedLives.length && lastLandTick >= lastKillTick
@@ -667,7 +675,7 @@ export const scenario = {
     if (moneyBusyHold.measured) {
       push('money.landed.busyHold', 'same fling with the hold 60% full: share of spawned loot the hull accepts with no pilot input',
         moneyBusyHold.landedShare, 'fraction', moneyBusyHold.landedShare === FLING_TARGETS.moneyLandedShare,
-        `${moneyBusyHold.pickupsStranded} still floating (${JSON.stringify(moneyBusyHold.strandedKinds)}); hold ${moneyBusyHold.holdBefore ? moneyBusyHold.holdBefore.used : '?'} -> ${moneyBusyHold.holdAfter ? `${moneyBusyHold.holdAfter.used}/${moneyBusyHold.holdAfter.cap}` : '?'}`);
+        `${moneyBusyHold.pickupsStranded} still floating (${JSON.stringify(moneyBusyHold.strandedKinds)}); hold ${moneyBusyHold.holdBefore ? moneyBusyHold.holdBefore.used : '?'} -> ${moneyBusyHold.holdAfter ? `${moneyBusyHold.holdAfter.used}/${moneyBusyHold.holdAfter.cap}` : '?'}; ${moneyBusyHold.overflowConverted} refused ore paid ${moneyBusyHold.overflowCredits} cr; wallet +${moneyBusyHold.walletDelta} of ${moneyBusyHold.chipCreditsDropped} chips + ${moneyBusyHold.overflowCredits} overflow`);
     }
 
     const realPathProof = (headOn[0] && headOn[0].realPathProof) || null;

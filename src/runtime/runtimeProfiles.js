@@ -19,6 +19,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     // Hull-burst overhaul slice A: the rules that make a knocked-loose hull a projectile (credit held
     // for the whole flight, free spin, bounce, hull-on-hull knock; more land behind this switch). Profile-driven like the rest.
     tumbleFling: true,
+    // Hull-burst overhaul slice A: kill loot homes after a beat from any distance; refused ore pays credits.
+    arcadeLoot: true,
   }),
   massline2: Object.freeze({
     enabled: true,
@@ -78,6 +80,7 @@ export const LEGACY47A_FEATURES = Object.freeze({
     weaponHeatVent: false,
     // The projectile-hull rules change tumble physics; 47-A predates them.
     tumbleFling: false,
+    arcadeLoot: false,
   }),
   massline2: Object.freeze({
     enabled: false,

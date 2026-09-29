@@ -67,6 +67,11 @@ export const COMBAT_FLAGS = {
   // (outbound floor) ships behind this same switch.
   // Production ON; legacy47a OFF so the 47-A golden stays byte-identical.
   tumbleFling: _initial.combat.tumbleFling,
+  // Hull-burst overhaul, slice A arcade loot (design doc section 7): loot from the player's kills
+  // waits a short beat so the burst reads, then homes to the hull from any distance, and ore a full
+  // hold refuses converts to credits through the economy owner instead of sitting there.
+  // Production ON; legacy47a OFF (47-A predates kill bursts).
+  arcadeLoot: _initial.combat.arcadeLoot,
 };
 
 /** Read a combat flag by name; unknown names read false. Pure over the MAP (or instance features). */
