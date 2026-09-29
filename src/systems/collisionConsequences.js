@@ -12,6 +12,8 @@ import {
   HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
   isWorldHitstunBody,
+  holdImpulseProvenance,
+  IMPULSE_PROVENANCE_MAX_AGE_TICKS,
   publishHitstunImpulse,
   readRecentImpulseProvenance,
   readRecentImpulseProvenanceHistory,
@@ -465,7 +467,38 @@ function bestImpulseProvenance(entity, tick) {
   const history = readRecentImpulseProvenanceHistory(entity, tick);
   let best = null;
   for (const record of history) best = preferImpulseProvenance(best, record);
-  return preferImpulseProvenance(best, readRecentImpulseProvenance(entity, tick));
+  const latest = readRecentImpulseProvenance(entity, tick);
+  if (!latest) {
+    // The latest slot was an older expired record, so that read deleted the in-window winner
+    // along with it. Put the winner back before the next read.
+    if (best) recordImpulseProvenance(entity, best);
+    return best;
+  }
+  const chosen = preferImpulseProvenance(best, latest);
+  return retargetHeldProvenance(entity, latest, chosen, tick);
+}
+
+// A flight hold latches whichever write is in the latest slot. When that write loses the
+// equal-tick comparison, move the hold onto the winner so the long flight names the same actor
+// either write order would have named while both records were still in the window.
+// A same-actor hold keeps its slot object.
+function retargetHeldProvenance(entity, latest, chosen, tick) {
+  if (!latest || latest.holdUntilTick == null || !chosen || chosen === latest) return chosen;
+  const now = Number.isInteger(tick) ? tick : 0;
+  if (now > latest.holdUntilTick) return chosen;
+  if ((chosen.actorId ?? null) === (latest.actorId ?? null)) return chosen;
+  const age = now - chosen.appliedTick;
+  if (age < 0 || age > IMPULSE_PROVENANCE_MAX_AGE_TICKS) return chosen;
+  const until = latest.holdUntilTick;
+  const restored = recordImpulseProvenance(entity, {
+    actorId: chosen.actorId,
+    weaponId: chosen.weaponId,
+    tag: chosen.tag,
+    appliedTick: chosen.appliedTick,
+    magnitude: chosen.magnitude,
+  });
+  if (!restored) return chosen;
+  return holdImpulseProvenance(entity, until, now, restored.appliedTick) || restored;
 }
 
 export function contactImpulseProvenance(a, b, tick) {

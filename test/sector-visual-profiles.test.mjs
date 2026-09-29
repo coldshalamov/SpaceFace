@@ -106,6 +106,44 @@ test('Helios receives a bespoke high-readability environment profile', () => {
     'starter-sector density stays within the prior measured vertex budget');
 });
 
+// COLOR_LIGHTING_STANDARD §2 bounds: ambient 0.12–0.25, key 2.2–3.6, rim 0.9–1.8, fill 0.35–0.8.
+// Every authored rig must stay inside the standard and hold directional contrast — a rig whose
+// ambient+fill rival the key is a flat wash, which is the look the profiles exist to remove.
+test('every sector rig stays inside the lighting standard and holds contrast', () => {
+  for (const profile of Object.values(SECTOR_VISUAL_PROFILES)) {
+    const l = profile.lighting;
+    assert.ok(l.ambient >= 0.12 && l.ambient <= 0.25, `${profile.id} ambient ${l.ambient}`);
+    assert.ok(l.key >= 2.2 && l.key <= 3.6, `${profile.id} key ${l.key}`);
+    assert.ok(l.rim >= 0.9 && l.rim <= 1.8, `${profile.id} rim ${l.rim}`);
+    assert.ok(l.fill >= 0.35 && l.fill <= 0.8, `${profile.id} fill ${l.fill}`);
+    assert.ok(l.key >= l.ambient * 6,
+      `${profile.id} key ${l.key} must dominate ambient ${l.ambient}`);
+    assert.ok(l.rim >= l.fill,
+      `${profile.id} rim ${l.rim} must out-separate fill ${l.fill}`);
+  }
+});
+
+test('way-of-life sectors resolve their own authored rig and key tint', () => {
+  const cases = [
+    ['sector_vesta_forge', 'vesta_forge', 0xffc98f, 0xd09a6a],
+    ['sector_pallas_drift', 'pallas_drift', 0xd9e6ff, 0x9fb4d8],
+    ['sector_sker_haven', 'sker_haven', 0xffb45e, 0xc98d5c],
+    ['sector_ceres_belt', 'ceres_belt', 0xf0e2c8, 0xb8a48f],
+  ];
+  for (const [sectorId, profileId, keyColor, fillColor] of cases) {
+    const profile = resolveSectorVisualProfile({ id: sectorId });
+    assert.equal(profile.id, profileId, `${sectorId} resolves its own profile`);
+    assert.equal(profile.lighting.keyColor, keyColor, `${sectorId} key tint`);
+    assert.equal(profile.lighting.fillColor, fillColor, `${sectorId} fill tint`);
+    assert.ok(profile.background && profile.post,
+      `${sectorId} inherits its family sky + post block`);
+    assert.equal(Object.isFrozen(profile.lighting), true);
+  }
+  // Tethys keeps its junction profile; family fallbacks still serve unmapped sectors.
+  assert.equal(resolveSectorVisualProfile({ id: 'sector_tethys_junction' }).id, 'tethys');
+  assert.equal(resolveSectorVisualProfile({ id: 'sector_frontier_east_ridge' }).id, 'fringe');
+});
+
 test('sector profiles own a stable background composition instead of only a color grade', () => {
   const helios = resolveBackgroundComposition(resolveSectorVisualProfile({
     id: 'sector_helios_prime',
@@ -121,8 +159,10 @@ test('sector profiles own a stable background composition instead of only a colo
   assert.equal(helios.signatureHero.ring, true);
   assert.ok(helios.signatureHero.screenNdc[0] >= 0.5,
     'the Helios landmark stays in the right-side background rather than covering the player ship');
-  assert.ok(helios.planetChance > anomaly.planetChance,
-    'civilized core space favors celestial landmarks over anomalies');
+  assert.equal(helios.planetChance, 0,
+    'Helios shows exactly one sky body — its signature ringed giant; procedural planets would dilute it');
+  assert.ok(anomaly.planetChance > helios.planetChance,
+    'the scar rolls its own cold bodies; Helios owns exactly its hero');
   assert.ok(anomaly.wormholeChance > helios.wormholeChance,
     'anomaly space has its own recognizable hero-object grammar');
   assert.equal(Object.isFrozen(helios), true);
@@ -186,6 +226,11 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
     fringe: { bloomStrength: 0.5616, bloomThreshold: 0.96, exposure: 0.94 },
     anomaly: { bloomStrength: 0.6032, bloomThreshold: 0.90, exposure: 0.95 },
     tethys: { bloomStrength: 0.5512, bloomThreshold: 0.96, exposure: 0.93 },
+    // Per-sector rigs inherit their palette family's post block.
+    ceres_belt: { bloomStrength: 0.572, bloomThreshold: 0.94, exposure: 0.95 },
+    vesta_forge: { bloomStrength: 0.572, bloomThreshold: 0.94, exposure: 0.95 },
+    pallas_drift: { bloomStrength: 0.5616, bloomThreshold: 0.96, exposure: 0.94 },
+    sker_haven: { bloomStrength: 0.5616, bloomThreshold: 0.96, exposure: 0.94 },
   };
 
   assert.equal(DEFAULT_BLOOM_STRENGTH, 0.52);

@@ -14,10 +14,11 @@ export const SHADOW_CAST_RADIUS_SQ = SHADOW_CAST_RADIUS * SHADOW_CAST_RADIUS;
 export const SHADOW_CAST_HYSTERESIS_WU = 10;
 export const SHADOW_ORTHO_EXTENT = 300;
 // Old map was 1024 over ±700 (0.73 px/WU); 512 over ±300 was 0.85 px/WU. At ~1 WU/texel that
-// still read as crawling miscolored clumps on hulls (owner report 2026-09-21), so the opt-in
-// pass now runs 1024 over ±300 (1.71 px/WU) — the extra fill only spends on a deliberate
-// Settings/Quality opt-in, since the pass is off by default.
-export const SHADOW_MAP_SIZE = 1024;
+// still read as crawling miscolored clumps on hulls (owner report 2026-09-21). The opt-in
+// pass ran 1024 over ±300 (1.71 px/WU); the discrete-tier default (assessment packet B3) now
+// runs 2048 over ±300 — 3.4 px/WU, texel-snapped on the shadow camera lattice so it holds
+// still under a smooth pan.
+export const SHADOW_MAP_SIZE = 2048;
 export const SHADOW_TEXEL_WORLD_SIZE = (SHADOW_ORTHO_EXTENT * 2) / SHADOW_MAP_SIZE;
 
 export function shadowTexelWorldSize(

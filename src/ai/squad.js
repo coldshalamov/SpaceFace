@@ -69,6 +69,9 @@ export class SquadCommander {
       targetLoadScratch: new Map(),
       hostileTargetsScratch: [],
       assignmentMembersScratch: [],
+      // The occupant token accepted for members[0]. A later frame with the same id and a
+      // different token is a recycled body, not a new order to follow it.
+      leaderOccupantGeneration: null,
     };
     this.squads.set(definition.id, state);
     return this.inspect(definition.id);
@@ -449,9 +452,43 @@ function selectFocusTarget(perceptions, contacts) {
   return best;
 }
 
+function occupantGenerationOf(self) {
+  if (!self || self.occupantGeneration == null || self.occupantGeneration === '') return null;
+  return self.occupantGeneration;
+}
+
+function leaderSelfAccepted(self, acceptedGeneration) {
+  if (!self || self.alive === false) return false;
+  if (acceptedGeneration == null) return true;
+  const generation = occupantGenerationOf(self);
+  // A frame that drops the token after one was accepted is not the same body.
+  if (generation == null) return false;
+  return Object.is(generation, acceptedGeneration);
+}
+
 function chooseLeaderPerception(squad, perceptions) {
   const leaderId = squad.members[0].id;
-  return perceptions.find((perception) => perception.self.id === leaderId) || perceptions[0] || null;
+  const accepted = squad.leaderOccupantGeneration;
+  let other = null;
+  let matched = null;
+  for (const perception of perceptions) {
+    const self = perception && perception.self;
+    if (!self) continue;
+    if (self.id !== leaderId) {
+      if (!other) other = perception;
+      continue;
+    }
+    // Death, or a new occupant on the leader's id, is not a steering target.
+    // Do not fall through to this same body via the first-perception fallback.
+    if (!leaderSelfAccepted(self, accepted)) continue;
+    matched = perception;
+    break;
+  }
+  if (matched) {
+    const generation = occupantGenerationOf(matched.self);
+    if (generation != null) squad.leaderOccupantGeneration = generation;
+  }
+  return matched || other || null;
 }
 
 function formationSlotFor(squad, leaderPerception, index, count) {

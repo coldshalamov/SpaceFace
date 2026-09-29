@@ -137,9 +137,9 @@ test('an active shadow map follows the local player and prepares each matrix exa
   // The follow point snaps on the shadow camera's own u/v/w lattice — light-direction space, not
   // world XZ — so a tilted key light still lands texels on fixed world surfaces. The target can
   // leave the y=0 plane by a fraction of a texel; the light-to-target direction is unchanged.
-  assertVec3Close(harness.positions.light, [340.1021, 139.9761, -140.1583], 1e-3,
+  assertVec3Close(harness.positions.light, [339.9396, 139.9761, -139.9145], 1e-3,
     'key offset remains +60/+140/+40 on the stable shadow-camera lattice');
-  assertVec3Close(harness.positions.target, [280.1021, -0.0239, -180.1583], 1e-3,
+  assertVec3Close(harness.positions.target, [279.9396, -0.0239, -179.9145], 1e-3,
     'target follows the local player at shadow-texel resolution');
   const dir = harness.positions.light.map((v, i) => v - harness.positions.target[i]);
   const len = Math.hypot(dir[0], dir[1], dir[2]);
@@ -155,7 +155,7 @@ test('re-enabling shadows re-follows the moved player before the culling camera 
   const harness = createShadowHarness({ shadowSetting: true, receivers: 2 });
 
   assert.equal(harness.frame(), harness.shadowCamera, 'baseline frame renders shadows');
-  assertVec3Close(harness.positions.light, [340.1021, 139.9761, -140.1583], 1e-3);
+  assertVec3Close(harness.positions.light, [339.9396, 139.9761, -139.9145], 1e-3);
 
   // Every receiver disappears. The tally now gates the camera publication; the rig may still
   // follow (a moving node costs nothing when no map renders), but no camera is published.
@@ -173,9 +173,9 @@ test('re-enabling shadows re-follows the moved player before the culling camera 
   const shadowCamera = harness.frame();
 
   assert.equal(shadowCamera, harness.shadowCamera);
-  assertVec3Close(harness.positions.light, [159.8512, 139.9133, 139.6653], 1e-3,
+  assertVec3Close(harness.positions.light, [160.0170, 140.0395, 140.1280], 1e-3,
     'the rig re-followed to the NEW quantized position');
-  assertVec3Close(harness.positions.target, [99.8512, -0.0867, 99.6653], 1e-3);
+  assertVec3Close(harness.positions.target, [100.0170, 0.0395, 100.1280], 1e-3);
   assert.deepEqual(harness.matrixCalls, [['light', true], ['target', true], ['shadow', true]],
     'the re-enabled frame refreshes the matrices before publishing the camera');
 });

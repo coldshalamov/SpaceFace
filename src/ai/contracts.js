@@ -289,7 +289,7 @@ function neutralSelf(entityId) {
 
 function normalizeSelf(value, entityId) {
   if (!value || typeof value !== 'object') return neutralSelf(entityId);
-  return {
+  const self = {
     id: value.id == null ? entityId : value.id,
     team: value.team == null ? null : value.team,
     pos: freezeVec(value.pos),
@@ -321,6 +321,12 @@ function normalizeSelf(value, entityId) {
     cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
     tetherabilityBand: normalizeBand(value.tetherabilityBand, ['poor', 'fair', 'good', 'excellent'], 'good'),
   };
+  // Keep a carried occupant token and an explicit alive flag. A missing flag stays missing
+  // so an id-only sensor self is still the same body; inventing either field would retarget the wing.
+  const generation = value.occupantGeneration;
+  if (generation != null && generation !== '') self.occupantGeneration = generation;
+  if (Object.prototype.hasOwnProperty.call(value, 'alive')) self.alive = value.alive;
+  return self;
 }
 
 function normalizeContact(value) {

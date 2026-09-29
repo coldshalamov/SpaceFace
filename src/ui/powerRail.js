@@ -41,7 +41,7 @@
 // underneath. A claim with a past `expiresAt` is dropped on the next render rather than trusted, so
 // a prompt that dies without releasing cannot wedge the rail permanently.
 
-import { BOMB_DRIFT, bombDef } from '../data/bombs.js';
+import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { fhGlyph } from './views/fhGlyphs.js';
 import { repulsionTrapFitted } from '../systems/impulseCharges.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -325,6 +325,20 @@ export function readBombBayModel(state, nowS) {
   const owner = state.entities?.get?.(state.playerId);
   const locked = !owner?.alive || owner.flags?.docked || state.mode !== 'flight';
   if (cells && !def) {
+    // A fitted cell that has been shot dry is still that family. An unassigned socket is the
+    // only record that reads as an empty rack. Lookup is the catalog id, not bombDef's fallback.
+    const dry = dryFittedBomb(cells);
+    if (dry) {
+      return {
+        name: dry.shortName,
+        glyph: dry.field?.kind === 'singularity' ? 'well' : 'weapon',
+        state: locked ? 'locked' : 'empty',
+        cooldownMs: 0, deployed, armedCount, fields,
+        badge: 'BAY',
+        why: locked ? 'Undock to use the bay' : `${dry.name} empty — restock at a station shipworks`,
+        description: `${dry.name} ×0. ${dry.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
+      };
+    }
     return {
       name: 'Bay', glyph: 'weapon',
       state: locked ? 'locked' : 'empty',
@@ -347,6 +361,15 @@ export function readBombBayModel(state, nowS) {
     // Rack honesty: the loaded magazine count rides the description, never the name.
     description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
   };
+}
+
+function dryFittedBomb(cells) {
+  for (const cell of cells) {
+    if (!cell || cell.count !== 0 || cell.id == null) continue;
+    const known = BOMB_DEFS[cell.id];
+    if (known) return known;
+  }
+  return null;
 }
 
 function skimSlotState(state) {

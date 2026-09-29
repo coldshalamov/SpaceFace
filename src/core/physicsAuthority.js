@@ -478,7 +478,8 @@ function defaultDynamic(entity) {
 }
 
 function defaultCcd(entity) {
-  return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'projectile';
+  return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'projectile' ||
+    entity.type === 'wreck' || entity.type === 'asteroid' || entity.type === 'pod' || entity.type === 'pickup';
 }
 
 function defaultMaterial(entity) {

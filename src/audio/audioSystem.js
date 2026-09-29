@@ -1831,6 +1831,7 @@ export const audio = {
     bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
     bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
+    bus.on('loot:overflowConverted', (p) => this._onOverflowConverted(p));
     // Stunt chain voices (CV-EAR slice 3): player links pluck up a pentatonic ladder, the
     // bank lands a rising interval. Bridges stay silent — the near-miss bark already speaks.
     bus.on('stunt:trickDetected', (p) => this._onStuntTrickDetected(p));
@@ -3632,6 +3633,19 @@ export const audio = {
       || (this.state.ui && this.state.ui.docked)) return;
     const readiness = resolveDryFireReadiness(player, this.state);
     if (readiness.clack) this.play('sfx_wpn_dry_fire', { gain: DRY_FIRE.gain });
+  },
+
+  // Hull-burst overhaul slice A (combat.arcadeLoot): combat ore a full hold refuses pays credits
+  // instead of floating. It has no accepted pickup:collected to chime on, so it rides the SAME
+  // ladder: refused-ore payouts in a row climb the scoop chime exactly like accepted pickups do.
+  _onOverflowConverted(p) {
+    if (!p || !(p.credits > 0)) return;
+    this._onPickupCollected({
+      collectorId: this.state && this.state.playerId,
+      acceptedAmount: p.credits,
+      amount: p.credits,
+      pos: p.pos,
+    });
   },
 
   // Cargo scoop magnet-latch: every collected pickup seats with a thunk-whir, and pickups caught

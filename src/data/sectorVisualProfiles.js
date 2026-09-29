@@ -14,6 +14,7 @@ const DEFAULT_BACKGROUND_COMPOSITION = deepFreeze({
   ringChance: 0.45,
   cometInterval: [25, 70],
   signatureHero: null,
+  planetTypes: null, // null = the classic gas/rocky/ice roll; else the allowed procedural types
 });
 
 // Structure profile independently controls density/composition — not a tint swap.
@@ -38,18 +39,20 @@ const DEFAULT_STRUCTURE = deepFreeze({
   landmarkBias: 'planet',
 });
 
-export const SECTOR_VISUAL_PROFILES = Object.freeze({
+// Palette-family profiles. Way-of-life sectors layer their own rig on these (PER_SECTOR_RIGS).
+const SECTOR_FAMILY_PROFILES = Object.freeze({
   helios_core: freezeProfile({
     id: 'helios_core',
     skyPalette: 'AZURE',
     // Broad sunlight and cool planet bounce reveal the painted fleet without filling its
     // mechanical recesses. The rim describes the silhouette against the dark stellar field.
-    lighting: { ambient: 0.20, key: 3.4, rim: 1.65, fill: 0.72 },
+    lighting: { ambient: 0.16, key: 3.4, rim: 1.72, fill: 0.55 },
     background: {
       // The original stellar island and ringed planet remain the landmarks. The painted
-      // estuary is distant atmosphere around them, held below the lit machinery.
-      paintedSky: { plate: 'helios-amber-estuary', strength: 0.16, parallax: 0.003 },
-      intensity: 0.80,
+      // estuary is distant atmosphere around them, held below the lit machinery — dimmed and
+      // desaturated ~a third so the sky sits behind the opening frame instead of inside it.
+      paintedSky: { plate: 'helios-amber-estuary', strength: 0.11, parallax: 0.003, saturation: 0.68 },
+      intensity: 0.55,
       nebulaOpacity: 0.0,
       structure: {
         ...DEFAULT_STRUCTURE,
@@ -58,9 +61,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         // Stellar associations retain fine scale over the broad painted shapes.
         starDensity: 1.12,
         clusterCount: 8,
-        clusterStrength: 1.4,
+        clusterStrength: 1.05,
         voidFloor: 0.12,
-        flareDensity: 1.65,
+        flareDensity: 1.25,
         maxCoverage: 0.04,
         regionLo: 0.70,
         regionHi: 0.92,
@@ -72,9 +75,11 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         landmarkBias: 'planet',
       },
       composition: {
-        planetChance: 0.28,
+        // The signature ringed giant is the ONLY sky body Helios shows — no procedural planets
+        // dilute it, and no second body can drift into the trade-hub opening frame.
+        planetChance: 0.0,
         wormholeChance: 0.0,
-        ringChance: 0.35,
+        ringChance: 0.0,
         cometInterval: [32, 68],
         // Screen-safe upper-right limb; placement is projection-aware (not XZ offset guess).
         signatureHero: {
@@ -94,30 +99,32 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
   core: freezeProfile({
     id: 'core',
     skyPalette: 'AZURE',
-    lighting: { ambient: 0.18, key: 2.8, rim: 1.15, fill: 0.52 },
+    lighting: { ambient: 0.15, key: 2.8, rim: 1.40, fill: 0.42 },
     background: {
-      intensity: 0.58,
+      intensity: 0.40,
       // Authored star associations/landmarks carry the composition; no procedural full-field veil.
       nebulaOpacity: 0.0,
       // The Lantern shelf: an offline-baked plate with one dominant lit mass upper-right, a far
       // companion upper-left and an explicit protected void over the lower-left play corridor.
       // It is authored art, not a wash — the bake refuses to ship over its composition budget.
-      paintedSky: { plate: 'core-lantern-shelf', strength: 0.15, parallax: 0.0032 },
+      paintedSky: { plate: 'core-lantern-shelf', strength: 0.10, parallax: 0.0032, saturation: 0.70 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'core_trade_constellation',
         structureKind: 'sparse_wisps',
         starDensity: 0.95,
+        clusterStrength: 0.8,
         maxCoverage: 0.10,
         regionLo: 0.64,
         regionHi: 0.84,
         warp: 0.22,
-        dustAmt: 0.28,
-        l1Alpha: 0.28,
-        l2Alpha: 0.05,
+        dustAmt: 0.22,
+        l1Alpha: 0.19,
+        l2Alpha: 0.04,
       },
       composition: {
-        planetChance: 0.43, wormholeChance: 0.06, ringChance: 0.55,
+        // Rings are Helios's motif — in generic core space a ringed roll is rare.
+        planetChance: 0.30, wormholeChance: 0.06, ringChance: 0.18,
         cometInterval: [30, 72], signatureHero: null,
       },
     },
@@ -126,33 +133,35 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
   belt: freezeProfile({
     id: 'belt',
     skyPalette: 'EMBER',
-    lighting: { ambient: 0.18, key: 2.75, rim: 1.10, fill: 0.50 },
+    lighting: { ambient: 0.15, key: 2.75, rim: 1.35, fill: 0.40 },
     background: {
-      intensity: 0.55,
+      intensity: 0.38,
       // The broken dust lane is explicit geometry with authored silhouette and occlusion.
       nebulaOpacity: 0.0,
       // The ochre shoal answers this region's own recipe: one warm mass broken into pieces by dark
       // lanes, sitting clear of the amber stellar river the star formation already draws overhead.
-      paintedSky: { plate: 'belt-ochre-shoal', strength: 0.15, parallax: 0.0034 },
+      paintedSky: { plate: 'belt-ochre-shoal', strength: 0.10, parallax: 0.0034, saturation: 0.68 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'belt_broken_dust_lane',
         structureKind: 'dust_lanes',
         starDensity: 1.05,
         clusterCount: 7,
-        clusterStrength: 1.15,
+        clusterStrength: 0.9,
         voidFloor: 0.09,
         maxCoverage: 0.16,
         regionLo: 0.55,
         regionHi: 0.74,
         warp: 0.34,
-        dustAmt: 0.78,
-        l1Alpha: 0.48,
-        l2Alpha: 0.09,
+        dustAmt: 0.6,
+        l1Alpha: 0.32,
+        l2Alpha: 0.06,
         landmarkBias: 'flare',
       },
       composition: {
-        planetChance: 0.3, wormholeChance: 0.045, ringChance: 0.34,
+        // A debris belt carries dull planetoids, never the clip-art ringed giant.
+        planetChance: 0.22, wormholeChance: 0.045, ringChance: 0.0,
+        planetTypes: ['rocky'],
         cometInterval: [22, 58], signatureHero: null,
       },
     },
@@ -162,9 +171,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
     id: 'fringe',
     skyPalette: 'CRIMSON',
     // Slightly stronger key/rim/fill so station + long-ship keep two readable planes.
-    lighting: { ambient: 0.16, key: 3.10, rim: 1.20, fill: 0.46 },
+    lighting: { ambient: 0.13, key: 3.10, rim: 1.50, fill: 0.38 },
     background: {
-      intensity: 0.72,
+      intensity: 0.50,
       // Full-field L1/L2 contribution forced off — macro geometry + stars only.
       nebulaOpacity: 0.0,
       // Deliberately NO painted plate. The fringe's identity is the tidal filament and the blue
@@ -177,9 +186,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         structureKind: 'ion_filaments',
         starDensity: 1.18,
         clusterCount: 9,
-        clusterStrength: 1.95,
+        clusterStrength: 1.45,
         voidFloor: 0.08,
-        flareDensity: 1.15,
+        flareDensity: 0.9,
         maxCoverage: 0.12,
         regionLo: 0.70,
         regionHi: 0.95,
@@ -194,6 +203,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
       },
       composition: {
         planetChance: 0.10, wormholeChance: 0.0, ringChance: 0.0,
+        planetTypes: ['rocky'],
         cometInterval: [18, 52],
         // Rocky body left-upper; macro ribbon sits elsewhere (upper-right safe NDC).
         signatureHero: {
@@ -209,33 +219,35 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
   anomaly: freezeProfile({
     id: 'anomaly',
     skyPalette: 'ION',
-    lighting: { ambient: 0.18, key: 2.40, rim: 1.10, fill: 0.42 },
+    lighting: { ambient: 0.15, key: 2.40, rim: 1.40, fill: 0.36 },
     background: {
-      intensity: 0.6,
+      intensity: 0.42,
       // Local electromagnetic scar + wormhole replace the former fullscreen violet wash.
       nebulaOpacity: 0.0,
       // Still not a wash: the cold halo is two shell arcs and one knot, with a second protected
       // void over the right half so the live wormhole owns that patch of sky uncontested.
-      paintedSky: { plate: 'anomaly-cold-halo', strength: 0.13, parallax: 0.0030 },
+      paintedSky: { plate: 'anomaly-cold-halo', strength: 0.09, parallax: 0.0030, saturation: 0.72 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'anomaly_electromagnetic_scar',
         structureKind: 'ion_filaments',
         starDensity: 0.7,
         clusterCount: 3,
-        clusterStrength: 1.5,
+        clusterStrength: 1.1,
         voidFloor: 0.04,
         maxCoverage: 0.22,
         regionLo: 0.50,
         regionHi: 0.70,
         warp: 0.48,
-        dustAmt: 0.35,
-        l1Alpha: 0.55,
-        l2Alpha: 0.14,
+        dustAmt: 0.28,
+        l1Alpha: 0.36,
+        l2Alpha: 0.09,
         landmarkBias: 'wormhole',
       },
       composition: {
-        planetChance: 0.18, wormholeChance: 0.42, ringChance: 0.72,
+        // The scar's own bodies are cold: ice and rock, no gas giants, rings rare.
+        planetChance: 0.18, wormholeChance: 0.42, ringChance: 0.30,
+        planetTypes: ['ice', 'rocky'],
         cometInterval: [12, 38],
         signatureHero: {
           kind: 'planet', type: 'ice', ring: true, frac: 0.13,
@@ -252,9 +264,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
     id: 'tethys',
     galaxyPlate: true,
     skyPalette: 'AZURE',
-    lighting: { ambient: 0.14, key: 2.55, rim: 1.05, fill: 0.40 },
+    lighting: { ambient: 0.12, key: 2.55, rim: 1.30, fill: 0.35 },
     background: {
-      intensity: 0.42,
+      intensity: 0.30,
       nebulaOpacity: 0.0,
       paintedSky: null,
       structure: {
@@ -263,16 +275,16 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         structureKind: 'galactic_band',
         starDensity: 0.82,
         clusterCount: 4,
-        clusterStrength: 1.1,
+        clusterStrength: 0.85,
         voidFloor: 0.14,
-        flareDensity: 0.7,
+        flareDensity: 0.55,
         maxCoverage: 0.16,
         regionLo: 0.46,
         regionHi: 0.62,
         warp: 0.16,
-        dustAmt: 0.12,
-        l1Alpha: 0.22,
-        l2Alpha: 0.04,
+        dustAmt: 0.10,
+        l1Alpha: 0.14,
+        l2Alpha: 0.03,
         bandCenter: 0.52,
         bandWidth: 0.08,
         bandAngle: 0.18,
@@ -290,6 +302,76 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
   }),
 });
 
+// Way-of-life sectors get their own rig instead of sharing the palette-class fallback: the mood
+// lives in the KEY colour (tinted near warm white, per COLOR_LIGHTING_STANDARD §2) plus a tuned
+// fill bounce. `keyColor`/`fillColor`/`rimColor`/`ambientColor` override the palette hex for that
+// one channel; the sky composition/post blocks stay inherited from the family profile until the
+// sector earns a bespoke sky of its own.
+const PER_SECTOR_RIGS = Object.freeze({
+  // Vesta Forge runs hot: orange-white key and a warm floor bounce off the smelter glare. Its sky
+  // body is a barren rock slagged low off the play side — no gas giants in a working forge belt.
+  sector_vesta_forge: { base: 'belt', id: 'vesta_forge',
+    lighting: { ambient: 0.14, key: 3.30, rim: 1.45, fill: 0.44, keyColor: 0xffc98f, fillColor: 0xd09a6a },
+    composition: {
+      planetChance: 0.10, ringChance: 0, planetTypes: ['rocky'],
+      signatureHero: {
+        kind: 'planet', type: 'rocky', ring: false, frac: 0.12,
+        offset: [0.3, 0.2], screenNdc: [0.44, 0.30],
+        lightAngle: -0.6, ringTilt: 0,
+      },
+    } },
+  // Pallas Drift runs cold: blue-white key, minimal bounce — an ice body hangs over the drift.
+  sector_pallas_drift: { base: 'fringe', id: 'pallas_drift',
+    lighting: { ambient: 0.13, key: 2.90, rim: 1.55, fill: 0.35, keyColor: 0xd9e6ff, fillColor: 0x9fb4d8 },
+    composition: {
+      planetChance: 0.08, ringChance: 0, planetTypes: ['ice', 'rocky'],
+      signatureHero: {
+        kind: 'planet', type: 'ice', ring: false, frac: 0.12,
+        offset: [-0.3, 0.2], screenNdc: [-0.46, 0.30],
+        lightAngle: 0.7, ringTilt: 0,
+      },
+    } },
+  // Sker Haven: sodium yard light over the throne works — amber key. The Throne itself is the
+  // in-world landmark; the sky keeps only sparse rocks, no hero.
+  sector_sker_haven: { base: 'fringe', id: 'sker_haven',
+    lighting: { ambient: 0.14, key: 3.00, rim: 1.45, fill: 0.40, keyColor: 0xffb45e, fillColor: 0xc98d5c },
+    composition: {
+      planetChance: 0.08, ringChance: 0, planetTypes: ['rocky'], signatureHero: null,
+    } },
+  // Ceres belt: dusty neutral sun — desaturated warm-white key, rock-dust bounce. The dwarf
+  // planet itself hangs dim upper-left, the only world in the wreck field's sky.
+  sector_ceres_belt: { base: 'belt', id: 'ceres_belt',
+    lighting: { ambient: 0.15, key: 2.75, rim: 1.35, fill: 0.40, keyColor: 0xf0e2c8, fillColor: 0xb8a48f },
+    composition: {
+      planetChance: 0, ringChance: 0,
+      signatureHero: {
+        kind: 'planet', type: 'rocky', ring: false, frac: 0.11,
+        offset: [-0.28, 0.18], screenNdc: [-0.44, 0.28],
+        lightAngle: 0.8, ringTilt: 0,
+      },
+    } },
+});
+
+const DERIVED_PROFILES = {};
+for (const rig of Object.values(PER_SECTOR_RIGS)) {
+  const base = SECTOR_FAMILY_PROFILES[rig.base];
+  DERIVED_PROFILES[rig.id] = freezeProfile({
+    ...base,
+    id: rig.id,
+    lighting: rig.lighting,
+    // A sector may fork only the hero/composition grammar while sharing the family's baked sky
+    // (structure, painted plate, intensity) — the shared sub-objects stay frozen references.
+    background: rig.composition
+      ? { ...base.background, composition: { ...base.background.composition, ...rig.composition } }
+      : base.background,
+  });
+}
+
+export const SECTOR_VISUAL_PROFILES = Object.freeze({
+  ...SECTOR_FAMILY_PROFILES,
+  ...DERIVED_PROFILES,
+});
+
 const PROFILE_BY_NEBULA_TINT = new Map([
   [SECTOR_PALETTE_CLASSES.core.nebulaTint, SECTOR_VISUAL_PROFILES.core],
   [SECTOR_PALETTE_CLASSES.belt.nebulaTint, SECTOR_VISUAL_PROFILES.belt],
@@ -301,7 +383,10 @@ const PROFILE_BY_ID = new Map([
   ['sector_helios_prime', SECTOR_VISUAL_PROFILES.helios_core],
   ['sector_tethys_junction', SECTOR_VISUAL_PROFILES.tethys],
   ['sector_frontier_east_ridge', SECTOR_VISUAL_PROFILES.fringe],
-  ['sector_ceres_belt', SECTOR_VISUAL_PROFILES.belt],
+  ['sector_ceres_belt', SECTOR_VISUAL_PROFILES.ceres_belt],
+  ['sector_vesta_forge', SECTOR_VISUAL_PROFILES.vesta_forge],
+  ['sector_pallas_drift', SECTOR_VISUAL_PROFILES.pallas_drift],
+  ['sector_sker_haven', SECTOR_VISUAL_PROFILES.sker_haven],
   ['sector_anomaly_well', SECTOR_VISUAL_PROFILES.anomaly],
 ]);
 
@@ -342,12 +427,17 @@ export function resolveBackgroundComposition(profile) {
       ringTilt: finiteClamped(source.signatureHero.ringTilt, 0.2, -0.9, 0.9),
     })
     : null;
+  const PLANET_KINDS = new Set(['gas', 'rocky', 'ice']);
+  const planetTypes = Array.isArray(source.planetTypes)
+    ? source.planetTypes.filter((t) => PLANET_KINDS.has(t))
+    : null;
   return deepFreeze({
     planetChance: finiteClamped(source.planetChance, DEFAULT_BACKGROUND_COMPOSITION.planetChance, 0, 1),
     wormholeChance: finiteClamped(source.wormholeChance, DEFAULT_BACKGROUND_COMPOSITION.wormholeChance, 0, 1),
     ringChance: finiteClamped(source.ringChance, DEFAULT_BACKGROUND_COMPOSITION.ringChance, 0, 1),
     cometInterval: deepFreeze([Math.min(a, b), Math.max(a, b)]),
     signatureHero: signature,
+    planetTypes: planetTypes && planetTypes.length ? deepFreeze(planetTypes) : null,
   });
 }
 
@@ -381,6 +471,9 @@ export function resolveBackgroundPaintedSky(profile) {
     plate: source.plate,
     strength: finiteClamped(source.strength, 0.14, 0, 0.35),
     parallax: finiteClamped(source.parallax, 0.003, 0, 0.02),
+    // 1 keeps the baked plate's authored color; <1 desaturates it toward its own luminance so the
+    // far sky sits behind play instead of competing with hull paint.
+    saturation: finiteClamped(source.saturation, 1, 0, 1),
   });
 }
 
