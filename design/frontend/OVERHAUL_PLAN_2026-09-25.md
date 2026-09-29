@@ -98,7 +98,7 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 31 
 | Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | **APPROVED 8.0** (automation-r2, on the line); carry-over: flow-link bodies to ~3.1:1, rail follows conducted ring, research-verb contrast margin, tab focus light segment, purse roll |
 | Replay / Clips (`replay`, `clips`) | The tape / the reel | Ride the tape (scrub time); pull a moment open (trim windows) | — | Replay **APPROVED 8.1** / Clips **APPROVED 8.0** (replayclips-r1); carry-over: dormant band to 3.5:1, world exposure, ghost sub to 16px (12 effective), ghost glyph bloom; populated stills when bench can stage |
 | Asteroid Works / Drill / Base | Machine sites | (per `asteroid-works-rebuild` design) | exist | base r1 7.0/6.0 NOT PASSED (r2 running); drill r3 fixing (stake-key clip, claimed rock); seeds landed + committed |
-| Flight HUD (`orrery-flight`, `flight`), Power rail, Radials | Cluster, rail, radial | (passed Phase 0a) | — | orrery-flight 1.2 (bench staging collapse, one-rule fix) / flight 6.7 / power-rail 7.1 / comms-radial 4.2 (fan never opens) / wingman 6.3 (wave3-hud-audit); weight pass must NOT regress frame time |
+| Flight HUD (`orrery-flight`, `flight`), Power rail, Radials | Cluster, rail, radial | (passed Phase 0a) | — | r1: comms 5.0 / wingman 7.7 NOT PASSED; flight+rail+orrery pending H1; recall queued (mount-time application + fan + fresh twins); weight still perf-gated |
 | Sandbox (`sandbox`) | dev harness | Pick a scenario and fire it down the launch rail | — | r1 6.4 NOT PASSED dev-only; r2 queued: key dock zone + bead + group ticks + rail foot |
 
 ## 5. Order of work
