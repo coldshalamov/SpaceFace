@@ -1,0 +1,275 @@
+WAVE 3 HUD AUDIT — CRITIC REPORT (5 surfaces)
+Stills: .devshots/ui-review/view/w3a-{orrery-flight,flight,power-rail,comms-radial,wingman-radial}-{1920,1280}.png
+Crops: .devshots/ui-review/crops/w3a-hud-*.png (17 crops) + sampler .devshots/w3a-hud-crop.cjs
+Method: all 10 stills opened; 17 crops read; ~70 sharp .raw() row/column/block samples.
+Luminance L is sRGB relative luminance x255; ratios are (hi+.05)/(lo+.05). Coords in 1920x1080 px unless noted.
+Bench artefacts excluded per brief (frozen motion, CYCLE clock, backdrop stills).
+Previous scores: none — first audit of these surfaces (orrery-flight Phase 0a passed with no numeric score; treat as unrated).
+Note: w3a-flight-*.png and w3a-power-rail-*.png are the same staging (catalog: power-rail = screen flight, no overlay) —
+pixel-identical; flight is scored as the whole HUD, power-rail as the ordnance crescent alone.
+
+PERF GATE (applies to every fix below): the HUD weight pass must not regress frame time. Flight verdicts obey
+ORRERY §3.1/§6: no backdrop-filter over live flight, no per-frame SVG repaints (write DOM only on change),
+transform/opacity animation only, ≤0.8 ms script/frame. Each fix carries its cost flag + cheaper alternative.
+
+================================================================================
+SURFACE 1 — orrery-flight (ORRERY Phase 0a flight HUD preview)
+================================================================================
+1. VERDICT: NOT PASSED, overall 1.2 (previous: unrated).
+2. AXES (score / previous / note):
+   Composition 1.0 / — : no composition; the frame is empty backdrop.
+   Hierarchy 1.0 / — : nothing to rank; no instrument hierarchy visible.
+   Legibility 1.0 / — : zero HUD glyphs painted (verified: 38x30 sample block over the cluster
+     corner (0..300, 840..1080) and tape strip (640..1280, 20..140) show only backdrop, all L<25).
+   ORRERY fidelity 1.0 / — : no Hand, no rings, no Cluster — the law cannot be seen.
+   Craft/detail 2.0 / — : the committed space backdrop (Saturn, galaxy) is well graded; it is not the HUD.
+   Interaction clarity 1.0 / — : no control, verb, or reading is reachable on screen.
+3. PREVIOUS LIST: none (first audit). Nothing to carry.
+4. MOUNT DIAGNOSIS (read-only inspection; nothing edited):
+   The bench DID mount the preview (DOM text with real rects is what the audit measured), but the
+   whole stage paints into a ~0x0 box, so every child is clipped and the still shows only backdrop.
+   Chain, all verified in source:
+   a) flightPreview.js:14 stages `.orr-flightpreview { position:fixed; inset:0; overflow:hidden; ... }`.
+   b) tools/ui-bench.js goto() mounts EVERY screen inside a root div `.screen.sf-screen--visible`.
+   c) styles/ui.css:143-154 puts `transform: translateY(0)` on `.screen` (push/pop transition).
+      A non-none transform makes the root the containing block for fixed descendants, so the
+      stage's inset:0 resolves to the ROOT's box, not the viewport.
+   d) The root is a centered flex item of #screens (ui-bench.html: flex, center/center) whose only
+      child is the out-of-flow stage, so it collapses to ~0x0 at viewport center; the stage's
+      overflow:hidden then clips all paint. Layout rects survive (hence CUT OFF/OFF FRAME findings
+      on "Helios Prime", "Contract", Charge/Blast/Line/Fieldwork/Rig/Bay), paint does not.
+   e) Bench-only failure. flightPreview.js is imported ONLY by tools/ui-bench.js (sole match in
+      src/tools/scripts besides a generated localization catalog). The live game never mounts
+      orreryFlightScreen — Phase 1 mounts the Cluster via hudAdapter.mountOrreryCluster into #hud
+      as an in-flow absolute host (hudAdapter.js:140-147,154-178): no fixed positioning, no
+      transformed ancestor on that path. The live flight stills in this same batch SHOW the
+      ORRERY cluster working, which corroborates that only the bench staging of the preview fails.
+   SMALLEST STAGING STEP THAT MAKES IT SCOREABLE (one rule, bench side, no component change):
+     .screen[data-screen="orreryFlight"] { transform: none; }
+   added to the <style> in tools/ui-bench.html. With transform:none the fixed stage resolves to
+   the viewport again; the bench never runs push/pop transitions so nothing is lost. (Component-side
+   hardening for later: position:absolute + the screen stretching its own root — see O5.)
+5. RANKED FIXES (unblock + acceptance; HUD craft cannot be ranked until paint exists):
+   O1. Bench root transform (tools/ui-bench.html <style>, staging only). The .screen root's
+     translateY(0) collapses the fixed preview stage to ~0x0 (see §4). Add the one rule above.
+     PERF: n/a (bench staging; zero runtime cost).
+   O2. Re-shoot acceptance: cluster. After O1 the Cluster must occupy (18,516)-(778,1056) with
+     hull art + ring stack + 104px speed numeral visible. PERF: n/a.
+   O3. Re-shoot acceptance: tape + place. Objective tape 640px wide top-center (640..1280, 26..110)
+     and place block at (40,34) must be on-frame; quoted CUT OFF findings must clear. PERF: n/a.
+   O4. Re-shoot acceptance: verbs. All nine verb keys + four group nodes must sit x<700 (crescent
+     radius 262 from pivot); quoted OFF FRAME findings must clear. PERF: n/a.
+   O5. Harden flightPreview.js (follow-up, not the unblock): replace position:fixed with
+     position:absolute AND stretch the mount root (flex:1; align-self:stretch; position:relative)
+     so no transformed ancestor in any host (bench or game uiRoot) can re-collapse it. PERF: n/a.
+6. MEMORABLE LINE: A flight HUD that powers up like an orrery waking — rings drawing themselves
+   round your own hull. Currently it never wakes at all.
+7. OWNER CRITERIA: (a) FAIL by absence — no instrument is visible, so none can carry weight; the
+   quoted CUT OFF/OFF FRAME text proves layout without paint. (b) FAIL by absence — no signature
+   interaction can be seen. Screen NOT PASSED.
+
+================================================================================
+SURFACE 2 — flight (live flight HUD, ORRERY cluster live via hudAdapter)
+================================================================================
+1. VERDICT: NOT PASSED, overall 6.7 (previous: none).
+2. AXES:
+   Composition 7.0 / — : strong bottom corners (Cluster / radar), dead top band of plain text lines.
+   Hierarchy 6.5 / — : speed numeral (91px, 15:1) leads; drive block and FLYBY float without rank.
+   Legibility 7.5 / — : big readings excellent (15-16:1); dim tags (CHARGE ~2.8:1) and RANGE (4.5:1) sag.
+   ORRERY fidelity 6.0 / — : Cluster + Hand + radar + diamonds speak the law; threat wears amber,
+     the §6 compass tape is missing, radar rings are wires.
+   Craft/detail 7.0 / — : hull art, segmented shield (2px gaps verified), subpixel-crisp type; halo
+     pools show as dark ellipses on bright floor.
+   Interaction clarity 6.0 / — : verbs have keys; diamonds, FLYBY and the dock prompt lack leaders.
+3. PREVIOUS LIST: none (first audit).
+4. RANKED FIXES:
+   F1. Threat dot amber. Alerts annunciator dot at (905-917, 8-20) samples #f2b950 (L138) beside
+     "TAKING FIRE" (15.6:1). Threat must be red; amber is spent. Set the dot fill to
+     var(--dp-danger) #FF5038, keep text bone. PERF: zero — one static fill. No alternative needed.
+   F2. Stale distance inside waypoint name. "Beacon 419 WU" (75-210, 40-52, ~9:1) vs live
+     "457 WU · ETA 13s" below it — the NAME embeds a dead number. Drop the number from the label
+     ("Beacon" + live "457 WU · ETA 13s") or live-update it. PERF: zero — text already rewrites.
+   F3. Radar rings are wires. Outer r126 + inner dashed rings peak L7-16 over bg L3-5 (~1.5-2:1,
+     at the fail boundary; row y=905 x1560-1900, column x=1750 y760-905). Raise the r126 rest tone
+     to 65% + add the §3.1 bloom twin (4px, 20%, geometry). PERF: static SVG attrs, zero/frame —
+     explicitly NOT a blur filter (forbidden over live flight).
+   F4. Lock diamonds unlabeled. Hollow (975-1015, 600-640, 5.7:1) + filled (1110-1130, 600-625,
+     8.1:1) float with no identity. 45° leader + micro label (name + range) via the label solver,
+     cap 3 leaders. PERF: DOM writes only on target change; no per-frame cost. Cheaper than any
+     canvas overlay: two SVG paths + one div.
+   F5. No §6 objective tape. Top-center y0-80 holds two text lines, no compass instrument. Mount
+     the library Objective Tape (640px) with marker + distance counter. PERF: redraw ticks only on
+     heading change quantized to 1°; counter rolls digits on change only. (Largest fix here; it is
+     the missing hero instrument.)
+   F6. Drive bars are 2px hairlines (y943-944 and y950-951, x800-1050, L87). Widen to 3px gauge
+     fills with ghost delta per §3.1; label CAP vs disrupted distinctly. PERF: animate scaleX
+     (transform) only — never width. Cheaper than repaints: one compositor property.
+   F7. FLYBY tell floats unleaded (890-1010, 750-765, 7.5:1, red #df4636 correct). Elbow leader
+     from the tell to the hostile's projected screen pos. PERF: move leader endpoints on the 10 Hz
+     slow clock, not per frame. Cheaper than a beam pulse: static 1px line.
+   F8. Dock prompt asymmetric: "[ E ] DOCK AT STATION" (825-1010, 46-60, bone L203) has NO leader
+     dot (x780-844 verified blank) while TAKING FIRE above has one. Make it the Lamp Key verb
+     (amber field, dark ink, 45° cut) — one verb system. PERF: static. (Spotlight sheen: 6 s
+     crossing is one cheap gradient sweep; keep it transform-only.)
+   F9. Radar center stack (1742-1765, 890-905): glyph + corner brackets + crosshair overlap (two
+     bone bands 7px apart, L159-195). Push lock brackets 10px out; mute crosshair dashes inside
+     r20. PERF: static attrs.
+   F10. RANGE text marginal (1650-1800, 1010-1025, curved 10px, 4.52:1 — under the 4.5 gate with
+     no margin). 11px + uncurved, or ink-dim to 80%. PERF: static.
+5. MEMORABLE LINE: The kill-shot is a hostile vector arriving as a red arc bending round YOUR OWN
+   hull art — threat you feel in the instrument, not a line you read.
+7. OWNER CRITERIA: (a) FAIL — radar rings (~2:1, hairlines with no bloom), drive bars (2px), and
+   the orbit tick ring read as thin wirework; they need the §3.1 treatment (raised rest alpha +
+   geometric bloom twins). The Cluster bands PASS (hull 2px L214 core 15.5:1, armor ~6:1, shield
+   segments + gaps crisp). (b) BORDERLINE PASS — signature = flying the Cluster as one instrument
+   with Hand-armed verbs; present and distinct, but the missing tape (F5) and unleaded tells (F4,
+   F7) keep it from memorable. Screen NOT PASSED on (a) + numbers.
+
+================================================================================
+SURFACE 3 — power-rail (the ordnance crescent; same still as flight)
+================================================================================
+1. VERDICT: NOT PASSED, overall 7.1 (previous: none).
+2. AXES:
+   Composition 7.5 / — : clean arc wrapping the Cluster's right flank, labels outside.
+   Hierarchy 7.0 / — : armed LINE 3 (bone L195, ~7:1) leads; cooldown CHARGE recedes; groups dim.
+   Legibility 6.5 / — : armed/ready tags crisp; CHARGE 1 (dim) 2.8:1 under the gate; 10px tags small.
+   ORRERY fidelity 7.5 / — : arc rail + Hand + per-key cooldown arcs = the law, verbatim.
+   Craft/detail 7.0 / — : 20px mask icons, halo pools, amber arm; pools print as dark ellipses.
+   Interaction clarity 7.0 / — : one verb per key, tier-2 tips in source; press feedback unseen.
+3. PREVIOUS LIST: none (first audit).
+4. RANKED FIXES (coords in crescent zone x380-680, y620-980):
+   P1. Dim-state floor too low. CHARGE 1 tag (480-560, 646-652) glyphs L56-77 over bg L8-18 =
+     ~2.8:1. Floor dim tags at 4.5:1 (ink-dim 85% + halo pool alpha .70→.78). PERF: static.
+   P2. Node rings thin (r20 keys / r14 nodes, ~1.5px strokes). Armed/ready nodes to 2.5px core +
+     5px 20% bloom twin (geometry). PERF: static SVG — never a blur filter over flight.
+   P3. Ready icons dim (20px masks at 66-90%). Ready icons to opacity 1.0, 20→22px. PERF: static.
+   P4. Collapsed tags read as one run ("FIELDWORK 4 5 6", ~540-680, 795-810). 8px gaps after the
+     name; digits to 70% so the NAME leads. PERF: static.
+   P5. Hand meets node without a bead (arm endpoint bright at x490-500, y739-747; no bead found).
+     4px amber bead + 8px 25% halo at the armed node edge. PERF: bead rides the arm transform
+     (compositor); repaints only on arm change.
+   P6. No spine through the nodes (ladder law: rails carry a spine). One continuous 1px bone
+     30% path through node centers. PERF: static path, zero/frame.
+   P7. Halo pools print as dark ellipses on bright floor (gradient pool behind LINE 3 tag,
+     x545+, y739-745). Shrink pool inset (-9/-16px → -6/-10px), alpha .70→.55. PERF: static
+     radial-gradient; cheaper than backdrop-filter (which is banned here anyway).
+   P8. Name and digit same voice ("LINE 3" all bone, 500-575, 733-747). Digits in numeral face
+     12px phos; names in label face. PERF: static.
+   P9. Group vs key nodes indistinguishable at a glance (14 vs 20 barely reads). Group nodes =
+     open ring only; keys keep filled-dot center. PERF: static.
+   P10. 1280 press: tags reach x≈430/1280 while the wingman disc's left edge (~390) can swallow
+     them (overlay open). Below 1400px width, shift crescent 10px left + shorten halos (media
+     query). PERF: static.
+5. MEMORABLE LINE: Verbs that feel LOADED — the armed key breathes, and firing visibly spends its
+   light down the arm into the world.
+7. OWNER CRITERIA: (a) PASS — nodes carry icon + tag + halo + Hand weight; dim states recede by
+   design (P1 floors them); P2 adds bloom where thinness shows. (b) PASS — verbs on a crescent
+   with the Hand swinging between them is distinct per-screen; the press ripple (memorable line)
+   would make it unforgettable. Screen NOT PASSED on numbers alone (7.1 < 8.0, legibility 6.5).
+
+================================================================================
+SURFACE 4 — comms-radial (overlay open — but no radial opened)
+================================================================================
+1. VERDICT: NOT PASSED, overall 4.2 (previous: none).
+2. AXES:
+   Composition 4.0 / — : a 400x115 plate pasted bottom-center over the drive block.
+   Hierarchy 4.5 / — : name > type > freq > trace reads; the plate fights the HUD beneath.
+   Legibility 8.0 / — : the text itself is crisp (name 14.8:1, freq 8.6:1, trace 13.9:1).
+   ORRERY fidelity 2.0 / — : a literal navy box (1px-sharp 90° corners verified at x759→760)
+     containing a second bordered grid box — two boxes, zero instruments.
+   Craft/detail 4.0 / — : opaque #0d1014 fill (0% world, C-vs-F diff-proven); sharp corners, no art.
+   Interaction clarity 2.5 / — : no verb, no key, no radial fan — nothing for the player to DO.
+3. PREVIOUS LIST: none (first audit).
+4. RANKED FIXES (plate spans (760,865)-(1159,~980)):
+   C1. The radial never opened. Expected #sf-commsfan; got a hail plate (openOverlay dispatches
+     Alt immediately after create — verify sync listener registration; await one frame between
+     create and dispatch). PERF: bench staging, n/a runtime.
+   C2. Delete the plate. Hail becomes portrait roundel + waveform on glass with dissolved
+     (gradient-mask) edges — no rect, no corners. PERF: static gradient mask. Cheaper than AND
+     legal where backdrop-filter is banned over live flight: a mask costs one static layer.
+   C3. Inner waveform grid box (bordered rect + glow, ~790-1130, 945-975). Bare bone trace +
+     peak dots, no grid box. PERF: static SVG path when frozen; live canvas trace only while
+     voice plays (gated, never idle).
+   C4. Plate buries COUNTERTHRUST (C-vs-F diff 58-190 at (850,966-982); identical below y984 =
+     box bottom). Dock the hail to the right toast rail (x>1560), never bottom-center. PERF:
+     static position. (Also fixes the 1280 V-MAX cover.)
+   C5. No verbs or keys anywhere on the plate. Radial fan with HAIL / IGNORE / DEMAND + key
+     hints 1-3. PERF: static until opened; spring swing on transform only.
+   C6. "HAULER" + "FREQ 3.90K" stacked micro-lines (810-920, 905-930). One label-voice line:
+     "HAULER · FREQ 3.90K". PERF: static.
+   C7. Contact glyph tiny/generic (target mark ~785-800, 895-910). 28px portrait roundel — the
+     produced portraits exist (ORRERY §5). PERF: one static img.
+   C8. No overlay depth: plate casts no dim while wingman dims the world (inconsistent system).
+     Shared overlay rule (0.985 scale + dim token). PERF: transform/opacity = compositor only.
+   C9. No response window: a hail that never expires. 18px decay ring beside the roundel.
+     PERF: animate a conic-mask rotation via transform (compositor), NOT stroke-dashoffset
+     per frame (main thread). Cheaper alternative named: stepped 4Hz dash updates if no
+     compositor path.
+5. MEMORABLE LINE: The hail as a voice you SEE arrive — bars breathing before the words, the
+   roundel resolving out of static.
+7. OWNER CRITERIA: (a) FAIL — generic navy card + stock waveform-in-a-bordered-grid; web
+   components, not instruments. Needs: roundel art + dissolved glass + bare trace (C2/C3/C7).
+   (b) FAIL — no interaction exists, hence no signature. The fan (C5) + decay ring (C9) would
+   create one. Screen NOT PASSED.
+
+================================================================================
+SURFACE 5 — wingman-radial (overlay open)
+================================================================================
+1. VERDICT: NOT PASSED, overall 6.3 (previous: none).
+2. AXES:
+   Composition 6.0 / — : centered ~320px disc (center ~(960,562), r≈160) covers the fight it
+     commands; hub content (510-564) floats high in its ring.
+   Hierarchy 7.0 / — : ATTACK (amber outline L143 + text 10.6:1) > hub > side verbs (HOLD 9.15:1).
+   Legibility 8.0 / — : all labels 8-15:1 on the disc; icon L189; TAB bone ~15:1.
+   ORRERY fidelity 4.5 / — : a radial in shape, but an opaque black pie (interior #0c0e13, 0%
+     world) with NO Hand — light never enters it.
+   Craft/detail 6.0 / — : tick ring + top bead (#ffdb91 L189) + dim dividers (L12-25); numerals
+     bare (no chips); hub lower half empty (y566-626 blank).
+   Interaction clarity 6.5 / — : 4 verbs + keys + wing switch exist; TAB is bare 20px text with
+     no affordance; the disc hides lock diamonds + FLYBY behind it.
+3. PREVIOUS LIST: none (first audit).
+4. RANKED FIXES (disc ~(800-1120, 402-722)):
+   W1. Disc is 100% opaque black (interior #0c0e13 L1-3; world pixels fully replaced). Fill to
+     55% + 40px outer feather via radial alpha mask; keep ring + content. PERF: one static mask
+     layer. Cheaper than backdrop-filter (banned over live flight) and cheaper than repainting:
+     zero/frame.
+   W2. No Hand — chosen segment is amber outline only. Hand arm hub→chosen segment (spring
+     swing) + bead on the outline. PERF: rotation on transform (compositor); repaints only when
+     selection changes. Cheaper than redrawing the outline: move the arm, not the segment.
+   W3. Key numerals bare ("1" blob at (957-962, 439-445); "4"/"2"/"3" likewise; no chip above
+     L12 anywhere). 22px bone-outline diamond chips behind digits. PERF: static.
+   W4. TAB is bare 20px text (950-970, 556-564, ~15:1) with no affordance. "TAB · SWITCH WING"
+     micro-label + key chip. PERF: static.
+   W5. Hub content top-heavy (content 510-564, void 566-626 below TAB). Recenter +24px to ring
+     center or shrink ring r 74→58. PERF: static.
+   W6. Segment dividers near-invisible (L12-25, holdseg rows 592-620). 1px bone 35% + 6px gaps
+     at hub and rim. PERF: static.
+   W7. Disc covers the fight (lock zone + FLYBY tell behind it). Move to lower-center (y 562→
+     700) or shrink r 160→130. PERF: static.
+   W8. World dims ~0.6x EVERYWHERE (corners too: (800,700) #58 vs #70 without). Scrim as 500px
+     radial mask round the disc; corners stay live. PERF: one static gradient layer instead of
+     a fullscreen blend.
+   W9. Icons compete with labels (both bone; clock/shield/arrow L~150+). Icons to amber-dim
+     70%, labels stay bone — two voices. PERF: static.
+   W10. At 1280 the same ~320px disc covers ~50% of screen height (crop w3a-hud-1280-wingman).
+     Scale host .8 below 1400px width. PERF: static transform.
+5. MEMORABLE LINE: Orders that FLY — the chosen command visibly travels down a beam to the
+   wing's own radar pip.
+7. OWNER CRITERIA: (a) NARROW PASS — the filled disc has weight (not wireframe) and is custom,
+   not a web component; but a black pie is not ORRERY light — W1 must turn the fill into glass.
+   (b) WEAK PASS — hub wing-switch (ALL WINGS/2 CRAFT/TAB) + radial orders is a per-screen
+   signature, but TAB's bare-ness (W4) nearly hides it. Screen NOT PASSED on numbers (6.3).
+
+================================================================================
+CROSS-SURFACE NOTES
+================================================================================
+- The live ORRERY Cluster (hudAdapter path) renders beautifully in the flight stills: phos arcs
+  at L214, segmented shield with true 2px gaps, 91px speed numeral at 15:1. The Phase 0a
+  direction is vindicated by the live route even while its bench preview scores 1.2 on staging.
+- Colour discipline is one fix from clean: exactly one amber misuse (TAKING FIRE dot) and one
+  stale-number smell (419 vs 457, top-left AND radar foot) across all five surfaces.
+- Text rendering carries subpixel-AA color fringes (e.g. #6f2719 edge pixels on bone digits) —
+  a headed-capture bench signature, not scored.
+- Measurement honesty note: two early visual reads (a TAB chip box; a dock leader dot) did not
+  survive pixel verification — the hub holds bare TAB text with no box (y556-564), and the dock
+  line has no dot (x780-844 blank). All claims above are the pixel-verified versions.

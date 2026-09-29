@@ -20,6 +20,7 @@ import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
 } from './renderPackageManifest.js';
+import { dedupeGltfTextureSources } from './imageSourceDedupe.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   version: 2,
@@ -124,6 +125,14 @@ export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
     runtime.assets.set(cacheKey, task);
     const pendingTasks = runtime.pendingAssetTasks || (runtime.pendingAssetTasks = new Set());
     pendingTasks.add(task);
+    task.then(
+      (value) => {
+        // Synchronous peek surface (peekSettledAuthoredRecords): the settled record rides on the
+        // cached task so eviction of runtime.assets retires it automatically.
+        task.sfSettledRecord = value || null;
+      },
+      () => { task.sfSettledRecord = null; },
+    );
     task.then(
       (value) => {
         pendingTasks.delete(task);
@@ -847,8 +856,33 @@ export async function listDecodedAuthoredParts(renderer, options = {}) {
   return out;
 }
 
+const resolvedRuntimeByRenderer = new WeakMap();
+
 function runtimeFor(renderer) {
-  return authoredAssetRuntimeRegistry.get(renderer);
+  const runtimePromise = authoredAssetRuntimeRegistry.get(renderer);
+  runtimePromise.then(
+    (runtime) => { resolvedRuntimeByRenderer.set(renderer, runtime); },
+    () => {},
+  );
+  return runtimePromise;
+}
+
+const EMPTY_RECORDS = Object.freeze([]);
+
+/**
+ * Synchronous peek at the renderer's settled decode cache — prewarmed sector hulls land here well
+ * before their owners' admissions queue. Used by the GFX-12 admission stand-in resolver; returns
+ * only records whose decode task already produced a blueprint.
+ */
+export function peekSettledAuthoredRecords(renderer) {
+  const runtime = renderer && resolvedRuntimeByRenderer.get(renderer);
+  if (!runtime || runtime.retiring) return EMPTY_RECORDS;
+  const out = [];
+  for (const task of runtime.assets.values()) {
+    const record = task && task.sfSettledRecord;
+    if (record && Array.isArray(record.primitives)) out.push(record);
+  }
+  return out;
 }
 
 /** Tier-1 causal counter sink explicitly owned by this renderer, or null when counting is off. */
@@ -1879,7 +1913,9 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
 
 export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch) {
   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
-    return loader.loadAsync(url);
+    const gltf = await loader.loadAsync(url);
+    await dedupeGltfTextureSources(gltf);
+    return gltf;
   }
   // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
   // bodies on that origin, but parse the same response. Fetching once for validation and again through
@@ -1891,7 +1927,9 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
   const gltf = parseGlbJson(bytes);
   const errors = validateWholeShipJsonDocument(url, gltf);
   if (errors.length) throw new AssetContractError(url, errors);
-  return loader.parseAsync(buffer, assetBasePath(url));
+  const parsed = await loader.parseAsync(buffer, assetBasePath(url));
+  await dedupeGltfTextureSources(parsed);
+  return parsed;
 }
 
 function assetBasePath(url) {

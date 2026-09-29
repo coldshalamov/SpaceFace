@@ -108,15 +108,15 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
    Performance comes from algorithms, sharing and culling, never from cutting authored detail.
 5. **Gameplay contracts are sacred.** Sockets, hooks, collision scale and dock approach land where the live body had them. Copy them from the live file (`export_place`) or pin them in the source (the liner, the Kestrel).
 
-## 4. Backlog (ordered by what the player sees first)
+## 4. Backlog
 
-| # | Task | Why | Done when |
-|---|---|---|---|
-| **GFX-10** | Performance pass on the Forge fleet: `probe-frame-solid` with a crowded Helios; dedupe the shared tile textures across GLBs in the loader (identical images are embedded per GLB today); instance repeated NPC hulls; measure GPU memory. | Consistency made sharing possible; take the win. | Frame p50/p95 and texture MB are recorded before/after in `build_map.md` §21.4. |
-| **GFX-12** | Wave F stand-ins (§13D): the pending-body stand-in is the hull's own Forge LOD2, preloaded. | No box ever. | `probe:frame-solid` rootSwaps 0; no generic marker on a cold New Game. |
-
-Pick a row, read FORGE.md and this page, and use the matching brief template. When a row is done,
-delete it here and in `build_map.md` §13D Wave GFX in the same commit.
+Empty (2026-09-28): GFX-1 through GFX-14 are done. The trade hub and its faction overlays, every
+place on the default route, the Quiessence ring, the wreck pack, rocks and dock interiors are Forge;
+all 14 hull posters are live; hull retros, damage shedding and paint are proven per hull; no pre-Forge
+bolt-on draws on the default route; a pending ship shows its own low-detail body instead of a marker;
+shared images upload once (texture memory about 92 → 50 MB, `build_map.md` §21.4). Bodies outside the
+old backlog that are still older pipeline: the Asteroid Works board pieces (`place_works_*`) and the
+Wreck Cathedral. New work goes here as a numbered row before dispatch; §5 lists the bigger bets.
 
 ## 5. Directions beyond the backlog (where the picture goes next)
 

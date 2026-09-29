@@ -13,6 +13,7 @@
 // dispose those (the factory may reuse them); we only dispose our renderer + RT + geometry we add.
 import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
+import { normalizeShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
@@ -434,14 +435,26 @@ function makeEntity(defId, seedId, loadout = null) {
     isPlayer: !!(loadout && loadout.isPlayer),
     pos: { x: 0, z: 0 }, rot: Math.PI * 0.15, prevPos: { x: 0, z: 0 }, prevRot: 0, bank: 0,
     radius: def.collisionRadius || 14,
-    data: { defId, fittings, weapons, miningBeam: null },
+    data: {
+      defId, fittings, weapons, miningBeam: null,
+      // Paint rack: only set when the caller passed an appearance — stock catalog previews keep
+      // the exact entity record they always had (no default finish/wear injected).
+      ...(loadout && loadout.appearance
+        ? { appearance: normalizeShipAppearance(loadout.appearance, defId) }
+        : {}),
+    },
   };
 }
 
 function meshCacheKey(defId, loadout) {
   if (!defId) return null;
   if (!loadout || !Array.isArray(loadout.fittings)) return defId;
-  return defId + '::' + loadout.fittings.map((id) => (id == null ? '-' : String(id))).join('|');
+  // A repainted hull is a different body on the stage: the appearance signature joins the key so a
+  // paint-rack selection rebuilds instead of reusing the cached factory-coat mesh.
+  const appearanceKey = loadout.appearance
+    ? '~' + shipAppearanceSignature(loadout.appearance, defId)
+    : '';
+  return defId + '::' + loadout.fittings.map((id) => (id == null ? '-' : String(id))).join('|') + appearanceKey;
 }
 
 /**
@@ -1159,13 +1172,17 @@ export function createShipPreviewMount(canvas, opts) {
       current = null;
     }
     if (o.rotating != null) rotating = !!o.rotating;
-    const loadout = (Array.isArray(o.fittings) || Array.isArray(o.weapons) || o.isPlayer)
+    const loadout = (Array.isArray(o.fittings) || Array.isArray(o.weapons) || o.isPlayer || o.appearance)
       ? {
         fittings: Array.isArray(o.fittings) ? o.fittings : null,
         weapons: Array.isArray(o.weapons) ? o.weapons : null,
         isPlayer: o.isPlayer === true || defId === 'ship_kestrel',
       }
       : (defId === 'ship_kestrel' ? { fittings: null, weapons: null, isPlayer: true } : null);
+    // Paint rack (src/data/shipPaints.js): the player hull's appearance record rides the loadout
+    // into entity.data, where the same paletteWithShipAppearance seam the flight renderer reads
+    // paints the preview. Stock catalog previews pass no appearance and stay exactly as they were.
+    if (loadout && o.appearance) loadout.appearance = o.appearance;
     // Player loadouts cache separately from stock demos (hero mesh + real modules).
     const cacheId = (meshCacheKey(defId, loadout) || defId) + (loadout && loadout.isPlayer ? '::player' : '');
     let mesh = meshCache.get(cacheId) || null;

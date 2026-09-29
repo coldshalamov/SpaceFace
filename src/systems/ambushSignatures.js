@@ -60,14 +60,11 @@ export const ambushSignatures = {
     if (!origin) return;
     const sectorId = currentSectorId(this.state);
     const own = ensureState(this.state);
-    const now = this.state.simTime || 0;
     for (const tell of Object.values(own.tells)) {
       if (!tell || tell.sectorId !== sectorId || tell.scanned || tell.active === false) continue;
       const d = Math.hypot((tell.pos.x || 0) - (origin.x || 0), (tell.pos.z || 0) - (origin.z || 0));
       if (d > AMBUSH_SIGNATURE_SCAN_RADIUS) continue;
       tell.scanned = true;
-      tell.scannedAt = now;
-      tell.revealUntil = now + 45;
       const event = {
         tellId: tell.id,
         encounterId: tell.encounterId,
@@ -82,6 +79,15 @@ export const ambushSignatures = {
       };
       own.lastScan = event;
       emit(this.bus, 'ambushSignature:scanned', event);
+      // The authored warning is the payoff of the investigation verb — route it through the
+      // comms feed so the read reaches the player. The choice it enables is physical: the
+      // proximity-gated shapes (snare, toll, anchor) spring only inside the killbox, so
+      // holding clear starves the spring; hunter shapes stay an informed fight on contact.
+      // A pilot who never scans keeps the tell as an unresolved traffic blip and walks into
+      // the authored risk.
+      if (tell.hint) {
+        emit(this.bus, 'comms:log', { from: 'SCOPE', text: tell.hint, kind: 'scan' });
+      }
     }
   },
 };

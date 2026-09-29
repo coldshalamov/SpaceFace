@@ -122,7 +122,32 @@ test('target panel identifies a mineable asteroid by geological name and interac
   const rock = entity('rock', 'asteroid', { typeId: 'ast_metallic' });
   assert.equal(targetPanel.targetDisplayName(rock), 'Metallic Asteroid');
   assert.equal(typeof targetPanel.targetInteractionClass, 'function');
-  assert.equal(targetPanel.targetInteractionClass(rock), 'Mineable Asteroid');
+  // The class line reports what is INSIDE the body, not the verb restated next to a name that
+  // already said "Metallic Asteroid". Derived from the type's own ore table, heaviest first.
+  assert.equal(targetPanel.targetInteractionClass(rock),
+    'Mineable · Iron Ore / Copper Ore / Titanium Ore');
+});
+
+test('the class line is the yield mix for every rock type, and falls back when the type is unknown', () => {
+  const yields = (typeId) => targetPanel.targetInteractionClass(
+    entity('rock', 'asteroid', { typeId }),
+  );
+  assert.equal(yields('ast_common_rock'), 'Mineable · Silicate Rock / Iron Ore');
+  assert.equal(yields('ast_icy'), 'Mineable · Water Ice / Ice Volatiles');
+  assert.equal(yields('ast_gas_cloud'), 'Mineable · Hydrogen Gas / Helium-3');
+  assert.equal(yields('ast_rare_exotic'),
+    'Mineable · Platinoid Ore / Phosphor Crystal / Xenium');
+  // An untyped body keeps the honest generic rather than printing "Yields undefined".
+  assert.equal(yields('ast_not_a_real_type'), 'Mineable Asteroid');
+
+  // The mix is ordered by what mining will actually release, not alphabetically: the heaviest
+  // commodity leads on every type that has one.
+  for (const typeId of ['ast_common_rock', 'ast_metallic', 'ast_icy', 'ast_crystalline',
+    'ast_gas_cloud', 'ast_rare_exotic']) {
+    const line = yields(typeId);
+    assert.ok(line.startsWith('Mineable · '), `${typeId} keeps the affordance: ${line}`);
+    assert.ok(line.split(' / ').length >= 2, `${typeId} names a mix, not one token: ${line}`);
+  }
 });
 
 test('flight Tab cycles the combat target and Backspace releases it', () => {

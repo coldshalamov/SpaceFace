@@ -21,6 +21,7 @@ import {
   dropPackageDetachManifest,
   packageDetachDiagnostics,
 } from './packageCpuDetach.js';
+import { dedupeGltfTextureSources } from './imageSourceDedupe.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -1049,7 +1050,11 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
       });
     }
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
-    return loader.parseAsync(buffer, resourceBaseUrl(url));
+    const gltf = await loader.parseAsync(buffer, resourceBaseUrl(url));
+    // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
+    // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.
+    await dedupeGltfTextureSources(gltf);
+    return gltf;
   };
 }
 

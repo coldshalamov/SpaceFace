@@ -94,6 +94,7 @@ export function createCommandDock(cfg) {
     ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   const tiles = [...el.querySelectorAll('.sx-tile')];
   let fieldFrame = 0;
+  let fieldTimer = 0;
   let pendingPointerX = null;
 
   function resetField() {
@@ -125,10 +126,22 @@ export function createCommandDock(cfg) {
     }
   }
 
+  function runPointerField() {
+    if (fieldFrame) { cancelAnimationFrame(fieldFrame); fieldFrame = 0; }
+    if (fieldTimer) { clearTimeout(fieldTimer); fieldTimer = 0; }
+    applyPointerField(pendingPointerX);
+  }
+
   function queuePointerField(clientX) {
     pendingPointerX = clientX;
-    if (fieldFrame) return;
-    fieldFrame = requestAnimationFrame(() => applyPointerField(pendingPointerX));
+    if (fieldFrame || fieldTimer) return;
+    fieldFrame = requestAnimationFrame(runPointerField);
+    // The docked station is event-rendered: on a starved host (headless software GL, a pinned
+    // main thread) the next compositor frame can land far behind the input — the same stall
+    // decrypt()'s timer backstop exists for. Physical feedback is the response, not decoration:
+    // bound it with a timer too. Whichever scheduler fires first wins; the burst still coalesces
+    // to one write.
+    fieldTimer = setTimeout(runPointerField, 64);
   }
 
   function applyKeyboardField(target) {
@@ -151,6 +164,8 @@ export function createCommandDock(cfg) {
     pendingPointerX = null;
     if (fieldFrame) cancelAnimationFrame(fieldFrame);
     fieldFrame = 0;
+    if (fieldTimer) clearTimeout(fieldTimer);
+    fieldTimer = 0;
     resetField();
   };
   const onFocusIn = (ev) => applyKeyboardField(ev.target.closest('.sx-tile'));
@@ -211,6 +226,7 @@ export function createCommandDock(cfg) {
   function dispose() {
     narrowQuery?.removeEventListener?.('change', syncOrientation);
     if (fieldFrame) cancelAnimationFrame(fieldFrame);
+    if (fieldTimer) clearTimeout(fieldTimer);
     el.removeEventListener('pointermove', onPointerMove);
     el.removeEventListener('pointerleave', onPointerLeave);
     el.removeEventListener('focusin', onFocusIn);

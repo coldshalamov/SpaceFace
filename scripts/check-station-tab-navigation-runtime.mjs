@@ -211,7 +211,26 @@ try {
   const marketBox = await marketTile.boundingBox();
   assert.ok(marketBox, 'Market tile should expose a pointer target for the magnetic field');
   await page.mouse.move(marketBox.x + marketBox.width / 2, marketBox.y + marketBox.height / 2);
-  await page.waitForTimeout(100);
+  // The dock's pointer field is coalesced onto one requested frame (dock.js), and the docked
+  // station is event-rendered: on a starved host that frame lands behind any fixed sleep, so a
+  // one-shot sample reads whichever field write last ran (e.g. the keyboard field from the
+  // focus probe above) rather than the pointer response. Wait for the response itself — the
+  // same convention as every other wait in this file; the assertions below are unchanged.
+  await page.waitForFunction(() => {
+    const tile = document.querySelector('[data-screen="station"] .sx-tile[data-nav="market"]');
+    return !!tile
+      && Number(tile.style.getPropertyValue('--dock-scale')) > 1.25
+      && parseFloat(tile.style.getPropertyValue('--dock-lift')) <= -2;
+  }, null, { timeout: DOCK_TIMEOUT_MS }).catch(async (err) => {
+    const dump = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
+      id: tile.getAttribute('data-nav') || tile.getAttribute('data-act'),
+      scale: tile.style.getPropertyValue('--dock-scale'),
+      lift: tile.style.getPropertyValue('--dock-lift'),
+      selected: tile.getAttribute('aria-selected'),
+      focused: tile === document.activeElement,
+    })));
+    throw new Error('Timed out waiting for the Market pointer response: ' + err.message + ' :: ' + JSON.stringify(dump));
+  });
   const kinetic = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
     id: tile.getAttribute('data-nav') || tile.getAttribute('data-act'),
     scale: Number(tile.style.getPropertyValue('--dock-scale')),
@@ -237,7 +256,11 @@ try {
   assert.ok(ledgerMotion && Math.abs(ledgerMotion.scale - 1) < 0.01,
     'far destinations should remain seated, got: ' + JSON.stringify(ledgerMotion));
   await page.mouse.move(5, 5);
-  await page.waitForTimeout(80);
+  // pointerleave resets the field synchronously, but the input event itself can sit behind a
+  // pinned main thread — wait for equilibrium rather than a fixed 80ms.
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')]
+    .every((tile) => Math.abs(Number(tile.style.getPropertyValue('--dock-scale')) - 1) < 0.001),
+    null, { timeout: DOCK_TIMEOUT_MS });
   const seated = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
     scale: Number(tile.style.getPropertyValue('--dock-scale')),
     selected: tile.getAttribute('aria-selected'),
@@ -250,7 +273,11 @@ try {
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.mouse.move(marketBox.x + marketBox.width / 2, marketBox.y + marketBox.height / 2);
-  await page.waitForTimeout(80);
+  // Same starvation class: the reduced-motion field write is gated behind the next frame, so
+  // poll for the composed state rather than sampling after a fixed sleep.
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')]
+    .every((tile) => Math.abs(Number(tile.style.getPropertyValue('--dock-scale')) - 1) < 0.001),
+    null, { timeout: DOCK_TIMEOUT_MS });
   const reducedScales = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')]
     .map((tile) => Number(tile.style.getPropertyValue('--dock-scale'))));
   assert.ok(reducedScales.every((scale) => Math.abs(scale - 1) < 0.001),

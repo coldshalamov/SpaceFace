@@ -6,16 +6,18 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { createConnection, createServer as createNetServer } from 'node:net';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { waitForAuthoredAssetDeadline } from './lib/authoredAssetDeadline.mjs';
+import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WIDTH = 1440;
@@ -106,7 +108,7 @@ try {
   server = await startFreshServer();
   await server.ready;
   debugPort = await findFreePort(9801);
-  chrome = spawnChrome(debugPort, profileDir);
+  chrome = await spawnChrome(debugPort, profileDir);
   const cdp = await connectCdp(debugPort);
   ws = cdp.ws;
 
@@ -1835,8 +1837,8 @@ async function reachable(url) {
   }
 }
 
-function spawnChrome(debugPort, profileDir) {
-  const chromePath = findChrome();
+async function spawnChrome(debugPort, profileDir) {
+  const chromePath = await findChrome();
   const child = spawn(chromePath, [
     '--headless=new',
     '--no-sandbox',
@@ -1865,16 +1867,61 @@ function spawnChrome(debugPort, profileDir) {
   return child;
 }
 
-function findChrome() {
-  const candidates = [
+async function findChrome() {
+  // Explicit overrides first: probes on unusual hosts name their binary.
+  for (const override of [process.env.SPACEFACE_BROWSER_EXE, process.env.CHROME_PATH, process.env.CHROME_BIN]) {
+    if (override && existsSync(override)) return override;
+  }
+  const candidates = process.platform === 'win32' ? [
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'),
     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  ] : process.platform === 'darwin' ? [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  ] : [
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/microsoft-edge',
+    '/snap/bin/chromium',
   ];
-  const found = candidates.find((candidate) => existsSync(candidate));
-  if (!found) throw new Error('Chrome or Edge executable not found for authored asset live probe');
-  return found;
+  const found = candidates.find((candidate) => candidate && existsSync(candidate));
+  if (found) return found;
+  // The CI browser shards install Playwright's bundled Chromium and carry no system Chrome;
+  // resolve the exact binary playwright installed rather than pinning a cache revision here.
+  try {
+    const { chromium } = await loadPlaywright();
+    const executable = chromium && typeof chromium.executablePath === 'function' ? chromium.executablePath() : null;
+    if (executable && existsSync(executable)) return executable;
+  } catch (_) { /* Playwright runtime unavailable — fall through to the cache scan */ }
+  // Last resort: scan the browser cache directly (a minimal host can carry a warm cache
+  // without the playwright package resolvable).
+  const cacheRoot = process.env.PLAYWRIGHT_BROWSERS_PATH
+    || (process.platform === 'win32' && process.env.LOCALAPPDATA
+      ? join(process.env.LOCALAPPDATA, 'ms-playwright')
+      : process.platform === 'darwin'
+        ? join(homedir(), 'Library', 'Caches', 'ms-playwright')
+        : join(homedir(), '.cache', 'ms-playwright'));
+  if (existsSync(cacheRoot)) {
+    // Layout names differ across Playwright revisions (chrome-win vs chrome-win64).
+    const relativeExes = process.platform === 'win32'
+      ? ['chrome-win/chrome.exe', 'chrome-win64/chrome.exe']
+      : process.platform === 'darwin'
+        ? ['chrome-mac/Chromium.app/Contents/MacOS/Chromium', 'chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing']
+        : ['chrome-linux/chrome'];
+    for (const entry of readdirSync(cacheRoot).filter((name) => /^chromium-/.test(name)).sort().reverse()) {
+      for (const rel of relativeExes) {
+        const candidate = join(cacheRoot, entry, rel);
+        if (existsSync(candidate)) return candidate;
+      }
+    }
+  }
+  throw new Error('Chrome or Edge executable not found for authored asset live probe');
 }
 
 async function connectCdp(debugPort) {

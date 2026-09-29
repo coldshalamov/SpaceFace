@@ -7,6 +7,20 @@ const NOISE = '▚▞▖▗▘▝▙▟#%&*+=<>/\\0123456789';
 // keep writing scramble over the new word.
 const activeDecrypts = new WeakMap();
 
+// Elements whose accessible name derives from content lose that name while the glyphs scramble:
+// a role query (or a screen reader) sees "" / noise for the whole animation. Controls keep their
+// target name pinned in aria-label for the run so they stay reachable. Non-interactive text
+// keeps its plain textContent (aria-label on a generic role is ignored anyway).
+const NAME_CAPABLE = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY)$/;
+function pinAccessibleName(element, target) {
+  if (!element || typeof element.getAttribute !== 'function') return;
+  if (!target) return;
+  if (!NAME_CAPABLE.test(element.tagName || '')
+    && !element.hasAttribute('role')
+    && !element.hasAttribute('tabindex')) return;
+  element.setAttribute('aria-label', target);
+}
+
 /**
  * Decrypt Text: the word arrives as glyph noise and resolves left to right. Cosmetic randomness
  * only (Math.random is fine here; the sim's rng is never touched by presentation). The final
@@ -24,6 +38,7 @@ export function decrypt(element, text, { duration = 260, delay = 0 } = {}) {
     element.textContent = target;
     return () => {};
   }
+  pinAccessibleName(element, target);
   let start = null;
   let stopped = false;
   let off = () => {};
@@ -70,6 +85,7 @@ export function typewriter(element, text, { cps = 48, delay = 0, onDone = null }
     done();
     return () => {};
   }
+  pinAccessibleName(element, target);
   let start = null;
   let stopped = false;
   let shown = 0;

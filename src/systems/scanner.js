@@ -620,7 +620,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
 
   // Ambush tells deliberately remain an uncertain traffic class at every stage. The scanner does
   // not consult hostility, encounter labels, or faction intent here: investigation earns warning,
-  // never omniscient red paint.
+  // never omniscient red paint. A tell the pulse has already resolved (ambushSignatures marks it
+  // scanned) earns its authored name + warning — the second observation disambiguates the clue.
   const tells = state.ambushSignatures && state.ambushSignatures.tells;
   for (const tell of Object.values(tells || {})) {
     if (!tell || tell.active === false || tell.sectorId !== sectorId || !tell.pos) continue;
@@ -631,6 +632,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       entityId: null,
       pos: tell.pos,
       range: profile.hiddenPoiRadius,
+      resolvedLabel: tell.scanned === true ? tell.label || null : null,
+      resolvedDetail: tell.scanned === true ? tell.hint || null : null,
     });
   }
 
@@ -1128,6 +1131,13 @@ export const scanner = {
       };
       if (candidate.trackable === false) record.trackable = false;
       if (candidate.scanLabel && (!candidate.noProximityStage || stage >= 2)) record.detail = candidate.scanLabel;
+      // A resolved ambush tell names itself — the pulse that marked it scanned upgrades this
+      // row in the same results batch, so the clue disambiguates on the observation that
+      // earned it.
+      if (candidate.resolvedLabel) {
+        record.classification = String(candidate.resolvedLabel).toUpperCase();
+        if (candidate.resolvedDetail) record.detail = candidate.resolvedDetail;
+      }
       // A world names itself once the signature resolves — until then it reads as its kind class.
       if (stage >= 3 && candidate.planetName) record.classification = candidate.planetName;
       const discoveryCopy = vestaOreCacheSignalCopy(candidate.sourceId)

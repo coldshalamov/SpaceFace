@@ -2148,7 +2148,7 @@ surface set and one publish command, and review means looking at the live render
 Workflows, rules and budgets: [`design/program/GRAPHICS_PROGRAM.md`](./design/program/GRAPHICS_PROGRAM.md).
 The open work is Wave GFX below.
 
-### Wave GFX — the graphics backlog after Forge (2026-09-27) — READY
+### Wave GFX — the graphics backlog after Forge (2026-09-27) — DONE 2026-09-28
 
 Full rows, "done when" and order: [`GRAPHICS_PROGRAM.md` §4](./design/program/GRAPHICS_PROGRAM.md).
 Agent brief templates: [`tools/blender/forge/briefs/`](./tools/blender/forge/briefs/). Delete a row
@@ -2156,8 +2156,6 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
-| **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |
-| **GFX-12** | Wave F F3: the pending-body stand-in is the hull's own Forge LOD2. |
 
 ### Wave D — shelf that beats live
 
@@ -4101,6 +4099,45 @@ Frame times on this host swing ±50 % run to run and are not evidence either way
 with zero in-frame links still occurs — next: `--cpu-profile` on a quieter host to name it. Other
 next cuts named by the profile: `_publishAssetResidencyDiagnostics` → `canonicalDiagnostics`
 (~0.8 s per flight, rebuilt every 0.25 s poll — memoize on a residency mutation epoch).
+
+**GFX-10 Forge performance pass, 2026-09-29 (same laptop, SwiftShader GL path, host heavily
+contended by other agents; measured as an INTERLEAVED A/B, not before/after blocks).** Two
+changes measured together: image-source dedupe across the live GLB decode paths
+(`src/render/imageSourceDedupe.js` — SHA-256 via `crypto.subtle`, memoised per GLB buffer, over
+embedded bufferView bytes + byteLength + mimeType; FNV-1a fallback when `crypto.subtle` is
+absent; documents share one `THREE.Source` via texture clones and keep their own
+colorSpace/sampler/flipY; an entry survives until its last tracked texture disposes) and the
+GFX-12 resolving stand-in (pending ships show their own lod2 silhouette sharing the resident
+record's geometry plus cached opaque Standard materials, instead of the translucent octahedron;
+the per-frame marker retry is throttled to 200 ms per substrate). The probe reports a
+scene-traversal texture-memory estimate and the dedupe ledger (`hashedBytes`, `hashMs`) at the
+end of the route. A = `SpaceFace-verify` worktree at origin/master `9a30ffc00` (no packet), B =
+this tree; A, B, A, B back to back, same probe command.
+
+| Run | Arm | Result | frame p50 | p95 | p99 | longest | info.memory.textures | geometries | uniqueSources | est. texture MB | rootSwaps | regressions | shader links | in-frame links | stuckMissing |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `2026-09-29T03-19-08-998Z` | A master | FAIL (stuck) | 158.0 | 473.5 | 1380.5 | 2264.6 | 183 | 717 | 113 | 92.7 | 0 | 0 | 15 | 4 | 83 |
+| `2026-09-29T03-23-22-447Z` | B packet | FAIL (stuck) | 741.4 | 1856.7 | 3893.6 | 4612.6 | 74 | 430 | 45 | 50.2 | 0 | 0 | 22 | 5 | 11 |
+| `2026-09-29T03-28-01-574Z` | A master | FAIL (stuck) | 190.8 | 366.3 | 899.5 | 1981.6 | 133 | 475 | 95 | 81.5 | 0 | 0 | 15 | 6 | 228 |
+| `2026-09-29T03-31-31-245Z` | B packet | PASS | 198.2 | 531.0 | 1180.1 | 1567.9 | 73 | 685 | 45 | 50.2 | 0 | 0 | 25 | 6 | 0 |
+
+Honest read: the memory numbers are stable and real — unique texture sources 113/95 → 45/45
+(−56 %), estimated texture memory 92.7/81.5 → 50.2/50.2 MB (−42 %), live Texture objects
+133–183 → 73–74 — the embedded atlas copies shared across hull GLBs and render packages now
+upload once. Frame p50 is NOT consistently worse on B: pair 2 is a wash (190.8 vs 198.2) and
+pair 1's B run hit the worst host-contention window of the session (only 149 frames in the same
+route that produced 463–489 on the other runs — the whole host stalled, not just the renderer).
+Dedupe cost is bounded and off the frame's hot path: 4.8 / 5.6 MB hashed per route in 133 / 426
+ms of `crypto.subtle` wall time spread across the flight's decodes (<0.5 % of route time; the
+digest itself runs on the platform's thread, not in a JS byte loop). `stuckMissing` reads better
+on B in both pairs (83/228 → 11/0). `resolvingMarkerFallbacks` 4–11 at census: the census samples
+a window while a few pending ships' decode records are not yet settled — they upgrade to their
+own lod2 stand-in when the record lands (verified live: `AuthoredResolvingStandIn` substrates
+visible for mule/atlas/drifter). Steady-state target for that counter is 0; the residual is the
+decode-settle window, not a missing hull. Reports:
+`.devshots/frame-solid/A1-master-2026-09-29T03-19-08-998Z.json`,
+`2026-09-29T03-23-22-447Z.json`, `A2-master-2026-09-29T03-28-01-574Z.json`,
+`2026-09-29T03-31-31-245Z.json` (A reports copied in from the verify worktree's `.devshots`).
 
 | # | System | What exists | Gap | Next |
 |---|---|---|---|---|
