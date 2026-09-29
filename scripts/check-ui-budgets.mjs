@@ -35,41 +35,46 @@ if (!existsSync(baselinePath)) {
   console.error(`FAIL check:ui:budgets — ${UI_BUDGETS_FILE} does not exist. `
     + 'Shoot it: node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 '
     + `--budgets-out=${UI_BUDGETS_FILE}`);
-  process.exit(1);
+  process.exitCode = 1;
 }
 
 let baseline = null;
-try {
-  baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
-} catch (error) {
-  console.error(`FAIL check:ui:budgets — ${UI_BUDGETS_FILE} is not valid JSON: ${error.message}`);
-  process.exit(1);
+if (!process.exitCode) {
+  try {
+    baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
+  } catch (error) {
+    console.error(`FAIL check:ui:budgets — ${UI_BUDGETS_FILE} is not valid JSON: ${error.message}`);
+    process.exitCode = 1;
+  }
 }
 
-const verdict = judgeBudgets(baseline, {
-  sourceDigest: uiSourceDigest(ROOT),
-  current,
-  strict: process.argv.includes('--strict'),
-  expectedSurfaceIds: AUTOMATABLE_SURFACES.map((s) => s.id),
-});
+if (baseline) {
+  const verdict = judgeBudgets(baseline, {
+    sourceDigest: uiSourceDigest(ROOT),
+    current,
+    strict: process.argv.includes('--strict'),
+    expectedSurfaceIds: AUTOMATABLE_SURFACES.map((s) => s.id),
+  });
 
-const surfaces = baseline.surfaces || {};
-const worst = Object.entries(surfaces)
-  .sort(([, a], [, b]) => b.frameMeanMs - a.frameMeanMs)[0];
-console.log(`check:ui:budgets — ${Object.keys(surfaces).length} surfaces, renderer: ${baseline.renderer}`);
-if (worst) {
-  const byDom = Object.entries(surfaces).sort(([, a], [, b]) => b.domNodes - a.domNodes)[0];
-  console.log(`  worst mean frame cost: ${worst[0]} ${worst[1].frameMeanMs.toFixed(3)} ms `
-    + `(grammar budget ${MAX_UI_FRAME_MS} ms) · worst DOM count: ${byDom[0]} ${byDom[1].domNodes} `
-    + `(grammar budget ${MAX_SURFACE_DOM_NODES})`);
-}
-for (const failure of verdict.failures) console.error(`  FAIL ${failure}`);
-for (const breach of verdict.breaches) console.error(`  REGRESSION ${breach}`);
-for (const debt of verdict.debt) console.log(`  GRAMMAR DEBT ${debt} (red under --strict)`);
-for (const strict of verdict.strictFailures) console.error(`  FAIL ${strict}`);
+  const surfaces = baseline.surfaces || {};
+  const worst = Object.entries(surfaces)
+    .sort(([, a], [, b]) => b.frameMeanMs - a.frameMeanMs)[0];
+  console.log(`check:ui:budgets — ${Object.keys(surfaces).length} surfaces, renderer: ${baseline.renderer}`);
+  if (worst) {
+    const byDom = Object.entries(surfaces).sort(([, a], [, b]) => b.domNodes - a.domNodes)[0];
+    console.log(`  worst mean frame cost: ${worst[0]} ${worst[1].frameMeanMs.toFixed(3)} ms `
+      + `(grammar budget ${MAX_UI_FRAME_MS} ms) · worst DOM count: ${byDom[0]} ${byDom[1].domNodes} `
+      + `(grammar budget ${MAX_SURFACE_DOM_NODES})`);
+  }
+  for (const failure of verdict.failures) console.error(`  FAIL ${failure}`);
+  for (const breach of verdict.breaches) console.error(`  REGRESSION ${breach}`);
+  for (const debt of verdict.debt) console.log(`  GRAMMAR DEBT ${debt} (red under --strict)`);
+  for (const strict of verdict.strictFailures) console.error(`  FAIL ${strict}`);
 
-if (!verdict.ok) {
-  console.error('FAIL check:ui:budgets');
-  process.exit(1);
+  if (!verdict.ok) {
+    console.error('FAIL check:ui:budgets');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS check:ui:budgets');
+  }
 }
-console.log('PASS check:ui:budgets');
