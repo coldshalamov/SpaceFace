@@ -31,6 +31,7 @@ export const PLAYER_HULLS = {
   ship_ironback: 'ironback_production_v1', ship_hawser: 'yard_tug', ship_bastion: 'bastion_production_v1',
   ship_atlas: 'atlas_production_v1', ship_ranger: 'ranger_production_v1', ship_warden: 'warden_production_v1',
   ship_colossus: 'colossus_production_v1', ship_leviathan: 'leviathan_production_v1',
+  ship_saucer: 'saucer_production_v1',
 };
 const VIEWS = { hero: [2400, 1350], side: [2400, 1100], top: [1024, 1024] };
 

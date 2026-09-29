@@ -3893,8 +3893,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_saucer_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1.glb",
-      "releaseSha256": "",
-      "releaseBytes": 0,
+      "releaseSha256": "a59f0e64ba5c827ba9ce46f849001e782963077287a50c523ce98c90c360d9ec",
+      "releaseBytes": 878920,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4853,8 +4853,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_saucer_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb",
-      "releaseSha256": "",
-      "releaseBytes": 0,
+      "releaseSha256": "7ed21d6a34dd95f234d2ac8ee3dd67739647b8e47ea3e5df6905c6efdfcedd4f",
+      "releaseBytes": 576888,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4874,8 +4874,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_saucer_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1_lod2.glb",
-      "releaseSha256": "",
-      "releaseBytes": 0,
+      "releaseSha256": "e936db18d305fcb77164f5a79683c77cdfe46b5f038a431a7aa783783be51177",
+      "releaseBytes": 449360,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

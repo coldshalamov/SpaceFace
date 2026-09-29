@@ -4415,6 +4415,48 @@
       "ktx2Textures": 3,
       "meshoptBufferViews": 63,
       "contractNodeCount": 16
+    },
+    {
+      "id": "wholeship_saucer_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/saucer_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/saucer_production_v1.glb",
+      "sourceSha256": "4b8441ee743421a1dbe6d4481ea93209e999b5e7d158ba1937025e7b9ff2789d",
+      "releaseSha256": "a59f0e64ba5c827ba9ce46f849001e782963077287a50c523ce98c90c360d9ec",
+      "sourceBytes": 2503236,
+      "releaseBytes": 878920,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_saucer_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/saucer_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb",
+      "sourceSha256": "4cbae18243c37505e4577406390304803be574e716c0426613e54270ff5fd9d8",
+      "releaseSha256": "7ed21d6a34dd95f234d2ac8ee3dd67739647b8e47ea3e5df6905c6efdfcedd4f",
+      "sourceBytes": 1157144,
+      "releaseBytes": 576888,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_saucer_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/saucer_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/saucer_production_v1_lod2.glb",
+      "sourceSha256": "2c4d780e61404f2a0f6cb2667ea045eb2b16f4711913283b9f10c1bd9e1980ee",
+      "releaseSha256": "e936db18d305fcb77164f5a79683c77cdfe46b5f038a431a7aa783783be51177",
+      "sourceBytes": 686160,
+      "releaseBytes": 449360,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 44,
+      "contractNodeCount": 25
     }
   ]
 }

@@ -32,6 +32,7 @@ export const HULL_POSTERS = Object.freeze({
   ship_warden: Object.freeze({ hero: 'ship_warden.hero.webp', side: 'ship_warden.side.webp', top: 'ship_warden.top.webp', holo: 'ship_warden.holo.webp', jig: 'ship_warden.jig.webp' }),
   ship_colossus: Object.freeze({ hero: 'ship_colossus.hero.webp', side: 'ship_colossus.side.webp', top: 'ship_colossus.top.webp', holo: 'ship_colossus.holo.webp', jig: 'ship_colossus.jig.webp' }),
   ship_leviathan: Object.freeze({ hero: 'ship_leviathan.hero.webp', side: 'ship_leviathan.side.webp', top: 'ship_leviathan.top.webp', holo: 'ship_leviathan.holo.webp', jig: 'ship_leviathan.jig.webp' }),
+  ship_saucer: Object.freeze({ hero: 'ship_saucer.hero.webp', side: 'ship_saucer.side.webp', top: 'ship_saucer.top.webp', holo: 'ship_saucer.holo.webp', jig: 'ship_saucer.jig.webp' }),
 });
 
 /** URL of a hull's produced render, or null when that hull has none. */
