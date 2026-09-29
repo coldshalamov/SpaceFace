@@ -72,7 +72,7 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 31 
 | Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | **APPROVED 8.3** (frontdoor-r2, T-S1 verified live; Pause unregressed) |
 | Pause (`pause`) | Seven-stop dial over the held world | Rows as stops: the Hand steps row to row, left/right along a row | — | **APPROVED 8.3** (frontdoor-rs1); polish carry-over: 0% gauge weight, 1280 LOCAL MAP touch, brief/RESUME tie |
 | New Game (`new-game`) | The yard: the hull on a turntable ring | **Spin the yard**: drag the ring; each hull's mass sets its swing (heavy drags, light flicks); the stat arcs sweep between hulls; release settles with overshoot; hold LAUNCH runs light down the run's scale into the jump | new backdrop (done), Pelican poster to hero grade | **APPROVED 8.2** (r7, 5d855f9cc + follow-ups) — (a) yes, (b) yes |
-| Loading (`boot`) | The emblem spinning up | Real load stages as ticks lighting round the ring | — | audit 4.5† code-only (wave3-sites-audit, unshot); ring passes, rainbow ASCII field fails; build running (w3b): new 'loading' shot + one ORRERY field + containment |
+| Loading (`boot`) | The emblem spinning up | Real load stages as ticks lighting round the ring | — | r1 7.7 NOT PASSED (nearest to passing); r2 queued: upper field + tableaux proof + 240 ring + chrome voice; emitters + assert landed |
 | Settings (`settings`) | Mixer + live HUD preview | Ride a slider and the miniature Cluster/mixer answers live | — | **APPROVED 8.1** (setcr-r3) |
 | Save/Load (`save-load*`) | Filmstrip on a curved rail | Scrub the rail; the chosen save's hull and facts decrypt in | poster hulls | **APPROVED 8.1** (sav-r3) |
 | Game Over (`game-over`) | The cooled world | The cause decrypts; the career record is an instrument; restore = Lamp Key | — | **APPROVED 8.2** (sav-r3) |
@@ -97,9 +97,9 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 31 
 | Range (`range`) | Handling course | Fly the rehearsal: the course draws as a beam, progress rides the gates | — | **APPROVED 8.3** (shiprange-r3, holds; RG7 closed via range-rg7-closeout, readout y1014-1026, dead space 150→46px) |
 | Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | **APPROVED 8.0** (automation-r2, on the line); carry-over: flow-link bodies to ~3.1:1, rail follows conducted ring, research-verb contrast margin, tab focus light segment, purse roll |
 | Replay / Clips (`replay`, `clips`) | The tape / the reel | Ride the tape (scrub time); pull a moment open (trim windows) | — | Replay **APPROVED 8.1** / Clips **APPROVED 8.0** (replayclips-r1); carry-over: dormant band to 3.5:1, world exposure, ghost sub to 16px (12 effective), ghost glyph bloom; populated stills when bench can stage |
-| Asteroid Works / Drill / Base | Machine sites | (per `asteroid-works-rebuild` design) | exist | drill 3.0 / base 3.5 empty-states (wave3-sites-audit); populated UNSCOREABLE pending 'drill-claimed' + 'base-claimed' seeds; build running (w3b) |
-| Flight HUD (`orrery-flight`, `flight`), Power rail, Radials | Cluster, rail, radial | (passed Phase 0a) | — | orrery-flight 1.2 (bench staging collapse, one-rule fix) / flight 6.7 / power-rail 7.1 / comms-radial 4.2 (fan never opens) / wingman 6.3 (wave3-hud-audit); weight pass must NOT regress frame time |
-| Sandbox (`sandbox`) | dev harness | Pick a scenario and fire it down the launch rail | — | audit 4.5 dev-only (wave3-sites-audit); build running (w3b) |
+| Asteroid Works / Drill / Base | Machine sites | (per `asteroid-works-rebuild` design) | exist | base r1 7.0/6.0 NOT PASSED (r2 running); drill r3 fixing (stake-key clip, claimed rock); seeds landed + committed |
+| Flight HUD (`orrery-flight`, `flight`), Power rail, Radials | Cluster, rail, radial | (passed Phase 0a) | — | r1 ALL NOT PASSED: orrery 7.8 / flight 7.0 / rail 7.6 / comms 5.0 / wingman 7.7; recall-A running (mount-time + radar unit), recall-B queued (fan + wingman r2) |
+| Sandbox (`sandbox`) | dev harness | Pick a scenario and fire it down the launch rail | — | r1 6.4 NOT PASSED dev-only; r2 queued: key dock zone + bead + group ticks + rail foot |
 
 ## 5. Order of work
 

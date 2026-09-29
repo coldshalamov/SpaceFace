@@ -1,7 +1,14 @@
-import { ObjectiveKind, ContactKind } from '../ai/contracts.js';
+import { ObjectiveKind, ContactKind, clamp, wrapAngle } from '../ai/contracts.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
-import { assessFriendlyFireLane, assessOpticSplinterReturn } from '../ai/fireDiscipline.js';
+import {
+  assessFriendlyFireLane,
+  assessOpticSplinterReturn,
+  mountFollowsAimAngle,
+  opticVolleyMountTracking,
+  planOpticBankShot,
+} from '../ai/fireDiscipline.js';
+import { GIMBAL_ARC_DEFAULT } from './ships.js';
 import {
   isPdScreenActor,
   resolvePdCharge,
@@ -41,6 +48,12 @@ export function applyAIFiringIntent(decision, state) {
   const intent = mutableIntent(data);
   const objective = decision.directive && decision.directive.objective;
   const combatDoctrine = decision.combatDoctrine || null;
+  const combat = data.combat || (data.combat = {});
+  // A doctrine may commit to a firing corridor (ranged disengager cue/window): the corridor's
+  // anchor is the true firing lead the first tick the corridor is observed, so a steady target
+  // keeps taking honest leads while a dodge can only pull the line ±capRad off it.
+  const aimCommit = combatDoctrine && combatDoctrine.aimCommit
+    && Number.isFinite(combatDoctrine.aimCommit.bearing) ? combatDoctrine.aimCommit : null;
   const pdActor = isPdScreenActor(e);
 
   // W04: pd_screen_escort policy owns target selection, but never fire authorization.
@@ -63,6 +76,19 @@ export function applyAIFiringIntent(decision, state) {
   const fireWindowOk = !combatDoctrine || combatDoctrine.fireWindow;
   if (!attack || targetId == null || !fireWindowOk) {
     if (!combatDoctrine || !fireWindowOk) FIRE_WINDOW_ADMISSION.delete(e);
+    // The corridor anchors at the telegraph, not the shot: keep the anchor state alive through
+    // the cue and pin the aim line on it, so the fire window flies the forecast the pilot saw.
+    if (aimCommit && attack && targetId != null) {
+      const commitTarget = state.entities.get(targetId);
+      if (commitTarget && commitTarget.alive !== false) {
+        committedCorridorAim(e, combat, aimCommit, commitTarget, data.weapons);
+        intent.aimAngle = aimCommit.bearing;
+      } else {
+        combat.aimCommit = null;
+      }
+    } else {
+      combat.aimCommit = null;
+    }
     clearFire(intent);
     return;
   }
@@ -118,10 +144,29 @@ export function applyAIFiringIntent(decision, state) {
     return;
   }
 
-  const aimAngle = leadAngleFor(e, target, data.weapons);
-  const combat = data.combat || (data.combat = {});
+  let aimAngle = leadAngleFor(e, target, data.weapons);
   combat.targetId = targetId;
   combat.pdScreen = pdActor;
+  if (aimCommit) {
+    aimAngle = committedCorridorAim(e, combat, aimCommit, target, data.weapons);
+    // A corridor only counts if a mount that follows the aim can bear it: fixed guns and beams
+    // release along `rot + facing ± gimbalArc`, so a bearing outside every cone would fly the
+    // clamped edge — a line the commitment never vetted. Hold and keep aiming the corridor; the
+    // doctrine's faceAngle is already slewing the hull onto it. Turret/homing-only batteries
+    // solve their own direction and cannot fly a corridor, so they fire their own solution.
+    const corridorMount = aimConeStatus(e, data.weapons, aimAngle);
+    if (corridorMount.status === 'slew') {
+      clearFire(intent, 'committed_aim_off_bore');
+      // Steer the mount's bore onto the corridor, not the raw bearing — for an off-axis fixed
+      // mount (facingAngle ≠ 0) the hull must converge to corridor − facing or the hold never
+      // closes. Same rule the optic-bank slew uses.
+      intent.aimAngle = wrapAngle(aimAngle - corridorMount.facing);
+      combat.opticBankId = null;
+      return;
+    }
+  } else {
+    combat.aimCommit = null;
+  }
   const lane = assessFriendlyFireLane({
     shooter: e,
     target,
@@ -131,6 +176,7 @@ export function applyAIFiringIntent(decision, state) {
   if (!lane.clear && target.type !== 'projectile') {
     clearFire(intent, lane.reason, lane.blockerId);
     intent.aimAngle = aimAngle;
+    combat.opticBankId = null;
     return;
   }
 
@@ -147,13 +193,52 @@ export function applyAIFiringIntent(decision, state) {
   if (!splinterLane.clear && target.type !== 'projectile') {
     clearFire(intent, splinterLane.reason, splinterLane.blockerId);
     intent.aimAngle = aimAngle;
+    combat.opticBankId = null;
     return;
+  }
+
+  // Offensive half of the optic grammar: when the aimed lane dies on a body that is not the
+  // target and not a prism, a reachable diamond whose replayed ring lands on the target turns
+  // the wasted bolt into a fuse shot. The planner rejects any cascade that lands on the shooter
+  // or a same-team hull, so a bank can never route around the refusal above — it only replaces
+  // a geometrically dead lane.
+  const bank = planOpticBankShot({
+    shooter: e,
+    target,
+    aimAngle,
+    entities: opticLaneBodies(state),
+    weapons: data.weapons,
+  });
+  let bankAim = null;
+  if (bank) {
+    // A bank bearing only counts if a mount that follows the aim can actually bear it: fixed
+    // guns and continuous beams release along `rot + facing ± gimbalArc`, so a bearing outside
+    // the cone would fly the clamped edge — a corridor the cascade replay never vetted. Turrets
+    // and homing mounts lead the target themselves and cannot fly a bank at all. While the nose
+    // is still slewing onto the corridor the trigger holds; intent.aimAngle keeps turning the
+    // ship so the mount's bore lands on the corridor (bank bearing minus the mount's facing —
+    // for front mounts that is the bearing itself).
+    const mount = opticBankMountStatus(e, data.weapons, bank.aimAngle);
+    if (mount.status === 'slew') {
+      combat.opticBankId = bank.opticId;
+      clearFire(intent, 'optic_bank_slew', bank.opticId);
+      intent.aimAngle = wrapAngle(bank.aimAngle - mount.facing);
+      return;
+    }
+    if (mount.status === 'ready') {
+      combat.opticBankId = bank.opticId;
+      bankAim = bank.aimAngle;
+    } else {
+      combat.opticBankId = null;
+    }
+  } else {
+    combat.opticBankId = null;
   }
 
   intent.fire = true;
   intent.fireBlockReason = null;
   intent.fireBlockerId = null;
-  intent.aimAngle = aimAngle;
+  intent.aimAngle = bankAim != null ? bankAim : aimAngle;
   ai.lastAggressionTrace = aggressionTrace(decision, state, targetId, ai);
 }
 
@@ -187,6 +272,67 @@ export function opticLaneBodies(state) {
       : EMPTY_OPTIC_LANE_BODIES;
   }
   return (state && state.entityList) || (state && state.entities) || EMPTY_OPTIC_LANE_BODIES;
+}
+
+/**
+ * Can a planned bank bearing be realized by a mount that follows the ship's aim angle?
+ * Fixed guns and beams release along `rot + facing ± gimbalArc` (weapons.js `_hardpointDir`),
+ * so 'ready' requires the bearing inside some optic-capable mount's cone. Turret and homing
+ * mounts resolve their own direction from the locked target — they cannot fly a corridor at
+ * all — so a ship without an aim-following energy mount answers 'none'. When an aim-following
+ * mount exists but the nose has not slewed onto the bearing, the answer is 'slew' and the
+ * caller holds fire: flightV3 turns the ship toward intent.aimAngle whether or not it fires.
+ */
+function opticBankMountStatus(shooter, weapons, aimAngle) {
+  return mountConeStatus(shooter, weapons, aimAngle, (w) => {
+    const tracking = opticVolleyMountTracking(w);
+    return tracking != null && w.facing !== 'turret'
+      && tracking !== 'auto_turret' && tracking !== 'homing';
+  });
+}
+
+/**
+ * Can any aim-following mount (fixed gun or beam — see mountFollowsAimAngle) bear this angle?
+ * 'ready' means a cone covers it, 'slew' means the nose has not come around yet, 'none' means the
+ * battery solves its own directions and aimAngle never reaches a barrel.
+ */
+function aimConeStatus(shooter, weapons, aimAngle) {
+  return mountConeStatus(shooter, weapons, aimAngle, mountFollowsAimAngle);
+}
+
+/**
+ * The corridor anchor is the true firing lead the first tick the corridor is observed — a steady
+ * target keeps taking real leads inside ±capRad, while a dodge reads as a divergent fresh
+ * solution and the aim stays pinned on the stale corridor instead of re-tracking.
+ */
+function committedCorridorAim(e, combat, commit, target, weapons) {
+  const fresh = leadAngleFor(e, target, weapons);
+  const prior = combat.aimCommit;
+  const anchor = prior && prior.bearing === commit.bearing && Number.isFinite(prior.anchor)
+    ? prior.anchor
+    : fresh;
+  combat.aimCommit = { bearing: commit.bearing, anchor };
+  const cap = Number.isFinite(commit.capRad) ? Math.abs(commit.capRad) : 0;
+  return wrapAngle(anchor + clamp(wrapAngle(fresh - anchor), -cap, cap));
+}
+
+function mountConeStatus(shooter, weapons, aimAngle, canFollow) {
+  const rot = Number(shooter.rot) || 0;
+  let followable = false;
+  let bestFacing = 0;
+  let bestErr = Infinity;
+  for (const w of weapons || []) {
+    if (!canFollow(w)) continue;
+    followable = true;
+    const facing = Number(w.facingAngle) || 0;
+    const arc = Number.isFinite(w.gimbalArc) ? w.gimbalArc : GIMBAL_ARC_DEFAULT;
+    const err = Math.abs(wrapAngle(aimAngle - (rot + facing)));
+    if (err <= arc) return { status: 'ready', facing };
+    if (err < bestErr) { bestErr = err; bestFacing = facing; }
+  }
+  // On 'slew' the caller steers `aim − facing` so the mount's bore — not the raw bearing —
+  // ends up on the corridor; front mounts keep facing 0, so that is the bearing itself.
+  return { status: followable ? 'slew' : 'none', facing: bestFacing };
 }
 
 /**

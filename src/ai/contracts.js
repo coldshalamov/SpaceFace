@@ -288,6 +288,10 @@ function normalizeSelf(value, entityId) {
     roe: normalizeRoeView(value.roe),
     combatDoctrineId: normalizeDoctrineIdView(value.combatDoctrineId),
     factionBehavior: normalizeFactionBehaviorProfile(value.factionBehavior),
+    // The doctrine corridor forecasts with the battery's true bolt speed when the frame carries it.
+    aimProjectileSpeed: Number.isFinite(value.aimProjectileSpeed) && value.aimProjectileSpeed > 0
+      ? value.aimProjectileSpeed
+      : null,
     ramAuthorized: value.ramAuthorized === true,
     operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
     mobilityBand: normalizeBand(value.mobilityBand, ['low', 'medium', 'high'], 'medium'),

@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceLedger.v1",
-  "updated": "2026-09-23",
+  "updated": "2026-09-29",
   "domains": {
     "WF-01": {
       "grade": "A",
@@ -33,11 +33,21 @@
       "next": ""
     },
     "WF-04": {
-      "grade": "U",
-      "updated": "2026-09-17",
-      "inspections": [],
+      "grade": "B",
+      "updated": "2026-09-29",
+      "inspections": [
+        {
+          "date": "2026-09-29",
+          "atCommit": "31e56df4c99438dff5d95fb1ca8a92b098ec97ad",
+          "paths": [
+            "src/data/sectors.js",
+            "src/data/frontierRegions/east.js"
+          ],
+          "finding": "Two frontier mission boards (Research Station Veil, Triton Wake Lab) handed out contracts in sectors with no refuel anywhere - a contract was a trap. The two charted fuel-less outposts (Eunomia Fence, Sedna Survey Post) name the rule on the chart and are authored fiction, not holes."
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "Station services are still read as a flat token list: nothing tells the player at the chart what a station will NOT do until they dock - the fuel-less outposts warn in prose, every other limit is discovered at the counter."
     },
     "WF-05": {
       "grade": "A",
@@ -177,19 +187,8 @@
     },
     "WF-13": {
       "grade": "B",
-      "updated": "2026-09-23",
+      "updated": "2026-09-29",
       "inspections": [
-        {
-          "date": "2026-09-22",
-          "atCommit": "f919edca2bd427203aaf08a5aee387eafc3c2ca3",
-          "paths": [
-            "src/audio/audioSystem.js",
-            "src/audio/barkVoice.js",
-            "src/data/audioRecipes.js",
-            "src/systems/onboarding.js"
-          ],
-          "finding": "First-hour tutorial lines were silent text. They now ride one instructor radio (key, register, squelch) in emit order, including lines the screen hides. Cold open and proof milestones are audible. The rest of the soundscape was not listened to."
-        },
         {
           "date": "2026-09-22",
           "atCommit": "f3bf397b273cd7217618de624231bc7cdc350c8a",
@@ -212,14 +211,22 @@
             "src/audio/audioSystem.js"
           ],
           "finding": "Hull and shields keep a lamp while failing. Fuel only spoke on fuel:empty. The flight HUD now raises FUEL LOW under a quarter, says it once through the existing alert tone, and leaves a loaded-low tank silent until the next downward crossing. Focused proof: the crossing table."
+        },
+        {
+          "date": "2026-09-29",
+          "atCommit": "909ae6d7c6a294cdaa8150d0d7a2c2d3c36ff0e6",
+          "paths": [
+            "src/audio/minimalActionAudio.js"
+          ],
+          "finding": "The Massline has one deny voice (sfx_massline_deny) and only the refused latch could hear it. A refused cut was mute - the line stayed where it was and nothing told the player the key had registered, so they pressed it again."
         }
       ],
       "gaps": [],
-      "next": "Listen to a place layer that is not an alarm: sector bed or station machinery."
+      "next": "The sector bed is still the remaining place layer: rock groan and station machinery are event sounds, and nothing sounds like the place you are flying through."
     },
     "WF-14": {
       "grade": "B",
-      "updated": "2026-09-23",
+      "updated": "2026-09-29",
       "inspections": [
         {
           "date": "2026-09-17",
@@ -240,10 +247,19 @@
             "src/careers/origins/prospectorOriginAppraisal.js"
           ],
           "finding": "Lock names already said Silicate or Exotic. The pulse stamped common rock Ore and platinoid Fe, and the appraisal called silicate iron. One glyph table now feeds the pulse, both charts, and the appraisal. Focused proof 3/3 on seed 4242."
+        },
+        {
+          "date": "2026-09-29",
+          "atCommit": "6fc903a0920bb8e6d299d64a109ac50900e48b63",
+          "paths": [
+            "src/ui/targetPanel.js",
+            "src/data/mining.js"
+          ],
+          "finding": "The lock class line reported the verb ('Mineable Asteroid') beside a name that already said what the body is. A stranger had to cut a rock to learn whether it was worth cutting - the type's own oreTable always held the answer."
         }
       ],
       "gaps": [],
-      "next": "The class line still says Mineable Asteroid; that is the verb. Next information hole is a different surface."
+      "next": "Next information hole is a different surface: the wreck class line is still the bare word 'Salvage' with no wreck class, and the pickup/payload line has no composition at all."
     },
     "WF-15": {
       "grade": "U",

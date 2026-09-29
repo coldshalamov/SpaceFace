@@ -29,6 +29,7 @@ import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
+import { KETTLE_LINE } from '../data/kettleLine.js';
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
@@ -2733,6 +2734,7 @@ export const world = {
       }
     }
     this._spawnHeliosRopeCache(sector, active);
+    this._spawnKettleLinePayoff(sector, active);
   },
 
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
@@ -2802,6 +2804,66 @@ export const world = {
     pod.flags = Object.assign({}, pod.flags, { persistent: false });
     this._stampHomeSector(pod, sector.id);
     active.heliosRopeCacheId = pod.id;
+  },
+
+  // The Kettle Line payoff (src/data/kettleLine.js): the convoy crew's pay strongbox, still
+  // clamped to the drive stern. Sealed until the stern's scan tell is investigated — then it
+  // is an ordinary ropeable, splittable payload pod (the Candle Fleet rope-cache treatment)
+  // at the stern's side. No new state bag: the existing per-POI discovery record owns the
+  // seal, and the residency bag owns the spawn slot, exactly like the rope cache above.
+  _spawnKettleLinePayoff(sector, active) {
+    const trail = KETTLE_LINE;
+    if (!trail || !sector || trail.sectorId !== sector.id || !active) return;
+    // Data-only harnesses drive _spawnWorldOneOffs without a world bag; a sealed site
+    // simply has nothing to spawn there.
+    if (!this.state || !this.state.world || !this.state.world.discovery) return;
+    const disc = this._discoveryFor(sector.id);
+    const stern = disc.pois && disc.pois[trail.terminalPoiId];
+    if (!stern || !stern.investigated) return;
+    const priorId = active.kettleLinePayoffId;
+    const prior = priorId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(priorId)
+      : null;
+    if (prior) return;
+    // The stern marker's live position in this sector; authored position is the fallback.
+    const row = (active.pois || []).find((poi) => poi && poi.poiId === trail.terminalPoiId);
+    const local = trail.payoff.offset;
+    const pos = row && row.pos
+      ? { x: row.pos.x + local.x, z: row.pos.z + local.z }
+      : null;
+    if (!pos) return;
+    const pod = spawnJettisonedCargoPod(this.state, {
+      commodityId: trail.payoff.commodityId,
+      amount: trail.payoff.amount,
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: trail.payoff.radius,
+      ownerId: trail.terminalPoiId,
+      originId: trail.terminalPoiId,
+      factionId: trail.payoff.factionId,
+    }, this.helpers);
+    if (!pod) return;
+    pod.data.placeId = trail.payoff.placeId;
+    pod.data.name = trail.payoff.name;
+    pod.data.oneOffId = trail.payoff.id;
+    pod.data.kettleLinePayoff = true;
+    pod.data.anchored = true;
+    pod.data.packagedPropFile = `places/${trail.payoff.placeId}.glb`;
+    pod.data.packagedPropSlot = 'place';
+    pod.flags = Object.assign({}, pod.flags, { persistent: false });
+    this._stampHomeSector(pod, sector.id);
+    active.kettleLinePayoffId = pod.id;
+  },
+
+  _onKettleLineSignalInvestigated(payload) {
+    if (!payload || payload.sectorId !== KETTLE_LINE.sectorId) return false;
+    if (payload.poiId !== KETTLE_LINE.terminalPoiId) return false;
+    const worldBag = this.state && this.state.world;
+    const active = worldBag && worldBag.activeSector;
+    const sector = worldBag && worldBag.sectors && worldBag.sectors[KETTLE_LINE.sectorId];
+    if (!active || !sector || worldBag.currentSectorId !== KETTLE_LINE.sectorId) return false;
+    this._spawnKettleLinePayoff(sector, active);
+    return true;
   },
 
   _trackOneOffSpin(active, entityId, spin) {
@@ -4646,7 +4708,9 @@ export const world = {
     const sector = state.world.sectors[cur] || SECTOR_BY_ID.get(cur);
     const target = state.world.sectors[targetSectorId] || SECTOR_BY_ID.get(targetSectorId);
 
-    const reject = (reason) => this.bus.emit('jump:chargeAbort', { reason });
+    // Refusals may carry the world's own numbers (fuelNeeded/creditsNeeded/cooldownS) so the
+    // receipt lane can say the cause AND the fix (WF-14) without mirroring jump math in the UI.
+    const reject = (reason, extra) => this.bus.emit('jump:chargeAbort', { reason, ...(extra || {}) });
 
     // A jump request issued while docked (or outside flight) is rejected outright: the charge
     // state machine ticks under the flight sim, so accepting here would wedge CHARGING with no
@@ -4654,7 +4718,7 @@ export const world = {
     if ((state.ui && state.ui.docked) || state.mode !== 'flight') return reject('docked');
     if (!target) return reject('unknown_target');
     if (jump.state !== 'IDLE') return reject('busy');
-    if (jump.cooldownT > 0) return reject('cooldown');
+    if (jump.cooldownT > 0) return reject('cooldown', { cooldownS: Math.ceil(jump.cooldownT) });
 
     // must be a graph neighbor (or the wormhole edge if unlocked)
     const isNeighbor = !!(sector && (sector.neighbors || []).includes(targetSectorId));
@@ -4671,7 +4735,9 @@ export const world = {
 
     const edgeDist = this._edgeDist(sector, target);
     const fuelCost = via === 'gate' ? 0 : Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
-    if (via === 'drive' && state.fuel.current < fuelCost) return reject('low_fuel');
+    if (via === 'drive' && state.fuel.current < fuelCost) {
+      return reject('low_fuel', { fuelNeeded: fuelCost, fuelHeld: Math.floor(state.fuel.current) });
+    }
 
     // Gate toll (high-sec customs) is validated before the departure preflight, but charged only
     // after it. Contextual story choices may defer a valid departure without consuming credits or
@@ -4679,7 +4745,12 @@ export const world = {
     let gateToll = 0;
     if (via === 'gate') {
       gateToll = this._gateToll(target);
-      if (gateToll > 0 && ((state.player && state.player.credits) | 0) < gateToll) return reject('credits');
+      if (gateToll > 0 && ((state.player && state.player.credits) | 0) < gateToll) {
+        return reject('credits', {
+          creditsNeeded: gateToll,
+          creditsHeld: Math.floor((state.player && state.player.credits) || 0),
+        });
+      }
     }
 
     const preflight = { targetSectorId, via, deferred: false };
@@ -4728,7 +4799,9 @@ export const world = {
     if (this._combatLock && !drive.hotJump) return reject('combat_lock');
     const edgeDist = this._edgeDist(source, target);
     const fuelCost = Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
-    if (state.fuel.current < fuelCost) return reject('low_fuel');
+    if (state.fuel.current < fuelCost) {
+      return reject('low_fuel', { fuelNeeded: fuelCost, fuelHeld: Math.floor(state.fuel.current) });
+    }
 
     jump.state = 'CHARGING';
     jump.targetSectorId = UNFILED_JUMP_RETURN;
@@ -4772,7 +4845,11 @@ export const world = {
     jump.chargeT = 0; jump.chargeNeeded = 0; jump._fuelCost = 0;
     const unfiled = jump._unfiled === true;
     jump._unfiled = false; jump._unfiledConfirmed = false;
-    this.bus.emit('jump:chargeAbort', { reason, ...(unfiled ? { unfiled: true } : {}) });
+    this.bus.emit('jump:chargeAbort', {
+      reason,
+      fuelHeld: Math.floor(this.state.fuel.current) || 0,
+      ...(unfiled ? { unfiled: true } : {}),
+    });
   },
 
   // =========================================================================================
@@ -5312,6 +5389,7 @@ export const world = {
     }
     this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onKettleLineSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
     return true;
   },

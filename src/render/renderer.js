@@ -8,6 +8,14 @@ import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
+import {
+  clearanceCellInRange,
+  clearanceGridRawAt,
+  clearanceLayoutFromBox,
+  clearanceNeighborhoodRaw,
+  clearanceSampleCell,
+  rasterClearanceGrid,
+} from './clearanceQuery.js';
 import { CAMERA_NEAR_MARGIN_WU, modelTruthPlanarRadius, modelTruthSlideOutside } from '../data/modelTruth.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
@@ -1906,7 +1914,7 @@ function meshNeedsAuthoredDecode(owner, entity) {
  * change. Boxes are computed lazily for structural kinds only, and only structures large enough
  * to contain the camera participate — a nav buoy or skiff-sized wreck cannot push the camera.
  */
-const CAMERA_CLEARANCE_MARGIN_WU = 16;
+export const CAMERA_CLEARANCE_MARGIN_WU = 16;
 const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
 // The chase camera's far plane: a bound bigger than the camera can even see cannot be a real
 // structure — it can only be a broken mesh bound (2026-09-25: one asteroid body scale
@@ -1921,16 +1929,11 @@ const CAMERA_KEEP_OUT_LATCH_TTL_S = 0.25;
 // Whole-boundary AABBs are the right floor for compact structures. Above this span — the
 // authored mega-stations are ~1300 WU across — one box reports the city's tallest tower as
 // the floor for every XZ inside the footprint, pinning the camera at ~380 WU for the entire
-// dock approach (the approach leg then renders roofs, not the hull). Wide roots instead get
-// a coarse occupancy grid: per-column ceiling measured from real triangle coverage, built
-// once per authored commit, so the floor tracks the roof actually under the camera.
-const CAMERA_CLEARANCE_GRID_MIN_SPAN_WU = 240;
-const CAMERA_CLEARANCE_GRID_CELL_WU = 24;
-const CAMERA_CLEARANCE_GRID_MAX_CELLS = 128;
+// dock approach (the approach leg then renders roofs, not the hull). Wide roots answer from
+// a geometry BVH over the 3×3 window the camera already reads. The dense column grid remains
+// only as the fallback when that query cannot be built.
+export const CAMERA_CLEARANCE_GRID_MIN_SPAN_WU = 240;
 const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
-const _clearanceVecA = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
-const _clearanceVecB = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
-const _clearanceVecC = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
 
 // Field rocks are uniformly scaled by entity radius on `asteroidBody`. Unit-ish displaced
 // geo spans ~2R; veins/gas hulls add <~25%. When that upper bound cannot clear the 120 WU
@@ -2053,6 +2056,9 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.posZ = posZ;
       rec.box = null;
       rec.grid = null;
+      rec.bvhQuery = false;
+      rec.layout = null;
+      rec.bvhCache = null;
       _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
       return rec;
     }
@@ -2060,7 +2066,7 @@ function cameraClearanceBoxForMesh(mesh) {
   }
   _clearanceBoxScratch.setFromObject(mesh);
   let box = null;
-  let grid = null;
+  let bvhQuery = false;
   if (!_clearanceBoxScratch.isEmpty()) {
     const b = _clearanceBoxScratch;
     const finite = Number.isFinite(b.min.x) && Number.isFinite(b.min.y) && Number.isFinite(b.min.z)
@@ -2075,7 +2081,7 @@ function cameraClearanceBoxForMesh(mesh) {
       box.minX = b.min.x; box.minY = b.min.y; box.minZ = b.min.z;
       box.maxX = b.max.x; box.maxY = b.max.y; box.maxZ = b.max.z;
       if (Math.max(b.max.x - b.min.x, b.max.z - b.min.z) >= CAMERA_CLEARANCE_GRID_MIN_SPAN_WU) {
-        grid = buildClearanceGrid(mesh, box);
+        bvhQuery = true;
       }
     }
   }
@@ -2085,84 +2091,17 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.posX = posX;
   rec.posZ = posZ;
   rec.box = box;
-  rec.grid = grid;
+  rec.grid = null;
+  rec.bvhQuery = bvhQuery && box != null;
+  rec.layout = rec.bvhQuery ? clearanceLayoutFromBox(box) : null;
+  rec.bvhCache = null;
   _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
   return rec;
 }
 
-// Rasterize each structural triangle's XZ extent into column cells, recording the column's
-// highest face height. Exact for the triangle soup itself (a face's own max Y is a vertex or
-// its span covers the cell), and it catches the giant deck plates that vertex-only binning
-// misses. Additive/transparent runs are glows, markers and glass — not camera mass.
-function buildClearanceGrid(mesh, box) {
-  const spanX = box.maxX - box.minX;
-  const spanZ = box.maxZ - box.minZ;
-  const nx = Math.min(CAMERA_CLEARANCE_GRID_MAX_CELLS, Math.max(1, Math.ceil(spanX / CAMERA_CLEARANCE_GRID_CELL_WU)));
-  const nz = Math.min(CAMERA_CLEARANCE_GRID_MAX_CELLS, Math.max(1, Math.ceil(spanZ / CAMERA_CLEARANCE_GRID_CELL_WU)));
-  const cw = spanX / nx;
-  const cd = spanZ / nz;
-  const heights = new Float32Array(nx * nz).fill(-Infinity);
-  const fill = (minX, minZ, maxX, maxZ, top) => {
-    let gx0 = Math.floor((minX - box.minX) / cw); let gx1 = Math.floor((maxX - box.minX) / cw);
-    let gz0 = Math.floor((minZ - box.minZ) / cd); let gz1 = Math.floor((maxZ - box.minZ) / cd);
-    gx0 = Math.max(0, gx0); gz0 = Math.max(0, gz0);
-    gx1 = Math.min(nx - 1, gx1); gz1 = Math.min(nz - 1, gz1);
-    for (let gz = gz0; gz <= gz1; gz++) {
-      for (let gx = gx0; gx <= gx1; gx++) {
-        const i = gz * nx + gx;
-        if (top > heights[i]) heights[i] = top;
-      }
-    }
-  };
-  mesh.updateMatrixWorld(true);
-  mesh.traverse((o) => {
-    if (!o.isMesh || o.visible === false || o.isInstancedMesh) return;
-    if (o.userData && (o.userData.worldSitePresentationOwned || o.userData.clearanceExempt)) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    if (mats.some((m) => m && (m.transparent || m.blending === THREE.AdditiveBlending || m.depthWrite === false))) return;
-    const pos = o.geometry && o.geometry.attributes && o.geometry.attributes.position;
-    if (!pos || !pos.count) return;
-    const index = o.geometry.index;
-    const triCount = index ? index.count / 3 : pos.count / 3;
-    for (let t = 0; t < triCount; t++) {
-      const a = index ? index.getX(t * 3) : t * 3;
-      const b = index ? index.getX(t * 3 + 1) : t * 3 + 1;
-      const c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
-      _clearanceVecA.fromBufferAttribute(pos, a).applyMatrix4(o.matrixWorld);
-      _clearanceVecB.fromBufferAttribute(pos, b).applyMatrix4(o.matrixWorld);
-      _clearanceVecC.fromBufferAttribute(pos, c).applyMatrix4(o.matrixWorld);
-      const minX = Math.min(_clearanceVecA.x, _clearanceVecB.x, _clearanceVecC.x);
-      const maxX = Math.max(_clearanceVecA.x, _clearanceVecB.x, _clearanceVecC.x);
-      const minZ = Math.min(_clearanceVecA.z, _clearanceVecB.z, _clearanceVecC.z);
-      const maxZ = Math.max(_clearanceVecA.z, _clearanceVecB.z, _clearanceVecC.z);
-      const top = Math.max(_clearanceVecA.y, _clearanceVecB.y, _clearanceVecC.y);
-      fill(minX, minZ, maxX, maxZ, top);
-    }
-  });
-  // An all-empty grid (e.g. every body instanced or material-skipped) carries no roof data —
-  // the caller keeps the coarse box rather than clearing nothing at all.
-  let any = false;
-  for (let i = 0; i < heights.length; i++) { if (heights[i] !== -Infinity) { any = true; break; } }
-  return any ? { minX: box.minX, minZ: box.minZ, cw, cd, nx, nz, heights } : null;
-}
-
 function clearanceGridFloor(grid, camX, camZ) {
-  const gx = Math.floor((camX - grid.minX) / grid.cw);
-  const gz = Math.floor((camZ - grid.minZ) / grid.cd);
-  if (gx < -1 || gz < -1 || gx > grid.nx || gz > grid.nz) return -Infinity;
-  let floor = -Infinity;
-  // A 3x3 neighborhood covers boundary-adjacent roofs the camera's own width can straddle.
-  for (let dz = -1; dz <= 1; dz++) {
-    const z = gz + dz;
-    if (z < 0 || z >= grid.nz) continue;
-    for (let dx = -1; dx <= 1; dx++) {
-      const x = gx + dx;
-      if (x < 0 || x >= grid.nx) continue;
-      const h = grid.heights[z * grid.nx + x];
-      if (h > floor) floor = h;
-    }
-  }
-  return floor === -Infinity ? -Infinity : floor + CAMERA_CLEARANCE_MARGIN_WU;
+  const raw = clearanceGridRawAt(grid, camX, camZ);
+  return raw === -Infinity ? -Infinity : raw + CAMERA_CLEARANCE_MARGIN_WU;
 }
 
 const _liveViewFrustum = typeof THREE !== 'undefined' ? new THREE.Frustum() : null;
@@ -2274,13 +2213,57 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
   return cameraClearanceFloorWalk(structural, camX, camZ, camY);
 }
 
-// The structural walk itself — grid-aware box/occupancy lookup shared by the retain and
-// always-walk paths so a bench-off frame is bit-identical to a retained-frame miss.
+// The structural walk itself — neighborhood query for wide roots, coarse box otherwise.
+// Shared by the retain and always-walk paths so a bench-off frame matches a retained miss.
 function cameraClearanceFloorWalk(structural, camX, camZ, camY) {
   let floor = -Infinity;
   for (let i = 0; i < structural.length; i++) {
     const rec = cameraClearanceBoxForMesh(structural[i]);
     if (!rec) continue;
+    if (rec.bvhQuery && rec.layout && rec.box) {
+      const sample = clearanceSampleCell(rec.layout, camX, camZ);
+      const gx = sample.gx;
+      const gz = sample.gz;
+      let raw = -Infinity;
+      let useBvh = true;
+      if (rec.bvhCache && rec.bvhCache.gx === gx && rec.bvhCache.gz === gz) {
+        raw = rec.bvhCache.raw;
+      } else if (!clearanceCellInRange(rec.layout, gx, gz)) {
+        raw = -Infinity;
+        rec.bvhCache = { gx, gz, raw };
+      } else {
+        try {
+          const hit = clearanceNeighborhoodRaw(structural[i], rec.box, camX, camZ);
+          if (hit.failed) {
+            useBvh = false;
+            rec.bvhQuery = false;
+            rec.bvhCache = null;
+            rec.grid = rasterClearanceGrid(structural[i], rec.box);
+          } else if (hit.empty) {
+            useBvh = false;
+            rec.bvhQuery = false;
+            rec.bvhCache = null;
+            rec.grid = null;
+          } else {
+            raw = hit.raw;
+            rec.bvhCache = { gx, gz, raw };
+          }
+        } catch {
+          useBvh = false;
+          rec.bvhQuery = false;
+          rec.bvhCache = null;
+          rec.grid = rasterClearanceGrid(structural[i], rec.box);
+        }
+      }
+      if (useBvh) {
+        const roof = raw === -Infinity ? -Infinity : raw + CAMERA_CLEARANCE_MARGIN_WU;
+        // A hole in this window is not the hull's tallest tower. Falling through
+        // to the coarse box would pin the camera to that tower across the footprint.
+        if (camY >= roof) continue;
+        if (roof > floor) floor = roof;
+        continue;
+      }
+    }
     if (rec.grid) {
       const roof = clearanceGridFloor(rec.grid, camX, camZ);
       if (camY >= roof) continue;

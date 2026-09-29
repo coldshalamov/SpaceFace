@@ -10,6 +10,7 @@ import {
   COMBAT_ACTION_SCORED_CUES,
   MINIMAL_ACTION_AUDIO,
   isQuietCombatActionCue,
+  minimalActionAudioSpec,
   requestCombatActionAudio,
   resolveCombatActionLifecycleCue,
   shouldPlayCombatActionCue,
@@ -124,7 +125,30 @@ function peakBeatsPerSecond(cues, windowTicks = 60) {
 }
 
 test('PQ-158.06 table length is unchanged by the combat lifecycle router', () => {
-  assert.equal(MINIMAL_ACTION_AUDIO.length, 10);
+  // A drift canary, not a content census. It used to pin a hand count (10) and had already gone
+  // stale - the table was 11 rows before INF-2 added the refused cut - so a row added on purpose
+  // reddened a test about the ROUTER. The real invariant is that nothing injects rows: the table
+  // is frozen, its rows are unique and named, and resolving a spec never grows it.
+  const before = MINIMAL_ACTION_AUDIO.length;
+  const ids = MINIMAL_ACTION_AUDIO.map((row) => row.id);
+  assert.equal(new Set(ids).size, ids.length, 'every action-audio row has a unique id');
+  for (const row of MINIMAL_ACTION_AUDIO) {
+    assert.ok(row.sourceEvent && row.recipeId, `${row.id} is a named authored row`);
+    assert.ok(minimalActionAudioSpec(row.id), `${row.id} resolves through the lookup`);
+  }
+  assert.equal(minimalActionAudioSpec('not_a_real_action_id'), null, 'unknown ids resolve to null');
+  // Run the actual router over every lifecycle event; it must not grow or shrink the table.
+  const host = {
+    state: { tick: 60, playerId: 'player', player: {}, settings: { accessibility: {}, video: {} } },
+    _mineOwnsEar() { return false; },
+    _applyPriorityCue() {},
+    play() {},
+  };
+  for (const sourceEvent of COMBAT_ACTION_LIFECYCLE_EVENTS) {
+    requestCombatActionAudio(host, sourceEvent, { actorId: 'player' }, 60);
+  }
+  assert.equal(MINIMAL_ACTION_AUDIO.length, before, 'the router does not add or drop rows');
+  assert.ok(Object.isFrozen(MINIMAL_ACTION_AUDIO), 'the table is frozen');
 });
 
 test('authored combat.action cue recipes exist for the scored beats', () => {

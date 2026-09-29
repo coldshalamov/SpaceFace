@@ -33,6 +33,20 @@ for (const sector of SECTORS) {
     check(`${label}/${f.id}: field center`, hasCenter(f), JSON.stringify(f));
   }
   for (const p of sector.pois || []) {
+    // A POI whose body another program owns is a CHART row as much as a geography row (see
+    // poi_helios_choir_tender - uniqueWrecks places the real wreck, and a pos here would mint a
+    // decoy beside it). So a runtime-owned POI may omit pos, but it must then name its owner: the
+    // exemption is not a loophole a pos-less POI can hide behind. When such a row DOES carry a
+    // pos, it is checked like any other.
+    if (p.runtimeOwner) {
+      check(`${label}/${p.id}: runtime-owned poi names its owner`,
+        typeof p.runtimeOwner === 'string' && p.runtimeOwner.length > 0,
+        JSON.stringify({ runtimeOwner: p.runtimeOwner }));
+      if (p.pos != null) {
+        check(`${label}/${p.id}: poi pos`, hasPos(p), JSON.stringify(p.pos));
+      }
+      continue;
+    }
     check(`${label}/${p.id}: poi pos`, hasPos(p), JSON.stringify(p.pos));
   }
 }

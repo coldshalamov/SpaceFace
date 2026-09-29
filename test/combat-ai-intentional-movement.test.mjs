@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ContactKind, DirectorPhase, ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
-import { CombatDoctrineId } from '../src/ai/combatDoctrine.js';
+import {
+  applyCombatDoctrineToSelection,
+  CombatDoctrineId,
+  CombatDoctrineRuntime,
+} from '../src/ai/combatDoctrine.js';
 import {
   ActivityKind,
   RulesOfEngagement,
@@ -328,6 +332,148 @@ test('seeded head-on passes clear both hull radii without side-flip pinballing',
     assert.ok(nonZero.every((sign) => sign === nonZero[0]),
       `seed ${seed} collision pass flipped sides`);
   }
+});
+
+// SF-050/SF-051 executed-path proofs: doctrine → selection → ManeuverPlanner → the thruster
+// request the physics authority would actually fly. These assert on the steering channel the
+// live game consumes, not just the doctrine snapshot.
+
+function doctrinePerception(selfOverrides, contacts) {
+  return {
+    self: {
+      id: 2,
+      team: 1,
+      pos: { x: 0, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      radius: 14,
+      hullFraction: 1,
+      energyFraction: 1,
+      heatFraction: 0,
+      disabled: false,
+      tethered: false,
+      capabilities: ['drive', 'weapon'],
+      activity: normalizeActivity({ kind: ActivityKind.ATTACK_RUN, reason: 'doctrine_live_fixture', anchor: { x: 0, z: 0 } }),
+      roe: RulesOfEngagement.WEAPONS_FREE,
+      ...selfOverrides,
+    },
+    contacts,
+    events: [],
+  };
+}
+
+function doctrinePlan(runtime, planner, { tick, doctrineId, selfOverrides, contacts }) {
+  const perception = doctrinePerception(selfOverrides, contacts);
+  const doctrine = runtime.update({
+    tick, entityId: 2, doctrineId, perception, directive: directive(),
+  });
+  const applied = applyCombatDoctrineToSelection({
+    actionId: null, targetId: 1, targetContact: null, maneuver: {},
+  }, doctrine);
+  const request = planner.plan({
+    tick,
+    entityId: 2,
+    perception,
+    behavior: { maneuver: applied.maneuver },
+    directive: directive(),
+  });
+  return { doctrine, request };
+}
+
+test('a ranged disengager slews the committed corridor through a cue dodge on the live plan path', () => {
+  const runtime = new CombatDoctrineRuntime({ seed: 11 });
+  const planner = new ManeuverPlanner({ seed: 11 });
+  // Standoff band [140, 1100]: a crossing target earns a committed forecast corridor.
+  const moving = { ...contact({ id: 1, x: 600, z: 0, radius: 12 }), vel: { x: 0, z: 60 } };
+
+  let last;
+  for (let tick = 0; tick <= 46; tick++) {
+    last = doctrinePlan(runtime, planner, {
+      tick,
+      doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+      selfOverrides: {},
+      contacts: [moving],
+    });
+  }
+  assert.equal(last.doctrine.phase, 'charge_cue', 'wind-up opens the corridor');
+  assert.ok(last.doctrine.aimCommit, 'the cue publishes the committed corridor');
+  const corridor = last.doctrine.aimCommit.bearing;
+  assert.ok(corridor > 0.05, 'the corridor is a forecast lead, not the current bearing (0)');
+  // The nose rides the corridor through the executed steering channel.
+  assert.ok(Math.abs(wrap(last.request.targetHeading - corridor)) < 0.02,
+    `cue heading ${last.request.targetHeading} must ride corridor ${corridor}`);
+
+  // Mid-cue dodge: a hard lateral separation burn displaces the live bearing well off the
+  // corridor (a dodge that closed instead would be the authored press interrupt, not bait).
+  const dodged = { ...contact({ id: 1, x: 600, z: 320, radius: 12 }), vel: { x: 0, z: 140 } };
+  const liveBearing = Math.atan2(320, 600);
+  for (let tick = 47; tick <= 76; tick++) {
+    last = doctrinePlan(runtime, planner, {
+      tick,
+      doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+      selfOverrides: {},
+      contacts: [dodged],
+    });
+  }
+  assert.equal(last.doctrine.phase, 'fire_window', 'the window arrives on schedule');
+  assert.equal(last.doctrine.aimCommit.bearing, corridor,
+    'the window still flies the corridor the pilot telegraphed');
+  assert.ok(Math.abs(wrap(last.request.targetHeading - corridor)) < 0.02,
+    `window heading ${last.request.targetHeading} stayed on corridor ${corridor}`);
+  assert.ok(Math.abs(wrap(liveBearing - corridor)) > 0.2,
+    'the dodge genuinely left the corridor — the test would catch live re-tracking');
+});
+
+test('a brawler commit drives the fixed run point on the live plan path and ignores the sidestep', () => {
+  const runtime = new CombatDoctrineRuntime({ seed: 13 });
+  const planner = new ManeuverPlanner({ seed: 13 });
+  const far = contact({ id: 1, x: 620, z: 0, radius: 14 });
+  let last = doctrinePlan(runtime, planner, {
+    tick: 0,
+    doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    selfOverrides: { vel: { x: 140, z: 0 } },
+    contacts: [far],
+  });
+  assert.equal(last.doctrine.phase, 'ingress');
+
+  const close = contact({ id: 1, x: 380, z: 0, radius: 14 });
+  for (let tick = 1; tick <= 31; tick++) {
+    last = doctrinePlan(runtime, planner, {
+      tick,
+      doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+      selfOverrides: { vel: { x: 140, z: 0 } },
+      contacts: [close],
+    });
+  }
+  assert.equal(last.doctrine.phase, 'commit', 'the flare completes into the committed run');
+  assert.equal(last.doctrine.maneuverKind, 'intercept');
+  const runPoint = last.doctrine.flightPoint;
+  const headingAtCommit = last.request.targetHeading;
+  assert.ok(Math.abs(wrap(headingAtCommit - Math.atan2(runPoint.z, runPoint.x))) < 0.05,
+    'the executed heading rides the committed point, not the contact');
+
+  // The sidestep: the contact burns hard off the charge line mid-commit. Self speed stays under
+  // the hull's speed cap so no speed-limit brake fires; a defensive closing reflex, if the
+  // temperament roll allowed it, would be the authored exception crossingLane deliberately keeps.
+  const sidestep = { ...contact({ id: 1, x: 340, z: 230, radius: 14 }), vel: { x: 0, z: -60 } };
+  for (let tick = 32; tick <= 60; tick++) {
+    last = doctrinePlan(runtime, planner, {
+      tick,
+      doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+      selfOverrides: { vel: { x: 60, z: 0 } },
+      contacts: [sidestep],
+    });
+  }
+  assert.equal(last.doctrine.phase, 'commit', 'a sidestep cannot break the commit early');
+  assert.deepEqual(last.doctrine.flightPoint, runPoint, 'the run point is unmoved by the dodge');
+  assert.equal(last.request.brake, false, 'the committed run never takes an arrival brake');
+  assert.ok(last.request.forceLocal.forward > 0.05,
+    `crossingLane keeps the charge driving forward, got ${last.request.forceLocal.forward}`);
+  const dodgedBearing = Math.atan2(230, 340);
+  assert.ok(Math.abs(wrap(last.request.targetHeading - dodgedBearing)) > 0.4,
+    'the executed heading must not chase the sidestepped contact');
+  assert.ok(Math.abs(wrap(last.request.targetHeading - headingAtCommit)) < 0.05,
+    'the executed heading still rides the committed run line');
 });
 
 function perceptionFor(ship, target) {

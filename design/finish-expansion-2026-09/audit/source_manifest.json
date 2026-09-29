@@ -1,0 +1,263 @@
+[
+  {
+    "id": "S01",
+    "path": "AGENTS.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–240",
+    "kind": "current repository instructions",
+    "notes": "Current owner priorities, single writers, default backends, asset authority and concurrent-work protections. Partial-range read; root and nested instructions must be reread at execution.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/AGENTS.md"
+  },
+  {
+    "id": "S02",
+    "path": "build_map.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–280",
+    "kind": "current repository routing",
+    "notes": "Program front door, live work direction, current finish versus separately activated pre-release work. Partial-range read, not a complete queue census.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/build_map.md"
+  },
+  {
+    "id": "S03",
+    "path": "design/program/roadmap/program-queue.json",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–95",
+    "kind": "current control-plane data",
+    "notes": "Canonical queue header, schemaVersion and completion state contract; entire queue was not executed or audited.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/program/roadmap/program-queue.json"
+  },
+  {
+    "id": "S04",
+    "path": "design/program/INFERENCE_IDEAS.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–170",
+    "kind": "current bounded-production catalog",
+    "notes": "Directed production and task lifecycle, not a request to brainstorm freely inside an implementation leaf.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/program/INFERENCE_IDEAS.md"
+  },
+  {
+    "id": "S05",
+    "path": "design/PLAN_REGISTRY.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–125",
+    "kind": "routing with stale subentries",
+    "notes": "Family authority and existing reservoir. Some frontend entries lag root/ORRERY and must not supersede newer explicit direction.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/PLAN_REGISTRY.md"
+  },
+  {
+    "id": "S06",
+    "path": "scripts/program-dispatch.mjs",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–150",
+    "kind": "implementation observation",
+    "notes": "Supported CLI modes and native PQ ID validation; calls existing programControlPlane. Not run in this audit.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/scripts/program-dispatch.mjs"
+  },
+  {
+    "id": "S07",
+    "path": "design/FEEL_CONTRACT.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–260",
+    "kind": "current feel contract",
+    "notes": "Current player-unit bars, later speed-normalized amendments and dated evidence. Values are source targets/claims, not measurements from this handoff.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/FEEL_CONTRACT.md"
+  },
+  {
+    "id": "S08",
+    "path": "docs/MODULE_MAP.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–220",
+    "kind": "routing / mixed-age description",
+    "notes": "Default V3/SG-06/Rapier ownership and major module roles; some counts/descriptions lag code. Use as navigation, not current implementation proof.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/docs/MODULE_MAP.md"
+  },
+  {
+    "id": "S09",
+    "path": "src/systems/dynamicFlightStick.js",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–230",
+    "kind": "implementation observation",
+    "notes": "G relative dynamic stick geometry, bounded displacement, deadzone shaping and camera-basis projection; not proof of tuning quality.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/src/systems/dynamicFlightStick.js"
+  },
+  {
+    "id": "S10",
+    "path": "src/systems/cruise.js",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–155",
+    "kind": "implementation observation",
+    "notes": "Meaningful-hit filtering, sustained pressure handling and stumble rearm exist; contradict the historical unqualified chip-hit diagnosis.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/src/systems/cruise.js"
+  },
+  {
+    "id": "S11",
+    "path": "docs/TUNING_JOBS.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–130",
+    "kind": "dated tuning ledger",
+    "notes": "Contains older open rows, including work already present in current source. Reproduce residuals instead of copying status.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/docs/TUNING_JOBS.md"
+  },
+  {
+    "id": "S12",
+    "path": "design/PHYSICAL_PLAY_GRAMMAR.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–180",
+    "kind": "design direction with historical implementation claims",
+    "notes": "Trackpad input, coupled mass and states/combinations. Its historical proposed/shipped table is not a present inventory.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/PHYSICAL_PLAY_GRAMMAR.md"
+  },
+  {
+    "id": "S13",
+    "path": "src/systems/bombs.js",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–65",
+    "kind": "implementation observation",
+    "notes": "Explicit damage/loose/craft candidate types, physicsBody opt-outs and authority helper imports; inspected filters omit fauna.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/src/systems/bombs.js"
+  },
+  {
+    "id": "S14",
+    "path": "package.json",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–115",
+    "kind": "implementation/tooling manifest",
+    "notes": "Node requirement, shells, actual script names and relevant validation commands. Presence of a command does not establish a passing run.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/package.json"
+  },
+  {
+    "id": "S15",
+    "path": "design/VISION.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–210",
+    "kind": "product authority",
+    "notes": "Physical agency in a busy working world, meaningful failure and ship ownership. Design aim, not evidence it is already realized.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/VISION.md"
+  },
+  {
+    "id": "S16",
+    "path": "src/data/missions.js",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–280",
+    "kind": "implementation/data observation",
+    "notes": "17 declared mission types, physical recovery/rescue/demolition/set-piece families and canonical quote references. Description strings are not necessarily executable event contracts.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/src/data/missions.js"
+  },
+  {
+    "id": "S17",
+    "path": "pull/170 and changed-file list",
+    "ref": "580ed7bb99de164253f6bb43fd9fc385ae3c1504",
+    "inspected_ranges": "metadata and complete changed-filename list",
+    "kind": "PR metadata / integration boundary",
+    "notes": "Open and unmerged at read; branch devin/1790522128-alien-ecology-slice, 25 commits and 51 changed files reported. PR-body test claims were not rerun. Latest status must be rechecked.",
+    "url": "https://github.com/coldshalamov/SpaceFace/pull/170"
+  },
+  {
+    "id": "S18",
+    "path": "design/program/FINISH_THE_GAME.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–200",
+    "kind": "older finishing workflow",
+    "notes": "Useful see/build/review discipline and INFERENCE intent; stale model/Field Hardware/current-unfinished references do not override newer root direction.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/program/FINISH_THE_GAME.md"
+  },
+  {
+    "id": "S19",
+    "path": "design/frontend/ORRERY.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–175",
+    "kind": "current frontend direction",
+    "notes": "One instrument language and library; current root resolves precedence. Reference-game mentions are the repo author’s inspiration, not external research in this pack.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/frontend/ORRERY.md"
+  },
+  {
+    "id": "S20",
+    "path": "design/program/DEMO_READINESS_2026-09-20.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "110–280",
+    "kind": "dated measured/reported defects",
+    "notes": "Existing D24 fixed-pending-resoak and D36 contention/scheduling discussions. Historical logs are not current independent benchmark results.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/design/program/DEMO_READINESS_2026-09-20.md"
+  },
+  {
+    "id": "S21",
+    "path": "docs/visual-assets/VFX_TECHNIQUE_STANDARD.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–155",
+    "kind": "current art/technical direction",
+    "notes": "Substantial evolving material, distinct classes, actual contact/force readability, lifecycle, no soft-card object substitutes and generous truthful trails.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/docs/visual-assets/VFX_TECHNIQUE_STANDARD.md"
+  },
+  {
+    "id": "S22",
+    "path": "tools/blender/forge/FORGE.md",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "1–155",
+    "kind": "current asset pipeline",
+    "notes": "Source coordinate convention, functional silhouette, integrated hardpoints, shared finishes and publication commands. Specific reference camera/budgets are to be revalidated.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/tools/blender/forge/FORGE.md"
+  },
+  {
+    "id": "S23",
+    "path": "references/OWNER_ALIEN_THREAD.txt",
+    "ref": "user-supplied attachment",
+    "inspected_ranges": "complete 801 logical lines; key owner correction 165–171, canon 580–592, progression 311–369, machines 447–533, production 760–791",
+    "kind": "owner-supplied conversation record",
+    "notes": "Historical discussion includes superseded assistant proposals such as a second fungus; the user’s later correction takes precedence. It is not a record of current implementation.",
+    "url": null
+  },
+  {
+    "id": "S24",
+    "path": "src/systems/precursorMachines.js",
+    "ref": "580ed7bb99de164253f6bb43fd9fc385ae3c1504",
+    "inspected_ranges": "115–155 in current audit; additional same-head runtime excerpts read in the preceding conversation",
+    "kind": "PR implementation observation",
+    "notes": "Noncolliding/nonphysical machine spawn; preceding runtime excerpts show Courier proximity grant, work loops and protocol consequences. Actual physical logistics and art satisfaction are proposals, not verified gameplay.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/580ed7bb99de164253f6bb43fd9fc385ae3c1504/src/systems/precursorMachines.js"
+  },
+  {
+    "id": "S25",
+    "path": "src/render/machineVisuals.js",
+    "ref": "580ed7bb99de164253f6bb43fd9fc385ae3c1504",
+    "inspected_ranges": "1–130",
+    "kind": "PR implementation observation",
+    "notes": "Primitive-based geometry construction and local materials; no live visual verdict or measured leak follows from this fact alone.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/580ed7bb99de164253f6bb43fd9fc385ae3c1504/src/render/machineVisuals.js"
+  },
+  {
+    "id": "S26",
+    "path": "src/data/bombs.js",
+    "ref": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "inspected_ranges": "full relevant catalog read in the preceding conversation",
+    "kind": "prior source retrieval at the same default-branch context",
+    "notes": "Existing Tarburst, singularity and other payload laws are reuse opportunities. Current agent must confirm latest definitions and runtime integration before edits.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/9a30ffc00204a943ed9307deb56cb8bf23687ad9/src/data/bombs.js"
+  },
+  {
+    "id": "S27",
+    "path": "src/systems/alienEcology.js",
+    "ref": "580ed7bb99de164253f6bb43fd9fc385ae3c1504",
+    "inspected_ranges": "1–420 in the preceding conversation",
+    "kind": "PR implementation observation",
+    "notes": "Materialization, selected physical/sensor fauna, offers and ecology events in the supplied prior discussion. Full runtime/play quality not independently tested.",
+    "url": "https://github.com/coldshalamov/SpaceFace/blob/580ed7bb99de164253f6bb43fd9fc385ae3c1504/src/systems/alienEcology.js"
+  },
+  {
+    "id": "E01",
+    "path": "Rapier: rigid-body forces and impulses",
+    "ref": "official documentation accessed for engineering grounding",
+    "inspected_ranges": "forces and impulses guide",
+    "kind": "external primary engineering source",
+    "notes": "Supports force/impulse/body distinctions. Do not infer the exact SpaceFace wrapper API from upstream examples.",
+    "url": "https://rapier.rs/docs/user_guides/javascript/rigid_body_forces_and_impulses/"
+  },
+  {
+    "id": "E02",
+    "path": "Rapier: rigid bodies",
+    "ref": "official documentation accessed for engineering grounding",
+    "inspected_ranges": "body types and kinematic positioning",
+    "kind": "external primary engineering source",
+    "notes": "Supports dynamic/fixed/kinematic distinctions and why direct pose changes differ from force-driven interaction.",
+    "url": "https://rapier.rs/docs/user_guides/javascript/rigid_bodies/"
+  }
+]

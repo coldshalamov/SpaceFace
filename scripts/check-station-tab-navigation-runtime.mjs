@@ -60,7 +60,10 @@ try {
     };
   });
 
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  // The navigation itself gets the same heavy allowance the boot wait below documents:
+  // on a contended host the module-graph fetch that domcontentloaded waits on can exceed
+  // Playwright's 30 s default even though nothing is wrong with the route.
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: START_TIMEOUT_MS });
   assert.equal(new URL(page.url()).search, '', 'station dock probe must use the canonical root URL with no query flags');
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
@@ -336,9 +339,9 @@ try {
   await page.waitForSelector('[data-screen="station"] [data-spatial-slot]', { state: 'attached', timeout: 15000 });
   await page.locator('[data-screen="station"] [data-spatial-slot]').first().focus();
   await page.keyboard.press('Enter');
-  await waitForVisible(page, '[data-screen="station"] .sx-sw__chooser.is-open', 5000, 'anchored compatible-module tray');
+  await waitForVisible(page, '[data-screen="station"] .sx-sw__chooser.is-open', DOCK_TIMEOUT_MS, 'anchored compatible-module tray');
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => !document.querySelector('[data-screen="station"] .sx-sw__chooser.is-open'), null, { timeout: 3000 });
+  await page.waitForFunction(() => !document.querySelector('[data-screen="station"] .sx-sw__chooser.is-open'), null, { timeout: DOCK_TIMEOUT_MS });
 
   await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="industry"]', 'industry');
   const missingCommodity = await page.evaluate(() => {
@@ -352,7 +355,7 @@ try {
     const active = document.querySelector('[data-screen="station"] .sx-mkt-row.is-active');
     const buy = document.querySelector('[data-screen="station"] [data-mode="buy"].is-on');
     return !!(active && active.getAttribute('data-cmdty') === commodityId && buy);
-  }, missingCommodity, { timeout: 5000 });
+  }, missingCommodity, { timeout: DOCK_TIMEOUT_MS });
 
   await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="factions"]', 'factions');
   const relationTarget = await page.evaluate(() => {
@@ -364,7 +367,7 @@ try {
   await page.waitForFunction((factionId) => {
     const active = document.querySelector('[data-screen="station"] .sx-fac-row.is-active');
     return !!(active && active.getAttribute('data-fac') === factionId);
-  }, relationTarget, { timeout: 3000 });
+  }, relationTarget, { timeout: DOCK_TIMEOUT_MS });
 
   await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="bar"]', 'bar');
   const leadId = await page.evaluate(() => {
@@ -377,12 +380,12 @@ try {
   await page.waitForFunction((missionId) => {
     const active = document.querySelector('[data-screen="station"] .sx-ct-row.is-active');
     return !!(active && active.getAttribute('data-mid') === missionId);
-  }, leadId, { timeout: 5000 });
+  }, leadId, { timeout: DOCK_TIMEOUT_MS });
 
   // ---- departure check: not-ready launch must surface the risks, never strand the player ----
   await page.evaluate(() => { const f = window.SF.state.fuel; if (f && f.max) f.current = Math.max(1, Math.round(f.max * 0.08)); });
   await domClick(page, '[data-screen="station"] .sxb-launch[data-act="undock"]');
-  await page.waitForFunction(() => !!document.querySelector('.sx-pop--dep'), null, { timeout: 5000 });
+  await page.waitForFunction(() => !!document.querySelector('.sx-pop--dep'), null, { timeout: DOCK_TIMEOUT_MS });
   const gate = await page.evaluate(() => ({
     docked: window.SF.state.ui.docked,
     status: (document.querySelector('.sx-pop--dep .sx-pop__head em') || {}).textContent || '',
@@ -408,7 +411,10 @@ try {
   // Chromium drops client-side above 64 KiB, so session saves silently never crossed shells.
   const mirrorPut = page.waitForResponse(
     (r) => r.url().includes('__spaceface_player_store') && r.request().method() === 'PUT',
-    { timeout: 15000 });
+    // The window covers click -> undock scene rebuild -> autosave -> PUT on the wire, and the
+    // rebuild alone is the same work New Game budgets START_TIMEOUT_MS for — a 15 s window
+    // expires underneath the transition on a contended host before the PUT can even be sent.
+    { timeout: START_TIMEOUT_MS });
   await domClick(page, '.sx-pop--dep [data-pop-launch]');
   await page.waitForFunction(() => window.SF.state.ui.docked === false, null, { timeout: 30000 });
   const mirrorResponse = await mirrorPut;
@@ -472,7 +478,7 @@ async function waitForNav(page, expected, source) {
   await page.waitForFunction((wanted) => {
     const snap = window.dockSnapshot ? window.dockSnapshot() : null;
     return !!(snap && snap.activeNav === wanted && snap.selectedCount === 1 && snap.tabbableCount === 1);
-  }, expected, { timeout: 5000 }).catch(async (err) => {
+  }, expected, { timeout: DOCK_TIMEOUT_MS }).catch(async (err) => {
     const snap = await page.evaluate(() => window.dockSnapshot());
     throw new Error(`Command dock ${source} did not select ${expected}: ${err.message}\n${JSON.stringify(snap, null, 2)}`);
   });

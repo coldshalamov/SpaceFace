@@ -1,0 +1,11 @@
+{
+  "render_method": "local HTML injected into headless Chromium; managed browser blocks file:// navigation",
+  "initial_document": "START_HERE.md",
+  "initial_results": 502,
+  "filtered_results": 3,
+  "opened_document": "builds/SFQ-B032.md",
+  "body_contains_expected": true,
+  "mobile_document_width": 390,
+  "mobile_viewport_width": 390,
+  "page_errors": []
+}

@@ -149,7 +149,7 @@ async function boot() {
         id: 'restoring-save',
         progress: 0.05,
         label: 'Restoring flight state',
-        detail: 'Rebuilding the saved sector and critical visuals',
+        detail: 'Rebuilding the saved sector',
         transition: 'continue',
       });
       nextPaint().then(restore).catch((error) => {
@@ -167,7 +167,7 @@ async function boot() {
         id: 'restoring-save',
         progress: 0.05,
         label: 'Restoring flight state',
-        detail: 'Rebuilding the saved sector and critical visuals',
+        detail: 'Rebuilding the saved sector',
       });
       return token;
     };
@@ -728,8 +728,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     bus.emit('game:loadingProgress', {
       id: 'authored-library',
       progress: 0.25,
-      label: 'Loading critical flight assets',
-      detail: 'Keeping authored visuals intact while the saved sector returns',
+      label: 'Loading the ships',
+      detail: 'Bringing the saved sector back with its ships intact',
       transition: 'continue',
     });
     // Paint the stage boundary before the wait's synchronous prefix — the loader's easing
@@ -745,7 +745,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'authored-visuals',
       progress: 0.5,
       label: 'Building the opening scene',
-      detail: 'Committing authored objects before the first playable frame',
+      detail: 'Placing ships and stations before you arrive',
       transition: 'continue',
     });
     await nextPaint();
@@ -763,8 +763,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     bus.emit('game:loadingProgress', {
       id: 'render-pipelines',
       progress: 0.78,
-      label: 'Preparing flight shaders',
-      detail: 'Warming the current render path to avoid first-use stalls',
+      label: 'Preparing the visuals',
+      detail: 'Warming up so the opening runs smooth',
       transition: 'continue',
     });
     await nextPaint();
@@ -782,7 +782,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'gpu-resources',
       progress: 0.9,
       label: 'Preparing the opening route',
-      detail: 'Uploading opening materials in responsive batches',
+      detail: 'Loading the opening stretch smoothly',
       transition: 'continue',
     });
     await nextPaint();
@@ -823,7 +823,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'entering-flight',
       progress: 0.96,
       label: 'Handing over flight control',
-      detail: 'Finalizing the playable frame',
+      detail: 'Final checks before handover',
       transition: 'continue',
     });
     runTransitionGuard.commit(transitionToken, () => {
@@ -960,7 +960,7 @@ async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurren
       id: 'authored-visuals',
       progress: 0.5,
       label: 'Building the opening scene',
-      detail: 'Still committing authored objects — retrying the staging wait',
+      detail: 'Still placing ships and stations — giving it another moment',
       transition: 'continue',
     });
   }
@@ -995,13 +995,13 @@ function authoredVisualReadiness(state) {
 
 function loadingDetailForStage(stageId) {
   if (stageId === 'preparing-run') return 'Creating the pilot, ship, and starting sector';
-  if (stageId === 'authored-library') return 'Loading only assets required by the opening composition';
-  if (stageId === 'authored-visuals') return 'Committing authored objects before the first playable frame';
-  if (stageId === 'render-pipelines') return 'Warming the current render path to avoid first-use stalls';
-  if (stageId === 'gpu-resources') return 'Uploading opening materials in responsive batches';
-  if (stageId === 'physics-authority') return 'Standing up the flight dynamics authority';
-  if (stageId === 'entering-flight') return 'Finalizing the playable frame';
-  return 'Preparing the playable scene';
+  if (stageId === 'authored-library') return 'Loading only what the opening scene needs';
+  if (stageId === 'authored-visuals') return 'Placing ships and stations before you arrive';
+  if (stageId === 'render-pipelines') return 'Warming up so the opening runs smooth';
+  if (stageId === 'gpu-resources') return 'Loading the opening stretch smoothly';
+  if (stageId === 'physics-authority') return 'Waking the flight dynamics';
+  if (stageId === 'entering-flight') return 'Final checks before handover';
+  return 'Preparing the flight';
 }
 
 // D35/D36: rAF can starve entirely on an occluded or compositor-blocked host while timers keep

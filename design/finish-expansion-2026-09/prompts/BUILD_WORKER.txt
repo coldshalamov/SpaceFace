@@ -1,0 +1,5 @@
+Implement the assigned native SpaceFace task using its supporting SFQ-B packet. Read the current root/nested instructions and confirm live owner selection and path ownership. Revalidate prerequisites; if the outcome already holds, record that in the native task and take the next assigned useful item. Do not implement speculative siblings automatically.
+
+State the ordinary player route and one desired difference. Make the smallest coherent production change in existing owners. Complete necessary acquisition, input, target admission, behavior, feedback and persistence links. Preserve current ORRERY, Forge, physics authority and single writers. Do not mutate foreign work.
+
+Test the positive outcome, a meaningful negative/awkward case, and relevant lifecycle boundaries. View moving visuals or listen to sound when the change requires it. Ask an independent reviewer to reproduce the result and fix concrete feedback. Integrate exact owned paths under current policy. Report only evidence actually obtained and keep native completion states honest.

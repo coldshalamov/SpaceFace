@@ -127,6 +127,20 @@ export const MINIMAL_ACTION_AUDIO = Object.freeze([
     bind: true,
   }),
   Object.freeze({
+    // The rope's OTHER refusal, and it used to be mute: you pressed cut, the line stayed exactly
+    // where it was, and nothing told you the game had heard the key - so you pressed it again.
+    // One deny language for the Massline means a refused cut answers in the same dull tick a
+    // refused latch does. Its own id so telemetry can still tell the two verbs apart; the same
+    // recipe, because the refusal is one voice and the success is what differs. The cooldown
+    // matches the latch's so a held key cannot machine-gun the tick any more than the toast.
+    id: 'cutDenied',
+    sourceEvent: 'tether:cutDenied',
+    recipeId: 'sfx_massline_deny',
+    importance: 0.72,
+    cooldownTicks: 10,
+    bind: true,
+  }),
+  Object.freeze({
     id: 'engineMode',
     sourceEvent: 'ship:boostStart',
     recipeId: 'sfx_boost_whoosh',

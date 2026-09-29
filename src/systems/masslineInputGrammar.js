@@ -60,7 +60,10 @@ export function createMasslineInputGrammar() {
     let releaseSource = null;
     if (released) {
       releaseSource = pressSource;
-      command.cut = attached && pressStartedAttached && heldS < MASSLINE_HOLD_S - 1e-10;
+      // A device vanishing is not a tap. The rope does not cut or latch because the pad left.
+      if (raw.silentRelease !== true) {
+        command.cut = attached && pressStartedAttached && heldS < MASSLINE_HOLD_S - 1e-10;
+      }
       heldS = 0; pressStartedAttached = false; enteredLineControl = false; pressSource = null;
       rememberedLineLength = 0; rememberedOrbit = 0;
     }

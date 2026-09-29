@@ -26,6 +26,7 @@ import {
   claimSharedImageTexture,
   imageSourceKeyAsync,
   sharedImageTextureFor,
+  texturePayloadIntact,
 } from './imageSourceDedupe.js';
 
 const EXTENSION = 'KHR_texture_basisu';
@@ -107,10 +108,22 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
   if (parser.sourceCache[sourceIndex] !== undefined) {
     // The cached texture is a tracked registry user; its clone carries the shared-source key in
     // userData, so re-adopting keeps the per-document refcount honest.
-    return parser.sourceCache[sourceIndex].then((texture) => adoptSharedImageSourceClone(texture.clone()));
+    return parser.sourceCache[sourceIndex].then((texture) => {
+      // packageCpuDetach can release this texture's CPU payload after a proven GPU upload while
+      // the parse is still in flight; cloning then mints empty mips that crash the next uploader.
+      // The package bytes are immutable, so a real re-decode reproduces the same pixels.
+      if (!texturePayloadIntact(texture)) return decodeEmbeddedSource(parser, sourceDef, loader);
+      return adoptSharedImageSourceClone(texture.clone());
+    });
   }
 
-  const promise = transferableSourceBytes(parser, sourceDef.bufferView)
+  const promise = decodeEmbeddedSource(parser, sourceDef, loader);
+  parser.sourceCache[sourceIndex] = promise;
+  return promise;
+}
+
+function decodeEmbeddedSource(parser, sourceDef, loader) {
+  return transferableSourceBytes(parser, sourceDef.bufferView)
     .then(async (bytes) => {
       // GFX-10 cross-GLB dedupe: Forge bodies embed byte-identical finish/detail atlases, so key on
       // the image bufferView's content (SHA-256 via crypto.subtle + byteLength + mimeType; the
@@ -149,9 +162,6 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
       console.error('THREE.GLTFLoader: Couldn\'t load texture', `bufferView ${sourceDef.bufferView}`);
       throw error;
     });
-
-  parser.sourceCache[sourceIndex] = promise;
-  return promise;
 }
 
 // KTX2Loader transfers the buffer it is given to the transcoder worker, so it needs bytes nobody else

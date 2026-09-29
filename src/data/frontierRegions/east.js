@@ -241,7 +241,7 @@ export const EAST_SECTORS = Object.freeze([
         type: 'research',
         factionId: 'faction_free',
         size: 'M',
-        services: Object.freeze(['scan_tech', 'missions', 'repair']),
+        services: Object.freeze(['scan_tech', 'missions', 'repair', 'refuel']),
         chartNote: 'Wake readings, repairs, and dangerous survey work under Vael sufferance.',
       }),
     ]),

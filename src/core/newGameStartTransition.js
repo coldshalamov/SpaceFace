@@ -43,7 +43,7 @@ export async function runNewGameStartTransition(options = {}) {
     await prepareRun();
     if (!current()) return stale();
 
-    publishProgress(reportProgress, current, 'authored-library', 0.25, 'Loading critical flight assets');
+    publishProgress(reportProgress, current, 'authored-library', 0.25, 'Loading the ships');
     const libraryReady = await waitForLibrary();
     if (!current()) return stale();
     if (!libraryReady) {
@@ -66,7 +66,7 @@ export async function runNewGameStartTransition(options = {}) {
     }
 
     if (typeof waitForWarmup === 'function') {
-      publishProgress(reportProgress, current, 'render-pipelines', 0.78, 'Preparing flight shaders');
+      publishProgress(reportProgress, current, 'render-pipelines', 0.78, 'Preparing the visuals');
       const warmupReady = await waitForWarmup();
       if (!current()) return stale();
       if (warmupReady === false) {

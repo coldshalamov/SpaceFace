@@ -413,8 +413,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
 | 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | DONE 2026-09-28 — `test/fields-runtime-profile.test.mjs` pins production ON / legacy47a OFF through the real manifest+registry apply path (7/7) |
 | 39 | CV-GLASS-1 | Belt-tail throughput: serial GLB admission is still seconds per body on a busy host — parallelize/budget the lane (ZERO_TO_HERO §7.3) | BUILD | OPEN |
-| 40 | CV-GLASS-2 | AQ-HIT — three-mesh-bvh hit path, the last unlanded tool in §23.4's order | BUILD | OPEN |
-| 41 | CV-EAR-1 | AQ-VOICE — Elementary continuous voices: rope pitch follows load, engine follows throttle, silence at 0 (the CV-EAR signature) | BUILD | OPEN |
 | 42 | CV-THROW-1 | Cut-grade learnability: nothing teaches why one cut was a razor and the next a tow — build the teaching slice on the default route | BUILD | DONE 2026-09-28 — deliberate cuts land a world-anchored verdict pill on the released body naming grade + measured cause (`receipts/CV-THROW-1-REPORT.md`, `test/cv-throw-1-release-verdict.test.mjs` 4/4) |
 | 43 | CV-AMMO-1 | Fields are on the keyboard and untaught — teaching moment + verify the opening no longer spreads bodies to gun range | BUILD | DONE 2026-09-28 — fields are bound on every scheme (Digit4–9) and taught by the PQ-163.02 rail; fixed-seed measurement shows wave-1 arrivals median ≈141 WU, not gun-range spread; bench verb sampler repaired (`e05d2c660`) so consumed verbs credit (`receipts/CV-AMMO-1-REPORT.md`) |
 | 45 | CV-MOTION-1 | The campaign's core invention was never built: one living-machine **score** deciding what stays in motion on the glass vs sleeps | BUILD | OPEN |
@@ -424,13 +422,13 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 50 | CR-ANVIL-1 | Sling variants for Vesta belt / Veil lanes — 355 THE WINNOW THROW (longshore crew + real pods on the winnow cycle; gather/discharge physics, claim-jumpers on the lane) and 356 THE SURGE LINE (courier + Vael catchers waiting inside the storm lane; the surge carries hunters and prey) — waiting bodies teach both sites | BUILD | DONE 2026-09-28 — two authored encounters on real cyclic machinery, no scripted fakes (`receipts/CR-ANVIL-1-SLING-VARIANTS.md`, 13/13 focused + 97/97 encounter batch) |
 | 51 | CR-HOLLOW-1 | The illegal-pairing payoff — 357 THE HANDOFF: a Quiet seller + MTS buyer nose-to-nose in a lawless pocket, contraband pods physically crawling the gap; steal (scoop/burn), join (quiet approach → contact), or watch the transfer finish | BUILD | DONE 2026-09-28 — authored encounter on real cargo ownership and faction casting (`receipts/CR-HOLLOW-1-ILLEGAL-PAIRING.md`, 7/7 focused + 86/86 batch) |
 | 52 | CR-TEXTURE-1 | Per-sector surprise coverage — each named place gets one reachable one-off (rumor or skyline) | BUILD | DONE — 19 one-offs cover the 19 uncovered named sectors; every non-starter sector has an authored bar lead at its own station (Charon rides the Expanse lead); 6 ropeable bodies; receipt: design/program/roadmap/receipts/CR-TEXTURE-1-SECTOR-SURPRISE.md; 9/9 focused, 34/34 adjacent, review PASS |
-| 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | OPEN |
-| 54 | OPTIC-COST | The required Ceres-entry cost trace for 42 optic bodies was never produced — scatter shipped live regardless; produce the artifact or retire the guard | ACCEPT | OPEN |
+| 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | DONE 2026-09-29 — bank planner + gimbal-cone slew gate, 9/9 focused incl. swept-bolt proof, 42/42 AI-fire, 97/97 optic adjacent (`receipts/OPTIC-OFFENSE-BANK-SHOT.md`) |
+| 54 | OPTIC-COST | The required Ceres-entry cost trace for 42 optic bodies was never produced — scatter shipped live regardless; produce the artifact or retire the guard | ACCEPT | CLAIMED pb-ten-lanes — guard owners opticStructures.js/world.js clean; scatter confirmed live ungated at world.js `_opticScatterSpecs` |
 | 55 | SEAM-BASE | `combat:baseDestroyed` — dockless station-typed bases (`data.baseKind`, team-1 hostile) are real destructible bodies; combat emits the event on kill, economy + sectorSim consequences land, 358 THE PRESS CAMP fields the first one | BUILD | DONE 2026-09-28 — seam closed end-to-end, no UI needed (`receipts/SEAM-BASE-DESTRUCTIBLE-BASES.md`, 9/9 focused + 76/76 encounter batch) |
 | 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
 | 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | OPEN |
 | 58 | P7 | Body-scale bars hold across zoom/speed — first slice landed; verify floors at edge zooms | BUILD | OPEN |
-| 59 | P10 | World-on-the-way remainder: working chain within two screen-depths + raid in progress — partial | BUILD | OPEN |
+| 59 | P10 | World-on-the-way remainder: working chain within two screen-depths + raid in progress — partial | BUILD | CLAIMED pb-ten-lanes |
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
 
@@ -476,37 +474,37 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 72 | PB-MIS-A | SF-136 real crusher in the yard tow-out (deep-dive 01) — private timeout radius becomes real machine law with recoverable result | PB | OPEN — seam missions.js |
-| 73 | PB-JOBS-A | SF-076+089 Ceres handoff: reproduce D89 drop scenario, then repair first missing real transition + stale-pin audit | PB | OPEN — CHECK pair; verify boards-3x3 claim staleness on traffic.js first |
+| 72 | PB-MIS-A | SF-136 real crusher in the yard tow-out (deep-dive 01) — private timeout radius becomes real machine law with recoverable result | PB | CLAIMED pb-ten-lanes — seam missions.js |
+| 73 | PB-JOBS-A | SF-076+089 Ceres handoff: reproduce D89 drop scenario, then repair first missing real transition + stale-pin audit | PB | CLAIMED pb-ten-lanes — CHECK pair; boards-3x3 staleness verified 2026-09-28 (traffic.js clean, last commit 43cbaeb38) |
 | 74 | PB-ECON-A | SF-106+120 hauler viability re-measure post-D80 + cohort-vs-live reconciliation instrument | PB | OPEN — CHECK pair |
 | 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
 | 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | DONE — bound-wreck pool reattach + classified-mint idempotence fix; 3/3 focused + 116/116 adjacent; receipt SF-286-FIRST-VICTORY-WRECK.md |
 | 77 | PB-SLICE-B | SF-289+290 customs crossing three honest approaches + refinery shortage solved by visible delivery | PB | DONE — weir bolt flags unread transits into the hot-ledger + starved-yard feed run re-feeds the real hopper via cargo:delivered→stock; 12/12 focused + 219/219 adjacent runnable; receipt PB-SLICE-B-WEIR-BOLT-STARVED-YARD.md |
 | 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | DONE — spill pods name the real cause (massline_whip/panic_jettison/combat_fire) + stolen freight rides ai.stolenLoot through release/shelf, sheds under pressure, drops on kill; storage-gated destroyed path; 38/38 focused + 51/51 adjacent; receipt PB-SLICE-C-BAD-THROW-ROBBERY-PURSUIT.md |
 | 79 | PB-SLICE-D | SF-291+293 same rope proves two careers + heavy enemy becomes temporary terrain | PB | DONE — two once-only measured-strain tradeoff beats (tow class on latch, whip mass past class) name honest fits; SF-293 already satisfied by PQ-154 machinery, binding fight-continuation/displacement/retention case added; 6/6 + 7/7 focused; receipt PB-SLICE-D-ROPE-CAREERS-HEAVY-TERRAIN.md |
-| 80 | PB-SLICE-E | SF-294+295 quiet return visit reveals what changed + investigation changes the next physical choice | PB | OPEN |
-| 81 | PB-SLICE-F | SF-296+297 low-resource dignified recovery + combat pressure clears into audible breathing room | PB | OPEN |
+| 80 | PB-SLICE-E | SF-294+295 quiet return visit reveals what changed + investigation changes the next physical choice | PB | DONE — site returnBaseline diffs witnessed→current into one comms line on rematerialize; scanned ambush tells speak their authored warning via comms:log and resolve their signal row; proximity-gated shapes are route-aroundable; 5/5 focused + 84 adjacent; receipt PB-SLICE-E-RETURN-VISIT-INVESTIGATION.md |
+| 81 | PB-SLICE-F | SF-296+297 low-resource dignified recovery + combat pressure clears into audible breathing room | PB | CLAIMED pb-ten-lanes |
 | 82 | PB-SLICE-Z | SF-300 coherent session capstone — composes after its chosen chain works (integrates prior slice outcomes) | PB | PARKED gated on slice chain |
 | 83 | PB-MIS-B | SF-137+144+148 route-choice trio: liner toll bypass, wrong-convoy ambiguity, shortcut-vs-long-route contract | PB | OPEN — seam missions.js |
 | 84 | PB-MIS-C | SF-141+149+150 unique-wreck trio: warm wreck survivors, three-visit workplace arc, script audit | PB | OPEN — seam missions.js |
 | 85 | PB-MIS-D | SF-140+143+147 heist trio: launch-window depth, counterweight scene, monitored-escape second act | PB | OPEN — seam missions.js |
 | 86 | PB-MIS-E | SF-138+139+142+145 borrowed tug recovery, split manifest incident, quiet berth, race-residual verify | PB | OPEN — seam missions.js |
-| 87 | PB-TAC-A | SF-046+052 cutter commits to geometry + two-specialist offset-commit composition | PB | OPEN — seam specialistCounterplay |
-| 88 | PB-TAC-B | SF-047+048+049 disrupt-window interrupt, ward per-carrier custody, anchor arena telegraph+escape | PB | OPEN |
-| 89 | PB-TAC-C | SF-050+051 baitable sniper committed corridor + brawler mass-commitment redirect | PB | OPEN |
+| 87 | PB-TAC-A | SF-046+052 cutter commits to geometry + two-specialist offset-commit composition | PB | CLAIMED pb-ten-lanes — seam specialistCounterplay |
+| 88 | PB-TAC-B | SF-047+048+049 disrupt-window interrupt, ward per-carrier custody, anchor arena telegraph+escape | PB | CLAIMED pb-ten-lanes |
+| 89 | PB-TAC-C | SF-050+051 baitable sniper committed corridor + brawler mass-commitment redirect | PB | DONE 2026-09-29 — sniper corridor commits at cue (real-battery-speed forecast, ±0.1 rad band, off-bore hold), brawler commit is a fixed-point INTERCEPT charge with no arrival brake; executed-path proofs green, 2× review PASS (`receipts/PB-TAC-C-SNIPER-CORRIDOR-BRAWLER-COMMIT.md`) |
 | 90 | PB-TAC-D | SF-053+054 reinforcement ingress placement + safety-derived breather | PB | OPEN — seam ai director |
 | 91 | PB-TAC-E | SF-055+056+057 wounded cargo tradeoff, retreat-to-cover trigger, bounded-search residual | PB | OPEN |
 | 92 | PB-TAC-F | SF-058+059 lawful-motive verify + terrain-aware orbit ring | PB | OPEN — CHECK pair |
-| 93 | PB-ORD-A | SF-035+036+037 bomb readability trio: denied-vs-recovering, burn commitment, can't-fire vs can't-steer | PB | OPEN — identical write-set |
+| 93 | PB-ORD-A | SF-035+036+037 bomb readability trio: denied-vs-recovering, burn commitment, can't-fire vs can't-steer | PB | CLAIMED pb-ten-lanes — identical write-set |
 | 94 | PB-ORD-B | SF-034+038+039+040 field-family readability: goo edge/recovery, pinning law, bend read, mine breakout (fields.js stale-adoptable) | PB | OPEN — seam fields.js; verify claim staleness first |
-| 95 | PB-ORD-C | SF-041+042+043 mine corridor authoring + deterministic bomb chains + authored ammo route | PB | OPEN |
+| 95 | PB-ORD-C | SF-041+042+043 mine corridor authoring + deterministic bomb chains + authored ammo route | PB | CLAIMED pb-ten-lanes |
 | 96 | PB-ORD-D | SF-031+032+033+045 drop-law/wake/leak verify + concussion encounter composition | PB | OPEN — CHECK pair + build |
 | 97 | PB-SWARM-A | SF-061+062 opening-wave physical promise + mass-and-gap wave composition | PB | OPEN — must-share pair |
 | 98 | PB-SWARM-B | SF-064+068 specialist introduction rehearsal + boss-round ammo placement | PB | OPEN — seam swarm planner |
 | 99 | PB-SWARM-C | SF-067+071 fracture-into-usable-cover + arena throw-window modifier | PB | OPEN — must-share pair |
 | 100 | PB-SWARM-D | SF-065+072 draft distinct intentions + build pressure through buildSummary | PB | OPEN |
 | 101 | PB-SWARM-E | SF-070+073+074+075 launch-path verify, chip pending-vs-committed, cash-out surface, rematch causal compare | PB | OPEN — CHECK quartet |
-| 102 | PB-SWARM-F | SF-063+069 pressure-reservoir burst verify + stranded/displaced survivor census | PB | OPEN — CHECK pair |
+| 102 | PB-SWARM-F | SF-063+069 pressure-reservoir burst verify + stranded/displaced survivor census | PB | CLAIMED pb-ten-lanes — CHECK pair; packet files swarmMode/survivalRun/survivalWave/survivalWavePlanner/swarmArena/runSession all clean 2026-09-28 |
 | 103 | PB-MASS-A | SF-023+024 cutter warning on the threatened segment + snag becomes a choice | PB | OPEN — seam tetherGameplay; adoptable-claim check first |
 | 104 | PB-MASS-B | SF-027+029 release-space swept-contact delta + salvage-sorting job (route around infer10's mission claims) | PB | OPEN — seam tetherGameplay serial with 103 |
 | 105 | PB-HAND-A | SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry | PB | OPEN — seam flightV3 |
@@ -565,6 +563,127 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 158 | PB-LANE-WORLD | SF-078–084, 086, 087, 090, 287, 298 — npcJobs/traffic/pocket-data packets held by the boards-3x3 claim | PB | PARKED boards-3x3 lane |
 
 Not on the board: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope not yet decomposed into dispatchable leaves — the owning lane's first sitting turns them into board rows.
+
+### H. Next Wave 300 — directed build and INFERENCE work (2026-09-28)
+
+This user-requested wave supplies pre-decided outcomes, not permission for a weaker agent to invent features. Details: [START_HERE](design/program/next-wave-2026-09-28/START_HERE.md) · [300-assignment index](design/program/next-wave-2026-09-28/INDEX.md) · [overlap crosswalk](design/program/next-wave-2026-09-28/OVERLAP_MAP.md).
+
+**One live board.** BUILD status is in this table; small-task status is in `design/program/INFERENCE_IDEAS.md`. The packet files and JSON are specifications, not a second mutable queue. `OPEN` means a named task may be taken after exact-path checks, not that it is free of all concurrent work. `WAITING <id>` means an actual missing capability; an equivalent verified implementation can satisfy it. Open dependent rows in the landing that supplies the capability. Do not infer DONE from a deleted row.
+
+**Do not dry-fire.** An empty legacy `program-dispatch` result does not authorize brainstorming while dependency-ready directed board/catalog work exists. Read this board or run `node scripts/next-wave-read.mjs --kind build --next` / `--kind inference --next`. The helper is read-only and uses canonical live rows, not frozen JSON statuses. It is advisory; inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
+
+**Reuse rather than duplicate.** Read the prior SF/PQ/PB owner named in each packet. Implement equivalent work once, then retire/match the duplicate row to its actual result. Existing SF packet bodies are under `design/planbank/SpaceFace_Planbank_300/plans/<domain>/` (not `packets/<domain>/`). Do not re-admit shipped slices or copy active PR #170/#174 work. Necessary functional UI follows ORRERY; no second redesign. Release-prep work remains parked.
+
+The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 independent features. A parent must satisfy its complete contract; covered children are closed as already true with the parent's evidence, not implemented again. Strong agents own causal/mechanism decisions and batch review. Small agents execute the named edit, check its counterexample, and stop. A stale premise is closed, not replaced with a different idea.
+
+| # | Kind | Unit | Decided player outcome | Prerequisite / prior owner | Status |
+|---|---|---|---|---|---|
+| 162 | BUILD | [NXB-010](design/program/next-wave-2026-09-28/build/NXB-010.md) | Overlapping fields produce a predictable net force without stealing the controls | Existing owners; SF-034, SF-038, SF-039, SF-040 | OPEN |
+| 163 | BUILD | [NXB-014](design/program/next-wave-2026-09-28/build/NXB-014.md) | Lawful combat stands down when the specific surrender is accepted | Existing owners; SF-058, SF-151, SF-161, CR-WEIR-1 | OPEN |
+| 164 | BUILD | [NXB-022](design/program/next-wave-2026-09-28/build/NXB-022.md) | Extraction never loses material merely because the hold fills mid-bite | Existing owners; SF-096, SF-098, SF-111, SF-273 | OPEN |
+| 165 | BUILD | [NXB-025](design/program/next-wave-2026-09-28/build/NXB-025.md) | Sell your own units of a commodity while preserving its sealed contract units | Existing owners; SF-108, SF-111, SF-241, SF-273 | OPEN |
+| 166 | BUILD | [NXB-027](design/program/next-wave-2026-09-28/build/NXB-027.md) | Physical freight, market supply and station growth settle one transaction once | Existing owners; SF-095, SF-106, SF-116, SF-120, SF-290 | OPEN |
+| 167 | BUILD | [NXB-035](design/program/next-wave-2026-09-28/build/NXB-035.md) | A claim raid has one outcome whether the player arrives or stays away | Existing owners; SF-101, SF-105, SF-165, PQ-170 | OPEN |
+| 168 | BUILD | [NXB-037](design/program/next-wave-2026-09-28/build/NXB-037.md) | Two active jobs can reference one physical object without duplicating it or its reward | NXB-025; SF-108, SF-144, SF-146, SF-278 | WAITING NXB-025 |
+| 169 | BUILD | [NXB-053](design/program/next-wave-2026-09-28/build/NXB-053.md) | Station navigation preserves one selected object and one pending transaction | Existing owners; SF-241, SF-248, SF-249, SF-255 | OPEN |
+| 170 | BUILD | [NXB-057](design/program/next-wave-2026-09-28/build/NXB-057.md) | Integrate the current performance branch, then fix one measured cross-feature regression | PR-174-or-equivalent-integrated; SF-256, SF-262, SF-265, SF-268, PR-174 | WAITING PR-174-or-equivalent-integrated |
+| 171 | BUILD | [NXB-058](design/program/next-wave-2026-09-28/build/NXB-058.md) | Shared render resources survive one consumer leaving and retire after the last one | Existing owners; SF-259, SF-261, SF-268, SF-270 | OPEN |
+| 172 | BUILD | [NXB-059](design/program/next-wave-2026-09-28/build/NXB-059.md) | A save snapshot represents one coherent cross-owner moment during active work | Existing owners; SF-271, SF-273, SF-274, SF-278, SF-281 | OPEN |
+| 173 | BUILD | [NXB-060](design/program/next-wave-2026-09-28/build/NXB-060.md) | A failed authored-body admission is retryable and cannot publish into the wrong run | Existing owners; SF-257, SF-258, SF-262, SF-270 | OPEN |
+| 174 | BUILD | [NXB-004](design/program/next-wave-2026-09-28/build/NXB-004.md) | A damaged loaded ship remains controllable through the real propulsion stack | Existing owners; SF-004, SF-005, SF-013, PQ-135 | OPEN |
+| 175 | BUILD | [NXB-005](design/program/next-wave-2026-09-28/build/NXB-005.md) | A recovered tow reaches a receiver with its custody and value intact | Existing owners; SF-029, SF-111, SF-273, SF-286 | OPEN |
+| 176 | BUILD | [NXB-007](design/program/next-wave-2026-09-28/build/NXB-007.md) | One physical kill has one readable legal and salvage aftermath | Existing owners; SF-030, SF-042, SF-159, SF-292 | OPEN |
+| 177 | BUILD | [NXB-009](design/program/next-wave-2026-09-28/build/NXB-009.md) | A dock-side bomb preparation order commits the exact affordable loadout | Existing owners; SF-043, SF-110, SF-127, PQ-205 | OPEN |
+| 178 | BUILD | [NXB-012](design/program/next-wave-2026-09-28/build/NXB-012.md) | Countermeasures break a particular lock rather than erase every threat | Existing owners; SF-040, SF-050, SF-057 | OPEN |
+| 179 | BUILD | [NXB-013](design/program/next-wave-2026-09-28/build/NXB-013.md) | A wounded squad withdraws through a usable corridor with one covering ship | Existing owners; SF-056, SF-057, SF-059 | OPEN |
+| 180 | BUILD | [NXB-017](design/program/next-wave-2026-09-28/build/NXB-017.md) | Author one three-round act whose physical question changes each round | Existing owners; SF-061, SF-062, SF-064, SF-068, PQ-174 | OPEN |
+| 181 | BUILD | [NXB-018](design/program/next-wave-2026-09-28/build/NXB-018.md) | Draft offers remain useful for the actual build and transaction state | Existing owners; SF-065, SF-066, SF-072, SF-251 | OPEN |
+| 182 | BUILD | [NXB-021](design/program/next-wave-2026-09-28/build/NXB-021.md) | Deep-core mining makes the next commitment visible without revealing the whole rock | Existing owners; SF-095, SF-125, PQ-130 | OPEN |
+| 183 | BUILD | [NXB-026](design/program/next-wave-2026-09-28/build/NXB-026.md) | Compare a multi-stop freight trip using known stock, actual capacity and operating cost | Existing owners; SF-107, SF-108, SF-112, SF-115 | OPEN |
+| 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack | NXB-009; SF-127, SF-128, SF-242, PQ-205 | WAITING NXB-009 |
+| 185 | BUILD | [NXB-030](design/program/next-wave-2026-09-28/build/NXB-030.md) | Prove three existing hull sidegrades through actual physical jobs | Existing owners; SF-121, SF-122, SF-123, SF-124, SF-130 | OPEN |
+| 186 | BUILD | [NXB-031](design/program/next-wave-2026-09-28/build/NXB-031.md) | A synergy explanation matches the live combined effect and its drawback | Existing owners; SF-126, SF-132, SF-133 | OPEN |
+| 187 | BUILD | [NXB-033](design/program/next-wave-2026-09-28/build/NXB-033.md) | A refinery remains a working place through a full-input or full-output interruption | Existing owners; SF-098, SF-105, SF-118, SF-274 | OPEN |
+| 188 | BUILD | [NXB-038](design/program/next-wave-2026-09-28/build/NXB-038.md) | A failed job leaves a playable continuation rather than a reset scene | Existing owners; SF-139, SF-147, SF-150, SF-285 | OPEN |
+| 189 | BUILD | [NXB-039](design/program/next-wave-2026-09-28/build/NXB-039.md) | Deadline offers describe a feasible journey and use the actual simulation clock | Existing owners; SF-108, SF-112, SF-115 | OPEN |
+| 190 | BUILD | [NXB-041](design/program/next-wave-2026-09-28/build/NXB-041.md) | Witness evidence stays local, time-bounded and explicit about uncertainty | Existing owners; SF-151, SF-159, SF-163 | OPEN |
+| 191 | BUILD | [NXB-044](design/program/next-wave-2026-09-28/build/NXB-044.md) | Tolls, warrants and restitution compose into one understandable consequence | Existing owners; SF-153, SF-158, SF-161, SF-164, SF-165 | OPEN |
+| 192 | BUILD | [NXB-046](design/program/next-wave-2026-09-28/build/NXB-046.md) | The story reaches a player who spends the first hour trading, fighting or salvaging | Existing owners; SF-121, SF-135, SF-149, SF-300, PQ-163 | OPEN |
+| 193 | BUILD | [NXB-049](design/program/next-wave-2026-09-28/build/NXB-049.md) | A three-verb collision stays readable without draining the spectacle | Existing owners; SF-196, SF-197, SF-200, SF-207 | OPEN |
+| 194 | BUILD | [NXB-052](design/program/next-wave-2026-09-28/build/NXB-052.md) | The crowded combat mix releases into real quiet after the last threat | Existing owners; SF-231, SF-234, SF-237, SF-240 | OPEN |
+| 195 | BUILD | [NXB-054](design/program/next-wave-2026-09-28/build/NXB-054.md) | The map can manage two real destinations without confusing knowledge with a route | Existing owners; SF-244, SF-245, SF-246, SF-254 | OPEN |
+| 196 | BUILD | [NXB-055](design/program/next-wave-2026-09-28/build/NXB-055.md) | Alternative controls reach the same actions without changing irreversible confirmation rules | Existing owners; SF-247, SF-248, SF-254, PQ-164 | OPEN |
+| 197 | BUILD | [NXB-056](design/program/next-wave-2026-09-28/build/NXB-056.md) | Dense instrument text survives long names, large text and narrow windows | Existing owners; SF-243, SF-249, SF-253, SF-255 | OPEN |
+| 198 | BUILD | [NXB-006](design/program/next-wave-2026-09-28/build/NXB-006.md) | Transfer a load across a moving industrial gap without scripted motion | Existing owners; SF-019, SF-024, SF-094, SF-100 | OPEN |
+| 199 | BUILD | [NXB-008](design/program/next-wave-2026-09-28/build/NXB-008.md) | Recover a volatile load by managing its physical exposure, not a scripted timer | Existing owners; SF-006, SF-021, SF-036, SF-096 | OPEN |
+| 200 | BUILD | [NXB-011](design/program/next-wave-2026-09-28/build/NXB-011.md) | A moving enemy bomb can be intercepted and disposed of using existing physical verbs | Existing owners; SF-031, SF-040, SF-041, SF-044 | OPEN |
+| 201 | BUILD | [NXB-015](design/program/next-wave-2026-09-28/build/NXB-015.md) | Convoys negotiate a narrow obstruction instead of shoving every member through it | Existing owners; SF-048, SF-059, SF-080, SF-082 | OPEN |
+| 202 | BUILD | [NXB-016](design/program/next-wave-2026-09-28/build/NXB-016.md) | A capital opening follows a damaged physical subsystem rather than a health-bar phase | Existing owners; SF-020, SF-051, SF-068, PQ-140 | OPEN |
+| 203 | BUILD | [NXB-019](design/program/next-wave-2026-09-28/build/NXB-019.md) | The arena carries useful physical history across preparation intervals | Existing owners; SF-067, SF-069, SF-073, PQ-133 | OPEN |
+| 204 | BUILD | [NXB-020](design/program/next-wave-2026-09-28/build/NXB-020.md) | A shared challenge code reproduces the rules, not just the random seed | Existing owners; SF-075, PQ-169, PQ-160 | OPEN |
+| 205 | BUILD | [NXB-023](design/program/next-wave-2026-09-28/build/NXB-023.md) | A congested receiver offers a physical sorting job with a real throughput consequence | Existing owners; SF-091, SF-093, SF-098, SF-102 | OPEN |
+| 206 | BUILD | [NXB-024](design/program/next-wave-2026-09-28/build/NXB-024.md) | Repair consumes delivered materials and preserves unfinished work | Existing owners; SF-077, SF-094, SF-101, SF-274 | OPEN |
+| 207 | BUILD | [NXB-028](design/program/next-wave-2026-09-28/build/NXB-028.md) | A damaged delivery settles explicit partial terms instead of binary magical failure | NXB-025; SF-096, SF-114, SF-146 | WAITING NXB-025 |
+| 208 | BUILD | [NXB-032](design/program/next-wave-2026-09-28/build/NXB-032.md) | A recovered unique module keeps its identity and condition through fitting and resale | Existing owners; SF-131, SF-134, SF-155, SF-280 | OPEN |
+| 209 | BUILD | [NXB-034](design/program/next-wave-2026-09-28/build/NXB-034.md) | A relay convoy can return partially successful without fabricating profit | Existing owners; SF-103, SF-108, SF-112, SF-119 | OPEN |
+| 210 | BUILD | [NXB-036](design/program/next-wave-2026-09-28/build/NXB-036.md) | Station growth creates a usable route change, not only a throughput number | NXB-027; SF-117, SF-130, SF-177, PQ-170 | WAITING NXB-027 |
+| 211 | BUILD | [NXB-040](design/program/next-wave-2026-09-28/build/NXB-040.md) | A heist handover is committed by actual custody, with one honest chance to withdraw | NXB-025; SF-137, SF-145, SF-147, CR-HOLLOW-1 | WAITING NXB-025 |
+| 212 | BUILD | [NXB-042](design/program/next-wave-2026-09-28/build/NXB-042.md) | A rescued named worker resumes a real job and remains the same person on return | Existing owners; SF-076, SF-077, SF-156, SF-175 | OPEN |
+| 213 | BUILD | [NXB-043](design/program/next-wave-2026-09-28/build/NXB-043.md) | One local shortage creates competing real jobs without multiplying the population | Existing owners; SF-084, SF-099, SF-116, SF-162 | OPEN |
+| 214 | BUILD | [NXB-045](design/program/next-wave-2026-09-28/build/NXB-045.md) | A useful clue can become stale or contradicted without revealing hidden truth | Existing owners; SF-168, SF-171, SF-178, SF-180, SF-245 | OPEN |
+| 215 | BUILD | [NXB-047](design/program/next-wave-2026-09-28/build/NXB-047.md) | An existing ending changes a continuing working universe across three return visits | Existing owners; SF-149, SF-158, SF-294, PQ-032 | OPEN |
+| 216 | BUILD | [NXB-048](design/program/next-wave-2026-09-28/build/NXB-048.md) | New Game Plus carries declared knowledge but does not duplicate physical possessions | Existing owners; SF-131, SF-180, SF-280, PQ-032 | OPEN |
+| 217 | BUILD | [NXB-050](design/program/next-wave-2026-09-28/build/NXB-050.md) | A chain reaction can be followed across camera scale without commandeering the camera | Existing owners; SF-202, SF-208, SF-218, SF-219 | OPEN |
+| 218 | BUILD | [NXB-051](design/program/next-wave-2026-09-28/build/NXB-051.md) | Damage marks stay attached to the real hull through rotation, LOD and refit | Existing owners; SF-211, SF-213, SF-223, SF-224 | OPEN |
+
+This section does not change existing rows, foreign claims or the legacy PQ schema. When finishing, use the current board/done-log convention; update dependent INFERENCE rows before retiring the parent. A finding outside the chosen scope uses the existing `DEMO_READINESS_2026-09-20.md` §6 ledger, not a new defect list.
+
+### I. Finish & Expansion Pack — loops-first finishing + the alien/machine extension (2026-09-29)
+
+Owner-delivered third reservoir, landed at [`design/finish-expansion-2026-09/`](./design/finish-expansion-2026-09/):
+24 programs, 240 `SFQ-B` build candidates, 96 `SFQ-I` inference candidates, 36 mission briefs, 36
+model-family briefs, 32 VFX/audio briefs, a 507-edge prerequisite DAG (validated: 5,185 internal
+links, topological order clean). Entry: [`START_HERE.md`](./design/finish-expansion-2026-09/START_HERE.md) ·
+[first wave](./design/finish-expansion-2026-09/FIRST_WAVE.md) · [machine-readable catalog](./design/finish-expansion-2026-09/catalog/task_catalog.json).
+
+Same law as section H, plus this pack's own admission rules:
+
+- **Reservoir, not a second queue.** Statuses live on this board and in `INFERENCE_IDEAS.md`; the
+  pack's JSON/CSV are candidate inventories. `SFQ-` IDs never go to `program-dispatch --id`.
+- **Map by outcome before building** ([admission + crosswalk](./design/finish-expansion-2026-09/integration/01_ADMISSION_AND_CROSSWALK.md)):
+  already-true → close with the native owner's evidence; residual → extend the native packet;
+  genuinely new → take it through a row here; conflicting → park in-pack as history.
+- **The alien/machine layers (programs 13–17) ride PR #170** (`AE-000…349`, in flight): reconcile
+  that branch before any ecology/machine row; never build a parallel alien system on master. The
+  `src/data/alienEcology*` / `precursorMachines` paths named in briefs exist only on that branch.
+- Presentation converges on ORRERY (UI), Forge (flyable hulls) and the current material VFX
+  direction; pre-release work stays parked (owner, 2026-09-27).
+- The 96 `SFQ-I` inference candidates enter `INFERENCE_IDEAS.md` one at a time, after their named
+  dependency actually lands and outcome-mapping confirms the gap is real.
+- **Cross-source dedupe is mandatory**: before taking any SFQ unit, check the §1C board, the
+  SF/NXB/PB rows it cites, and [`design/program/TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md)
+  (the running record of overlap dispositions between all delivered banks).
+- Milestone spine (full table in the pack's `direction/02_BUILD_MAP.md`): current reality → the
+  hand and physical toy → repeatable combat → a working adventure loop → two alien proofs →
+  selected deeper combinations → finished game → release prep (parked).
+
+First-wave lanes (each row is one lane opening; deeper units follow the pack's DAG):
+
+| # | Kind | Unit | Decided player outcome | Prerequisite / prior owner | Status |
+|---|---|---|---|---|---|
+| 219 | BUILD | SFQ-B011/B012 (prog 02) | Hand lane: verify the current G-stick and hand conflicts on the live route; one reproduced usability issue improved or verified-good | G-stick owners; NXB-002/NXB-003 adjacent (crosswalk) | OPEN |
+| 220 | BUILD | SFQ-B021/B025 (prog 03) | A real body that should be usable can be latched and manipulated without violating kinematic opt-outs; a fresh wreck is that body | PB-MASS-A/B adjacent; seam tetherGameplay serial | OPEN |
+| 221 | BUILD | SFQ-B031/B033 (prog 04) | A normal fight exposes distinct useful starter verbs and composable state responses, no new combat engine | PB-TAC rows adjacent | OPEN |
+| 222 | BUILD | SFQ-B071/B079 (prog 08) | One existing mission works end to end while its object moves, fails and reloads | PB-MIS rows adjacent; seam missions.js serial | OPEN |
+| 223 | ART | SFQ-B172 or SFQ-B181 (prog 18/19) | One actual visible defect corrected in the production asset/effect owner (attached parts or nozzle/history continuity) | graphics-lane coordination on Forge manifests | OPEN |
+| 224 | BUILD | SFQ-B003 → SFQ-B141 | Machine integration: branch-reality audit, then one physical Courier token through a real custody transaction — no blind merge | PR-170 reconciliation | WAITING PR-170 |
+| 225 | PERF | SFQ-B211/B217 | One demonstrated causal hitch or leak issue improves without altering scene quality | PQ-129.11–.17 / PQ-204 adjacent | OPEN |
+| 226 | BUILD | SFQ-B221/B223 | One adversarial ordinary transition (save boundary / async route) survives without lost progress or stale world | PB-CONT rows adjacent; seam saveSystem serial | OPEN |
+| 227 | BUILD | M4 first proofs (prog 13/15) | Two alien proofs on real ordinary routes: one ecological intervention and one consequential machine work cycle, with art/audio/persistence complete | rows 224 landed; PR-170 merged | WAITING row 224 |
+
+This section does not change existing rows, foreign claims or the legacy PQ schema. A finding
+outside the chosen scope uses the existing `DEMO_READINESS_2026-09-20.md` §6 ledger, not a new
+defect list.
 
 ## 2. Product north star
 
