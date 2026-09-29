@@ -106,6 +106,8 @@ import {
   planStormInstall,
 } from './stormLatticeArena.js';
 import { orbitNodePose } from '../combat/orbitNodes.js';
+import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarmEvents.js';
+import { swarmEventFor } from '../data/swarmEvents.js';
 
 export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID };
 export const LAW_ARENA_IDS = Object.freeze([
@@ -354,7 +356,49 @@ function authoredRoomFrame(toys) {
  * Returns { phase, note, fields: [...], mines: [{x,z}], cover: boolean }.
  * `fields` is capped at ARENA_FIELD_SLOT_IDS.length and its entries already carry their slot id.
  */
-export function planArenaInstall({
+export function planArenaInstall(args) {
+  const install = planArenaInstallBody(args);
+  // The swarm event's pre-place is a merge AFTER the phase's own room: the event rides the
+  // install the wave already asked for (a mine berth on a flood lane, a well the storm runs
+  // hot). Authored caps still bind — slot ids are stamped here, caps kept.
+  const swarmEvent = args && args.swarmEvent;
+  if (!swarmEvent || !swarmEvent.install || !install) return install;
+  const frame = swarmEventFrame({
+    at: install.at || args.anchor || { x: 0, z: 0 },
+    laneGate: args.laneGate,
+    seed: args.seed,
+    wave: args.wave,
+  });
+  const evInstall = swarmEvent.install;
+  for (const spec of evInstall.fields || []) {
+    if (!spec || install.fields.length >= ARENA_FIELD_SLOT_IDS.length) break;
+    const field = { ...spec };
+    delete field.bearing;
+    delete field.dist;
+    field.center = bearingPoint(frame, spec.bearing, spec.dist);
+    if (spec.kind === 'cone') {
+      const tip = bearingPoint(frame, spec.bearing, 1);
+      field.dir = { x: tip.x - frame.at.x, z: tip.z - frame.at.z };
+    }
+    install.fields.push(field);
+  }
+  for (let i = 0; i < install.fields.length; i++) {
+    if (install.fields[i] && install.fields[i].id == null) {
+      install.fields[i].id = ARENA_FIELD_SLOT_IDS[i];
+    }
+  }
+  for (const mine of evInstall.mines || []) {
+    if (!mine || install.mines.length >= ARENA_MINE_MAX) break;
+    install.mines.push({ x: mine.x, z: mine.z });
+  }
+  if (evInstall.cover === true) install.cover = true;
+  if (typeof evInstall.note === 'string' && evInstall.note) {
+    install.note = install.note ? `${install.note}; ${evInstall.note}` : evInstall.note;
+  }
+  return install;
+}
+
+function planArenaInstallBody({
   arenaPhase,
   arenaId = null,
   wave = 1,
@@ -798,6 +842,10 @@ export const survivalArena = {
     this.ctx = ctx;
     this._unsubs = [];
     this._reset();
+    // The swarm event director is hosted under this slot — it telegraphs and spends through
+    // the same seams this system already owns, ticking inside this update() before fields run.
+    this._swarmEvents = createSwarmEventDirector(ctx);
+    this._swarmEvents.init();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     // ---------------------------------------------------------------------------------------
@@ -851,6 +899,7 @@ export const survivalArena = {
   },
 
   destroy() {
+    if (this._swarmEvents) this._swarmEvents.destroy();
     this._teardown('destroy');
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
@@ -900,6 +949,7 @@ export const survivalArena = {
     } else if (this._lawId === STORM_ARENA_ID) {
       this._tickStorm(st);
     }
+    if (this._swarmEvents) this._swarmEvents.update(_dt, st);
     this._tickToys(_dt, st);
   },
 
@@ -919,14 +969,20 @@ export const survivalArena = {
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
     const seed = Number.isInteger(run.seed) ? run.seed : 1;
 
+    const laneGate = dominantGate(plan);
     const install = planArenaInstall({
       arenaPhase: phase,
       arenaId: run.arenaId,
       wave,
       seed,
       anchor: playerAnchor(state),
-      laneGate: dominantGate(plan),
+      laneGate,
       bossRoom: plan.swarm && plan.swarm.bossRoom ? plan.swarm.bossRoom : null,
+      // The seeded event card — an event round pre-places the objects the event needs, so the
+      // mid-wave spend lands on a room already shaped for it (the inevitability is placement).
+      swarmEvent: run.ruleset === 'swarm'
+        ? swarmEventFor({ arenaId: run.arenaId, wave, seed })
+        : null,
     });
 
     this._wave = wave;
@@ -952,6 +1008,18 @@ export const survivalArena = {
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
     this._materializeRoom(this._toys, wave);
+    // The event director inherits the room it will spend through: the frame the install placed
+    // against, and the field specs it may later surge (their authored strengths are the calm it
+    // restores, not a re-read).
+    if (this._swarmEvents) {
+      this._swarmEvents.setFrame(swarmEventFrame({
+        at: install.at || playerAnchor(state) || { x: 0, z: 0 },
+        laneGate,
+        seed,
+        wave,
+      }));
+      this._swarmEvents.setInstalledFields(this._installedFields);
+    }
     this._emit('survivalArena:installed', {
       wave,
       arenaId: run.arenaId,
@@ -1091,6 +1159,9 @@ export const survivalArena = {
   // ---- teardown -------------------------------------------------------------
 
   _teardown(reason) {
+    // The director calms first: a surge mid-window restores authored strengths onto fields that
+    // still exist, and its own pulse field unregisters before the room's ledger clears.
+    if (this._swarmEvents) this._swarmEvents.teardown(reason);
     const released = {
       fields: this._releaseFields(),
       mines: this._releaseMines(),
