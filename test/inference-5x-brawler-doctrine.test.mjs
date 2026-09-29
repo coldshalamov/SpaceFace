@@ -96,13 +96,18 @@ test('U2: brawler_commit runtime enters commit phase (not flyby strike/extend)',
   });
   assert.equal(snap.phase, 'commit', 'after telegraph, brawler commits (not flyby strike)');
   assert.equal(snap.fireWindow, true);
-  assert.equal(snap.maneuverKind, 'orbit', 'commit is sticky orbit, not flyby intercept pass');
+  assert.equal(snap.maneuverKind, 'intercept',
+    'commit is a mass-committed run at a fixed point, not a live-tracking orbit');
   assert.ok(snap.preferredRange <= 160, 'commit holds inside knife range');
-  assert.equal(snap.faceTarget, true);
+  assert.equal(snap.faceTarget, false, 'the charge rides the committed line, not fresh tracking');
+  assert.ok(snap.flightPoint && Number.isFinite(snap.flightPoint.x),
+    'commit publishes the fixed run point the mass is committed to');
   assert.notEqual(snap.phase, 'extend');
   assert.notEqual(snap.phase, 'strike');
 
-  // Stay close through mid-commit: must NOT breakaway on pass geometry (flyby residual).
+  // Stay close through mid-commit: the run cannot end before BRAWLER_COMMIT_MIN_TICKS even with
+  // the hull already past the contact (pass-geometry egress is proven post-min-age in
+  // combat-doctrines.test.mjs).
   snap = runtime.update({
     tick: 80,
     entityId: 2,
@@ -112,7 +117,7 @@ test('U2: brawler_commit runtime enters commit phase (not flyby strike/extend)',
       [shipContact(1, { x: 180, z: 0 })],
     ),
   });
-  assert.equal(snap.phase, 'commit', 'sticky commit ignores flyby pass-geometry egress');
+  assert.equal(snap.phase, 'commit', 'the committed run holds to its minimum age mid-pass');
 });
 
 test('U2: engagement authority admits fire during brawler commit on live authorize path', async () => {

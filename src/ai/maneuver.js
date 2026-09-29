@@ -292,9 +292,15 @@ export class ManeuverPlanner {
     // whipping dodge route and fixed mounts sprayed past a stationary target (D38).
     // A dodging pilot sacrifices the firing face during the jink; a gunner keeps the nose
     // on target through everything short of an obstacle dodge.
-    const facingUnit = intent.faceTarget === true && target && !(reflex && reflex.dropAim)
-      ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
-      : desiredUnit;
+    // A doctrine that commits a firing corridor or a mass-committed charge publishes an absolute
+    // faceAngle: the nose rides that bearing through the window, so a dodged target cannot pull
+    // the line back onto itself. A reflex dodge still drops the override — hull integrity beats
+    // commitment.
+    const facingUnit = !(reflex && reflex.dropAim) && Number.isFinite(intent.faceAngle)
+      ? { x: Math.cos(intent.faceAngle), z: Math.sin(intent.faceAngle) }
+      : intent.faceTarget === true && target && !(reflex && reflex.dropAim)
+        ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
+        : desiredUnit;
     const heading = Math.atan2(facingUnit.z, facingUnit.x);
     const angleError = wrapAngle(heading - selfPose.rot);
     // The commanded heading itself moves (a target bearing rotates as both ships fly). A
@@ -395,6 +401,9 @@ export class ManeuverPlanner {
     const slotSpeed = choreo && choreo.slotVel
       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
       : 0;
+    // crossingLane strips the arrival brake (a committed charge/flyby pass must not slow into
+    // its own run point), but defensive reflexes still beat commitment: reflex.brake fires only
+    // on an imminent closing contact, the same exception dropAim takes against faceAngle.
     const brake = desired.obstacleBrake || (choreo && choreo.coast
       ? false
       : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (reflex != null && reflex.brake === true) || (!desired.contactSeek && !(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&

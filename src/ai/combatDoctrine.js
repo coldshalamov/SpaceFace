@@ -46,6 +46,16 @@ const INTERCEPTOR_REFORM_TICKS = 45;
 const INTERCEPTOR_STATIONARY_TARGET_SPEED = 8;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
+// The commit drive is a mass-committed charge through a fixed forecast point: the run solves the
+// target's position at arrival using a nominal approach speed, then extends well past it so the
+// arrival brake can never engage mid-run. A late sidestep leaves the hull blowing through the
+// corridor — overshoot and breakaway recovery are the honest consequences.
+const BRAWLER_CHARGE_LEAD_SPEED = 160;
+const BRAWLER_CHARGE_OVERSHOOT_WU = 420;
+// A committed firing corridor allows only bounded correction: the anchor is the true lead at cue
+// time, and the window may refine inside ±cap but never re-track a dodge.
+const SNIPER_AIM_CORRECTION_RAD = 0.1;
+const SNIPER_CORRIDOR_NOMINAL_SPEED = 340;
 const BRAWLER_BREAKAWAY_TICKS = 105;
 // Distance-gated egress exits also need a clock: a breakaway that requires separation never
 // happens when the target keeps chasing, and without a hatch the "break" inverts into a hull
@@ -261,18 +271,10 @@ export class CombatDoctrineRuntime {
         && target.disabled === true)
       : disabledNonlethalTargetId != null && stableId(disabledNonlethalTargetId) === stableId(target.id);
     if (disabledNonlethalTarget) {
-      const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
-        : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
-          : doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER ? 'recover'
-            : doctrineId === CombatDoctrineId.ESCORT_SCREEN ? 'regroup'
-              : doctrineId === CombatDoctrineId.SWARM_PACK ? 'extend'
-                : doctrineId === CombatDoctrineId.MINE_LAYER_WAKE ? 'disengage'
-                  : doctrineId === CombatDoctrineId.SHIELD_BREAKER ? 'peel'
-                    : doctrineId === CombatDoctrineId.DETONATOR_RUN ? 'breakaway'
-                    : doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
-                      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
-                      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA ? 'broadside_shift'
-                        : 'retreat';
+      // The disabled-target egress must name a phase the doctrine's own update loop advances —
+      // egressPhaseFor owns that mapping (a hardcoded 'retreat'/'breakaway' here parked doctrines
+      // whose update has no such branch on the egress point forever).
+      const egressPhase = egressPhaseFor(record);
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
       return snapshot(record, target, directive, factionBehavior, self);
     }
@@ -378,13 +380,16 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       preferredRange: doctrine.preferredRange,
       lateralSign: doctrine.lateralSign,
       faceTarget: doctrine.faceTarget === true,
+      faceAngle: Number.isFinite(doctrine.faceAngle) ? doctrine.faceAngle : null,
       ramAuthorized: doctrine.ramAuthorized === true,
       flightPoint: doctrine.flightPoint,
       formationLocked: doctrine.formationLocked,
       breakFormation: !doctrine.formationLocked,
       attackLine: doctrine.attackLine || null,
-      crossingLane: doctrine.doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
-        (doctrine.phase === 'engine_flare' || doctrine.phase === 'strike'),
+      crossingLane: (doctrine.doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
+          (doctrine.phase === 'engine_flare' || doctrine.phase === 'strike'))
+        || (doctrine.phase === 'commit' && (doctrine.doctrineId === CombatDoctrineId.BRAWLER_COMMIT
+          || doctrine.flightProfile === 'brawler_commit')),
       reason: `combat_doctrine:${doctrine.doctrineId}:${doctrine.phase}`,
     },
   };
@@ -420,6 +425,10 @@ function updateBrawler(record, tick, self, target, distance) {
   if (record.phase === 'ingress' && distance <= 460) enter(record, 'engine_flare', tick, 'engine_flare');
   else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
     record.closestDistance = distance;
+    // Mass commitment: the run drives at a fixed world point — the target's forecast position
+    // extended past it — so the charge cannot re-plan around a late sidestep. Overshoot and a
+    // possible wall/body meet are the authored payoff; beginEgress owns the recovery beat.
+    record.flightPoint = committedChargePoint(self, target, distance);
     enter(record, 'commit', tick, null);
   } else if (record.phase === 'commit') {
     record.closestDistance = Math.min(record.closestDistance, distance);
@@ -663,6 +672,10 @@ function updateRanged(record, tick, self, target, distance) {
   if (record.phase === 'outer_standoff' && age >= RANGED_REPOSITION_TICKS
     && distance >= RANGED_PRESS_FLOOR_WU && distance <= 1100) {
     enter(record, 'charge_cue', tick, 'weapon_charge');
+    // The corridor commits at the telegraph, not at the shot: the nose holds this forecast bearing
+    // through the wind-up and the fire window can only refine inside a small bound, so a timed
+    // lateral dodge or a line-of-sight break during the cue actually beats the volley.
+    record.aimCommitBearing = corridorBearing(self, target);
   }
   else if (record.phase === 'charge_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'fire_window', tick, null);
   else if (record.phase === 'fire_window' && age >= RANGED_FIRE_TICKS) enter(record, 'reset', tick, null);
@@ -823,6 +836,7 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     flightPoint: null,
     ramAuthorized: false,
     preferredRange: null,
+    aimCommitBearing: null,
     _cachePosX: null,
     _cachePosZ: null,
     _cacheRot: null,
@@ -849,6 +863,10 @@ function enter(record, phase, tick, telegraphKind) {
     || phase === 'anchor_hold' || phase === 'broadside_fire'
     || phase === 'screen_hold' || phase === 'shield_dart'
     || phase === 'lance' || phase === 'mine_drop';
+  // A committed firing corridor survives the charge_cue -> fire_window boundary (it IS the
+  // corridor), but every other phase change drops it — retreat/reset must never hold a stale
+  // forecast line.
+  if (phase !== 'charge_cue' && phase !== 'fire_window') record.aimCommitBearing = null;
 }
 
 function advanceCycle(record, tick, phase) {
@@ -887,6 +905,12 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     && (directive.formation.breakReason === 'security_response_target'
       || directive.formation.breakReason === 'ambush_snare_prey'
       || directive.formation.breakReason === 'wanted_warrant_target'));
+  // A committed firing corridor owns the nose as well as the guns: while the cue/window holds a
+  // corridor bearing, facing rides it instead of tracking the live contact, so a lateral dodge
+  // leaves both the hull line and the volley stale.
+  const aimCommitted = (phase === 'charge_cue' || phase === 'fire_window')
+    && Number.isFinite(record.aimCommitBearing);
+  const faceAngle = aimCommitted ? record.aimCommitBearing : null;
   let maneuverKind = ManeuverKind.INTERCEPT;
   let preferredRange = 180;
   let allowedActionId = null;
@@ -911,11 +935,6 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
         maneuverKind = ManeuverKind.FORMATION;
         maneuverTargetId = null;
       }
-    } else if (brawler && phase === 'commit') {
-      // Commit is a sticky knife-fight, not a flyby intercept pass. Keep the nose on the target
-      // and orbit inside gun range until the authored hold expires.
-      maneuverKind = ManeuverKind.ORBIT;
-      faceTarget = true;
     } else maneuverKind = ManeuverKind.INTERCEPT;
     // C1 engagement scale: egress holds inside the camera envelope, not off-screen.
     preferredRange = phase === 'extend' || phase === 'breakaway' ? 240
@@ -1090,11 +1109,16 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     preferredRange = 240;   // B3b: default standoff orbits inside the composed frame
     // The standoff orbit is translational: fixed-gun ships keep their nose on the target while
     // sliding around the engagement ring, so even high-inertia hulls are aligned before the cue.
-    faceTarget = phase !== 'retreat';
+    // Once the corridor commits the nose rides that bearing instead — a dodge during the wind-up
+    // must leave the line stale, not pull it back onto the contact.
+    faceTarget = phase !== 'retreat' && !aimCommitted;
     if (phase === 'fire_window') allowedActionId = 'action_burst';
   }
+  // Every phase egressPhaseFor can return: a doctrine parked on a disabled-target or pressure-break
+  // egress must keep its egress range instead of falling back to the faction standoff band.
   const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
-    || phase === 'retreat' || phase === 'disengage' || phase === 'peel';
+    || phase === 'retreat' || phase === 'disengage' || phase === 'peel'
+    || phase === 'regroup' || phase === 'broadside_shift';
   if (factionBehavior && !isEgress && !IDENTITY_OWNED_RANGE_DOCTRINES.has(doctrineId)) {
     preferredRange = factionBehavior.preferredRange;
   }
@@ -1110,6 +1134,10 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     side: record.side,
     lateralSign,
     faceTarget,
+    faceAngle,
+    aimCommit: aimCommitted
+      ? Object.freeze({ bearing: record.aimCommitBearing, capRad: SNIPER_AIM_CORRECTION_RAD })
+      : null,
     telegraph: record.telegraph,
     telegraphStarted: record.telegraphStartedTick === record.lastTick,
     fireWindow: !!record.fireWindow,
@@ -1331,6 +1359,50 @@ function runHasPassed(record, self, target, distance) {
   const tx = finite(target.pos && target.pos.x) - finite(self.pos && self.pos.x);
   const tz = finite(target.pos && target.pos.z) - finite(self.pos && self.pos.z);
   return tx * fx + tz * fz < -24;
+}
+
+/**
+ * The firing corridor a ranged disengager commits to at cue entry: the world bearing of where the
+ * target will be when a bolt arrives. The forecast uses the shooter's fastest aim-following bolt
+ * speed when the sensor frame carries it (aimProjectileSpeed, plumbed by aiPorts' sensorSelf), so
+ * the telegraphed line and the released volley agree within the correction band; without the hint
+ * the corridor falls back to a conservative nominal. Computed once — the corridor is never
+ * re-solved, which is what makes the shot baitable.
+ */
+function corridorBearing(self, target) {
+  if (!self || !self.pos || !target || !target.pos) return null;
+  const dx = finite(target.pos.x) - finite(self.pos.x);
+  const dz = finite(target.pos.z) - finite(self.pos.z);
+  const projSpeed = finite(self.aimProjectileSpeed) > 0
+    ? self.aimProjectileSpeed
+    : SNIPER_CORRIDOR_NOMINAL_SPEED;
+  const tof = Math.hypot(dx, dz) / projSpeed;
+  return Math.atan2(
+    dz + finite(target.vel && target.vel.z) * tof,
+    dx + finite(target.vel && target.vel.x) * tof,
+  );
+}
+
+/**
+ * The world point a brawler commits its mass to: the target's forecast position at arrival,
+ * pushed past it along the approach line. Driving at a fixed point — not the live contact — is
+ * what turns the hull into a committed moving obstacle instead of a sticky orbit.
+ */
+function committedChargePoint(self, target, distance) {
+  const sx = finite(self && self.pos && self.pos.x);
+  const sz = finite(self && self.pos && self.pos.z);
+  const dx = finite(target && target.pos && target.pos.x) - sx;
+  const dz = finite(target && target.pos && target.pos.z) - sz;
+  const tof = Math.min(2, Math.max(0.2, distance / BRAWLER_CHARGE_LEAD_SPEED));
+  const fx = sx + dx + finite(target && target.vel && target.vel.x) * tof;
+  const fz = sz + dz + finite(target && target.vel && target.vel.z) * tof;
+  const ex = fx - sx;
+  const ez = fz - sz;
+  const len = Math.hypot(ex, ez) || 1;
+  return Object.freeze({
+    x: fx + (ex / len) * BRAWLER_CHARGE_OVERSHOOT_WU,
+    z: fz + (ez / len) * BRAWLER_CHARGE_OVERSHOOT_WU,
+  });
 }
 
 function egressPoint(self, target, side) {

@@ -97,6 +97,20 @@ export function opticVolleyMountTracking(w) {
   return w.tracking || (def && def.tracking) || 'fixed';
 }
 
+/**
+ * Does this mount's barrel follow the ship's aim angle through its hardpoint gimbal? Fixed guns
+ * and continuous beams release along `rot + facing ± gimbalArc` (weapons.js `_hardpointDir`), so a
+ * committed corridor they can bear is realizable. Turrets and homing mounts solve their own
+ * direction from the locked target — `aimAngle` never reaches them — and deploy mounts lay
+ * payloads at the hull, so none of those can fly a committed line either.
+ */
+export function mountFollowsAimAngle(w) {
+  if (!w || w.defensiveOnly === true || w.facing === 'turret') return false;
+  const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
+  const tracking = w.tracking || (def && def.tracking) || 'fixed';
+  return tracking !== 'auto_turret' && tracking !== 'homing' && tracking !== 'deploy';
+}
+
 function opticLaneIterable(entities) {
   if (Array.isArray(entities)) return entities;
   if (entities && typeof entities.values === 'function') return entities.values();

@@ -1,9 +1,10 @@
-import { ObjectiveKind, ContactKind, wrapAngle } from '../ai/contracts.js';
+import { ObjectiveKind, ContactKind, clamp, wrapAngle } from '../ai/contracts.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import {
   assessFriendlyFireLane,
   assessOpticSplinterReturn,
+  mountFollowsAimAngle,
   opticVolleyMountTracking,
   planOpticBankShot,
 } from '../ai/fireDiscipline.js';
@@ -47,6 +48,12 @@ export function applyAIFiringIntent(decision, state) {
   const intent = mutableIntent(data);
   const objective = decision.directive && decision.directive.objective;
   const combatDoctrine = decision.combatDoctrine || null;
+  const combat = data.combat || (data.combat = {});
+  // A doctrine may commit to a firing corridor (ranged disengager cue/window): the corridor's
+  // anchor is the true firing lead the first tick the corridor is observed, so a steady target
+  // keeps taking honest leads while a dodge can only pull the line ±capRad off it.
+  const aimCommit = combatDoctrine && combatDoctrine.aimCommit
+    && Number.isFinite(combatDoctrine.aimCommit.bearing) ? combatDoctrine.aimCommit : null;
   const pdActor = isPdScreenActor(e);
 
   // W04: pd_screen_escort policy owns target selection, but never fire authorization.
@@ -69,6 +76,19 @@ export function applyAIFiringIntent(decision, state) {
   const fireWindowOk = !combatDoctrine || combatDoctrine.fireWindow;
   if (!attack || targetId == null || !fireWindowOk) {
     if (!combatDoctrine || !fireWindowOk) FIRE_WINDOW_ADMISSION.delete(e);
+    // The corridor anchors at the telegraph, not the shot: keep the anchor state alive through
+    // the cue and pin the aim line on it, so the fire window flies the forecast the pilot saw.
+    if (aimCommit && attack && targetId != null) {
+      const commitTarget = state.entities.get(targetId);
+      if (commitTarget && commitTarget.alive !== false) {
+        committedCorridorAim(e, combat, aimCommit, commitTarget, data.weapons);
+        intent.aimAngle = aimCommit.bearing;
+      } else {
+        combat.aimCommit = null;
+      }
+    } else {
+      combat.aimCommit = null;
+    }
     clearFire(intent);
     return;
   }
@@ -124,10 +144,29 @@ export function applyAIFiringIntent(decision, state) {
     return;
   }
 
-  const aimAngle = leadAngleFor(e, target, data.weapons);
-  const combat = data.combat || (data.combat = {});
+  let aimAngle = leadAngleFor(e, target, data.weapons);
   combat.targetId = targetId;
   combat.pdScreen = pdActor;
+  if (aimCommit) {
+    aimAngle = committedCorridorAim(e, combat, aimCommit, target, data.weapons);
+    // A corridor only counts if a mount that follows the aim can bear it: fixed guns and beams
+    // release along `rot + facing ± gimbalArc`, so a bearing outside every cone would fly the
+    // clamped edge — a line the commitment never vetted. Hold and keep aiming the corridor; the
+    // doctrine's faceAngle is already slewing the hull onto it. Turret/homing-only batteries
+    // solve their own direction and cannot fly a corridor, so they fire their own solution.
+    const corridorMount = aimConeStatus(e, data.weapons, aimAngle);
+    if (corridorMount.status === 'slew') {
+      clearFire(intent, 'committed_aim_off_bore');
+      // Steer the mount's bore onto the corridor, not the raw bearing — for an off-axis fixed
+      // mount (facingAngle ≠ 0) the hull must converge to corridor − facing or the hold never
+      // closes. Same rule the optic-bank slew uses.
+      intent.aimAngle = wrapAngle(aimAngle - corridorMount.facing);
+      combat.opticBankId = null;
+      return;
+    }
+  } else {
+    combat.aimCommit = null;
+  }
   const lane = assessFriendlyFireLane({
     shooter: e,
     target,
@@ -245,14 +284,45 @@ export function opticLaneBodies(state) {
  * caller holds fire: flightV3 turns the ship toward intent.aimAngle whether or not it fires.
  */
 function opticBankMountStatus(shooter, weapons, aimAngle) {
+  return mountConeStatus(shooter, weapons, aimAngle, (w) => {
+    const tracking = opticVolleyMountTracking(w);
+    return tracking != null && w.facing !== 'turret'
+      && tracking !== 'auto_turret' && tracking !== 'homing';
+  });
+}
+
+/**
+ * Can any aim-following mount (fixed gun or beam — see mountFollowsAimAngle) bear this angle?
+ * 'ready' means a cone covers it, 'slew' means the nose has not come around yet, 'none' means the
+ * battery solves its own directions and aimAngle never reaches a barrel.
+ */
+function aimConeStatus(shooter, weapons, aimAngle) {
+  return mountConeStatus(shooter, weapons, aimAngle, mountFollowsAimAngle);
+}
+
+/**
+ * The corridor anchor is the true firing lead the first tick the corridor is observed — a steady
+ * target keeps taking real leads inside ±capRad, while a dodge reads as a divergent fresh
+ * solution and the aim stays pinned on the stale corridor instead of re-tracking.
+ */
+function committedCorridorAim(e, combat, commit, target, weapons) {
+  const fresh = leadAngleFor(e, target, weapons);
+  const prior = combat.aimCommit;
+  const anchor = prior && prior.bearing === commit.bearing && Number.isFinite(prior.anchor)
+    ? prior.anchor
+    : fresh;
+  combat.aimCommit = { bearing: commit.bearing, anchor };
+  const cap = Number.isFinite(commit.capRad) ? Math.abs(commit.capRad) : 0;
+  return wrapAngle(anchor + clamp(wrapAngle(fresh - anchor), -cap, cap));
+}
+
+function mountConeStatus(shooter, weapons, aimAngle, canFollow) {
   const rot = Number(shooter.rot) || 0;
   let followable = false;
   let bestFacing = 0;
   let bestErr = Infinity;
   for (const w of weapons || []) {
-    const tracking = opticVolleyMountTracking(w);
-    if (tracking == null) continue;
-    if (w.facing === 'turret' || tracking === 'auto_turret' || tracking === 'homing') continue;
+    if (!canFollow(w)) continue;
     followable = true;
     const facing = Number(w.facingAngle) || 0;
     const arc = Number.isFinite(w.gimbalArc) ? w.gimbalArc : GIMBAL_ARC_DEFAULT;
