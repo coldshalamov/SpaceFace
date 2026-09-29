@@ -29,7 +29,10 @@ export const UI_DOM_LAYOUT_SCOPE = 'ui-owner-synchronous-javascript-window';
  * synchronous UI owner, authored UI rAF callbacks, the whole game rAF callback, and unknown rAF work. */
 const UI_SOURCE_ROOTS = ['src/ui', 'styles', 'src/core', 'src/render'];
 
-/** Content digest of the UI source the budget covers — the baseline's staleness contract. */
+/** Content digest of the UI source the budget covers — the baseline's staleness contract.
+ * Line endings are canonicalised to LF before hashing: checkout eol policy (autocrlf, .gitattributes)
+ * legitimately smudges text blobs to CRLF on Windows while `git status` stays clean, so hashing raw
+ * working-tree bytes would make a baseline shot on one OS unmatchable on another. */
 export function uiSourceDigest(repoRoot) {
   const hash = createHash('sha256');
   const walk = (dir) => {
@@ -41,7 +44,8 @@ export function uiSourceDigest(repoRoot) {
       else {
         hash.update(relative(repoRoot, full).replaceAll('\\', '/'));
         hash.update('\0');
-        hash.update(readFileSync(full));
+        const bytes = readFileSync(full);
+        hash.update(bytes.includes('\r\n') ? Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n')) : bytes);
         hash.update('\0');
       }
     }
