@@ -399,8 +399,11 @@ function assertFrameWhitelist(frame) {
   // `tumbling` (INF-021) and `recovering` (INF-027) are intentional additions: aiPorts stamps both
   // from live tumble status, contracts.js normalizes them, and maneuver planning relents while
   // `self.tumbling` so a decontrolled ship drifts instead of fighting the yank.
+  // `aimProjectileSpeed` (SF-050) is an intentional addition: aiPorts stamps the fastest
+  // aim-following mount's real bolt speed, contracts.js normalizes it, and combatDoctrine's
+  // committed-corridor forecast leads with it so the telegraphed line and the volley agree.
   assertExactKeys(frame.self, [
-    'activity', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
+    'activity', 'aimProjectileSpeed', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
     'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'operationalMassBand', 'pos', 'radius',
     'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'vel',
   ], 'SensorFrame.self');
