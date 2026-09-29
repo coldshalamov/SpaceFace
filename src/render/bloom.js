@@ -1296,7 +1296,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const rtScene = allocRenderTarget(W, H, sceneRtOpts, reason);
     const halfW = Math.max(1, W >> 1);
     const halfH = Math.max(1, H >> 1);
-    const newLevels = levelCountForSize(W, H);
+    const newLevels = enabled === false ? 0 : levelCountForSize(W, H);
     const down = [];
     for (let i = 0; i < newLevels; i++) {
       const dw = Math.max(1, W >> (i + 1));
@@ -1304,6 +1304,24 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       down.push(allocRenderTarget(dw, dh, pyramidRtOpts, reason));
     }
     return { rtScene, halfW, halfH, levels: newLevels, down };
+  }
+
+  // While bloom is hard-disabled the composite binds neutral textures with zero bloom
+  // weights, so the pyramid is dead memory. Free it on disable and regrow on re-enable
+  // (strength 0 keeps it — that slider is live mid-flight). Mirrors the AO-target
+  // toggle in post/spaceRenderGraph.js.
+  function syncPyramidAllocation() {
+    if (!enabled && down.length > 0) {
+      for (const rt of down) rt.dispose();
+      down.length = 0;
+      levels = 0;
+    } else if (enabled && down.length === 0) {
+      const newLevels = levelCountForSize(W, H);
+      for (let i = 0; i < newLevels; i++) {
+        down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'bloom-enable'));
+      }
+      levels = newLevels;
+    }
   }
 
   let { rtScene, halfW, halfH, levels, down } = createRenderTargets();
@@ -1458,6 +1476,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
   applyPostStyleUniforms();
 
+  const blitPrevViewport = new THREE.Vector4();
+  const blitPrevScissor = new THREE.Vector4();
+
   // draw the shared quad with a given material into a given target (null = screen).
   // Optional viewW/viewH restrict the write to an origin-aligned content sub-rect of a
   // max-sized target (dyn-res). Omit both for a full-target / full-framebuffer blit.
@@ -1470,9 +1491,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     let prevScissor = null;
     let prevScissorTest = null;
     if (useSubRect && typeof renderer.getViewport === 'function') {
-      prevViewport = renderer.getViewport(new THREE.Vector4());
+      prevViewport = renderer.getViewport(blitPrevViewport);
       prevScissor = typeof renderer.getScissor === 'function'
-        ? renderer.getScissor(new THREE.Vector4())
+        ? renderer.getScissor(blitPrevScissor)
         : null;
       prevScissorTest = typeof renderer.getScissorTest === 'function'
         ? renderer.getScissorTest()
@@ -2042,7 +2063,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       if (compositeMat.uniforms.uSceneTexel) {
         compositeMat.uniforms.uSceneTexel.value.set(1 / W, 1 / H);
       }
-      const newLevels = levelCountForSize(W, H);
+      const newLevels = enabled === false ? 0 : levelCountForSize(W, H);
       resizeRenderTarget(rtScene, W, H, 'resize');
       // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
       while (down.length < newLevels) {
@@ -2133,6 +2154,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof o.sharpen === 'boolean') sharpenAmount = o.sharpen ? 0.35 : 0;
     if (typeof o.sharpen === 'number') sharpenAmount = Math.max(0, Math.min(1, o.sharpen));
     if (compositeMat.uniforms.uSharpen) compositeMat.uniforms.uSharpen.value = sharpenAmount;
+    syncPyramidAllocation();
     applyPostStyleUniforms();
   }
 
@@ -2224,7 +2246,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     dispose,
     rebuild,
     get enabled() { return enabled; },
-    set enabled(v) { enabled = !!v; applyPostStyleUniforms(); },
+    set enabled(v) { enabled = !!v; syncPyramidAllocation(); applyPostStyleUniforms(); },
     get strength() { return strength; },
     set strength(v) {
       strength = Math.max(0, +v || 0);
