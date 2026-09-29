@@ -45,20 +45,20 @@ export const KETTLE_LINE = Object.freeze({
 export const KETTLE_LINE_LEGS = Object.freeze([
   Object.freeze({
     poiId: 'poi_kettle_hopper',
-    name: 'Kettle Line Hopper',
+    name: 'Kettle Line Shard',
     type: 'derelict',
     pos: Object.freeze({ x: 2520, z: -1250 }),
     // Chart-safe props: every landmarkGlb here is a parts_manifest place, so the atlas
     // proxy derives a real fallback instead of a bespoke-asset flag.
     landmarkGlb: 'place_ceres_grave_shard',
     visualRadius: 28,
-    tell: 'A seam-run hopper torn loose with its pallets still strapped. Fresh shear faces trail '
-      + '{BEARING}; the next Line piece rides about {RANGE} WU that way.',
+    tell: 'A loaded seam-run piece torn clean off — pallet straps still knotted to nothing. '
+      + 'Fresh shear faces trail {BEARING}; the next Line piece rides about {RANGE} WU that way.',
     discoveryPlate: Object.freeze({
       title: 'Kettle Line — First Overboard',
-      body: 'A DMC seam-run hopper from the Kettle Line, torn loose loaded and dropped right off '
-        + 'the gate approach. The Line worked this seam for eleven years; this is the first '
-        + 'piece the belt ever gave back.',
+      body: 'A loaded piece of the Kettle Line, torn loose right off the gate approach with its '
+        + 'pallet straps still knotted. The Line worked this seam for eleven years; this is the '
+        + 'first piece the belt ever gave back.',
     }),
   }),
   Object.freeze({

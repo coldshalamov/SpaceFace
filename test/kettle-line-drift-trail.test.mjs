@@ -112,7 +112,7 @@ test('a real pulse resolves the hopper row into the Kettle tell', () => {
   assert.ok(events.results.length, 'the pulse returns signal rows');
   const row = events.results[0].signals.find((entry) => entry.sourceId === 'poi_kettle_hopper');
   assert.ok(row, 'the hopper appears in the pulse results');
-  assert.equal(row.classification, 'KETTLE LINE HOPPER');
+  assert.equal(row.classification, 'KETTLE LINE SHARD');
   assert.ok(row.detail.includes('south-west') && row.detail.includes('2100'),
     `the tell reads the authored bearing ("${row.detail}")`);
   assert.equal(row.manualInvestigation, true, 'the row asks to be investigated in person');
