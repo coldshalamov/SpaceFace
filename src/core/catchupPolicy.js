@@ -1,6 +1,12 @@
 // Catch-up and clock policy. Extra fixed steps keep the table clock only.
 // Calendar owners run at 2 Hz (or on clockWake.calendar). Glass/HUD/voice never
 // run on extra catch-up steps. Near owners run on the primary tick, not catch-up.
+//
+// The 60 Hz tick is the atomic deterministic unit: RNG draw order, the
+// InputCommandSnapshot publish contract, TTL/corpse/event ordering, pose + dirty
+// journal marks consumed same-tick, and calendar cohorts are all keyed per tick.
+// Catch-up steps must therefore run as N sequential full steps — never fused
+// (measured fused-able overhead: ~0, design/perf/w4-catchup-REPORT.md).
 
 import {
   CALENDAR_CLOCK_PERIOD_TICKS,
