@@ -552,6 +552,106 @@ function applyFlightKeyTransition(keys, nextKeys) {
   for (const code of Object.keys(nextKeys)) keys[code] = nextKeys[code];
 }
 
+// Verbs that must not collapse into the key map. Movement stays on the map itself.
+const SAMPLED_EDGE_ACTIONS = new Set([
+  'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'deployBeacon',
+  'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
+  'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
+]);
+const KEY_EDGE_CAP = 64;
+
+function flightEdgeQueue(host) {
+  return host._keyEdgeQueue || (host._keyEdgeQueue = []);
+}
+
+/**
+ * One keyboard transition in the order it was sampled. Repeat packets and a press that
+ * started under a modal, text field, or button are not flight edges. timeStamp is ignored.
+ */
+export function applyFlightKeyEvent(host, event = {}) {
+  if (!host || !host._keys) return false;
+  const code = event.code;
+  if (typeof code !== 'string' || code.length === 0) return false;
+  const keys = host._keys;
+  const pressed = event.pressed === true;
+  const blocked = event.blocked === true;
+  const swallowed = host._swallowedFlightKeys || (host._swallowedFlightKeys = Object.create(null));
+  // Repeats are not edges. A held movement key still has to mark the keyboard live, or a
+  // quiet pad steals the helm for the rest of the hold.
+  if (pressed && event.repeat === true) {
+    if (!blocked && !swallowed[code]) host._kbmActivityPending = true;
+    return false;
+  }
+  if (pressed && blocked) {
+    swallowed[code] = true;
+    keys[code] = false;
+    return false;
+  }
+  if (!pressed && swallowed[code]) {
+    delete swallowed[code];
+    keys[code] = false;
+    return false;
+  }
+  const wasDown = !!keys[code];
+  applyFlightKeyTransition(keys, transitionFlightKeyState(host.state, keys, {
+    code, pressed, blocked: false,
+  }));
+  if (!pressed && !wasDown) return false;
+  if (pressed) host._kbmActivityPending = true;
+  const action = actionForCode(host.state, code);
+  if (!SAMPLED_EDGE_ACTIONS.has(action)) return true;
+  if (!pressed && action !== 'tether') return true;
+  const queue = flightEdgeQueue(host);
+  queue.push({ code, pressed, action });
+  if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+  return true;
+}
+
+function takeSampledPress(host, state, action) {
+  const queue = host._keyEdgeQueue;
+  if (!queue || queue.length === 0 || action === 'tether') return false;
+  const index = queue.findIndex((edge) => edge.pressed && edge.action === action);
+  if (index < 0) return false;
+  queue.splice(index, 1);
+  return true;
+}
+
+function takeOldestTetherEdge(host) {
+  const queue = host._keyEdgeQueue;
+  if (!queue || queue.length === 0) return null;
+  const index = queue.findIndex((edge) => edge.action === 'tether');
+  if (index < 0) return null;
+  return queue.splice(index, 1)[0];
+}
+
+// Focus loss releases keys that are still down. Drop only the unmatched press for those
+// keys so the hold cannot latch after the window is gone. A tap that already released
+// stays queued and still reaches the next sim step.
+function dropUnreleasedHeldEdges(queue, keys) {
+  if (!queue || queue.length === 0 || !keys) return;
+  const lastPress = Object.create(null);
+  for (let i = 0; i < queue.length; i += 1) {
+    const edge = queue[i];
+    if (!edge || typeof edge.code !== 'string') continue;
+    lastPress[edge.code] = edge.pressed ? i : -1;
+  }
+  const drop = [];
+  for (const code in keys) {
+    if (!keys[code]) continue;
+    const index = lastPress[code];
+    if (index >= 0) drop.push(index);
+  }
+  if (drop.length === 0) return;
+  const skip = new Set(drop);
+  let write = 0;
+  for (let i = 0; i < queue.length; i += 1) {
+    if (skip.has(i)) continue;
+    queue[write] = queue[i];
+    write += 1;
+  }
+  queue.length = write;
+}
+
 function isTextEntryTarget(target) {
   if (!target || typeof target.closest !== 'function') return false;
   return !!target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
@@ -750,28 +850,21 @@ export const input = {
     listen(windowTarget, 'resize', () => this.touch.autoDetect());
 
     listen(windowTarget, 'keydown', (e) => {
-      const code = eventCode(e);
-      if (!code) return;
-      const blocked = modalInputActive()
-        || isTextEntryTarget(e.target)
-        || isUiCommandTarget(e.target);
-      applyFlightKeyTransition(keys, transitionFlightKeyState(this.state, keys, {
-        code,
+      applyFlightKeyEvent(this, {
+        code: eventCode(e),
         pressed: true,
-        blocked,
-      }));
-      if (blocked) return;
-      // F4: mark activity; tick stamp applied in update() from state.tick.
-      this._kbmActivityPending = true;
+        repeat: e.repeat === true,
+        blocked: modalInputActive()
+          || isTextEntryTarget(e.target)
+          || isUiCommandTarget(e.target),
+      });
     });
     listen(windowTarget, 'keyup', (e) => {
-      const code = eventCode(e);
-      if (code) {
-        applyFlightKeyTransition(keys, transitionFlightKeyState(this.state, keys, {
-          code,
-          pressed: false,
-        }));
-      }
+      applyFlightKeyEvent(this, {
+        code: eventCode(e),
+        pressed: false,
+        blocked: false,
+      });
     });
     listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
     const pointerSurface = this._canvas || windowTarget;
@@ -865,6 +958,8 @@ export const input = {
   // other committed commands remain intact for the coherent restore snapshot.
   releaseHeldControls(_reason = 'lifecycle') {
     const keys = this._keys;
+    dropUnreleasedHeldEdges(this._keyEdgeQueue, keys);
+    if (this._swallowedFlightKeys) this._swallowedFlightKeys = Object.create(null);
     if (keys) {
       for (const code in keys) keys[code] = false;
     }
@@ -1065,6 +1160,13 @@ export const input = {
       this._m0 = false; this._m1 = false; this._m2 = false;
       this._prevM1 = false;
       this._edgePrev = this._edgePrev || {};
+      // A tap sampled in the same gap the screen opened must not wait in the queue and fire
+      // on the way out. A key that stays down is already held, so it is not a new press later.
+      if (this._keyEdgeQueue) this._keyEdgeQueue.length = 0;
+      for (const action of SAMPLED_EDGE_ACTIONS) {
+        if (action === 'tether') continue;
+        this._edgePrev[action] = this._held(state, action);
+      }
       // Docking or opening a menu drops the travel drive, exactly like pursuit: you cannot be
       // hand-flying a burn from a station screen. Reset outright rather than into cooldown — the
       // pilot did not break the latch, the game mode changed underneath it.
@@ -1321,12 +1423,19 @@ export const input = {
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
     const edges = this._edgePrev || (this._edgePrev = {});
     const edge = (action) => {
+      const sampled = takeSampledPress(this, state, action);
       const held = this._held(state, action);
       const was = !!edges[action];
       edges[action] = held;
-      return held && !was;
+      // One press per update. A second press sampled in the same gap stays queued.
+      return sampled || (held && !was);
     };
-    const tetherHeld = this._held(state, 'tether');
+    const tetherEdge = takeOldestTetherEdge(this);
+    // One alias releasing (F or 3) must not drop Space while Space is still down.
+    // The edge's own code is excluded, so a same-key re-press still counts as a release.
+    const tetherHeld = !tetherEdge
+      ? this._held(state, 'tether')
+      : (tetherEdge.pressed === true || this._heldExcept(state, 'tether', tetherEdge.code));
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')

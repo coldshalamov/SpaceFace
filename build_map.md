@@ -578,7 +578,6 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 
 | # | Kind | Unit | Decided player outcome | Prerequisite / prior owner | Status |
 |---|---|---|---|---|---|
-| 161 | BUILD | [NXB-003](design/program/next-wave-2026-09-28/build/NXB-003.md) | Make simultaneous input edges mean the same thing at different render rates | Existing owners; SF-269, PQ-189 | OPEN |
 | 162 | BUILD | [NXB-010](design/program/next-wave-2026-09-28/build/NXB-010.md) | Overlapping fields produce a predictable net force without stealing the controls | Existing owners; SF-034, SF-038, SF-039, SF-040 | OPEN |
 | 163 | BUILD | [NXB-014](design/program/next-wave-2026-09-28/build/NXB-014.md) | Lawful combat stands down when the specific surrender is accepted | Existing owners; SF-058, SF-151, SF-161, CR-WEIR-1 | OPEN |
 | 164 | BUILD | [NXB-022](design/program/next-wave-2026-09-28/build/NXB-022.md) | Extraction never loses material merely because the hold fills mid-bite | Existing owners; SF-096, SF-098, SF-111, SF-273 | OPEN |

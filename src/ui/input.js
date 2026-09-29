@@ -231,6 +231,11 @@ export function createUiInput(ctx, screenManager) {
 
     // --- if a modal is open, route to its handler, ESC = back ---
     if (modalOpen) {
+      // Own the keydown before any close runs. popScreen clears ui-modal-open in this same
+      // turn, and the flight listener is on window — if the bubble continues, a remapped
+      // close key (Escape bound to drop a bomb) becomes a flight press as the screen goes away.
+      // Later document listeners on this node still run; the event does not continue upward.
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('ui:closeCargo');
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
