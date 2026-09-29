@@ -412,7 +412,14 @@ export async function captureUiMatrix(options = {}) {
   try {
     browser = await chromium.launch({
       headless: options.headed !== true,
-      ...(WORLD_CAPTURE ? { args: [...WORLD_GL_ARGS] } : {}),
+      // Headed evidence runs still die when the OS occludes the window (locked desktop, another
+      // window on top): Chromium throttles rAF for occluded pages and every sample stalls.
+      args: [
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-background-timer-throttling',
+        ...(WORLD_CAPTURE ? WORLD_GL_ARGS : []),
+      ],
     });
   } catch (error) {
     server.kill();
