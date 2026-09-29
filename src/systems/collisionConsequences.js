@@ -14,6 +14,7 @@ import {
   isWorldHitstunBody,
   publishHitstunImpulse,
   readRecentImpulseProvenance,
+  readRecentImpulseProvenanceHistory,
   recordImpulseProvenance,
   resolveCollisionConsequence,
   signedHitSide,
@@ -201,11 +202,17 @@ export const collisionConsequences = {
   },
 
   _resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
-    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
-    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
+    // Who is loose is read ONCE, before either side resolves: resolving one side tumbles it, and
+    // reading the flag afterwards would let the striker take its own projectile knock whenever it
+    // happened to be resolved second (id order), which is neither symmetric nor intended.
+    const projectiles = combatFlag('tumbleFling');
+    const looseA = projectiles && isLooseHull(this.state, a);
+    const looseB = projectiles && isLooseHull(this.state, b);
+    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseB);
+    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseA);
   },
 
-  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
+  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false) {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const player = entityById(state, state.playerId);
@@ -230,7 +237,6 @@ export const collisionConsequences = {
       tag:observed.root.kind==='constraint'?'massline':'weapon_hit',tick:observed.root.tick,rootId:observed.root.id}:causalProvenance);
     // Hull-burst overhaul slice A (`combat.tumbleFling`): a hull that has lost its helm is a projectile,
     // so what it strikes is knocked by the closing speed and both masses, not by one solver tick.
-    const strikerLoose = combatFlag('tumbleFling') && isLooseHull(state, other);
     const receipt = resolveCollisionConsequence({
       target,
       other,
@@ -440,18 +446,30 @@ function isLooseHull(state, entity) {
   return readTumbleStatus(state, entity) !== null || isRecovering(state, entity);
 }
 
-function contactImpulseProvenance(a, b, tick) {
-  const aProvenance = readRecentImpulseProvenance(a, tick);
-  const bProvenance = readRecentImpulseProvenance(b, tick);
-  if (!aProvenance) return bProvenance;
-  if (!bProvenance) return aProvenance;
-  if (aProvenance.appliedTick !== bProvenance.appliedTick) {
-    return aProvenance.appliedTick > bProvenance.appliedTick ? aProvenance : bProvenance;
+// Higher appliedTick, else higher magnitude, else the stable provenance key.
+// History order and argument order are not a vote.
+function preferImpulseProvenance(left, right) {
+  if (!left) return right || null;
+  if (!right) return left;
+  if (left.appliedTick !== right.appliedTick) {
+    return left.appliedTick > right.appliedTick ? left : right;
   }
-  if (aProvenance.magnitude !== bProvenance.magnitude) {
-    return aProvenance.magnitude > bProvenance.magnitude ? aProvenance : bProvenance;
+  if (left.magnitude !== right.magnitude) {
+    return left.magnitude > right.magnitude ? left : right;
   }
-  return provenanceKey(aProvenance) <= provenanceKey(bProvenance) ? aProvenance : bProvenance;
+  return provenanceKey(left) <= provenanceKey(right) ? left : right;
+}
+
+function bestImpulseProvenance(entity, tick) {
+  // History first. A stale latest read clears both maps, and the held copy is not in history.
+  const history = readRecentImpulseProvenanceHistory(entity, tick);
+  let best = null;
+  for (const record of history) best = preferImpulseProvenance(best, record);
+  return preferImpulseProvenance(best, readRecentImpulseProvenance(entity, tick));
+}
+
+export function contactImpulseProvenance(a, b, tick) {
+  return preferImpulseProvenance(bestImpulseProvenance(a, tick), bestImpulseProvenance(b, tick));
 }
 
 function provenanceKey(value) {

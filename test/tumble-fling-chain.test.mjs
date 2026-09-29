@@ -59,10 +59,10 @@ test('the projectile-hull law: knock = (1 + e) * closing * mStriker / (mStriker 
   assert.equal(hard.projectileKnock, undefined);
 });
 
-function harness() {
+function harness({ strikerId = 2, victimId = 4 } = {}) {
   const player = { ...HULL(1, 0, -600), isPlayer: true, mass: 18 };
-  const striker = HULL(2, 1, -400);
-  const victim = { ...HULL(4, 1, -540), hull: 30, hullMax: 30 };
+  const striker = HULL(strikerId, 1, -400);
+  const victim = { ...HULL(victimId, 1, -540), hull: 30, hullMax: 30 };
   const bus = createBus();
   const helpers = { combatPhysics: { applyImpulse: () => true } };
   const state = {
@@ -92,7 +92,7 @@ function flingIntoVictim(h, { closing = 110 } = {}) {
   const hitTick = h.state.tick;
   recordImpulseProvenance(h.striker, { actorId: 1, weaponId: 'wpn_concussion_cannon_m', tag: 'concussion_slug', appliedTick: hitTick, magnitude: 600 });
   h.bus.emit(HITSTUN_IMPULSE_EVENT, {
-    source: 'gun', victimId: 2, attackerId: 1, attackerMass: 18, victimMass: 16, deltaV: 250, dirX: -1, dirZ: 0, hitSide: 1, tick: hitTick,
+    source: 'gun', victimId: h.striker.id, attackerId: 1, attackerMass: 18, victimMass: 16, deltaV: 250, dirX: -1, dirZ: 0, hitSide: 1, tick: hitTick,
     provenance: { actorId: 1, weaponId: 'wpn_concussion_cannon_m', tag: 'concussion_slug', appliedTick: hitTick },
   });
   h.state.tick += 1; h.state.simTime += 1 / 60; h.kernel.prePhysics(1 / 60); // the tumble lands
@@ -101,7 +101,7 @@ function flingIntoVictim(h, { closing = 110 } = {}) {
   const events = [];
   h.bus.on('combat:collisionConsequence', (payload) => events.push(payload));
   h.bus.emit('physics:impact', {
-    consequenceKernelVersion: 1, aId: 2, bId: 4, impulse: 16 * 12, dp: 16 * 12, tick: h.state.tick,
+    consequenceKernelVersion: 1, aId: Math.min(h.striker.id, h.victim.id), bId: Math.max(h.striker.id, h.victim.id), impulse: 16 * 12, dp: 16 * 12, tick: h.state.tick,
     pos: { x: -470, z: 0 }, normal: { x: -1, z: 0 }, preSolveClosingSpeed: closing,
   });
   return { events, hitTick };
@@ -111,7 +111,7 @@ test('flag on: the struck hull is knocked loose, hurt by the real closing speed,
   withFlags({ weaponImpulseConsequences: true, tumbleFling: true }, () => {
     const h = harness();
     const { events } = flingIntoVictim(h);
-    const onVictim = events.find((e) => e.targetId === 4);
+    const onVictim = events.find((e) => e.targetId === h.victim.id);
     assert.ok(onVictim, 'the contact produced a consequence for the struck hull');
     assert.equal(onVictim.projectileKnock, true, 'the projectile-hull law applied');
     assert.ok(onVictim.deltaV > 80, `knocked at ~0.8 x 110 (got ${onVictim.deltaV})`);
@@ -129,7 +129,7 @@ test('the chained credit outlives 3 s on the struck hull too (a live one, not ki
     h.victim.hull = 5000; h.victim.hullMax = 5000; // survives, so its own tumble runs
     // A hard strike (250 WU/s closing, knock ~200) puts the struck hull into the 3.5 s stun cap.
     const { events } = flingIntoVictim(h, { closing: 250 });
-    assert.equal(events.find((e) => e.targetId === 4).targetKilled, false);
+    assert.equal(events.find((e) => e.targetId === h.victim.id).targetKilled, false);
     const tumble = readTumbleStatus(h.state, h.victim);
     assert.ok(tumble, 'the struck hull is tumbling');
     assert.ok((tumble.data.until - tumble.data.startedAt) * 60 > 190, 'and its flight is longer than the 3 s window');
@@ -142,10 +142,24 @@ test('flag off (the frozen 47-A profile): the old first-tick reading, no chained
   withFlags({ weaponImpulseConsequences: true, tumbleFling: false }, () => {
     const h = harness();
     const { events } = flingIntoVictim(h);
-    const onVictim = events.find((e) => e.targetId === 4);
+    const onVictim = events.find((e) => e.targetId === h.victim.id);
     assert.ok(onVictim);
     assert.equal(onVictim.projectileKnock, undefined, 'no projectile law');
     assert.ok(onVictim.deltaV < 20, `just the solver reading (got ${onVictim.deltaV})`);
     assert.equal(readRecentImpulseProvenance(h.victim, h.state.tick), null, 'and no record is written on the struck hull');
+  });
+});
+
+test('the knock does not depend on id order: the striker never takes its own projectile knock, whichever side resolves first', () => {
+  withFlags({ weaponImpulseConsequences: true, tumbleFling: true }, () => {
+    for (const ids of [{ strikerId: 2, victimId: 4 }, { strikerId: 9, victimId: 4 }]) {
+      const h = harness(ids);
+      const { events } = flingIntoVictim(h);
+      const onVictim = events.find((e) => e.targetId === h.victim.id);
+      const onStriker = events.find((e) => e.targetId === h.striker.id);
+      assert.equal(onVictim.projectileKnock, true, `striker ${ids.strikerId} vs victim ${ids.victimId}: the struck hull is knocked`);
+      assert.equal(onStriker && onStriker.projectileKnock, undefined,
+        'and the striker is not knocked by the hull it just struck, even though that hull was resolved (and tumbled) first');
+    }
   });
 });
