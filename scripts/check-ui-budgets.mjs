@@ -107,8 +107,9 @@ if (baseline) {
           const changed = [];
           const { createHash } = await import('node:crypto');
           const { readFileSync: readBytes } = await import('node:fs');
+          const canon = (buf) => (buf.includes('\r\n') ? Buffer.from(buf.toString('utf8').replaceAll('\r\n', '\n')) : buf);
           for (const rel of walked) {
-            const digest = createHash('sha256').update(readBytes(path.join(ROOT, rel))).digest('hex');
+            const digest = createHash('sha256').update(canon(readBytes(path.join(ROOT, rel)))).digest('hex');
             if (expected[rel] !== digest) changed.push(rel);
           }
           changed.sort();
