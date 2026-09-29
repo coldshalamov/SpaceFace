@@ -339,6 +339,21 @@ export const MASSLINE_HUD_CSS = `
   border-bottom:12px solid var(--ml2-c,var(--dp-lamp, #f2b950)); opacity:0.7; filter:drop-shadow(0 0 6px var(--ml2-c,var(--dp-lamp, #f2b950))); }
 #sf-ml2 .ml2-self .ml2-mark-label { top:17px; }
 #sf-ml2 .ml2-self.ml2-hot { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:5px; opacity:1; }
+/* PB-MASS-A SF-023: the cutter-commit mark sits ON the player's rope at the bite point. A bare
+   hot X with no enclosing shape — an X inside a diamond already means "denied", so the bite mark
+   must not wear that silhouette. */
+#sf-ml2 .ml2-threat-mark { width:26px; height:26px; margin:-13px 0 0 -13px; color:#ff8a5c; }
+#sf-ml2 .ml2-threat-mark i { position:absolute; inset:0;
+  background:linear-gradient(currentColor, currentColor) center/3px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) center/100% 3px no-repeat;
+  transform:rotate(45deg); filter:drop-shadow(0 0 6px currentColor); }
+#sf-ml2 .ml2-threat-mark .ml2-mark-label { color:#ffb59a; border-color:#ff8a5c; }
+/* PB-MASS-A SF-024: the snag mark sits on the fouled point — a square hung open on one edge, in
+   the same lamp amber every other line-state read on this HUD uses. */
+#sf-ml2 .ml2-snag-mark { width:22px; height:22px; margin:-11px 0 0 -11px;
+  color:var(--dp-lamp, #f2b950); }
+#sf-ml2 .ml2-snag-mark i { position:absolute; inset:0; border:2px solid currentColor;
+  border-right-style:dashed; box-shadow:0 0 8px currentColor; }
 #sf-ml2 svg.ml2-ring { position:absolute; left:0; top:0; overflow:visible; }
 #sf-ml2 .ml2-ring circle { fill:rgba(242,185,80,0.05); stroke:var(--dp-lamp, #f2b950); stroke-width:1.4;
   stroke-dasharray:10 7; opacity:0.55; }
@@ -759,6 +774,18 @@ function writeMasslineHudFields(fields, state, player) {
   index = appendEntityFields(fields, index, state, selfSolution.targetId);
   index = appendEntityFields(fields, index, state, selected.targetId);
   index = appendEntityFields(fields, index, state, bridle.sourceId);
+  // PB-MASS-A: the cutter-commit and snag marks repaint off the threats mirror and the tether
+  // mirror — both exist only beside a live tether, so the quiescent gate already covers them.
+  const sweepCommit = playerState.masslineThreats && playerState.masslineThreats.sweepCommit;
+  fields[index++] = sweepCommit ? sweepCommit.cutterId : null;
+  fields[index++] = sweepCommit && sweepCommit.x;
+  fields[index++] = sweepCommit && sweepCommit.z;
+  const snag = playerState.tether && playerState.tether.snag;
+  fields[index++] = snag ? snag.obstacleId : null;
+  fields[index++] = snag && snag.x;
+  fields[index++] = snag && snag.z;
+  index = appendEntityFields(fields, index, state, sweepCommit && sweepCommit.cutterId);
+  index = appendEntityFields(fields, index, state, snag && snag.obstacleId);
   return index;
 }
 
@@ -860,6 +887,8 @@ export const masslineHud = {
     this._updateAcquisitionPreview(dom, state, player, w2s);
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
+    this._updateThreatMark(dom, state, w2s);
+    this._updateSnagMark(dom, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
     this._updateMeters(dom, ml2, state);
     this._updateCadenceReadout(state);
@@ -1396,6 +1425,55 @@ export const masslineHud = {
     }
   },
 
+  // PB-MASS-A live-line marks. SF-023: the threat mark rides the rope at the bite point a
+  // committed hostile blade will reach inside its window — a located warning on the threatened
+  // segment itself, not a banner. SF-024: the snag mark rides the body/point fouling the line.
+  // Both paint straight off mirrors owned by masslineThreats / tetherGameplay.
+  _updateThreatMark(dom, state, w2s) {
+    const commit = state.player && state.player.masslineThreats
+      && state.player.masslineThreats.sweepCommit;
+    if (!this._updateWorldMark(dom.threatMark, dom.threatMarkLabel, commit, 'CUT')) return;
+    setAttr(dom.threatMark, 'aria-label',
+      'Enemy cutter committed to your Massline — the mark sits where the line will be cut.');
+  },
+
+  _updateSnagMark(dom, state, w2s) {
+    const snag = state.player && state.player.tether && state.player.tether.snag;
+    if (!this._updateWorldMark(dom.snagMark, dom.snagMarkLabel, snag, 'SNAGGED')) return;
+    setAttr(dom.snagMark, 'aria-label',
+      'Massline snagged — haul through, reposition, or cut free.');
+  },
+
+  // Shared placement for a world-anchored live-line mark: project, pin to the cue ring when it
+  // leaves the viewport, paint the label once. Returns false when the mark is hidden.
+  _updateWorldMark(markEl, labelEl, point, label) {
+    if (!markEl) return false;
+    const px = point && point.x;
+    const pz = point && point.z;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) {
+      setStyle(markEl, 'display', 'none');
+      return false;
+    }
+    const screen = projectWorld(w2s, px, pz);
+    if (!finiteProjection(screen)) {
+      setStyle(markEl, 'display', 'none');
+      return false;
+    }
+    const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
+    const offscreen = screen.onScreen === false
+      || screen.x < 0 || screen.x > viewportWidth
+      || screen.y < 0 || screen.y > viewportHeight;
+    const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
+    const cueX = pinned ? pinned.x : screen.x;
+    const cueY = pinned ? pinned.y : screen.y;
+    setStyle(markEl, 'display', 'block');
+    setStyle(markEl, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
+    setClass(markEl, 'ml2-offscreen', offscreen);
+    if (labelEl && labelEl.textContent !== label) labelEl.textContent = label;
+    return true;
+  },
+
   _updateCloakRing(dom, cloakState, player, w2s) {
     if (!cloakState || !cloakState.active || !(cloakState.radius > 0)) {
       setStyle(dom.ringSvg, 'display', 'none');
@@ -1474,6 +1552,8 @@ export const masslineHud = {
     setStyle(dom.throwEl, 'display', 'none');
     if (dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
     setStyle(dom.selfEl, 'display', 'none');
+    setStyle(dom.threatMark, 'display', 'none');
+    setStyle(dom.snagMark, 'display', 'none');
     setStyle(dom.ringSvg, 'display', 'none');
     this._hideAcquisitionPreview(dom);
     setStyle(dom.btPill, 'display', 'none');
@@ -1580,6 +1660,37 @@ export const masslineHud = {
     selfEl.setAttribute('aria-atomic', 'true');
     root.appendChild(selfEl);
 
+    // PB-MASS-A live-line marks: the threat mark (SF-023) rides the rope at the sweep-commit
+    // bite point; the snag mark (SF-024) rides the body/point fouling the line. Both mirror
+    // state owned elsewhere — the HUD decides nothing about them.
+    const threatMark = document.createElement('div');
+    threatMark.className = 'ml2-mark ml2-threat-mark';
+    threatMark.style.display = 'none';
+    const threatMarkGlyph = document.createElement('i');
+    threatMark.appendChild(threatMarkGlyph);
+    const threatMarkLabel = document.createElement('span');
+    threatMarkLabel.className = 'ml2-mark-label';
+    threatMarkLabel.textContent = 'CUT';
+    threatMark.appendChild(threatMarkLabel);
+    threatMark.setAttribute('role', 'status');
+    threatMark.setAttribute('aria-live', 'polite');
+    threatMark.setAttribute('aria-atomic', 'true');
+    root.appendChild(threatMark);
+
+    const snagMark = document.createElement('div');
+    snagMark.className = 'ml2-mark ml2-snag-mark';
+    snagMark.style.display = 'none';
+    const snagMarkGlyph = document.createElement('i');
+    snagMark.appendChild(snagMarkGlyph);
+    const snagMarkLabel = document.createElement('span');
+    snagMarkLabel.className = 'ml2-mark-label';
+    snagMarkLabel.textContent = 'SNAGGED';
+    snagMark.appendChild(snagMarkLabel);
+    snagMark.setAttribute('role', 'status');
+    snagMark.setAttribute('aria-live', 'polite');
+    snagMark.setAttribute('aria-atomic', 'true');
+    root.appendChild(snagMark);
+
     const ringSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ringSvg.setAttribute('class', 'ml2-ring');
     ringSvg.setAttribute('width', '0');
@@ -1640,6 +1751,7 @@ export const masslineHud = {
       root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine,
       ghostSvg, ghostPath, ghostD: null,
       throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
+      threatMark, threatMarkLabel, snagMark, snagMarkLabel,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
       strainPill: strain.pill, strainFill: strain.bar,
     };

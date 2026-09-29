@@ -59,6 +59,26 @@ export const NPC_LINE_CUT_TAUT_RATIO = 0.92;
 export const HOSTILE_SWEEP_LEFTOVER_METHOD = '_cutPlayerLinesWithHostileSweep';
 export const HOSTILE_SWEEP_BEHAVIOUR = 'taut_one_pass';
 const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
+// SF-023 (PB-MASS-A): the cutter's commit window. A taut hostile blade whose gap to a player
+// line is closing fast enough to bite inside this horizon publishes WHERE on the rope the cut
+// lands — a located warning, distinct from the generic swing-threat alarm. The at-contact read
+// stays with HOSTILE_SWEEP_* below; this is the approach half of the same geometry.
+export const SWEEP_COMMIT_WINDOW_S = 1.2;
+const SWEEP_COMMIT_MIN_CLOSING_WU_S = 8;   // slower "approach" never reaches the line in the window
+const SWEEP_COMMIT_MAX_DISTANCE_WU = 96;   // farther approaches belong to the generic swing threat
+// SF-024: a taut, commanded pull that produces no span change while a collidable body sits on the
+// load or on the rope is a SNAG — a readable state, not a silent clip or a frozen control.
+const SNAG_STRETCH_MIN_WU = 0.5;           // the rope must be genuinely loaded, not just taut
+const SNAG_STALL_TICKS = 24;               // ~0.4 s of impeded pull before the snag speaks
+const SNAG_CLEAR_TICKS = 6;                // solver-noise forgiveness before the mark clears
+const SNAG_PULL_SPEED_MIN_WU_S = 14;       // a hauling hull is pull intent even without reel
+const SNAG_TARGET_SPEED_MAX_WU_S = 6;      // a load slower than this is not progressing
+const SNAG_SPAN_RATE_EPS_WU_S = 1;         // |span rate| below this = the pull is gaining nothing
+const SNAG_CONTACT_MARGIN_WU = 3;          // contact grace between hull skins
+const SNAG_QUERY_PAD_WU = 60;              // local obstacle search padding around the line
+// Large statics foul by their edge while their center sits far past the midpoint-radius — the
+// indexed collidables walk covers them without an oversized hash circle.
+const SNAG_MAX_BODY_REACH_WU = 480;
 const NPC_BRIDLE_CUT_RANGE_WU = 180;
 const NPC_ACE_BRIDLE_CUT_RANGE_WU = 220;
 const NPC_ACE_BRIDLE_CUT_PHASES = new Set([
@@ -152,6 +172,11 @@ export const tetherGameplay = {
     this._monofilamentQueryCenter = { x: 0, z: 0 };
     this._hostileSweepCutIds = new Set();
     this._monofilamentLatchId = null;
+    this._sweepCommitScratch = null;
+    this._snag = null;
+    this._snagMirror = null;
+    this._snagScratch = [];
+    this._snagQueryCenter = { x: 0, z: 0 };
     this._bridleAdoptionPending = true;
     this._pendingDrillApproach = null;
     this._drillApproach = null;
@@ -174,6 +199,7 @@ export const tetherGameplay = {
       this._cancelDrillApproach('save_loaded');
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
+      this._snag = null;
     };
     const resetForNewGame = () => {
       this._resetCadenceRuntime(this.state);
@@ -185,12 +211,14 @@ export const tetherGameplay = {
       this._monofilamentLatchId = null;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
+      this._snag = null;
     };
     const endForSectorBoundary = (reason) => {
       this._resetCadenceRuntime(this.state);
       this._cancelDrillApproach(reason);
       this._resetAcquisitionRuntime(this.state);
       this._endTwinBridleForBoundary(this.state, reason);
+      this._snag = null;
     };
     this._insideTetherUpdate = false;
     const onAuthorityBroken = (payload) => {
@@ -379,6 +407,9 @@ export const tetherGameplay = {
       const attDef = attachmentDef(kernel, att && att.defId || this._active.type);
       const automaticBreakAllowed = !!(att && attDef
         && automaticMasslineBreakAllowed(attDef, player, target));
+      // SF-024: a pulled load pinned on real collision geometry reads as a snag with a located
+      // mark and a named choice — never a silent clip or a dead reel.
+      this._updateSnag(state, player, target, att, effectiveLineLengthCommand);
       this._mirror(
         state,
         this._active.targetId,
@@ -1696,7 +1727,15 @@ export const tetherGameplay = {
         }
       }
     }
-    publishHostileSweepRead(state, read);
+    // SF-023: the pre-contact half of the same rows — a taut blade whose gap is closing inside
+    // the commit window publishes the bite point so the observer can locate the warning on the
+    // threatened segment instead of a general enemy alarm.
+    const commit = this._sweepCommitScratch || (this._sweepCommitScratch = {
+      active: false, cutterId: null, bladeId: null, playerLineId: null,
+      etaS: 0, severity: 0, x: 0, z: 0,
+    });
+    computeSweepCommit(blades, lines, commit);
+    publishHostileSweepRead(state, read, commit);
   },
 
   _cutActive(attachments, state, player, now) {
@@ -1893,6 +1932,216 @@ export const tetherGameplay = {
     return shared;
   },
 
+  // SF-024 (PB-MASS-A): a snag is a taut, commanded pull producing no span change while a
+  // collidable body sits on the load or on the rope itself. Detection owns only a mirror read and
+  // two events — the constraint solver is untouched, so hauling through, repositioning, and
+  // cutting all remain live verbs while the mark is up.
+  _updateSnag(state, player, target, attachment, lineLengthCommand) {
+    const snag = this._snag || (this._snag = {
+      attachmentId: null, targetId: null, obstacleId: null, obstacleKind: null,
+      x: 0, z: 0, stallTicks: 0, clearTicks: 0, active: false,
+      pendingObstacleId: null, pendingKind: null, pendingX: 0, pendingZ: 0,
+    });
+    const playerTether = state.player && state.player.tether;
+    if (!attachment || !target || !target.pos || !player || !player.pos) {
+      this._releaseSnagLatch(state, snag, 'ended');
+      return;
+    }
+    if (snag.attachmentId !== attachment.id || snag.targetId !== this._active.targetId) {
+      this._releaseSnagLatch(state, snag, 'ended');
+      snag.attachmentId = attachment.id;
+      snag.targetId = this._active.targetId;
+    }
+    const dx = finite(target.pos.x) - finite(player.pos.x);
+    const dz = finite(target.pos.z) - finite(player.pos.z);
+    const span = Math.hypot(dx, dz);
+    const restLength = positive(attachment.restLength, 0);
+    const taut = restLength > 0 && span - restLength > SNAG_STRETCH_MIN_WU;
+    const playerSpeed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
+    const targetSpeed = Math.hypot(finite(target.vel && target.vel.x), finite(target.vel && target.vel.z));
+    // Pull intent is a commanded reel-in OR a hull hauling the load bodily — a slack parked line
+    // or a drifting load with no pull is not a snag even when it rests on a rock.
+    const pullIntent = lineLengthCommand < -0.01
+      || (taut && playerSpeed >= SNAG_PULL_SPEED_MIN_WU_S);
+    let spanRate = 0;
+    if (span > 1e-6) {
+      const nx = dx / span;
+      const nz = dz / span;
+      spanRate = (finite(target.vel && target.vel.x) - finite(player.vel && player.vel.x)) * nx
+        + (finite(target.vel && target.vel.z) - finite(player.vel && player.vel.z)) * nz;
+    }
+    const impeded = Math.abs(spanRate) <= SNAG_SPAN_RATE_EPS_WU_S
+      && targetSpeed <= Math.max(SNAG_TARGET_SPEED_MAX_WU_S, playerSpeed * 0.2);
+    let contact = null;
+    if (taut && pullIntent && impeded) {
+      contact = this._findSnagObstacle(state, player, target, span);
+    }
+    if (contact) {
+      snag.stallTicks += 1;
+      snag.clearTicks = 0;
+      snag.pendingObstacleId = contact.obstacleId;
+      snag.pendingKind = contact.kind;
+      snag.pendingX = contact.x;
+      snag.pendingZ = contact.z;
+    } else {
+      snag.stallTicks = 0;
+      if (snag.active) {
+        snag.clearTicks += 1;
+        if (snag.clearTicks >= SNAG_CLEAR_TICKS) this._releaseSnagLatch(state, snag, 'cleared');
+      }
+    }
+    if (!snag.active && snag.stallTicks >= SNAG_STALL_TICKS) {
+      snag.active = true;
+      snag.obstacleId = snag.pendingObstacleId;
+      snag.obstacleKind = snag.pendingKind;
+      snag.x = snag.pendingX;
+      snag.z = snag.pendingZ;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('tether:snagged', {
+          attachmentId: snag.attachmentId,
+          targetId: snag.targetId,
+          obstacleId: snag.obstacleId,
+          obstacleKind: snag.obstacleKind,
+          x: snag.x,
+          z: snag.z,
+          tick: Number.isFinite(state.tick) ? state.tick : null,
+        });
+        this.bus.emit('toast', {
+          text: 'MASSLINE SNAGGED — haul through, reposition, or cut free.',
+          kind: 'warn',
+          ttl: 4,
+        });
+      }
+    }
+    if (snag.active && contact) {
+      snag.obstacleId = contact.obstacleId;
+      snag.obstacleKind = contact.kind;
+      snag.x = contact.x;
+      snag.z = contact.z;
+    }
+    if (playerTether) {
+      if (snag.active) {
+        const mirror = this._snagMirror || (this._snagMirror = {
+          obstacleId: null, kind: null, x: 0, z: 0,
+        });
+        mirror.obstacleId = snag.obstacleId;
+        mirror.kind = snag.obstacleKind;
+        mirror.x = snag.x;
+        mirror.z = snag.z;
+        playerTether.snag = mirror;
+      } else {
+        playerTether.snag = null;
+      }
+    }
+  },
+
+  // Nearest collidable body fouling the line: first the load itself touching a hull (the pinch
+  // point sits where they meet), then a body clipping the rope span (the saw point). Non-solid
+  // pickups and the endpoints themselves never count.
+  _findSnagObstacle(state, player, target, span) {
+    const px = finite(player.pos.x);
+    const pz = finite(player.pos.z);
+    const tx = finite(target.pos.x);
+    const tz = finite(target.pos.z);
+    const scratch = this._snagScratch || (this._snagScratch = []);
+    scratch.length = 0;
+    const center = this._snagQueryCenter || (this._snagQueryCenter = { x: 0, z: 0 });
+    center.x = (px + tx) * 0.5;
+    center.z = (pz + tz) * 0.5;
+    const radius = span * 0.5 + SNAG_QUERY_PAD_WU;
+    let candidates;
+    const index = state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+        && Array.isArray(index.collidables)) {
+      // The collidables bucket is the honest obstacle universe — everything that can foul a rope,
+      // typed or not, sensors excluded. Distance-filtered into scratch.
+      for (const e of index.collidables) {
+        if (!e || !e.pos) continue;
+        const ddx = finite(e.pos.x) - center.x;
+        const ddz = finite(e.pos.z) - center.z;
+        const reach = radius + positive(e.radius, 0);
+        if (ddx * ddx + ddz * ddz <= reach * reach) scratch.push(e);
+      }
+      candidates = scratch;
+    } else if (hasActiveSpatialHash(state.spatialHash)) {
+      candidates = queryNearbyEntities(state, center, radius + SNAG_MAX_BODY_REACH_WU, scratch);
+    } else {
+      const list = state.entityList
+        || (state.entities && typeof state.entities.values === 'function' ? state.entities.values() : []);
+      for (const e of list) {
+        if (!e || !e.pos) continue;
+        const ddx = finite(e.pos.x) - center.x;
+        const ddz = finite(e.pos.z) - center.z;
+        const reach = radius + positive(e.radius, 0);
+        if (ddx * ddx + ddz * ddz <= reach * reach) scratch.push(e);
+      }
+      candidates = scratch;
+    }
+    const targetR = positive(target.radius, 4);
+    let best = null;
+    let bestD2 = Infinity;
+    // Pass 1 — the load is touching the body.
+    for (const e of candidates) {
+      if (!this._snagObstacleEligible(e, player, target)) continue;
+      const ddx = finite(e.pos.x) - tx;
+      const ddz = finite(e.pos.z) - tz;
+      const reach = positive(e.radius, 0) + targetR + SNAG_CONTACT_MARGIN_WU;
+      const d2 = ddx * ddx + ddz * ddz;
+      if (d2 <= reach * reach && d2 < bestD2) {
+        const point = closestPointOnSegment(e.pos.x, e.pos.z, px, pz, tx, tz);
+        bestD2 = d2;
+        best = { obstacleId: e.id, kind: 'contact', x: point.x, z: point.z };
+      }
+    }
+    if (best) return best;
+    // Pass 2 — a body is clipping the rope span; nearest to the load wins.
+    for (const e of candidates) {
+      if (!this._snagObstacleEligible(e, player, target)) continue;
+      const reach = positive(e.radius, 0) + SNAG_CONTACT_MARGIN_WU;
+      const point = closestPointOnSegment(e.pos.x, e.pos.z, px, pz, tx, tz);
+      if (!point) continue;
+      const ddx = point.x - finite(e.pos.x);
+      const ddz = point.z - finite(e.pos.z);
+      if (ddx * ddx + ddz * ddz > reach * reach) continue;
+      const distToTarget = (point.x - tx) * (point.x - tx) + (point.z - tz) * (point.z - tz);
+      if (distToTarget < bestD2) {
+        bestD2 = distToTarget;
+        best = { obstacleId: e.id, kind: 'line', x: point.x, z: point.z };
+      }
+    }
+    return best;
+  },
+
+  _snagObstacleEligible(e, player, target) {
+    if (!e || e.alive === false || !e.pos) return false;
+    if (e.id === player.id || e.id === target.id) return false;
+    return e.collides !== false;
+  },
+
+  _releaseSnagLatch(state, snag, reason) {
+    if (!snag) return;
+    if (snag.active && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('tether:snagCleared', {
+        attachmentId: snag.attachmentId,
+        targetId: snag.targetId,
+        obstacleId: snag.obstacleId,
+        reason,
+        tick: Number.isFinite(state && state.tick) ? state.tick : null,
+      });
+    }
+    snag.attachmentId = null;
+    snag.targetId = null;
+    snag.obstacleId = null;
+    snag.obstacleKind = null;
+    snag.pendingObstacleId = null;
+    snag.pendingKind = null;
+    snag.stallTicks = 0;
+    snag.clearTicks = 0;
+    snag.active = false;
+    const t = state && state.player && state.player.tether;
+    if (t) t.snag = null;
+  },
+
   _mirror(
     state,
     targetId,
@@ -1907,6 +2156,9 @@ export const tetherGameplay = {
     const player = state.player || (state.player = {});
     const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.active = targetId != null;
+    // A line that is gone (cut, broke, target lost, docked, sector boundary) takes its snag mark
+    // with it — the latch lives on this system, the mirror field is the single reader surface.
+    if (!t.active) this._releaseSnagLatch(state, this._snag, 'ended');
     t.targetId = targetId;
     t.strain = strain || 0;
     t.restLength = restLength || 0;
@@ -3170,11 +3422,17 @@ function collectHostileSweepRows(byId, entities, playerId, playerTeam, state, ti
 // reads the sweep the cutter already computed instead of re-walking the map.
 const hostileSweepReads = new WeakMap();
 
-function publishHostileSweepRead(state, read) {
+function publishHostileSweepRead(state, read, commit) {
   if (!state) return;
   let slot = hostileSweepReads.get(state);
   if (!slot) {
-    slot = { tick: null, cutterId: null, bladeId: null, playerLineId: null, taut: false };
+    slot = {
+      tick: null, cutterId: null, bladeId: null, playerLineId: null, taut: false,
+      commit: {
+        active: false, cutterId: null, bladeId: null, playerLineId: null,
+        etaS: Infinity, severity: 0, x: 0, z: 0,
+      },
+    };
     hostileSweepReads.set(state, slot);
   }
   slot.tick = Number.isFinite(state.tick) ? state.tick : null;
@@ -3182,6 +3440,19 @@ function publishHostileSweepRead(state, read) {
   slot.bladeId = read.bladeId;
   slot.playerLineId = read.playerLineId;
   slot.taut = read.taut;
+  const slotCommit = slot.commit;
+  if (commit && commit.active) {
+    slotCommit.active = true;
+    slotCommit.cutterId = commit.cutterId;
+    slotCommit.bladeId = commit.bladeId;
+    slotCommit.playerLineId = commit.playerLineId;
+    slotCommit.etaS = commit.etaS;
+    slotCommit.severity = commit.severity;
+    slotCommit.x = commit.x;
+    slotCommit.z = commit.z;
+  } else {
+    slotCommit.active = false;
+  }
 }
 
 // Read-only: a taut hostile sweep is crossing (or just severed) a player Massline.
@@ -3237,8 +3508,163 @@ export function readTautHostileSweepCrossing(state, player, out) {
   return null;
 }
 
+// Ericson-style closest points between segment (a→b) and segment (c→d), 2D on the XZ plane.
+// Writes {s, t, ax, az, cx, cz} into out — s/t parametrize each segment, a*/c* the closest
+// points — or returns null when both segments are degenerate.
+function closestSegmentPoints(a, b, c, d, out) {
+  const d1x = b.x - a.x;
+  const d1z = b.z - a.z;
+  const d2x = d.x - c.x;
+  const d2z = d.z - c.z;
+  const rx = a.x - c.x;
+  const rz = a.z - c.z;
+  const A = d1x * d1x + d1z * d1z;
+  const E = d2x * d2x + d2z * d2z;
+  const F = d2x * rx + d2z * rz;
+  const C = d1x * rx + d1z * rz;
+  let s;
+  let t;
+  if (A <= 1e-9 && E <= 1e-9) return null;
+  if (A <= 1e-9) {
+    s = 0;
+    t = clamp(F / E, 0, 1);
+  } else if (E <= 1e-9) {
+    t = 0;
+    s = clamp(-C / A, 0, 1);
+  } else {
+    const B = d1x * d2x + d1z * d2z;
+    const denom = A * E - B * B;
+    s = denom > 1e-9 ? clamp((B * F - C * E) / denom, 0, 1) : 0;
+    t = (B * s + F) / E;
+    if (t < 0) {
+      t = 0;
+      s = clamp(-C / A, 0, 1);
+    } else if (t > 1) {
+      t = 1;
+      s = clamp((B - C) / A, 0, 1);
+    }
+  }
+  out.s = s;
+  out.t = t;
+  out.ax = a.x + d1x * s;
+  out.az = a.z + d1z * s;
+  out.cx = c.x + d2x * t;
+  out.cz = c.z + d2z * t;
+  return out;
+}
+
+const sweepCommitScratch = { s: 0, t: 0, ax: 0, az: 0, cx: 0, cz: 0 };
+
+// SF-023: the commit read. For each taut hostile blade vs each live player line, find the
+// closest approach point and the speed at which the gap is closing (the blade point's velocity
+// relative to the line point's velocity, projected along the gap). When the blade can reach the
+// rope inside SWEEP_COMMIT_WINDOW_S the bite is committed — publish the closest point on the
+// player line as the bite location. The at-contact crossing read keeps ownership of the sever
+// tick; this is only the approach warning, so crossing or already-severed lines are excluded.
+function computeSweepCommit(blades, lines, out) {
+  out.active = false;
+  out.cutterId = null;
+  out.bladeId = null;
+  out.playerLineId = null;
+  out.etaS = Infinity;
+  out.severity = 0;
+  const p = sweepCommitScratch;
+  for (const row of blades) {
+    if (!row.taut || !row.mass || !row.owner || !row.owner.pos || !row.mass.pos) continue;
+    for (const line of lines) {
+      const other = line.attachment;
+      if (!other || other.id === row.blade.id || line.justCut) continue;
+      if (!line.source || !line.target || !line.source.pos || !line.target.pos) continue;
+      if (segmentsProperlyCross(row.owner.pos, row.mass.pos, line.source.pos, line.target.pos)) {
+        continue;
+      }
+      const hit = closestSegmentPoints(
+        row.owner.pos, row.mass.pos, line.source.pos, line.target.pos, p);
+      if (!hit) continue;
+      const gx = p.cx - p.ax;
+      const gz = p.cz - p.az;
+      const dist = Math.hypot(gx, gz);
+      if (!(dist > 1e-6) || dist > SWEEP_COMMIT_MAX_DISTANCE_WU) continue;
+      const bladeVx = finite(row.owner.vel && row.owner.vel.x)
+        + (finite(row.mass.vel && row.mass.vel.x) - finite(row.owner.vel && row.owner.vel.x)) * p.s;
+      const bladeVz = finite(row.owner.vel && row.owner.vel.z)
+        + (finite(row.mass.vel && row.mass.vel.z) - finite(row.owner.vel && row.owner.vel.z)) * p.s;
+      const lineVx = finite(line.source.vel && line.source.vel.x)
+        + (finite(line.target.vel && line.target.vel.x)
+          - finite(line.source.vel && line.source.vel.x)) * p.t;
+      const lineVz = finite(line.source.vel && line.source.vel.z)
+        + (finite(line.target.vel && line.target.vel.z)
+          - finite(line.source.vel && line.source.vel.z)) * p.t;
+      const closing = (gx * (bladeVx - lineVx) + gz * (bladeVz - lineVz)) / dist;
+      if (closing < SWEEP_COMMIT_MIN_CLOSING_WU_S) continue;
+      const etaS = dist / closing;
+      if (!(etaS <= SWEEP_COMMIT_WINDOW_S) || etaS >= out.etaS) continue;
+      out.active = true;
+      out.cutterId = row.owner.id;
+      out.bladeId = row.blade.id;
+      out.playerLineId = other.id;
+      out.etaS = etaS;
+      out.severity = clamp(1 - etaS / SWEEP_COMMIT_WINDOW_S, 0, 1);
+      out.x = p.cx;
+      out.z = p.cz;
+    }
+  }
+  return out.active ? out : null;
+}
+
+// Read-only: a taut hostile blade is committed to biting a player Massline inside the commit
+// window — the pre-contact half of readTautHostileSweepCrossing, carrying the bite point.
+export function readHostileSweepCommit(state, player, out) {
+  const result = out || {
+    active: false, cutterId: null, bladeId: null, playerLineId: null,
+    etaS: Infinity, severity: 0, x: 0, z: 0,
+  };
+  result.active = false;
+  result.cutterId = null;
+  result.bladeId = null;
+  result.playerLineId = null;
+  result.etaS = Infinity;
+  result.severity = 0;
+  if (!player || !state) return null;
+  const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || typeof byId !== 'object') return null;
+  const tick = Number.isFinite(state.tick) ? state.tick : null;
+  const published = hostileSweepReads.get(state);
+  if (published && published.tick === tick) {
+    const commit = published.commit;
+    if (!commit || commit.active !== true) return null;
+    result.active = true;
+    result.cutterId = commit.cutterId;
+    result.bladeId = commit.bladeId;
+    result.playerLineId = commit.playerLineId;
+    result.etaS = commit.etaS;
+    result.severity = commit.severity;
+    result.x = commit.x;
+    result.z = commit.z;
+    return result;
+  }
+  const playerId = state.playerId;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  const blades = [];
+  const lines = [];
+  collectHostileSweepRows(byId, entities, playerId, player.team, state, tick, blades, lines);
+  if (!computeSweepCommit(blades, lines, result)) return null;
+  return result;
+}
+
 function orient2d(a, b, p) {
   return (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x);
+}
+
+// Closest point on segment (a→b) to p, 2D XZ. Returns {x, z, t} or null for a degenerate span.
+function closestPointOnSegment(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  if (len2 <= 1e-9) return { x: ax, z: az, t: 0 };
+  const t = clamp(((px - ax) * dx + (pz - az) * dz) / len2, 0, 1);
+  return { x: ax + dx * t, z: az + dz * t, t };
 }
 
 function positive(value, fallback) {

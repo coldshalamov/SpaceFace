@@ -505,7 +505,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 100 | PB-SWARM-D | SF-065+072 draft distinct intentions + build pressure through buildSummary | PB | OPEN |
 | 101 | PB-SWARM-E | SF-070+073+074+075 launch-path verify, chip pending-vs-committed, cash-out surface, rematch causal compare | PB | OPEN — CHECK quartet |
 | 102 | PB-SWARM-F | SF-063+069 pressure-reservoir burst verify + stranded/displaced survivor census | PB | CLAIMED pb-ten-lanes — CHECK pair; packet files swarmMode/survivalRun/survivalWave/survivalWavePlanner/swarmArena/runSession all clean 2026-09-28 |
-| 103 | PB-MASS-A | SF-023+024 cutter warning on the threatened segment + snag becomes a choice | PB | OPEN — seam tetherGameplay; adoptable-claim check first |
+| 103 | PB-MASS-A | SF-023+024 cutter warning on the threatened segment + snag becomes a choice | PB | DONE 2026-10-02 — commit read warns at the bite point pre-contact (LINE UNDER BLADE + world-anchored X); reeled-and-fouled latches SNAGGED on the collidables index with haul/reposition/cut verbs; focused 5/5 + adjacent 331 green; receipt CR: PB-MASS-A-CUTTER-WARNING-SNAG |
 | 104 | PB-MASS-B | SF-027+029 release-space swept-contact delta + salvage-sorting job (route around infer10's mission claims) | PB | OPEN — seam tetherGameplay serial with 103 |
 | 105 | PB-HAND-A | SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry | PB | OPEN — seam flightV3 |
 | 106 | PB-HAND-B | SF-015 three proving-ground exercises: slip a gap, brake beside a moving load, orbit-before-release | PB | OPEN — onboarding venue, adoptable-claim check |

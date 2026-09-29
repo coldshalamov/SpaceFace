@@ -88,6 +88,7 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.break.endpoint': 'presentation.tether.break',
   'tether.whip_impact': 'presentation.tether.whip_impact',
   'massline.threat': 'presentation.massline.threat',
+  'massline.threat.sweep_commit': 'presentation.massline.threat',
   'massline.counter_tether.cut': 'presentation.massline.threat',
   'massline.counter_tether.overload': 'presentation.massline.threat',
   'tether.release.good': 'presentation.tether.release',
@@ -129,6 +130,8 @@ const UI_CUES = Object.freeze({
   'tether.whip_impact': uiCue('presentation:tether:whip-impact', 'info', 'MASSLINE IMPACT', 1.4),
   // Rung 10 — swing-danger warn (line-near-break / hostile-on-arc / collision-course).
   'massline.threat': uiCue('presentation:massline:threat', 'warn', 'SWING THREAT', 1.4),
+  // SF-023 — a committed hostile blade is not generic swing danger; the warn names the cut.
+  'massline.threat.sweep_commit': uiCue('presentation:massline:threat-sweep-commit', 'danger', 'LINE UNDER BLADE', 1.6),
   'massline.counter_tether.cut': uiCue('presentation:massline:counter-tether-cut', 'danger', 'LINE CUT', 1.4),
   'massline.counter_tether.overload': uiCue('presentation:massline:counter-tether-overload', 'danger', 'OVERLOAD', 1.4),
   // Prompt 03 — release-rated toasts. Severity/ttl escalate good -> clean -> razor so the razor
@@ -160,6 +163,7 @@ const CAPTIONS = Object.freeze({
   'tether.break.endpoint': 'Massline target lost.',
   'tether.whip_impact': 'Massline impact landed.',
   'massline.threat': 'Swing threat detected.',
+  'massline.threat.sweep_commit': 'An enemy blade will reach your Massline at the marked point — move or cut first.',
   'massline.counter_tether.cut': 'Enemy is preparing to cut the Massline.',
   'massline.counter_tether.overload': 'Enemy is preparing a Massline overload break.',
   'tether.release.good': 'Clean release.',
