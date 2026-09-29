@@ -280,6 +280,7 @@ function neutralSelf(entityId) {
     combatDoctrineId: null,
     factionBehavior: null,
     ramAuthorized: false,
+    woundedFallbackSpent: false,
     operationalMassBand: 'medium',
     mobilityBand: 'medium',
     cargoBand: 'empty',
@@ -316,6 +317,7 @@ function normalizeSelf(value, entityId) {
       ? value.aimProjectileSpeed
       : null,
     ramAuthorized: value.ramAuthorized === true,
+    woundedFallbackSpent: value.woundedFallbackSpent === true,
     operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
     mobilityBand: normalizeBand(value.mobilityBand, ['low', 'medium', 'high'], 'medium'),
     cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
