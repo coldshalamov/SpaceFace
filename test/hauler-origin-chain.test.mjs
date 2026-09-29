@@ -382,7 +382,7 @@ check('system reacts to dock:docked and career accept intents', () => {
   assert.equal(view.status, 'offered');
   assert.equal(view.nonBinding, true);
 
-  bus.emit('career:hauler:accept');
+  bus.emit('career:origin:accept', { careerId: HAULER_CAREER_ID, source: 'missionLog' });
   assert.equal(sys.getView().status, 'active');
   assert.equal(log.of('mission:offered').length, 0);
 
