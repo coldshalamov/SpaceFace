@@ -219,6 +219,21 @@ if (process.platform === 'win32') {
     app.commandLine.appendSwitch('use-angle', ANGLE_BACKEND_CHOICES.has(requestedAngle) ? requestedAngle : 'd3d11');
   }
 }
+// V8 young-gen pacing: the flight loop holds near-zero steady-state allocation, so
+// scavenges fire almost only on admission/decode bursts — each is a ~1ms pause that
+// can land inside a presented frame. Pinning the nursery at 64MB per semi-space
+// (V8's own controller settles at ~16MB under its mutator-utilization model) makes
+// burst scavenges ~4-10x rarer at equal throughput — a `--max-` cap alone is a
+// no-op because the utilization controller, not the ceiling, picks the size
+// (verified: identical scavenge curves; the pin drops a burst workload 20→2).
+// js-flags is forwarded to every isolate the shell spawns (renderer + decode
+// workers); commit follows use, so the cost is reserved address space, not RSS.
+// SPACEFACE_SEMI_SPACE_MB overrides the size for probe boxes; 'default' unsets it.
+const SEMI_SPACE_MB = Number(String(process.env.SPACEFACE_SEMI_SPACE_MB || '64').trim());
+if (Number.isInteger(SEMI_SPACE_MB) && SEMI_SPACE_MB >= 8 && SEMI_SPACE_MB <= 512) {
+  app.commandLine.appendSwitch('js-flags',
+    `--min-semi-space-size=${SEMI_SPACE_MB} --max-semi-space-size=${SEMI_SPACE_MB}`);
+}
 // Browser-chrome subsystems a localhost game shell never uses — keeps their periodic
 // discovery/sync work out of the process.
 app.commandLine.appendSwitch('disable-features',
