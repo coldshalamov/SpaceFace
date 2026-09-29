@@ -12,7 +12,7 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
-import { witnessLineOfSight } from '../src/combat/lineOfSight.js';
+import { witnessLineOfSight, segmentHitsProxy } from '../src/combat/lineOfSight.js';
 import { resolveCollisionConsequence } from '../src/combat/impulseKernel.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
@@ -274,6 +274,63 @@ test('PQ-154 terrain seed 15430: the wreck scan reads the salvage pool the death
       .filter((row) => row.qty > 0);
     assert.ok(manifest.length >= 1 && manifest.every((row) => row.id && row.qty > 0),
       'the pool must project to a non-empty scan manifest');
+  } finally {
+    dispose(ctx);
+  }
+});
+
+test('PQ-154/SF-293 terrain seed 15430: the fight continues around the heavy\'s hulk, and shoving it reopens the lane', () => {
+  const ctx = boot();
+  try {
+    // The heavy dies with its wing still in the water: two live hostile escorts on the same
+    // fight. "Continue fighting around the body" is the authored case, not a scripted phase.
+    const wingA = ctx.sim.spawn(shipSpec({ team: 1, defId: 'ship_wasp', pos: { x: -300, z: -200 } }));
+    const wingB = ctx.sim.spawn(shipSpec({ team: 1, defId: 'ship_wasp', pos: { x: 300, z: 200 } }));
+    const { wreck } = killHaulerIntoWreck(ctx);
+    assert.ok(wreck, 'the heavy\'s hulk must materialize in the same tick the fight is still live');
+    assert.notEqual(wingA.alive, false, 'the wing is still flying when the hulk lands');
+    assert.notEqual(wingB.alive, false, 'the wing is still flying when the hulk lands');
+
+    // The hulk is real geometry: its own collision proxy blocks the lane the wing wants...
+    const observer = { id: 999998, pos: { x: wreck.pos.x, z: wreck.pos.z - 600 }, alive: true };
+    const destination = { x: wreck.pos.x, z: wreck.pos.z + 600 };
+    assert.equal(
+      segmentHitsProxy(wreck, observer.pos, destination),
+      true,
+      'the hulk closes the lane while the fight runs on',
+    );
+    assert.equal(
+      witnessLineOfSight(ctx.state, observer, destination),
+      false,
+      'the kill field (hulk + companion debris) blocks the lane outright',
+    );
+
+    // ...and moving the body reopens it — the same displacement a shove or thrown meeting pays.
+    wreck.pos = { x: wreck.pos.x + 800, z: wreck.pos.z };
+    assert.equal(
+      segmentHitsProxy(wreck, observer.pos, destination),
+      false,
+      'the body moved, the lane it closed is back — geometry, not a flag',
+    );
+
+    // Cleanup law: over-cap kills retire the OLDEST field memory — a body from earlier kills —
+    // never the freshest kill the fight is still working around. The last kill's marker always
+    // survives, and the field stays bounded.
+    let freshestMarker = null;
+    let freshestVictim = null;
+    for (let i = 0; i < 10; i++) {
+      const extra = ctx.sim.spawn(shipSpec({
+        team: 1, defId: 'ship_hauler', shipClass: 'hauler',
+        pos: { x: 900 + i * 40, z: 1200 },
+      }));
+      ctx.sim.bus.emit('entity:killed', { id: extra.id, killerId: ctx.player.id });
+      extra.alive = false;
+      freshestVictim = extra;
+    }
+    const markers = aftermathForSector(ctx.state, SECTOR_ID);
+    freshestMarker = markers.find((m) => m && m.victimId === freshestVictim.id) || null;
+    assert.ok(freshestMarker, 'the freshest kill is never the one the cap retires');
+    assert.ok(markers.length <= 8, 'the field stays bounded');
   } finally {
     dispose(ctx);
   }

@@ -30,6 +30,8 @@ import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { substanceFor } from '../core/physicsAuthority.js';
+import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -555,6 +557,40 @@ export const onboarding = {
       const target = this.state.entities && this.state.entities.get(payload.targetId);
       if (!isHitchHintTarget(target)) return;
       this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), payload);
+    });
+    // SF-291 — the same rope, two careers. The fitting screen already grades the fit's tow
+    // class and swing rating (shipCapabilities); these beats connect a MEASURED strain to that
+    // number exactly once each: latching a movable load the drive cannot put under way, and
+    // whipping a mass the same drive could never have towed. Each names the honest existing
+    // fit that improves that specific difficulty; refusing it gates nothing — the physics
+    // already worked, the line just says why it was hard.
+    bus.on('tether:latched', (payload) => {
+      if (!payload || payload.targetId == null) return;
+      const target = this.state.entities && this.state.entities.get(payload.targetId);
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const load = ropeLoadMassT(target);
+      // Anchored endpoints (stations, planet bodies, ordinary rocks) are hitch points, not tow
+      // loads — latching one rides the hull, and a tow-class line would lie about a body that
+      // cannot be moved. Only a dynamic mass strains the rating. A hitchable hull is a ride,
+      // not freight: the hitch hint owns that lesson (and a 55 t mule IS past class — the two
+      // lines must never double-fire on one latch).
+      if (!(load > 0) || substanceFor(target).dynamic !== true
+        || isHitchHintTarget(target)) return;
+      const towClass = towClassMassFor(player && player.data && player.data.derived);
+      if (!(towClass > 0) || load <= towClass) return;
+      this._showHint('masslineTowClass',
+        'That load is past your drive\'s tow rating — it will haul, just slowly. A stronger drive raises the class.',
+        { entityId: payload.targetId });
+    });
+    bus.on('tether:whipImpact', (payload) => {
+      if (!massline2Flag('throw')) return;
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const towClass = towClassMassFor(player && player.data && player.data.derived);
+      const mass = Number(payload && payload.mass);
+      if (!(towClass > 0) || !(Number.isFinite(mass) && mass > towClass)) return;
+      this._showHint('masslineThrowClass',
+        'You just threw a mass your drive cannot tow — a winch kit cinches the next swing faster.',
+        payload);
     });
     bus.on('massline:selfSling', (p) => {
       if (!massline2Flag('throw')) return;
@@ -3030,6 +3066,16 @@ function masslineThrowHint(state) {
   if (mode === 'snap') return 'Tap RIGHT MOUSE near the white diamond to snap the release.';
   if (mode === 'off') return 'Tap RIGHT MOUSE to release on the current vector.';
   return 'Hold RIGHT MOUSE; release waits for the white diamond.';
+}
+
+// The mass the line actually feels: the physics body's authored mass, else the record's.
+// Matches the cadence pair's own read so the rating check and the swing mechanics agree.
+function ropeLoadMassT(entity) {
+  if (!entity || entity.alive === false) return 0;
+  const bodyMass = Number(entity.physicsBody && entity.physicsBody.mass);
+  if (Number.isFinite(bodyMass) && bodyMass > 0) return bodyMass;
+  const mass = Number(entity.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : 0;
 }
 
 // The hitch hint teaches riding a latched hull. It gated on the express liner's
