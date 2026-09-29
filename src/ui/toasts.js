@@ -316,6 +316,7 @@ export function createToasts(ctx) {
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
   bindJumpDenialToasts(bus, () => ctx.state);
+  bindExportRecoveryToasts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
 
   return { push, tick };
@@ -446,6 +447,26 @@ export function bindCombatDenialToasts(bus, getState) {
 
 /** WF-14 — `jump:chargeAbort` becomes one receipt naming the refusal's cause and fix. The
  * Choice-C unfiled charge is excluded: its staged prompt owns that moment. */
+/** One line when an export had to use the previous-generation copy. Blank slots say nothing. */
+export function exportRecoveryToast(payload) {
+  const slot = payload && typeof payload.slot === 'string' ? payload.slot.trim() : '';
+  if (!slot) return null;
+  return {
+    text: `Recovery copy exported for ${slot}`,
+    kind: 'warn',
+    ttl: 4,
+  };
+}
+
+export function bindExportRecoveryToasts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('save:exportRecovery', (payload) => {
+    const spec = exportRecoveryToast(payload);
+    if (!spec || typeof bus.emit !== 'function') return;
+    bus.emit('toast', spec);
+  });
+}
+
 export function bindJumpDenialToasts(bus, getState) {
   if (!bus || typeof bus.on !== 'function') return;
   const seen = new Set();
