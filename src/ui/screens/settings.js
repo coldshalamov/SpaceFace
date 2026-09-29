@@ -153,7 +153,7 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // new-profile Massline primary and F remains its permanent alias.
 export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone'];
+  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone', 'hullBurst'];
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -185,6 +185,7 @@ export const REBIND_LABELS = {
   deployWell: 'Field: deploy attractive Well',
   deployRepulsor: 'Field: deploy Repulsor',
   toggleClearingCone: 'Field: toggle Clearing Cone',
+  hullBurst: 'Hull burst: light the nose (middle-click also works)',
   dropBomb: 'Bomb bay: drop bomb',
   cycleBomb: 'Bomb bay: cycle payload',
 };
@@ -193,7 +194,7 @@ export const REBIND_LABELS = {
 // default button (the live resolved map prints the button on the right of each row).
 export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
-  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
+  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'hullBurst', 'tabPrev', 'tabNext',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
@@ -215,6 +216,7 @@ export const GAMEPAD_REBIND_LABELS = {
   dropBomb: 'Bomb bay: release selected payload',
   cycleBomb: 'Bomb bay: select next payload',
   chargeDetonate: 'Ordnance: detonate armed bombs and charges',
+  hullBurst: 'Hull burst (unbound: pick a button)',
   tabPrev: 'Station tab: previous',
   tabNext: 'Station tab: next',
   dropBomb: 'Bomb bay: drop bomb',

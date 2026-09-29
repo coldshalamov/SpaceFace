@@ -23,6 +23,12 @@ import {
 
 const SHIP_BY_ID = new Map(SHIPS.map((shipDef) => [shipDef.id, shipDef]));
 const MODULE_BY_ID = new Map(MODULES.map((moduleDef) => [moduleDef.id, moduleDef]));
+// One plain-words verb per hull-burst type (the type is the build): what the nose does when you press the burst key.
+const BURST_VERB = Object.freeze({
+  gravity: 'Throw whatever the nose touches',
+  lance: 'Burn whatever the nose touches',
+  grip: 'Carry what the nose catches',
+});
 
 /**
  * The six derived figures the shipworks gauge rack shows, in rack order. Moved here from the
@@ -465,7 +471,7 @@ function subFromDerivedChip(chipId, derived, moduleDef = null) {
     case 'ram':
       return `x${formatMultiplier(derived.ramDamageDealtMult)}`;
     case 'burst':
-      return 'gravity';
+      return String(derived.hullBurstKind || '');
     case 'dash':
       return `${formatUnits(derived.boost && derived.boost.dashImpulse, ' impulse')}`;
     case 'tough': {
@@ -503,7 +509,7 @@ export function capabilityDefinitions(derived) {
   if (finite(derived.hiddenCargoPct, 0) > 0) defs.push({ id: 'hidden', verb: 'Carry what you should not be carrying', tone: 'foe' });
   if (finite(derived.scannerCloak, 0) > 0) defs.push({ id: 'cloak', verb: 'Read quieter than you are', tone: 'foe' });
   if (finite(derived.ramDamageDealtMult, 0) > 0) defs.push({ id: 'ram', verb: 'Use your own hull as the weapon', tone: 'you' });
-  if (derived.hullBurstKind) defs.push({ id: 'burst', verb: 'Throw whatever the nose touches', tone: 'you' });
+  if (derived.hullBurstKind) defs.push({ id: 'burst', verb: BURST_VERB[derived.hullBurstKind] || 'Throw whatever the nose touches', tone: 'you' });
   if (derived.boost && finite(derived.boost.dashImpulse, 0) > 0) defs.push({ id: 'dash', verb: 'Break away instantly', tone: 'you' });
   if (finite(derived.damageReductionMult, 1) < 1) defs.push({ id: 'tough', verb: 'Take the hit and keep going', tone: 'you' });
   if (finite(derived.weaponRangeMult, 1) > 1) defs.push({ id: 'range', verb: 'Reach them before they reach you', tone: 'you' });
@@ -536,7 +542,7 @@ function capabilityFromModule(moduleId) {
   if (finite(mods.hiddenCargoPct, 0) > 0) return { id: 'hidden', verb: 'Carry what you should not be carrying' };
   if (finite(mods.scannerCloak, 0) > 0) return { id: 'cloak', verb: 'Read quieter than you are' };
   if (finite(mods.ramDamageDealtMult, 0) > 0) return { id: 'ram', verb: 'Use your own hull as the weapon' };
-  if (mods.hullBurst) return { id: 'burst', verb: 'Throw whatever the nose touches' };
+  if (mods.hullBurst) return { id: 'burst', verb: BURST_VERB[mods.hullBurst] || 'Throw whatever the nose touches' };
   if (finite(mods.damageReductionPct, 0) > 0) return { id: 'tough', verb: 'Take the hit and keep going' };
   if (finite(mods.weaponRangePct, 0) > 0) return { id: 'range', verb: 'Reach them before they reach you' };
   if (finite(mods.radarRangePct, 0) > 0) return { id: 'radar', verb: 'See them first' };

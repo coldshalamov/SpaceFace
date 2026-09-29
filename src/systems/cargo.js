@@ -3,6 +3,7 @@
 // VOLUME is the only hard cap; MASS is informational (flight reads it as a handling penalty, never blocks).
 // All cargo mutation funnels through addCargo/removeCargo so the usedVolume/usedMass caches never desync.
 import { COMMODITIES } from '../data/commodities.js';
+import { combatFlag } from '../data/featureFlags.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import {
@@ -303,6 +304,81 @@ export function addCargo(state, commodityId, qty, lotSource = null) {
   return accepted;
 }
 
+// ---- Salvage bay (hull-burst overhaul slice D, design doc section 7.5; flag combat.salvageBay) ----------------------
+// The player's own KILL loot lands in a separate store instead of the trade hold: the hold keeps its trade and
+// mining role, and the pilot never weighs loot against pack space. The bay auto-fills, is written only here, and
+// its contents are cashed in when the player docks (the scrap rate) through the economy owner. When the bay is full a
+// pickup is refused as usual and mining converts the remainder to credits (arcade overflow).
+// state.player.salvageBay = { items:{[cmdtyId]:qty}, usedVolume }, created lazily (absent until the first pickup, so a
+// player who never fights, and the frozen 47-A profile, carry no new field).
+export const SALVAGE_BAY = Object.freeze({
+  capMult: 5,       // bay volume = this x the ordinary hold...
+  capFloor: 600,    // ...but never less than this, so a small hull still has a usable bay
+  saleRate: 0.6,    // share of a commodity's reference price the dock pays (the doc's 60% scrap placeholder)
+});
+const BASE_PRICE = Object.create(null);
+for (const c of COMMODITIES) BASE_PRICE[c.id] = Number.isFinite(c.basePrice) ? c.basePrice : 0;
+
+export function salvageBayCap(state) {
+  const hold = Number(state && state.player && state.player.cargo && state.player.cargo.capVolume) || 0;
+  return Math.max(SALVAGE_BAY.capFloor, hold * SALVAGE_BAY.capMult);
+}
+
+/** What the UI shows: { used, cap, units } or null when the bay has never held anything. Pure. */
+export function salvageBayReading(state) {
+  const bay = state && state.player && state.player.salvageBay;
+  if (!bay) return null;
+  let units = 0;
+  for (const id in bay.items) units += Number(bay.items[id]) || 0;
+  return { used: Math.round(Number(bay.usedVolume) || 0), cap: Math.round(salvageBayCap(state)), units };
+}
+
+function ensureBay(state) {
+  const player = state.player;
+  if (!player.salvageBay || typeof player.salvageBay !== 'object') player.salvageBay = { items: {}, usedVolume: 0 };
+  if (!player.salvageBay.items) player.salvageBay.items = {};
+  return player.salvageBay;
+}
+
+/** Add kill loot to the salvage bay. Clamps to the bay's remaining volume. Returns the amount accepted. */
+export function addSalvage(state, commodityId, qty) {
+  const def = defOf(state, commodityId);
+  const requested = finiteWholePickupAmount(qty);
+  if (!def || requested <= 0) return 0;
+  const volPerU = volumePerUnit(def);
+  const bay = ensureBay(state);
+  const free = salvageBayCap(state) - (Number(bay.usedVolume) || 0);
+  const accepted = volPerU === 0 ? requested : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
+  if (accepted > 0) {
+    bay.items[commodityId] = (bay.items[commodityId] || 0) + accepted;
+    bay.usedVolume = (Number(bay.usedVolume) || 0) + accepted * volPerU;
+    const bus = busForState(state);
+    if (bus) bus.emit('salvage:changed', { used: Math.round(bay.usedVolume), cap: Math.round(salvageBayCap(state)) });
+  }
+  return accepted;
+}
+
+/** Empty the bay and say what it was worth at the scrap rate. Returns { units, credits, lots } or null when empty. */
+export function cashInSalvage(state) {
+  const bay = state && state.player && state.player.salvageBay;
+  if (!bay || !bay.items) return null;
+  let units = 0;
+  let credits = 0;
+  const lots = [];
+  for (const id of Object.keys(bay.items).sort()) {
+    const qty = Math.floor(Number(bay.items[id]) || 0);
+    if (qty <= 0) continue;
+    const value = Math.floor(qty * (BASE_PRICE[id] || 0) * SALVAGE_BAY.saleRate);
+    units += qty;
+    credits += value;
+    lots.push({ commodityId: id, qty, credits: value });
+  }
+  bay.items = {};
+  bay.usedVolume = 0;
+  if (units <= 0) return null;
+  return { units, credits, lots };
+}
+
 /** Remove up to `qty` units of `commodityId`. Returns the amount actually removed. */
 export function removeCargo(state, commodityId, qty) {
   if (isPersistentCargo(state, commodityId)) return 0;
@@ -361,7 +437,10 @@ export const cargo = {
         const source = payload.richLotSource || payload.lotSource
           || pickup && pickup.data && (pickup.data.richLotSource || pickup.data.lotSource)
           || null;
-        const accepted = addCargo(state, commodityId, qty, source);
+        // Kill loot (the player's own kill burst; never a run wallet's) goes to the salvage bay, not the trade hold.
+        const combatLoot = combatFlag('salvageBay') && pickup && pickup.data
+          && pickup.data.combatLoot === true && pickup.data.wallet !== 'run';
+        const accepted = combatLoot ? addSalvage(state, commodityId, qty) : addCargo(state, commodityId, qty, source);
         payload.acceptedAmount = accepted;
         payload.rejectedAmount = Math.max(0, qty - accepted);
         // Downstream outcome owners receive the finalized accepted provenance even when the core
@@ -390,6 +469,8 @@ export const cargo = {
     });
 
     subscribe(binding, 'dock:docked', (payload) => this._spillHotArrival(payload || {}));
+    // Docking cashes the salvage bay in at the scrap rate (credits through the economy owner).
+    subscribe(binding, 'dock:docked', () => this._cashInSalvage());
     // The spill itself lands under the dock clunk and the station hub, so the undock is the
     // legible moment: the player is back in flight right beside their spilled pods. Cargo owns
     // the spill receipt, so cargo announces it here — once per spill, no repeat on later undocks.
@@ -453,6 +534,15 @@ export const cargo = {
     }
     cargo.usedVolume = vol;
     cargo.usedMass = mass;
+    const bay = state.player.salvageBay;
+    if (bay && bay.items) {
+      let bayVol = 0;
+      for (const id in bay.items) {
+        const def = defOf(state, id);
+        if (def) bayVol += (Number(bay.items[id]) || 0) * volumePerUnit(def);
+      }
+      bay.usedVolume = bayVol;
+    }
     if (Array.isArray(cargo.richLots)) {
       const available = cargo.items || {};
       const remaining = { ...available };
@@ -535,6 +625,27 @@ export const cargo = {
    * announcement rides the toast + alert voices; the spilled pods themselves are persistent
    * payload entities, so the beat resolves in the world whether or not the player reacts.
    */
+  _cashInSalvage() {
+    if (!combatFlag('salvageBay')) return;
+    const sale = cashInSalvage(this.state);
+    if (!sale || !this.bus || typeof this.bus.emit !== 'function') return;
+    if (sale.credits > 0) {
+      this.bus.emit('economy:grantCredits', {
+        amount: sale.credits,
+        reason: 'salvage:bay_sale',
+        receiptId: `salvage_bay:${this.state.tick | 0}`,
+      });
+    }
+    this.bus.emit('salvage:bayCashedIn', { units: sale.units, credits: sale.credits, lots: sale.lots });
+    this.bus.emit('salvage:changed', { used: 0, cap: Math.round(salvageBayCap(this.state)) });
+    this.bus.emit('toast', {
+      text: `Salvage bay cashed in: ${sale.units} units for ${sale.credits} cr.`,
+      kind: 'good',
+      ttl: 6,
+    });
+    this.bus.emit('audio:cue', { id: 'sfx_loot_collect' });
+  },
+
   _announceHotDockSpill() {
     const receipt = this._pendingSpillAnnounce;
     this._pendingSpillAnnounce = null;

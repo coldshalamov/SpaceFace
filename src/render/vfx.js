@@ -4735,6 +4735,15 @@ export const vfx = {
   _presentationStyle(p) {
     const id = (p && p.id) || '';
     const lane = (p && p.lane) || '';
+    // Hull-burst cues (systems/hullBurst.js): a directional white-hot flare in the burst type's own colour
+    // (cold blue gravity, orange lance, green grip), cast along the wedge. Not the default violet ring.
+    if (lane === 'hullburst' || id.startsWith('hullburst.')) {
+      const tint = id === 'hullburst.lance' ? '#ff8a3d' : id === 'hullburst.catch' ? '#79f0c8' : '#7f9cff';
+      return presentationStyle('#ffffff', tint, id === 'hullburst.ignite' ? SPR_FLASH : SPR_RING, {
+        echoRing: true, spread: 0.55, lightPeak: 5.5, lightDistance: 210, speed0: 64, speedJitter: 84,
+        life0: 0.28, lifeJitter: 0.2, size0: 2.3, spriteLife: 0.3, spriteSize0: 0.4, spriteSize1: 3.1, spriteOpacity: 0.9,
+      });
+    }
     if (id === 'combat.near_miss' || lane.includes('combat_near_miss')) {
       return presentationStyle('#d7e6ff', '#ffb35c', SPR_FLASH, {
         spread: 0.18,
@@ -11363,7 +11372,8 @@ export const vfx = {
   },
 
   _fieldFlowRelevant() {
-    return !!(this.state?.fields?.active?.length);
+    // A live hull burst draws its wedge through the field presentation (forceLanguage/hullBurstField.js).
+    return !!(this.state?.fields?.active?.length) || this.state?.hullBurst?.phase === 'active';
   },
 
   update(frameDt) {

@@ -4,6 +4,7 @@ import { SweptSurfaceBatch, SURFACE_FLOATS } from './sweptSurfaceBatch.js';
 import { FIELD_LIFECYCLES, FIELD_ROLE, sampleFieldLifecycle } from './effectLifecycle.js';
 import { ForceParticleFlow } from '../vfx/forceParticleFlow.js';
 import { FlowEnvironment } from './flowEnvironment.js';
+import { BURST_STYLE, hullBurstFieldRecord, shapeOfFieldKind } from './hullBurstField.js';
 export { FIELD_RELEASE_SECONDS } from './effectLifecycle.js';
 
 export const FIELD_PRESENTATION_CAPACITY=7; // six simulation fields PLUS the published Seed
@@ -19,6 +20,8 @@ function character(id, born) {
 const COLORS=new Map();
 // Allocate colors once; recipes never parse CSS or allocate Color objects in the frame loop.
 for(const value of [0x54e5ed,0xffc36c,0x58bdff,0xb9a2ff,0xffb766,0xffe1a4,0xb7f5ff,0x79f0c8,0xd9ffe0])COLORS.set(value,new THREE.Color(value));
+// Hull-burst wedges draw with the cone recipe in their own tints (forceLanguage/hullBurstField.js).
+for(const style of Object.values(BURST_STYLE)){COLORS.set(style.color,new THREE.Color(style.color));COLORS.set(style.accent,new THREE.Color(style.accent));}
 
 // Field recipes are authored for hand-deployed tools (r <= ~150 WU). Arena/environmental
 // machinery registers fields at 300-600+ WU, where full-strength working membranes blanket
@@ -64,7 +67,7 @@ export class FieldForcePresentation {
   _matches(slot,field,seedId){return slot.release<0 && slot.id===field.id && slot.kind===field.kind && (field.kind!=='seed'||slot.seedId===seedId);}
   _accept(field,state){
     if(!this._valid(field))return;
-    if(!fieldSignature(field.kind)){this.stats.unknown++;return;}
+    if(!fieldSignature(shapeOfFieldKind(field.kind))){this.stats.unknown++;return;}
     const seedId=state.massSeed?.seedId??null;
     let slot=null;
     for(const s of this.slots)if(this._matches(s,field,seedId)){slot=s;break;}
@@ -102,6 +105,7 @@ export class FieldForcePresentation {
   _quietMaybeAwake(state){
     const list=state&&state.fields&&state.fields.active;
     if(Array.isArray(list)&&list.length>0)return true;
+    if(state&&state.hullBurst&&state.hullBurst.phase==='active')return true;
     for(let i=0;i<this.slots.length;i++)if(this.slots[i].id!==null)return true;
     if(this.particles&&this.particles.live>0)return true;
     return false;
@@ -132,8 +136,17 @@ export class FieldForcePresentation {
     const camera=state.render?.camera;
     const cull=!!(camera?.projectionMatrix&&camera?.matrixWorldInverse);
     if(cull)this.frustum.setFromProjectionMatrix(this.clip.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
-    const list=state.fields?.active;
-    const count=Array.isArray(list)?list.length:0;
+    let list=state.fields?.active;
+    let count=Array.isArray(list)?list.length:0;
+    // A live hull burst is one more field (the cone recipe, its own tint), first so the six-field limit
+    // can never drop the wedge the player just lit. The merged list is a reused scratch array.
+    const burst=hullBurstFieldRecord(state);
+    if(burst){
+      const merged=this._mergedList||(this._mergedList=[]);
+      merged.length=0;merged.push(burst);
+      for(let i=0;i<count;i++)merged.push(list[i]);
+      list=merged;count=merged.length;
+    }
     for(const s of this.slots){
       s.seen=false;s.reserved=false;
       for(let i=0;i<count;i++)if(this._valid(list[i])&&this._matches(s,list[i],state.massSeed?.seedId??null)){s.reserved=true;break;}
@@ -151,22 +164,24 @@ export class FieldForcePresentation {
       if(s.id===null)continue;
       if(!s.seen){
         if(s.release<0)s.release=this.time;
-        const releaseSeconds=FIELD_LIFECYCLES[s.kind].release;
+        const releaseSeconds=FIELD_LIFECYCLES[shapeOfFieldKind(s.kind)].release;
         if(this.time-s.release>=releaseSeconds){s.id=null;continue;}
         stats.releasing++;
         // Keep the last visible body for a distinct breakup. The boundary disappears on this
         // very frame; already supplied parcels coast and retire without creating new fronts.
       }
-      const sig=fieldSignature(s.kind);
+      const sig=fieldSignature(shapeOfFieldKind(s.kind));
       if(!sig)continue;
+      const style=BURST_STYLE[s.kind]||sig;
       this._position(s);
       this._environment(s,state);
       if(cull){
         this.sphere.center.set(this.local.x,0.45,this.local.z);this.sphere.radius=s.radius*1.12;
         if(!this.frustum.intersectsSphere(this.sphere)){stats.culled++;continue;}
       }
-      this.slot=s;this.cycle=FIELD_LIFECYCLES[s.kind];this.releasing=s.release>=0;
-      this.tint=COLORS.get(sig.color);this.alpha=0.88+(s.field.engaged?0.12:0);
+      this.slot=s;this.cycle=FIELD_LIFECYCLES[shapeOfFieldKind(s.kind)];this.releasing=s.release>=0;
+      this.accent=style.accent;
+      this.tint=COLORS.get(style.color);this.alpha=0.88+(s.field.engaged?0.12:0);
       this.reveal=1; // per-section arrival and retirement are owned by iLife in the shader
       this.orientation=s.angle;this.engaged=s.field.engaged===true;
       // `engaged` means a body was affected THIS TICK, not that the tool is switched on.
@@ -175,7 +190,7 @@ export class FieldForcePresentation {
       this.material=SURFACE_MATERIALS.plain;this.radius=s.radius;
       this.presence=Math.min(1,Math.max(FIELD_LANGUAGE_MIN_PRESENCE,
         FIELD_LANGUAGE_FULL_RADIUS/Math.max(1,s.radius)));
-      switch(s.kind){
+      switch(shapeOfFieldKind(s.kind)){
         case 'seed':this._seed(s,s.seed,motion);break;
         case 'well':this._well(s);break;
         case 'repulsor':this._repulsor(s);break;
@@ -185,7 +200,7 @@ export class FieldForcePresentation {
       const pulse=Math.floor((this.time-s.born)/(.16+s.character*.045));
       if(!motion && !this.releasing && pulse>s.particlePulse){
         const p=this.particleBurst;s.particlePulse=pulse;
-        p.kind=s.kind==='sheet'?'skim':s.kind;p.x=this.local.x;p.z=this.local.z;
+        p.kind=shapeOfFieldKind(s.kind)==='sheet'?'skim':shapeOfFieldKind(s.kind);p.x=this.local.x;p.z=this.local.z;
         p.dx=Math.cos(s.angle);p.dz=Math.sin(s.angle);p.radius=s.kind==='seed'?Math.min(s.radius*.33,14):s.radius;
         p.halfAngle=s.field.halfAngleRad;p.halfWidth=s.field.halfWidth;
         p.seed=s.character+Math.imul(pulse,2654435761)/4294967296;
@@ -200,7 +215,7 @@ export class FieldForcePresentation {
     // Fully idle empty (no active fields, no residual releasing slots, batch empty,
     // no live particle residue) → quiet latch. Soft-GPU fps not claimed.
     const activeList=state&&state.fields&&state.fields.active;
-    const hasActive=Array.isArray(activeList)&&activeList.length>0;
+    const hasActive=(Array.isArray(activeList)&&activeList.length>0)||!!burst;
     let slotLive=false;
     for(let i=0;i<this.slots.length;i++){if(this.slots[i].id!==null){slotLive=true;break;}}
     this._quietEmpty=!hasActive&&!slotLive&&this.batch.count===0&&!(this.particles&&this.particles.live>0);
@@ -239,7 +254,8 @@ export class FieldForcePresentation {
     // Field-only shape limits occupy the legacy envelope/pitch channels. Legacy weapon
     // descriptors are unchanged; the lifecycle branch constrains the decorative volume
     // to its actual circle, sector or parallel intake rectangle after deformation.
-    d[22]=this.slot.kind==='cone'?this.slot.field.halfAngleRad:this.slot.kind==='sheet'?this.slot.field.halfWidth:1;
+    const shape=shapeOfFieldKind(this.slot.kind);
+    d[22]=shape==='cone'?this.slot.field.halfAngleRad:shape==='sheet'?this.slot.field.halfWidth:1;
     d[23]=this.radius;
     d[24]=this.slot.born;d[25]=this.cycle.attack;d[26]=this.slot.release;d[27]=this.cycle.release;
     d[28]=this.cycle.code;d[29]=this.role;d[30]=this.phaseOffset+variation;d[31]=this.material.flex;
@@ -325,7 +341,7 @@ export class FieldForcePresentation {
       const rr=this.moving?r*.95:r*(.28+i*.28);
       this._surface(0,-half*.80,half*.80,rr,rr,Math.min(3.4,r*.025),Math.min(4,r*.032),0,i/3,this.moving?1:0,1,.76,0,0,this.flow,1);
     }
-    this.tint=COLORS.get(0xb7f5ff);
+    this.tint=COLORS.get(this.accent)||COLORS.get(0xb7f5ff);
     // Aperture throat: four short machined spars the transport curtain is extruded through.
     this._member('frame');
     for(let i=0;i<4;i++)this._surface(1,(i%2?1:-1)*.16,0,r*.02,Math.min(24,r*.18),Math.min(2.4,r*.024),0,0,i*.25,0,1,.86);
@@ -410,7 +426,7 @@ export class FieldForcePresentation {
       stats:{...this.stats,particles:this.particles.live},
       instances:this.slots.filter(s=>s.id!==null).map(s=>({
         id:s.id,kind:s.kind,born:s.born,releaseAt:s.release,
-        ...sampleFieldLifecycle(this.time,s.born,s.release,FIELD_LIFECYCLES[s.kind],{}),
+        ...sampleFieldLifecycle(this.time,s.born,s.release,FIELD_LIFECYCLES[shapeOfFieldKind(s.kind)],{}),
         choreography:'propagate-interact-detach',environmentBodies:s.environment.count,
       })),
     };

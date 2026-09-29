@@ -50,14 +50,23 @@ function withFlags(flags, fn) {
   try { return fn(); } finally { Object.assign(COMBAT_FLAGS, previous); }
 }
 
-/** Blast the victim along `dir` with `source` and `deltaV`, returning the floor impulses applied. */
-function blast(h, { source = 'gun', deltaV = 250, dirX = -1, dirZ = 0, victimId = 2 } = {}) {
+// The floor rides the reason its own hit is applied under, so the stunt journal reads hit + floor as
+// one delivery (a floor under its own reason opened a second evidence root; found in review).
+const FLOOR_REASON = { gun: 'weapon_hit', weapon: 'weapon_hit', bomb: 'bomb_blast', impulse_charge: 'impulse_charge', hull_burst: 'hull_burst' };
+const FLOOR_REASONS = new Set(Object.values(FLOOR_REASON));
+
+function emitHit(h, { source = 'gun', deltaV = 250, dirX = -1, dirZ = 0, victimId = 2 } = {}) {
   h.bus.emit(HITSTUN_IMPULSE_EVENT, {
     source, victimId, attackerId: 1, attackerMass: 18, victimMass: 16, deltaV, dirX, dirZ, hitSide: 1, tick: h.state.tick,
     provenance: { actorId: 1, weaponId: 'wpn_concussion_cannon_m', tag: 'concussion_slug', appliedTick: h.state.tick },
   });
+}
+
+/** Blast the victim along `dir` with `source` and `deltaV`, returning the floor impulses applied. */
+function blast(h, opts = {}) {
+  emitHit(h, opts);
   h.state.tick += 1; h.state.simTime += 1 / 60; h.kernel.prePhysics(1 / 60);
-  return h.applied.filter((call) => call.reason === 'hitstun_outbound_floor');
+  return h.applied.filter((call) => FLOOR_REASONS.has(call.reason));
 }
 
 test('a hull closing on the shooter has its inbound velocity cancelled, so the hit lands on a hull at rest along the push', () => {
@@ -86,8 +95,10 @@ test('only shove-class sources cancel inbound velocity; throws, wells, collision
     for (const source of ['collision', 'well', 'tether_share']) {
       assert.equal(blast(harness({ vel: { x: 67, z: 0 } }), { source }).length, 0, `${source}: untouched`);
     }
-    for (const source of ['gun', 'weapon', 'bomb', 'impulse_charge']) {
-      assert.equal(blast(harness({ vel: { x: 67, z: 0 } }), { source }).length, 1, `${source}: shove class`);
+    for (const source of ['gun', 'weapon', 'bomb', 'impulse_charge', 'hull_burst']) {
+      const floors = blast(harness({ vel: { x: 67, z: 0 } }), { source });
+      assert.equal(floors.length, 1, `${source}: shove class`);
+      assert.equal(floors[0].reason, FLOOR_REASON[source], `${source}: the floor rides the hit's own impulse reason`);
     }
   });
 });
@@ -103,5 +114,26 @@ test('a hit that does not take the helm changes nothing, and neither does the pl
   });
   withFlags({ weaponImpulseConsequences: true, tumbleFling: false }, () => {
     assert.equal(blast(harness({ vel: { x: 67, z: 0 } })).length, 0, 'flag off (the frozen 47-A profile): byte-identical');
+  });
+});
+
+test('several hits in the same tick cancel the inbound velocity ONCE (a later hit re-reads a stale velocity)', () => {
+  withFlags({ weaponImpulseConsequences: true, tumbleFling: true }, () => {
+    const h = harness({ vel: { x: 67, z: 0 } });
+    // Twin mounts, or a slug plus a blast, land in the same tick: every hit is applied and published
+    // synchronously, before the body's velocity is folded back into entity.vel.
+    emitHit(h, { source: 'gun' });
+    emitHit(h, { source: 'gun' });
+    emitHit(h, { source: 'bomb' });
+    h.state.tick += 1; h.state.simTime += 1 / 60; h.kernel.prePhysics(1 / 60);
+    const floors = h.applied.filter((call) => FLOOR_REASONS.has(call.reason));
+    assert.equal(floors.length, 1, 'one cancel for the tick');
+    assert.ok(Math.abs(floors[0].impulse.x + 67 * 16) < 1e-6, 'and it is the single inbound velocity, not a multiple of it');
+    // The next tick's hit reads a fresh velocity and may cancel again.
+    h.victim.vel.x = 30;
+    h.applied.length = 0;
+    emitHit(h, { source: 'gun' });
+    h.state.tick += 1; h.state.simTime += 1 / 60; h.kernel.prePhysics(1 / 60);
+    assert.equal(h.applied.filter((call) => FLOOR_REASONS.has(call.reason)).length, 1, 'a later tick cancels again');
   });
 });

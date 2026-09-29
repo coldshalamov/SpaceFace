@@ -21,6 +21,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     tumbleFling: true,
     // Hull-burst overhaul slice A: kill loot homes after a beat from any distance; refused ore pays credits.
     arcadeLoot: true,
+    // Hull-burst overhaul slice D: kill loot goes to a separate salvage bay, cashed in at the dock.
+    salvageBay: true,
   }),
   massline2: Object.freeze({
     enabled: true,
@@ -81,6 +83,7 @@ export const LEGACY47A_FEATURES = Object.freeze({
     // The projectile-hull rules change tumble physics; 47-A predates them.
     tumbleFling: false,
     arcadeLoot: false,
+    salvageBay: false,
   }),
   massline2: Object.freeze({
     enabled: false,

@@ -26,6 +26,7 @@ import { glyphSvg } from './glyphs.js';
 import { wantedReasonText } from './wantedReason.js';
 import { SHIPS } from '../data/ships.js';
 import { catalogHullFacts } from '../systems/ships.js';
+import { salvageBayReading } from '../systems/cargo.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
@@ -1850,7 +1851,10 @@ export function createHud(ctx, alerts) {
     const note = cargoHandlingNote(liveDerived());
     const massLine = cargoMassLine(liveDerived());
     const keys = Object.keys(items);
-    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty${massLine ? '\n' + massLine : ''}`;
+    // Slice D: kill loot lives in its own salvage bay, cashed in at the dock (systems/cargo.js).
+    const bay = salvageBayReading(state);
+    const bayLine = bay && bay.units > 0 ? `\nSalvage bay: ${bay.used} / ${bay.cap} u (cashed in when you dock)` : '';
+    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty${massLine ? '\n' + massLine : ''}${bayLine}`;
     const lines = [`Cargo: ${used} / ${cap} u`];
     if (massLine) lines.push(massLine);
     lines.push(note ? `Handling: ${note.text} (heavy)` : 'Handling: full thrust');
@@ -1860,7 +1864,7 @@ export function createHud(ctx, alerts) {
       if (qty > 0) lines.push(`  ${name}: ${qty}`);
     }
     if (keys.length > 8) lines.push(`  ... +${keys.length - 8} more`);
-    return lines.join('\n');
+    return lines.join('\n') + bayLine;
   }
   function buildCreditsTip() {
     const player = state.player || {};

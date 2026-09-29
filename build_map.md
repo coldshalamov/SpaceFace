@@ -375,6 +375,58 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
 **LANE** open-ended area ownership (detail in `FINISH_LANES.md`).
 
+### Handoff — thirty landed rows, do not retake (2026-09-29)
+
+One sitting finished ten board rows and twenty inference lines. The board rows are already
+gone from the tables below. The inference lines are marked SHIPPED in
+[`INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md). Do not take them again.
+
+**Board, landed:**
+
+- CV-EAR-1 (`4b708d40c`) — three engine loads make three rising pitches; idle goes quiet; full throttle speaks; weapons duck both.
+- CV-GLASS-2 (`3d48adbb6`) — the same fixed-seed hit lands on the same body, and the clearance walk is no longer the cost that was named.
+- NXB-001 (`4875ab436`) — taking over a device does not fight the helm.
+- NXB-002 (`989152b5c`) — the G-stick answer stays stable through resize, zoom, and display density.
+- NXB-003 (`689c930c2`) — the same press is the same verb at every presentation rate, and closing a screen does not drop a bomb.
+- NXB-022 (`69800deb8`) — freed ore stays accepted on the same vein or is explicitly destroyed; a full hold does not duplicate the yield or trim the vein to the visit.
+- NXB-053 (`6727ba5ad`) — a station confirmation keeps the lot, quantity, and hull it named.
+- NXB-059 (`a5a33ea08`) — a save is one moment: cargo, credits, the site, and the accepted fact agree; a failed write keeps the previous slot.
+- NXB-060 (`2b83407a3`) — a rejected or replaced package is not described as ready, and New Game does not launch a run that only timed out.
+- NXB-041 (`f8a9a727d`) — an absent witness cannot accuse; a relay stays a report; a stale explanation expires without erasing settled heat, reputation, or the receipt.
+
+**Inference, shipped:**
+
+- NXI-013 (`0427869c5`) — a held throttle on a dead drive is not reported as a healthy coast.
+- NXI-097 (`59c420730`) — dumping sealed goods cannot eject a different owned lot.
+- NXI-026 (`c055479ef`) — reordering what is drawn does not change who is responsible for the same simulated inputs.
+- NXI-049 (`bc04436e4`) — destroying a wing leader between looks does not send followers onto a new ship that reused that number. The new body gets a fresh identity when the number is assigned, the sensors carry it, and the wing holds on the surviving ship even if the roster never changes or is rebuilt while the leader is gone. Do not dissolve the squad just because the leader changed.
+- NXI-033 (`5118b7673`) — an empty magazine stays recognizable; cycling still picks only loaded cells.
+- NXI-081 (`b28c6b720`) — the same ore asks for the same drill at two depths; unknown ore is not guessed.
+- NXI-098 (`872819827`) — sealed cargo stays visible and cannot be sold.
+- NXI-117 (`4b4b75387`) — an empty-hold turn estimate is not shown as the loaded-hold turn.
+- LAW-04 (`4480eff37`) — closing custody adds one chain entry, and the list stays capped.
+- WORLD-27 (`bf1f5fa8a`) — dock cards have one path; the berth card is that path.
+- NXI-130 (`5d87d2b72`) — a stopped site says why, and a valid withdrawal makes it active again.
+- PIC-16 (`3ff570497`) — a shot into a ward records one warded hit along the hit normal and does not flash damage on the ward.
+- VERB-30 (`ac6aeed05`) — fitting the vector charge rack changes that rail's charge capacity; a parked hull does not. The empty-charge line stays exactly `No impulse charges in cargo`.
+- FIGHT-03 (`f21f67eef`) — a draft pick stores the author note; a bad note is rejected without undoing the fit or stalling the draft.
+- PRO-02 (`543b24b07`) — the language list hides the pseudo-locale unless dev is on; an explicit request can still select it.
+- STORY-04 (`7dee214dd`) — the mission log shows one unfinished post-ending objective, and a finished record does not show it again.
+- LAW-06 (`b3d52c761`) — a black-market register asks the dock to wash nearby hot papers once; a lawful berth does not.
+- PRO-10 (`228df0f9d`) — an export that used the recovery copy names that slot once; a healthy export or an autosave does not.
+- STORY-07 (`023be4386`) — the hauler origin accepts and declines through the shared origin door; another career is ignored.
+- PRO-11 (`99f58d877`) — opening a plotted destination from a dossier engages that route; a hull, a good, or a different sector does not.
+
+**Leave alone.** Do not retune mass, thrust, weapon numbers, dock-assist, or camera governors.
+Do not edit Hitch's mesh, `test/*.expected.json`, or `design/program/vm-drop/`. The elastic-whip
+head check was already red from other work; do not retune it to go green. If `src/ai/stack.js`
+and `src/core/coreSystem.js` are still dirty, those hunks are not this batch: one passes doctrine
+perception into the combat override, the other keeps measured skins off dynamic hulls. Do not
+revert them and do not fold them into an unrelated commit.
+
+**Next.** The lowest-numbered OPEN row below whose paths are not in a live `NOW.md` row.
+Inference continues at the first OPEN line in `INFERENCE_IDEAS.md` whose paths are free.
+
 ### A. Recover — finished work stranded in the tree
 
 | # | ID | Work | Kind | Status |
@@ -2326,6 +2378,131 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
+
+### Wave GFX-2 — the graphics assessment, implemented (2026-09-28/29) — IN PROGRESS, handoff
+
+Source of every row: [`GRAPHICS_ASSESSMENT_2026-09-28.md`](./design/program/GRAPHICS_ASSESSMENT_2026-09-28.md)
+(evidence sheets under `.devshots/assess/`). Owner asked for all of it. Packets run in order A→F;
+delete a row in the commit that finishes it.
+
+**Landed and pushed:**
+- **A — visual bugs** (`cbce4123a`): dynamic resolution no longer draws into the bottom-left corner
+  (D97 deleted); the purple disc under ships was the contact-shadow ink (now black); Wreck Cathedral
+  draws at authored size (D54 keeps only the Anvil item); sector-jump prewarm treats superseded
+  entries as withdrawal (6 jumps, 0 fallbacks); Pelican posters re-rendered (D72 deleted).
+- **B — runtime lighting + composition** (`52008a734`): per-sector rigs with key-colour moods (Vesta
+  hot, Pallas cold, Sker sodium, Ceres dusty) inside the colour standard; `fleet-look --sector=`;
+  per-sector sky bodies + desaturated painted sky; `src/render/cameraOccluders.js` dips bodies out
+  of the camera→player corridor. Shadows stay opt-in (owner ruling 2026-09-21); 2048 texel-snapped
+  map for the opt-in. Render graph (GTAO) stays opt-in: same picture, 1.4–1.9× cost.
+
+**C — kit surface + motion + fleet republish: UNCOMMITTED in the tree, interrupted before its checks.**
+What is in the working tree (verify, then commit by pathspec — foreign dirty files sit beside it):
+- C1 baked per-body AO: `tools/blender/forge/forge_export.py` (second UV + Cycles AO bake → glTF
+  occlusionTexture texCoord 1), forge-v1 material path applies AO to direct light
+  (`src/render/illustratedSurface.js`, `src/render/authoredMaterialProfiles.js`).
+- C2 panel grid broken up: `tools/blender/forge/forge_textures.py` + regenerated
+  `tools/blender/forge/textures/*.png`; UV rotation/offset jitter in `forge.py`.
+- C3 window/beacon emission for places: state unknown — check `forge.py` FINISHES and a hub z330 still.
+- C4 motion: `s.anim(...)` in `forge.py`/`forge_export.py` (ANIM_ nodes), 29 ship/place sources
+  tagged, ANIM_ driver in `src/render/infrastructureMotion.js` (+ place branch in `renderer.js`),
+  ANIM_ lane allowed in flight-static packages (`scripts/build-render-package-pilots.mjs`, `publish.mjs`).
+- C5 republish ran over 67 wholeship + 66 place GLBs (+ release mirrors, 447 render-package files,
+  manifests, census). `check-parts-manifest`: 5766 ok / 0 fail. The parts-manifest text corruption
+  from the Windows publish ("â€”") is repaired; confirm its writer is UTF-8-explicit before the next publish.
+- NOT yet run: `check-render-package-pilots`, `check-graphics-asset-receipts`,
+  `node --test test/model-truth-census.test.mjs test/render-package-pilots.test.mjs test/live-ship-visual-package-coverage.test.mjs`,
+  the ANIM/AO focused tests, `check:baseline`, and before/after sheets (partial captures in
+  `.devshots/c5-after-ships/`). Next session: run those, open the sheets (AO must darken recesses
+  without muddying; hub dock lights must chase), fix, then commit C.
+
+**Not started (in order):**
+- **E — models:** rebuild the 29 blockout "everyday space kit" props in Forge (same slots, pack
+  pipeline like the wreck pack); wreck fragments (floating pieces, too-clean "fresh", plank-like
+  cable/pipe); optic crystals as faceted glass not white cards; claim outposts heavier; transponder
+  gate not a sliver; rocks less lumpy; distinct grit/military dock interiors; Wreck Cathedral rebuild
+  to the 40–100k landmark budget; Quiessence freighters to ~15–20k; faction variants of Span/Wasp get
+  silhouette changes (not recolours); spread the civilian ivory-and-orange palette.
+- **F — effects at chase zoom:** record a real fight and prove flash/tracer/impact/death burst read at
+  144 WU; mining beam with body + contact spray + heat on the rock; white-hot Massline core; sector
+  arrival wake/flash; visible retro jet.
+- Also from the assessment: Sker Haven's purple soft-sphere crystals read as blobs (part of E).
+
+### CI stabilization campaign — IN PROGRESS, handoff (2026-09-29)
+
+Ledger truth lives in `DEMO_READINESS_2026-09-20.md` D90; this is the working state.
+
+**Goal:** get `.github/workflows/check.yml` (groups: static×3, sim, feel, browser×3) green on a quiet
+head. Runs cancel in-flight on every push (`concurrency.cancel-in-progress`), so the proof is one
+full green run, not a permanently green history.
+
+**Landed and pushed — real defects fixed (six waves, ~40 commits):**
+- Infra: browser sharded 2→3 (`71d21ea41`), blobless full-history checkouts (`7e9d5d638`).
+- Sim/harness: miningHud DOM guard (`a6e831ba5`), sf.mjs JSON stdout drain (`9f2cb70d5`), clientless
+  mission expiry (`3d1c3054e`), depth-program re-pins (`b339de8c7`), env-machinery crash (`d9ba5c266`).
+- Assets/tooling: place KTX2 role encodings re-published (`34e8a05f9`), forge root-node
+  `spacefaceAsset` stamp (`f50b45ee3`), cross-platform Chrome discovery (`5f3c898d3`), native
+  `title=` → `data-why` (`b6d7447ce`), texture-dedupe detached-payload guard (`c4ee3bd01`).
+- Browser boot: serial-GL-route queue pacing — `gpuQueuePace.js` wired into bloom/opening admission/
+  renderer/residency (`c48d13648`); signal cue lane-critical (`5a06e86ce`); dock pointer rAF+timer
+  backstop (`def5cd899`); ORRERY glyph aria-label hold (`1a249e88a`); bar nav budget (`7c479fed6`);
+  headed-capture anti-occlusion flags (`a7694369d`); `@elemaudio/core` importmap + vendored deps
+  (`f35d15203`).
+- Wave 4–6: sector-arrival headless-on-CI (`42760041c`), whole-ship LOD hysteresis across family
+  swaps — real thrash fix (`13e8b7966`), probe scores ships by the renderer's own admission policy
+  (`3a91603d3`), input gamepad-boost helm claim (`8516173bd`), sg06 port whitelist (`280e15718`),
+  K1 committed-corridor fire-window hold (`e2c4199f2`), probe resolve-window + menu budgets
+  (`160036aff`), save-index card assertions (`a64c6676b`).
+
+**OPEN — the blocking cluster (CI run 36594590047 @ `48c4def72`):**
+The Slice-A physics packages (`954a0ab8c` dynamic compound colliders, `b7b499263` non-landmark
+solids dynamic, `604d19831`, `41e035b11`, `30cb519bd`) drifted the sim hard. Failing now:
+`check-sim-v3`, `check-sim`, `check-sim-dynamic`, `check-sim-compare`, `check-sim-v3-compare`,
+`check-sim-profile`, `check-replay` (all telemetry-envelope hash drift — re-derive if the new
+physics is sanctioned, name the landing commits), `sg02-coincident-spawn-test`,
+`check-phase0-slice-contract` (4 vs 7), `check-sg06-formation` (interceptor separation 122.652),
+`check-pq146-stunt-proofs`, `check-shipworks-dock-composition`, `check-47a-tactics` +
+`check-47a-live-branch` (`surrender_evidence` never fires — behavioral, not a pin), `check-k1`
+re-fail, `check-station-tabs` (market pointer response absent), `check-sector-arrival-admission`,
+`probe-ship-visual-stability`. Adjudicate per-check: sanctioned drift → re-derive fixture; real
+regression → production fix.
+
+**OPEN — `check-ui-budgets` baseline treadmill:**
+`baseline:stale` fails static-2 whenever any lane commits to `src/ui`/`styles`/`src/core`/`src/render`
+(the digest roots). Fix per cycle: headed re-shoot —
+`node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 --budgets-out=test/ui-frame-references/budgets.json`
+on a CLEAN tree at the pushed head (~30-40 min). A race loop doing exactly this runs locally:
+`scratch/budget-loop.ps1` in `.worktrees/budget-shoot`, polls origin/master every 60 s and
+re-shoots the newest head, restarts on digest drift; wins → `scratch/budget-loop.done`. When it
+lands, copy `budgets.json` to main, commit, push immediately. Headed is a hard integrity gate —
+headless numbers are not evidence.
+
+### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
+
+Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
+
+- **Package A & B: Measured Truth Scoreboard (`check-solid-truth.mjs --strict`)**
+  - Scoreboard: **196/196 rows clean**, 0 findings (`node scripts/check-solid-truth.mjs --strict` exits 0).
+  - Craft colliders match measured silhouettes. Decoupled craft collision proportions from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS` in `src/core/sg02DynamicBodyOwner.js`, protecting physical hitboxes against visual tuning (resolves D99).
+  - 10 COARSE/NOSKIN rows resolved with truthful skins and collider kinds.
+- **Package C: Dynamic Compound Colliders (`test/dynamic-compound-colliders-determinism.test.mjs`)**
+  - Compound skins enabled on dynamic bodies (capital ships, dreadnought, heavy wrecks) behind bit-for-bit determinism proof (`test/dynamic-compound-colliders-determinism.test.mjs` PASS). Identical sim hash with/without save-reload, CCD active, primitive count <= 32.
+- **Package D: Zero Overlap & Tunnelling (`scripts/probe-solid-overlap.mjs`)**
+  - Swept headless probe: **480/480 test scenarios PASS**, **0 tunnelling**, worst penetration depth 5.67 WU (all within census row tolerances).
+  - Tested body pairs across speeds 30, 150, 400, 550 WU/s across multiple approach bearings.
+  - Isolated pickup sensor triggers from physical craft knock reactions; capsule spine degenerate window solver ladder added for coincident spawns (`test/sg02-coincident-spawn.test.mjs` 10/10 PASS).
+- **Package E: Universal Dynamics for Solids <= 90 WU (`src/core/physicsAuthority.js`)**
+  - Authoritative physics threshold: structures > 90 WU remain fixed landmarks (stations, jump gates, giant rock cathedrals); non-landmark rocks, wrecks, pods, props, payloads, and buoys are dynamic with volume-proportional mass table.
+- **Package F: Predictive Camera Clearance (`src/render/cameraGlide.js`, `src/render/camera.js`, `src/render/renderer.js`)**
+  - Large moving hulls (capital ships) added to `CAMERA_CLEARANCE_KINDS` with height gate and defId/silhouette/radius filtering.
+  - Reactive clearance paths (`keepOut`, floor easing in `camera.js`) removed; predictive glide is the sole authority.
+  - Headless structure sweep (`scripts/probe-camera-clearance-sweep.mjs`): **7,320 scenarios evaluated** across 122 structural models x 4 zooms [45, 58, 144, 330] x 3 speeds [40, 195, 400 WU/s] x 5 approach bearings: **0 inside frames everywhere**, **4 hard clamp frames total** (~0.0005/scenario), peak vertical acceleration gentle, returns smoothly to zoom.
+  - Camera test suite: **94/94 PASS** (`test/camera-*.test.mjs`).
+- **Ledger Total-Fixes:**
+  - D97 fixed: `BINDINGS.claimBase.label` restored in `src/ui/screens/base.js` (`scripts/check-ui-screen-imports.mjs` 56/56 PASS).
+  - D98 fixed: `maxContactDv` clamped by closing $\Delta v$ in `src/core/sg02DynamicBodyOwner.js` (`test/tumble-fling-bounce.test.mjs` 6/6 PASS); Hitch cruise base speed aligned in `test/pq-029-00-tractor-throw.test.mjs` (10/10 PASS).
+  - D99 fixed: Craft collision dimensions decoupled from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS`.
+  - Rows D97, D98, D99 deleted from `design/program/DEMO_READINESS_2026-09-20.md` per §7 total-fix rule.
 
 ### Wave D — shelf that beats live
 
