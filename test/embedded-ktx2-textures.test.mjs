@@ -7,6 +7,7 @@ import {
   EmbeddedKtx2TexturePlugin,
   registerEmbeddedKtx2Textures,
 } from '../src/render/embeddedKtx2Textures.js';
+import { resetImageSourceDedupeForTests } from '../src/render/imageSourceDedupe.js';
 
 function fakeParser({ images, textures, samplers, ktx2Loader, extensionsRequired } = {}) {
   const bufferViews = new Map();
@@ -40,7 +41,10 @@ function fakeKtx2Loader() {
       parsed.push(buffer.byteLength);
       // The real loader transfers the buffer to its worker, which detaches it on this thread.
       structuredClone(buffer, { transfer: [buffer] });
-      onLoad(new THREE.CompressedTexture([], 4, 4));
+      // A real transcode always resolves with a populated mipmap chain — an empty one would be
+      // indistinguishable from a CPU-detached package texture (imageSourceDedupe treats empty
+      // payloads as dead and re-decodes), so the fixture carries a real level.
+      onLoad(new THREE.CompressedTexture([{ data: new Uint8Array(16), width: 4, height: 4 }], 4, 4));
     },
   };
 }
@@ -203,6 +207,9 @@ test('real render package: KTX2 bytes handed to the transcoder are identical wit
 
   async function collect(on) {
     setEmbeddedKtx2DirectSliceForBench(on);
+    // Identical image bytes already decoded this process dedupe to a shared source and skip the
+    // transcoder — reset so both passes observe a real parse.
+    resetImageSourceDedupeForTests();
     const seen = [];
     const ktx2Loader = {
       parse(buffer, onLoad) {
@@ -239,6 +246,7 @@ test('on the vendored loader (#168 in-place GLB body) the direct slice reads the
 
   async function collect(Loader, on) {
     setEmbeddedKtx2DirectSliceForBench(on);
+    resetImageSourceDedupeForTests();
     const seen = [];
     let parser = null;
     const loader = new Loader();
