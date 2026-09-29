@@ -18,7 +18,7 @@
 //      impact-damage paths.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MASSLINE2_FLAGS, massline2Flag } from '../src/data/featureFlags.js';
+import { MASSLINE2_FLAGS, combatFlag, massline2Flag } from '../src/data/featureFlags.js';
 import {
   aimTrueProjectileVelocity, solveTetherLeadSolution, solveThrowSolution,
   solutionToleranceRad, tetherPairKinematics,
@@ -471,13 +471,19 @@ withFlags(true, () => {
     system.update(1 / 60, state);
     const recovering = consumePhysicsCommand(victim);
     assert.ok(recovering && recovering.control && recovering.control.mode === 'tumbling');
-    assert.ok(recovering.control.torque.y * victim.angVel < 0,
-      'commanded recovery yaw must oppose nonzero spin');
-    const authority = measureThrusterAuthority(victim);
-    const yaw = Math.max(0, Math.min(1, Number.isFinite(authority && authority.yaw) ? authority.yaw : 1));
-    const maxTorque = 18 * Math.max(0.05, yaw) * Math.max(0.1, Number(victim.physicsBody && victim.physicsBody.inertiaY) || 1);
-    assert.ok(Math.abs(recovering.control.torque.y) <= maxTorque + 1e-6,
-      'recovery yaw must stay inside real thruster authority');
+    if (combatFlag('tumbleFling')) {
+      // Owner ruling 2026-09-29 (design/FEEL_CONTRACT.md, NPC recovery): a tumbling hull is out of
+      // control and commands no torque; the thrusters that damp the spin are the recovery beat's.
+      assert.equal(recovering.control.torque.y, 0, 'a free tumble commands no counter-torque');
+    } else {
+      assert.ok(recovering.control.torque.y * victim.angVel < 0,
+        'commanded recovery yaw must oppose nonzero spin');
+      const authority = measureThrusterAuthority(victim);
+      const yaw = Math.max(0, Math.min(1, Number.isFinite(authority && authority.yaw) ? authority.yaw : 1));
+      const maxTorque = 18 * Math.max(0.05, yaw) * Math.max(0.1, Number(victim.physicsBody && victim.physicsBody.inertiaY) || 1);
+      assert.ok(Math.abs(recovering.control.torque.y) <= maxTorque + 1e-6,
+        'recovery yaw must stay inside real thruster authority');
+    }
 
     victim.angVel = 0;
     system.update(1 / 60, state);
@@ -494,6 +500,19 @@ withFlags(true, () => {
       'tumble status must clear once duration elapses');
     assert.equal(victim.data.tumble, undefined, 'recovery must not recreate the deleted duplicate state');
     assert.ok(bus.events.some((e) => e.name === 'massline:tumbleEnd'));
+    if (combatFlag('tumbleFling')) {
+      // The recovery beat is where the real thrusters damp the spin, inside real thruster authority.
+      victim.angVel = 0.2;
+      state.tick += 1;
+      system.update(1 / 60, state);
+      const beat = consumePhysicsCommand(victim);
+      assert.ok(beat && beat.control && beat.control.torque.y * victim.angVel < 0,
+        'the recovery beat commands real thruster torque opposing the spin');
+      const authority = measureThrusterAuthority(victim);
+      const yaw = Math.max(0, Math.min(1, Number.isFinite(authority && authority.yaw) ? authority.yaw : 1));
+      const maxTorque = 18 * Math.max(0.05, yaw) * Math.max(0.1, Number(victim.physicsBody && victim.physicsBody.inertiaY) || 1);
+      assert.ok(Math.abs(beat.control.torque.y) <= maxTorque + 1e-6, 'recovery yaw stays inside real thruster authority');
+    }
     kernel.prePhysics(1 / 60);
     assert.ok(!state.combat.entities[String(victim.id)].blockedActionTags.includes('weapon'),
       'clearing the active status must recompute action gates on the same production pass');

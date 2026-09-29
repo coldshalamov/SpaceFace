@@ -179,7 +179,7 @@ export const tumbleStates = {
       if (!tumbleActive && !drifting && !rcs && !isRecovering(state, e) && !recoveryMarker) continue;
 
       if (tumbleActive) {
-        writePhysicsControl(e, recoveryControl(e, dt, tumble.data && tumble.data.kind));
+        writePhysicsControl(e, tumbleControl(e, dt, tumble.data && tumble.data.kind));
         if (e.data && e.data.intent) {
           e.data.intent.fire = false;
           e.data.intent.moveX = 0;
@@ -385,7 +385,7 @@ export const tumbleStates = {
     const currentSpin = finite(victim.angVel, 0);
     const sign = input.hitSide === -1 ? -1 : 1;
     queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * law.entrySpin - currentSpin), z: 0 });
-    writePhysicsControl(victim, recoveryControl(victim, 1 / 60, input.kind));
+    writePhysicsControl(victim, tumbleControl(victim, 1 / 60, input.kind));
     if (victim.data.intent) {
       victim.data.intent.fire = false;
       victim.data.intent.moveX = 0;
@@ -545,6 +545,27 @@ const RECOVERY_CONTROL_SCRATCH = {
   torque: { x: 0, y: 0, z: 0 },
   source: 'hitstun',
 };
+
+// Hull-burst overhaul slice A (owner, 2026-09-29): "the ship tumbling out of control ... not being
+// acted on by its own propulsion". While the helm is lost the hull commands no thrust AND no torque:
+// the entry spin the hit gave it carries it round, slowed only by the bare hull's own angular drag
+// (the ship contact material), and the real thrusters that damp the spin are the recovery beat's.
+// Before this the active tumble wrote a full yaw-brake counter-torque from its first tick, so a hull
+// that took a 6 rad/s entry spin was back to ~0 within 0.2 s and a blasted ship never visibly
+// tumbled (feel.fling_scene: 0.59 turns over a 2.8 s stun). Same retained-literal law as
+// RECOVERY_CONTROL_SCRATCH: writePhysicsControl copies every field before returning.
+const FREE_TUMBLE_CONTROL = {
+  mode: 'tumbling',
+  force: { x: 0, y: 0, z: 0 },
+  torque: { x: 0, y: 0, z: 0 },
+  source: 'hitstun_free',
+};
+
+function tumbleControl(entity, dt, kind) {
+  if (!combatFlag('tumbleFling')) return recoveryControl(entity, dt, kind);
+  FREE_TUMBLE_CONTROL.source = kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble_free' : 'hitstun_free';
+  return FREE_TUMBLE_CONTROL;
+}
 
 function recoveryControl(entity, dt, kind) {
   const profile = resolveFlightProfile(entity);

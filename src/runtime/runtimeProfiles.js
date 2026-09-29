@@ -17,7 +17,7 @@ export const PRODUCTION_FEATURES = Object.freeze({
     // Authoritative heat vent lockout — profile-driven, not typeof window (N1).
     weaponHeatVent: true,
     // Hull-burst overhaul slice A: the rules that make a knocked-loose hull a projectile (credit held
-    // for the whole flight; more land behind this switch). Profile-driven like the rest.
+    // for the whole flight, free spin; more land behind this switch). Profile-driven like the rest.
     tumbleFling: true,
   }),
   massline2: Object.freeze({

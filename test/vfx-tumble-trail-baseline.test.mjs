@@ -241,8 +241,12 @@ test('vfx-tumble-trail-baseline: real production path characterization (rapier-d
     'saturated case must report applied physics thrust');
   assert.ok(saturated.entrySpin > 5.0, 'saturated tumble must reach clamped spinMax ~6 rad/s');
 
-  // The historical 0 / 0.25 WU baseline is refuted: real path produces ~2.1-4.7 WU peak cross-track departure
-  assert.ok(saturated.peakMaxCrossTrackWU > 2.0 && saturated.peakMaxCrossTrackWU < 5.0,
+  // The historical 0 / 0.25 WU baseline is refuted: the real path produced ~2.1-4.7 WU peak cross-track
+  // departure while the tumble fought its own spin with a full counter-torque from tick one. With
+  // `combat.tumbleFling` (owner, 2026-09-29: "tumbling out of control ... not being acted on by its
+  // own propulsion") the entry spin carries the hull round and the wake departs ~13 WU (1.6 turns).
+  // Deliberate band change, cited in design/FEEL_CONTRACT.md (NPC recovery row).
+  assert.ok(saturated.peakMaxCrossTrackWU > 2.0 && saturated.peakMaxCrossTrackWU < 25.0,
     `real production dynamic impulse produces ${saturated.peakMaxCrossTrackWU.toFixed(3)} WU peak cross-track departure`);
 
   assert.ok(saturated.yawTurns > 0, 'nonzero spin receipt must produce actual integrated yaw');
