@@ -195,7 +195,10 @@ export const hullBurst = {
       // Presentation only (bus events; the sim never reads them back): a gravitic thrum and a flare at the nose.
       const nose = { x: player.pos.x + Math.cos(finite(player.rot)) * finite(player.radius, 12), z: player.pos.z + Math.sin(finite(player.rot)) * finite(player.radius, 12) };
       this.bus.emit('audio:cue', { id: 'sfx_wpn_gravitic', position: nose, gain: 0.8 });
-      this.bus.emit('presentation:vfxCue', { id: 'hullburst.ignite', lane: 'hullburst', pos: nose, particles: 20, lights: 1, flashReduced: flashReduced(state) });
+      this.bus.emit('presentation:vfxCue', {
+        id: 'hullburst.ignite', lane: 'hullburst', pos: nose, sourceId: state.playerId, direction: { x: Math.cos(finite(player.rot)), z: Math.sin(finite(player.rot)) },
+        magnitude: 3, particles: 20, lights: 1, flashReduced: flashReduced(state),
+      });
     }
     return true;
   },
@@ -329,7 +332,10 @@ export const hullBurst = {
     if (this.bus) {
       this.bus.emit('hullBurst:hit', { kind: def.id, targetId: target.id, hostile: true, damage, closing, scale, burnStacks: stacks, lethal: light && scale >= 0.99, pos: at });
       this.bus.emit('audio:cue', { id: 'sfx_bomb_thermite_ignite', position: at, gain: 0.5 + 0.5 * scale });
-      this.bus.emit('presentation:vfxCue', { id: 'hullburst.lance', lane: 'hullburst', pos: at, particles: Math.round(10 + 24 * scale), lights: 1, flashReduced: flashReduced(state) });
+      this.bus.emit('presentation:vfxCue', {
+        id: 'hullburst.lance', lane: 'hullburst', pos: at, targetId: target.id, direction: { x: Math.cos(finite(player.rot)), z: Math.sin(finite(player.rot)) },
+        magnitude: 1 + 4 * scale, particles: Math.round(10 + 24 * scale), lights: 1, flashReduced: flashReduced(state),
+      });
     }
     return true;
   },
@@ -350,7 +356,7 @@ export const hullBurst = {
       const at = { x: finite(target.pos.x), z: finite(target.pos.z) };
       this.bus.emit('hullBurst:hit', { kind: def.id, targetId: target.id, hostile: true, caught: true, closing: finite(closing), pos: at });
       this.bus.emit('audio:cue', { id: 'sfx_tether_latch_lock', position: at, gain: 0.9 });
-      this.bus.emit('presentation:vfxCue', { id: 'hullburst.catch', lane: 'hullburst', pos: at, particles: 16, lights: 1, flashReduced: flashReduced(state) });
+      this.bus.emit('presentation:vfxCue', { id: 'hullburst.catch', lane: 'hullburst', pos: at, targetId: target.id, magnitude: 2, particles: 16, lights: 1, flashReduced: flashReduced(state) });
     }
     return true;
   },
@@ -540,7 +546,8 @@ export const hullBurst = {
         const weight = Math.max(0.2, Math.min(1, deltaV / def.maxDeltaVWuS));
         this.bus.emit('audio:cue', { id: 'sfx_bomb_concussion_shove', position: at, gain: 0.5 + 0.5 * weight });
         this.bus.emit('presentation:vfxCue', {
-          id: 'hullburst.hit', lane: 'hullburst', pos: at, particles: Math.round(10 + 22 * weight), lights: 1, flashReduced: flashReduced(state),
+          id: 'hullburst.hit', lane: 'hullburst', pos: at, targetId: target.id, direction: { x: dirX, z: dirZ },
+          magnitude: 1 + 4 * weight, particles: Math.round(10 + 22 * weight), lights: 1, flashReduced: flashReduced(state),
         });
       }
     }
