@@ -365,6 +365,66 @@ test('buying the demoed slot retires the trial — the run keeps it', () => {
   assert.equal(kept, 1, 'the paid copy stays fitted when the next armory opens');
 });
 
+test('a displaced demo is destroyed, never shelved as a free spare', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  const offers = survivalDraft.currentOffers();
+  const demoable = offers.find((o) =>
+    Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
+  assert.ok(demoable, 'the shelf has a fittable card to demo');
+  const { slotIndex, defId } = demoable;
+  h.bus.emit('run:draftPickRequested', { offerId: demoable.id, demo: true });
+  assert.equal(activeFittings(h)[slotIndex], defId, 'the demo is fitted');
+  // Any unfit — refit UI, a purchase over the slot — retires the demo at the moment it leaves
+  // the slot, on the same emit that bumped the copy into the hold.
+  assert.ok(ships.unfitModule({ slotIndex }), 'the unfit lands');
+  const inventory = h.state.player.moduleInventory || [];
+  assert.equal(inventory.filter((item) => item && item.defId === defId).length, 0,
+    'the demo copy is destroyed, not shelved');
+  assert.equal(activeFittings(h)[slotIndex], null, 'the slot is empty');
+});
+
+test('buying a hull retires the demos on the hull you are leaving', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  const offers = survivalDraft.currentOffers();
+  const demoable = offers.find((o) =>
+    Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
+  const hullOffer = offers.find((o) =>
+    o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
+  assert.ok(demoable && hullOffer, 'a demoable card and a foreign hull are on the shelf');
+  h.bus.emit('run:draftPickRequested', { offerId: demoable.id, demo: true });
+  const oldHull = h.state.player.ownedShips[h.state.player.activeShipIndex];
+  assert.ok(oldHull.fittings.includes(demoable.defId), 'the demo is bolted on');
+  // Buy the hull — the swap lands, and the demo does not ride onto a hull that stays owned.
+  h.bus.emit('run:draftPickRequested', { offerId: hullOffer.id });
+  const player = h.state.player;
+  assert.notEqual(player.ownedShips[player.activeShipIndex], oldHull, 'the new hull is active');
+  assert.equal(oldHull.fittings.includes(demoable.defId), false,
+    'the demo copy is stripped off the hull you left');
+  const inventory = player.moduleInventory || [];
+  assert.equal(inventory.filter((item) => item && item.defId === demoable.defId).length, 0,
+    'and it is not waiting in the hold either');
+});
+
+test('the opening armory survives the game:started close-all', async () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  const pushes = () => named(h.emitted, 'ui:pushScreen')
+    .filter((e) => e.payload && e.payload.id === 'crucibleDraft').length;
+  assert.equal(pushes(), 1, 'the armory pushed under the loading gate');
+  // game:started's close-all runs synchronously after; the draft re-opens on the next microtask.
+  h.bus.emit('game:started', {});
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(pushes(), 2, 'the live draft re-opens after the handoff');
+});
+
 // ── S6.8 — the stake rides the run record and the ghost comparison ───────────
 
 test('the stake stamps the run record and ghosts stay honest about it', () => {
