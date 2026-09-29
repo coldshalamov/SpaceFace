@@ -26,8 +26,8 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides } from './visualOverrides.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { installVisualOverrides, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -109,6 +109,7 @@ import {
   reserveAsteroidInstanceCapacity,
   resolveAsteroidInstanceEntityId,
   syncAsteroidInstancePool,
+  warmAsteroidInstanceKeys,
   warmAsteroidInstanceVariants,
 } from './asteroidInstancePool.js';
 import {
@@ -5043,7 +5044,7 @@ function abandonAsteroidInstancePool(pool, scene) {
   for (const entityId of [...(pool.byEntity?.keys?.() || [])]) {
     try { releaseAsteroidInstancesForEntity(pool, entityId); } catch (_) { /* best effort */ }
   }
-  for (const bucket of pool.variants || []) {
+  for (const bucket of [...(pool.variants || []), ...(pool.keyed?.values?.() || [])]) {
     unregisterRendererDynamicOwner(bucket && bucket.dynamicBufferOwner);
     removeRendererRoot(scene, bucket && bucket.mesh);
     if (bucket) {
@@ -5057,6 +5058,8 @@ function abandonAsteroidInstancePool(pool, scene) {
     }
   }
   pool.byEntity?.clear?.();
+  pool.byDetail?.clear?.();
+  pool.keyed?.clear?.();
   pool.scene = null;
   return true;
 }
@@ -9276,11 +9279,16 @@ export const render = {
       // to the variant warm below so a chunk created for a variant with no live rocks yet is born
       // at field size rather than the 64 default it would otherwise outgrow mid-round.
       const requiredByVariant = [0, 0, 0, 0, 0];
+      const requiredByKey = new Map();
       const fieldRecords = state.world && state.world.asteroidField
         && Array.isArray(state.world.asteroidField.rocks) ? state.world.asteroidField.rocks : null;
       if (fieldRecords && this._asteroidInstancePool) {
         const countRock = (rock) => {
           if (!rock || rock.alive === false) return;
+          // Keyed buckets: every non-common body + stamped detail child the record owns.
+          for (const poolKey of asteroidPoolCensusKeys(rock)) {
+            requiredByKey.set(poolKey, (requiredByKey.get(poolKey) || 0) + 1);
+          }
           const data = rock.data || {};
           // Mirrors the leaf stamp in visualFactory: only untinted common rocks pool.
           if (data.typeId !== 'ast_common_rock' || data.tint != null) return;
@@ -9317,6 +9325,10 @@ export const render = {
           warmAsteroidInstanceVariants(this._asteroidInstancePool,
             [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)),
             requiredByVariant);
+          // Same warm for the keyed buckets — non-common bodies, optic skins, and the
+          // stamped detail children — sized by the same field census.
+          warmAsteroidInstanceKeys(this._asteroidInstancePool,
+            asteroidPoolWarmResources(), requiredByKey);
         } catch (error) {
           console.warn('[render] asteroid instance pool warm failed', error);
         }
@@ -9688,6 +9700,9 @@ export const render = {
       try {
         warmAsteroidInstanceVariants(this._asteroidInstancePool,
           [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)));
+        // Keyed chunks too: a decoded stone body lands the mapped material pair, and a
+        // bare-epoch keyed bucket would otherwise rebind on its first live registration.
+        warmAsteroidInstanceKeys(this._asteroidInstancePool, asteroidPoolWarmResources());
       } catch (error) {
         console.warn('[render] post-opening asteroid pool warm failed', error);
       }

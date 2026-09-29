@@ -26,11 +26,21 @@ export function applyProjectedDetailLod(root, level) {
   let changed = 0;
   root.traverse((object) => {
     if (!isFarDetailSurface(object)) return;
+    // A pool-adopted asteroid detail leaf keeps `visible=false` for the direct draw its
+    // instanced chunk replaces; hlod then toggles the poolLeafVisible proxy flag the
+    // pool's submit gate reads, preserving the same hide/show cycle.
+    const pooled = object.userData.asteroidInstanceAdopted === true;
+    const now = pooled ? object.userData.poolLeafVisible !== false : object.visible !== false;
     if (object.userData._hlodBaseVisible === undefined) {
-      object.userData._hlodBaseVisible = object.visible !== false;
+      object.userData._hlodBaseVisible = now;
     }
     const next = hide ? false : object.userData._hlodBaseVisible !== false;
-    if (object.visible !== next) {
+    if (pooled) {
+      if (now !== next) {
+        object.userData.poolLeafVisible = next;
+        changed += 1;
+      }
+    } else if (object.visible !== next) {
       object.visible = next;
       changed += 1;
     }

@@ -25,7 +25,7 @@
 
 import * as THREE from 'three';
 
-import { invalidateAsteroidInstancePool } from './asteroidInstancePool.js';
+import { invalidateAsteroidInstancePool, registerAsteroidBaseLeaf, releaseAsteroidInstancesForEntity } from './asteroidInstancePool.js';
 import { syncOpticCellSkin } from './opticCellPresentation.js';
 
 function hashId(id) {
@@ -519,7 +519,16 @@ export function createAsteroidMotionTracker() {
     //     authoritative; syncOpticCellSkin is one string compare for ordinary rocks and a
     //     shared-material swap on the rare transition. Render-only read, never writes sim state.
     const data = entity.data || EMPTY_DATA;
-    if (data.opticMaterial != null) syncOpticCellSkin(entity, mesh);
+    if (data.opticMaterial != null && syncOpticCellSkin(entity, mesh)) {
+      // The kind swap assigns shared material objects, so the record's keyed bucket
+      // (geometry|material identity) migrates rather than mutating in place — same for
+      // the inclusion children whose facet material flips live <-> dead.
+      const instancePool = options.instancePool;
+      if (instancePool && !instancePool.disposed) {
+        releaseAsteroidInstancesForEntity(instancePool, entity.id);
+        registerAsteroidBaseLeaf(instancePool, entity, mesh);
+      }
+    }
 
     // 4. Thermal fracture progression — monotonic: a worked rock never visibly heals.
     //    oreHP/oreHPMax is the sim's ore-body pool (hull/hullMax alias); render-only read.

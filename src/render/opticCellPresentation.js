@@ -303,6 +303,7 @@ function dressOpticDetails(root, body, entity, kind) {
       shard.scale.setScalar(0.7 + rnd() * 0.8);
       shard.rotation.set(rnd() * Math.PI, rnd() * Math.PI, rnd() * Math.PI);
       shard.userData.spacefaceTags = { greeble: true };
+      shard.userData.asteroidInstanceDetail = true;
       body.add(shard);
       details.push(shard);
     }
@@ -359,6 +360,49 @@ export function dressOpticCell(root, body, entity, kind, variantIdx = 0) {
   ud[OPTIC_VARIANT_USERDATA_KEY] = variantIdx | 0;
   dressOpticDetails(root, body, entity, kind);
   applyOpticCellSkin(root, entity);
+}
+
+/**
+ * Keyed instance-pool warm resources for every optic skin + facet family — one
+ * (geometry, material) pair per chunk the pool may ever create for optic cells.
+ * `stoneGeometryFor(variant)` supplies the stone body's displaced-rock geometry per
+ * displacement variant (that cache lives in the factory).
+ */
+export function opticCellPoolResources(stoneGeometryFor) {
+  const resources = [];
+  for (const kind of Object.keys(OPTIC_MATERIALS)) {
+    if (kind === 'stone') {
+      if (typeof stoneGeometryFor !== 'function') continue;
+      for (let variant = 0; variant < 5; variant++) {
+        resources.push({
+          key: `o:stone:${variant}`,
+          geometry: stoneGeometryFor(variant),
+          material: opticCellBodyMaterial(kind, variant),
+          castShadow: true,
+          receiveShadow: true,
+        });
+      }
+      continue;
+    }
+    resources.push({
+      key: `o:${kind}`,
+      geometry: opticCellGeometry(kind),
+      material: opticCellBodyMaterial(kind, 0),
+      castShadow: true,
+      receiveShadow: true,
+    });
+    const detailMaterial = opticCellDetailMaterial(kind);
+    if (detailMaterial) {
+      resources.push({
+        key: `o:facet:${kind === 'diamond' ? 'live' : 'dead'}`,
+        geometry: opticInclusionGeometry(),
+        material: detailMaterial,
+        castShadow: false,
+        receiveShadow: false,
+      });
+    }
+  }
+  return resources;
 }
 
 /**
