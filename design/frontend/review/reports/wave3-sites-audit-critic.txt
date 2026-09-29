@@ -1,0 +1,343 @@
+WAVE 3 SITES AUDIT — CRITIC REPORT (first audit, no previous scores)
+Stills: .devshots/ui-review/view/w3a-{drill,base,sandbox}-{1920,1280}.png (all 1920x1080 / 1280x720)
+Crops: .devshots/ui-review/crops/w3a-sites-*.png (10 crops, Read and measured)
+Method: sharp crops + .raw() pixel rows. Ratios are WCAG contrast on composited pixels.
+Bench artefacts not scored: frozen motion, CYCLE 0001, committed backdrop stills.
+
+ROUTE VERDICT — asteroid-works vs drill (read-only, verified in code)
+----------------------------------------------------------------------
+One still covers both. scripts/lib/uiBenchCatalog.mjs lines 87-88 map
+{id:'asteroid-works'} and {id:'drill'} to the SAME screen ('drill') and SAME
+backdrop ('world'), and tools/ui-bench.js SCREENS.drill loads asteroidScreen
+(src/ui/asteroid/asteroidScreen.js, id:'drill'). There is NO separate
+asteroid-works route. No second shot needed — but the catalog SHOULD gain a
+populated drill seed (see Surface 1 seed spec); shooting the same empty state
+twice under two ids would be worse than useless.
+
+======================================================================
+SURFACE 1 — DRILL / ASTEROID WORKS (empty "No claim" state)
+======================================================================
+1. VERDICT: NOT PASSED, overall 3.0 (previous: none — first audit)
+2. AXES (score / prev / note):
+   - Composition 2.5 / — / 94% of pixels are uniform void rgb(10,12,16); a 38px
+     crest bar and a floating gauge cluster are the entire screen.
+   - Hierarchy 3.0 / — / Title, chip, gauges all whisper at the same small
+     weight; nothing says what matters or what to do.
+   - Legibility 6.0 / — / What exists is high-contrast (title ~15.6:1, chip
+     text 8.5:1) but small; the crest bar itself is 1.06:1 against the void —
+     the chrome's edge is invisible.
+   - ORRERY fidelity 1.5 / — / No Hand, no ring, no scale, no library element.
+     Segmented gray blocks, a status pill, a text button. The only warm light
+     on screen is spent on the "No claim" chip, not a choice.
+   - Craft/detail 2.5 / — / Gauges are 12 dim blocks rgb(45,46,47) with hairline
+     rules; the hold meter is 8 dead blocks. No light, no bloom, no weight.
+   - Interaction clarity 2.0 / — / A dead end: no verb, no guidance out of
+     "No claim" (how does one GET a claim?), only Leave. The drawer glyph key
+     at top-right is cryptic at 18px with no label.
+3. PREVIOUS ROUND: n/a (first audit).
+4. RANKED FIXES (empty state — scored as-shown):
+   F1. Board void (0,38–1920,1080; 94% of frame): with no session the canvas
+       renders flat rgb(10,12,16). Fix: the empty state MUST stage the rock —
+       render the unclaimed asteroid cross-section dimly behind a "STAKE CLAIM"
+       Lamp Key, so the screen is a place, not a null pointer.
+   F2. Missing verb (whole screen): add the one Lamp Key — "Stake claim" amber
+       45°-cut key, centered ~ (860,620), min 200x56px. A screen with no verb
+       is not an instrument, it is a screensaver.
+   F3. "No claim" chip (x200-265,y8-32): pill with dim-amber text on near-black.
+       Fix: delete the pill; the unclaimed state reads on the board itself
+       (F1) + the Lamp Key (F2). Stop spending amber on status.
+   F4. Crest bar (y0-38, rgb 22,19,16 vs void 10,12,16 = 1.06:1): the bar is
+       invisible; title text floats on void. Fix: EITHER a real glass crest
+       (bone rule + corner ticks, >=2:1 band per measured-weight bar) OR no
+       bar at all — title on a leader line from the board. Not this ghost slab.
+   F5. Heat/Charge gauges (x1560-1910, y986-998 + y1022-1034): 12 gray blocks
+       each, 0%, no scale, no labels-with-weight. Fix: ONE Arc Gauge pair per
+       ORRERY §4 (arc + ghost delta + bloom head), bone at rest; at 0% show
+       the track so the instrument exists before it has data.
+   F6. Hold meter (x~1700-1860, y8-32, 8 dead blocks + "0u"): same gray-block
+       language. Fix: fold into the crest as a Scale with a light cursor, or
+       delete until a session exists — 8 dead blocks teach "this UI is broken".
+   F7. Leave (x1740-1905, y8-32, dim bone text on 38,35,31): reads as a second
+       chip, not a key. Fix: reskin as the Lamp Key ONLY if it is the primary
+       verb here (it is not — F2 is); otherwise a bone ghost key with the Esc
+       hint on a scale tick, not a filled slab.
+   F8. Drawer glyph key (x~1600-1640, y8-32): 18px unlabeled icon, the only
+       path to Ledger/Site/Help. Fix: give it a bone label ("LOG") or a bead —
+       an icon-only mystery key fails interaction clarity at first sight.
+   F9. Title "Asteroid Works" (x18-195, y8-32): small white sans, no display
+       voice. Fix: Archivo 125/800 per §3.4 at 2x size, or demote to a small
+       crest label — currently stranded between hero and label.
+   F10. 1280 parity: identical empty black (spot: void 10,12,16, crest 22,19,16).
+       No separate fix — F1-F9 apply to both widths; verify the Lamp Key stays
+       centered at 1280.
+5. MEMORABLE LINE: The drill screen should feel like pressing your faceplate
+   against the rock — the cross-section glowing through the glass, the Hand
+   swinging to the seam you will bore. Nothing here attempts a rock, let alone
+   a faceplate.
+6. POPULATED-STATE SEED (exact, precedent: footprint:'wanted', research:[...]):
+   No drill seeding exists in tools/ui-bench.js (verified — only chart,
+   saves/live, research, footprint, crucible seeds). The build round must add:
+   catalog id 'drill-claimed' {screen:'drill', backdrop:'world', drill:'claimed'}
+   + seedDrillShot(state,'claimed'): (a) open drill session via the drill sys
+   (tethered rover, approach complete); (b) stake claim + commit survey with
+   formation cells (asteroidSites owner APIs); (c) place Core + 2 machines on
+   one lane so palette + lens + drawer have content; (d) heat ~40%, charge
+   ~65%, hold half-full, one ledger event. Second variant 'drill-build'
+   (drill:'build') with the build palette open. Until this exists the Drill
+   is UNSCOREABLE in its real state — this 3.0 scores only the empty shell.
+7. OWNER CRITERIA:
+   (a) Thin/generic: FAIL. The gauges and hold meter are dim gray blocks with
+       no light or bloom (segments lum ~7 on void lum ~4 — far below the 2:1
+       body bar); the crest is an invisible slab; chip + Leave are generic web
+       pills. Every element needs either ORRERY-light treatment or deletion.
+   (b) Signature interaction: NONE VISIBLE. Driving/boring the rock is the
+       putative signature, but the still shows no rock, no rover, no seam —
+       there is nothing to do here. NOT PASSED.
+
+======================================================================
+SURFACE 2 — BASE ("NO BODY SELECTED" empty card)
+======================================================================
+1. VERDICT: NOT PASSED, overall 3.5 (previous: none — first audit)
+2. AXES:
+   - Composition 3.0 / — / One 825x170 black slab (x545-1370, y455-625) floats
+     center-frame over a blurred backdrop; acres of nothing above and below.
+   - Hierarchy 4.0 / — / Title > sub > Close is at least an order — but the
+     title screams (32px 900 caps) about NOTHING being here.
+   - Legibility 7.5 / — / Title 14.95:1 on card; sub-copy small dim bone
+     (~9:1). Readable — and the only thing this screen does well.
+   - ORRERY fidelity 1.0 / — / A black CARD with hard 90° corners (edge step
+     11,14,19 vs 24,26,38 over 1px, zero glass: no blur, no ticks, no light).
+     No Hand, no Lamp Key, no instrument. "Close" is naked text.
+   - Craft/detail 3.5 / — / The backdrop photo ( blurred station + planet) is
+     the only produced thing, and the card ignores it — no glass, no parallax,
+     no shared light. Card-vs-backdrop ratio 1.20:1: a hole punched in the art.
+   - Interaction clarity 2.0 / — / Dead end: Close is the sole control
+     (x1275-1320, y578-592, unstyled). The hint names key U but offers no path.
+3. PREVIOUS ROUND: n/a (first audit).
+4. RANKED FIXES:
+   F1. The card itself (x545-1370, y455-625): a hard-cornered black box —
+       ORRERY §3 bans rectangles with borders AND glass-without-light.
+       Fix: dissolve it — title + sub on Glass (tint + 18px blur + gradient
+       mask, corner ticks), ORRERY Unfold element.
+   F2. Missing verb: "Close" naked text (x~1279, y584, bone 194,192,187, ~17px,
+       no key shape, no hint). Fix: ONE Lamp Key "Return" (amber, 45° cut,
+       180x52) bottom-right of the glass at (1140,640); Esc hint on a tick.
+   F3. Title "NO BODY SELECTED" (y500-520, Archivo-black caps, shouting):
+       Fix: cut to 22px Archivo 600 bone-dim — an empty state apologizes, it
+       does not announce. Sentence case per law ("No body selected").
+   F4. Sub "Press U near a claimed body…" (y~548, ~13px dim): developer-shaped
+       copy pointing at a key, not a place. Fix: rewrite as direction —
+       "Claim a body to build here — the surveyor marks candidates" + a ghost
+       key "Open chart" if a route exists.
+   F5. Card placement (centered, y455-625): dead-center modal over a blurred
+       world the player cannot touch. Fix: dock the glass low-third (y700+)
+       and let the station art breathe — the blur proves the world is paused,
+       so compose WITH it, not over its middle.
+   F6. No Hand / no choice: an empty state still needs the one amber thing.
+       Fix: the Lamp Key (F2) IS the amber; nothing else warm on the glass.
+   F7. Backdrop use: the shell photo is blurred to soup (top lum ~30, bottom
+       warm blur) with no instrument over it. Fix: once glassed (F1), add the
+       Sensor Lattice faintly behind the glass — the screen should feel like
+       the station's own registry terminal, not a dialog box.
+   F8. 1280 (card present, same slab): identical fixes; verify glass + Lamp Key
+       fit 1280x720 without clipping (card currently ~62% width at 1920).
+5. MEMORABLE LINE: A base screen with no base should show you the galaxy of
+   rocks you COULD own — the registry dreaming of candidates. This shows a
+   black index card that says "no".
+6. POPULATED-STATE SEED (exact): base.js render reads claims.list() for
+   this._bodyId (from state.ui.pendingClaimBodyId, set by input.js near a
+   claimed body) — bench sets neither, hence the card. Add catalog id
+   'base-claimed' {screen:'base', backdrop:'shell', base:'claimed'} +
+   seedBaseShot(state,'claimed'): stake one claim via the claims owner (module
+   slots 2/5 built, one convoy in flight, stored goods > 0, operating identity
+   specialized), set state.ui.pendingClaimBodyId to it. Until then Base is
+   UNSCOREABLE in its real state — this 3.5 scores only the empty card.
+7. OWNER CRITERIA:
+   (a) Thin/generic: FAIL. The card is a generic modal dialog — sharp black box,
+       system-caps title, naked-text Close. It needs glass + light + the Lamp
+       Key, or it is a 2012 admin panel.
+   (b) Signature interaction: NONE. Managing/building a base is the signature;
+       the empty state offers no doorway to it (no candidates, no chart link,
+       no build preview). NOT PASSED.
+
+======================================================================
+SURFACE 3 — SANDBOX (dev-only surface, scored to the same bar)
+======================================================================
+Note: dev testing harness, NOT player-facing. Scored to the full ORRERY bar
+per task; its fixes rank below player surfaces in build order, but the bar
+does not move — a dev screen the owner opens daily still teaches the eye.
+1. VERDICT: NOT PASSED, overall 4.5 (previous: none — first audit)
+2. AXES:
+   - Composition 5.0 / — / Two-zone split works (picker left, hero art right)
+     but the zones ignore each other: a hard 1px seam at x=760 (panel 11,13,16
+     → photo 28,32,43, no blend) and 13 stacked boxes vs one gorgeous render.
+   - Hierarchy 4.5 / — / 13 identical caps titles shout equally; "Sandbox" +
+     mint "Ready" + gray sub form three competing heads (x80-660, y85-140).
+   - Legibility 7.0 / — / Title text ~12:1, body ~6.6:1 on fill — passes the
+     numbers. But ALL-CAPS everything at 3 sizes hurts scanning; dim body
+     (150,160,170) over long descriptions tires fast.
+   - ORRERY fidelity 1.5 / — / Thirteen 1px bordered boxes (border 44,52,63,
+     fill 1.06:1 vs panel = invisible fill, so each card is a WIREFRAME box —
+     fails the measured-weight bar outright). Zero library elements, zero
+     Hand, zero Lamp. Mint-green "Ready" (79,191,143) is off-palette entirely
+     (green exists nowhere in §3.3). Gray-blue borders are the rejected
+     wireframe look.
+   - Craft/detail 4.5 / — / Right side: superb (ship render, planet, regolith).
+     Left side: a Bootstrap admin theme. The 15px card gaps (x375-390) and
+     flush-top grid are pure web flow, not instrument layout.
+   - Interaction clarity 5.5 / — / Best of the three stills: every card names
+     an action and its outcome. But no selection state, no focus ring, no
+     launch verb visible (where is LAUNCH?), and at 1280 the grid crowds while
+     the ship is half-cropped.
+3. PREVIOUS ROUND: n/a (first audit).
+4. RANKED FIXES (dev-surface-cheap: maximum ORRERY per hour):
+   F1. 13 bordered cards (e.g. x64-376, y197-299; 1px 44,52,63 borders, fill
+       1.06:1): delete ALL borders; cards become Ladder rows (§4 #9) hanging
+       off ONE vertical scale with ticks at x64. Cheapest structural fix on
+       this screen — one rail replaces 13 boxes.
+   F2. The seam (x=760 full height, hard step): dissolve with a 120px gradient
+       mask (panel → transparent over x640-760) so the picker melts into the
+       hero art instead of abutting it like two browser windows.
+   F3. "Ready" mint (x~255-345, y85-115, 79,191,143): off-palette green.
+       Fix: bone rest text; the ONE amber thing here should be the selected
+       scenario's bead + arm on the ladder (F1).
+   F4. ALL-CAPS body copy (every card, 13px tracked caps): Fix: titles stay
+       Archivo caps; bodies go Instrument Sans 14px sentence case, 1.45
+       line-height — currently 13 descriptions scream at equal volume.
+   F5. Missing launch verb: no Lamp Key anywhere. Fix: ONE amber "Launch"
+       Lamp Key pinned bottom-left of the panel (x64, y1000, 200x56) — armed
+       by the ladder's chosen row. The Hand points at the scenario; the Key
+       fires it.
+   F6. Head row (x80-660, y85-140): "Sandbox" + "Ready" + sub run together.
+       Fix: "Sandbox" 28px Archivo 800 bone; sub 14px dim on its own line
+       below; kill "Ready" or shrink to a 12px status tick with a bone dot.
+   F7. "QUICK SETUPS" rule + "COMBAT LAB" footer (y~180, y~1055): web section
+       headers with hairline rules. Fix: fold into the ladder as scale group
+       ticks (major ticks with labels), not ruled headings.
+   F8. Card gaps/hover: 15px dead gutters, no visible selection. Fix: with the
+       ladder (F1), the chosen row gets bead + amber arm; focus = vertical
+       light segment per law. (Verify with --walk, not by eye.)
+   F9. 1280: ship half out of frame, planet clipped, grid cramped (2 cols
+       survive but tight). Fix: at <=1366px, hero art anchors left (ship
+       fully in frame, planet bleeds right) and ladder rows go single-column
+       full-panel-width — never crop the hero to save the grid.
+   F10. (Cheapest win, do first if time is short): F3+F4+F6 are a 30-minute
+       type-and-color pass that lifts this screen from "admin theme" to
+       "plain but disciplined" before any structural work.
+5. MEMORABLE LINE: The sandbox should feel like the hangar's own launch rail —
+   scenarios as glowing run-tracks arcing toward the ship, the Hand swinging
+   down the rail to the run you're about to fire. It is currently a Jira board
+   next to a beautiful screenshot.
+7. OWNER CRITERIA:
+   (a) Thin/generic: FAIL. 1px wireframe boxes with invisible fills (1.06:1),
+       generic section rules, off-palette status green. The ladder (F1) + type
+       pass (F10) are the cure.
+   (b) Signature interaction: WEAK PASS-IN-SPIRIT, FAIL-IN-FORM. "Pick a
+       scenario and fire it" IS distinct per-screen work — but rendered as
+       clicking Bootstrap cards, it is memorable only for the ship photo
+       beside it. The launch rail (F1+F5) would make it genuinely Sandbox's.
+
+======================================================================
+SURFACE 4 — LOADING (code audit only — NO bench shot exists)
+======================================================================
+Verified: no 'loading'/'boot' id in scripts/lib/uiBenchCatalog.mjs (grep over
+the catalog: drill/base/sandbox/footprint/tech-tree only). NOT SCORED visually.
+1. VERDICT: NOT PASSED (provisional, code-audit only), overall 4.5†
+   († = inferred from code, NOT from pixels; unscorable until shot. The number
+   exists only to rank build priority, not as a quality claim.)
+2. AXES (provisional from code):
+   - Composition 4.0† / — / bootRing mounts 144px SVG first-child of
+     .boot-progress-row + label/detail/pct + full-bleed terminal canvas.
+     Layout unknowable without pixels; 144px ring risks "small medallion over
+     a big terminal" rather than §6's emblem-centered screen.
+   - Hierarchy 4.0† / — / Ring + stage label + detail + pct + old hidden bar:
+     the parts exist, but nothing in code sizes the ring as HERO.
+   - Legibility 5.0† / — / Label/detail are plain text over the ANIMATED
+     terminal canvas; no scrim/glass in the presenter path. Over TEMPEST
+     (fire) or BLOOM (magenta) phases, contrast is At Risk — must be measured
+     on the shot (ui-contrast gate).
+   - ORRERY fidelity 4.5† / — / SPLIT. The ring is faithful: turning emblem
+     (60s CSS rotation, reduced-motion-gated), bone graduations + track, ice
+     progress arc (2px core + 6px bloom geometry — exactly §3.1), bone stage
+     ticks via ring.mark() on real stage events (never a timer — §6 honored).
+     BUT the full-bleed ASCII signal-field keeps FIVE rainbow palettes
+     (GENESIS teal, CURRENTS emerald, BLOOM magenta, TEMPEST fire, SINGULARITY
+     indigo) — none are bone/amber/ice/red — while §6 says the tableaux play
+     INSIDE the ring. Current state = ORRERY medallion pasted over the old
+     rainbow terminal. The palettes, not the ring, fail the law.
+   - Craft/detail 5.0† / — / The smoothed progress model (velocity-lagged
+     approach + overhang creep + 0.985 cap + first-flight-frame gate) is
+     genuinely crafted — the bar never clicks or stalls. The ASCII
+     character-cell display (IBM Plex Mono density glyphs) is developer-
+     terminal aesthetic and fights "clean and expensive".
+   - Interaction clarity 6.0† / — / Nothing to interact with (correct for
+     loading); reduced-motion fully handled (instant state, no drift).
+     "Does it read as progressing, never stuck" — yes, by construction.
+3. PREVIOUS ROUND: n/a (first audit).
+4. RANKED FIXES (build round; shot first, then paint):
+   F1. NEW BENCH SHOT (staging spec below — no code change scores without it).
+   F2. Collapse the five ASCII phase palettes to ONE ORRERY field: bone ink
+       contours + ice motion accents + a single amber note, all phases.
+       (loadingSignalTableaux.js materialRGB/shades + PALETTES in
+       loadingTerminalArt.js.) The rainbow is the single biggest §6 gap.
+   F3. Contain the tableaux: per §6 they play INSIDE the ring — mask the
+       terminal canvas to the ring's inner disc (or fade it to 30% beyond
+       r=72px) so the emblem/ring is the hero and the field is its aura, not
+       a fullscreen rival.
+   F4. Ring presence: 144px medallion is small for a hero. Grow to 220-260px
+       on the shot and re-measure; the stage ticks (1.4px bone) need the room.
+   F5. Label/detail legibility: put stage label + detail on Glass (tint + blur
+       + dissolved edges) OR add a radial scrim behind the lockup; then run
+       ui-contrast — 4.5:1 over every phase, worst-phase governs.
+   F6. Developer-copy audit: presenter passes boot's label/detail through
+       verbatim; DEFAULT 'Restoring flight state'/'Rebuilding the current
+       sector…' is fine, but EVERY stage id boot emits must be checked for
+       dev-shaped text ("hydrating", asset names, system ids). Fix at the
+       emitter, not the presenter.
+   F7. Kill or justify the pct numeral: a % readout + ring arc + ticks is
+       triple-redundant. Either cut [data-loading-pct] or promote it to the
+       §3.4 thin-display-numeral hero (96px Archivo 250) — not a small % lost
+       beside the ring.
+   F8. Emblem at opacity .5 + display:none fallback (intro.css:451,463): verify
+       on the shot the emblem reads as produced art, not a gray ghost; if the
+       .thumb.webp is weak at 220px+, cut a dedicated boot asset.
+   F9. Old 2px bar stays hidden in DOM (presenter still writes it): fine as a
+       probe surface, but assert in the loading checks that it is NEVER
+       visible (a CSS regression would double-render progress).
+5. MEMORABLE LINE: Loading should feel like the ship waking up around you —
+   the emblem catching light, each system ticking awake on the ring, the field
+   inside brightening as the world assembles. Currently the ship wakes up as a
+   terminal screensaver with a nice brooch on it.
+6. BENCH SHOT STAGING (exact — loading is NOT in SCREENS, so this is new work):
+   New catalog id 'loading' {screen:'bootOverlay'} + bench path that does NOT
+   mount a screen but: (a) title backdrop; (b) shows #boot-overlay with
+   createLoadingPresenter wired to the bench bus; (c) fires a scripted stage
+   sequence 0.08→0.25→0.5→0.62 ('Restoring flight state') so the ring carries
+   4 bone ticks + 62% ice arc; (d) forces displayProgress to settle at 0.62
+   before capture (await 1.5s, motion frozen per bench); (e) terminal canvas
+   painting (2D engine forced — no worker in bench); (f) shoot 1920 + 1280.
+   Scoreable only when the ring, all 4 ticks, label, detail AND the tableaux
+   field are visible in one frame.
+7. OWNER CRITERIA (code-inferred, to be confirmed on the shot):
+   (a) Thin/generic: RING PASSES (2px ice core + 6px bloom + bone ticks have
+       weight), FIELD FAILS (ASCII glyphs + rainbow phases read as developer
+       terminal art, not produced light). Fix = F2+F3.
+   (b) Signature: loading's "interaction" is watching systems wake — the
+       stage-ticks-on-ring (real stages, never a timer) IS a defensible
+       signature and it is honestly built. Provisional PASS, pending the shot
+       proving the ticks read at a glance.
+
+======================================================================
+CROSS-SURFACE NOTES FOR THE BUILD ROUND
+======================================================================
+1. Two of three stills are EMPTY states. The wave-3 build round's first job is
+   seeds, not paint: 'drill-claimed' and 'base-claimed' (specs above) + the
+   'loading' shot path. Scoring populated states against THESE numbers is the
+   re-audit.
+2. No Hand anywhere, no Lamp Key anywhere, no library element anywhere in
+   pixels. The ring (bootRing.js) is the only ORRERY element proven in code.
+3. Cheapest global wins: kill all 1px gray boxes (sandbox cards, drill chips),
+   pull green/magenta/teal back to bone/amber/ice, give every screen its ONE
+   amber verb. Then the structural work (ladders, glass, staged rocks).
+4. 1280 parity holds (same states, same failures); sandbox 1280 crops the hero
+   art — art direction must anchor the ship in-frame at narrow widths (F9).

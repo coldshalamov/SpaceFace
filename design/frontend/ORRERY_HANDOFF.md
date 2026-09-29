@@ -33,12 +33,13 @@ elements and (b) one distinct signature interaction (`design/frontend/OVERHAUL_P
 a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
 that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
 Latest critic report per surface: `design/frontend/review/reports/`. 31 surfaces approved — Wave 2
-fully APPROVED (Ship 8.2, Range 8.3, Automation 8.0, Replay 8.1, Clips 8.0; RG7 closed). Next: Wave 3
-(Asteroid Works, Drill, Base, Loading audit, HUD weight, Sandbox).
+fully APPROVED (Ship 8.2, Range 8.3, Automation 8.0, Replay 8.1, Clips 8.0; RG7 closed). Wave 3 audit done
+2026-09-28 (drill 3.0 / base 3.5 / sandbox 4.5 / loading 4.5†; orrery-flight 1.2 staging / flight 6.7 /
+power-rail 7.1 / comms 4.2 / wingman 6.3); w3b build running (seeds + sites paint, HUD next).
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
-| Flight HUD (bench `orrery-flight`) | Phase 0a passed; live via `hudAdapter.js` | 8 | `flightPreview.js`, `hudSkin.js` | Live-route pass: ring brightness, orphan hairlines, objective dial. Radar/lock |
+| Flight HUD (bench `orrery-flight`) | Audit: orrery-flight 1.2 (bench-only collapse, O1 fix queued) / flight 6.7 / power-rail 7.1 / comms 4.2 / wingman 6.3 (wave3-hud-audit); live Cluster vindicated | 1.2/6.7/7.1/4.2/6.3 | `flightPreview.js`, `hudSkin.js`, `hudAdapter.js`, `powerRail.js`, `commsRadial.js`, `wingmanRadial.js` | w3b HUD build next: O1+C1 staging, F1-F10 + P1-P10 + C2-C9 + W1-W10, perf-gated (no frame-time regression); tape F5 is the missing hero |
 | Title / main menu | **APPROVED 8.3** (frontdoor-r2) | 8.3 | `arcRail.js` (`place`, `clearOf`, `freeTrack`), `screenLayouts.js`, `mainMenu.js` | Done; Pause unregressed |
 | Pause | **APPROVED 8.3** (frontdoor-rs1) | 8.3 | `arcRail.js` (`grouped`), `pause.js`, `screenLayouts.js` | Polish only: 0% gauge 2px + bead, 1280 LOCAL MAP nudge, brief name bone .92 |
 | New game | **APPROVED** (r7 8.2, both owner criteria): Spin the yard (`yardCarousel.js`, mass-weighted drag, stat arcs sweep between hulls), the difficulty stop-arc, the hull ring, the launch beat | **8.2 (r7)** | `yardCarousel.js`, `hullRing.js`, `stopDial.js`, `newGame.js`, `screenLayouts.js` | The form column's empty band (270 px at 1920); the Pelican poster is blockout (asset job) |
@@ -55,8 +56,8 @@ fully APPROVED (Ship 8.2, Range 8.3, Automation 8.0, Replay 8.1, Clips 8.0; RG7 
 | Range / Automation / Replay / Clips | Range **APPROVED 8.3** (shiprange-r3, RG7 closed); Automation **APPROVED 8.0** (automation-r2); Replay **APPROVED 8.1**, Clips **APPROVED 8.0** (replayclips-r1) | see left | `range.js`, `automationPanel.js`, `replay.js`, `clips.js` | Carry-over: range gauge-grow residual; automation link bodies 3.1:1 + rail-follow + focus segment; replay dormant band 3.5:1 + world exposure; clips ghost sub 16px + glyph bloom; populated stills when stageable |
 | Chart / galaxy map | **APPROVED 8.1** (chart-r4); r5 polish landed (849a0a0dd) | 8.1 | `chartInstruments.js`, `chartLayouts.js`, `galaxyMap.js` presentation layer | Optional margin: orbital tracks + Lens (the critic's §8) |
 | Meta | ALL APPROVED: Settings 8.1 / Credits 8.2 (setcr-r3); Save/Load 8.1 / Game Over 8.2 (sav-r3); Codex 8.1 / Mission Log 8.0 (archive-r4); Research 8.0 / Achievements 8.1 (con-r5); Help 8.0 (help-r4, r9 follow-ups landed) | see left | `settingsLayouts.js`, `saveLayouts.js`, `saveFilmstrip.js`, `saveBerth.js`, `saveSortieTape.js`, `archiveLayouts.js`, `archiveInstruments.js`, `constellation*.js` | Done |
-| Loading | Not started | — | `bootRing.js` exists | Emblem dial; the load's real stages as ticks; no developer copy |
-| Comms / radials / confirm dialogs / toasts / Asteroid Works | Not started | — | — | Audit each with the same eye. The trade toast overprints UNDOCK at 1280 (Ledger critic) |
+| Loading | Audit 4.5† code-only (wave3-sites-audit, unshot — no bench id) | 4.5† | `bootRing.js`, `loadingPresenter.js`, `loadingSignalTableaux.js`, `loadingTerminalArt.js` | Build (w3b): new 'loading' shot path + collapse 5 ASCII palettes to one ORRERY field + contain tableaux in ring + 220px ring + glass lockup + dev-copy emitter audit |
+| Drill / Base / Sandbox | Drill 3.0 / Base 3.5 / Sandbox 4.5 (wave3-sites-audit, empty states) | 3.0/3.5/4.5 | `asteroidScreen.js`, `base.js`, `sandbox.js` + bench seeds | Build (w3b): 'drill-claimed' + 'base-claimed' seeds first, then paint (STAKE CLAIM key + staged rock, glass + Return key, ladder + Launch key); populated re-audit after seeds land. Comms/radials: see Flight HUD row |
 
 ## 3. The library and the composition sheets
 
