@@ -338,6 +338,7 @@ import {
   AUTHORED_ASSET_PREFETCH_RADIUS,
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
+import { predictNextSector } from './sectorPredict.js';
 import {
   admissionAnchorPos,
   approachDistanceWu,
@@ -2496,6 +2497,87 @@ function clearEntityMeshReference(entity, mesh) {
   if (!entity) return;
   if (entity.mesh === mesh) entity.mesh = null;
   if (entity.view && entity.view.root === mesh) entity.view = null;
+}
+
+/**
+ * Wave-4 predict lane — warm the predicted next sector's authored decode census before the
+ * authored triggers fire. The only authored trigger for a whole-sector warm is
+ * `jump:chargeStart` (≈3 s of charge), and its record then occupies `_incomingSectorPrewarm`
+ * through the settle→publish lifecycle; the route executor, the armed autopilot/waypoint, and
+ * the ship's own ballistic gate approach all name the destination tens of seconds earlier
+ * (`predictNextSector`). So the speculative warm keeps its own residency owner and never
+ * touches the prewarm record slots at all: it only retains decoded blueprints via
+ * `preloadAuthoredParts`, the same serial ambient path the record's census uses, and
+ * `admitAuthoredAssetTask` dedupes `url::slot`, so the authored record instant-hits every
+ * file the prediction already decoded instead of decoding it during the charge window.
+ *
+ * Retraction is the mirror of admission: the warm owner is released the poll after the
+ * prediction drops or moves, or the moment any prewarm record covers that sector (the
+ * record's own census takes over the same decode work). Released files land back in the
+ * soft package cache they would have come from anyway — prefetch earlier, never load less.
+ */
+export function updatePredictedSectorPrewarm(owner) {
+  const state = owner && owner.state;
+  if (!state || state.mode !== 'flight') return;
+  const census = typeof owner._sectorPrewarmRequests === 'function' ? owner._sectorPrewarmRequests : null;
+  const residency = owner._assetResidency;
+  const releaseOwner = residency && typeof residency.releaseOwner === 'function'
+    ? residency.releaseOwner.bind(residency) : null;
+  if (!census || !releaseOwner) return;
+  const recordOwns = (sectorId) => {
+    const exact = String(sectorId || '');
+    if (!exact) return false;
+    const incoming = owner._incomingSectorPrewarm;
+    if (incoming && incoming.active === true && incoming.sectorId === exact) return true;
+    const pending = owner._authoredSectorPrewarmPending;
+    if (pending && pending.active === true && pending.sectorId === exact) return true;
+    const current = owner._currentSectorPrewarm;
+    return !!(current && current.active === true && current.sectorId === exact);
+  };
+  const warm = owner._predictedSectorWarm && owner._predictedSectorWarm.active === true
+    ? owner._predictedSectorWarm : null;
+  const prediction = predictNextSector(state, {
+    heldSectorId: warm ? warm.sectorId : null,
+  });
+  if (warm) {
+    // An authored record covering the same sector makes the speculative warm redundant — its
+    // decoded files stay resident under the record's owner and the soft package cache.
+    const absorbed = recordOwns(warm.sectorId);
+    if (absorbed || !prediction || prediction.sectorId !== warm.sectorId) {
+      warm.active = false;
+      releaseOwner(warm.owner, absorbed
+        ? 'predicted-sector-warm-absorbed'
+        : 'predicted-sector-warm-retracted');
+      owner._predictedSectorWarm = null;
+    } else {
+      return;
+    }
+  }
+  if (!prediction || recordOwns(prediction.sectorId)) return;
+  const sectorId = prediction.sectorId;
+  const requests = census(sectorId);
+  if (!requests || !requests.length) return;
+  const warmOwner = { type: 'predicted-sector-warm', sectorId };
+  const nextWarm = {
+    sectorId,
+    owner: warmOwner,
+    active: true,
+    settled: null,
+    requestCount: requests.length,
+    source: prediction.source,
+    ttcSeconds: Number.isFinite(prediction.ttcSeconds) ? prediction.ttcSeconds : null,
+  };
+  const isActive = () => nextWarm.active === true && owner._predictedSectorWarm === nextWarm;
+  owner._predictedSectorWarm = nextWarm;
+  preloadAuthoredParts(requests.map((request) => ({
+    ...request,
+    residencyOwner: warmOwner,
+    residencyRole: 'sector-predicted',
+    sectorId,
+    isResidencyOwnerActive: isActive,
+  })), owner.renderer)
+    .then((settled) => { nextWarm.settled = settled; })
+    .catch(() => {});
 }
 
 function captureObjectHome(object) {
@@ -5241,6 +5323,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._currentSectorPrewarm = null;
   owner._authoredSectorPrewarmPending = null;
   owner._authoredSectorPrewarmPendingId = null;
+  owner._predictedSectorWarm = null;
   owner._hazardVisuals = [];
   owner._meshBuildQueue = [];
   owner._meshBuildQueuedIds = null;
@@ -6323,6 +6406,13 @@ export const render = {
     this._currentSectorPrewarm = null;
     this._authoredSectorPrewarmPendingId = null;
     this._authoredSectorPrewarmPending = null;
+    if (this._predictedSectorWarm) {
+      this._predictedSectorWarm.active = false;
+      if (this._assetResidency) {
+        this._assetResidency.releaseOwner(this._predictedSectorWarm.owner, 'predicted-sector-warm-reset');
+      }
+      this._predictedSectorWarm = null;
+    }
     this._sectorPrewarmGeneration = 0;
     this._authoredPreparationEpoch = 0;
     // PQ-210.00 survival roster prewarm: exemplar spec ids admitted or in flight, the weapon
@@ -10576,6 +10666,8 @@ export const render = {
       refreshSectorPrewarmPopulation(record);
       return record;
     };
+    // updatePredictedSectorPrewarm (residency poll) reuses this census for its speculative warm.
+    this._sectorPrewarmRequests = sectorPrewarmRequests;
     const settleSectorPrewarmRequests = (record) => settleSectorBoundaryPreparations(record, {
       includePrefetch: true,
     });
@@ -13205,6 +13297,7 @@ export const render = {
       this._pruneMotionTrackerRecords(presentationList);
     }
     kickDecodeRunwayAssets(this, presentationList);
+    updatePredictedSectorPrewarm(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
