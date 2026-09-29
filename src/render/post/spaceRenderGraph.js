@@ -343,7 +343,7 @@ export class SpaceRenderGraph {
     try {
       renderer.setRenderTarget(this.sceneTarget);
       renderer.clear(true, true, true);
-      renderer.render(scene, camera);
+      renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
 
       if (this.options.ao) {
         scene.overrideMaterial = this.normalMaterial;
@@ -351,7 +351,7 @@ export class SpaceRenderGraph {
         renderer.clear(true, true, true);
         hideInactiveInstancedMeshes(scene, this._hiddenNormalPassInstances);
         try {
-          renderer.render(scene, camera);
+          renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
         } finally {
           restoreInactiveInstancedMeshes(this._hiddenNormalPassInstances);
           scene.overrideMaterial = previousOverride;
@@ -654,6 +654,18 @@ export class SpaceRenderGraph {
   }
 }
 
+// Runs one render() with autoClear suppressed: callers clear their target explicitly
+// (or write every texel of it), so the renderer's own clear would only re-clear.
+function renderWithoutAutoClear(renderer, draw) {
+  const previousAutoClear = renderer.autoClear;
+  renderer.autoClear = false;
+  try {
+    return draw();
+  } finally {
+    renderer.autoClear = previousAutoClear;
+  }
+}
+
 class FullscreenQuad {
   constructor() {
     this.camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -665,8 +677,10 @@ class FullscreenQuad {
   render(renderer, material, target) {
     this.mesh.material = material;
     renderer.setRenderTarget(target || null);
-    renderer.clear(true, false, false);
-    renderer.render(this.scene, this.camera);
+    // No clear: the 2x2 quad covers the whole target and the materials used here are
+    // all NoBlending/depthTest:false/depthWrite:false with no discard, so every texel
+    // is unconditionally overwritten — a prior clear can never be observed.
+    renderWithoutAutoClear(renderer, () => renderer.render(this.scene, this.camera));
   }
   dispose() { this.mesh.geometry.dispose(); this.mesh.material.dispose(); }
 }
