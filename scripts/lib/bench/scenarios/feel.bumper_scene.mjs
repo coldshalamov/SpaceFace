@@ -64,6 +64,14 @@ function light(host) {
   return true;
 }
 
+/** Units of kill loot the salvage bay holds (0 when it has never held anything). */
+function bayUnits(state) {
+  const items = state.player && state.player.salvageBay && state.player.salvageBay.items;
+  let n = 0;
+  for (const id in (items || {})) n += Number(items[id]) || 0;
+  return n;
+}
+
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
 function round(v, d = 3) { const m = 10 ** d; return Math.round(finite(v) * m) / m; }
 
@@ -318,6 +326,9 @@ async function runField(seed) {
     pickupsStranded: stranded,
     landedShare: pickupsSeen > 0 ? round((pickupsSeen - stranded) / pickupsSeen, 3) : null,
     overflowConverted: overflow.length,
+    // Kill loot is banked in the salvage bay (slice D), not the trade hold: what the pass put where.
+    bayUnits: bayUnits(host.state),
+    holdUsed: round(finite(host.state.player && host.state.player.cargo && host.state.player.cargo.usedVolume), 1),
     walletDelta: round(finite(host.state.player && host.state.player.credits) - walletBefore, 1),
     secondsLastKillToLastLanding: killed.length && lastLeftTick ? round(Math.max(0, lastLeftTick - lastKillTick) * DT, 2) : null,
     startTick,
@@ -591,6 +602,9 @@ export const scenario = {
       push('field.landed', 'share of spawned loot the hull accepts with no pilot input',
         field.landedShare, 'fraction', field.landedShare === BUMPER_TARGETS.fieldLandedShare,
         `${field.pickupsStranded} still floating; ${field.overflowConverted} refused ore paid credits; wallet +${field.walletDelta}`);
+      push('field.bay', 'kill loot goes to the salvage bay and the trade hold stays empty (bay units / hold volume)',
+        field.bayUnits, 'units', field.bayUnits > 0 && field.holdUsed === 0,
+        `bay ${field.bayUnits} units, hold ${field.holdUsed}`);
     }
 
     if (lance.measured) {
