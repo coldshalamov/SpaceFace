@@ -210,6 +210,10 @@ export function createFloatingText(ctx) {
     });
   });
   bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
+  // Combat ore a full hold refused pays credits (combat.arcadeLoot): show the payout where it landed.
+  bus.on('loot:overflowConverted', (p) => {
+    if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
+  });
   // A rated trick mints its claim chit at the contact site — mark the mint so the payout reads
   // where it happened, not only when the chit is later scooped.
   bus.on('loot:drop', (p) => {
