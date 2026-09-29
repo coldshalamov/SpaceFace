@@ -16,6 +16,9 @@ export const PRODUCTION_FEATURES = Object.freeze({
     weaponImpulseConsequences: true,
     // Authoritative heat vent lockout — profile-driven, not typeof window (N1).
     weaponHeatVent: true,
+    // Hull-burst overhaul slice A: the rules that make a knocked-loose hull a projectile (credit held
+    // for the whole flight, free spin; more land behind this switch). Profile-driven like the rest.
+    tumbleFling: true,
   }),
   massline2: Object.freeze({
     enabled: true,
@@ -73,6 +76,8 @@ export const LEGACY47A_FEATURES = Object.freeze({
     weaponImpulseConsequences: false,
     // Keep 47-A combat goldens byte-stable (vent lockout would alter fire cadence).
     weaponHeatVent: false,
+    // The projectile-hull rules change tumble physics; 47-A predates them.
+    tumbleFling: false,
   }),
   massline2: Object.freeze({
     enabled: false,

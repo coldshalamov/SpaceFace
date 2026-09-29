@@ -17,17 +17,38 @@ function gpuContextIsLost(state) {
 }
 
 function timeout(ms) {
-  return new Promise((resolve) => setTimeout(() => resolve({ ok: false, timeout: true }), ms));
+  let timer = null;
+  const promise = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      timer = null;
+      resolve({ ok: false, timeout: true });
+    }, ms);
+  });
+  return {
+    promise,
+    cancel() {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+  };
 }
 
 async function settleWithin(promise, timeoutMs) {
-  return Promise.race([
-    Promise.resolve(promise).then(
-      () => ({ ok: true }),
-      (error) => ({ ok: false, error }),
-    ),
-    timeout(timeoutMs),
-  ]);
+  const limit = timeout(timeoutMs);
+  try {
+    return await Promise.race([
+      Promise.resolve(promise).then(
+        (value) => ({ ok: true, value }),
+        (error) => ({ ok: false, error }),
+      ),
+      limit.promise,
+    ]);
+  } finally {
+    // The loser of the race must not keep a multi-minute timer alive after the gate moved on.
+    limit.cancel();
+  }
 }
 
 function ledgerNow() {
@@ -676,15 +697,312 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
   return gpuContextIsLost(state) !== true;
 }
 
+const WALL_CLOCK_SKIP_REASONS = new Set([
+  'loading-budget',
+  'loading-deadline',
+  'loading-deadline-partial',
+  'timeout',
+]);
+
+function admissionErrorText(error) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (typeof error.message === 'string' && error.message) return error.message;
+  return String(error);
+}
+
+function packageIdFromText(text) {
+  const named = String(text || '').match(/\b((?:ship|station|asset|pkg|package)_[A-Za-z0-9_]+)\b/);
+  return named ? named[1] : null;
+}
+
+function admissionPackageId(value) {
+  if (!value || typeof value !== 'object') return null;
+  if (typeof value.packageId === 'string' && value.packageId) return value.packageId;
+  if (typeof value.assetId === 'string' && value.assetId) return value.assetId;
+  const wrapped = value.package;
+  if (wrapped && typeof wrapped === 'object') {
+    if (typeof wrapped.assetId === 'string' && wrapped.assetId) return wrapped.assetId;
+    if (typeof wrapped.id === 'string' && wrapped.id) return wrapped.id;
+  }
+  return null;
+}
+
+function isProceduralStandIn(value) {
+  if (!value || typeof value !== 'object') return false;
+  return [value.reason, value.status, value.authoredAssetState, value.fallback, value.primitive]
+    .some((mark) => mark === 'procedural-settled' || mark === 'cube' || mark === 'empty' || mark === 'empty-success');
+}
+
+function isNullPackage(value) {
+  if (value == null) return true;
+  if (typeof value !== 'object') return true;
+  return value.packageId === null || value.package === null;
+}
+
+/** Resume an accepted record without inventing a null id, which reads as a missing package. */
+function acceptedResumeValue(record) {
+  const value = { skipped: false };
+  const packageId = admissionPackageId(record);
+  if (packageId) value.packageId = packageId;
+  return value;
+}
+
+function isOpeningPlanIncomplete(value) {
+  return !!(value && typeof value === 'object' && value.skipped === true && value.reason === 'opening-plan-incomplete');
+}
+
+function isWallClockSkip(value) {
+  return !!(value && typeof value === 'object' && value.skipped === true && WALL_CLOCK_SKIP_REASONS.has(value.reason));
+}
+
+/**
+ * One required opening package is only pending, rejected, superseded, or accepted.
+ * `ready` is true solely for accepted. A timeout is pending. A known failure stays
+ * rejected for that generation. A mismatched generation publishes nothing.
+ */
+export function classifyRequiredPackageAdmission(attempt = {}) {
+  const capturedGeneration = attempt.capturedGeneration;
+  const currentGeneration = attempt.currentGeneration;
+  const existing = attempt.existing || null;
+  const settled = attempt.settled || null;
+  const failedId = settled && settled.ok === false ? packageIdFromText(admissionErrorText(settled.error)) : null;
+  const valueId = admissionPackageId(settled && settled.value);
+
+  if (capturedGeneration !== currentGeneration) {
+    return {
+      status: 'superseded',
+      ready: false,
+      packageId: failedId || valueId || (existing && existing.packageId) || null,
+      reason: 'a newer run replaced this admission',
+      publish: false,
+      releaseOwn: true,
+    };
+  }
+
+  if (existing && existing.status === 'rejected' && existing.generation === capturedGeneration) {
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: existing.packageId || null,
+      reason: existing.reason || 'required package was rejected',
+      publish: false,
+      releaseOwn: false,
+    };
+  }
+
+  if (attempt.canceledStamp === true) {
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: null,
+      reason: 'this sector cook belongs to a canceled run',
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  if (!settled || settled.timeout === true) {
+    return {
+      status: 'pending',
+      ready: false,
+      packageId: (existing && existing.packageId) || null,
+      reason: 'opening package has not settled',
+      publish: true,
+      releaseOwn: false,
+      resumeAccepted: attempt.resumeAccepted === true,
+    };
+  }
+
+  if (settled.ok === false) {
+    const reason = admissionErrorText(settled.error) || 'required package failed';
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: packageIdFromText(reason),
+      reason,
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  const value = settled.value;
+  if (isOpeningPlanIncomplete(value) || isWallClockSkip(value)) {
+    return {
+      status: 'pending',
+      ready: false,
+      packageId: admissionPackageId(value),
+      reason: value && value.reason ? String(value.reason) : 'opening-plan-incomplete',
+      publish: false,
+      continueOpening: true,
+      releaseOwn: false,
+    };
+  }
+
+  if (attempt.resumeAccepted === true && value && typeof value === 'object' && value.skipped !== true
+      && !isProceduralStandIn(value) && !isNullPackage(value)) {
+    return {
+      status: 'accepted',
+      ready: true,
+      packageId: admissionPackageId(value) || (existing && existing.packageId) || null,
+      reason: '',
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  if (isNullPackage(value) || isProceduralStandIn(value) || (value && value.ok === false) || (value && value.skipped === true)) {
+    const reason = (value && (value.reason || value.status))
+      || (value == null ? 'required package is missing' : 'required package was not accepted');
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: admissionPackageId(value) || packageIdFromText(reason),
+      reason: String(reason),
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  return {
+    status: 'accepted',
+    ready: true,
+    packageId: admissionPackageId(value),
+    reason: '',
+    publish: true,
+    releaseOwn: false,
+  };
+}
+
+function rememberRequiredPackageAdmission(render, capturedGeneration, classification) {
+  if (!render || !classification || classification.publish !== true) return false;
+  if (render.admissionRunGeneration !== capturedGeneration) return false;
+  const existing = render.requiredPackageAdmission;
+  if (existing && existing.status === 'rejected' && existing.generation === capturedGeneration
+      && classification.status !== 'rejected') {
+    return false;
+  }
+  const record = {
+    status: classification.status,
+    ready: classification.status === 'accepted' && classification.ready === true,
+    packageId: classification.packageId || (existing && existing.packageId) || null,
+    reason: classification.reason || '',
+    generation: capturedGeneration,
+  };
+  if (classification.resumeAccepted === true) record.resumeAccepted = true;
+  if (classification.continueOpening === true) record.continueOpening = true;
+  render.requiredPackageAdmission = record;
+  return true;
+}
+
+export function commitRequiredPackageAdmission(render, capturedGeneration, classification) {
+  return rememberRequiredPackageAdmission(render, capturedGeneration, classification);
+}
+
+/**
+ * After a pending opening wait, classify the promises already stored on the render state.
+ * No new timer: a cook that has not settled stays pending, and a late result whose
+ * generation changed writes nothing.
+ */
+export async function settleRequiredPackageAdmission(state) {
+  const render = state && state.render;
+  if (!render) return null;
+  const generation = render.admissionRunGeneration;
+  const existing = render.requiredPackageAdmission || null;
+  const preparePromise = render.openingGpuResidencyReady;
+  const livePromise = render.liveScenePresentReady;
+  let prepareSettled = null;
+  if (preparePromise && typeof preparePromise.then === 'function') {
+    try {
+      prepareSettled = { ok: true, value: await preparePromise };
+    } catch (error) {
+      prepareSettled = { ok: false, error };
+    }
+  }
+  let liveSettled = null;
+  if (livePromise && typeof livePromise.then === 'function') {
+    try {
+      liveSettled = { ok: true, value: await livePromise };
+    } catch (error) {
+      liveSettled = { ok: false, error };
+    }
+  }
+  if (render.admissionRunGeneration !== generation) {
+    return classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing: render.requiredPackageAdmission,
+      settled: prepareSettled,
+    });
+  }
+  const resumeAccepted = !!(existing && (existing.status === 'accepted' || existing.resumeAccepted === true));
+  let classification;
+  if (prepareSettled && prepareSettled.ok === false) {
+    classification = classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing,
+      settled: prepareSettled,
+    });
+  } else if (liveSettled && liveSettled.ok === false) {
+    classification = classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing,
+      settled: liveSettled,
+    });
+  } else {
+    const settled = prepareSettled && prepareSettled.ok === true
+      ? prepareSettled
+      : (resumeAccepted
+        ? { ok: true, value: acceptedResumeValue(existing) }
+        : { timeout: true });
+    classification = classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing,
+      settled,
+      resumeAccepted,
+    });
+  }
+  if (classification && classification.continueOpening === true && (!liveSettled || liveSettled.ok === true)) {
+    if (existing && existing.status === 'pending' && existing.generation === generation) {
+      render.requiredPackageAdmission = null;
+    }
+    return {
+      status: 'pending',
+      ready: false,
+      continueOpening: true,
+      packageId: classification.packageId || null,
+      reason: classification.reason || 'opening-plan-incomplete',
+    };
+  }
+  rememberRequiredPackageAdmission(render, generation, classification);
+  return render.requiredPackageAdmission || classification;
+}
+
 export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
   const render = state && state.render;
   const sectorId = state && state.world && state.world.currentSectorId;
-  const recook = !!(render
+  const capturedGeneration = render ? render.admissionRunGeneration : undefined;
+  const generationNow = () => (render ? render.admissionRunGeneration : undefined);
+  const sameGeneration = () => generationNow() === capturedGeneration;
+  const resident = !!(render
+    && render.requiredPackageAdmission
+    && render.requiredPackageAdmission.status === 'accepted'
+    && render.requiredPackageAdmission.ready === true
+    && render.requiredPackageAdmission.generation === capturedGeneration
     && render.sessionLiveSectorCookedId
     && render.sessionLiveSectorCookedId === sectorId
     && gpuContextIsLost(state) !== true);
+  const bareStamp = !!(render
+    && !resident
+    && render.sessionLiveSectorCookedId
+    && sectorId
+    && render.sessionLiveSectorCookedId === sectorId
+    && gpuContextIsLost(state) !== true);
   const prepare = render && render.prepareOpeningGpuResources;
-  const ledger = beginOpeningCookLedger(render, recook ? 'opening-recook' : 'opening');
+  const ledger = beginOpeningCookLedger(render, resident ? 'opening-recook' : 'opening');
   const stopLaneSampler = startOpeningCookLaneSampler(render);
   let ledgerFinished = false;
   const finishLedger = () => {
@@ -693,60 +1011,159 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
     stopLaneSampler();
     logOpeningCookLedger(ledger);
   };
-  if (!recook && typeof prepare === 'function') {
+  const publish = (classification) => rememberRequiredPackageAdmission(render, capturedGeneration, classification);
+  let prepareClassification = null;
+  let prepareValue = null;
+
+  if (bareStamp) {
+    const stamped = render.requiredPackageAdmission;
+    const ownedHere = !!(stamped && stamped.generation === capturedGeneration);
+    // A timeout or rejection already recorded for this run stays that status. A stamp
+    // from another run is not acceptance and not a refusal: this run still prepares.
+    if (ownedHere && (stamped.status === 'pending' || stamped.status === 'rejected')) {
+      recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', ledgerNow(), 'skipped', {
+        reason: stamped.status === 'pending' ? 'pending-run' : 'rejected-run',
+      });
+      finishLedger();
+      return false;
+    }
+  }
+
+  if (!resident && typeof prepare === 'function') {
     const prepareStarted = ledgerNow();
-    const readiness = Promise.resolve().then(() => prepare());
-    render.openingGpuResidencyReady = readiness;
-    const result = await settleWithin(readiness, timeoutMs);
+    const preparePromise = Promise.resolve().then(() => prepare());
+    if (sameGeneration()) render.openingGpuResidencyReady = preparePromise;
+    const result = await settleWithin(preparePromise, timeoutMs);
     recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', prepareStarted, settleOutcome(result));
+    if (!sameGeneration()) {
+      if (render.openingGpuResidencyReady === preparePromise) render.openingGpuResidencyReady = null;
+      finishLedger();
+      return false;
+    }
     if (gpuContextIsLost(state)) {
       finishLedger();
       return false;
     }
-    // Prepare timeout still runs the live-sector cook while loading owns the frame.
-    void result;
+    prepareValue = result && result.ok === true ? result.value : null;
+    prepareClassification = classifyRequiredPackageAdmission({
+      capturedGeneration,
+      currentGeneration: generationNow(),
+      existing: render.requiredPackageAdmission,
+      settled: result,
+    });
+    if (prepareClassification.releaseOwn && render.openingGpuResidencyReady === preparePromise) {
+      render.openingGpuResidencyReady = null;
+    }
+    if (prepareClassification.publish === true && prepareClassification.status === 'rejected') {
+      publish(prepareClassification);
+    } else if (prepareClassification.publish === true
+        && prepareClassification.status === 'pending'
+        && prepareClassification.continueOpening !== true) {
+      publish(prepareClassification);
+    }
+    if (prepareClassification.status === 'superseded') {
+      finishLedger();
+      return false;
+    }
   } else {
     recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', ledgerNow(), 'skipped', {
-      reason: recook ? 'session-recook' : 'unavailable',
+      reason: resident ? 'session-recook' : 'unavailable',
     });
   }
   // Maps and geometries just landed. Publish the held next-sector upgrades,
   // drain their compiles, and touch the live materials so first flight bloom
   // is not the first ANGLE draw of those keys.
   // Same-sector F9 recook skips the opening 1x1; programs/buffers are resident.
-  if (state && state.mode === 'loading') {
-    const presentStarted = ledgerNow();
-    const presentCook = Promise.resolve().then(() => (
-      typeof render.prepareLiveSectorBeforeFlight === 'function'
-        ? render.prepareLiveSectorBeforeFlight()
-        : cookLiveSceneGpu(state, { present: true, skipBuffers: true })
-    ));
-    render.liveScenePresentReady = presentCook;
-    // PQ-210.00 — a survival arena cooks its whole bounded field (hulls, promoted rock
-    // variants, site props) behind this wait; the default 20 s window routinely truncates it
-    // on a busy host, and the overflow lands inside the fight at the deferred-hold release.
-    // The inner prepare budget is already the survival-aware one (60 s) but the settle, queue
-    // drain, post-opening sweep and pool census each carry their own cap on top of it — a
-    // contended host can spend ~2x that before the last pipeline lands. Give the gate room
-    // for the whole sequence so the shell is what pays, not the round. PQ-210.02 gives the
-    // open route the same margin: its prepare budget is 40 s and the tail steps sit on top
-    // of it, so a 20 s gate still releases mid-cook. 120 s is the bounded ceiling — a fast
-    // host finishes early, a wedged cook still fails open.
-    const presentBudgetMs = state && state.run && state.run.kind === 'survival'
-      ? Math.max(timeoutMs, 360000)
-      : Math.max(timeoutMs, 120000);
-    const presentResult = await settleWithin(presentCook, presentBudgetMs);
-    const presentOutcome = settleOutcome(presentResult);
-    recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);
-    if (presentOutcome === 'timeout') {
-      // The gate stopped waiting but the cook keeps running into flight; log it when it really ends.
-      presentCook.then(finishLedger, finishLedger);
-    } else {
-      finishLedger();
-    }
-    if (!presentResult.ok || gpuContextIsLost(state)) return false;
+  // That shortcut runs only after this generation already accepted the package.
+  // A stamp this generation did not accept is not a shortcut and not a refusal.
+  if (!(state && state.mode === 'loading')) {
+    finishLedger();
+    if (prepareClassification && prepareClassification.status === 'rejected') return false;
+    if (prepareClassification && prepareClassification.status === 'pending'
+        && prepareClassification.continueOpening !== true) return false;
+    return gpuContextIsLost(state) !== true;
+  }
+  if (!sameGeneration()) {
+    finishLedger();
+    return false;
+  }
+  const presentStarted = ledgerNow();
+  const presentCook = Promise.resolve().then(() => (
+    typeof render.prepareLiveSectorBeforeFlight === 'function'
+      ? render.prepareLiveSectorBeforeFlight()
+      : cookLiveSceneGpu(state, { present: true, skipBuffers: true })
+  ));
+  if (sameGeneration()) render.liveScenePresentReady = presentCook;
+  // PQ-210.00 — a survival arena cooks its whole bounded field (hulls, promoted rock
+  // variants, site props) behind this wait; the default 20 s window routinely truncates it
+  // on a busy host, and the overflow lands inside the fight at the deferred-hold release.
+  // The inner prepare budget is already the survival-aware one (60 s) but the settle, queue
+  // drain, post-opening sweep and pool census each carry their own cap on top of it — a
+  // contended host can spend ~2x that before the last pipeline lands. Give the gate room
+  // for the whole sequence so the shell is what pays, not the round. PQ-210.02 gives the
+  // open route the same margin: its prepare budget is 40 s and the tail steps sit on top
+  // of it, so a 20 s gate still releases mid-cook. 120 s is the bounded ceiling — a fast
+  // host finishes early, a wedged cook still fails open.
+  const presentBudgetMs = state && state.run && state.run.kind === 'survival'
+    ? Math.max(timeoutMs, 360000)
+    : Math.max(timeoutMs, 120000);
+  const presentResult = await settleWithin(presentCook, presentBudgetMs);
+  const presentOutcome = settleOutcome(presentResult);
+  recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);
+  if (presentOutcome === 'timeout') {
+    // The gate stopped waiting but the cook keeps running into flight; log it when it really ends.
+    presentCook.then(finishLedger, finishLedger);
   } else {
     finishLedger();
   }
-  return gpuContextIsLost(state) !== true;
+  if (!sameGeneration()) {
+    if (render.liveScenePresentReady === presentCook) render.liveScenePresentReady = null;
+    return false;
+  }
+  const lost = gpuContextIsLost(state) === true;
+  if (prepareClassification && prepareClassification.status === 'rejected') return false;
+  if (prepareClassification && prepareClassification.status === 'pending'
+      && prepareClassification.continueOpening !== true) return false;
+  if (prepareClassification && prepareClassification.continueOpening === true) {
+    if (!presentResult.ok || lost) return false;
+    if (render.requiredPackageAdmission && render.requiredPackageAdmission.generation !== capturedGeneration) {
+      render.requiredPackageAdmission = null;
+    }
+    return true;
+  }
+  if (!resident && !prepareClassification) {
+    if (!presentResult.ok || lost) return false;
+    return true;
+  }
+  if (!presentResult.ok || lost) {
+    const existingAdmission = render.requiredPackageAdmission;
+    const acceptedHere = !!(existingAdmission
+      && existingAdmission.status === 'accepted'
+      && existingAdmission.generation === capturedGeneration);
+    // A live-sector timeout must not demote an acceptance this generation already recorded.
+    if (presentResult && presentResult.timeout === true && !acceptedHere) {
+      publish(classifyRequiredPackageAdmission({
+        capturedGeneration,
+        currentGeneration: generationNow(),
+        existing: existingAdmission,
+        settled: { timeout: true },
+        resumeAccepted: false,
+      }));
+    }
+    return false;
+  }
+  const accepted = classifyRequiredPackageAdmission({
+    capturedGeneration,
+    currentGeneration: generationNow(),
+    existing: render.requiredPackageAdmission,
+    settled: {
+      ok: true,
+      value: resident ? acceptedResumeValue(render.requiredPackageAdmission) : prepareValue,
+    },
+    resumeAccepted: resident,
+  });
+  if (accepted.status !== 'accepted' || !sameGeneration()) return false;
+  publish(accepted);
+  const record = render.requiredPackageAdmission;
+  return !!(record && record.status === 'accepted' && record.ready === true && sameGeneration());
 }

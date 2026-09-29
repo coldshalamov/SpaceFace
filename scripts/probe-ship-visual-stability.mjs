@@ -47,7 +47,11 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
+  // domcontentloaded is the whole deferred module graph — the first leg of the same boot phase
+  // SF_BOOT_TIMEOUT_MS already budgets. The implicit 30 s nav default dies there on a contended
+  // host before the boot wait can even start (the CI failure this prevents is indistinguishable
+  // from a boot hang, which is exactly what the boot budget is for).
+  await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded', timeout: SF_BOOT_TIMEOUT_MS });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: SF_BOOT_TIMEOUT_MS });
   await page.evaluate(() => {
     window.SF.bus.emit('game:new', { name: 'Visual Stability Probe', seed: 47 });
@@ -713,7 +717,17 @@ async function sampleVisualStability(page, options) {
           .some((url) => String(url || '').includes('/wholeships/')),
         compositionId: data.authoredCompositionId || null,
         slotsKey: stableSlotKey(data.authoredSlots),
-        lodLevel: data.lod && data.lod.level || null,
+        // A whole-ship LOD request stamps boundary.userData.lod.level synchronously, but the
+        // family controller only mounts the demoted root after its async decode + pipeline
+        // compile/upload finishes — swapTo stamps wholeShipLodActiveLevel atomically with the
+        // child add/remove. On contended machines that gap spans many frames: rebasing on the
+        // request level would capture the still-mounted old level's counts, so the real mount
+        // then reads as a within-level mutation every remaining frame. The mounted-level stamp
+        // flips in the same synchronous swap as the geometry the counts measure, so a level
+        // change observed here always coincides with the change in children. Boundaries without
+        // the family controller (the player, per-part LOD ships) keep the resolver level.
+        lodLevel: data.wholeShipLodActiveLevel || (data.lod && data.lod.level) || null,
+        requestedLodLevel: data.lod && data.lod.level || null,
         inView,
         screenRadiusPx,
         meshCount,
@@ -892,12 +906,20 @@ async function sampleVisualStability(page, options) {
   }, options);
 }
 
-async function collectStartupSnapshot(page) {
+async function collectStartupSnapshot(page, { includeLoaderDiagnostics = false } = {}) {
   try {
-    return await page.evaluate(async () => {
+    return await page.evaluate(async (withLoaderDiagnostics) => {
       const sf = window.SF || null;
       const state = sf && sf.state || null;
       const render = state && state.render || null;
+      // Entity presence is the authoritative map lookup — the same read the game's own
+      // helpers.player() and the sibling authored-assets probe make. entityList is a maintained
+      // mirror kept for the ship census diagnostics; a pending/meshless ship is still a real
+      // entity (its admission boundary draws the GFX-12 stand-in) even before the authored hull
+      // mounts.
+      const player = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(state.playerId)
+        : null;
       const ships = state && Array.isArray(state.entityList)
         ? state.entityList.filter((entity) => entity && entity.type === 'ship').map((entity) => ({
           id: entity.id,
@@ -907,42 +929,61 @@ async function collectStartupSnapshot(page) {
           compositionId: entity.mesh && entity.mesh.userData && entity.mesh.userData.authoredCompositionId || null,
         }))
         : [];
-      let loaderDiagnostics = null;
-      try {
-        if (render && render.renderer) {
-          const [assetLoader, partsLibrary] = await Promise.all([
-            import('./src/render/assetLoader.js'),
-            import('./src/render/partsLibrary.js'),
-          ]);
-          const { isReleaseAssetMode } = await import('./src/render/releaseMode.js');
-          const release = isReleaseAssetMode();
-          const partRoot = release ? partsLibrary.PART_LIBRARY_CONTRACT.releaseRoot : partsLibrary.PART_LIBRARY_CONTRACT.root;
-          const failures = [];
-          const slots = partsLibrary.PART_LIBRARY_CONTRACT.slots || {};
-          for (const [slot, files] of Object.entries(slots)) {
-            for (const file of files || []) {
-              const url = `${partRoot}${file}`;
-              const record = await assetLoader.loadAuthoredPart(url, { renderer: render.renderer, slot, optional: true });
-              if (!record) {
-                const error = await assetLoader.getAuthoredAssetDiagnostic(render.renderer, url, slot);
-                failures.push({ slot, url, name: error && error.name || 'LoadFailure', message: error && error.message || 'asset returned no authored blueprint' });
-              }
-            }
-          }
-          loaderDiagnostics = { release, partRoot, failureCount: failures.length, failures: failures.slice(0, 8) };
-        }
-      } catch (error) {
-        loaderDiagnostics = { error: error && error.message ? error.message : String(error) };
-      }
-      return {
+      // One atomic sample: mode/tick/player/ships must all be read in the same synchronous block.
+      // The old code read `ships` before the loader awaits and mode/playerId after them, so on a
+      // starved host the single return value could straddle the whole transition — ships captured
+      // inside the prepareRun clear window (`[]`), mode and playerId captured after flight began
+      // (`flight`, `1`). That torn snapshot is what produced the impossible
+      // {"mode":"flight","playerId":1,"ships":[]} CI report.
+      const snapshot = {
         mode: state && state.mode || null,
         tick: state && state.tick || 0,
         timeScale: state && state.timeScale,
         playerId: state && state.playerId || null,
+        entityCount: state && state.entities && typeof state.entities.size === 'number' ? state.entities.size : null,
+        entityListLength: state && Array.isArray(state.entityList) ? state.entityList.length : null,
+        shipCount: ships.length,
+        playerPresent: !!player,
+        playerAlive: player ? player.alive !== false : null,
+        playerMeshState: player && player.mesh && player.mesh.userData
+          ? (player.mesh.userData.authoredAssetState || null)
+          : null,
         ships,
-        loaderDiagnostics,
       };
-    });
+      let loaderDiagnostics = null;
+      // The contract scan is failure-report only. Every uncached optional load is a fetch+decode
+      // admitted onto the same serial queue this probe is measuring; run it once at the end, not
+      // every 150 ms poll.
+      if (withLoaderDiagnostics) {
+        try {
+          if (render && render.renderer) {
+            const [assetLoader, partsLibrary] = await Promise.all([
+              import('./src/render/assetLoader.js'),
+              import('./src/render/partsLibrary.js'),
+            ]);
+            const { isReleaseAssetMode } = await import('./src/render/releaseMode.js');
+            const release = isReleaseAssetMode();
+            const partRoot = release ? partsLibrary.PART_LIBRARY_CONTRACT.releaseRoot : partsLibrary.PART_LIBRARY_CONTRACT.root;
+            const failures = [];
+            const slots = partsLibrary.PART_LIBRARY_CONTRACT.slots || {};
+            for (const [slot, files] of Object.entries(slots)) {
+              for (const file of files || []) {
+                const url = `${partRoot}${file}`;
+                const record = await assetLoader.loadAuthoredPart(url, { renderer: render.renderer, slot, optional: true });
+                if (!record) {
+                  const error = await assetLoader.getAuthoredAssetDiagnostic(render.renderer, url, slot);
+                  failures.push({ slot, url, name: error && error.name || 'LoadFailure', message: error && error.message || 'asset returned no authored blueprint' });
+                }
+              }
+            }
+            loaderDiagnostics = { release, partRoot, failureCount: failures.length, failures: failures.slice(0, 8) };
+          }
+        } catch (error) {
+          loaderDiagnostics = { error: error && error.message ? error.message : String(error) };
+        }
+      }
+      return { ...snapshot, loaderDiagnostics };
+    }, includeLoaderDiagnostics);
   } catch (error) {
     return { error: error && error.message ? error.message : String(error) };
   }
@@ -954,14 +995,22 @@ async function waitForPlayableFlight(page, timeoutMs) {
   while (Date.now() - started < timeoutMs) {
     await forceStartupRender(page);
     last = await collectStartupSnapshot(page);
-    const ships = Array.isArray(last && last.ships) ? last.ships : [];
-    if (last && last.mode === 'flight' && last.playerId && ships.some((ship) =>
-      ship.id === last.playerId && ship.alive !== false && ship.meshState === 'authored')) {
+    // Playable means the sim handed over flight control with a live player entity. The authored
+    // hull mounts on the renderer's own paced admission queue and legitimately lands after mode
+    // flips on a serial-GL host; the sampler below is what scores authored identity, under the
+    // renderer's relevance policy (pending boundary = stand-in, not a failure). Requiring
+    // `meshState === 'authored'` here measured boot pacing instead of flight stability — and on a
+    // contended host it could never return while the admission queue was still draining.
+    if (last && last.mode === 'flight' && last.playerId
+      && last.playerPresent && last.playerAlive !== false) {
       return last;
     }
     await page.waitForTimeout(150);
   }
-  throw new Error(`flight did not become playable before visual stability probe: ${JSON.stringify(last)}`);
+  // The heavy loader scan runs once here so the failure report still carries it.
+  const diagnostics = await collectStartupSnapshot(page, { includeLoaderDiagnostics: true })
+    .catch(() => null);
+  throw new Error(`flight did not become playable before visual stability probe: ${JSON.stringify(diagnostics && !diagnostics.error ? diagnostics : last)}`);
 }
 
 async function forceStartupRender(page) {

@@ -251,12 +251,22 @@ export function recordImpulseProvenance(entity, input = {}) {
   if (!entity || typeof entity !== 'object') return null;
   const tag = stableTag(input.tag || input.provenance);
   if (!tag) return null;
+  const actorId = input.actorId == null ? null : input.actorId;
+  const appliedTick = nonNegativeInteger(input.appliedTick);
+  // A follow-up hit from the same actor while a flight hold is still running keeps the hold: a weak
+  // plink that does not stun must not drop the credit for a hull the same player already sent flying.
+  // A different actor replaces the record outright (the latest cause wins) and inherits nothing.
+  const previous = RECENT_IMPULSES.get(entity) || null;
+  const inheritedHold = previous && previous.holdUntilTick != null
+    && previous.actorId === actorId && appliedTick <= previous.holdUntilTick
+    ? previous.holdUntilTick : null;
   const record = Object.freeze({
-    actorId: input.actorId == null ? null : input.actorId,
+    actorId,
     weaponId: input.weaponId == null ? null : String(input.weaponId),
     tag,
-    appliedTick: nonNegativeInteger(input.appliedTick),
+    appliedTick,
     magnitude: nonNegative(input.magnitude),
+    ...(inheritedHold != null ? { holdUntilTick: inheritedHold } : {}),
   });
   RECENT_IMPULSES.set(entity, record);
   IMPULSE_PROVENANCE_GENERATION = (IMPULSE_PROVENANCE_GENERATION + 1) >>> 0 || 1;
@@ -274,11 +284,49 @@ export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_
   const now = nonNegativeInteger(tick);
   const maxAge = nonNegativeInteger(maxAgeTicks);
   const age = now - record.appliedTick;
-  if (age < 0 || age > maxAge) {
+  // A held record (holdImpulseProvenance) outlives maxAge until its hold tick: a hull the player
+  // knocked loose is still the player's kill on the far side of a 4 s flight.
+  const held = record.holdUntilTick != null && now <= record.holdUntilTick;
+  if (age < 0 || (age > maxAge && !held)) {
     clearImpulseProvenance(entity);
     return null;
   }
   return record;
+}
+
+/**
+ * Hull-burst overhaul, slice A: keep an entity's impulse record alive through a whole flight.
+ *
+ * A hull thrown or blasted hard coasts 3-4 s before it meets anything; IMPULSE_PROVENANCE_MAX_AGE_TICKS
+ * is 3 s and every tumbleStates tick reads (and destructively clears) stale records, so the collision
+ * that finally kills it used to be blamed on the hull itself and the player's loot never dropped.
+ * The hold extends the record's life WITHOUT touching `appliedTick`: the RCS-disruptor latch reads
+ * appliedTick and must not be re-armed, and a newer hit still outranks it (contactImpulseProvenance
+ * picks the freshest appliedTick). It never shortens a hold, never creates a record, and is as
+ * transient as the record itself (WeakMap-backed, never saved).
+ */
+export function holdImpulseProvenance(entity, untilTick, nowTick, causeAppliedTick = null) {
+  if (!entity || typeof entity !== 'object') return null;
+  const record = RECENT_IMPULSES.get(entity) || null;
+  if (!record) return null;
+  const now = nonNegativeInteger(nowTick);
+  const until = nonNegativeInteger(untilTick);
+  const age = now - record.appliedTick;
+  const alreadyHeld = record.holdUntilTick != null && now <= record.holdUntilTick;
+  // Never revive a dead record: drones are not in the per-tick RCS scan, so their stale records
+  // are only ever cleared by a read, and extending one would credit a hit from many seconds ago.
+  if (!alreadyHeld && (age < 0 || age > IMPULSE_PROVENANCE_MAX_AGE_TICKS)) {
+    clearImpulseProvenance(entity);
+    return null;
+  }
+  // A fresh record is extended only if it is what caused THIS tumble. A hull already held is mid-flight
+  // and any further tumble on it (a rock bounce, a second hull) extends the same credit; a hull that
+  // merely carries an old weak hit does not inherit credit for an unrelated shove.
+  if (!alreadyHeld && causeAppliedTick != null && record.appliedTick !== nonNegativeInteger(causeAppliedTick)) return null;
+  if (record.holdUntilTick != null && until <= record.holdUntilTick) return record;
+  const held = Object.freeze({ ...record, holdUntilTick: until });
+  RECENT_IMPULSES.set(entity, held);
+  return held;
 }
 
 // Immutable insertion-order view for consumers that must not lose an earlier same-tick impulse when

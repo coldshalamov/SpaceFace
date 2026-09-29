@@ -27,6 +27,8 @@ export async function runNewGameStartTransition(options = {}) {
     enterFlight,
     reportProgress,
     yieldForPresentation,
+    readPackageAdmission,
+    awaitSettledPackageAdmission,
   } = options;
   requireTransitionDependencies({ guard, prepareRun, waitForLibrary, waitForVisuals, enterFlight });
 
@@ -80,10 +82,32 @@ export async function runNewGameStartTransition(options = {}) {
     if (!current()) return stale();
     if (typeof waitForGpuResources === 'function') {
       publishProgress(reportProgress, current, 'gpu-resources', 0.9, 'Preparing the opening route');
-      const gpuReady = await waitForGpuResources();
+      let gpuReady = await waitForGpuResources();
       if (!current()) return stale();
-      if (gpuReady === false) {
-        console.warn('[startup] opening GPU resources incomplete; entering flight');
+      let admission = typeof readPackageAdmission === 'function' ? readPackageAdmission() : null;
+      if (gpuReady !== true && admission && admission.status === 'pending') {
+        const detail = admission.packageId
+          ? `Still preparing ${admission.packageId}`
+          : 'The opening package is still preparing';
+        publishProgress(reportProgress, current, 'gpu-resources', 0.9, 'Preparing the opening route', detail);
+        if (typeof awaitSettledPackageAdmission === 'function') {
+          admission = await awaitSettledPackageAdmission();
+        }
+        if (!current()) return stale();
+        gpuReady = !!(admission && (
+          (admission.status === 'accepted' && admission.ready === true)
+          || admission.continueOpening === true
+        ));
+      }
+      if (!current()) return stale();
+      if (gpuReady !== true) {
+        const packageId = admission && admission.packageId;
+        const reason = admission && typeof admission.reason === 'string' ? admission.reason : '';
+        let detail = 'Required opening package was not accepted.';
+        if (packageId && reason) detail = `Required package ${packageId} was not accepted: ${reason}`;
+        else if (packageId) detail = `Required package ${packageId} was not accepted.`;
+        else if (reason) detail = reason;
+        throw new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources', detail);
       }
     }
     if (!current()) return stale();
@@ -119,9 +143,13 @@ export async function runNewGameStartTransition(options = {}) {
   }
 }
 
-function publishProgress(reportProgress, current, id, progress, label) {
+function publishProgress(reportProgress, current, id, progress, label, detail) {
   if (typeof reportProgress !== 'function' || !current()) return;
-  try { reportProgress({ id, progress, label }); }
+  try {
+    const stage = { id, progress, label };
+    if (typeof detail === 'string' && detail) stage.detail = detail;
+    reportProgress(stage);
+  }
   catch (error) { console.warn('[startup] loading progress reporter failed', error); }
 }
 
@@ -138,6 +166,8 @@ export function describeGameStartFailure(error) {
     text = 'The flight renderer did not finish preparing. Retry Launch; saved games are unchanged.';
   } else if (code === 'GPU_RESIDENCY_UNAVAILABLE') {
     text = 'The opening flight materials did not finish preparing. Retry Launch; saved games are unchanged.';
+    const reason = typeof error?.message === 'string' ? error.message.trim() : '';
+    if (reason) text = `${text} ${reason}`;
   } else if (code === 'PHYSICS_BACKEND_UNAVAILABLE') {
     text = 'The flight physics systems did not finish preparing. Retry Launch; saved games are unchanged.';
   } else if (code === 'NEW_GAME_PLUS_UNAVAILABLE') {

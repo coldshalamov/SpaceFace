@@ -8,6 +8,7 @@ import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { interpolateGlobalToFrame, readFrameOrigin } from './frameCoordinates.js';
 import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
+import { createCameraGlide, resetCameraGlide, stepCameraGlide } from './cameraGlide.js';
 import {
   readOwnedExceptionalSpeed,
   readVelocityLanguage,
@@ -1189,6 +1190,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _keepOutCandidateAge = 0;
   let _clearanceAbsentAge = 0;
   let _clearanceTarget = 0;
+  // Predictive obstacle glide (cameraGlide.js). Owns clearance whenever the renderer offers a
+  // column-addressable roof query; the reactive floor/keep-out state above is the fallback for
+  // callers that only pass the bare floor callback.
+  const _glide = createCameraGlide();
   let _exceptionalHold = 0;
   let _anchorHoldX = 0;
   let _anchorHoldZ = 0;
@@ -1260,6 +1265,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     _clearanceCandidateAge = 0;
     _clearanceAbsentAge = 0;
     _clearanceTarget = 0;
+    resetCameraGlide(_glide);
     _keepOutX = 0;
     _keepOutZ = 0;
     _keepOutTargetX = 0;
@@ -1890,7 +1896,23 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       const camX = c.focus.x + offset.x + c.shakeOffset.x + c.kickOffset.x;
       const camZ = c.focus.z + offset.z + c.shakeOffset.z + c.kickOffset.z;
       let camY = offset.y;
-      if (typeof clearanceAt === 'function') {
+      let dollyX = 0;
+      let dollyZ = 0;
+      if (typeof clearanceAt === 'function' && typeof clearanceAt.roofAt === 'function') {
+        // Dolly along the ray from the look-at target through the camera: the framing direction is
+        // untouched, the shot simply pulls up and back ahead of anything it would otherwise enter.
+        const tx = c.focus.x + c.kickOffset.x;
+        const tz = c.focus.z + c.kickOffset.z;
+        const rx = camX - tx;
+        const rz = camZ - tz;
+        const glideCeiling = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
+        const s = stepCameraGlide(_glide, frameDt, tx, tz, rx, camY, rz, clearanceAt.roofAt, glideCeiling);
+        dollyX = rx * (s - 1);
+        dollyZ = rz * (s - 1);
+        camY *= s;
+        c.clearanceScale = s;
+        c.clearanceDiag = _glide.diag;
+      } else if (typeof clearanceAt === 'function') {
         const floor = clearanceAt(camX, camZ, camY);
         // A roof above the far plane cannot be a real structure — only a broken bound (the
         // 2026-09-25 compounded asteroid scale reported ~1.4e8 and orbited the camera). Refuse
@@ -1951,7 +1973,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           _keepOutZ += oz;
         }
       }
-      cam.position.set(camX + _keepOutX, camY, camZ + _keepOutZ);
+      cam.position.set(camX + _keepOutX + dollyX, camY, camZ + _keepOutZ + dollyZ);
       cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so

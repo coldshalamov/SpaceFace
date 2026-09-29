@@ -16,7 +16,7 @@ import {
   readPhysicsTelemetry,
 } from '../../../../src/core/physicsAuthority.js';
 import { HITSTUN_IMPULSE_EVENT, hitstunMassFactor, recordImpulseProvenance, resolveHitstunLaw } from '../../../../src/combat/impulseKernel.js';
-import { readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
+import { isRecovering, readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
 import { combat } from '../../../../src/systems/combat.js';
 import { impulseCharges } from '../../../../src/systems/impulseCharges.js';
 import { tumbleStates } from '../../../../src/systems/tumbleStates.js';
@@ -330,6 +330,9 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
     let zeroTorqueHelmLossTicks = 0;
     let zeroTorqueRecoveryTicks = 0;
     let recoveryObserveTicks = 0;
+    // The spin the commanded torque ACTED ON is the previous tick's post-step spin: a small spin is
+    // killed by the recovery thrusters inside a single step, so the post-step reading is already 0.
+    let lastSpinSeen = 0;
     const helmModesSeen = [];
 
     const totalTicks = SETTLE_TICKS + POST_TICKS + 8;
@@ -409,6 +412,8 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
       after: ({ state }) => {
         const tick = state.tick | 0;
         const tel = readPhysicsTelemetry(victim);
+        const spinActedOn = lastSpinSeen;
+        lastSpinSeen = finite(victim.angVel, 0);
         const torqueMag = tel && tel.torque
           ? Math.hypot(finite(tel.torque.x), finite(tel.torque.y), finite(tel.torque.z))
           : 0;
@@ -446,28 +451,38 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
           }
           if (sinceEvent >= 0) {
             const tumbling = readTumbleStatus(host.state, victim) != null;
+            // Commanded torque that opposes the hull's spin is the evidence for "never a hidden
+            // gyro": the spin is damped by real thrusters or not at all. It is collected during the
+            // tumble AND during the recovery beat that follows: with `tumbleFling` (owner ruling
+            // 2026-09-29: a tumbling hull is out of control and not acted on by its own propulsion)
+            // the tumble itself commands no torque, and the thrusters that damp the spin are the
+            // recovery beat's.
+            const sampleOpposingTorque = () => {
+              const spinSigned = Math.abs(spinActedOn) >= 1e-4 ? spinActedOn : finite(victim.angVel, 0);
+              const ty = tel && tel.torque ? finite(tel.torque.y) : 0;
+              if (Math.abs(spinSigned) >= 1e-4 && ty * spinSigned < 0) {
+                recoveryOpposesSpin = true;
+                recoveryTorqueObserved = true;
+                const mag = Math.abs(ty);
+                if (mag > peakTorqueRecovery) peakTorqueRecovery = mag;
+              }
+            };
             if (!helmRecovered) {
               if (tumbling) {
                 helmLossTicks += 1;
                 recordHelmModeNames(helmEvents, helmModesSeen);
                 if (torqueMag > peakTorqueHelmLoss) peakTorqueHelmLoss = torqueMag;
                 if (torqueMag <= 1e-4) zeroTorqueHelmLossTicks += 1;
-                if (sinceEvent >= 1) {
-                  const spinSigned = finite(victim.angVel, 0);
-                  const ty = tel && tel.torque ? finite(tel.torque.y) : 0;
-                  if (Math.abs(spinSigned) >= 1e-4 && ty * spinSigned < 0) {
-                    recoveryOpposesSpin = true;
-                    recoveryTorqueObserved = true;
-                    const mag = Math.abs(ty);
-                    if (mag > peakTorqueRecovery) peakTorqueRecovery = mag;
-                  }
-                }
+                if (sinceEvent >= 1) sampleOpposingTorque();
               } else if (sinceEvent > 0) {
                 helmRecovered = true;
                 recoveredAtTick = tick;
+                if (isRecovering(host.state, victim)) sampleOpposingTorque();
               }
             } else {
               recoveryObserveTicks += 1;
+              // Only the real recovery beat (0.9 s) counts; ordinary AI steering torque after it does not.
+              if (isRecovering(host.state, victim)) sampleOpposingTorque();
             }
           }
 

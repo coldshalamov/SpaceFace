@@ -1,0 +1,92 @@
+SOLID WORLD — every object is a real, physical, correctly-sized thing, and the camera never touches any of them
+
+You are finishing the "solid world" lane of SpaceFace. The hard engineering is already built and
+tested; your job is the long, careful grunt work of making every single object in the game true
+to its model, then proving it with numbers. Work end to end. Do not stop at a green check, and do
+not report a lane "blocked" unless you can name the exact missing file (root AGENTS.md §4).
+
+Read first: AGENTS.md (§3 shared tree, §6 contracts), src/core/AGENTS.md, src/render/AGENTS.md,
+test/AGENTS.md, then src/data/modelTruth.js (header + MODEL_SUBSTANCE_TABLE) and
+src/render/cameraGlide.js (header comment).
+
+WHAT ALREADY EXISTS (do not rebuild; extend)
+1. Predictive camera. src/render/cameraGlide.js + camera.js + renderer.js `cameraRoofAt`.
+   The camera sweeps ~3 s of the path ahead, and dollies UP AND BACK along its own view ray, easing
+   in before contact, holding while over the object, and settling back to the set zoom afterward.
+   Its last-resort clamp guarantees it is never inside a solid. Tests: test/camera-glide*.test.mjs.
+   In-game witness: `node scripts/probe-camera-clearance.mjs --headless` (records every frame;
+   insideFrames must be 0, hardClampFrames ~0).
+2. Measured truth. src/data/modelTruthCensus.json (196 rows, written ONLY by
+   scripts/model-truth-census.mjs) holds each model's real footprint, height, and a proposed
+   collision skin. Fixed bodies (stations, places, rocks) already use the skins; dynamic bodies
+   (ships, drones, wrecks, pods, payloads) still use one capsule or ball.
+3. The scoreboard. `node scripts/check-solid-truth.mjs` compares every live collider to its
+   model. At handoff: 129/196 clean; FAT 33, SHORT 39, THIN 5, LONG 2, COARSE 10. Your goal is
+   `node scripts/check-solid-truth.mjs --strict` exiting 0. Report writes to .devshots/solid-truth/.
+   The thresholds are in the script; do not loosen them to pass.
+
+WORK PACKAGES (do them in this order; commit each by exact pathspec)
+
+A. Hull colliders match hulls (the 79 craft findings).
+   Capsule proportions come from src/data/ships.js visuals.proportions, the enemy table
+   ENEMY_SILHOUETTE_PROPORTIONS in src/core/sg02DynamicBodyOwner.js, and traffic/drone fallbacks.
+   Set each to the census `measuredProportions` (width and length) with at most ~6% skin. FAT
+   colliders make ships bounce off empty space; SHORT/THIN ones let noses and wings sink into
+   whatever they touch — that is the "objects morph into each other" bug. Keep weapon hit volumes
+   (modelTruthMounts) separate from contact bodies. Re-run the scoreboard after every batch.
+   Determinism: never hand-edit test/*.expected.json. If a golden moves because a collider became
+   truthful, explain the semantic delta in the commit body and re-record only through the
+   sanctioned script; otherwise gate the change so the golden scenario is untouched.
+
+B. The 10 COARSE/NOSKIN rows: the six aftermath wrecks (74–93 WU gap), mining drone, worklight
+   tower, gas cloud, station billboard. Fix the census skin or the entity's collider kind, then
+   re-run scripts/model-truth-census.mjs (and its --check).
+
+C. Compound colliders for dynamic bodies, only where one capsule cannot reach tolerance (capital
+   ships, dreadnought, big wrecks). proxyManifestForBody in sg02DynamicBodyOwner.js currently
+   refuses skins on dynamic bodies because solve order once diverged after a save/reload rebuild.
+   Lift that refusal ONLY behind a proof: identical sim hash with and without a save->load at
+   frame N, mass/inertia unchanged (colliders are density 0; mass comes from the body), CCD still
+   on, primitive count <= 32. Add that determinism test first, then the feature.
+
+D. Nothing passes through anything. Build scripts/probe-solid-overlap.mjs (headless sim, no
+   render): for every body-class pair (ship/wreck/rock/station/pod/payload/pickup-vs-solid,
+   projectile-vs-hull with CCD) fly them into each other at 30, 150, 400 and boost speed, from
+   several bearings, and record max penetration depth and any tunnelling. Acceptance: depth <=
+   the row tolerance in the census, zero tunnelling. Fix what it finds in the owning system.
+
+E. Everything physical, to a degree. Today asteroids (non-chunk) and stations are fixed bodies.
+   Default policy to implement and tune by feel: fixed = stations, gates, landmark rocks and
+   anything over ~90 WU radius; everything else dynamic with mass proportional to model volume
+   (rocks, wrecks, pods, props, payloads, buoys), so a ship can shove, nudge and tow them.
+   Route all changes through physicsAuthority (single writer); no system writes pos/vel directly.
+   Judgement calls about how heavy things FEEL are fine to make yourself; log the table you chose.
+
+F. Camera at scale. Extend `probe-camera-clearance.mjs` (or add a sibling) to sweep EVERY
+   structure kind (each station, each place row, wrecks, rocks) x zoom (45, 58, 144, 330) x speed
+   (crawl, cruise, boost) x approach bearing. Acceptance: insideFrames 0, hardClampFrames ~0,
+   peak vertical acceleration gentle, camera returns to set zoom. Tune GLIDE_TUNING in
+   cameraGlide.js from the numbers, then LOOK at screenshots at the gameplay camera (root
+   AGENTS.md §6 Visual craft): it should read as a smooth drone shot, never a slap-and-slide.
+   Also add large moving hulls (capital ships) to the renderer's clearance kinds
+   (CAMERA_CLEARANCE_KINDS in renderer.js) with the height gate, and confirm the docking bay
+   interior works. Once the glide covers everything, delete the reactive path (`keepOut`,
+   the old floor easing in camera.js) and its now-dead tests.
+
+G. Frontend files are allowed when this work needs them (root AGENTS.md §1) — e.g. a photo-mode
+   or map camera that consumes clearance — keep the edit minimal.
+
+RULES
+- Shared working tree: inspect `git status`/`git diff` on a file before editing it; commit only
+  your exact paths; renderer.js is heavily shared — keep hunks small.
+- Sim stays deterministic (state.rng / state.simTime). Render never writes sim state.
+- Do not lower quality, shrink models, or remove visuals to make a number pass.
+- A defect you see that is not yours: fix if small, else ONE row in
+  design/program/DEMO_READINESS_2026-09-20.md §6.
+
+DONE WHEN (all true, with the numbers in your final message)
+- check-solid-truth --strict exits 0.
+- probe-solid-overlap: zero tunnelling, all depths within tolerance.
+- probe-camera-clearance sweep: insideFrames 0 everywhere, hardClampFrames ~0.
+- npm run check:baseline green; test/camera-*.test.mjs and physics/collision tests green.
+- Final report in plain words: what the player will now see and feel differently.

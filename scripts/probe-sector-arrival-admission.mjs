@@ -84,6 +84,23 @@ const EXPLICIT_URL = readOption('--url', '');
  * lands the arrival inside that window.
  */
 const JUMP_AT_SIM_S = Math.max(0, Number(readOption('--jump-at', '25')) || 0);
+/**
+ * Wall-clock budget for document load and app-surface (window.SF) publication. Renderer bring-up —
+ * including WebGL context creation — precedes it, and on software GL that sits behind serialized
+ * shader work. Same phases and budgets the sibling startup check measures
+ * (check-asset-startup-readiness `documentLoad`/`appSurfaceReady`). The env overrides exist so a
+ * pathologically contended host can triage past the phase without weakening the CI defaults.
+ */
+const NAV_TIMEOUT_MS = Number(process.env.SF_ARRIVAL_NAV_MS) || 60_000;
+const APP_SURFACE_TIMEOUT_MS = Number(process.env.SF_ARRIVAL_BOOT_MS) || 90_000;
+/**
+ * Wall-clock budget for menu readiness: the title flow mounts the main menu only after the loading
+ * shell hands off and the `mainMenu`/`newGame` screens finish dynamic registration — on a contended
+ * software-GL host both sit behind the GPU queue drain, so the mounted-and-armed gate below is the
+ * real readiness signal. A bare locator.click timeout cannot see either cause and dies on its own
+ * visibility poll (the CI failure this replaces). Same measured phase as the sibling's `menuReady`.
+ */
+const MENU_READY_TIMEOUT_MS = Number(process.env.SF_ARRIVAL_MENU_MS) || 90_000;
 
 const browserPath = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -105,6 +122,13 @@ const browser = await chromium.launch({
 });
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const page = await context.newPage();
+// Skip the title cinematic on every navigation (the Continue reload included). A Space press
+// cannot stand in for it: the splash mounts only after the loading shell hands off, so an early
+// key lands before the input fence exists, gets swallowed, and the splash then holds the menu
+// until its own 18 s timer — the gate below waits on the mounted menu instead.
+await page.addInitScript(() => {
+  try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+});
 const logs = [];
 page.on('console', (message) => {
   const text = message.text();
@@ -205,13 +229,52 @@ const diagnoseScript = () => {
   };
 };
 
+/**
+ * Menu readiness gate: the main menu is painted, the boot overlay has released the glass, and the
+ * named action's button is mounted and armed (aria-disabled drops only once its target screen is
+ * registered — a refused click otherwise raises a "still initializing" toast and the flow stalls
+ * on the next wait). This is what the old bare `getByRole('button').click({timeout:30s})` could
+ * not express, and why it timed out on CI while the menu was still queued behind boot work.
+ */
+async function waitForMenuAction(page, action) {
+  await page.waitForFunction((actionId) => {
+    const menu = document.querySelector('[data-screen="mainMenu"]');
+    if (!menu) return false;
+    const menuStyle = getComputedStyle(menu);
+    const menuRect = menu.getBoundingClientRect();
+    if (menuStyle.display === 'none' || menuStyle.visibility === 'hidden'
+      || menuRect.width <= 20 || menuRect.height <= 10) return false;
+    const boot = document.getElementById('boot-overlay');
+    if (boot) {
+      const bootStyle = getComputedStyle(boot);
+      const bootGone = boot.classList.contains('hidden')
+        || bootStyle.pointerEvents === 'none' || bootStyle.display === 'none'
+        || bootStyle.visibility === 'hidden';
+      if (!bootGone) return false;
+    }
+    const button = menu.querySelector(`button[data-action="${actionId}"]`);
+    return !!button && button.getAttribute('aria-disabled') !== 'true';
+  }, action, { timeout: MENU_READY_TIMEOUT_MS });
+}
+
+async function waitForScreenVisible(page, id, timeoutMs = 30_000) {
+  await page.waitForFunction((screenId) => {
+    const el = document.querySelector(`[data-screen="${screenId}"]`);
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
+  }, id, { timeout: timeoutMs });
+}
+
 let failure = null;
 try {
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.waitForFunction(() => !!window.SF?.state, null, { timeout: 45_000 });
-  await page.keyboard.press('Space');
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+  await page.waitForFunction(() => !!window.SF?.state, null, { timeout: APP_SURFACE_TIMEOUT_MS });
+  await waitForMenuAction(page, 'newGame');
   await page.getByRole('button', { name: /^New Game$/i }).click({ timeout: 30_000 });
-  await page.fill('#sf-ng-seed', String(SEED));
+  await waitForScreenVisible(page, 'newGame');
+  await page.fill('#sf-ng-seed', String(SEED), { timeout: 30_000 });
   await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 180_000 });
   stamp('flight');
@@ -273,9 +336,12 @@ try {
     assert.equal(savedSector, TARGET_SECTOR,
       `the quick save must be written in ${TARGET_SECTOR}, not ${savedSector}`);
     stamp(`quick save written at the destination (${savedSector})`);
-    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    await page.waitForFunction(() => !!window.SF?.state, null, { timeout: 45_000 });
-    await page.keyboard.press('Space');
+    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+    await page.waitForFunction(() => !!window.SF?.state, null, { timeout: APP_SURFACE_TIMEOUT_MS });
+    // Continue stays armed-but-disabled until the shared save store syncs; a click that lands in
+    // the "Checking saves" window is a silent no-op and the flight wait below would burn its whole
+    // budget for nothing. The gate waits for the armed button, not just the mounted menu.
+    await waitForMenuAction(page, 'continue');
     await page.getByRole('button', { name: /^Continue$/i }).click({ timeout: 30_000 });
     await page.waitForFunction((sectorId) => window.SF.state.mode === 'flight'
       && window.SF.state.world.currentSectorId === sectorId, TARGET_SECTOR, { timeout: 240_000 });

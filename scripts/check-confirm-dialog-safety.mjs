@@ -15,6 +15,23 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = await loadPlaywright();
 
+/**
+ * Result delivery is a promise continuation behind a real keypress; the page keeps booting the
+ * live game underneath the probe, so on a contended CI host the main thread can sit behind
+ * boot/shader work far longer than the dialog's own 180 ms settle — a fixed 5 s budget timed out
+ * there while the press was still queued. 30 s matches the sibling UI-interaction budget
+ * (check-bar-mission-readiness-live UI_TIMEOUT_MS); the dialog semantics are unchanged.
+ */
+const CONFIRM_RESULT_TIMEOUT_MS = Number(process.env.SF_CONFIRM_RESULT_TIMEOUT_MS) || 30_000;
+/**
+ * This check needs only the parsed DOM shell: `#ui-root` is a static element and `confirm.js`
+ * is a self-contained module with no imports. `domcontentloaded` waits for the ENTIRE deferred
+ * module graph (main.js + the renderer) to fetch and execute — boot cost this check never uses
+ * and the exact thing contention starves. `commit` removes that false dependency; the #ui-root
+ * wait below still guards real DOM readiness.
+ */
+const NAV_COMMIT_TIMEOUT_MS = 60_000;
+
 let server = null;
 let browser = null;
 
@@ -29,7 +46,7 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(server.baseUrl, { waitUntil: 'commit', timeout: NAV_COMMIT_TIMEOUT_MS });
   await page.waitForFunction(() => document.getElementById('ui-root'), null, { timeout: 15000 });
 
   const dangerOpen = await openConfirm(page, {
@@ -124,7 +141,7 @@ async function openConfirm(page, opts) {
 }
 
 async function waitForConfirmResult(page) {
-  await page.waitForFunction(() => window.__sfConfirmResult !== 'pending', null, { timeout: 5000 });
+  await page.waitForFunction(() => window.__sfConfirmResult !== 'pending', null, { timeout: CONFIRM_RESULT_TIMEOUT_MS });
   return page.evaluate(() => ({
     result: window.__sfConfirmResult,
     focusRestored: document.activeElement && document.activeElement.id === 'sf-confirm-probe-opener',

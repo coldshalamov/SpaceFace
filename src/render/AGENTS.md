@@ -22,6 +22,9 @@ release manifest, and the appropriate `partsLibrary.js` map. Failure modes:
   the object itself; distant background stars are the only exception. Inventory:
   `docs/visual-assets/SOFT_CARD_INVENTORY.json`.
 - `camera.js` — position-follow only, never yaw. `feel.js` — shake/trauma.
+- `cameraGlide.js` — predictive obstacle clearance: the camera dollies up-and-back along its own view
+  ray ahead of solids (renderer `cameraRoofAt` answers any column). Never inside a solid is the
+  invariant; tune `GLIDE_TUNING`, witness with `scripts/probe-camera-clearance.mjs`.
 - `bloom.js` — selective; tune from representative captures, not a universal cap.
 
 No per-frame allocations in render loops. Coordinate before editing a currently owned
