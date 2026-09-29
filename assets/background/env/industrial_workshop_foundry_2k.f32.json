@@ -1,0 +1,21 @@
+{
+  "schema": "spaceface.foundryIblBake.v1",
+  "width": 2048,
+  "height": 1024,
+  "channels": 4,
+  "pixelFormat": "float32-rgba",
+  "payloadBytes": 33554432,
+  "sha256": "4b0a6704c74a776c5025f54d542fd133afe194a5bb68a3dbe1ce76a781901a0f",
+  "source": {
+    "file": "industrial_workshop_foundry_2k.hdr",
+    "sha256": "e202851c21d46df24526d7641da4bea3db94cb2bf9b6cf09dcba4f80ea8e3c58",
+    "provenance": "assets/background/env/PROVENANCE.md"
+  },
+  "transform": {
+    "targetMeanRadiance": 1,
+    "meanBefore": 0.6894085516994447,
+    "scaleFactor": 1.4505187055410376,
+    "greenCastTexelsTouched": 499925
+  },
+  "generatedBy": "scripts/bake-foundry-ibl.mjs"
+}
