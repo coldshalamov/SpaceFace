@@ -23,8 +23,10 @@ import {
   saveCrucibleMeta,
 } from '../../systems/survivalRecords.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import { SHIPS } from '../../data/ships.js';
 import {
   CRUCIBLE_ARENA_ID,
+  crucibleHullSetupFor,
   crucibleSetupFor,
   crucibleStarterIdForSetup,
   normalizeCrucibleRuleset,
@@ -32,7 +34,12 @@ import {
 } from '../crucibleLaunch.js';
 
 function starterKnown(starterId) {
-  return COMBAT_LAB_STARTER_PACKAGES.some((entry) => entry.id === starterId);
+  if (COMBAT_LAB_STARTER_PACKAGES.some((entry) => entry.id === starterId)) return true;
+  // The door's bare-hull starters are legal share targets too — the code then names the hull.
+  if (typeof starterId === 'string' && starterId.startsWith('hull:')) {
+    return SHIPS.some((ship) => ship.id === starterId.slice(5));
+  }
+  return false;
 }
 
 /**
@@ -61,6 +68,7 @@ export function runShareCodeForRun(setup, result, { ghostHash = null } = {}) {
     dailyDateKey: typeof src.dailyDateKey === 'string' ? src.dailyDateKey : null,
     weeklyMutatorId: typeof src.weeklyMutatorId === 'string' ? src.weeklyMutatorId : null,
     ghostHash: Number.isInteger(ghostHash) ? ghostHash : null,
+    stake: typeof src.swarmStake === 'string' && src.swarmStake ? src.swarmStake : null,
   });
 }
 
@@ -72,8 +80,11 @@ export function runShareCodeForRun(setup, result, { ghostHash = null } = {}) {
  */
 export function doorRunShareCode({
   starterId, seed, arenaId, ruleset, mutators = [], dailyDateKey = null, weeklyMutatorId = null,
+  stake = null,
 } = {}) {
-  const setup = crucibleSetupFor({ starterId, seed, arenaId, ruleset });
+  const setup = typeof starterId === 'string' && starterId.startsWith('hull:')
+    ? crucibleHullSetupFor({ hullId: starterId.slice(5), seed, arenaId, ruleset, swarmStake: stake })
+    : crucibleSetupFor({ starterId, seed, arenaId, ruleset, swarmStake: stake });
   if (!setup.ok || !setup.value) {
     const reason = setup && Array.isArray(setup.issues) && setup.issues[0]
       ? setup.issues[0].message
@@ -104,9 +115,15 @@ export function applyRunShareCode(code) {
   const decoded = decodeRunShareCode(code);
   if (!decoded.ok) return { ok: false, error: decoded.error };
   const fields = runShareSpecFields(decoded.spec);
-  const starterId = fields.starterId && starterKnown(fields.starterId)
+  let starterId = fields.starterId && starterKnown(fields.starterId)
     ? fields.starterId
     : null;
+  // A code written before starter ids learned 'hull:' still carries the hull it launched: the
+  // bare-hull starter is re-derivable from `h` + an empty `l`.
+  if (!starterId && fields.hullId && fields.loadout.length === 0
+    && SHIPS.some((ship) => ship.id === fields.hullId)) {
+    starterId = `hull:${fields.hullId}`;
+  }
   if (!starterId) {
     return {
       ok: false,
@@ -127,6 +144,7 @@ export function applyRunShareCode(code) {
     dailyDateKey: fields.dailyDateKey,
     weeklyMutatorId: fields.weeklyMutatorId,
     ghostHash: fields.ghostHash,
+    stake: fields.stake,
   };
 }
 

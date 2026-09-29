@@ -39,7 +39,13 @@ export function crucibleStarterIdForSetup(setup) {
   const match = COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.hullId === setup?.hullId
     && entry.loadout.length === loadout.length
     && entry.loadout.every(slot => loadout.some(actual => actual?.slotIndex === slot.slotIndex && actual?.defId === slot.defId)));
-  return match?.id || CRUCIBLE_DEFAULT_STARTER_ID;
+  if (match) return match.id;
+  // A bare-hull launch has no package: its starter id names the hull itself, so the door and a
+  // share code re-derive the same launch instead of falling back to an authored kit.
+  if (typeof setup?.hullId === 'string' && SHIPS.some(ship => ship.id === setup.hullId)) {
+    return `hull:${setup.hullId}`;
+  }
+  return CRUCIBLE_DEFAULT_STARTER_ID;
 }
 export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored', 'boss_circuit', BLOCK_RULESET]);
 
@@ -70,9 +76,13 @@ export function crucibleSetupFor({
     wave: 1,
   });
   // The ruleset is not part of the closed setup schema, so it travels alongside the validated
-  // value where the launch config can pick it up.
+  // value where the launch config can pick it up. The stake rides the same way — requestCrucibleRun
+  // reads setup.swarmStake and feeds the swarm's purse/pressure contract.
   if (result && result.ok && result.value) {
     result.ruleset = normalizeCrucibleRuleset(ruleset);
+    if (result.ruleset === SWARM_RULESET && typeof swarmStake === 'string' && swarmStake) {
+      result.value.swarmStake = normalizeSwarmStake(swarmStake);
+    }
   }
   return result;
 }
@@ -85,7 +95,7 @@ export function crucibleSetupFor({
  * a ship that does not exist.
  */
 export function crucibleHullSetupFor({
-  hullId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET,
+  hullId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
 } = {}) {
   const shipDef = SHIPS.find((entry) => entry && entry.id === hullId);
   if (!shipDef) return { ok: false, issues: [{ path: 'hullId', message: 'Unknown hull' }] };
@@ -100,6 +110,9 @@ export function crucibleHullSetupFor({
   });
   if (result && result.ok && result.value) {
     result.ruleset = normalizeCrucibleRuleset(ruleset);
+    if (result.ruleset === SWARM_RULESET && typeof swarmStake === 'string' && swarmStake) {
+      result.value.swarmStake = normalizeSwarmStake(swarmStake);
+    }
   }
   return result;
 }

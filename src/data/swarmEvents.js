@@ -27,21 +27,21 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 
   // ── helios_core (the Foundry): shutters, furnace, loose plates — the room it already is ──
   shutter_storm: event({
-    id: 'shutter_storm', kind: 'surge', factor: 2.4, windupS: 5, windowS: 12,
+    id: 'shutter_storm', name: 'Shutter storm', kind: 'surge', factor: 2.4, windupS: 5, windowS: 12,
     telegraph: 'SHUTTER STORM — the drag is about to run hot',
     install: {
       fields: [{ kind: 'well', bearing: 'spin', dist: 280, radius: 520, strength: 92, falloff: 1.25 }],
     },
   }),
   furnace_flare: event({
-    id: 'furnace_flare', kind: 'surge', factor: 2.2, windupS: 5, windowS: 10,
+    id: 'furnace_flare', name: 'Furnace flare', kind: 'surge', factor: 2.2, windupS: 5, windowS: 10,
     telegraph: 'FURNACE FLARE — the middle is about to get meaner',
     install: {
       fields: [{ kind: 'repulsor', bearing: 'center', radius: 430, strength: 150, falloff: 1.55 }],
     },
   }),
   plate_drift: event({
-    id: 'plate_drift', kind: 'surge', factor: 1.6, windupS: 4, windowS: 14,
+    id: 'plate_drift', name: 'Plate drift', kind: 'surge', factor: 1.6, windupS: 4, windowS: 14,
     telegraph: 'PLATE DRIFT — cover is tearing loose',
     install: {
       cover: true,
@@ -51,29 +51,29 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 
   // ── lagrange_crucible: the pull and the sling ──
   well_swing: event({
-    id: 'well_swing', kind: 'pulse', windupS: 4, windowS: 9,
+    id: 'well_swing', name: 'Well swing', kind: 'pulse', windupS: 4, windowS: 9,
     telegraph: 'WELL SWING — a pull is walking the room',
     field: { kind: 'well', bearing: 'across', dist: 220, radius: 360, strength: 150, falloff: 1.2 },
   }),
   sling_gust: event({
-    id: 'sling_gust', kind: 'surge', factor: 1.8, windupS: 4, windowS: 8,
+    id: 'sling_gust', name: 'Sling gust', kind: 'surge', factor: 1.8, windupS: 4, windowS: 8,
     telegraph: 'SLING GUST — the slingshot is about to bite',
   }),
 
   // ── cinder_sluice: the lane and its undertow ──
   sluice_surge: event({
-    id: 'sluice_surge', kind: 'surge', factor: 2.0, windupS: 4, windowS: 10,
+    id: 'sluice_surge', name: 'Sluice surge', kind: 'surge', factor: 2.0, windupS: 4, windowS: 10,
     telegraph: 'SLUICE SURGE — the lane is about to flood',
   }),
   undertow_snap: event({
-    id: 'undertow_snap', kind: 'pulse', windupS: 3, windowS: 6,
+    id: 'undertow_snap', name: 'Undertow snap', kind: 'pulse', windupS: 3, windowS: 6,
     telegraph: 'UNDERTOW — mind the deck',
     field: { kind: 'well', bearing: 'player', radius: 280, strength: 210, falloff: 1.0 },
   }),
 
   // ── cryo_drift: cold fronts and breaking plates ──
   freeze_front: event({
-    id: 'freeze_front', kind: 'pulse', windupS: 4, windowS: 8,
+    id: 'freeze_front', name: 'Freeze front', kind: 'pulse', windupS: 4, windowS: 8,
     telegraph: 'FREEZE FRONT — a wall of cold is sweeping in',
     field: {
       kind: 'cone', bearing: 'lane', dist: 300, radius: 560, strength: 130,
@@ -81,7 +81,7 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     },
   }),
   plate_shatter: event({
-    id: 'plate_shatter', kind: 'surge', factor: 1.5, windupS: 4, windowS: 10,
+    id: 'plate_shatter', name: 'Plate shatter', kind: 'surge', factor: 1.5, windupS: 4, windowS: 10,
     telegraph: 'PLATE SHATTER — the ice is about to give',
     install: {
       cover: true,
@@ -91,21 +91,21 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 
   // ── storm_lattice: the relay graph and the grid ──
   relay_arc: event({
-    id: 'relay_arc', kind: 'surge', factor: 2.0, windupS: 4, windowS: 9,
+    id: 'relay_arc', name: 'Relay arc', kind: 'surge', factor: 2.0, windupS: 4, windowS: 9,
     telegraph: 'RELAY ARC — the lattice is about to energize',
   }),
   grid_surge: event({
-    id: 'grid_surge', kind: 'surge', factor: 1.9, windupS: 4, windowS: 12,
+    id: 'grid_surge', name: 'Grid surge', kind: 'surge', factor: 1.9, windupS: 4, windowS: 12,
     telegraph: 'GRID SURGE — the whole room is hot',
   }),
 
   // ── shared cards — every arena can draw these ──
   mine_drift: event({
-    id: 'mine_drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
+    id: 'mine_drift', name: 'Mine drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
     telegraph: 'MINE DRIFT — hazards riding a bearing',
   }),
   supply_drop: event({
-    id: 'supply_drop', kind: 'supply', credits: 60, windupS: 6, windowS: 0,
+    id: 'supply_drop', name: 'Supply pod', kind: 'supply', credits: 60, windupS: 6, windowS: 0,
     telegraph: 'SUPPLY POD — salvage riding in. Staying for it is a choice.',
   }),
 });
@@ -176,6 +176,7 @@ export function validateSwarmEvents() {
     if (!['surge', 'pulse', 'mines', 'supply'].includes(def.kind)) {
       issues.push(`${id}: unknown kind ${def.kind}`);
     }
+    if (typeof def.name !== 'string' || !def.name) issues.push(`${id}: no display name`);
     if (typeof def.telegraph !== 'string' || !def.telegraph) issues.push(`${id}: no telegraph`);
     if (def.kind === 'pulse' && !def.field) issues.push(`${id}: pulse without field spec`);
     if (def.kind === 'surge' && !(def.factor > 0)) issues.push(`${id}: surge without factor`);

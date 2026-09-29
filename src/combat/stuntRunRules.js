@@ -4,6 +4,6 @@ export function stuntAssistProfile(state) { return state.settings?.gameplay?.stu
 export function currentStuntRunRules(state,mode) {
   const run=state.run;
   return {...STUNT_RULE_REVISIONS,mode:run.practice===true?'practice':mode,arenaId:run.arenaId,difficulty:run.difficulty??'authored',
-    loadoutRules:JSON.stringify({ruleset:run.ruleset,mutators:run.arenaMutators??[],starter:run.telemetry?.starterKitId??null}),
+    loadoutRules:JSON.stringify({ruleset:run.ruleset,mutators:run.arenaMutators??[],starter:run.telemetry?.starterKitId??null,stake:run.telemetry?.swarmStake??null}),
     simulationAssistProfile:stuntAssistProfile(state)};
 }

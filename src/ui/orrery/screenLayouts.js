@@ -178,6 +178,24 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 /* the share and ghost codes are secondary readings: a size down from the seed */
 #screens .orr-crucible .sf-crd-share .orr-input, #screens .orr-crucible input.orr-input:not(#sf-crd-seed):not([inputmode="numeric"]) {
   font-size:clamp(16px, 2vh, 22px) !important; }
+/* the stake tile names its whole contract under its word: purse · pressure · earn */
+#screens .orr-crucible .sf-crd-stake-nums { display:block; font-family:var(--dp-face-label, "Archivo"); font-size:11px;
+  font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(232 226 212 / .55); text-align:center; }
+#screens .orr-crucible .orr-tile[aria-pressed="true"] .sf-crd-stake-nums { color:rgb(242 185 80 / .9); }
+/* the any-hull grid: a caption line, then tier marks with ship names as plain words */
+#screens .orr-crucible .sf-crd-anyhull { margin-top:10px; }
+#screens .orr-crucible .sf-crd-anyhull-cap { margin:0 0 6px; }
+#screens .orr-crucible .sf-crd-anyhull-tier { display:flex; align-items:baseline; gap:10px; margin:4px 0; }
+#screens .orr-crucible .sf-crd-anyhull-mark { min-width:26px; color:rgb(242 185 80 / .7); }
+#screens .orr-crucible .sf-crd-anyhull-ships { gap:8px; }
+#screens .orr-crucible .sf-crd-anyhull-ship { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
+  font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(232 226 212 / .6);
+  background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  min-width:0 !important; min-height:0 !important; padding:3px 2px !important; cursor:pointer; }
+#screens .orr-crucible .sf-crd-anyhull-ship:is(:hover, :focus-visible, .is-on) { color:rgb(246 241 230) !important; outline:none; }
+#screens .orr-crucible .sf-crd-anyhull-ship.is-on {
+  background-image:linear-gradient(90deg, rgb(242 185 80 / .8), rgb(242 185 80 / 0)) !important;
+  background-size:100% 1px !important; background-position:0 100% !important; background-repeat:no-repeat !important; }
 html body #screens .k-screen.orr-crucible .sf-back.k-word { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:13px !important; letter-spacing:.24em; color:rgb(232 226 212 / .7) !important; }
 html body #screens .k-screen.orr-crucible .sf-back.k-word::after { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;

@@ -11,12 +11,15 @@
 // results unit test mounts the plate against a minimal fake document.
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { IS_DEMO } from '../../core/demoMode.js';
 import {
   CRUCIBLE_ARENA_ID,
   CRUCIBLE_DEFAULT_RULESET,
   buildCrucibleRetryRequest,
+  crucibleHullChoices,
+  crucibleHullSetupFor,
   crucibleSetupFor,
   crucibleStarterIdForSetup,
   lastCrucibleRuleset,
@@ -25,6 +28,13 @@ import {
   practiceLaunchFor,
   requestCrucibleRun,
 } from '../crucibleLaunch.js';
+import {
+  SWARM_STAKES,
+  normalizeSwarmStake,
+  swarmStakeFor,
+  swarmStakePitch,
+} from '../../data/swarmStakes.js';
+import { SWARM_EVENT_BY_ID, SWARM_EVENT_TABLES } from '../../data/swarmEvents.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
@@ -732,6 +742,9 @@ export const crucibleScreen = {
     // PQ-146: a Best Line's "Practice this line" stages the same seed, the recorded ruleset and
     // your own ghost — flagged so the launch files under the 'practice' record mode.
     let practiceQueued = false;
+    // S5: the swarm's difficulty contract, remembered with the rest of the launch. Contender is
+    // the tuning baseline — an absent or unknown stake normalizes to it, never silently higher.
+    let stake = normalizeSwarmStake(previous && previous.swarmStake);
 
     // .k-title — stencil marking and the live mode's blurb (syncMode writes it).
     const title = el('header', 'k-title');
@@ -979,7 +992,12 @@ export const crucibleScreen = {
         mode: practiceQueued ? 'practice' : (ruleset === SWARM_RULESET ? 'swarm' : (ruleset ?? 'arc')),
         arenaId: arenaId || null,
         ...STUNT_RULE_REVISIONS,
-        loadoutRules: JSON.stringify({ ruleset, mutators: terms.challengeMutators, starter: starterId ?? null }),
+        loadoutRules: JSON.stringify({
+          ruleset,
+          mutators: terms.challengeMutators,
+          starter: starterId ?? null,
+          stake: ruleset === SWARM_RULESET ? normalizeSwarmStake(stake) : null,
+        }),
         simulationAssistProfile: stuntAssistProfile(ctx.state),
       };
     }
@@ -1046,6 +1064,7 @@ export const crucibleScreen = {
         if (typeof reroll._fhSync === 'function') reroll._fhSync();
         for (const other of modeButtons) syncChoice(other, false);
         if (dailyButton) syncChoice(dailyButton, true);
+        syncStake();
         syncGhost();
         return;
       }
@@ -1075,8 +1094,50 @@ export const crucibleScreen = {
       for (const other of modeButtons) syncChoice(other, !daily && other.dataset.ruleset === ruleset);
       if (dailyButton) syncChoice(dailyButton, false);
       if (blockButton) syncChoice(blockButton, !daily && ruleset === BLOCK_RULESET);
+      syncStake();
+      // The arena card's event line is a swarm sentence — it re-renders with the mode.
+      syncArena();
       syncGhost();
     }
+
+    // THE STAKE ROW (swarm only): the run's difficulty contract as four tiles, each naming its
+    // purse, its pressure and its earn — the same numbers the results surface reads back. Daily
+    // hides the row and rides Contender: a shared challenge cannot let the purse be a door choice.
+    const stakeBody = settingRow('Stake', 'sf-crd-row--stake');
+    const stakeLi = stakeBody.parentNode;
+    const stakes = el('ul', 'k-words k-words--row sf-crd-stakes fh-cluster');
+    stakes.setAttribute('aria-label', 'Stake');
+    pin(stakes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const stakeButtons = [];
+    const stakeSentence = el('p', 'k-sentence sf-crd-stake-sub', '');
+    const STAKE_ICON = Object.freeze({
+      exhibition: 'credits', contender: 'boost', veteran: 'weapon', ironbound: 'hull',
+    });
+    function syncStake() {
+      const on = !daily && ruleset === SWARM_RULESET;
+      if (stakeLi && stakeLi.style) stakeLi.style.display = on ? '' : 'none';
+      const def = swarmStakeFor(stake);
+      stakeSentence.textContent = `${def.blurb} ${swarmStakePitch(stake)}.`;
+      for (const other of stakeButtons) syncChoice(other, other.dataset.stakeId === stake);
+    }
+    for (const entry of SWARM_STAKES) {
+      const card = choiceTile(entry.label, 'sf-crd-stake', '', STAKE_ICON[entry.id] || 'hull');
+      card.dataset.tileFit = 'fill';
+      card.dataset.stakeId = entry.id;
+      card.appendChild(el('span', 'sf-crd-stake-nums', swarmStakePitch(entry.id)));
+      syncChoice(card, entry.id === stake);
+      card.addEventListener('click', () => {
+        stake = entry.id;
+        cue('confirm');
+        syncStake();
+        // The stake is part of the launch rules the ghost offer compares — re-resolve it.
+        syncGhost();
+      });
+      stakeButtons.push(card);
+      addWord(stakes, card);
+    }
+    stakeBody.appendChild(stakes);
+    stakeBody.appendChild(stakeSentence);
 
     // Hull — the starter names as words, the live one bright, its blurb beneath.
     const hullBody = settingRow('Starter build', 'sf-crd-row--hull');
@@ -1085,7 +1146,22 @@ export const crucibleScreen = {
     pin(hulls, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const buttons = [];
     const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
+    // Hull words pressed the same as kit tiles but stay word-shaped — not `syncChoice` tiles.
+    const hullButtons = [];
     function syncHull() {
+      const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
+        ? starterId.slice(5)
+        : null;
+      const hullShip = hullPick ? SHIPS.find((s) => s.id === hullPick) : null;
+      if (hullShip) {
+        delete hullSentence.dataset.kind;
+        const name = entityLabel('hull:' + hullShip.id) || hullShip.name;
+        hullSentence.innerHTML = `${entitySpanHtml('hull:' + hullShip.id, escapeHtml(name))}${escapeHtml(
+          ruleset === SWARM_RULESET
+            ? ' — bare hull. The opening armory is the kit; the purse buys it.'
+            : ' — bare hull. No fittings; the drafts decide.',
+        )}`;
+      } else {
       const starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || COMBAT_LAB_STARTER_PACKAGES[0];
       if (starter && starter.hullId) {
         const name = entityLabel('hull:' + starter.hullId) || starter.hullId.replace(/^ship_/, '');
@@ -1096,7 +1172,13 @@ export const crucibleScreen = {
       } else {
         hullSentence.textContent = starter ? hullBlurb(starter) : '';
       }
+      }
       for (const other of buttons) syncChoice(other, other.dataset.starterId === starterId);
+      for (const other of hullButtons) {
+        const on = other.dataset.starterId === starterId;
+        other.setAttribute('aria-pressed', String(on));
+        if (other.classList && typeof other.classList.toggle === 'function') other.classList.toggle('is-on', on);
+      }
     }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
       const open = isStarterAvailable(doorProfile, starter.id);
@@ -1145,6 +1227,40 @@ export const crucibleScreen = {
       addWord(hulls, card);
     }
     hullBody.appendChild(hulls);
+    // ANY HULL — every ship in the catalog, grouped by tier, launches bare. Under swarm the
+    // purse buys the kit at the opening armory; elsewhere a bare hull is a wager. Hull picks
+    // are never lock-gated — the lock story belongs to the authored kits.
+    const anyHull = el('div', 'sf-crd-anyhull');
+    const anyHullCap = el('p', 'k-t-fine k-38 sf-crd-anyhull-cap',
+      'Any hull, bare — the armory fits the kit.');
+    anyHull.appendChild(anyHullCap);
+    const hullTiers = new Map();
+    for (const choice of crucibleHullChoices()) {
+      if (!hullTiers.has(choice.tier)) hullTiers.set(choice.tier, []);
+      hullTiers.get(choice.tier).push(choice);
+    }
+    const TIER_MARK = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+    for (const [tier, tierChoices] of [...hullTiers.entries()].sort((a, b) => a[0] - b[0])) {
+      const group = el('div', 'sf-crd-anyhull-tier');
+      group.appendChild(el('span', 'k-t-fine k-38 sf-crd-anyhull-mark', `T${TIER_MARK[tier] || tier}`));
+      const tierWords = el('div', 'k-words k-words--row sf-crd-anyhull-ships');
+      for (const choice of tierChoices) {
+        const button = word(choice.name, 'k-word--fine sf-crd-anyhull-ship');
+        button.dataset.starterId = `hull:${choice.hullId}`;
+        button.title = `${choice.name} — bare hull, ${choice.slotCount} hardpoint${choice.slotCount === 1 ? '' : 's'}`;
+        button.addEventListener('click', () => {
+          starterId = `hull:${choice.hullId}`;
+          delete hullSentence.dataset.kind;
+          cue('confirm');
+          syncHull();
+        });
+        hullButtons.push(button);
+        tierWords.appendChild(button);
+      }
+      group.appendChild(tierWords);
+      anyHull.appendChild(group);
+    }
+    hullBody.appendChild(anyHull);
     hullBody.appendChild(hullSentence);
 
     const earnedDoor = availableOptions(doorProfile);
@@ -1181,17 +1297,24 @@ export const crucibleScreen = {
     const arenas = el('ul', 'k-words k-words--row sf-crd-arenas fh-cluster');
     arenas.setAttribute('aria-label', 'Arena');
     pin(arenas, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    // Each arena card names the room's law AND its signature events — the signature names come
+    // off the swarm event table itself so the card never advertises a trick that cannot fire.
+    const signatureLine = (arenaId) =>
+      ((SWARM_EVENT_TABLES[arenaId] || []).map((id) => SWARM_EVENT_BY_ID[id] && SWARM_EVENT_BY_ID[id].name)
+        .filter(Boolean).join(' · '));
     const arenaDescriptions = {
-      helios_core: ['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.'],
-      lagrange_crucible: ['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.'],
-      cinder_sluice: ['Cinder Sluice', 'Ride hot currents and force enemies across the flow.'],
-      cryo_drift: ['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.'],
-      storm_lattice: ['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.'],
+      helios_core: ['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.', signatureLine('helios_core')],
+      lagrange_crucible: ['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.', signatureLine('lagrange_crucible')],
+      cinder_sluice: ['Cinder Sluice', 'Ride hot currents and force enemies across the flow.', signatureLine('cinder_sluice')],
+      cryo_drift: ['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.', signatureLine('cryo_drift')],
+      storm_lattice: ['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.', signatureLine('storm_lattice')],
     };
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {
-      arenaSentence.textContent = (arenaDescriptions[arenaId] || arenaDescriptions.helios_core)[1];
       const described = arenaDescriptions[arenaId] || arenaDescriptions.helios_core;
+      arenaSentence.textContent = ruleset === SWARM_RULESET && described[2]
+        ? `${described[1]} Signature events: ${described[2]}.`
+        : described[1];
       paintHero(arenaId, described[0], described[1]);
       for (const button of arenas.querySelectorAll('button')) {
         syncChoice(button, button.dataset.arenaId === arenaId);
@@ -1316,6 +1439,7 @@ export const crucibleScreen = {
         ghostHash: res.ghostHash,
       };
       starterId = res.starterId;
+      if (typeof res.stake === 'string' && res.stake) stake = normalizeSwarmStake(res.stake);
       if (COMBAT_LAB_ARENAS.some((a) => a.id === res.arenaId)) arenaId = res.arenaId;
       ruleset = res.ruleset;
       daily = false;
@@ -1340,6 +1464,7 @@ export const crucibleScreen = {
       syncHull();
       syncArena();
       syncMode();
+      syncStake();
     });
     codeRow.appendChild(codeInput);
     codeRow.appendChild(useCode);
@@ -1361,6 +1486,7 @@ export const crucibleScreen = {
         mutators: terms.challengeMutators,
         dailyDateKey: dateKey,
         weeklyMutatorId: terms.weeklyMutatorId,
+        stake: daily || ruleset !== SWARM_RULESET ? null : stake,
       });
       if (!res.ok) {
         shareNote.textContent = res.error || 'Code could not be written for this setup.';
@@ -1503,16 +1629,29 @@ export const crucibleScreen = {
     footWords.setAttribute('aria-label', 'Crucible');
     // The one launch path, shared by Enter and Quick play. INF-038.
     function launchCurrent() {
-      if (!isStarterAvailable(doorProfile, starterId)) {
+      const bareHull = typeof starterId === 'string' && starterId.startsWith('hull:');
+      if (!bareHull && !isStarterAvailable(doorProfile, starterId)) {
         cue('deny');
         return;
       }
-      const setup = crucibleSetupFor({
-        starterId,
-        seed: normalizeSeed(seedInput.value),
-        arenaId,
-        ruleset,
-      });
+      // The stake lands on the validated setup (requestCrucibleRun reads setup.swarmStake).
+      // Daily rides Contender — a shared challenge does not get a purse choice.
+      const launchStake = daily ? null : stake;
+      const setup = bareHull
+        ? crucibleHullSetupFor({
+          hullId: starterId.slice(5),
+          seed: normalizeSeed(seedInput.value),
+          arenaId,
+          ruleset,
+          swarmStake: launchStake,
+        })
+        : crucibleSetupFor({
+          starterId,
+          seed: normalizeSeed(seedInput.value),
+          arenaId,
+          ruleset,
+          swarmStake: launchStake,
+        });
       if (!setup.ok || !setup.value) {
         cue('deny');
         ctx.bus.emit('toast', { text: 'Crucible setup invalid', kind: 'error', ttl: 4 });
@@ -1654,6 +1793,11 @@ export function resultRows(result) {
     // exists in a swarm run, so the row only exists there — an arc plate must not carry a
     // figure that is always zero.
     ...(result.ruleset === SWARM_RULESET ? [['Best kill chain', String(result.bestChain || 0)]] : []),
+    // The stake the run launched under — the swarm's purse/pressure contract — filed beside the
+    // wallet it fed. Contender is the default: an unstaked run still names its contract.
+    ...(result.ruleset === SWARM_RULESET
+      ? [['Stake', `${swarmStakeFor(result.swarmStake).label} — ${swarmStakePitch(result.swarmStake)}`]]
+      : []),
     ['Score', String(result.score || 0)],
     ['Salvage', `${result.credits || 0} cr`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
@@ -2186,10 +2330,17 @@ export function bestLineReviewRows(line) {
   const normalized = normalizeBestLine(line);
   if (!normalized) return [];
   const rules = normalized.recordRules;
+  // The stake rides inside the loadout-rules JSON — surface it as its own row.
+  let stakeLabel = 'Not recorded';
+  try {
+    const lo = JSON.parse(rules.loadoutRules || '{}');
+    if (lo && typeof lo.stake === 'string' && lo.stake) stakeLabel = swarmStakeFor(lo.stake).label;
+  } catch { /* the raw JSON row still prints below */ }
   return [
     ['Banked style', String(normalized.points)], ['Seed', String(normalized.seed)],
     ['Mode', rules.mode ?? 'Not recorded'], ['Arena', rules.arenaId ?? 'Not recorded'],
-    ['Difficulty', rules.difficulty ?? 'Not recorded'], ['Loadout rules', rules.loadoutRules ?? 'Not recorded'],
+    ['Difficulty', rules.difficulty ?? 'Not recorded'], ['Stake', stakeLabel],
+    ['Loadout rules', rules.loadoutRules ?? 'Not recorded'],
     ['Simulation assist', rules.simulationAssistProfile ?? 'Not recorded'],
     ['Physics revision', rules.physicsRevision ?? 'Not recorded'], ['Balance revision', rules.balanceRevision ?? 'Not recorded'],
     ['Scoring revision', rules.scoringRevision == null ? 'Not recorded' : String(rules.scoringRevision)],

@@ -469,6 +469,8 @@ function loadoutRulesEqual(a, b) {
   if (!parsedA || !parsedB || typeof parsedA !== 'object' || typeof parsedB !== 'object') return false;
   if ((parsedA.ruleset ?? null) !== (parsedB.ruleset ?? null)) return false;
   if ((parsedA.starter ?? null) !== (parsedB.starter ?? null)) return false;
+  // A stamp predating stakes raced under what is now the contender contract: absent ≡ contender.
+  if ((parsedA.stake ?? 'contender') !== (parsedB.stake ?? 'contender')) return false;
   const mutatorsA = [...(Array.isArray(parsedA.mutators) ? parsedA.mutators : [])].sort();
   const mutatorsB = [...(Array.isArray(parsedB.mutators) ? parsedB.mutators : [])].sort();
   return mutatorsA.length === mutatorsB.length && mutatorsA.every((entry, index) => entry === mutatorsB[index]);

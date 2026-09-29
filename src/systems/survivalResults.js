@@ -901,6 +901,10 @@ export const survivalResults = {
     result.roundThreatResolved=run.resolvedThreat;
     result.remainingEnemies=Math.max(0,(run.threatBudget??0)-(run.resolvedThreat??0));
     result.recordRules=this._stuntRules;
+    // The stake also rides the record rules' loadoutRules JSON; surface it flat for the rows.
+    result.swarmStake = run.telemetry && typeof run.telemetry.swarmStake === 'string'
+      ? run.telemetry.swarmStake
+      : null;
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
     result.stuntKills = this._stuntKills.map((s) => ({ ...s }));
     result.killReplay = this._lastKillReplay
