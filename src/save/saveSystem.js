@@ -2892,16 +2892,26 @@ export const save = {
       : 'quick';
     const previousStrict = this._rollbackCaptureActive;
     this._rollbackCaptureActive = true;
-    let envelope;
+    let data;
     try {
-      envelope = this.serialize(slot);
+      // The rollback copy is consumed in memory and never written, so it carries no checksum:
+      // _prepareEnvelope only verifies env.checksum when one is present, and a checksum over
+      // self-produced data is a tautology. serialize() remains the write-path envelope builder.
+      data = this.serializeData();
     } finally {
       this._rollbackCaptureActive = previousStrict;
     }
-    if (!envelope || typeof envelope !== 'object') throw new Error('rollback_snapshot_empty');
-    const prepared = this._prepareEnvelope(envelope);
+    if (!data || typeof data !== 'object') throw new Error('rollback_snapshot_empty');
+    const prepared = this._prepareEnvelope({
+      fmt: FMT,
+      version: CURRENT_VERSION,
+      savedAt: new Date().toISOString(),
+      playtimeS: Math.floor((state && state.meta && state.meta.playtimeS) || 0),
+      slot,
+      data,
+    });
     if (!prepared.ok) throw new Error('rollback_snapshot_invalid:' + prepared.reason);
-    return { data: prepared.data, slot, envelope };
+    return { data: prepared.data, slot };
   },
 
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
