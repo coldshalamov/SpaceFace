@@ -402,6 +402,11 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
           confidenceSamples: 0,
           hostileVotes: 0,
           friendlyVotes: 0,
+          // SF-057 bounded-search residual: the merge must carry whether ANY member holds a live
+          // sighting this tick, not just the best (possibly stale) positional fix. A merged
+          // contact built entirely from memories is a search anchor, not a firing solution.
+          liveSightings: 0,
+          observationTracked: false,
         };
         merged.set(key, record);
       }
@@ -410,6 +415,8 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
       const hostile = contact.hostile === true;
       if (hostile) record.hostileVotes++;
       else if (contact.team != null) record.friendlyVotes++;
+      if (contact.visible !== undefined && contact.visible !== null) record.observationTracked = true;
+      if (contact.visible === true) record.liveSightings++;
       if (contact.confidence > record.confidence) Object.assign(record, contact);
     }
   }
@@ -495,14 +502,18 @@ function objectiveFor(tactic, role, focus, objective, tether, perception, assign
   // would otherwise turn every remaining member into a permanent screening spectator.
   if (perception?.self?.arenaPursuit && focus) return freezeObjective(
     tactic === 'contain_and_disable' ? ObjectiveKind.ENGAGE : ObjectiveKind.FOCUS,
-    focus.id, 'arena_pursuit', freeze);
+    focus.id, 'arena_pursuit', freeze, targetObservedBySquad(focus));
   if (allocationActive) {
-    if (!assignedTarget) return freezeObjective(ObjectiveKind.SCREEN, focus && focus.id, 'fire_lane_reserve', freeze);
-    if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, assignedTarget.id, 'disable_assignment', freeze);
-    return freezeObjective(ObjectiveKind.FOCUS, assignedTarget.id, `${tactic}_assignment`, freeze);
+    if (!assignedTarget) return freezeObjective(ObjectiveKind.SCREEN, focus && focus.id, 'fire_lane_reserve', freeze,
+      targetObservedBySquad(focus));
+    if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, assignedTarget.id, 'disable_assignment',
+      freeze, targetObservedBySquad(assignedTarget));
+    return freezeObjective(ObjectiveKind.FOCUS, assignedTarget.id, `${tactic}_assignment`, freeze,
+      targetObservedBySquad(assignedTarget));
   }
-  if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, focus && focus.id, 'disable_focus', freeze);
-  return freezeObjective(ObjectiveKind.FOCUS, focus && focus.id, tactic, freeze);
+  if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, focus && focus.id, 'disable_focus',
+    freeze, targetObservedBySquad(focus));
+  return freezeObjective(ObjectiveKind.FOCUS, focus && focus.id, tactic, freeze, targetObservedBySquad(focus));
 }
 
 function allocateCombatTargets(squad, tactic, contacts, focus) {
@@ -665,8 +676,23 @@ function selectTetherContact(contacts) {
   return best;
 }
 
-function freezeObjective(kind, targetId, reason, freeze = Object.freeze) {
-  return freeze({ kind, targetId: targetId == null ? null : targetId, reason });
+function freezeObjective(kind, targetId, reason, freeze = Object.freeze, targetObserved) {
+  const out = { kind, targetId: targetId == null ? null : targetId, reason };
+  // SF-057: absent = observation not tracked (legacy/non-squad producers); false = the squad's
+  // merged contact is memory only — members may fly the search leg but must not fire on it.
+  if (targetObserved !== undefined) out.targetObserved = targetObserved;
+  return freeze(out);
+}
+
+/** Whether the merged contact carries a live squad sighting this tick. Untracked contact sources
+ *  stay undefined so fixture producers that never publish `visible` keep their pre-SF-057 shape.
+ *  A dispatched mark is deliberately NOT a sighting: it authorizes maneuver on the assignment
+ *  (doctrine.js marks it so the responder can fly its orders), but fire still requires a member
+ *  to actually see the target — the report may be stale, and the fire gate resolves the LIVE
+ *  entity position. */
+function targetObservedBySquad(contact) {
+  if (!contact || contact.observationTracked !== true) return undefined;
+  return contact.liveSightings > 0;
 }
 
 function detectExplicitBreak(memberId, perception, director, tactic, role) {

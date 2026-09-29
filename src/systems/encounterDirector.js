@@ -108,6 +108,7 @@ import {
 } from '../data/pirateDoctrines.js';
 import { isHostileForAI, isAmbientRaidId } from '../ai/engagementAuthority.js';
 import {
+  accelerateBoundRaiderEscape,
   ambientJettisonUnderPressure,
   ambientPickupCollected,
   ambientRaiderDestroyed,
@@ -387,17 +388,22 @@ export const encounterDirector = {
   },
 
   /**
-   * Player intervention: a bound predation raider the player just damaged leaves its objective
-   * and becomes an ordinary self-defense attacker. Without this release the bounded predation
-   * branch swallowed the retaliation flags and the raider could never defend itself.
+   * Player intervention on a bound predation raider. SF-055: while the take is still aboard the
+   * hit buys speed, not revenge — the raider cuts to (or re-aims) its escape leg off the
+   * attacker's bearing and sheds cargo per hit through the jettison above. Only once the hold is
+   * empty does the release below convert it into an ordinary self-defense attacker. Without that
+   * conversion path the bounded predation branch swallowed the retaliation flags entirely and the
+   * raider could never defend itself.
    */
-  _releasePredationRaiderForRetaliation(targetId) {
+  _releasePredationRaiderForRetaliation(targetId, attackerId = null) {
     const entities = this.state && this.state.entities;
     const entity = targetId != null && entities && typeof entities.get === 'function'
       ? entities.get(targetId) : null;
     if (!entity || entity.alive === false) return false;
     try {
-      return releaseBoundRaiderForRetaliation(this.state, entity, this._ambientPredationCtx());
+      const ctx = this._ambientPredationCtx();
+      if (accelerateBoundRaiderEscape(this.state, entity, attackerId, ctx)) return true;
+      return releaseBoundRaiderForRetaliation(this.state, entity, ctx);
     } catch (err) {
       if (typeof console !== 'undefined' && console.warn) {
         console.warn('[encounterDirector] predation retaliation release failed', err);
@@ -1990,9 +1996,10 @@ export const encounterDirector = {
       const playerDealtDamageAt = dir.playerDealtDamageAt || (dir.playerDealtDamageAt = {});
       if (p.targetId != null) playerDealtDamageAt[p.targetId] = now;
       dir.lastPlayerDealtDamageAt = now;
-      // Player fire on a bound raider is intervention, not noise: release it to self-defense
-      // BEFORE any other bookkeeping so the retaliation fields exist when scripts/authority read.
-      this._releasePredationRaiderForRetaliation(p.targetId);
+      // Player fire on a bound raider is intervention, not noise: resolve it BEFORE any other
+      // bookkeeping so the retaliation fields exist when scripts/authority read — or, while the
+      // raider still holds its take, the SF-055 wounded-cargo escape accelerates off the shooter.
+      this._releasePredationRaiderForRetaliation(p.targetId, p.attackerId);
       for (const lid of Object.keys(dir.live)) {
         const live = dir.live[lid];
         if (p.targetId != null && live.ids.includes(p.targetId)) {

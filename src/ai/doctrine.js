@@ -4,6 +4,8 @@ import {
   distance2,
   finite,
   finiteInt,
+  memberObservedTarget,
+  stableId,
 } from './contracts.js';
 
 export const ActivityKind = Object.freeze({
@@ -202,10 +204,20 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
   // impotent guard ring around the jurisdiction anchor while the offender fires at will.
   if ((reason.startsWith('ambush_snare:') || reason.startsWith('security_response:') || reason.startsWith('wanted_warrant:'))
     && activity.kind === ActivityKind.ATTACK_RUN && activity.targetId != null) {
+    // SF-057: the rebuilt objective must keep sighting truth. Same target → carry the squad's
+    // merged verdict; a re-pointed target → fall back to the member's own contact. A marked-but-
+    // unseen offender (dispatchedTarget) is a search anchor, never a firing solution.
+    const observed = directive.objective && directive.objective.targetId != null
+      && stableId(directive.objective.targetId) === stableId(activity.targetId)
+      ? directive.objective.targetObserved
+      : memberObservedTarget(perception, activity.targetId);
     return freeze({
       ...directive,
       focusTargetId: activity.targetId,
-      objective: freeze({ kind: ObjectiveKind.FOCUS, targetId: activity.targetId, reason }),
+      objective: freeze({
+        kind: ObjectiveKind.FOCUS, targetId: activity.targetId, reason,
+        ...(observed !== undefined ? { targetObserved: observed } : {}),
+      }),
       formation: freeze({
         ...(directive.formation || {}),
         breakFormation: true,
@@ -238,10 +250,21 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
     bound: activity.leashRadius,
     breakFormation: false,
   }) : directive.formation;
+  // SF-057: a wing-order attack re-points the objective at the ordered target — keep the squad's
+  // sighting verdict when it's the same target, else trust only the member's own contact.
+  const observed = kind === ObjectiveKind.FOCUS && targetId != null
+    ? (directive.objective.targetId != null
+        && stableId(directive.objective.targetId) === stableId(targetId)
+        ? directive.objective.targetObserved
+        : memberObservedTarget(perception, targetId))
+    : undefined;
   return freeze({
     ...directive,
     focusTargetId: kind === ObjectiveKind.FOCUS ? targetId : null,
-    objective: freeze({ kind, targetId, reason: activity.reason }),
+    objective: freeze({
+      kind, targetId, reason: activity.reason,
+      ...(observed !== undefined ? { targetObserved: observed } : {}),
+    }),
     formation,
   });
 }

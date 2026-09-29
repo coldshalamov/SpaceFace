@@ -353,12 +353,15 @@ function secureAmbientPod(state, raider, pod, objective, raidId, now, ctx) {
   });
 }
 
-function beginAmbientEscape(state, raider, victim, objective, now, tick, raidId) {
+function beginAmbientEscape(state, raider, victim, objective, now, tick, raidId, awayFrom = null) {
   const ai = raider.data.ai;
   const seed = state.meta && state.meta.seed;
   const rng = mulberry32(hash32(seed == null ? 0 : seed, raidId, 'escape'));
-  let dx = raider.pos.x - victim.pos.x;
-  let dz = raider.pos.z - victim.pos.z;
+  // SF-055: the escape leg runs off whoever is actually applying pressure — the attacker when one
+  // is known, otherwise the spent victim — never blindly toward the pursuer.
+  const reference = (awayFrom && awayFrom.pos) || (victim && victim.pos) || null;
+  let dx = reference ? raider.pos.x - reference.x : 0;
+  let dz = reference ? raider.pos.z - reference.z : 0;
   let len = Math.hypot(dx, dz);
   if (!(len > 0.001)) {
     const angle = rng() * Math.PI * 2;
@@ -806,6 +809,82 @@ export function releaseBoundRaiderForRetaliation(state, entity, ctx = {}) {
     ambient,
     t: simNow(state),
   });
+  return true;
+}
+
+/**
+ * SF-055 wounded-cargo tradeoff. Player fire on a raider still holding its take doesn't buy
+ * revenge — it buys speed. A bound raider with secured freight cuts the raid into its escape leg
+ * immediately, aimed off the ATTACKER rather than the spent victim, and one already fleeing
+ * re-aims the same way (origin and deadline hold — the run's clock doesn't restart just because
+ * the shooter kept shooting). Only once the hold is empty does intervention earn the ordinary
+ * retaliation conversion: the cargo is the whole point of the raid.
+ *
+ * Returns true when cargo remained aboard and the raider accelerated instead of releasing;
+ * false hands the intervention back to releaseBoundRaiderForRetaliation.
+ */
+export function accelerateBoundRaiderEscape(state, entity, attackerId, ctx = {}) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  if (!entity || entity.alive === false || !data || !ai) return false;
+  // A posless entity cannot aim an escape leg — fall through to the ordinary release.
+  if (data.predationRole !== 'raider' || !entity.pos) return false;
+  const status = ai.predationStatus;
+  if (status == null || status === 'cleared' || !BOUND_STATUSES.has(status)) return false;
+  const objective = ambientObjective(entity);
+  if (!objective || (objective.securedQty | 0) <= 0) return false;
+  const now = simNow(state);
+  const tick = tickNow(state);
+  const raidId = objective.raidId != null ? objective.raidId : data.predationEncounterId;
+  const attacker = entityById(state, attackerId);
+  const victim = entityById(state, objective.targetId);
+  const awayFrom = attacker && attacker.pos ? attacker : (victim && victim.pos ? victim : null);
+  let reaimed = false;
+  if (status === 'cargo_escape') {
+    // Already running: bend the leg off the shooter. escapeOrigin stays put — distance-to-escape
+    // measures progress from where the run began, not from wherever the latest hit landed.
+    const reference = awayFrom && awayFrom.pos;
+    if (reference && entity.pos) {
+      const dx = entity.pos.x - reference.x;
+      const dz = entity.pos.z - reference.z;
+      const len = Math.hypot(dx, dz);
+      if (len > 0.001) {
+        const radius = Number(objective.escapeRadius) || AMBIENT_PREDATION.escapeRadiusWu;
+        objective.escapeTarget = {
+          x: entity.pos.x + (dx / len) * radius * 1.25,
+          z: entity.pos.z + (dz / len) * radius * 1.25,
+        };
+        const remainingS = Math.max(0, (Number(objective.escapeDeadlineAt) || now) - now);
+        setEntityDoctrine(entity, {
+          activity: {
+            kind: ActivityKind.FLEE,
+            reason: 'ambient:loot_escape',
+            anchor: objective.escapeTarget,
+            leashRadius: radius * 1.5,
+            startedTick: tick,
+            deadlineTick: tick + Math.ceil(remainingS * 60),
+            targetId: null,
+          },
+          roe: RulesOfEngagement.HOLD_FIRE,
+        });
+        reaimed = true;
+      }
+    }
+  } else {
+    // Mid-recovery (or any pre-escape bound beat): the take aboard converts to a run right now —
+    // whatever pods are still in flight stay in the world as spill for whoever keeps pushing.
+    beginAmbientEscape(state, entity, victim, objective, now, tick, raidId, awayFrom);
+    reaimed = true;
+  }
+  if (reaimed) {
+    emit(ctx, 'encounter:ambientEscapeAccelerated', {
+      raidId: typeof raidId === 'string' ? raidId : null,
+      raiderId: entity.id,
+      attackerId: attackerId != null ? attackerId : null,
+      securedQty: objective.securedQty | 0,
+      t: now,
+    });
+  }
   return true;
 }
 
