@@ -14451,7 +14451,7 @@ export const render = {
     options.records = this._entityFrame.asteroids;
     options.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
     const result = syncAsteroidInstancePool(this._asteroidInstancePool, options);
-    if (result?.matrixUploads > 0) this._shadowMapDirty = true;
+    if ((result?.shadowMatrixUploads || 0) > 0) this._shadowMapDirty = true;
     if (this.state && this.state.render) this.state.render.asteroidInstancePool = result;
     return result;
   },
