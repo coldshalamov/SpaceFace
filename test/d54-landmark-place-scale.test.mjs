@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 
 import { SECTORS } from '../src/data/sectors.js';
 import { world as worldProto } from '../src/systems/world.js';
-import { modelTruthRow } from '../src/data/modelTruth.js';
+import { modelTruthRow, modelTruthPlaceDrawScale } from '../src/data/modelTruth.js';
+import { resolvePlaceDrawScale } from '../src/render/partsLibrary.js';
 
 const LANDMARKS = [
   {
@@ -103,4 +104,48 @@ test('POIs without a declared draw size keep the census-scaled default', () => {
   assert.ok(driller, 'poi_driller spawned a live marker');
   assert.equal(driller.data.placeTargetRadius, undefined);
   assert.equal(driller.data.placeScale, undefined);
+});
+
+test('Wreck Cathedral world-site root draws at authored scale, not the census radius ratio', () => {
+  const row = modelTruthRow('place_landmark_wreck_cathedral');
+  assert.ok(row, 'cathedral census row exists');
+  const envelope = Math.max(...row.bounds.size);
+  // The world-site root entity as spawned by worldSiteRuntime: entity.radius is the site's
+  // visualRadius gameplay footprint (360) while placeScale is the manifest's initialScale (1).
+  const siteEntity = { type: 'fx', radius: 360, data: { placeId: row.id } };
+  const censusScale = modelTruthPlaceDrawScale(siteEntity);
+  assert.ok(
+    censusScale > 10,
+    `census ratio should still be the ~30x regression input (entityRadius ${row.gameplay.entityRadius}), got ${censusScale}`,
+  );
+  const scale = resolvePlaceDrawScale(
+    {
+      role: 'world_site_root',
+      placeId: row.id,
+      placeScale: 1,
+      worldSitePresentation: {},
+    },
+    { targetRadius: null, authoredEnvelope: envelope, censusScale },
+  );
+  assert.equal(scale, 1, 'declared placeScale wins over the census ratio for a world-site root');
+  assert.ok(
+    Math.abs(envelope * scale - envelope) < 1e-3,
+    `drawn span ${envelope * scale} must equal the authored envelope ${envelope}`,
+  );
+});
+
+test('ordinary places keep the census ratio ahead of a declared placeScale', () => {
+  const scale = resolvePlaceDrawScale(
+    { placeScale: 1 },
+    { targetRadius: null, authoredEnvelope: 100, censusScale: 2 },
+  );
+  assert.equal(scale, 2, 'non-site, non-POI places still draw by the census radius ratio');
+});
+
+test('POI declared draw size still outranks placeScale and the census ratio', () => {
+  const scale = resolvePlaceDrawScale(
+    { poi: true, placeScale: 1 },
+    { targetRadius: 75, authoredEnvelope: 100, censusScale: 30 },
+  );
+  assert.equal(scale, 1.5, 'placeTargetRadius maps to 2*radius/envelope for POIs');
 });

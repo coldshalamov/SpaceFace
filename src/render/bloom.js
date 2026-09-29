@@ -1463,39 +1463,27 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // max-sized target (dyn-res). Omit both for a full-target / full-framebuffer blit.
   function blit(material, target, viewW = null, viewH = null) {
     quadMesh.material = material;
-    renderer.setRenderTarget(target);
-    const useSubRect = viewW != null && viewH != null
+    const useSubRect = !!target && viewW != null && viewH != null
       && Number.isFinite(viewW) && Number.isFinite(viewH);
-    let prevViewport = null;
-    let prevScissor = null;
-    let prevScissorTest = null;
-    if (useSubRect && typeof renderer.getViewport === 'function') {
-      prevViewport = renderer.getViewport(new THREE.Vector4());
-      prevScissor = typeof renderer.getScissor === 'function'
-        ? renderer.getScissor(new THREE.Vector4())
-        : null;
-      prevScissorTest = typeof renderer.getScissorTest === 'function'
-        ? renderer.getScissorTest()
-        : null;
-    }
-    if (useSubRect) {
-      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, viewW, viewH);
-      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, viewW, viewH);
-      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
+    if (target) {
+      // Sub-rects live on the render target's own viewport/scissor (device px, applied on
+      // bind). renderer.setViewport is logical px and writes the canvas's persistent viewport:
+      // it double-scaled these device-pixel rects under dpr>1 and was the state that leaked
+      // the scene pass's content rect into the final framebuffer composite.
+      const w = useSubRect ? Math.max(1, viewW) : target.width;
+      const h = useSubRect ? Math.max(1, viewH) : target.height;
+      if (target.viewport && typeof target.viewport.set === 'function') {
+        target.viewport.set(0, 0, w, h);
+      }
+      if (target.scissor && typeof target.scissor.set === 'function') {
+        target.scissor.set(0, 0, w, h);
+      }
+      target.scissorTest = useSubRect;
     } else if (typeof renderer.setScissorTest === 'function') {
       renderer.setScissorTest(false);
     }
-    try {
-      renderer.render(quadScene, quadCam);
-    } finally {
-      if (useSubRect && prevViewport) {
-        renderer.setViewport(prevViewport);
-        if (prevScissor && typeof renderer.setScissor === 'function') renderer.setScissor(prevScissor);
-        if (prevScissorTest != null && typeof renderer.setScissorTest === 'function') {
-          renderer.setScissorTest(prevScissorTest);
-        }
-      }
-    }
+    renderer.setRenderTarget(target);
+    renderer.render(quadScene, quadCam);
   }
 
   function releaseBloomSceneSamplers() {
@@ -1740,17 +1728,18 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       // compositeMat, not a game-scene mesh, so a scene walk cannot see it.
       releaseBloomSceneSamplers();
       hideUnreadySceneDrawables(scene);
+      // Content sub-rect lives on the render target itself (device px, copied into GL state by
+      // setRenderTarget). renderer.setViewport would write the canvas's persistent logical-pixel
+      // viewport: it double-scaled this device-pixel rect under dpr>1 and leaked into the final
+      // framebuffer blit, squeezing the composite into the bottom-left corner under dyn-res.
+      rtScene.viewport.set(0, 0, contentW, contentH);
+      rtScene.scissor.set(0, 0, contentW, contentH);
+      rtScene.scissorTest = true;
       renderer.setRenderTarget(rtScene);
-      // Content sub-rect: scale changes never resize rtScene; they only shrink this viewport.
-      // The viewport persists on the target, which is exactly what the next pass wants too.
-      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, contentW, contentH);
-      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, contentW, contentH);
-      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
       // rtScene has stencilBuffer:false and the context is stencil-free — clearing the stencil
       // bit is a spec no-op that still pays a stencil.setMask GL state write.
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
-      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(false);
       if (tier1) tier1.countRenderPassPixels(contentW * contentH, 'bloom-scene');
     } finally {
       restoreUnreadySceneDrawables();
@@ -1803,13 +1792,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     try {
       releaseBloomSceneSamplers();
       hideUnreadySceneDrawables(scene);
+      rtScene.viewport.set(0, 0, contentW, contentH);
+      rtScene.scissor.set(0, 0, contentW, contentH);
+      rtScene.scissorTest = true;
       renderer.setRenderTarget(rtScene);
-      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, contentW, contentH);
-      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, contentW, contentH);
-      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
-      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(false);
       rememberBloomGeometries(scene);
       // The rehearsal's GL work sits in the driver's queue until something forces the flush —
       // without a drain here the deferred cost lands inside the presented frame it exists to

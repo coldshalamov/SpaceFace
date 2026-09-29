@@ -216,12 +216,12 @@
   },
   "ship_pelican": {
    "sourceGlb": "assets/ships/parts/wholeships/pelican_production_v1.glb",
-   "sourceGlbSha256": "C71C61CE5C520E51BC0722B7AFBD593D0EA569413F510E316B600C0CA8E98773",
+   "sourceGlbSha256": "F132BED77D823C0CC3D2AF5F85B8B38863CEE8C986C08C99602F95FF0DCE75AA",
    "hero": {
     "file": "ship_pelican.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 89312,
+    "bytes": 89332,
     "hullSize": [
      14.71,
      6.26,
@@ -300,7 +300,7 @@
     "file": "ship_pelican.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 50416,
+    "bytes": 50284,
     "hullSize": [
      14.71,
      6.26,
@@ -379,7 +379,7 @@
     "file": "ship_pelican.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 30846,
+    "bytes": 30844,
     "hullSize": [
      14.71,
      6.26,
