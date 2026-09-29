@@ -375,6 +375,58 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
 **LANE** open-ended area ownership (detail in `FINISH_LANES.md`).
 
+### Handoff — thirty landed rows, do not retake (2026-09-29)
+
+One sitting finished ten board rows and twenty inference lines. The board rows are already
+gone from the tables below. The inference lines are marked SHIPPED in
+[`INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md). Do not take them again.
+
+**Board, landed:**
+
+- CV-EAR-1 (`4b708d40c`) — three engine loads make three rising pitches; idle goes quiet; full throttle speaks; weapons duck both.
+- CV-GLASS-2 (`3d48adbb6`) — the same fixed-seed hit lands on the same body, and the clearance walk is no longer the cost that was named.
+- NXB-001 (`4875ab436`) — taking over a device does not fight the helm.
+- NXB-002 (`989152b5c`) — the G-stick answer stays stable through resize, zoom, and display density.
+- NXB-003 (`689c930c2`) — the same press is the same verb at every presentation rate, and closing a screen does not drop a bomb.
+- NXB-022 (`69800deb8`) — freed ore stays accepted on the same vein or is explicitly destroyed; a full hold does not duplicate the yield or trim the vein to the visit.
+- NXB-053 (`6727ba5ad`) — a station confirmation keeps the lot, quantity, and hull it named.
+- NXB-059 (`a5a33ea08`) — a save is one moment: cargo, credits, the site, and the accepted fact agree; a failed write keeps the previous slot.
+- NXB-060 (`2b83407a3`) — a rejected or replaced package is not described as ready, and New Game does not launch a run that only timed out.
+- NXB-041 (`f8a9a727d`) — an absent witness cannot accuse; a relay stays a report; a stale explanation expires without erasing settled heat, reputation, or the receipt.
+
+**Inference, shipped:**
+
+- NXI-013 (`0427869c5`) — a held throttle on a dead drive is not reported as a healthy coast.
+- NXI-097 (`59c420730`) — dumping sealed goods cannot eject a different owned lot.
+- NXI-026 (`c055479ef`) — reordering what is drawn does not change who is responsible for the same simulated inputs.
+- NXI-049 (`bc04436e4`) — destroying a wing leader between looks does not send followers onto a new ship that reused that number. The new body gets a fresh identity when the number is assigned, the sensors carry it, and the wing holds on the surviving ship even if the roster never changes or is rebuilt while the leader is gone. Do not dissolve the squad just because the leader changed.
+- NXI-033 (`5118b7673`) — an empty magazine stays recognizable; cycling still picks only loaded cells.
+- NXI-081 (`b28c6b720`) — the same ore asks for the same drill at two depths; unknown ore is not guessed.
+- NXI-098 (`872819827`) — sealed cargo stays visible and cannot be sold.
+- NXI-117 (`4b4b75387`) — an empty-hold turn estimate is not shown as the loaded-hold turn.
+- LAW-04 (`4480eff37`) — closing custody adds one chain entry, and the list stays capped.
+- WORLD-27 (`bf1f5fa8a`) — dock cards have one path; the berth card is that path.
+- NXI-130 (`5d87d2b72`) — a stopped site says why, and a valid withdrawal makes it active again.
+- PIC-16 (`3ff570497`) — a shot into a ward records one warded hit along the hit normal and does not flash damage on the ward.
+- VERB-30 (`ac6aeed05`) — fitting the vector charge rack changes that rail's charge capacity; a parked hull does not. The empty-charge line stays exactly `No impulse charges in cargo`.
+- FIGHT-03 (`f21f67eef`) — a draft pick stores the author note; a bad note is rejected without undoing the fit or stalling the draft.
+- PRO-02 (`543b24b07`) — the language list hides the pseudo-locale unless dev is on; an explicit request can still select it.
+- STORY-04 (`7dee214dd`) — the mission log shows one unfinished post-ending objective, and a finished record does not show it again.
+- LAW-06 (`b3d52c761`) — a black-market register asks the dock to wash nearby hot papers once; a lawful berth does not.
+- PRO-10 (`228df0f9d`) — an export that used the recovery copy names that slot once; a healthy export or an autosave does not.
+- STORY-07 (`023be4386`) — the hauler origin accepts and declines through the shared origin door; another career is ignored.
+- PRO-11 (`99f58d877`) — opening a plotted destination from a dossier engages that route; a hull, a good, or a different sector does not.
+
+**Leave alone.** Do not retune mass, thrust, weapon numbers, dock-assist, or camera governors.
+Do not edit Hitch's mesh, `test/*.expected.json`, or `design/program/vm-drop/`. The elastic-whip
+head check was already red from other work; do not retune it to go green. If `src/ai/stack.js`
+and `src/core/coreSystem.js` are still dirty, those hunks are not this batch: one passes doctrine
+perception into the combat override, the other keeps measured skins off dynamic hulls. Do not
+revert them and do not fold them into an unrelated commit.
+
+**Next.** The lowest-numbered OPEN row below whose paths are not in a live `NOW.md` row.
+Inference continues at the first OPEN line in `INFERENCE_IDEAS.md` whose paths are free.
+
 ### A. Recover — finished work stranded in the tree
 
 | # | ID | Work | Kind | Status |
