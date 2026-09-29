@@ -159,8 +159,11 @@ try {
     if (!nextUnit) {
       if (!ready.length) {
         fail(
-          'queue drained: no ready dispatch unit. The open acceptance leaf PQ-210.08 is parked as pre-release prep (owner 2026-09-27, build_map §1.2). '
-            + 'Game development runs through the finish lanes: take the first lane whose files are free from design/program/FINISH_LANES.md per build_map §1.1 step 2.',
+          'legacy queue drained: no ready PQ dispatch unit. This does not mean directed BUILD/INFERENCE work is exhausted. '
+            + 'Read build_map.md §1C and design/program/INFERENCE_IDEAS.md, including the Next Wave 300 rows. '
+            + 'For an advisory canonical-row selection, run node scripts/next-wave-read.mjs --kind build --next '
+            + 'or --kind inference --next. Check NOW.md and exact dirty hunks before claiming. '
+            + 'Do not invent features while a dependency-ready directed row exists. PQ-210.08 remains parked as pre-release prep.',
           1,
         );
       }
