@@ -20,8 +20,8 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
 test('the placed one-offs exist, plus the too-fast courier', () => {
-  assert.equal(WORLD_ONE_OFFS.length, 31,
-    'thirty-one placed set pieces: the eight beside places, the four CV-QUIET detours on the legs, plus nineteen for per-sector coverage');
+  assert.equal(WORLD_ONE_OFFS.length, 32,
+    'thirty-two placed set pieces: the nine beside places, the four CV-QUIET detours on the legs, plus nineteen for per-sector coverage');
   const courier = NAMED_LANE_CONTACTS.find((c) => c.id === 'lane_cinder_run_courier');
   assert.ok(courier, 'the named express courier still lives in laneContacts.js');
   const ids = WORLD_ONE_OFFS.map((o) => o.id);
