@@ -66,7 +66,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "cc9419388b2608d697345bb94a786c4120cfc21e04365f437e15c4c4c0a4e885",
+    "authoritativeHash": "4896c299b2f6615dd3ba598d5fecded730997581001af920a1d60c99e57f666c",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -185,6 +185,8 @@
     "station_ceres, station_expanse and station_hyperion_cut show feedstock ore stocks down and product stocks (refined_metals, alloys, hull plates) up — yard lines consuming inputs and emitting outputs through applyStockPressure, as intended.",
     "ZERO entity motion fields changed (pos/vel/rot/angVel/prevPos); sim-golden-diff verdict CONTENT_ONLY, zero phase0ObservedTraceCounts moved.",
     "The $.entities[] radius diffs vs the 4d56cb9b reference are foreign committed model-truth work (silhouetteRadius 12.298904 -> 12.517587); the entity array is outside the hashed envelope regardless.",
-    "Repeat run is deterministic; reload@600 reproduces the uninterrupted hash exactly (industry holds no non-serialized accumulators — it re-derives each tick from market stock)."
+    "Repeat run is deterministic; reload@600 reproduces the uninterrupted hash exactly (industry holds no non-serialized accumulators — it re-derives each tick from market stock).",
+    "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves) + 13 debris-radius rng shifts. Zero motion fields changed.",
+    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed."
   ]
 }

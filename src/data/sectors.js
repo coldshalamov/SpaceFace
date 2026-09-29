@@ -174,6 +174,7 @@ const CORE_SECTORS = [
       // strung along a drift line off the Helios-gate approach. Plain POI rows; the scan tells
       // and the payoff pod live in that module and its owners.
       ...KETTLE_LINE_POIS,
+      { id: 'poi_ceres_closed_refinery', type: 'anomaly', name: 'The Closed Refinery', pos: { x: 1600, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -201,6 +202,7 @@ const CORE_SECTORS = [
       },
       { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Buoy', factionId: 'faction_mts' },
       { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Log Relay', factionId: 'faction_scn' },
+      { id: 'poi_tethys_split_station', type: 'anomaly', name: 'The Split Station', pos: { x: -800, z: 1600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -261,6 +263,7 @@ const CORE_SECTORS = [
             + 'foundry\u2019s own roar \u2014 its harmonic still tuned to the Forge\u2019s old shift rhythm.',
         },
       },
+      { id: 'poi_vesta_red_cable_yard', type: 'anomaly', name: 'Red Cable Yard', pos: { x: -1400, z: -900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -309,6 +312,8 @@ const CORE_SECTORS = [
           body: 'Seventeen intact freighters hold formation around one violet buoy. Every hull reports a different living-crew count; every bunk is warm; no transmitter answers by name.',
         },
       },
+      { id: 'poi_pallas_empty_habitat', type: 'anomaly', name: 'The Empty Habitat', pos: { x: 500, z: -1900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_pallas_empty_foundry', type: 'anomaly', name: 'Empty Foundry', pos: { x: 1200, z: 900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -346,6 +351,8 @@ const CORE_SECTORS = [
       },
       // V2 §6 / M3: a claimable industrial moon — a body the player can claim and build on.
       { id: 'poi_claim_pallas', type: 'colony', name: 'Pallas Industrial Moon', claimable: true, size: 'M' },
+      { id: 'poi_io_shepherds_ring', type: 'anomaly', name: "Shepherd's Ring", pos: { x: -1100, z: 700 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_io_listening_field', type: 'anomaly', name: 'Listening Field', pos: { x: 800, z: -1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -377,6 +384,23 @@ const CORE_SECTORS = [
         scannerSignalKind: 'distress', survivorPod: true, recoveryEncounter: true,
         flavorTargetRef: 'landmark_c7_lung_of_charon',
       },
+      {
+        // Alien Ecology program (AE-040): discovery/map identity for the Cinder Nursery; the
+        // world-site manifest owns the visible body, so this row mints no marker prop.
+        id: 'world_site_charon_cinder_nursery', type: 'wreck', name: 'Cinder Nursery',
+        anchor: { x: 1700, z: -1400 },
+        runtimeOwner: 'asteroidSites',
+        scannerSignalKind: 'anomaly',
+      },
+      // Alien Ecology waves A/B + machine layer: second sites spawn via materializeAlienEcology /
+      // materializeMachineLayer — markerless rows carry scanner/map identity only.
+      { id: 'poi_charon_warm_freighter', type: 'anomaly', name: 'Warm Freighter', pos: { x: -2200, z: 900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_hull_garden', type: 'anomaly', name: 'Three Hull Garden', pos: { x: 800, z: 2400 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_pylon_field', type: 'anomaly', name: 'Unidentified Lattice', pos: { x: 2400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_star_marker', type: 'anomaly', name: 'Star Marker', pos: { x: -2200, z: -800 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_broken_shepherd', type: 'anomaly', name: 'Broken Shepherd', pos: { x: 1000, z: 1900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_preserved_cockpit', type: 'anomaly', name: 'The Preserved Cockpit', pos: { x: 2300, z: 400 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_empty_skin', type: 'anomaly', name: 'The Empty Skin', pos: { x: -900, z: -2200 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -430,6 +454,11 @@ const CORE_SECTORS = [
             + 'scan. No architect designed the Throne \u2014 survivors kept welding.',
         },
       },
+      // Alien Ecology deep pocket + machine causeway (AE-110..115).
+      { id: 'poi_sker_harvest_deep', type: 'anomaly', name: 'The Harvest Deep', pos: { x: -1500, z: -1600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_sker_null_causeway', type: 'anomaly', name: 'Null Causeway', pos: { x: 600, z: 1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_sker_red_snow', type: 'anomaly', name: 'Red Snow', pos: { x: 400, z: -1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_sker_quiet_dock', type: 'anomaly', name: 'Quiet Dock', pos: { x: -1600, z: 800 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -438,7 +467,7 @@ const CORE_SECTORS = [
     palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.65, enemyLevel: [8, 12],
     neighbors: ['sector_io_reach', 'sector_sker_haven'],
-    wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey' },
+    wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall' },
     stations: [
       { id: 'station_veil', name: 'Research Station Veil', type: 'research', factionId: 'faction_free', size: 'M', services: ['scan_tech','missions','repair','refuel'],
         chartNote: "Instruments first, hospitality never. Sells readings it won't explain." },
@@ -459,7 +488,14 @@ const CORE_SECTORS = [
           body: 'Material analysis returns nothing recognized as matter, and the pulse interval is shorter than every prior scan record. Vael patrol logs tighten after each pulse — the dark companion is a door that forgot its other side.',
         },
       },
-      { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey' },
+      { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall' },
+      // Alien Ecology (AE-066) + Verge-Layer structures (AE-101/102/108).
+      { id: 'poi_veil_quiet_ice', type: 'anomaly', name: 'Quiet Ice', pos: { x: 900, z: 1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_survey_monolith', type: 'anomaly', name: 'Pale Spire', pos: { x: -1400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_revoked_gate', type: 'anomaly', name: 'Silent Gate', pos: { x: 2100, z: -1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_black_orchard', type: 'anomaly', name: 'The Black Orchard', pos: { x: -1700, z: -800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_containment_ring', type: 'anomaly', name: 'Containment Ring', pos: { x: -900, z: -1900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_exception_chamber', type: 'anomaly', name: 'Exception Chamber', pos: { x: 1800, z: 1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -522,6 +558,17 @@ const CORE_SECTORS = [
           body: 'A heavily armored pre-collapse archive sealed behind interlocking petal-plates. The locking seam bears thousands of false cryptographic keyways tied to ancient defensive countermeasures, guarding historical ledgers expunged from all modern sector registries.',
         },
       },
+      // Alien Ecology wave B + Verge-Layer structures (AE-086, AE-103..106).
+      { id: 'poi_ashfall_breathing_dock', type: 'anomaly', name: 'Breathing Dock', pos: { x: -1200, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_gate_underlayer', type: 'anomaly', name: 'Gate Underlayer', pos: { x: 1600, z: -1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_ossuary', type: 'anomaly', name: 'Ranked Frames', pos: { x: -2000, z: -1200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_black_vault', type: 'anomaly', name: 'Black Vault', pos: { x: 2200, z: 2000 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_maintenance', type: 'anomaly', name: 'Active Maintenance', pos: { x: 600, z: -2200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      // AE-113 — the drydock that became the organism.
+      { id: 'poi_ashfall_converted_yards', type: 'anomaly', name: 'Converted Yards', pos: { x: 800, z: 800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_towed_moonlet', type: 'anomaly', name: 'The Towed Moonlet', pos: { x: -200, z: -1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_sterile_zone', type: 'anomaly', name: 'Old Sterile Zone', pos: { x: 1400, z: -600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_the_line', type: 'anomaly', name: 'The Line', pos: { x: -800, z: 1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
 ];

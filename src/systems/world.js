@@ -181,6 +181,22 @@ import {
 } from '../world/dressingTable.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
+  materializeAlienEcology,
+  tickAlienEcology,
+  handleAlienEcologyEvent,
+  serializeAlienEcologyState,
+  deserializeAlienEcologyState,
+} from './alienEcology.js'; // Alien Ecology program (doc 08): world-owned library, not a registered system
+import {
+  materializeMachineLayer,
+  tickMachineLayer,
+  machineRouteOpen,
+} from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
+import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
+import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { removeCargo } from './cargo.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import {
   dropFarActorSector,
   farActorHoldsWorldRecord,
   resetFarActors,
@@ -331,6 +347,14 @@ const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spaw
 const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
 const CRITICAL_SPAWN_RETRY_TICKS = 15;
 const WORLD_RECORD_GC_TICKS = 60;
+// Observational proximity scans run at 30 Hz. Every output of _tickResidency /
+// _tickZoneLabel / _tickPOIScan / requestDecodeRunwayPromote is a monotonic
+// transition (corridor membership dwell, zone enter/exit, POI discovered or
+// identified, far-row decode promotion), so an even-tick cadence defers each
+// transition by at most one tick while halving the per-tick O(pois + zones +
+// corridor sectors + far/field queries) walk. On-run ordering is unchanged:
+// the gate skips whole ticks, never reorders inside one.
+const WORLD_OBSERVE_SCAN_TICKS = 2;
 const ARRIVAL_RESIDENCY_BUDGET = 1;
 // Field regrowth: the memory clock lives in fieldDepletion (slow, durable); the world only decides
 // where the fresh rocks land and caps how many may stand. A worked field reopens a seam batch on
@@ -580,6 +604,7 @@ export const world = {
     bus.on('entity:killed', (p) => {
       this._onBossKilled(p || {});
       this._onDurableEntityKilled(p || {});
+      handleAlienEcologyEvent(this, 'entity:killed', p || {});
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
     // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
@@ -588,6 +613,34 @@ export const world = {
     // bounded 'news' wire reports; long-absence reconcile becomes a "while away" line.
     bus.on('sectorsim:intel', (p) => this._onSectorSimIntel(p || {}));
     bus.on('sectorsim:reconcile', (p) => this._onSectorSimReconcile(p || {}));
+    // Alien Ecology program (doc 09): world-site consequence intents land here; pickup
+    // collection is what turns a released flight recorder into the recovered objective.
+    bus.on('alienEcology:nurseryPowered', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryPowered', p));
+    bus.on('alienEcology:relaySevered', (p) => handleAlienEcologyEvent(this, 'alienEcology:relaySevered', p));
+    bus.on('alienEcology:nurseryBloom', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryBloom', p));
+    bus.on('alienEcology:blackBoxRecovered', (p) => handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', p));
+    // AE-051/079 stimulus + revelation intake: mining noise wakes dormant fauna; sector scans
+    // against live sites teach the taxonomy ladder.
+    bus.on('sectorsim:impulse', (p) => handleAlienEcologyEvent(this, 'sectorsim:impulse', p));
+    bus.on('scan:completed', (p) => handleAlienEcologyEvent(this, 'scan:completed', p));
+    // AE-124/125/138/139 + AE-167: lures, dock purge, custody outcomes, and cradle capture.
+    bus.on('alienEcology:lureDropped', (p) => handleAlienEcologyEvent(this, 'alienEcology:lureDropped', p));
+    bus.on('dock:docked', (p) => handleAlienEcologyEvent(this, 'dock:docked', p));
+    bus.on('tether:released', (p) => handleAlienEcologyEvent(this, 'tether:released', p));
+    bus.on('ecology:factionOutcome', (p) => handleAlienEcologyEvent(this, 'ecology:factionOutcome', p));
+    bus.on('ecology:evidence', (p) => handleAlienEcologyEvent(this, 'ecology:evidence', p));
+    bus.on('ecology:quarantinePulse', (p) => handleAlienEcologyEvent(this, 'ecology:quarantinePulse', p));
+    bus.on('pickup:collected', (p) => {
+      // cargo's listener (registered earlier) has already written the acceptance receipt, so
+      // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
+      if (p && p.commodityId === 'cmdty_dmc_black_box'
+          && p.collectorId === this.state.playerId
+          && p.worldSiteId === 'world_site_charon_cinder_nursery'
+          && p.worldSitePayloadId === 'dmc_black_box'
+          && successfulPickupAmount(p) > 0) {
+        handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', { siteId: 'cinder_nursery' });
+      }
+    });
   },
 
   /** Cache sectorSim recipes only. Live entities remain forbidden on this event boundary. */
@@ -2421,6 +2474,7 @@ export const world = {
           sectorId: sector.id,
           isWormhole: !!opts.wormhole,
           gatedBy: opts.gatedBy || null,
+          machineGate: opts.machineGate || null,
           archetypeGlb: opts.archetypeGlb || 'place_gate_jump_ring',
         },
       });
@@ -2434,6 +2488,7 @@ export const world = {
         spawnGate(g.to, this._toGlobal(g.pos, sector.id), {
           wormhole: isWh,
           gatedBy: isWh && sector.wormholeTo ? sector.wormholeTo.gatedBy : null,
+          machineGate: isWh && sector.wormholeTo ? sector.wormholeTo.machineGate || null : null,
           archetypeGlb: g.archetypeGlb,
         });
       }
@@ -2452,6 +2507,7 @@ export const world = {
         x: Math.cos(ang) * wr * 0.6, z: Math.sin(ang) * wr * 0.6,
       }, sector.id), {
         wormhole: true, gatedBy: sector.wormholeTo.gatedBy,
+        machineGate: sector.wormholeTo.machineGate || null,
       });
     }
     settleSkins();
@@ -2475,7 +2531,25 @@ export const world = {
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
       // Static Atlas rows may delegate their physical representation to a durable runtime owner.
       // Keep the discovery identity here, but never create a second marker entity beside that owner.
-      if (typeof poi.runtimeOwner === 'string' && poi.runtimeOwner.length > 0) continue;
+      // A markerless projection still joins active.pois: sector sweeps mark it discovered and
+      // proximity identification resolves the runtime-owned site root as its carrier.
+      if (typeof poi.runtimeOwner === 'string' && poi.runtimeOwner.length > 0) {
+        const ownerPos = this._toGlobal(poi.pos || poi.anchor || local, sector.id);
+        active.pois.push({
+          id: null, poiId: poi.id, type: poi.type,
+          pos: { x: ownerPos.x, z: ownerPos.z },
+          name: poi.name || null,
+          hidden: !!poi.hidden, claimable: false,
+          manualInvestigation: poi.manualInvestigation === true,
+          requiresActiveScan: poi.requiresActiveScan === true,
+          runtimeOwned: true,
+          ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+          ...(finitePositive(poi.scannerSignalPriority)
+            ? { scannerSignalPriority: Number(poi.scannerSignalPriority) } : {}),
+          ...(finitePositive(poi.scanRange) ? { scanRange: Number(poi.scanRange) } : {}),
+        });
+        continue;
+      }
       const placeId = poi.landmarkGlb
         ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
         : null;
@@ -2640,6 +2714,13 @@ export const world = {
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     this._spawnWorldOneOffs(sector, active);
+    // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
+    // sector. Deterministic off its own rng stream — runs last so the world rng order is
+    // untouched by ecology content.
+    materializeAlienEcology(this, sector, active);
+    // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
+    // entities, same deterministic seam, same dressing substrate.
+    materializeMachineLayer(this, sector, active);
   },
 
   // PQ-143.02 "six texture one-offs": memorable, non-systemic set pieces from
@@ -3746,13 +3827,14 @@ export const world = {
       default: break;
     }
 
+    const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
     this._tickFrameOrigin(state);
-    this._tickResidency(state);
+    if (observeTick) this._tickResidency(state);
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
-    this._tickZoneLabel(state);
-    this._tickPOIScan(state);
+    if (observeTick) this._tickZoneLabel(state);
+    if (observeTick) this._tickPOIScan(state);
     this._tickWorldOneOffSpin(dt, state);
     this._tickAsteroidFieldInteractions(state);
     this._tickFieldRegrowth(state);
@@ -3765,6 +3847,8 @@ export const world = {
     if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
       gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
     }
+    tickAlienEcology(this, dt);
+    tickMachineLayer(this, dt);
     tickFarActors(state, this.helpers, this.bus);
     // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
     tickOpticFieldRocks(state, this.helpers);
@@ -3772,7 +3856,7 @@ export const world = {
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
     // hull cannot be omitted by a stale activity frame on the present beat.
-    requestDecodeRunwayPromote(state, this.helpers);
+    if (observeTick) requestDecodeRunwayPromote(state, this.helpers);
   },
 
   _tickAsteroidFieldInteractions(state) {
@@ -5047,6 +5131,28 @@ export const world = {
       || getDressingRow(this.state, id);
   },
 
+  // Markerless runtime-owned POI projections carry no marker entity id; their carrier is the
+  // owning system's site root (data.worldSiteId === poiId for asteroidSites manifests). Resolved
+  // lazily — the root materializes after dressing spawns — and cached on the projection until it
+  // dies or the sector bag is rebuilt.
+  _worldSitePoiCarrier(p) {
+    if (!p || p.runtimeOwned !== true) return null;
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function' || typeof entities.values !== 'function') return null;
+    const cached = p._wsCarrierId != null ? entities.get(p._wsCarrierId) : null;
+    if (cached && cached.alive !== false) return cached;
+    let found = null;
+    for (const e of entities.values()) {
+      const d = e && e.data;
+      if (d && d.worldSiteId === p.poiId && d.role === 'world_site_root' && e.alive !== false) {
+        found = e;
+        break;
+      }
+    }
+    p._wsCarrierId = found ? found.id : null;
+    return found;
+  },
+
   _tickPOIScan(state) {
     const player = state.entities.get(state.playerId);
     if (!player) return;
@@ -5060,31 +5166,36 @@ export const world = {
       : 1;
     const scanBonus = 1 + 0.25 * scannerTier;
     for (const p of (state.world.activeSector.pois || [])) {
-      const ent = this._poiCarrier(p.id);
-      if (!ent || ent.alive === false) continue;
+      const ent = this._poiCarrier(p.id) || this._worldSitePoiCarrier(p);
+      if (ent && ent.alive === false) continue;
+      const entData = ent && ent.data;
+      // No carrier yet for a runtime-owned projection (site root not materialized this tick):
+      // the authored anchor position still anchors the proximity read.
+      const carrierPos = ent ? ent.pos : (p && p.runtimeOwned === true ? p.pos : null);
+      if (!carrierPos) continue;
       const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
       if (rec.identified) continue;
       // A concealed layer marked this way is an active-scanner verb, never a proximity freebie.
       // `signal:investigated` below is the sole path that turns the return into durable discovery.
-      if ((p.requiresActiveScan || ent.data && ent.data.requiresActiveScan) && !rec.investigated) continue;
-      if (ent.data && ent.data.requiresTriangulation && !rec.triangulated && !ent.data.anomalyTriangulated) continue;
-      const dx = ent.pos.x - player.pos.x, dz = ent.pos.z - player.pos.z;
+      if ((p.requiresActiveScan || entData && entData.requiresActiveScan) && !rec.investigated) continue;
+      if (entData && entData.requiresTriangulation && !rec.triangulated && !entData.anomalyTriangulated) continue;
+      const dx = carrierPos.x - player.pos.x, dz = carrierPos.z - player.pos.z;
       const distSq = dx * dx + dz * dz;
-      const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * scanBonus * weather;
+      const sr = ((entData && entData.scanRange) || (p && p.scanRange) || SCAN_RANGE) * scanBonus * weather;
       if (distSq <= sr * sr) {
         if (!rec.discovered) { rec.discovered = true; this.bus.emit('poi:discovered', { poiId: p.poiId, type: p.type }); }
         if (distSq <= sr * sr * 0.25) {
           const newlyIdentified = !rec.identified;
           rec.identified = true;
           rec.type = p.type || rec.type || null;
-          rec.name = ent.data && ent.data.name || rec.name || p.poiId;
+          rec.name = entData && entData.name || p.name || rec.name || p.poiId;
           rec.identifiedAt = Number(state.simTime) || 0;
           this.bus.emit('poi:identified', {
             poiId: p.poiId,
             type: p.type,
             name: rec.name,
             sectorId: state.world.currentSectorId,
-            reward: (ent.data && ent.data.reward) || null,
+            reward: (entData && entData.reward) || null,
           });
           if (newlyIdentified) {
             this.bus.emit('discovery:plateUnlocked', {
@@ -5093,7 +5204,7 @@ export const world = {
               type: p.type,
             });
           }
-          this.bus.emit('toast', { text: `POI identified: ${(ent.data && ent.data.name) || p.poiId}`, kind: 'info', ttl: 4 });
+          this.bus.emit('toast', { text: `POI identified: ${(entData && entData.name) || p.poiId}`, kind: 'info', ttl: 4 });
         }
       }
     }
@@ -5298,10 +5409,51 @@ export const world = {
   _wormholeUnlocked(sector) {
     if (!sector || !sector.wormholeTo) return false;
     const gate = sector.wormholeTo.gatedBy; // e.g. "tech:tech_long_range_survey"
-    if (!gate) return true;
-    const [kind, key] = gate.split(':');
-    if (kind === 'tech') return (this.state.player.researchedNodes || []).includes(key);
-    if (kind === 'flag') return !!(this.state.story.flags || {})[key];
+    let open = !gate;
+    if (gate) {
+      const [kind, key] = gate.split(':');
+      if (kind === 'tech') open = (this.state.player.researchedNodes || []).includes(key);
+      else if (kind === 'flag') open = !!(this.state.story.flags || {})[key];
+      else if (kind === 'machine') {
+        // AE-108 revoked routes: machine-protocol standing opens transit the tech tree cannot.
+        if (machineRouteOpen(this.state, key)) return true;
+        // K01 (Phase 26): a Gate Handshake Token burns once to open a machine-gated route.
+        const cargo = this.state.player && this.state.player.cargo;
+        if (cargo && cargo.items && (cargo.items.cmdty_gate_handshake || 0) > 0) {
+          removeCargo(this.state, 'cmdty_gate_handshake', 1);
+          const ae = ensureAlienEcologyState(this.state);
+          if (!ae.machineAccess) ae.machineAccess = {};
+          ae.machineAccess[key] = true;
+          this.bus.emit('toast', {
+            text: 'Handshake token accepted — the gate files you as a route-holder.',
+            kind: 'good', ttl: 6,
+          });
+          return true;
+        }
+        return false;
+      } else open = false;
+    }
+    // AE-108: `machineGate` puts the machines' credential on a charted route — the gate
+    // keeps its authored prerequisite, but a fault verdict refuses transit outright and
+    // clean machine standing (or a burned handshake token) opens it without that research.
+    const machineKey = sector.wormholeTo.machineGate;
+    if (!machineKey) return open;
+    const ae = this.state.world && this.state.world.alienEcology;
+    if (ae && MACHINE_PROTOCOL_FAULTS.includes(ae.machineProtocol)) return false;
+    if (open) return true;
+    if (machineRouteOpen(this.state, machineKey)) return true;
+    const cargo2 = this.state.player && this.state.player.cargo;
+    if (cargo2 && cargo2.items && (cargo2.items.cmdty_gate_handshake || 0) > 0) {
+      removeCargo(this.state, 'cmdty_gate_handshake', 1);
+      const ae2 = ensureAlienEcologyState(this.state);
+      if (!ae2.machineAccess) ae2.machineAccess = {};
+      ae2.machineAccess[machineKey] = true;
+      this.bus.emit('toast', {
+        text: 'Handshake token accepted — the gate files you as a route-holder.',
+        kind: 'good', ttl: 6,
+      });
+      return true;
+    }
     return false;
   },
 
@@ -6093,6 +6245,8 @@ export const world = {
       // state lives as { structureId: { cell: spentAtT } } against absolute sim time. A cell
       // whose quiet stretch elapsed while the game was closed simply loads live.
       opticSpent: cloneSaveTree(state.world.opticSpent || {}),
+      // Alien Ecology: revelation tier, site aftermath, taxonomy unlocks (doc 08 §persist).
+      alienEcology: serializeAlienEcologyState(state),
       sectorOwners: this._ownerOverlay(),
       jump: savedJump,
       fuel: { current: savedFuelCurrent, max: state.fuel.max },
@@ -6143,6 +6297,7 @@ export const world = {
     // absent (older saves) normalizes to an empty ledger.
     state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
+    deserializeAlienEcologyState(state, data.alienEcology);
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
     // than trusting a stale rendering frame that may have been smuggled into a payload.
@@ -6193,6 +6348,7 @@ export const world = {
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(null);
+    state.world.alienEcology = createAlienEcologyState();
     this._tethysRunEntities = {};
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();

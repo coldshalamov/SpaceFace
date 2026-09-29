@@ -326,6 +326,21 @@ export class SpaceRenderGraph {
     u.uGrain.value = finite(this.options.grain, 0);
     this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, POST_DEFAULTS.bloomThreshold);
     this.bloomMaterial.uniforms.uKnee.value = finite(this.options.bloomKnee, 0.18);
+    // Keep the pyramid allocated only while bloom is on (see _allocate). Release on
+    // hard-disable; rebuild on re-enable without reallocating the other targets.
+    if (this.options.bloom === false && this.bloomTargets && this.bloomTargets.length > 0) {
+      for (const target of this.bloomTargets) target.dispose();
+      this.bloomTargets = [];
+    } else if (this.options.bloom !== false && this.sceneTarget
+        && this.bloomTargets && this.bloomTargets.length === 0) {
+      const rw = Math.max(1, Math.floor(this.width * this.options.renderScale));
+      const rh = Math.max(1, Math.floor(this.height * this.options.renderScale));
+      let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
+      for (let i = 0; i < 4; i++) {
+        this.bloomTargets.push(hdrTarget(bw, bh, false, 0));
+        bw = Math.max(1, bw >> 1); bh = Math.max(1, bh >> 1);
+      }
+    }
     if (this.sceneTarget && (previousRenderScale !== this.options.renderScale
       || previousAoScale !== this.options.aoScale || previousAo !== this.options.ao)) {
       this._allocate();
@@ -343,7 +358,7 @@ export class SpaceRenderGraph {
     try {
       renderer.setRenderTarget(this.sceneTarget);
       renderer.clear(true, true, true);
-      renderer.render(scene, camera);
+      renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
 
       if (this.options.ao) {
         scene.overrideMaterial = this.normalMaterial;
@@ -351,7 +366,7 @@ export class SpaceRenderGraph {
         renderer.clear(true, true, true);
         hideInactiveInstancedMeshes(scene, this._hiddenNormalPassInstances);
         try {
-          renderer.render(scene, camera);
+          renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
         } finally {
           restoreInactiveInstancedMeshes(this._hiddenNormalPassInstances);
           scene.overrideMaterial = previousOverride;
@@ -593,11 +608,16 @@ export class SpaceRenderGraph {
       this.aoTarget = ldrTarget(aw, ah, false);
       this.aoBlurTarget = ldrTarget(aw, ah, false);
     }
+    // Bloom pyramid only exists while the option is on: composite binds blackBloomTexture
+    // with zero strength while disabled, so the levels are pure dead memory then. Same
+    // live-toggle treatment as the AO targets above.
     this.bloomTargets = [];
-    let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
-    for (let i=0; i<4; i++) {
-      this.bloomTargets.push(hdrTarget(bw,bh,false,0));
-      bw = Math.max(1,bw>>1); bh = Math.max(1,bh>>1);
+    if (this.options.bloom !== false) {
+      let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
+      for (let i=0; i<4; i++) {
+        this.bloomTargets.push(hdrTarget(bw,bh,false,0));
+        bw = Math.max(1,bw>>1); bh = Math.max(1,bh>>1);
+      }
     }
     const dw = Math.max(1, rw >> 1);
     const dh = Math.max(1, rh >> 1);
@@ -654,6 +674,18 @@ export class SpaceRenderGraph {
   }
 }
 
+// Runs one render() with autoClear suppressed: callers clear their target explicitly
+// (or write every texel of it), so the renderer's own clear would only re-clear.
+function renderWithoutAutoClear(renderer, draw) {
+  const previousAutoClear = renderer.autoClear;
+  renderer.autoClear = false;
+  try {
+    return draw();
+  } finally {
+    renderer.autoClear = previousAutoClear;
+  }
+}
+
 class FullscreenQuad {
   constructor() {
     this.camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -665,8 +697,10 @@ class FullscreenQuad {
   render(renderer, material, target) {
     this.mesh.material = material;
     renderer.setRenderTarget(target || null);
-    renderer.clear(true, false, false);
-    renderer.render(this.scene, this.camera);
+    // No clear: the 2x2 quad covers the whole target and the materials used here are
+    // all NoBlending/depthTest:false/depthWrite:false with no discard, so every texel
+    // is unconditionally overwritten — a prior clear can never be observed.
+    renderWithoutAutoClear(renderer, () => renderer.render(this.scene, this.camera));
   }
   dispose() { this.mesh.geometry.dispose(); this.mesh.material.dispose(); }
 }

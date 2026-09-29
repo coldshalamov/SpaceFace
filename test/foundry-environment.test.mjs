@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import test from 'node:test';
@@ -7,11 +8,16 @@ import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 
 import {
+  FOUNDRY_IBL_BAKED_MANIFEST_URL,
+  FOUNDRY_IBL_BAKED_SCHEMA,
+  FOUNDRY_IBL_BAKED_URL,
   FOUNDRY_IBL_TARGET_MEAN_RADIANCE,
   FOUNDRY_IBL_URL,
   IBL_SOURCE_BACKGROUND,
   IBL_SOURCE_FOUNDRY,
   IBL_SOURCE_REFLECTION_CARDS,
+  loadBakedFoundryIblTexture,
+  loadFoundryIblTexture,
   neutralizeHdrGreenCast,
   normalizeHdrMeanRadiance,
   resolveIblSource,
@@ -154,6 +160,105 @@ test('PMREM source priority: foundry > sector plate > emissive card rig', () => 
   assert.equal(resolveIblSource({ foundryTexture: null, background: tex }), IBL_SOURCE_BACKGROUND);
   assert.equal(resolveIblSource({ foundryTexture: null, background: null }), IBL_SOURCE_REFLECTION_CARDS);
   assert.equal(resolveIblSource({}), IBL_SOURCE_REFLECTION_CARDS);
+});
+
+// --- baked IBL artifact (scripts/bake-foundry-ibl.mjs → .f32.bin + .f32.json) ---------------
+
+const BAKED_BIN_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.f32.bin');
+const BAKED_MANIFEST_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.f32.json');
+
+function sha256Hex(buf) {
+  return createHash('sha256').update(buf).digest('hex');
+}
+
+// Serves the served URLs straight from disk — lets the baked load path run headless with its
+// real fetch + sha256 verification intact.
+function fileFetchImpl(url) {
+  const path = resolve(REPO, String(url).replace(/^\//, ''));
+  if (!existsSync(path)) return Promise.resolve({ ok: false, status: 404 });
+  const bytes = readFileSync(path);
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(JSON.parse(bytes.toString('utf8'))),
+    arrayBuffer: () => Promise.resolve(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)),
+  });
+}
+
+// The bake contract: this recomputation IS the runtime algorithm (same HDRLoader decode, same
+// exported transforms, same order). If the artifact ever stops matching it, the bake script's
+// --check and this suite both fail.
+function computeRuntimePixels() {
+  return parseFoundryHdr().then((parsed) => {
+    const texture = new THREE.DataTexture(parsed.data, parsed.width, parsed.height);
+    normalizeHdrMeanRadiance(texture, FOUNDRY_IBL_TARGET_MEAN_RADIANCE);
+    neutralizeHdrGreenCast(texture);
+    return { width: parsed.width, height: parsed.height, data: texture.image.data };
+  });
+}
+
+test('baked foundry artifact + manifest exist and agree with each other', () => {
+  assert.ok(existsSync(BAKED_BIN_PATH), 'industrial_workshop_foundry_2k.f32.bin missing — run scripts/bake-foundry-ibl.mjs');
+  assert.ok(existsSync(BAKED_MANIFEST_PATH), 'industrial_workshop_foundry_2k.f32.json missing');
+  const manifest = JSON.parse(readFileSync(BAKED_MANIFEST_PATH, 'utf8'));
+  const payload = readFileSync(BAKED_BIN_PATH);
+  assert.equal(manifest.schema, FOUNDRY_IBL_BAKED_SCHEMA);
+  assert.equal(manifest.pixelFormat, 'float32-rgba');
+  assert.equal(manifest.channels, 4);
+  assert.equal(manifest.payloadBytes, payload.length);
+  assert.equal(payload.length, manifest.width * manifest.height * 4 * Float32Array.BYTES_PER_ELEMENT);
+  assert.equal(manifest.sha256, sha256Hex(payload), 'manifest sha256 does not match the payload');
+  const hdrSha = sha256Hex(readFileSync(HDR_PATH));
+  assert.equal(manifest.source.sha256, hdrSha, 'manifest does not record the .hdr it was baked from — stale artifact');
+});
+
+test('baked artifact bytes are identical to the runtime decode + transforms', async () => {
+  const baked = readFileSync(BAKED_BIN_PATH);
+  const runtime = await computeRuntimePixels();
+  const runtimeBytes = Buffer.from(runtime.data.buffer, runtime.data.byteOffset, runtime.data.byteLength);
+  assert.ok(baked.equals(runtimeBytes), 'baked .f32.bin differs from decode+normalize+neutralize — bake output must equal runtime output');
+});
+
+test('baked load path verifies sha256 and returns an identical DataTexture', async () => {
+  const texture = await loadBakedFoundryIblTexture(THREE, { fetchImpl: fileFetchImpl });
+  assert.ok(texture && texture.isTexture, 'baked path did not produce a texture');
+  assert.equal(texture.type, THREE.FloatType);
+  assert.equal(texture.image.width, 2048);
+  assert.equal(texture.image.height, 1024);
+  assert.equal(texture.magFilter, THREE.LinearFilter);
+  assert.equal(texture.minFilter, THREE.LinearFilter);
+  assert.equal(texture.mapping, THREE.EquirectangularReflectionMapping);
+  // The runtime check must have run and stamped the texture as the verified baked value.
+  assert.equal(texture.userData.foundryIblBaked.verified, true);
+  const runtime = await computeRuntimePixels();
+  const textureBytes = Buffer.from(texture.image.data.buffer, texture.image.data.byteOffset, texture.image.data.byteLength);
+  const runtimeBytes = Buffer.from(runtime.data.buffer, runtime.data.byteOffset, runtime.data.byteLength);
+  assert.ok(textureBytes.equals(runtimeBytes), 'baked texture pixels differ from runtime-computed pixels');
+});
+
+test('loadFoundryIblTexture prefers the verified bake and still lands identical pixels', async () => {
+  const texture = await loadFoundryIblTexture(THREE, { fetchImpl: fileFetchImpl });
+  assert.ok(texture && texture.isTexture, 'loadFoundryIblTexture returned no texture with the baked path available');
+  assert.equal(texture.userData.foundryIblBaked.verified, true, 'baked fast path was not used');
+  const runtime = await computeRuntimePixels();
+  const textureBytes = Buffer.from(texture.image.data.buffer, texture.image.data.byteOffset, texture.image.data.byteLength);
+  const runtimeBytes = Buffer.from(runtime.data.buffer, runtime.data.byteOffset, runtime.data.byteLength);
+  assert.ok(textureBytes.equals(runtimeBytes));
+});
+
+test('baked path rejects a tampered manifest instead of trusting unverified pixels', async () => {
+  const tamperedManifest = JSON.parse(readFileSync(BAKED_MANIFEST_PATH, 'utf8'));
+  tamperedManifest.sha256 = '0'.repeat(64);
+  const fetchImpl = (url) => {
+    if (String(url).endsWith('.f32.json')) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(tamperedManifest), arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
+    }
+    return fileFetchImpl(url);
+  };
+  const texture = await loadBakedFoundryIblTexture(THREE, { fetchImpl });
+  assert.equal(texture, null, 'sha mismatch must reject the baked payload');
+  const missing = await loadBakedFoundryIblTexture(THREE, { fetchImpl: () => Promise.resolve({ ok: false, status: 404 }) });
+  assert.equal(missing, null, 'missing artifact must fall back, not fabricate a texture');
 });
 
 test('renderer wires the foundry as env input only — the visible sky is never reassigned', () => {

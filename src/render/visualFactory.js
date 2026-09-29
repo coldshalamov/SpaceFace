@@ -31,8 +31,10 @@ import {
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
-import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell } from './opticCellPresentation.js';
+import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell, opticCellPoolResources } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
+import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
+import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
 import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
@@ -2418,10 +2420,13 @@ function buildAsteroid(e) {
   g.userData.asteroidBody = mesh;
   mesh.userData.animated = true;
   g.userData.animated = true;
+  // Every opaque body leaf is an instance-pool candidate now — the pool's keyed buckets
+  // group by the exact shared (geometry, material) pair. Untinted common rocks keep the
+  // dedicated variant chunks via the leaf stamps below.
+  g.userData.asteroidInstanceBody = mesh;
   if (typeId === 'ast_common_rock' && tint == null) {
     mesh.userData.asteroidInstanceTypeId = 'ast_common_rock';
     mesh.userData.asteroidInstanceVariant = variantIdx;
-    g.userData.asteroidInstanceBody = mesh;
   }
   // Optic cells wear their own detail language — neon ore shards, gas hulls and glowing
   // veins would fight the matte-rock / mirror / prism read (and veins mean "mineral
@@ -2436,6 +2441,7 @@ function buildAsteroid(e) {
       shard.scale.setScalar(R * (0.5 + rnd() * 0.6));
       shard.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
       shard.userData.spacefaceTags = { greeble: true };
+      shard.userData.asteroidInstanceDetail = true;
       g.add(shard);
     }
   } else if (!opticKind && def.variant === 'gas') {
@@ -2478,6 +2484,7 @@ function buildAsteroid(e) {
       vein.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
       vein.scale.setScalar(R * (0.6 + rnd() * 0.8));
       vein.userData.spacefaceTags = { greeble: true };
+      vein.userData.asteroidInstanceDetail = true;
       g.add(vein);
     }
   }
@@ -3348,6 +3355,87 @@ export function asteroidLeafResources(typeId, variantIdx) {
     geometry: astDisplacedGeometry(canonical, def, variant),
     material: astMaterial(canonical, def, null, variant),
   };
+}
+
+/**
+ * Every keyed (geometry, material) pair the instance pool can ever create beyond the
+ * common-rock variant buckets: non-common bodies per displacement variant, optic cell
+ * skins, and the stamped detail children (ore veins, crystal shards, prism inclusions —
+ * never the translucent gas hull, which the pool's transparent gate excludes anyway).
+ * `key` is the census logical key asteroidPoolCensusKeys counts against.
+ */
+export function asteroidPoolWarmResources() {
+  const resources = [];
+  for (const typeId of Object.keys(AST_TYPE)) {
+    if (typeId === 'ast_common_rock') continue;
+    const def = AST_TYPE[typeId];
+    for (let variant = 0; variant < 5; variant++) {
+      const res = asteroidLeafResources(typeId, variant);
+      resources.push({
+        key: `b:${typeId}:${variant}`,
+        geometry: res.geometry,
+        material: res.material,
+        castShadow: true,
+        receiveShadow: true,
+      });
+    }
+    if (def.veinColor) {
+      resources.push({
+        key: `v:${def.veinColor}`,
+        geometry: getGeometry('ast:vein', () => new THREE.CapsuleGeometry(0.025, 0.5, 3, 5).rotateZ(Math.PI / 2)),
+        material: emissiveMaterial(def.veinColor, 1.6, SHARED_MATERIAL_ROLE.ROCK),
+        castShadow: false,
+        receiveShadow: false,
+      });
+    }
+    if (def.variant === 'crystal') {
+      resources.push({
+        key: 'd:shard',
+        geometry: getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)),
+        material: emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK),
+        castShadow: false,
+        receiveShadow: false,
+      });
+    }
+  }
+  for (const res of opticCellPoolResources((variant) => {
+    const common = AST_TYPE.ast_common_rock;
+    return astDisplacedGeometry('ast_common_rock', common, variant);
+  })) {
+    resources.push(res);
+  }
+  return resources;
+}
+
+/**
+ * The logical pool keys one asteroid record contributes — body bucket key plus one entry
+ * per detail record (veins, shards, inclusions), so a field census can size each keyed
+ * chunk to its real record count. Untinted common rocks contribute nothing: the variant
+ * census already sizes them.
+ */
+export function asteroidPoolCensusKeys(entity) {
+  const data = entity && entity.data || {};
+  const variant = hashId(entity && entity.id) % 5;
+  const keys = [];
+  const opticKind = opticCellKindOf(entity);
+  if (opticKind) {
+    keys.push(opticKind === 'stone' ? `o:stone:${variant}` : `o:${opticKind}`);
+    if (opticKind === 'diamond' || opticKind === 'spent') {
+      const facet = `o:facet:${opticKind === 'diamond' ? 'live' : 'dead'}`;
+      for (let i = 0; i < 5; i++) keys.push(facet);
+    }
+    return keys;
+  }
+  const typeId = canonicalAstTypeId(data.typeId);
+  if (typeId === 'ast_common_rock' && data.tint == null) return keys;
+  const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
+  keys.push(`b:${typeId}:${variant}`);
+  if (def.veinColor) {
+    const veinCount = def.variant === 'crystal' || def.variant === 'exotic' ? 5 : 3;
+    for (let i = 0; i < veinCount; i++) keys.push(`v:${def.veinColor}`);
+  }
+  if (def.variant === 'crystal') for (let i = 0; i < 6; i++) keys.push('d:shard');
+  return keys;
 }
 
 /**
@@ -5019,6 +5107,10 @@ export function createVisualFactory() {
           case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
           case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
           case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), wreckPackagedFile(e), e));
+          // Alien Ecology: organic fauna — procedural bodies, no authored GLB in the slice.
+          case 'fauna': return stampBuiltVisual(buildFaunaMesh(e));
+          // Verge-Layer: machine entities — kinematic procedural bodies (prism/custodian/auditor).
+          case 'machine': return stampBuiltVisual(buildMachineMesh(e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);

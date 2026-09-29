@@ -16,6 +16,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
 import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
+import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
+import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine structures (doc 07)
 import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -2369,7 +2371,16 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
 
 export function buildAuthoredPlaceProp(entity, options = {}) {
   const placeFile = placeFileForEntity(entity);
-  if (!placeFile) return null;
+  if (!placeFile) {
+    const data = entity && entity.data || {};
+    // Procedural-only place families have no registered GLB by design; the fallback
+    // builder owns their geometry, so return it directly instead of an empty admit.
+    const pid = String(data.placeId || '');
+    if (pid.startsWith('alien_growth_') || pid.startsWith('machine_')) {
+      return buildFallbackPlaceProp(entity);
+    }
+    return null;
+  }
   const fallbackRoot = options.fallbackRoot && options.fallbackRoot.isObject3D
     ? options.fallbackRoot
     : buildFallbackPlaceProp(entity, placeFile);
@@ -3460,6 +3471,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   installAuthoredApproachYaw(root, entity, ownerBoundary?.userData?.placeId || placeId);
   installWorldSitePresentation(root, entity);
   installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
+  installStationOpaqueDepthPrepass(root, entity, bindings);
   specializeClaimRelayOpaqueMaterials(root, placeId);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
@@ -3674,6 +3686,208 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
     byLod: topologyByLod,
   };
   root.userData.cathedralSurfaceCulling = specializeWreckCathedralClosedSurfaces(sources);
+}
+
+// Stations are the measured overdraw hotspot (see design/perf/w4-depthprepass-REPORT.md):
+// the approach pose stacks ~3.7 opaque layers per covered pixel. The engine disables the
+// default opaque painter sort (`setOpaqueSort(() => 0)` in renderer.js — opaque draw order
+// is scene-traversal order, and renderOrder is dead config), so ordering must be structural:
+// each prepass mesh is PREPENDED to index 0 of the highest ancestor whose transform chain
+// stays static (the place root in practice), drawing before every sibling subtree —
+// including its own source — without reordering existing children.
+// Visibility syncs through the same binding buckets the source joins (LOD, damage
+// secondary) via cloned tags; only bulkiest occluders participate — greebles, hooks,
+// transparent canopies, and collision hulls fall through the eligibility gates below.
+const STATION_DEPTH_PREPASS_MIN_WORLD_RADIUS = 40;
+let stationOpaqueDepthPrepassMaterial = null;
+
+function stationDepthPrepassMaterial() {
+  if (!stationOpaqueDepthPrepassMaterial) {
+    stationOpaqueDepthPrepassMaterial = new THREE.ShaderMaterial({
+      colorWrite: false,
+      depthTest: true,
+      depthWrite: true,
+      side: THREE.FrontSide,
+      toneMapped: false,
+      vertexShader: [
+        'void main() {',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '}',
+      ].join('\n'),
+      fragmentShader: [
+        'void main() {',
+        '  gl_FragColor = vec4(0.0);',
+        '}',
+      ].join('\n'),
+    });
+    stationOpaqueDepthPrepassMaterial.name = 'SF_Station_OpaqueDepthPrepass';
+    stationOpaqueDepthPrepassMaterial.userData.spacefaceMinimalPositionDepthShader = true;
+  }
+  return stationOpaqueDepthPrepassMaterial;
+}
+
+// A group/mesh qualifies when its depth equals the surface the color pass would write:
+// fully opaque, no clip/offset/displacement rewrites, nearest-facing coverage only.
+function stationDepthPrepassEligibleMaterial(material) {
+  return !!material
+    && material.visible !== false
+    && material.transparent !== true
+    && material.depthWrite !== false
+    && (material.depthFunc === undefined || material.depthFunc === THREE.LessEqualDepth)
+    && !(Number(material.alphaTest) > 0)
+    && (!Number.isFinite(Number(material.opacity)) || Number(material.opacity) >= 1)
+    && !material.displacementMap
+    && material.polygonOffset !== true
+    && (material.side === THREE.FrontSide || material.side === THREE.DoubleSide);
+}
+
+const _stationDepthPrepassScale = new THREE.Vector3();
+
+function stationDepthPrepassDynamicNode(object) {
+  const userData = object.userData || {};
+  const tags = userData.spacefaceTags || {};
+  return !!(userData.animated || userData.hlod || userData.spacefaceSocket
+    || userData.updateRuntimeState || userData.updateDriveState || userData.updateLod
+    || tags.drive || tags.mount);
+}
+
+function stationDepthPrepassScope(source, root) {
+  // The copied local matrix is only valid while every node between the attach parent and
+  // the source stays static — climb to the last ancestor before the first dynamic link.
+  let scope = source.parent;
+  while (scope && scope !== root && !stationDepthPrepassDynamicNode(scope)) {
+    scope = scope.parent;
+  }
+  return scope || source.parent;
+}
+
+function installStationOpaqueDepthPrepass(root, entity, bindings) {
+  if (!root || !entity || entity.type !== 'station') return;
+  const sources = [];
+  root.traverse((object) => {
+    if (!object.isMesh || object.isSkinnedMesh || object.isInstancedMesh) return;
+    if (object.userData?.spacefaceDepthPrepass) return;
+    if (!object.parent) return;
+    if (object.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return;
+    const geometry = object.geometry;
+    if (!geometry?.attributes?.position) return;
+    if (geometry.morphAttributes && Object.keys(geometry.morphAttributes).length) return;
+    const tags = object.userData?.spacefaceTags || {};
+    if (object.visible === false && !tags.lod) return;
+    // A prepass sibling copies the source's local matrix once — only meshes whose own
+    // transform never animates qualify (the same markers shouldFreezeStaticChild uses).
+    if (tags.drive || object.userData?.animated || object.userData?.hlod
+      || object.userData?.updateRuntimeState || object.userData?.updateDriveState) return;
+    if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+    const localRadius = Number(geometry.boundingSphere?.radius) || 0;
+    if (localRadius <= 0) return;
+    object.getWorldScale(_stationDepthPrepassScale);
+    const worldScale = Math.max(
+      Math.abs(_stationDepthPrepassScale.x),
+      Math.abs(_stationDepthPrepassScale.y),
+      Math.abs(_stationDepthPrepassScale.z),
+    );
+    if (localRadius * worldScale < STATION_DEPTH_PREPASS_MIN_WORLD_RADIUS) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (!materials.some(stationDepthPrepassEligibleMaterial)) return;
+    sources.push(object);
+  });
+  if (!sources.length) return;
+
+  const depthMaterial = stationDepthPrepassMaterial();
+  const prepasses = [];
+  for (const source of sources) {
+    const geometry = source.geometry;
+    const materials = Array.isArray(source.material) ? source.material : [source.material];
+    const groups = Array.isArray(geometry.groups) && geometry.groups.length
+      ? geometry.groups
+      : [{
+        start: 0,
+        count: geometry.index ? geometry.index.count : geometry.attributes.position.count,
+        materialIndex: 0,
+      }];
+    const eligibleGroups = groups.filter(
+      (group) => stationDepthPrepassEligibleMaterial(materials[group.materialIndex || 0]),
+    );
+    if (!eligibleGroups.length) continue;
+    let depthGeometries;
+    if (eligibleGroups.length === groups.length) {
+      // Whole mesh qualifies — draw the source geometry verbatim, zero extra buffers.
+      depthGeometries = [geometry];
+    } else if (geometry.index?.array) {
+      const index = geometry.index;
+      const indices = [];
+      for (const group of eligibleGroups) {
+        const start = Math.max(0, Number(group.start) || 0);
+        const end = Math.min(index.count, start + Math.max(0, Number(group.count) || 0));
+        for (let offset = start; offset < end; offset++) indices.push(index.array[offset]);
+      }
+      if (!indices.length) continue;
+      const view = new THREE.BufferGeometry();
+      view.setAttribute('position', geometry.getAttribute('position'));
+      view.setIndex(new THREE.BufferAttribute(new index.array.constructor(indices), 1, index.normalized));
+      view.boundingSphere = geometry.boundingSphere;
+      view.boundingBox = geometry.boundingBox;
+      view.userData.spacefaceStationDepthIndexView = true;
+      depthGeometries = [view];
+    } else {
+      // Non-indexed groups are contiguous vertex ranges — one drawRange view per eligible run.
+      depthGeometries = eligibleGroups.map((group) => {
+        const view = new THREE.BufferGeometry();
+        view.setAttribute('position', geometry.getAttribute('position'));
+        view.setDrawRange(Math.max(0, Number(group.start) || 0), Math.max(0, Number(group.count) || 0));
+        view.boundingSphere = geometry.boundingSphere;
+        view.boundingBox = geometry.boundingBox;
+        view.userData.spacefaceStationDepthDrawRange = true;
+        return view;
+      }).filter((view) => view.drawRange.count > 0);
+      if (!depthGeometries.length) continue;
+    }
+    // Attach into the highest ancestor whose transform chain to the source is static —
+    // the earlier the prepass draws, the more overlapping geometry it rejects.
+    const scope = stationDepthPrepassScope(source, root);
+    const local = new THREE.Matrix4();
+    for (let node = source; node && node !== scope; node = node.parent) {
+      if (node.matrixAutoUpdate) node.updateMatrix();
+      local.premultiply(node.matrix);
+    }
+    const tags = clonePrimitiveTags(source.userData?.spacefaceTags);
+    if (tags) delete tags.mount; // a depth shell must never resolve as an attachment target
+    for (const depthGeometry of depthGeometries) {
+      const prepass = new THREE.Mesh(depthGeometry, depthMaterial);
+      prepass.name = `${source.name || 'StationMesh'}_OpaqueDepthPrepass`;
+      prepass.matrixAutoUpdate = false;
+      prepass.matrix.copy(local);
+      prepass.layers.mask = source.layers.mask;
+      prepass.frustumCulled = source.frustumCulled;
+      prepass.castShadow = false;
+      prepass.receiveShadow = false;
+      prepass.visible = source.visible;
+      prepass.userData = {
+        spacefaceDepthPrepass: true,
+        spacefaceDepthRole: 'station-occluder',
+        spacefacePartUrl: source.userData?.spacefacePartUrl,
+        spacefacePartUrls: source.userData?.spacefacePartUrls,
+        spacefaceTags: tags,
+      };
+      // Traversal order is draw order — prepend before every other subtree in the scope.
+      scope.add(prepass);
+      scope.children.splice(scope.children.indexOf(prepass), 1);
+      scope.children.unshift(prepass);
+      prepass.matrixWorldNeedsUpdate = true;
+      registerBinding(prepass, tags, bindings);
+      prepasses.push(prepass);
+    }
+  }
+  if (!prepasses.length) return;
+  root.userData.stationOpaqueDepthPrepass = {
+    drawables: prepasses.length,
+    sources: sources.length,
+    geometry: 'shared-position-index-views',
+    material: 'position-only-front-sided',
+    ordering: 'traversal-prepend-before-siblings',
+    minWorldRadius: STATION_DEPTH_PREPASS_MIN_WORLD_RADIUS,
+  };
 }
 
 function specializeWreckCathedralDepthTopology(source) {
@@ -4056,6 +4270,16 @@ export function buildFallbackPlaceProp(entity, placeFile = '') {
     assetBoundary: 'GLTFKit v1 — authored world-place prop fallback',
     gracefulFallback: true,
   };
+  // Alien Ecology program (doc 03): the infestation kit is procedural-only for the slice —
+  // `alien_growth_<module>` placeIds resolve to organic geometry instead of an empty group.
+  if (placeId.startsWith('alien_growth_')) {
+    group.add(buildAlienGrowthProp(placeId, data.scale ? data.scale * 10 : entity && entity.radius));
+  }
+  // Verge-Layer machine layer (doc 07): `machine_<prop>` placeIds resolve to pale-metal
+  // machine geometry — procedurally distinct from the organic kit on purpose.
+  if (placeId.startsWith('machine_')) {
+    group.add(buildMachineProp(placeId, data.scale ? data.scale * 10 : entity && entity.radius));
+  }
   return group;
 }
 

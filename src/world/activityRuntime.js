@@ -22,6 +22,7 @@ import {
   physicsReachWu,
 } from './activityClassification.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
+import { packPoseTable, poseTableDiscoveryScan } from './poseTable.js';
 import { hasNearWorkSlot, shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
@@ -835,13 +836,23 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
   // subtracts and a compare against scratch state — no allocation.
   if (origin) {
     const discover = Math.max(0, finite(discoverWu));
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
-      if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
-      const limit = discover + entityPresenceRadius(entity);
-      const dx = finite(entity.pos.x) - origin.x;
-      const dz = finite(entity.pos.z) - origin.z;
-      if (dx * dx + dz * dz <= limit * limit) add(entity);
+    const poseTable = packPoseTable(state);
+    const byId = state.entities;
+    const useColumns = poseTable
+      && poseTable.source === list
+      && poseTable._idlessCount === 0
+      && byId && typeof byId.get === 'function';
+    if (useColumns) {
+      poseTableDiscoveryScan(poseTable, byId, seen, add, discover, origin);
+    } else {
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+        const limit = discover + entityPresenceRadius(entity);
+        const dx = finite(entity.pos.x) - origin.x;
+        const dz = finite(entity.pos.z) - origin.z;
+        if (dx * dx + dz * dz <= limit * limit) add(entity);
+      }
     }
   }
   return { mode: 'incremental', entities: out };
@@ -1042,7 +1053,8 @@ function classifyWorld(state, runtime) {
       }
     }
     const signature = cachedActivitySignature(runtime, entity.id, stamp);
-    if (runtime.signaturesById.get(entity.id) !== signature) {
+    // '' is a valid sentinel: real signatures always contain '|' separators.
+    if ((runtime.signaturesById.get(entity.id) ?? '') !== signature) {
       runtime.signaturesById.set(entity.id, signature);
       runtime.changedIds.push(entity.id);
     }

@@ -76,7 +76,30 @@ function binding({
   });
 }
 
+// Alien Ecology program (design/alien-ecology-program doc 09): the DMC service barge bound for
+// the Cinder Nursery site. Socket names are the GLB's own semantic nodes — bridge, container
+// row, drive plume, emissive mast — so components sit on real geometry.
+const conveyorBargeSockets = Object.freeze({
+  SOCKET_Structure_Core: socket('structure_core', [33.8525, 3.0125, 0]),
+  SOCKET_Barge_Bridge: socket('bridge_zone', [44, 5.5, 0]),
+  SOCKET_Container_Fore: socket('container_row', [12, 5, 0]),
+  SOCKET_Container_Mid: socket('container_row', [22, 5, 0]),
+  SOCKET_Container_Aft: socket('container_row', [32, 5, 0]),
+  SOCKET_Emissive: socket('emissive', [26, 6.2, 0]),
+  SOCKET_Drive_Plume: socket('drive_plume', [-2.5, 2.2, 0]),
+  SOCKET_Status_Port: socket('status_light', [44, 0, -7.5]),
+  SOCKET_Status_Starboard: socket('status_light', [44, 0, 7.5]),
+});
+
 export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
+  place_conveyor_barge: binding({
+    partId: 'place_conveyor_barge', assetId: 'SF_PLACE_CONVEYOR_BARGE',
+    sourceSha256: '12154e7fd39296e695940627d7055e734ab2d43ab885e5cb2717845e7f8b2ca0',
+    releaseSha256: '3b8ba39b7fd761864b9d8ee19fb0289b67bb7f7c733778208392007ffdf0ebc8',
+    sourceBytes: 12970876, releaseBytes: 4988480,
+    rootName: 'place_conveyor_barge', visualCenterXZ: { x: 33.8525, z: 0 },
+    socketBindings: conveyorBargeSockets,
+  }),
   place_claim_outpost_base: binding({
     partId: 'place_claim_outpost_base', assetId: 'SF_PLACE_CLAIM_OUTPOST_BASE',
     sourceSha256: '257e01e830bbe713ce07ca278669e91ace59a15eede65a56b3ff25182f5bee9f',

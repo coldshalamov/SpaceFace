@@ -225,7 +225,7 @@ const CORE_SECTOR_ZONES = {
     { id: 'zone_charon_colony', name: 'Colony Barge', type: 'colony', factionId: 'faction_free',
       reason: 'A struggling colony trades air and salvage for anything it can get.',
       center: { x: -620, z: 1420 }, radius: 420 },
-  ],
+                  ],
 
   // ── S6–S7 Sker Haven — open pirate haven, gate-camped ──
   sector_sker_haven: [
@@ -263,7 +263,9 @@ const CORE_SECTOR_ZONES = {
     { id: 'zone_veil_wormhole', name: 'Wormhole Threshold', type: 'anomaly_deep', factionId: 'faction_vael',
       reason: 'An unstable threshold — the only known path onward to Ashfall Reach.',
       center: { x: 680, z: 4120 }, radius: 420 },
-  ],
+    // Alien Ecology program wave A + machine layer (AE-066/100s): dormant-cyst teaching site,
+    // a silent survey spire, the sterile corridor, and an administratively closed gate.
+                  ],
 
   // ── S9 Ashfall Reach — endgame; the Iron Maw guards the vault ──
   sector_ashfall_reach: [
@@ -276,7 +278,7 @@ const CORE_SECTOR_ZONES = {
     { id: 'zone_ashfall_belt', name: 'Edge Seams', type: 'mining_belt', factionId: 'faction_vael',
       reason: 'Cold rock at the edge of known space — thin air, thinner margins.',
       center: { x: 0, z: -500 }, radius: 820 },
-  ],
+                      ],
 };
 
 // Additive authored places (src/data/authoredPlaces.js) are APPENDED, never spread: a spread would

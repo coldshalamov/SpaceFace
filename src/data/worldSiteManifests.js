@@ -134,6 +134,34 @@ function sluiceStagePresentation(color, intensity, pulseRate, rotationRate) {
   });
 }
 
+// Alien Ecology program: the Cinder Nursery barge uses its real release sockets — emissive hook
+// for the status light, structure core for the site ring, bridge node for the relay trace.
+function nurseryStagePresentation(color, intensity, pulseRate, rotationRate) {
+  return Object.freeze({
+    schemaVersion: 1,
+    fixtures: Object.freeze([
+      Object.freeze({
+        id: 'nursery_status', kind: 'status-light', socketId: 'SOCKET_Emissive',
+        componentId: 'nursery_hull', color, intensity, radius: 4.2, opacity: 0.9,
+      }),
+      Object.freeze({
+        id: 'nursery_ring', kind: 'ring', socketId: 'SOCKET_Structure_Core',
+        componentId: 'nursery_hull', color, intensity: intensity * 0.66,
+        radius: 14, tube: 0.8, opacity: 0.6,
+      }),
+      Object.freeze({
+        id: 'relay_trace', kind: 'bar', socketId: 'SOCKET_Barge_Bridge',
+        componentId: 'relay_choir_node', color, intensity: intensity * 0.7,
+        size: Object.freeze([6.4, 0.7, 0.7]), opacity: 0.66,
+      }),
+    ]),
+    animations: Object.freeze([
+      Object.freeze({ id: 'nursery_pulse', kind: 'pulse', targetId: 'nursery_status', rate: pulseRate, amplitude: 0.2 }),
+      Object.freeze({ id: 'nursery_rotate', kind: 'rotate', targetId: 'nursery_ring', rate: rotationRate, amplitude: 1 }),
+    ]),
+  });
+}
+
 const WORLD_SITE_MANIFESTS_UNSORTED = [
   Object.freeze({
     schemaVersion: WORLD_SITE_MANIFEST_VERSION,
@@ -537,6 +565,102 @@ const WORLD_SITE_MANIFESTS_UNSORTED = [
       packet: 'PQ-027', fixture: 'ceres_cinder_sluice',
       routeNote: 'Ceres Helios-arrival side, outside the repair sockets and inside the current corridor',
     }),
+  }),
+  // Alien Ecology program AE-040+: the Cinder Nursery — a DMC service barge colonized by the
+  // Understory growth, anchored at (1700,-1400) Charon-local. The beam ops are the verbs the
+  // vertical slice exposes; ecology state changes ride bus events emitted by the consequence
+  // intents (alienEcology:*), consumed by src/systems/alienEcology.js via world.init.
+  Object.freeze({
+    schemaVersion: WORLD_SITE_MANIFEST_VERSION,
+    id: 'world_site_charon_cinder_nursery',
+    worldObjectId: 'world_site_charon_cinder_nursery',
+    name: 'Cinder Nursery',
+    sectorId: 'sector_charon_expanse',
+    placement: Object.freeze({
+      pos: Object.freeze(sectorLocalToGlobalForSector({ x: 1700, z: -1400 }, 'sector_charon_expanse')),
+      rot: 0.55,
+      coordinateSpace: 'global_v1',
+    }),
+    visualRoot: Object.freeze({
+      placeId: 'place_conveyor_barge',
+      anchorId: 'SOCKET_Structure_Core',
+      initialScale: 1,
+      visualRadius: 48,
+      componentProxyPresentation: 'hidden',
+    }),
+    requestStreams: Object.freeze([
+      Object.freeze({ id: 'player-industrial-beam', owner: 'mining', sequenceSource: 'state.tick' }),
+    ]),
+    proxies: Object.freeze([
+      Object.freeze({ id: 'proxy_nursery_hull', componentId: 'nursery_hull', anchorId: 'SOCKET_Structure_Core', shape: 'circle', bodyType: 'sensor', radius: 26, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_power_bus', componentId: 'power_bus', anchorId: 'SOCKET_Status_Port', shape: 'circle', bodyType: 'sensor', radius: 7, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_relay_choir_node', componentId: 'relay_choir_node', anchorId: 'SOCKET_Barge_Bridge', shape: 'circle', bodyType: 'sensor', radius: 9, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_black_box_cradle', componentId: 'black_box_cradle', anchorId: 'SOCKET_Status_Starboard', shape: 'circle', bodyType: 'sensor', radius: 6, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_cyst_cluster', componentId: 'cyst_cluster', anchorId: 'SOCKET_Container_Mid', shape: 'circle', bodyType: 'sensor', radius: 10, offset: Object.freeze({ x: 0, z: 0 }) }),
+    ]),
+    components: Object.freeze([
+      Object.freeze({ id: 'nursery_hull', label: 'DMC SERVICE BARGE HULL', kind: 'machine', anchorId: 'SOCKET_Structure_Core', initialStatus: 'operational' }),
+      Object.freeze({ id: 'power_bus', label: 'POWER BUS', kind: 'machine', anchorId: 'SOCKET_Status_Port', initialStatus: 'failed' }),
+      Object.freeze({ id: 'relay_choir_node', label: 'RELAY NODE', kind: 'machine', anchorId: 'SOCKET_Barge_Bridge', initialStatus: 'operational' }),
+      Object.freeze({ id: 'black_box_cradle', label: 'FLIGHT RECORDER CRADLE', kind: 'payload_mount', anchorId: 'SOCKET_Status_Starboard', initialStatus: 'sealed' }),
+      Object.freeze({ id: 'cyst_cluster', label: 'FILAMENT CYSTS', kind: 'weakpoint', anchorId: 'SOCKET_Container_Mid', initialStatus: 'attached' }),
+    ]),
+    operations: Object.freeze([
+      Object.freeze({ id: 'restore_power_bus', componentId: 'power_bus', verb: 'repair', requestStreamId: 'player-industrial-beam', threshold: 30, from: Object.freeze(['failed', 'damaged']), to: 'operational', dependsOn: Object.freeze([]), consequenceIds: Object.freeze(['nursery_powered']) }),
+      Object.freeze({ id: 'sever_relay_node', componentId: 'relay_choir_node', verb: 'cut', requestStreamId: 'player-industrial-beam', threshold: 24, from: Object.freeze(['operational']), to: 'severed', dependsOn: Object.freeze([]), consequenceIds: Object.freeze(['relay_severed']) }),
+      Object.freeze({ id: 'unseal_black_box', componentId: 'black_box_cradle', verb: 'cut', requestStreamId: 'player-industrial-beam', threshold: 22, from: Object.freeze(['sealed']), to: 'open', dependsOn: Object.freeze([]), payloadId: 'dmc_black_box', consequenceIds: Object.freeze([]) }),
+      Object.freeze({ id: 'extract_cyst_cluster', componentId: 'cyst_cluster', verb: 'extract', requestStreamId: 'player-industrial-beam', threshold: 20, from: Object.freeze(['attached']), to: 'harvested', dependsOn: Object.freeze([]), payloadId: 'filament_sample', consequenceIds: Object.freeze(['nursery_bloom']) }),
+    ]),
+    payloads: Object.freeze([
+      Object.freeze({
+        id: 'dmc_black_box',
+        worldObjectId: 'world_site_charon_cinder_nursery/payload/dmc_black_box',
+        label: 'DMC Flight Recorder',
+        componentId: 'black_box_cradle',
+        releaseOperationId: 'unseal_black_box',
+        radius: 5,
+        mass: 40,
+        salvagePool: Object.freeze({ cmdty_dmc_black_box: 1 }),
+      }),
+      Object.freeze({
+        id: 'filament_sample',
+        worldObjectId: 'world_site_charon_cinder_nursery/payload/filament_sample',
+        label: 'Living Filament Sample',
+        componentId: 'cyst_cluster',
+        releaseOperationId: 'extract_cyst_cluster',
+        radius: 7,
+        mass: 60,
+        salvagePool: Object.freeze({ cmdty_filament_sample: 3 }),
+      }),
+    ]),
+    receivers: Object.freeze([]),
+    stages: Object.freeze([
+      Object.freeze({ id: 'dormant', placeId: 'place_conveyor_barge', scale: 1, label: 'DMC SERVICE BARGE — DARK', requires: Object.freeze([]), presentation: nurseryStagePresentation(0x6594a6, 0.6, 0.5, 0.06) }),
+      Object.freeze({ id: 'powered', placeId: 'place_conveyor_barge', scale: 1, label: 'DMC SERVICE BARGE — POWERED', requires: Object.freeze(['restore_power_bus']), presentation: nurseryStagePresentation(0xff9a4a, 0.95, 1.1, 0.2) }),
+      Object.freeze({ id: 'breached', placeId: 'place_conveyor_barge', scale: 1, label: 'DMC SERVICE BARGE — OPENED', requires: Object.freeze(['unseal_black_box']), presentation: nurseryStagePresentation(0xc94f3d, 1.05, 1.4, 0.3) }),
+      Object.freeze({ id: 'harvested', placeId: 'place_conveyor_barge', scale: 1, label: 'DMC SERVICE BARGE — RUPTURED', requires: Object.freeze(['unseal_black_box', 'extract_cyst_cluster']), presentation: nurseryStagePresentation(0xe8b96b, 1.1, 1.6, 0.4) }),
+      Object.freeze({ id: 'quieted', placeId: 'place_conveyor_barge', scale: 1, label: 'DMC SERVICE BARGE — SILENT', requires: Object.freeze(['unseal_black_box', 'sever_relay_node']), presentation: nurseryStagePresentation(0x9aa08e, 0.5, 0.35, 0.04) }),
+    ]),
+    consequences: Object.freeze([
+      Object.freeze({ id: 'nursery_powered', intents: Object.freeze([
+        { domain: 'alienEcology', type: 'alienEcology:nurseryPowered', payload: Object.freeze({ siteId: 'cinder_nursery', worldSiteId: 'world_site_charon_cinder_nursery' }) },
+      ]) }),
+      Object.freeze({ id: 'relay_severed', intents: Object.freeze([
+        { domain: 'alienEcology', type: 'alienEcology:relaySevered', payload: Object.freeze({ siteId: 'cinder_nursery', worldSiteId: 'world_site_charon_cinder_nursery' }) },
+      ]) }),
+      Object.freeze({ id: 'nursery_bloom', intents: Object.freeze([
+        { domain: 'alienEcology', type: 'alienEcology:nurseryBloom', payload: Object.freeze({ siteId: 'cinder_nursery', worldSiteId: 'world_site_charon_cinder_nursery' }) },
+        { domain: 'economy', type: 'economy:grantCredits', payload: Object.freeze({ amount: 250, reason: 'filament_sample_recovery' }) },
+      ]) }),
+    ]),
+    persistence: Object.freeze({ collection: 'state.sites.worldById', serializer: 'asteroidSites', recordSchemaVersion: 1 }),
+    discovery: Object.freeze({ naturalProducer: 'asteroidSites', visibleOnDefaultRoute: true, revealRadius: 1200, initialDiscovered: false }),
+    mapAnnotation: Object.freeze({
+      kind: 'world-site', poiType: 'derelict', label: 'Cinder Nursery',
+      searchText: 'Cinder Nursery DMC service barge unregistered wreck anomalous growth Charon',
+    }),
+    producer: Object.freeze({ kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_charon_expanse' }),
+    debug: Object.freeze({ packet: 'AE-040', fixture: 'cinder_nursery', routeNote: 'Charon SE quadrant, clear of refinery/belt/ambush/radiation zones' }),
   }),
 ];
 

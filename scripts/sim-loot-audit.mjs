@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { ACE_TROPHY_HEADS } from '../src/data/sectors.js';
+import { ALIEN_UNIQUE_GRANTS } from '../src/data/alienEcology.js';
 import { BLUEPRINTS } from '../src/data/blueprints.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
@@ -36,6 +37,7 @@ const report = runDepthProgramLootAudit({
     ships: SHIPS,
     weapons: WEAPONS,
     lineageUniqueIds: [...ACE_TROPHY_HEADS.map((row) => row.id), ...SITE_RECOVERED_UNIQUE_IDS],
+    siteUniqueIds: ALIEN_UNIQUE_GRANTS.map((row) => row.id),
   },
 });
 

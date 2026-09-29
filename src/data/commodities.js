@@ -41,6 +41,36 @@ export const COMMODITIES = [
 
   // --- EXOTIC ---
   { id: 'cmdty_exotic_xenium',      name: 'Xenium',                category: 'exotic',    basePrice: 739, volatility: 0.28, elasticity: 0.536492, legality: 'legal',      volPerU: 1.0, massPerU: 1.2, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['research','blackmarket'] },
+  // Alien Ecology program (doc 09 rewards): contaminated salvage. Nobody sells it — it only
+  // comes off colonized hulls — and stations that buy it are buying a live biology sample.
+  { id: 'cmdty_filament_sample',    name: 'Living Filament Sample', category: 'exotic',   basePrice: 620, volatility: 0.32, elasticity: 0.5,      legality: 'restricted', volPerU: 0.5, massPerU: 0.3, fineMult: 1.0, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'], biohazard: true },
+  // AE-167 — a captured organism carried live in a cradle. The rarest biohazard lot: it
+  // only exists when a player releases a latched animal under a fitted Capture Cradle.
+  { id: 'cmdty_live_specimen',      name: 'Live Specimen (Cradled)', category: 'exotic',  basePrice: 1450, volatility: 0.4, elasticity: 0.55,     legality: 'restricted', volPerU: 1.2, massPerU: 0.8, fineMult: 1.6, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_dmc_black_box',      name: 'DMC Flight Recorder',    category: 'salvage',  basePrice: 900, volatility: 0.0,  elasticity: 0.0,      legality: 'legal',      volPerU: 0.4, massPerU: 0.5, fineMult: 0, marketTier: 4, producedBy: [],                              consumedBy: ['research','military'] },
+
+  // ── AE-226..AE-229 (H-table) — contaminated-salvage bioresources. All biohazard, all
+  // noMarketSeed: they exist only as field harvest / player-brought stock.
+  { id: 'cmdty_calcified_filament',   name: 'Calcified Filament',     category: 'bioresource', basePrice: 210, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.4, massPerU: 0.5, fineMult: 0.8, marketTier: 3, producedBy: [], consumedBy: ['research','fab'],        biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_conductive_fiber',     name: 'Conductive Fiber',       category: 'bioresource', basePrice: 340, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.3, massPerU: 0.2, fineMult: 0.8, marketTier: 3, producedBy: [], consumedBy: ['fab'],                  biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_relay_nodule',         name: 'Relay Nodule',           category: 'bioresource', basePrice: 980, volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.5, massPerU: 0.6, fineMult: 1.4, marketTier: 4, producedBy: [], consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_membrane_laminate',    name: 'Membrane Laminate',      category: 'bioresource', basePrice: 290, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.4, massPerU: 0.3, fineMult: 0.8, marketTier: 3, producedBy: [], consumedBy: ['fab'],                  biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_cyst_resin',           name: 'Cyst Resin',             category: 'bioresource', basePrice: 430, volatility: 0.35,elasticity: 0.45, legality: 'restricted', volPerU: 0.4, massPerU: 0.6, fineMult: 1.0, marketTier: 3, producedBy: [], consumedBy: ['research','fab'],        biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_nerve_glass',          name: 'Mineralized Nerve Glass',category: 'bioresource', basePrice: 870, volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.5, massPerU: 0.9, fineMult: 1.4, marketTier: 4, producedBy: [], consumedBy: ['research'],             biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_host_archive_sample',  name: 'Host Archive Sample',    category: 'bioresource', basePrice: 760, volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.3, massPerU: 0.3, fineMult: 1.2, marketTier: 4, producedBy: [], consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_sterile_shell',        name: 'Sterile Shell',          category: 'bioresource', basePrice: 1150,volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.8, massPerU: 1.4, fineMult: 1.6, marketTier: 4, producedBy: [], consumedBy: ['research'],             biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_spore_chimney_core',   name: 'Spore Chimney Core',     category: 'bioresource', basePrice: 540, volatility: 0.35,elasticity: 0.45, legality: 'restricted', volPerU: 0.6, massPerU: 0.8, fineMult: 1.1, marketTier: 3, producedBy: [], consumedBy: ['research','fab'],        biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_interface_tissue',     name: 'Preserved Interface Tissue', category: 'bioresource', basePrice: 1600, volatility: 0.5, elasticity: 0.55, legality: 'restricted', volPerU: 0.3, massPerU: 0.2, fineMult: 1.8, marketTier: 4, producedBy: [], consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_glass_back_scale',     name: 'Glassback Scale Plate',  category: 'bioresource', basePrice: 390, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.5, massPerU: 0.7, fineMult: 0.9, marketTier: 3, producedBy: [], consumedBy: ['fab','research'],       biohazard: true, noMarketSeed: true },
+  // AE-229 spore catalyst: a consumable — selling it at a station trades the lot for an
+  // instant hull-exposure purge (the fee IS the sale price).
+  { id: 'cmdty_spore_catalyst',       name: 'Spore Catalyst',         category: 'bioresource', basePrice: 480, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.2, massPerU: 0.2, fineMult: 1.0, marketTier: 4, producedBy: [], consumedBy: ['research'],             biohazard: true, noMarketSeed: true },
+  // ── Phase 26 / AE-260..AE-269 — K-table machine credentials. Physical objects the
+  // lattice economy honors; none of them are ever stocked on a market. ──
+  { id: 'cmdty_gate_handshake',       name: 'Gate Handshake Token',   category: 'protocol', basePrice: 2200, volatility: 0.0, elasticity: 0.0,  legality: 'legal',      volPerU: 0.1, massPerU: 0.1, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_inertial_datum',       name: 'Inertial Datum',         category: 'protocol', basePrice: 3400, volatility: 0.0, elasticity: 0.0,  legality: 'legal',      volPerU: 0.1, massPerU: 0.1, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_revocation_beacon',    name: 'Revocation Beacon',      category: 'protocol', basePrice: 5200, volatility: 0.0, elasticity: 0.0,  legality: 'restricted', volPerU: 0.3, massPerU: 0.4, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_unbroken_lens',        name: 'Unbroken Lens',          category: 'protocol', basePrice: 9800, volatility: 0.0, elasticity: 0.0,  legality: 'restricted', volPerU: 0.2, massPerU: 0.2, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
 
   // --- REFINED ---
   { id: 'cmdty_refined_metals',     name: 'Refined Metals',        category: 'refined',   basePrice: 91,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.5, massPerU: 0.7, fineMult: 0,   producedBy: ['refinery'],                       consumedBy: ['fab','military'] },
@@ -123,6 +153,12 @@ export const COMMODITY_PRESENTATION_BY_CATEGORY = Object.freeze({
 });
 const DEFAULT_COMMODITY_PRESENTATION = Object.freeze({ id: 'cargo-family-general', color: '#9fd8a0' });
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
+// AE-076/122 — biohazard lots breathe on the manifest; cargo audit needs the flag by id.
+export function commodityIsBiohazard(commodityId) {
+  const c = COMMODITY_BY_ID.get(commodityId);
+  return !!(c && c.biohazard === true);
+}
+
 export function commodityPresentationFor(commodityOrId) {
   const commodity = typeof commodityOrId === 'string'
     ? COMMODITY_BY_ID.get(commodityOrId)

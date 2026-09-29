@@ -3,7 +3,7 @@ export const faction = {
   personality: 'saprophyte', startingRep: 0,
   homeSectors: ['sector_charon_expanse'],
   controls: ['graveyard salvage', 'post-battle wreck recovery', 'wreckage exchange'],
-  fleetClass: 'xenomorphic', aggression: 0.3,
+  fleetClass: 'biological', aggression: 0.3, // BIOLOGICAL/UNDERSTORY presentation (alien-ecology doc 12)
   relations: {
     faction_scn: 0.0, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0,
     faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.0, faction_choir: 0.0,

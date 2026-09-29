@@ -1,8 +1,13 @@
-// Quality-preserving common-rock submission pool.
+// Quality-preserving asteroid submission pool.
 //
 // The procedural asteroid builder still owns the exact geometry, PBR material, scale, rotation,
 // shadows, entity root, and all valuable-ore detail children. This pool only replaces separate
-// opaque base-body submissions for untinted common rocks with five compact InstancedMesh draws.
+// opaque submissions with compact InstancedMesh draws: untinted common-rock bodies group into
+// the five displacement-variant chunks, while every other opaque body leaf (tinted, non-common,
+// optic skins) lands in a keyed bucket bound to its exact shared (geometry, material) pair —
+// as do the stamped detail children (ore veins, crystal shards, prism inclusions; never the
+// translucent gas hull). A kind swap (optic diamond↔spent) releases + re-registers so records
+// migrate to the swapped material's bucket.
 // Renderer view culling is applied before compaction, avoiding sector-wide always-visible batches.
 import * as THREE from 'three';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
@@ -51,15 +56,27 @@ export function createAsteroidInstancePool(scene, options = {}) {
     // synchronous link inside a presented pass.
     onMeshCreated: typeof options.onMeshCreated === 'function' ? options.onMeshCreated : null,
     variants,
+    // Beyond the five fixed common-rock variant buckets, every other repeated asteroid leaf
+    // (non-common bodies, tinted rocks, optic cells, and stamped detail children — veins,
+    // crystal shards, prism inclusions) pools into buckets keyed by the exact shared
+    // (geometry, material) object pair the factory hands it.
+    keyed: new Map(),
+    nextKeyedIndex: 0,
     byEntity: new Map(),
+    // Detail records are 1:N per entity (`entityId#d<index>`); they stay out of byEntity so the
+    // classified-record dirty check keeps comparing presentation rows to body records 1:1.
+    byDetail: new Map(),
     stats: {
       registered: 0,
+      registeredDetails: 0,
       submitted: 0,
       visibleBatches: 0,
       matrixUploads: 0,
       matrixReuses: 0,
       matrixEvaluations: 0,
+      shadowMatrixUploads: 0,
       variants: variantStats,
+      keyed: [],
     },
     dirty: true,
     disposed: false,
@@ -74,35 +91,115 @@ export function createAsteroidInstancePool(scene, options = {}) {
 
 export function collectAsteroidInstancePoolRoots(pool) {
   if (!pool || pool.disposed || !Array.isArray(pool.variants)) return [];
-  return pool.variants
-    .map((bucket) => bucket && bucket.mesh)
-    .filter((mesh) => mesh && mesh.visible !== false && mesh.count > 0);
+  const roots = [];
+  for (const bucket of allBuckets(pool)) {
+    if (bucket && bucket.mesh && bucket.mesh.visible !== false && bucket.mesh.count > 0) {
+      roots.push(bucket.mesh);
+    }
+  }
+  return roots;
+}
+
+function* allBuckets(pool) {
+  for (const bucket of pool.variants) yield bucket;
+  for (const bucket of pool.keyed.values()) yield bucket;
+}
+
+function createKeyedBucket(key, geometry, material, castShadow, receiveShadow, logicalKey) {
+  return {
+    variant: -1,
+    key,
+    logicalKey,
+    geometry,
+    material,
+    castShadow: castShadow !== false,
+    receiveShadow: receiveShadow !== false,
+    mesh: null,
+    dynamicBufferOwner: null,
+    capacity: 0,
+    records: [],
+    entityIds: [],
+    retiredOwnerCount: 0,
+    stats: createVariantStats(logicalKey || key),
+  };
+}
+
+function keyedBucketFor(pool, key, leaf) {
+  let bucket = pool.keyed.get(key);
+  if (!bucket) {
+    bucket = createKeyedBucket(key, leaf.geometry, leaf.material, leaf.castShadow, leaf.receiveShadow, null);
+    pool.keyed.set(key, bucket);
+    pool.stats.keyed.push(bucket.stats);
+  }
+  return bucket;
+}
+
+function leafPoolKey(leaf) {
+  const geometry = leaf && leaf.geometry;
+  const material = leaf && leaf.material;
+  return (geometry && material) ? `${geometry.uuid}|${material.uuid}` : null;
+}
+
+function adoptPoolLeaf(pool, entity, ownerRoot, leaf, detail) {
+  const info = leaf && leaf.userData;
+  if (!leaf || !info) return false;
+  if (!leaf.geometry || !leaf.material || Array.isArray(leaf.material) || leaf.material.transparent) return false;
+
+  let bucket = null;
+  const isCommon = info.asteroidInstanceTypeId === ASTEROID_INSTANCE_TYPE_ID;
+  if (!detail && isCommon) {
+    const variant = info.asteroidInstanceVariant | 0;
+    if (variant < 0 || variant >= ASTEROID_INSTANCE_VARIANT_COUNT) return false;
+    bucket = pool.variants[variant];
+    if (bucket.geometry && (bucket.geometry !== leaf.geometry || bucket.material !== leaf.material)) return false;
+    bucket.geometry = leaf.geometry;
+    bucket.material = leaf.material;
+  } else {
+    bucket = keyedBucketFor(pool, leafPoolKey(leaf), leaf);
+  }
+  ensureCapacity(pool, bucket, bucket.records.length + 1);
+  if (!bucket.mesh) return false;
+
+  const record = { entityId: entity.id, ownerRoot, leaf, detail: detail === true };
+  bucket.records.push(record);
+  if (detail === true) {
+    // The pool parks leaf.visible=false for the life of the record, so a LOD-hidden detail
+    // leaf keeps its "would draw" state in poolLeafVisible (hlod writes it instead of visible).
+    if (info.poolLeafVisible === undefined) info.poolLeafVisible = leaf.visible !== false;
+    record.detailKey = `${entity.id}#${leaf.uuid}`;
+    pool.byDetail.set(record.detailKey, { bucket, record });
+  } else {
+    pool.byEntity.set(entity.id, { bucket, record });
+  }
+  pool.dirty = true;
+  leaf.visible = false;
+  info.asteroidInstanceAdopted = true;
+  return true;
 }
 
 export function registerAsteroidBaseLeaf(pool, entity, ownerRoot) {
   if (!pool || pool.disposed || !entity || !ownerRoot || entity.type !== 'asteroid') return false;
-  if (pool.byEntity.has(entity.id)) return true;
   const leaf = ownerRoot.userData && ownerRoot.userData.asteroidInstanceBody;
   const info = leaf && leaf.userData;
-  if (!leaf || !info || info.asteroidInstanceTypeId !== ASTEROID_INSTANCE_TYPE_ID) return false;
-  const variant = info.asteroidInstanceVariant | 0;
-  if (variant < 0 || variant >= ASTEROID_INSTANCE_VARIANT_COUNT) return false;
-  if (!leaf.geometry || !leaf.material || Array.isArray(leaf.material) || leaf.material.transparent) return false;
+  if (!leaf || !info) return false;
 
-  const bucket = pool.variants[variant];
-  if (bucket.geometry && (bucket.geometry !== leaf.geometry || bucket.material !== leaf.material)) return false;
-  bucket.geometry = leaf.geometry;
-  bucket.material = leaf.material;
-  ensureCapacity(pool, bucket, bucket.records.length + 1);
-  if (!bucket.mesh) return false;
-
-  const record = { entityId: entity.id, ownerRoot, leaf };
-  bucket.records.push(record);
-  pool.byEntity.set(entity.id, { bucket, record });
-  pool.dirty = true;
-  leaf.visible = false;
-  leaf.userData.asteroidInstanceAdopted = true;
-  return true;
+  let adopted = false;
+  if (!pool.byEntity.has(entity.id)) {
+    adopted = adoptPoolLeaf(pool, entity, ownerRoot, leaf, false);
+  }
+  // Stamped detail children share geometry+material across every rock of their kind — each
+  // pools into its own keyed chunk under an `entityId#leafUuid` detail record.
+  if (typeof ownerRoot.traverse === 'function') {
+    ownerRoot.traverse((child) => {
+      const ud = child && child.userData;
+      if (!ud || ud.asteroidInstanceDetail !== true || ud.asteroidInstanceAdopted === true) return;
+      // A retired-bucket direct-draw fallback clears the adopted flag but keeps the record —
+      // re-registration must not duplicate it.
+      if (pool.byDetail.has(`${entity.id}#${child.uuid}`)) return;
+      adoptPoolLeaf(pool, entity, ownerRoot, child, true);
+    });
+  }
+  return adopted;
 }
 
 export function isBorrowedAsteroidInstanceResource(object) {
@@ -112,22 +209,44 @@ export function isBorrowedAsteroidInstanceResource(object) {
     || userData.asteroidInstancePool
     || userData.asteroidInstanceTypeId
     || userData.asteroidInstanceAdopted
+    || userData.asteroidInstanceDetail
   ));
 }
 
-export function releaseAsteroidInstancesForEntity(pool, entityId) {
-  const owned = pool && !pool.disposed && pool.byEntity.get(entityId);
-  if (!owned) return false;
-  const { bucket, record } = owned;
+function releasePoolRecord(pool, bucket, record) {
   const index = bucket.records.indexOf(record);
   if (index >= 0) bucket.records.splice(index, 1);
-  if (record.leaf) {
-    record.leaf.visible = true;
-    if (record.leaf.userData) record.leaf.userData.asteroidInstanceAdopted = false;
+  const leaf = record.leaf;
+  if (leaf) {
+    const ud = leaf.userData;
+    if (record.detail === true) {
+      leaf.visible = !ud || ud.poolLeafVisible !== false;
+      if (ud) delete ud.poolLeafVisible;
+    } else {
+      leaf.visible = true;
+    }
+    if (ud) ud.asteroidInstanceAdopted = false;
   }
-  pool.byEntity.delete(entityId);
   pool.dirty = true;
-  return true;
+}
+
+export function releaseAsteroidInstancesForEntity(pool, entityId) {
+  if (!pool || pool.disposed) return false;
+  let released = false;
+  const owned = pool.byEntity.get(entityId);
+  if (owned) {
+    releasePoolRecord(pool, owned.bucket, owned.record);
+    pool.byEntity.delete(entityId);
+    released = true;
+  }
+  const prefix = `${entityId}#`;
+  for (const [key, ownedDetail] of pool.byDetail) {
+    if (!key.startsWith(prefix)) continue;
+    releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
+    pool.byDetail.delete(key);
+    released = true;
+  }
+  return released;
 }
 
 /**
@@ -145,21 +264,34 @@ export function rekeyAsteroidInstanceEntity(pool, oldId, newId) {
   pool.byEntity.delete(oldId);
   if (pool.byEntity.has(newId)) {
     // The new id already owns a different leaf's record — this one can never be reached through
-    // its entity again. Splice it out like a release so it cannot pin its mesh tree forever.
-    const { bucket, record } = owned;
-    const index = bucket.records.indexOf(record);
-    if (index >= 0) bucket.records.splice(index, 1);
-    if (record.leaf) {
-      record.leaf.visible = true;
-      if (record.leaf.userData) record.leaf.userData.asteroidInstanceAdopted = false;
-    }
-    pool.dirty = true;
+    // its entity again. Splice it out like a release so it cannot pin its mesh tree forever,
+    // and drop the orphaned entity's detail records alongside it.
+    releasePoolRecord(pool, owned.bucket, owned.record);
+    releaseEntityDetailRecords(pool, oldId);
     return false;
   }
   owned.record.entityId = newId;
   pool.byEntity.set(newId, owned);
+  // Detail records ride the same entity id under their `oldId#leaf` composite keys.
+  const prefix = `${oldId}#`;
+  for (const [key, ownedDetail] of pool.byDetail) {
+    if (!key.startsWith(prefix)) continue;
+    pool.byDetail.delete(key);
+    ownedDetail.record.entityId = newId;
+    ownedDetail.record.detailKey = `${newId}#${ownedDetail.record.leaf && ownedDetail.record.leaf.uuid}`;
+    pool.byDetail.set(ownedDetail.record.detailKey, ownedDetail);
+  }
   pool.dirty = true;
   return true;
+}
+
+function releaseEntityDetailRecords(pool, entityId) {
+  const prefix = `${entityId}#`;
+  for (const [key, ownedDetail] of pool.byDetail) {
+    if (!key.startsWith(prefix)) continue;
+    releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
+    pool.byDetail.delete(key);
+  }
 }
 
 export function invalidateAsteroidInstancePool(pool) {
@@ -243,6 +375,41 @@ export function warmAsteroidInstanceVariants(pool, resources, requiredByVariant)
   return warmed;
 }
 
+/**
+ * Keyed-bucket counterpart of warmAsteroidInstanceVariants: publish one InstancedMesh per
+ * shared (geometry, material) pair a non-common body or stamped detail child can register
+ * with — valuable-ore bodies, optic cell skins, veins, crystal shards and prism inclusions —
+ * so their chunk and its instanced program exist before the first live registration rather
+ * than linking inside a presented frame.
+ * @param {object} pool
+ * @param {Array<{key:string, geometry:object, material:object, castShadow?:boolean, receiveShadow?:boolean}>} resources
+ * @param {Map<string, number>} [requiredByKey] - optional per-logical-key capacity floor
+ */
+export function warmAsteroidInstanceKeys(pool, resources, requiredByKey) {
+  if (!pool || pool.disposed || !Array.isArray(resources)) return 0;
+  let warmed = 0;
+  for (const res of resources) {
+    if (!res || !res.geometry || !res.material) continue;
+    const key = `${res.geometry.uuid}|${res.material.uuid}`;
+    const logical = res.key || key;
+    const floor = requiredByKey
+      ? Math.max(0, Math.trunc(Number(typeof requiredByKey.get === 'function' ? requiredByKey.get(logical) : requiredByKey[logical]) || 0))
+      : 0;
+    let bucket = pool.keyed.get(key);
+    if (!bucket) {
+      bucket = createKeyedBucket(key, res.geometry, res.material, res.castShadow, res.receiveShadow, res.key || key);
+      pool.keyed.set(key, bucket);
+      pool.stats.keyed.push(bucket.stats);
+    } else if (bucket.mesh && bucket.capacity >= Math.max(1, floor)) {
+      // Bound resources are authoritative — an identical re-warm is a no-op, not a rebuild.
+      continue;
+    }
+    ensureCapacity(pool, bucket, Math.max(1, bucket.capacity | 0, floor), bucket.mesh != null);
+    if (bucket.mesh) warmed += 1;
+  }
+  return warmed;
+}
+
 export function syncAsteroidInstancePool(pool, options = {}) {
   if (!pool || pool.disposed) return null;
   if (!pool.cameraState) return null;
@@ -260,9 +427,11 @@ export function syncAsteroidInstancePool(pool, options = {}) {
   const canReuseStaticSubmission = !pool.dirty && !classifiedDirty && !cameraDirty;
   const stats = pool.stats;
   stats.registered = pool.byEntity.size;
+  stats.registeredDetails = pool.byDetail.size;
   stats.matrixUploads = 0;
   stats.matrixReuses = 0;
   stats.matrixEvaluations = 0;
+  stats.shadowMatrixUploads = 0;
 
   if (canReuseStaticSubmission) {
     stats.matrixReuses = stats.visibleBatches;
@@ -270,6 +439,10 @@ export function syncAsteroidInstancePool(pool, options = {}) {
       const variantStats = stats.variants[variant];
       variantStats.uploads = 0;
       variantStats.reuses = variantStats.submitted > 0 ? 1 : 0;
+    }
+    for (const bucketStats of stats.keyed) {
+      bucketStats.uploads = 0;
+      bucketStats.reuses = bucketStats.submitted > 0 ? 1 : 0;
     }
     return stats;
   }
@@ -281,102 +454,118 @@ export function syncAsteroidInstancePool(pool, options = {}) {
   stats.visibleBatches = 0;
 
   for (let variant = 0; variant < pool.variants.length; variant++) {
-    const bucket = pool.variants[variant];
-    const variantStats = stats.variants[variant];
-    variantStats.registered = bucket.records.length;
-    variantStats.submitted = 0;
-    variantStats.capacity = bucket.capacity;
-    variantStats.uploads = 0;
-    variantStats.reuses = 0;
-    if (!bucket.mesh) continue;
-
-    let submitted = 0;
-    let matrixDirty = false;
-    if (bucket.dynamicBufferOwner && bucket.dynamicBufferOwner.invalid
-      && !recoverRetiredBucket(pool, bucket, variantStats)) {
-      // Out of rebuilds: the rocks still exist, so they are drawn one by one. Never nothing.
-      drawBucketLeavesDirectly(bucket);
-      variantStats.submitted = 0;
-      continue;
-    }
-    const matrixArray = bucket.mesh.instanceMatrix.array;
-    const dynamicBufferOwner = bucket.dynamicBufferOwner;
-    assertDynamicBufferOwnerWritable(dynamicBufferOwner);
-    for (let index = 0; index < bucket.records.length; index++) {
-      const record = bucket.records[index];
-      const root = record.ownerRoot;
-      const leaf = record.leaf;
-      if (!root || !leaf) continue;
-      leaf.visible = false;
-      if (!root.parent || root.visible === false) continue;
-      // Per-record leaf.updateWorldMatrix(true, false) re-walks the whole ancestor chain for every
-      // record — updateWorldMatrix has no dirty gate. One (true, true) refresh per owner root
-      // covers the shared chain and every leaf hanging under it; the leaf-local call below then
-      // only recomposes the leaf itself.
-      if (!_syncRootsSeen.has(root)) {
-        _syncRootsSeen.add(root);
-        root.updateWorldMatrix(true, true);
-      }
-      leaf.updateWorldMatrix(false, false);
-      if (viewFrustumReady || shadowFrustumReady) {
-        const geometry = leaf.geometry;
-        if (!geometry || !geometry.attributes || !geometry.attributes.position) continue;
-        if (!geometry.boundingSphere) geometry.computeBoundingSphere();
-        if (!geometry.boundingSphere) continue;
-        const localSphere = geometry.boundingSphere;
-        _worldSphere.center.copy(localSphere.center).applyMatrix4(leaf.matrixWorld);
-        _worldSphere.radius = localSphere.radius * leaf.matrixWorld.getMaxScaleOnAxis();
-        const inView = viewFrustumReady && _viewFrustum.intersectsSphere(_worldSphere);
-        const inShadow = shadowFrustumReady && _shadowFrustum.intersectsSphere(_worldSphere);
-        if (!inView && !inShadow) continue;
-      } else if (root.userData.asteroidInstanceViewCulled) {
-        continue;
-      }
-      const elements = leaf.matrixWorld.elements;
-      stats.matrixEvaluations++;
-      const offset = submitted * 16;
-      let slotDirty = false;
-      for (let component = 0; component < 16; component++) {
-        const value = Math.fround(elements[component]);
-        if (matrixArray[offset + component] !== value) {
-          if (!slotDirty) {
-            markDynamicBufferItems(dynamicBufferOwner, 0, submitted);
-            slotDirty = true;
-            matrixDirty = true;
-          }
-          matrixArray[offset + component] = value;
-        }
-      }
-      bucket.entityIds[submitted] = record.entityId;
-      submitted++;
-    }
-
-    const countChanged = bucket.mesh.count !== submitted;
-    if (dynamicBufferOwner) commitDynamicBufferOwner(dynamicBufferOwner, submitted);
-    else bucket.mesh.count = submitted;
-    bucket.mesh.visible = submitted > 0;
-    const uploadDirty = matrixDirty || (!dynamicBufferOwner && countChanged);
-    if (uploadDirty) {
-      if (!dynamicBufferOwner) bucket.mesh.instanceMatrix.needsUpdate = true;
-      stats.matrixUploads++;
-      variantStats.uploads++;
-    } else if (submitted > 0) {
-      stats.matrixReuses++;
-      variantStats.reuses++;
-    }
-    variantStats.submitted = submitted;
-    stats.submitted += submitted;
-    if (submitted > 0) stats.visibleBatches++;
-    bucket.entityIds.length = submitted;
+    syncPoolBucket(pool, pool.variants[variant], stats.variants[variant], viewFrustumReady, shadowFrustumReady);
+  }
+  for (const bucket of pool.keyed.values()) {
+    syncPoolBucket(pool, bucket, bucket.stats, viewFrustumReady, shadowFrustumReady);
   }
   pool.dirty = false;
   return stats;
 }
 
+function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrustumReady) {
+  const stats = pool.stats;
+  variantStats.registered = bucket.records.length;
+  variantStats.submitted = 0;
+  variantStats.capacity = bucket.capacity;
+  variantStats.uploads = 0;
+  variantStats.reuses = 0;
+  if (!bucket.mesh) return;
+
+  let submitted = 0;
+  let matrixDirty = false;
+  let shadowDirty = false;
+  if (bucket.dynamicBufferOwner && bucket.dynamicBufferOwner.invalid
+    && !recoverRetiredBucket(pool, bucket, variantStats)) {
+    // Out of rebuilds: the rocks still exist, so they are drawn one by one. Never nothing.
+    drawBucketLeavesDirectly(bucket);
+    variantStats.submitted = 0;
+    return;
+  }
+  const matrixArray = bucket.mesh.instanceMatrix.array;
+  const dynamicBufferOwner = bucket.dynamicBufferOwner;
+  assertDynamicBufferOwnerWritable(dynamicBufferOwner);
+  for (let index = 0; index < bucket.records.length; index++) {
+    const record = bucket.records[index];
+    const root = record.ownerRoot;
+    const leaf = record.leaf;
+    if (!root || !leaf) continue;
+    leaf.visible = false;
+    // A LOD-hidden detail leaf (hlod parks it via poolLeafVisible, not visible) submits
+    // nothing while the hide holds.
+    if (record.detail === true && leaf.userData && leaf.userData.poolLeafVisible === false) continue;
+    if (!root.parent || root.visible === false) continue;
+    // Per-record leaf.updateWorldMatrix(true, false) re-walks the whole ancestor chain for every
+    // record — updateWorldMatrix has no dirty gate. One (true, true) refresh per owner root
+    // covers the shared chain and every leaf hanging under it; the leaf-local call below then
+    // only recomposes the leaf itself.
+    if (!_syncRootsSeen.has(root)) {
+      _syncRootsSeen.add(root);
+      root.updateWorldMatrix(true, true);
+    }
+    leaf.updateWorldMatrix(false, false);
+    // With no live shadow ortho the upload cannot move a readable texel anyway, so records
+    // stay shadow-relevant whenever the shadow frustum was not tested.
+    let recordInShadow = true;
+    if (viewFrustumReady || shadowFrustumReady) {
+      const geometry = leaf.geometry;
+      if (!geometry || !geometry.attributes || !geometry.attributes.position) continue;
+      if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+      if (!geometry.boundingSphere) continue;
+      const localSphere = geometry.boundingSphere;
+      _worldSphere.center.copy(localSphere.center).applyMatrix4(leaf.matrixWorld);
+      _worldSphere.radius = localSphere.radius * leaf.matrixWorld.getMaxScaleOnAxis();
+      const inView = viewFrustumReady && _viewFrustum.intersectsSphere(_worldSphere);
+      const inShadow = shadowFrustumReady && _shadowFrustum.intersectsSphere(_worldSphere);
+      if (!inView && !inShadow) continue;
+      recordInShadow = !shadowFrustumReady || inShadow;
+    } else if (root.userData.asteroidInstanceViewCulled) {
+      continue;
+    }
+    const elements = leaf.matrixWorld.elements;
+    stats.matrixEvaluations++;
+    const offset = submitted * 16;
+    let slotDirty = false;
+    for (let component = 0; component < 16; component++) {
+      const value = Math.fround(elements[component]);
+      if (matrixArray[offset + component] !== value) {
+        if (!slotDirty) {
+          markDynamicBufferItems(dynamicBufferOwner, 0, submitted);
+          slotDirty = true;
+          matrixDirty = true;
+          if (recordInShadow) shadowDirty = true;
+        }
+        matrixArray[offset + component] = value;
+      }
+    }
+    bucket.entityIds[submitted] = record.entityId;
+    submitted++;
+  }
+
+  const countChanged = bucket.mesh.count !== submitted;
+  if (dynamicBufferOwner) commitDynamicBufferOwner(dynamicBufferOwner, submitted);
+  else bucket.mesh.count = submitted;
+  bucket.mesh.visible = submitted > 0;
+  const uploadDirty = matrixDirty || (!dynamicBufferOwner && countChanged);
+  if (uploadDirty) {
+    if (!dynamicBufferOwner) bucket.mesh.instanceMatrix.needsUpdate = true;
+    stats.matrixUploads++;
+    variantStats.uploads++;
+    if (shadowDirty) stats.shadowMatrixUploads++;
+  } else if (submitted > 0) {
+    stats.matrixReuses++;
+    variantStats.reuses++;
+  }
+  variantStats.submitted = submitted;
+  stats.submitted += submitted;
+  if (submitted > 0) stats.visibleBatches++;
+  bucket.entityIds.length = submitted;
+}
+
 export function resolveAsteroidInstanceEntityId(pool, object, instanceId) {
   if (!pool || pool.disposed || !object || !object.userData || !object.userData.asteroidInstancePool) return null;
-  const variant = object.userData.asteroidInstanceVariant | 0;
-  const bucket = pool.variants[variant];
+  const bucket = object.userData.asteroidInstanceBucket
+    || pool.variants[object.userData.asteroidInstanceVariant | 0];
   if (!bucket || !Number.isInteger(instanceId) || instanceId < 0) return null;
   return bucket.entityIds[instanceId] ?? null;
 }
@@ -411,11 +600,18 @@ export function asteroidInstanceMembership(pool, entityId) {
 
 export function clearAsteroidInstancePool(pool) {
   if (!pool || pool.disposed) return;
-  for (const bucket of pool.variants) {
+  for (const bucket of allBuckets(pool)) {
     for (const record of bucket.records) {
-      if (!record.leaf) continue;
-      record.leaf.visible = true;
-      if (record.leaf.userData) record.leaf.userData.asteroidInstanceAdopted = false;
+      const leaf = record.leaf;
+      if (!leaf) continue;
+      if (record.detail === true) {
+        const ud = leaf.userData;
+        leaf.visible = !ud || ud.poolLeafVisible !== false;
+        if (ud) delete ud.poolLeafVisible;
+      } else {
+        leaf.visible = true;
+      }
+      if (leaf.userData) leaf.userData.asteroidInstanceAdopted = false;
     }
     bucket.records.length = 0;
     bucket.entityIds.length = 0;
@@ -426,6 +622,7 @@ export function clearAsteroidInstancePool(pool) {
     }
   }
   pool.byEntity.clear();
+  pool.byDetail.clear();
   pool.dirty = true;
 }
 
@@ -433,7 +630,7 @@ export function disposeAsteroidInstancePool(pool) {
   if (!pool || pool.disposed) return false;
   clearAsteroidInstancePool(pool);
   const scene = pool.scene;
-  for (const bucket of pool.variants) {
+  for (const bucket of allBuckets(pool)) {
     const mesh = bucket.mesh;
     if (mesh) disposeOwnedInstanceMesh(mesh, bucket.dynamicBufferOwner, scene);
     else if (bucket.dynamicBufferOwner) releaseDynamicBufferOwner(bucket.dynamicBufferOwner);
@@ -445,8 +642,11 @@ export function disposeAsteroidInstancePool(pool) {
     bucket.records.length = 0;
     bucket.entityIds.length = 0;
   }
+  pool.keyed.clear();
   pool.byEntity.clear();
+  pool.byDetail.clear();
   pool.stats.registered = 0;
+  pool.stats.registeredDetails = 0;
   pool.stats.submitted = 0;
   pool.stats.visibleBatches = 0;
   pool.stats.matrixUploads = 0;
@@ -458,6 +658,13 @@ export function disposeAsteroidInstancePool(pool) {
     variantStats.capacity = 0;
     variantStats.uploads = 0;
     variantStats.reuses = 0;
+  }
+  for (const keyedStats of pool.stats.keyed) {
+    keyedStats.registered = 0;
+    keyedStats.submitted = 0;
+    keyedStats.capacity = 0;
+    keyedStats.uploads = 0;
+    keyedStats.reuses = 0;
   }
   pool.dirty = false;
   pool.disposed = true;
@@ -503,7 +710,21 @@ function recoverRetiredBucket(pool, bucket, variantStats) {
 function drawBucketLeavesDirectly(bucket) {
   for (let index = 0; index < bucket.records.length; index++) {
     const record = bucket.records[index];
-    if (record && record.leaf) record.leaf.visible = true;
+    const leaf = record && record.leaf;
+    if (!leaf) continue;
+    if (record.detail === true) {
+      // A parked detail leaf draws directly again under its own hlod state: drop the
+      // adoption flag once so projected-detail LOD writes `visible`, not the proxy field.
+      // Guarded — hlod may already own `visible` on a repeat call and must not be stomped.
+      const ud = leaf.userData;
+      if (ud && ud.asteroidInstanceAdopted === true) {
+        leaf.visible = ud.poolLeafVisible !== false;
+        delete ud.poolLeafVisible;
+        ud.asteroidInstanceAdopted = false;
+      }
+    } else {
+      leaf.visible = true;
+    }
   }
 }
 
@@ -513,15 +734,22 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
   const previous = bucket.mesh;
   const previousOwner = bucket.dynamicBufferOwner;
   const mesh = new THREE.InstancedMesh(bucket.geometry, bucket.material, capacity);
-  mesh.name = `SF_CommonRockInstances_v${bucket.variant}`;
+  const isVariantBucket = bucket.variant >= 0;
+  if (!isVariantBucket && bucket.chunkIndex === undefined) {
+    bucket.chunkIndex = pool.nextKeyedIndex++;
+  }
+  mesh.name = isVariantBucket
+    ? `SF_CommonRockInstances_v${bucket.variant}`
+    : `SF_KeyedAsteroidInstances_${bucket.chunkIndex}`;
   mesh.count = 0;
   mesh.visible = false;
   mesh.frustumCulled = false;
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  mesh.castShadow = bucket.castShadow !== false;
+  mesh.receiveShadow = bucket.receiveShadow !== false;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.userData.asteroidInstancePool = true;
-  mesh.userData.asteroidInstanceVariant = bucket.variant;
+  if (isVariantBucket) mesh.userData.asteroidInstanceVariant = bucket.variant;
+  else mesh.userData.asteroidInstanceBucket = bucket;
   mesh.userData.borrowedGeometryMaterial = true;
   stampOpeningSubmissionPackage(mesh, {
     schema: 'spaceface.asteroidInstancePoolProducer.v1',
@@ -561,7 +789,7 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
     try { pool.onMeshCreated(mesh); } catch { /* admission must never break the sync pass */ }
   }
   bucket.dynamicBufferOwner = registerDynamicBufferOwner(pool.scene, {
-    id: `common-rock-instances-v${bucket.variant}`,
+    id: isVariantBucket ? `common-rock-instances-v${bucket.variant}` : `keyed-asteroid-instances:${bucket.key}`,
     mesh,
     attributes: [{ name: 'instanceMatrix', attribute: mesh.instanceMatrix }],
   });

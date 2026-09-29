@@ -222,6 +222,7 @@ function tradeFailureText(reason) {
     case 'no_cargo': return 'nothing to sell';
     case 'no_stock': return 'station out of stock';
     case 'not_docked': return 'not docked';
+    case 'contamination_refusal': return 'custody refused — quarantine lot must be surrendered';
     default: return 'trade failed';
   }
 }
