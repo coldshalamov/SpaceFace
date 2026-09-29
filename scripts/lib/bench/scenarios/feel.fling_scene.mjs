@@ -31,8 +31,11 @@ import { resolveWeaponImpulseForHit } from '../../../../src/combat/impulseKernel
 import { isRecovering, readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
 import { WEAPONS } from '../../../../src/data/weapons.js';
 import { makeEnemySpawnSpec } from '../../../../src/systems/combat.js';
+import { addCargo, cargo } from '../../../../src/systems/cargo.js';
+import { economy } from '../../../../src/systems/economy.js';
 import { lootShards } from '../../../../src/systems/lootShards.js';
 import { mining } from '../../../../src/systems/mining.js';
+import { ships } from '../../../../src/systems/ships.js';
 import { bootRealPath } from '../realPath.mjs';
 import {
   GUN_PROVENANCE_TAG,
@@ -120,6 +123,7 @@ async function runFling(seed, {
   systems = SHOVE_SYSTEMS,
   eventTrace,
   tag,
+  holdPrefillUnits = 0,
 }) {
   const host = await bootRealPath({
     seed,
@@ -165,6 +169,7 @@ async function runFling(seed, {
       source: p && p.source,
       items: p && p.items ? p.items.length : 0,
       kinds: p && p.items ? p.items.map((it) => (it && (it.kind || (it.commodityId ? 'ore' : 'other'))) || 'none') : [],
+      chipCredits: p && p.items ? p.items.reduce((sum, it) => sum + (it && it.kind === 'credit_chip' ? finite(it.credits != null ? it.credits : it.amount) : 0), 0) : 0,
     });
   });
   host.bus.on('pickup:collected', (p) => {
@@ -173,6 +178,8 @@ async function runFling(seed, {
       pickupId: p && p.pickupId,
       kind: p && p.kind,
       amount: finite(p && p.amount),
+      accepted: finite(p && p.acceptedAmount),
+      rejected: finite(p && p.rejectedAmount),
       collectorId: p && p.collectorId,
     });
   });
@@ -181,6 +188,16 @@ async function runFling(seed, {
   });
 
   host.step(1);
+  // A bare bench state carries a 40-volume placeholder hold; the hold is only synced when a ship's
+  // stats change. Set the real derived capacity of the player's hull (Kestrel: 250) so 'hold full'
+  // means what it means in play, and optionally start part-full like a mid-run pilot.
+  const derivedCap = player.data && player.data.derived && player.data.derived.cargoCap;
+  if (Number.isFinite(derivedCap) && host.state.player && host.state.player.cargo) {
+    host.state.player.cargo.capVolume = derivedCap;
+  }
+  if (holdPrefillUnits > 0) addCargo(host.state, 'cmdty_scrap_metal', holdPrefillUnits);
+  const walletBefore = finite(host.state.player && host.state.player.credits);
+  const cargoBefore = host.state.player && host.state.player.cargo ? { used: finite(host.state.player.cargo.usedVolume), cap: finite(host.state.player.cargo.capVolume) } : null;
   // Ships only: a static rock has a solver body but publishes no telemetry, so asserting on it
   // always reads "no body" whatever the distance (found 2026-09-29, 220 WU and 467 WU alike).
   host.assertBodies([player, ...victims], `feel.fling_scene:${tag}`);
@@ -199,6 +216,7 @@ async function runFling(seed, {
       if (hitDone || (state.tick - startTick) < (hit.tick != null ? hit.tick : HIT_TICK)) return;
       hitDone = true;
       victims.forEach((victim, i) => {
+        if (Array.isArray(hit.only) && !hit.only.includes(i)) return;
         traces[i].hitTick = state.tick | 0;
         traces[i].hitPos = { x: victim.pos.x, z: victim.pos.z };
         traces[i].vBefore = { x: finite(victim.vel.x), z: finite(victim.vel.z) };
@@ -239,7 +257,7 @@ async function runFling(seed, {
         if (e && e.type === 'pickup' && !seenPickupIds.has(e.id)) {
           seenPickupIds.add(e.id);
           pickupsSeen++;
-          pickupLives.set(e.id, { kind: (e.data && e.data.kind) || e.kind || 'unknown', seenTick: state.tick | 0, leftTick: null });
+          pickupLives.set(e.id, { id: e.id, kind: (e.data && e.data.kind) || e.kind || 'unknown', seenTick: state.tick | 0, leftTick: null });
         }
       }
       for (const [id, life] of pickupLives) {
@@ -254,6 +272,10 @@ async function runFling(seed, {
   const typeHistogram = {};
   for (const e of (host.state.entityList || [])) typeHistogram[e && e.type || 'none'] = (typeHistogram[e && e.type || 'none'] || 0) + 1;
   events.entityTypesAtEnd = typeHistogram;
+  const cargoAfter = host.state.player && host.state.player.cargo ? { used: finite(host.state.player.cargo.usedVolume), cap: finite(host.state.player.cargo.capVolume) } : null;
+  events.wallet = { before: walletBefore, after: finite(host.state.player && host.state.player.credits) };
+  events.cargo = { before: cargoBefore, after: cargoAfter };
+  events.hullAtEnd = victims.map((v) => ({ id: v.id, hull: finite(v.hull), hullMax: finite(v.hullMax), alive: v.alive !== false }));
   return {
     measured: true,
     host,
@@ -336,25 +358,37 @@ async function runHeadOn(seed, fraction, eventTrace) {
   const stunEnd = end == null ? trace[trace.length - 1] : at(trace, end);
   const twoS = at(trace, trace.hitTick + 120);
   const fourS = at(trace, trace.hitTick + 240);
-  // A reversal is the hull's outbound velocity changing sign after the launch settles: it stopped
-  // and came back toward where it started.
+  // A reversal is the hull's outbound velocity changing sign. Counted only inside the stun and the
+  // recovery beat: after that the AI has its full drive back and turning around is the AI resuming
+  // its attack, not the fling failing.
+  const reversalEnd = fullBack == null ? trace[trace.length - 1].tick : fullBack;
   let reversals = 0;
   let prevSign = 0;
   for (const s of trace) {
-    if (s.tick < trace.hitTick + 12) continue;
+    if (s.tick < trace.hitTick + 12 || s.tick > reversalEnd) continue;
     const sign = Math.sign(along(s));
     if (sign !== 0 && prevSign !== 0 && sign !== prevSign) reversals++;
     if (sign !== 0) prevSign = sign;
   }
+  const mass = finite(run.victims[0].mass, 1);
+  const deltaV = magnitude / Math.max(1, mass);
+  const approach = trace.vBefore.x; // positive = closing on the player (+x is toward the player)
   return {
     measured: true,
     realPathProof: run.proof,
-    fraction,
+    // The AI sets the approach speed in the ticks before the hit, so the row is labelled by what was
+    // MEASURED, not by the fraction it was seeded with.
+    seededFraction: fraction,
     cruise: round(cruise, 1),
     impulseMagnitude: round(magnitude, 1),
-    hullMass: round(run.victims[0].mass, 1),
-    deltaVFractionOfCruise: round(magnitude / Math.max(1, run.victims[0].mass) / cruise, 3),
-    approachSpeedBeforeHit: round(-trace.vBefore.x, 1), // negative outbound = approaching
+    hullMass: round(mass, 1),
+    deltaV: round(deltaV, 1),
+    deltaVFractionOfCruise: round(deltaV / cruise, 3),
+    approachSpeedBeforeHit: round(approach, 1),
+    approachFractionOfCruise: round(approach / cruise, 3),
+    // Nothing pushes back during the stun, so the outbound speed is momentum arithmetic:
+    // deltaV minus approach speed. Reported so the identity can be checked, not assumed.
+    predictedOutbound: round(deltaV - approach, 1),
     stunS: start == null ? 0 : round(((end == null ? trace[trace.length - 1].tick : end) - start) * DT, 3),
     outboundAtStunEnd: round(along(stunEnd), 1),
     outboundFractionAtStunEnd: round(along(stunEnd) / cruise, 3),
@@ -362,15 +396,13 @@ async function runHeadOn(seed, fraction, eventTrace) {
     displacementAt2s: round(disp(twoS), 1),
     displacementAt4s: round(disp(fourS), 1),
     helmFullyBackS: fullBack == null ? null : round((fullBack - trace.hitTick) * DT, 3),
-    reversals,
+    reversalsInStunAndRecovery: reversals,
     peakSpin: round(trace.reduce((m, s) => (s.tick >= trace.hitTick && s.tick <= trace.hitTick + 12 ? Math.max(m, Math.abs(s.w)) : m), 0), 3),
     yawTurnsDuringStun: round(yawTurns(trace, trace.hitTick, end == null ? Infinity : end), 3),
   };
 }
 
 async function runRock(seed, { flightWu, deltaV, eventTrace, tag }) {
-  const magnitudeProbe = concussionImpulseMagnitude();
-  void magnitudeProbe;
   // The hit sends the hull down -x. The rock face sits `flightWu` from the hit point.
   const contactCentreX = HOSTILE_START.x - flightWu - ROCK_RADIUS_WU - HULL_RADIUS_WU;
   return runFling(seed, {
@@ -387,10 +419,10 @@ async function runRock(seed, { flightWu, deltaV, eventTrace, tag }) {
 function readRebound(run) {
   if (!run.measured) return { measured: false, reason: run.reason };
   const trace = run.traces[0];
-  const victimId = run.victims[0].id;
+  const victim = run.victims[0];
+  const victimId = victim.id;
   const collision = run.events.collisions.find((c) => c.targetId === victimId && c.otherType === 'asteroid') || null;
   const killed = run.events.killed.find((k) => k.id === victimId) || null;
-  const drops = run.events.drops.length;
   const contactTick = collision ? collision.tick : null;
   let speedBefore = 0;
   let speedAfter = null;
@@ -412,26 +444,66 @@ function readRebound(run) {
   // Coarse path (every 12 ticks = 0.2 s) so a run that never touches the rock shows where it went.
   const path = trace.filter((s, i) => i % 12 === 0)
     .map((s) => ({ t: round((s.tick - trace.hitTick) * DT, 2), x: round(s.x, 0), z: round(s.z, 0), vx: round(s.vx, 0), w: round(s.w, 1), tumbling: s.tumbling }));
+  const survived = victim.alive !== false;
   return {
     measured: true,
     realPathProof: run.proof,
     path,
     contact: collision,
+    survived,
+    hullAtEnd: round(victim.hull, 1),
     flightSeconds: contactTick == null ? null : round((contactTick - trace.hitTick) * DT, 3),
     speedBeforeContact: round(speedBefore, 1),
     speedSixTicksAfter: speedAfter == null ? null : round(speedAfter, 1),
-    awayVelocityMax: round(awayMax, 1),
-    awayFractionOfImpact: speedBefore > 0 ? round(awayMax / speedBefore, 3) : null,
+    // A dead hull's trace is frozen wreckage, not a bounce: only a survivor's away-speed means anything.
+    awayVelocityMax: survived ? round(awayMax, 1) : null,
+    awayFractionOfImpact: survived && speedBefore > 0 ? round(awayMax / speedBefore, 3) : null,
     endX: endX == null ? null : round(endX, 1),
     killed,
     killerIsPlayer: killed ? killed.killerId === run.player.id : null,
-    lootDrops: drops,
+    killerId: killed ? killed.killerId : null,
+    collisionProvenance: collision ? { actorId: collision.provenanceActorId, tag: collision.provenanceTag } : null,
+    lootDrops: run.events.drops.length,
     tumbledEvents: run.events.tumbled.length,
     cruise: round(run.cruise, 1),
   };
 }
 
-async function runMoney(seed, eventTrace) {
+/** Fling Wasp A into a second Wasp B: the "three enemies" chain's hull-on-hull link. */
+async function runChain(seed, eventTrace) {
+  const run = await runFling(seed, {
+    playerPos: { x: -760, z: 0 },
+    // A is flung -x into B, 140 WU down the line; B is a live hostile hunting the player, which
+    // is behind it on the same line, so B holds its line rather than leaving it.
+    hostiles: [
+      { pos: { x: -400, z: 0 }, vel: { x: 0, z: 0 } },
+      { pos: { x: -540, z: 0 }, vel: { x: 0, z: 0 } },
+    ],
+    hit: { dir: { x: -1, z: 0 }, deltaV: 110, tick: 3, only: [0] },
+    ticks: 3 + 60 * 6,
+    eventTrace,
+    tag: 'chain',
+  });
+  if (!run.measured) return { measured: false, reason: run.reason };
+  const [a, b] = run.victims;
+  const contact = run.events.collisions.find((c) => c.targetId === b.id && c.otherType === 'ship') || null;
+  const hull = (id) => run.events.hullAtEnd.find((h) => h.id === id) || null;
+  const bTumbled = run.events.tumbled.some((t) => t.victimId === b.id);
+  const kills = run.events.killed.filter((k) => k.id === a.id || k.id === b.id);
+  return {
+    measured: true,
+    realPathProof: run.proof,
+    hullContact: contact,
+    bHull: hull(b.id),
+    aHull: hull(a.id),
+    bTumbled,
+    kills,
+    killsCreditedToPlayer: kills.filter((k) => k.killerId === run.player.id).length,
+    playerId: run.player.id,
+  };
+}
+
+async function runMoney(seed, eventTrace, { holdPrefillUnits = 0, tag = 'money' } = {}) {
   // Live AI on purpose: a passive hull is not hostile to the player, so no kill burst would fire.
   // The hit lands on tick 3 so the AI has not had time to steer the hulls off the fling line.
   const hostiles = [-70, 0, 70].map((dz) => ({ pos: { x: HOSTILE_START.x, z: dz }, vel: { x: 0, z: 0 } }));
@@ -442,9 +514,12 @@ async function runMoney(seed, eventTrace) {
     rocks,
     hit: { dir: { x: -1, z: 0 }, deltaV: 110, tick: 3 },
     ticks: 3 + 60 * 30,
-    systems: [...SHOVE_SYSTEMS, lootShards, mining],
+    // The ships, cargo and economy owners are live so hold capacity, acceptance and the wallet are
+    // the real ones (a bare bench state carries a 40-volume placeholder hold).
+    systems: [...SHOVE_SYSTEMS, lootShards, mining, ships, cargo, economy],
     eventTrace,
-    tag: 'money',
+    tag,
+    holdPrefillUnits,
   });
   if (!run.measured) return { measured: false, reason: run.reason };
   const playerId = run.player.id;
@@ -452,23 +527,27 @@ async function runMoney(seed, eventTrace) {
   const kills = run.events.killed.filter((k) => victimIds.has(k.id));
   const playerKills = kills.filter((k) => k.killerId === playerId);
   const lastKillTick = kills.reduce((m, k) => Math.max(m, k.tick), 0);
-  // One landing per pickup body: a pickup can announce collection more than once (the mining
-  // system says so itself: 'idempotent via alive guard'), and the first one is when it landed.
-  const firstLanding = new Map();
+  // Acceptance is the cargo owner's word (acceptedAmount on the collect payload), not the collect
+  // event itself: a refused pickup announces "collected" again every retry.
+  const accepted = new Map();
   for (const c of run.events.collected) {
     if (c.collectorId !== playerId || c.pickupId == null) continue;
-    if (!firstLanding.has(c.pickupId)) firstLanding.set(c.pickupId, c);
+    accepted.set(c.pickupId, Math.max(accepted.get(c.pickupId) || 0, c.accepted));
   }
-  const collected = [...firstLanding.values()];
   const spawned = run.events.pickupsSeen;
   const lives = run.events.pickupLives || [];
-  const landed = lives.filter((l) => l.leftTick != null);
-  const stranded = lives.filter((l) => l.leftTick == null);
-  const landedKinds = {};
-  for (const l of landed) landedKinds[l.kind] = (landedKinds[l.kind] || 0) + 1;
-  const strandedKinds = {};
-  for (const l of stranded) strandedKinds[l.kind] = (strandedKinds[l.kind] || 0) + 1;
-  const lastLandTick = landed.reduce((m, l) => Math.max(m, l.leftTick), 0);
+  const landedLives = [];
+  const strandedLives = [];
+  const vanishedLives = [];
+  for (const l of lives) {
+    const acc = accepted.get(l.id) || 0;
+    if (l.leftTick == null) strandedLives.push(l);
+    else if (acc > 0 || l.kind === 'credit_chip') landedLives.push(l);
+    else vanishedLives.push(l);
+  }
+  const tally = (list) => list.reduce((o, l) => { o[l.kind] = (o[l.kind] || 0) + 1; return o; }, {});
+  const lastLandTick = landedLives.reduce((m, l) => Math.max(m, l.leftTick), 0);
+  const chipCredits = run.events.drops.reduce((sum, d) => sum + d.chipCredits, 0);
   return {
     measured: true,
     realPathProof: run.proof,
@@ -477,18 +556,21 @@ async function runMoney(seed, eventTrace) {
     physicsKillsCreditedToPlayer: playerKills.length,
     lootDrops: run.events.drops.length,
     pickupsSpawned: spawned,
-    pickupsLanded: landed.length,
-    pickupsStranded: stranded.length,
-    landedKinds,
-    strandedKinds,
-    collectEventsFirstPerPickup: collected.length,
+    pickupsLanded: landedLives.length,
+    pickupsStranded: strandedLives.length,
+    pickupsVanishedUnaccepted: vanishedLives.length,
+    landedKinds: tally(landedLives),
+    strandedKinds: tally(strandedLives),
+    landedShare: spawned > 0 ? round(landedLives.length / spawned, 3) : null,
+    holdBefore: run.events.cargo.before,
+    holdAfter: run.events.cargo.after,
+    chipCreditsDropped: chipCredits,
+    walletDelta: round(run.events.wallet.after - run.events.wallet.before, 1),
     collectEventsRaw: run.events.collected.length,
-    landedShare: spawned > 0 ? round(landed.length / spawned, 3) : null,
-    secondsLastKillToLastLanding: kills.length && landed.length && lastLandTick >= lastKillTick
+    secondsLastKillToLastLanding: kills.length && landedLives.length && lastLandTick >= lastKillTick
       ? round((lastLandTick - lastKillTick) * DT, 3) : null,
     pilotInputs: 0, // by construction: the scene never writes player input
     collisionEvents: run.events.collisions.length,
-    dropKinds: run.events.drops.map((d) => d.kinds),
     entityTypesAtEnd: run.events.entityTypesAtEnd,
   };
 }
@@ -497,84 +579,104 @@ async function runMoney(seed, eventTrace) {
 
 export const scenario = {
   id: 'feel.fling_scene',
-  label: 'FLING Owner sentence yardstick: head-on shove, spin, rebound, >3 s attribution, money shot',
+  label: 'FLING Owner sentence yardstick: head-on shove, spin, rebound, >3 s attribution, chain, money shot',
   async run(seed) {
     const eventTrace = [];
     const headOn = [];
     for (const fraction of [0, 0.5, 1]) headOn.push(await runHeadOn(seed, fraction, eventTrace));
+    const measuredHeadOn = headOn.filter((h) => h && h.measured);
+    // The inbound case that matters is the one where the hostile really was closing fastest.
+    const inbound = measuredHeadOn.reduce((best, h) => (!best || h.approachSpeedBeforeHit > best.approachSpeedBeforeHit ? h : best), null);
 
-    const spin = headOn[0] && headOn[0].measured ? {
-      yawTurnsDuringStun: headOn[0].yawTurnsDuringStun,
-      peakSpin: headOn[0].peakSpin,
-      stunS: headOn[0].stunS,
+    const spin = measuredHeadOn.length ? {
+      yawTurnsDuringStun: measuredHeadOn[0].yawTurnsDuringStun,
+      peakSpin: measuredHeadOn[0].peakSpin,
+      stunS: measuredHeadOn[0].stunS,
     } : null;
 
-    const reboundRun = await runRock(seed, { flightWu: 150, deltaV: 100, eventTrace, tag: 'rebound' });
-    const rebound = readRebound(reboundRun);
+    // Lethal fling (a Wasp dies to a rock at about 0.5 cruise closing): attribution inside 3 s.
+    const lethal = readRebound(await runRock(seed, { flightWu: 150, deltaV: 100, eventTrace, tag: 'rock_lethal' }));
+    // Survivor fling (about 0.27 cruise closing): the only case where a bounce can exist.
+    const survivor = readRebound(await runRock(seed, { flightWu: 60, deltaV: 28, eventTrace, tag: 'rock_survivor' }));
     // 300 WU at 90 WU/s is 3.3 s of flight: past the 3 s (180 tick) life of the impulse record, and
     // still inside the 3.5 s stun cap, so the hull is tumbling when it lands.
-    const longRun = await runRock(seed, { flightWu: 300, deltaV: 90, eventTrace, tag: 'long_flight' });
-    const longFlight = readRebound(longRun);
+    const longFlight = readRebound(await runRock(seed, { flightWu: 300, deltaV: 90, eventTrace, tag: 'long_flight' }));
+    const chain = await runChain(seed, eventTrace);
     const money = await runMoney(seed, eventTrace);
+    // A pilot who has been mining: 60% of the 250 hold already used. This is where the design says
+    // a full hold recreates the weigh-the-loot chore.
+    const moneyBusyHold = await runMoney(seed, eventTrace, { holdPrefillUnits: 150, tag: 'money_busy_hold' });
 
-    const half = headOn.find((h) => h && h.fraction === 0.5);
-    const full = headOn.find((h) => h && h.fraction === 1);
     const targets = [];
     const push = (id, label, value, unit, met, note) => targets.push({
       id, label, value, unit, met: !!met, ...(note ? { note } : {}),
     });
-    if (half && half.measured) {
-      push('headOn.half', 'hostile at 0.5 cruise, hit head-on: outbound speed when the helm returns (fraction of cruise)',
-        half.outboundFractionAtStunEnd, 'fraction of cruise',
-        half.outboundFractionAtStunEnd >= FLING_TARGETS.headOnOutboundFractionOfCruise,
-        `target >= ${FLING_TARGETS.headOnOutboundFractionOfCruise}`);
-    }
-    if (full && full.measured) {
-      push('headOn.full', 'hostile at 1.0 cruise, hit head-on: outbound speed when the helm returns (fraction of cruise)',
-        full.outboundFractionAtStunEnd, 'fraction of cruise',
-        full.outboundFractionAtStunEnd >= FLING_TARGETS.headOnOutboundFractionOfCruise,
-        `target >= ${FLING_TARGETS.headOnOutboundFractionOfCruise}`);
+    if (inbound) {
+      push('headOn.inbound', 'hostile closing on the player takes a real concussion hit straight back: outbound speed when the helm returns (fraction of cruise)',
+        inbound.outboundFractionAtStunEnd, 'fraction of cruise',
+        inbound.outboundFractionAtStunEnd >= FLING_TARGETS.headOnOutboundFractionOfCruise,
+        `approach ${inbound.approachSpeedBeforeHit} wu/s (${inbound.approachFractionOfCruise} cruise), deltaV ${inbound.deltaV}; target >= ${FLING_TARGETS.headOnOutboundFractionOfCruise}`);
     }
     if (spin) {
       push('spin', 'yaw turns the hull spins through during a gun-shove stun', spin.yawTurnsDuringStun, 'turns',
         spin.yawTurnsDuringStun >= FLING_TARGETS.yawTurnsDuringStun, `target >= ${FLING_TARGETS.yawTurnsDuringStun}`);
     }
-    if (rebound.measured) {
-      push('rebound', 'flung hull meets a rock: speed leaving the rock face (fraction of impact speed)',
-        rebound.awayFractionOfImpact, 'fraction of impact speed',
-        rebound.awayFractionOfImpact != null && rebound.awayFractionOfImpact >= FLING_TARGETS.reboundAwayFractionOfImpact,
-        `target >= ${FLING_TARGETS.reboundAwayFractionOfImpact}`);
+    if (survivor.measured) {
+      push('rebound.survivor', 'a hull that survives a rock hit: speed leaving the rock face (fraction of impact speed)',
+        survivor.awayFractionOfImpact, 'fraction of impact speed',
+        survivor.survived && survivor.awayFractionOfImpact != null && survivor.awayFractionOfImpact >= FLING_TARGETS.reboundAwayFractionOfImpact,
+        survivor.survived ? `target >= ${FLING_TARGETS.reboundAwayFractionOfImpact}` : 'the hull died: no survivor case measured');
+    }
+    if (lethal.measured) {
+      push('attribution.short', 'lethal rock fling inside 3 s is credited to the player',
+        lethal.killerIsPlayer === true ? 1 : 0, 'bool', lethal.killerIsPlayer === true,
+        `flight ${lethal.flightSeconds} s; killer ${lethal.killerId}`);
     }
     if (longFlight.measured) {
-      push('attribution.long', 'kill after more than 3 s of flight is credited to the player',
-        longFlight.killerIsPlayer === true ? 1 : 0, 'bool',
-        longFlight.killerIsPlayer === true,
-        `flight ${longFlight.flightSeconds} s; killer ${longFlight.killed ? longFlight.killed.killerId : 'none'}`);
+      push('attribution.long', 'lethal rock fling after more than 3 s of flight is credited to the player',
+        longFlight.killerIsPlayer === true ? 1 : 0, 'bool', longFlight.killerIsPlayer === true,
+        `flight ${longFlight.flightSeconds} s; killer ${longFlight.killerId}; collision provenance ${longFlight.collisionProvenance ? longFlight.collisionProvenance.tag : 'none'}`);
+    }
+    if (chain.measured) {
+      const hurt = chain.bTumbled || (chain.bHull && chain.bHull.hull < chain.bHull.hullMax);
+      push('chain.hullOnHull', 'a flung Wasp meets a second Wasp: the second is hurt or stunned, and every kill is the player\'s',
+        chain.hullContact ? 1 : 0, 'bool',
+        !!chain.hullContact && !!hurt && chain.killsCreditedToPlayer === chain.kills.length,
+        `contact ${chain.hullContact ? 'yes' : 'no'}; B tumbled ${chain.bTumbled}; B hull ${chain.bHull ? `${chain.bHull.hull}/${chain.bHull.hullMax}` : '?'}; kills credited to player ${chain.killsCreditedToPlayer} of ${chain.kills.length}`);
     }
     if (money.measured) {
       push('money.credited', 'physics kills credited to the player, of the three flung hulls',
         money.physicsKillsCreditedToPlayer, 'kills', money.physicsKillsCreditedToPlayer === money.hostiles);
-      push('money.landed', 'share of spawned loot that actually lands in the hull with no pilot input',
+      push('money.landed', 'share of spawned loot the hull actually accepts with no pilot input',
         money.landedShare, 'fraction', money.landedShare === FLING_TARGETS.moneyLandedShare,
-        `${money.pickupsStranded} of ${money.pickupsSpawned} still floating; stranded ${JSON.stringify(money.strandedKinds)}`);
+        `${money.pickupsStranded} still floating (${JSON.stringify(money.strandedKinds)}); hold ${money.holdAfter ? `${money.holdAfter.used}/${money.holdAfter.cap}` : '?'}; wallet +${money.walletDelta} of ${money.chipCreditsDropped} chip credits`);
       push('money.seconds', 'seconds from the last kill to the last loot landing',
         money.secondsLastKillToLastLanding, 's',
         money.secondsLastKillToLastLanding != null && money.secondsLastKillToLastLanding <= FLING_TARGETS.moneySecondsKillToLastChip,
         `target <= ${FLING_TARGETS.moneySecondsKillToLastChip} s`);
     }
 
+    if (moneyBusyHold.measured) {
+      push('money.landed.busyHold', 'same fling with the hold 60% full: share of spawned loot the hull accepts with no pilot input',
+        moneyBusyHold.landedShare, 'fraction', moneyBusyHold.landedShare === FLING_TARGETS.moneyLandedShare,
+        `${moneyBusyHold.pickupsStranded} still floating (${JSON.stringify(moneyBusyHold.strandedKinds)}); hold ${moneyBusyHold.holdBefore ? moneyBusyHold.holdBefore.used : '?'} -> ${moneyBusyHold.holdAfter ? `${moneyBusyHold.holdAfter.used}/${moneyBusyHold.holdAfter.cap}` : '?'}`);
+    }
+
     const realPathProof = (headOn[0] && headOn[0].realPathProof) || null;
     return {
       eventTrace,
       metrics: {
-        schema: 'spaceface.feel.flingScene.v1',
+        schema: 'spaceface.feel.flingScene.v2',
         realPathProof,
         targetsDefinition: FLING_TARGETS,
         headOn,
         spin,
-        rebound,
+        reboundLethal: lethal,
+        reboundSurvivor: survivor,
         longFlight,
+        chain,
         money,
+        moneyBusyHold,
         targets,
       },
     };
