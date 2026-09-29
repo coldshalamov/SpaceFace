@@ -19,6 +19,7 @@
 
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { admitReceipt, RECEIPT_MAX, stuntDetectionReceipt } from './hudAttention.js';
+import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
@@ -314,6 +315,7 @@ export function createToasts(ctx) {
   bus.on('toast', push);
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
+  bindJumpDenialToasts(bus, () => ctx.state);
   bindAutomationPayoffUi(bus, () => ctx.state);
 
   return { push, tick };
@@ -382,5 +384,24 @@ export function bindCombatDenialToasts(bus, getState) {
     const text = formatCombatActionRejectLine(payload && payload.reason);
     if (!text) return;
     bus.emit('toast', { text, kind: 'error', ttl: 3.5 });
+  });
+}
+
+/** WF-14 — `jump:chargeAbort` becomes one receipt naming the refusal's cause and fix. The
+ * Choice-C unfiled charge is excluded: its staged prompt owns that moment. */
+export function bindJumpDenialToasts(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  const seen = new Set();
+  bus.on('jump:chargeAbort', (payload) => {
+    if (payload && payload.unfiled === true) return;
+    const state = typeof getState === 'function' ? getState() : getState;
+    const receipt = jumpAbortReceipt(seen, state, payload);
+    if (!receipt || typeof bus.emit !== 'function') return;
+    bus.emit('toast', {
+      text: receipt.text,
+      kind: receipt.kind,
+      ttl: receipt.ttl,
+      channel: 'jump',
+    });
   });
 }

@@ -24,6 +24,19 @@ for (const sector of SECTORS) {
     if (!hasCenter(f)) { console.error(`missing field center: ${sector.id}/${f.id}`); failures++; }
   }
   for (const p of sector.pois || []) {
+    // Pair of scripts/check-sector-geography.mjs's rule: a runtime-owned POI may omit pos (its
+    // owner program places the real body - see poi_helios_choir_tender) but must name its owner.
+    // When it carries a pos, it is checked like any other.
+    if (p.runtimeOwner) {
+      if (typeof p.runtimeOwner !== 'string' || !p.runtimeOwner.length) {
+        console.error(`pos-less poi with no owner: ${sector.id}/${p.id}`);
+        failures++;
+      } else if (p.pos != null && !hasPos(p)) {
+        console.error(`missing poi pos: ${sector.id}/${p.id}`);
+        failures++;
+      }
+      continue;
+    }
     if (!hasPos(p)) { console.error(`missing poi pos: ${sector.id}/${p.id}`); failures++; }
   }
 }

@@ -435,7 +435,7 @@ const CORE_SECTORS = [
     neighbors: ['sector_io_reach', 'sector_sker_haven'],
     wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey' },
     stations: [
-      { id: 'station_veil', name: 'Research Station Veil', type: 'research', factionId: 'faction_free', size: 'M', services: ['scan_tech','missions','repair'],
+      { id: 'station_veil', name: 'Research Station Veil', type: 'research', factionId: 'faction_free', size: 'M', services: ['scan_tech','missions','repair','refuel'],
         chartNote: "Instruments first, hospitality never. Sells readings it won't explain." },
     ],
     fields: [ { id: 'f_veil_1', type: 'ast_gas_cloud', countWeight: 1.0 } ],

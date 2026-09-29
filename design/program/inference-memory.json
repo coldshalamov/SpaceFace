@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-28",
+  "updated": "2026-09-29",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,84 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "starter-weapon-heat",
-      "date": "2026-09-22",
-      "wf": "WF-09",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "starter weapons scar with their own heat instead of unknown-weapon default",
-      "fingerprint": "verb=scar,subject=weapon,sector=global,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "79657724b",
-      "verification": "focused_green"
-    },
-    {
-      "id": "helios-outer-rocks",
-      "date": "2026-09-22",
-      "wf": "WF-04",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "f_helios_outer uses ast_metallic instead of repeating starter ast_common_rock",
-      "fingerprint": "verb=mine,subject=asteroid,sector=helios,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "bd59636a7",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inst-01-flight-instrument-tells",
-      "date": "2026-09-22",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Field, mass-seed, and planet tells are the flight instrument, not three cyan pills",
-      "fingerprint": "verb=restyle,subject=flight-hud-tells,sector=flight,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "bda1642323701cab37d3b6d8215ed60124ed8c4c",
-      "verification": "focused_green"
-    },
-    {
-      "id": "verb-01-raid-timeout-ships-remain",
-      "date": "2026-09-22",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "When the opening raid times out, the ships are still there",
-      "fingerprint": "verb=release,subject=opening-hauler-raid-squad,sector=sector_helios_prime,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "171220e26caecaab5be919cbed419344f33d6059",
-      "verification": "focused_green"
-    },
-    {
-      "id": "world-01-choir-depot-missions-board",
-      "date": "2026-09-22",
-      "wf": "WF-04",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The Choir refuel depot has a missions board",
-      "fingerprint": "verb=advertise,subject=station_depot3-missions,sector=sector_vesta_forge,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "8b07f720d6adc91de572d7dd4b0b5a839085f303",
-      "verification": "focused_green"
-    },
-    {
-      "id": "missing-place-fallback-prop",
-      "date": "2026-09-22",
-      "wf": "WF-11",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "buildFallbackPlaceProp keeps an empty substrate or marker without published cube geometry",
-      "fingerprint": "verb=render,subject=place_prop,sector=global,domain=wf-11",
-      "references": [],
-      "integration": "live",
-      "commit": "da2abd5f1",
-      "verification": "focused_green"
-    },
     {
       "id": "vesta-named-hauler-contact",
       "date": "2026-09-22",
@@ -1631,6 +1553,84 @@
       "references": [],
       "integration": "live",
       "commit": "7ed28ca36",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wf14-lock-class-yield-mix",
+      "date": "2026-09-29",
+      "wf": "WF-14",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Lock class line now reports the body's real yield mix from its authored ore table, heaviest first, instead of restating the verb",
+      "fingerprint": "verb=read,subject=lock-class-line,sector=default-route,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "6fc903a09",
+      "verification": "focused_green"
+    },
+    {
+      "id": "shipworks-paint-rack",
+      "date": "2026-09-29",
+      "wf": "WF-07",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Shipworks gains a paint rack: the shipped ship-appearance backend finally has a surface — 11 hull coats, 8 trims, 3 finishes, 4 wear grades, live on the stage and in flight, persisted with the hull",
+      "fingerprint": "verb=paint,subject=player-hull-appearance,sector=station-shipworks,domain=wf-07",
+      "references": [],
+      "integration": "live",
+      "commit": "b8fda8725",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wf13-cut-denied-deny-voice",
+      "date": "2026-09-29",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A refused cut now answers in the same Massline deny voice a refused latch does; it was mute before, so players could not tell the key registered",
+      "fingerprint": "verb=hear,subject=massline-refusal,sector=default-route,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "909ae6d7c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "aftermath-wound-sector-state",
+      "date": "2026-09-29",
+      "wf": "WF-16",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Open aftermath causes now lean the sector state itself - danger up, law thin, visible on the map dossier and felt by law/predation planners - and the remedy job visibly settles the sector again; a third failed remedy closes the wound",
+      "fingerprint": "verb=heal,subject=sector-state-wound,sector=sector-state-memory,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "f04131c9b575ef213c9bdc2cc5e4563f0b82b97a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wf04-work-needs-fuel",
+      "date": "2026-09-29",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A sector that hands out work can now fuel you: Research Station Veil and Triton Wake Lab gained a pump. The two authored fuel-less outposts keep their charted frontier fiction.",
+      "fingerprint": "verb=trade,subject=station-services,sector=frontier,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "0952f976d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "jump-refusal-receipt",
+      "date": "2026-09-29",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A refused jump now answers in player words with the world's own numbers - gate toll vs purse, fuel need vs tank, cooldown seconds - and the chart's success toast asks the world first and names the sector instead of its raw id",
+      "fingerprint": "verb=answer,subject=jump-refusals,sector=galaxy-chart,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "d1c8e10e7",
       "verification": "focused_green"
     }
   ],
