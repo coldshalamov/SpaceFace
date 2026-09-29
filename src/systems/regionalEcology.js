@@ -37,8 +37,39 @@ const COUNTER_SHAPE_BIAS = Object.freeze({
   route_security: Object.freeze({ patrol_beat: 1.35, convoy_departure: 1.15 }),
 });
 
+// Wound pressure (WF-16 sector-state memory): an OPEN aftermath cause is a wound the sector
+// itself can read. While it stays open the sector leans more dangerous and its law coverage
+// thins; the remedy job (`aftermath:remedied`) or the board giving up (`aftermath:causeExhausted`)
+// removes the cause and the sector visibly settles. Derived from the causes this system already
+// stores — no new save state, no decay bookkeeping, deterministic per cause set.
+const CAUSE_WOUND_PRESSURE = Object.freeze({
+  security: Object.freeze({ danger: 0.045, law: 0.035 }),
+  distress: Object.freeze({ danger: 0.028, law: 0.015 }),
+  economic: Object.freeze({ danger: 0.020, law: 0.010 }),
+  wreck: Object.freeze({ danger: 0.012, law: 0.005 }),
+});
+const WOUND_DANGER_MAX = 0.12;
+const WOUND_LAW_MAX = 0.10;
+
 function clamp(value, lo, hi) {
   return value < lo ? lo : value > hi ? hi : value;
+}
+
+function woundPressureFor(state, sectorId) {
+  const own = ensureState(state);
+  let danger = 0;
+  let law = 0;
+  for (const cause of Object.values(own.causes)) {
+    if (!cause || cause.sectorId !== sectorId || cause.status !== 'open') continue;
+    const pressure = CAUSE_WOUND_PRESSURE[cause.consequenceKind];
+    if (!pressure) continue;
+    danger += pressure.danger;
+    law += pressure.law;
+  }
+  return {
+    danger: Math.min(WOUND_DANGER_MAX, danger),
+    law: Math.min(WOUND_LAW_MAX, law),
+  };
 }
 
 function freshState() {
@@ -119,12 +150,15 @@ export function regionalEcologyReadout(state, requestedSectorId = null) {
   if (!profile) return null;
   const row = ensureSector(state, sectorId);
   const causeBias = counterBiasFor(state, sectorId);
+  const wound = woundPressureFor(state, sectorId);
   // Compact card for existing map/scanner/postcard seams — no new HUD chrome.
+  const effectiveLaw = clamp(profile.law.security + row.lawDelta - wound.law, 0, 1);
+  const effectiveDanger = clamp(profile.danger.baseline + row.dangerDelta + wound.danger, 0, 1);
   const summary = [
     profile.familyLabel || profile.familyId,
     profile.resource.kind,
     profile.hazards.types.length ? profile.hazards.types.join('/') : 'clear',
-    `law ${Math.round(clamp(profile.law.security + row.lawDelta, 0, 1) * 100)}`,
+    `law ${Math.round(effectiveLaw * 100)}`,
   ].join(' · ');
   return {
     schemaVersion: REGIONAL_ECOLOGY_SCHEMA_VERSION,
@@ -161,11 +195,16 @@ export function regionalEcologyReadout(state, requestedSectorId = null) {
     },
     law: {
       baseline: profile.law.security,
-      effective: clamp(profile.law.security + row.lawDelta, 0, 1),
+      effective: effectiveLaw,
     },
     danger: {
       baseline: profile.danger.baseline,
-      effective: clamp(profile.danger.baseline + row.dangerDelta, 0, 1),
+      effective: effectiveDanger,
+    },
+    wound: {
+      danger: wound.danger,
+      law: wound.law,
+      causes: openCausesFor(state, sectorId).length,
     },
     encounters: {
       shapeBias: { ...profile.encounters.shapeBias },
@@ -232,6 +271,7 @@ export const regionalEcology = {
     this._listen('poi:behaviorOutcome', (payload) => this._onPoiOutcome(payload || {}));
     this._listen('aftermath:causeRecorded', (payload) => this._onCauseRecorded(payload || {}));
     this._listen('aftermath:remedied', (payload) => this._onCauseRemedied(payload || {}));
+    this._listen('aftermath:causeExhausted', (payload) => this._onCauseExhausted(payload || {}));
     this._listen('day:tick', () => this._decay());
   },
 
@@ -337,6 +377,23 @@ export const regionalEcology = {
     if (own.activeSectorId === cause.sectorId) {
       this._emit('regionalEcology:changed', {
         cause: { fingerprint: payload.fingerprint, kind: 'aftermath_remedied' },
+        readout: clonePlain(regionalEcologyReadout(this.state, cause.sectorId)),
+      });
+    }
+    return true;
+  },
+
+  // The board stopped offering this wound (three failed remedies) — it stops pressing the sector
+  // state too, so a stale open cause cannot lean danger forever. The cause text survives on the
+  // wreck markers in aftermathWrecks; only the sector-state wound closes here.
+  _onCauseExhausted(payload) {
+    const own = ensureState(this.state);
+    const cause = payload.fingerprint && own.causes[payload.fingerprint];
+    if (!cause) return false;
+    delete own.causes[payload.fingerprint];
+    if (own.activeSectorId === cause.sectorId) {
+      this._emit('regionalEcology:changed', {
+        cause: { fingerprint: payload.fingerprint, kind: 'aftermath_exhausted' },
         readout: clonePlain(regionalEcologyReadout(this.state, cause.sectorId)),
       });
     }

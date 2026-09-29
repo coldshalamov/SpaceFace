@@ -1711,9 +1711,19 @@ export const aftermathWrecks = {
       }
     } else {
       cause.attempts = (cause.attempts | 0) + 1;
-      cause.status = cause.attempts >= 3 ? 'exhausted' : 'open';
+      const exhausted = cause.attempts >= 3;
+      cause.status = exhausted ? 'exhausted' : 'open';
       cause.offerId = null;
       cause.missionId = null;
+      // The board stops offering an exhausted cause; the sector-state wound it carries closes
+      // with it (regionalEcology listens) so a stale open cause cannot lean danger forever.
+      if (exhausted && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('aftermath:causeExhausted', {
+          fingerprint: cause.fingerprint,
+          causeId: cause.causeId,
+          sectorId: cause.sectorId,
+        });
+      }
     }
     const own = ensureAftermathState(this.state);
     for (const marker of own.bySector[cause.sectorId] || []) {
