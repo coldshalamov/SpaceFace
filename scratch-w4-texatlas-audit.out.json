@@ -1,0 +1,892 @@
+flight reached; installing bind audit wrappers
+{
+  "binds": 38873,
+  "programSwitches": 14504,
+  "bindsByUnit": {
+    "0": 11455,
+    "1": 7673,
+    "2": 1867,
+    "3": 1995,
+    "4": 1285,
+    "5": 4958,
+    "6": 4958,
+    "7": 4667,
+    "15": 15
+  },
+  "distinctTextures": 64,
+  "distinctPrograms": 51,
+  "texBindTop": [
+    {
+      "count": 6099,
+      "units": [
+        1,
+        6,
+        7,
+        0
+      ],
+      "label": "SF_Shared_hull_textured_hull.aoMap"
+    },
+    {
+      "count": 5473,
+      "units": [
+        1,
+        6,
+        7
+      ],
+      "label": "MeshStandardMaterial.aoMap"
+    },
+    {
+      "count": 2373,
+      "units": [
+        2,
+        0
+      ],
+      "label": "MeshStandardMaterial.emissiveMap"
+    },
+    {
+      "count": 2314,
+      "units": [
+        2,
+        1,
+        3,
+        0
+      ],
+      "label": "MeshStandardMaterial.envMap"
+    },
+    {
+      "count": 2113,
+      "units": [
+        5,
+        0
+      ],
+      "label": "SF_Shared_hull_textured_hull.normalMap"
+    },
+    {
+      "count": 2035,
+      "units": [
+        0
+      ],
+      "label": "SF_Shared_hull_textured_hull.map"
+    },
+    {
+      "count": 1932,
+      "units": [
+        3,
+        2,
+        4,
+        1
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 1826,
+      "units": [
+        1,
+        6,
+        7,
+        0
+      ],
+      "label": "SF_Mutable_signal_dark_206070.aoMap"
+    },
+    {
+      "count": 1741,
+      "units": [
+        5
+      ],
+      "label": "MeshStandardMaterial.normalMap"
+    },
+    {
+      "count": 1157,
+      "units": [
+        1,
+        5,
+        6
+      ],
+      "label": "MeshStandardMaterial.aoMap"
+    },
+    {
+      "count": 873,
+      "units": [
+        0,
+        3
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 819,
+      "units": [
+        5,
+        0
+      ],
+      "label": "SF_Mutable_signal_dark_206070.normalMap"
+    },
+    {
+      "count": 767,
+      "units": [
+        0
+      ],
+      "label": "SF_Mutable_signal_dark_206070.map"
+    },
+    {
+      "count": 583,
+      "units": [
+        1,
+        2,
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 582,
+      "units": [
+        3,
+        4
+      ],
+      "label": "SF_FragmentMat_casing.roughnessMap"
+    },
+    {
+      "count": 582,
+      "units": [
+        0,
+        1
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 575,
+      "units": [
+        0
+      ],
+      "label": "MeshStandardMaterial.map"
+    },
+    {
+      "count": 575,
+      "units": [
+        4
+      ],
+      "label": "MeshStandardMaterial.normalMap"
+    },
+    {
+      "count": 390,
+      "units": [
+        1,
+        6,
+        7
+      ],
+      "label": "SF_Shared_mechanical_dark.aoMap"
+    },
+    {
+      "count": 297,
+      "units": [
+        0,
+        3
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "SF_FragmentMat_casing.map"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "SF_DeepFieldStructure_helios_orbital_void_helios-relay-mast.map"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "SF_DeepFieldStructure_helios_orbital_void_helios-derelict-hauler.map"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "SpriteMaterial.map"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "MeshBasicMaterial.map"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 291,
+      "units": [
+        1
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 291,
+      "units": [
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 291,
+      "units": [
+        2
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 290,
+      "units": [
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 290,
+      "units": [
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 290,
+      "units": [
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 290,
+      "units": [
+        0
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 286,
+      "units": [
+        0,
+        3
+      ],
+      "label": "gl:nullxnull:0x0"
+    },
+    {
+      "count": 234,
+      "units": [
+        1,
+        6,
+        7
+      ],
+      "label": "Forge_ore_barge_paint.aoMap"
+    },
+    {
+      "count": 193,
+      "units": [
+        0
+      ],
+      "label": "MeshStandardMaterial.map"
+    },
+    {
+      "count": 156,
+      "units": [
+        1,
+        6,
+        7
+      ],
+      "label": "Forge_ore_barge_gunmetal.aoMap"
+    },
+    {
+      "count": 129,
+      "units": [
+        0,
+        3
+      ],
+      "label": "MeshStandardMaterial.normalMap"
+    },
+    {
+      "count": 129,
+      "units": [
+        0
+      ],
+      "label": "MeshStandardMaterial.map"
+    },
+    {
+      "count": 79,
+      "units": [
+        0,
+        1,
+        6,
+        7
+      ],
+      "label": "Material_Mechanical.aoMap"
+    },
+    {
+      "count": 78,
+      "units": [
+        0
+      ],
+      "label": "Forge_ore_barge_paint.map"
+    },
+    {
+      "count": 65,
+      "units": [
+        0,
+        4
+      ],
+      "label": "MeshStandardMaterial.roughnessMap"
+    },
+    {
+      "count": 65,
+      "units": [
+        0
+      ],
+      "label": "MeshStandardMaterial.map"
+    },
+    {
+      "count": 65,
+      "units": [
+        3,
+        0
+      ],
+      "label": "MeshStandardMaterial.normalMap"
+    }
+  ],
+  "progUseTop": [
+    {
+      "count": 1663,
+      "label": "SF_Shared_hull_textured_hull::Material_Armor"
+    },
+    {
+      "count": 1320,
+      "label": "SF_Shared_none_none_native::Material_Emissive_Amber"
+    },
+    {
+      "count": 712,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 634,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 317,
+      "label": "SF_Shared_canopy_none_native::SF_Shared_canopy_none_native"
+    },
+    {
+      "count": 294,
+      "label": "plume:family_industrial_main_plume:core::plume:family_industrial_main_plume:core"
+    },
+    {
+      "count": 291,
+      "label": "SpaceFace_ClipProofDeepField::SpaceFace_ClipProofDeepField"
+    },
+    {
+      "count": 291,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "SF_FragmentMat_casing::SF_FragmentMat_casing"
+    },
+    {
+      "count": 291,
+      "label": "SpaceFace_ResolvedStellarFormation::SpaceFace_ResolvedStellarFormation"
+    },
+    {
+      "count": 291,
+      "label": "SpaceFace_PaintedStellarLight::SpaceFace_PaintedStellarLight"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "SF_DeepField_helios_orbital_void_helios-ecliptic-dust::SF_DeepField_helios_orbital_void_helios-ecliptic-dust"
+    },
+    {
+      "count": 291,
+      "label": "SF_DeepFieldStructure_helios_orbital_void_helios-derelict-hauler::SF_DeepFieldStructure_helios_orbital_void_helios-derelict-hauler"
+    },
+    {
+      "count": 291,
+      "label": "SpriteMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "MeshBasicMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "MeshBasicMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "MeshBasicMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "SF_GasVolume_baked-density-march::SF_GasVolume_baked-density-march"
+    },
+    {
+      "count": 291,
+      "label": "SF_Transient_smoke_density-film::SF_Transient_smoke_density-film"
+    },
+    {
+      "count": 291,
+      "label": "SF_Transient_glow_folded-surface::SF_Transient_glow_folded-surface"
+    },
+    {
+      "count": 291,
+      "label": "MeshBasicMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 291,
+      "label": "prog#31"
+    },
+    {
+      "count": 291,
+      "label": "prog#32"
+    },
+    {
+      "count": 284,
+      "label": "SF_CommonRock_GeologicalPBR_v5::SF_CommonRock_GeologicalPBR_v5"
+    },
+    {
+      "count": 257,
+      "label": "Spindle_Sealed_Hull::prog"
+    },
+    {
+      "count": 256,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 250,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 167,
+      "label": "SF_ActionPrimitiveMatter::SF_ActionPrimitiveMatter"
+    },
+    {
+      "count": 130,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 128,
+      "label": "MeshStandardMaterial::prog"
+    },
+    {
+      "count": 128,
+      "label": "prog#46"
+    },
+    {
+      "count": 78,
+      "label": "Forge_ore_barge_paint::Forge_massline_express_liner_ceramic"
+    },
+    {
+      "count": 64,
+      "label": "MeshBasicMaterial::prog"
+    },
+    {
+      "count": 64,
+      "label": "prog#48"
+    },
+    {
+      "count": 64,
+      "label": "MeshPhysicalMaterial::prog"
+    },
+    {
+      "count": 26,
+      "label": "SF_StructuralPlateMaterial::SF_StructuralPlateMaterial"
+    },
+    {
+      "count": 26,
+      "label": "SF_ArcadeBladeMaterial::SF_ArcadeBladeMaterial"
+    },
+    {
+      "count": 26,
+      "label": "Forge_ore_barge_glass::Forge_ore_barge_glass"
+    },
+    {
+      "count": 25,
+      "label": "SF_ArcadePhysicalShardMaterial::SF_ArcadePhysicalShardMaterial"
+    },
+    {
+      "count": 13,
+      "label": "ShaderMaterial::prog"
+    },
+    {
+      "count": 11,
+      "label": "prog#38"
+    },
+    {
+      "count": 1,
+      "label": "ShaderMaterial::prog"
+    }
+  ],
+  "switchPairs": [
+    [
+      "13->15@u5",
+      1689
+    ],
+    [
+      "11->14@u6",
+      1637
+    ],
+    [
+      "11->14@u7",
+      1637
+    ],
+    [
+      "10->12@u0",
+      1611
+    ],
+    [
+      "11->14@u1",
+      1611
+    ],
+    [
+      "14->11@u7",
+      1293
+    ],
+    [
+      "15->13@u5",
+      1055
+    ],
+    [
+      "12->10@u0",
+      1003
+    ],
+    [
+      "14->11@u1",
+      1003
+    ],
+    [
+      "14->11@u6",
+      1003
+    ],
+    [
+      "18->13@u5",
+      764
+    ],
+    [
+      "16->10@u0",
+      738
+    ],
+    [
+      "17->11@u1",
+      608
+    ],
+    [
+      "17->11@u6",
+      608
+    ],
+    [
+      "17->11@u7",
+      608
+    ],
+    [
+      "13->18@u5",
+      421
+    ],
+    [
+      "15->18@u5",
+      395
+    ],
+    [
+      "10->16@u0",
+      395
+    ],
+    [
+      "6->5@u1",
+      370
+    ],
+    [
+      "5->6@u1",
+      370
+    ],
+    [
+      "12->16@u0",
+      369
+    ],
+    [
+      "11->17@u1",
+      317
+    ],
+    [
+      "11->17@u6",
+      317
+    ],
+    [
+      "11->17@u7",
+      317
+    ],
+    [
+      "1->3@u0",
+      291
+    ],
+    [
+      "2->4@u1",
+      291
+    ],
+    [
+      "2->5@u2",
+      291
+    ],
+    [
+      "5->6@u2",
+      291
+    ],
+    [
+      "6->9@u3",
+      291
+    ],
+    [
+      "7->9@u4",
+      291
+    ]
+  ],
+  "progTransitions": [
+    [
+      "6->5",
+      1320
+    ],
+    [
+      "5->6",
+      1294
+    ],
+    [
+      "7->8",
+      634
+    ],
+    [
+      "5->7",
+      317
+    ],
+    [
+      "8->7",
+      317
+    ],
+    [
+      "1->2",
+      291
+    ],
+    [
+      "2->3",
+      291
+    ],
+    [
+      "9->10",
+      291
+    ],
+    [
+      "10->11",
+      291
+    ],
+    [
+      "11->12",
+      291
+    ],
+    [
+      "12->13",
+      291
+    ],
+    [
+      "13->14",
+      291
+    ],
+    [
+      "14->15",
+      291
+    ],
+    [
+      "15->16",
+      291
+    ],
+    [
+      "17->18",
+      291
+    ],
+    [
+      "18->19",
+      291
+    ],
+    [
+      "19->20",
+      291
+    ],
+    [
+      "21->22",
+      291
+    ],
+    [
+      "22->23",
+      291
+    ],
+    [
+      "23->24",
+      291
+    ],
+    [
+      "24->25",
+      291
+    ],
+    [
+      "26->27",
+      291
+    ],
+    [
+      "27->28",
+      291
+    ],
+    [
+      "30->29",
+      291
+    ],
+    [
+      "29->31",
+      291
+    ],
+    [
+      "31->32",
+      291
+    ],
+    [
+      "20->21",
+      290
+    ],
+    [
+      "4->37",
+      284
+    ],
+    [
+      "37->5",
+      284
+    ],
+    [
+      "25->26",
+      278
+    ],
+    [
+      "32->1",
+      278
+    ],
+    [
+      "3->4",
+      265
+    ],
+    [
+      "43->44",
+      256
+    ],
+    [
+      "8->39",
+      250
+    ],
+    [
+      "39->9",
+      200
+    ],
+    [
+      "44->43",
+      192
+    ],
+    [
+      "28->41",
+      167
+    ],
+    [
+      "41->30",
+      166
+    ],
+    [
+      "16->17",
+      151
+    ],
+    [
+      "46->47",
+      128
+    ],
+    [
+      "28->30",
+      97
+    ],
+    [
+      "16->42",
+      76
+    ],
+    [
+      "42->17",
+      76
+    ],
+    [
+      "44->9",
+      64
+    ],
+    [
+      "16->45",
+      64
+    ]
+  ],
+  "counters": {
+    "textureBinds": 34593,
+    "programSwitches": 14932,
+    "drawCalls": 27602,
+    "drawInstancedCalls": 3760,
+    "textureUploads": 91,
+    "textureSubUploads": 42,
+    "framesObserved": 921
+  }
+}
