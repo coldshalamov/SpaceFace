@@ -199,6 +199,10 @@ export const mining = {
     // Collect ore/cargo pickups into the hold (physics emits this on contact; we also self-emit).
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
+    // Hull-burst overhaul slice A (combat.arcadeLoot): leaving banks the loot still in flight.
+    bus.on('dock:docked', () => this._bankCombatLoot());
+    bus.on('jump:start', () => this._bankCombatLoot());
+    bus.on('sector:exit', () => this._bankCombatLoot());
     // Fresh sector → drop the stale beam lock (world regenerates the field).
     bus.on('sector:enter', () => { this._setLockTargetId(null); this._stopBeam(); this._resetBeamHeat(); });
   },
@@ -2192,6 +2196,26 @@ export const mining = {
       );
     }
     return acceptance;
+  },
+
+  // Hull-burst overhaul slice A (combat.arcadeLoot): docking or jumping banks the combat loot still
+  // in flight, so the payoff of a fight is never lost to a sector change. Every in-flight combat pickup
+  // goes through the ordinary collection path (chips pay through the economy owner, ore goes into the
+  // hold, refused ore converts to credits), so nothing here writes credits or cargo directly.
+  _bankCombatLoot() {
+    if (!combatFlag('arcadeLoot')) return 0;
+    const state = this.state;
+    const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || !Array.isArray(state.entityList)) return 0;
+    let banked = 0;
+    for (let i = 0; i < state.entityList.length && banked < 256; i++) {
+      const e = state.entityList[i];
+      if (!e || e.alive === false || e.type !== 'pickup' || !e.data || e.data.combatLoot !== true) continue;
+      clearPickupAcceptanceRetry(e.data);
+      this._collectPickupViaEvent(e, player);
+      banked++;
+    }
+    return banked;
   },
 
   // Hull-burst overhaul slice A (combat.arcadeLoot): combat ore a full hold refuses pays credits
