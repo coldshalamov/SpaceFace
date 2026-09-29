@@ -29,11 +29,16 @@ import {
   SWARM_WAVE_DURATION_TICKS,
   isSwarmDraftWave,
   isSwarmRefitWave,
+  SWARM_DEBUT_DISTANCE,
+  SWARM_DEBUT_TICKS,
   swarmArenaPhase,
+  swarmFreeGateFor,
   swarmLevel,
+  swarmNewcomerFor,
   swarmOpeningCount,
   swarmOpeningPackages,
   swarmPlanBlock,
+  swarmRosterFor,
   swarmRewards,
   swarmWaveOf,
 } from '../data/swarmMode.js';
@@ -60,10 +65,12 @@ for (const recipe of SURVIVAL_WAVES) {
 const HEAVY_ROLES = new Set(['anchor', 'elite']);
 const FODDER_ENEMIES = new Set(['wasp_swarmer', 'choir_zealot']);
 const HEAVIES_ONLY_FALLBACK = Object.freeze({ role: 'anchor', enemyId: 'bruiser_brawler' });
+// fromWave: 1 — the mutator fields heavies from the first wave, matching applyHeaviesOnly's
+// wave-agnostic package rewrite; pickSwarmArchetype honors a plan-declared unlock timing.
 const HEAVIES_ONLY_ROSTER = Object.freeze([
-  { enemyId: 'bruiser_brawler', role: 'anchor', weight: 6 },
-  { enemyId: 'corsair_raider', role: 'elite', weight: 4 },
-  { enemyId: 'field_anchor_controller', role: 'anchor', weight: 3 },
+  { enemyId: 'bruiser_brawler', role: 'anchor', weight: 6, fromWave: 1 },
+  { enemyId: 'corsair_raider', role: 'elite', weight: 4, fromWave: 1 },
+  { enemyId: 'field_anchor_controller', role: 'anchor', weight: 3, fromWave: 1 },
 ]);
 
 function mutatorList(mutators) {
@@ -174,6 +181,7 @@ function expandSchedule(packages) {
       // an arc schedule is byte-identical to what it always was.
       if (pkg.champion === true) entry.champion = true;
       if (pkg.lesson === true) entry.lesson = true;
+      if (pkg.debut === true) entry.debut = true;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
@@ -311,6 +319,7 @@ export function hashSemanticWavePlan(plan) {
         packages: plan && plan.packages,
         rewards: plan && plan.rewards,
         schedule: plan && plan.schedule,
+        swarm: plan && plan.swarm,
       };
   const str = stableStringify(semantic);
   let h = 0x811c9dc5;
@@ -341,21 +350,107 @@ export function resolvePlanMode(input) {
  * Completion here is a SIXTY-SECOND CLOCK, not "every scheduled package materialized and every
  * blocking role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty
  * on purpose: a swarm wave must never be able to stall on one straggler flying home.
+ *
+ * SF-072 — the room reads the run's build and leans on the roles that TEST it, never the ones
+ * that forbid it. A massline build meets more anchors (hulls too heavy to sling carelessly) and
+ * line-cutters; a gunnery build meets reach and fast closers; a pack-killer build meets screens
+ * and hulls that shrug a spread. The share moves by a bounded factor — every unlocked role keeps
+ * its seat, so the wave's own roster is still the wave. The champion stays authored: boss
+ * packages never reroll on the player's shopping list.
  */
-function planSwarmWave({ seed, wave, rng, mutators }) {
+const SWARM_PRESSURE_WEIGHT_SCALE = 1.5;
+const SWARM_PRESSURE_ROLES = Object.freeze({
+  collision: Object.freeze(['anchor', 'control']),
+  orbit: Object.freeze(['reach', 'elite']),
+  chain: Object.freeze(['support', 'anchor']),
+});
+const SWARM_PRESSURE_LINE = Object.freeze({
+  collision: 'The pack brought anchors for the rope.',
+  orbit: 'The pack brought reach for the orbit.',
+  chain: 'The pack brought screens for the volley.',
+});
+
+function biasSwarmRosterForBuild(roster, dominant) {
+  const testing = SWARM_PRESSURE_ROLES[dominant];
+  if (!testing || !Array.isArray(roster)) return null;
+  const focus = new Set(testing);
+  let bent = false;
+  const next = roster.map((entry) => {
+    const weight = Number(entry && entry.weight) || 0;
+    if (!entry || !focus.has(entry.role) || !(weight > 0)) return { ...entry };
+    bent = true;
+    return { ...entry, weight: weight * SWARM_PRESSURE_WEIGHT_SCALE };
+  });
+  return bent ? next : null;
+}
+
+function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
   const w = swarmWaveOf(wave);
   const list = mutatorList(mutators);
-  let packages = swarmOpeningPackages(w, rng);
-  if (list.includes('heavies_only')) packages = applyHeaviesOnly(packages);
+  const dominant = isPlainObject(buildSummary) && typeof buildSummary.dominant === 'string'
+    ? buildSummary.dominant
+    : null;
+  const heaviesOnly = list.includes('heavies_only');
+  const biasedRoster = dominant && !heaviesOnly
+    ? biasSwarmRosterForBuild(swarmRosterFor(w), dominant)
+    : null;
+  // SF-064 — a specialist's first wave stages one readable arrival: its tell lands alone on its
+  // own bearing a beat after the opening burst, before the stream mixes it with other bodies.
+  // The debut is a function of the wave number alone — no tutorial state, and later waves field
+  // the same archetype through the ordinary roster like everything else.
+  const newcomer = swarmNewcomerFor(w);
+  const debuting = !!newcomer && w === newcomer.fromWave;
+  const openingRoster = debuting
+    ? (biasedRoster || swarmRosterFor(w)).filter((entry) => entry.enemyId !== newcomer.enemyId)
+    : (biasedRoster || undefined);
+  let packages = swarmOpeningPackages(w, rng, openingRoster);
+  if (debuting) {
+    // The debut is one of the wave's bodies, not an extra: hand its seat back from the largest
+    // ordinary group so the opening budget stays exactly what the pressure math asked for.
+    const donor = [...packages].reverse().find((pkg) => !pkg.champion && !pkg.debut && pkg.count > 1);
+    if (donor) {
+      donor.count -= 1;
+      donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
+    }
+    // Its own bearing, guaranteed: the first gate no package in this wave already uses.
+    const debutGate = swarmFreeGateFor(w, packages.map((pkg) => pkg.gateGroup));
+    packages.push({
+      atTick: SWARM_DEBUT_TICKS,
+      gateGroup: debutGate,
+      role: newcomer.role,
+      enemyId: newcomer.enemyId,
+      count: 1,
+      batchSize: 1,
+      batchGapTicks: 0,
+      debut: true,
+      distance: SWARM_DEBUT_DISTANCE,
+    });
+  }
+  // The mutator owns the whole room, debut included: the newcomer's staged arrival still lands
+  // alone on its own bearing, but its body joins the heavies like every other package.
+  if (heaviesOnly) packages = applyHeaviesOnly(packages);
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w);
-  if (list.includes('heavies_only')) {
+  if (biasedRoster) {
+    swarm.roster = biasedRoster.map((entry) => ({
+      enemyId: entry.enemyId,
+      role: entry.role,
+      weight: entry.weight,
+      fromWave: entry.fromWave,
+    }));
+    swarm.pressureLine = SWARM_PRESSURE_LINE[dominant] || null;
+    swarm.buildPressure = dominant;
+  }
+  if (heaviesOnly) {
     swarm.roster = HEAVIES_ONLY_ROSTER.map((entry) => ({
       enemyId: entry.enemyId,
       role: entry.role,
       weight: entry.weight,
+      fromWave: entry.fromWave,
     }));
+    delete swarm.pressureLine;
+    delete swarm.buildPressure;
   }
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
     return invalid([issue('packages', `swarm opening burst ${opening} exceeds 24`)]);
@@ -592,6 +687,7 @@ function planWaveInner(input) {
       seed,
       wave,
       mutators,
+      buildSummary,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
     const finished = input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error

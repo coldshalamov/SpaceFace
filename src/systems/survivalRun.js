@@ -22,6 +22,7 @@ import {
   isSwarmRuleset,
 } from './survivalSwarm.js';
 import { isExtractionWindow } from './survivalExtraction.js';
+import { summarizeRunBuild } from '../data/runModifiers.js';
 import { planWave } from './survivalWavePlanner.js';
 import {
   compileChallenge,
@@ -369,7 +370,8 @@ export const survivalRun = {
       act,
       difficulty: endless ? 3 : difficultyForWave(nextWave),
       mutators: normalizeMutators(run.arenaMutators),
-      buildSummary: null,
+      // SF-072: the picks the run has already made tell the next wave what to lean on.
+      buildSummary: summarizeRunBuild(run.modifiers),
       mode: swarm ? 'swarm' : (endless ? 'endless' : (circuit ? 'boss_circuit' : undefined)),
       ruleset: run.ruleset,
       teachOpening: swarm && nextWave === 1 && this._openingLesson === true,

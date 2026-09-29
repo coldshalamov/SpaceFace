@@ -106,6 +106,21 @@ export const SWARM_DEBRIS_SIZE_MAX = 44;
 export const SWARM_DEBRIS_KEEP_RADIUS = 900;
 
 /**
+ * SF-067 — cover that stays useful. A monolith is not an invulnerable wall: a hard impact
+ * (thrown hull, heavy ram) wears its hull, and the wear is VISIBLE through `miningWear`, the
+ * progressive shrink/darken hint the renderer already reads. At zero the rock does not vanish —
+ * it fractures into two smaller remnant rocks that still collide, still anchor, and carry
+ * `tetherPayload` so the massline can pick one up and throw it. A remnant that breaks again just
+ * dies: one generation of leftovers, then the lane is clear.
+ */
+const SWARM_DEBRIS_WEAR_SPEED = 26;
+const SWARM_DEBRIS_WEAR_DIV = 110;
+const SWARM_DEBRIS_WEAR_TICK_GAP = 10;
+const SWARM_DEBRIS_REMNANTS = 2;
+const SWARM_DEBRIS_REMNANT_RATIO = 0.42;
+const SWARM_DEBRIS_REMNANT_MASS_K = 5;
+
+/**
  * The radius the FIELD IS COUNTED IN, which is deliberately much tighter than the radius rocks are
  * kept in.
  *
@@ -426,6 +441,7 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
+    this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._release('run_ended')));
   },
 
@@ -733,6 +749,126 @@ export const swarmArena = {
       added: spawnedIds.length,
       total: this._ids.length,
       layoutId: reef ? REEF_LAYOUT_ID : layout.id,
+    });
+  },
+
+  /**
+   * SF-067 — the fight deforms the cover it hides behind. Only a tagged debris rock takes wear,
+   * only a real hit chips it (a brush under the speed floor is a nudge, not damage), and only
+   * once per few ticks so a hull grinding along the face chips rather than dissolves. Wear is
+   * mirrored into `miningWear` so the rock visibly darkens/shrinks before it lets go.
+   */
+  _onDebrisImpact(payload) {
+    const state = this.state;
+    if (!state || !liveSwarmRun(state)) return;
+    const ents = state.entities;
+    if (!ents || typeof ents.get !== 'function') return;
+    const speed = Number(payload && payload.preSolveClosingSpeed);
+    const dp = Number(payload && payload.dp);
+    if (!(speed >= SWARM_DEBRIS_WEAR_SPEED) || !(dp > 0)) return;
+    const tick = Number.isFinite(payload.tick)
+      ? Math.max(0, Math.trunc(payload.tick))
+      : (Number.isFinite(state.tick) ? Math.max(0, Math.trunc(state.tick)) : 0);
+    const a = ents.get(payload.aId);
+    const b = ents.get(payload.bId);
+    for (const rock of [a, b]) {
+      if (!rock || rock.type !== 'asteroid' || rock.alive === false) continue;
+      const d = rock.data;
+      if (!d || d[SWARM_DEBRIS_TAG] !== true) continue;
+      if (Number.isFinite(d._debrisWornTick) && tick - d._debrisWornTick < SWARM_DEBRIS_WEAR_TICK_GAP) {
+        return;
+      }
+      d._debrisWornTick = tick;
+      const hullBefore = Math.max(0, Number(rock.hull) || 0);
+      const hullMax = Math.max(1, Number(rock.hullMax) || hullBefore || 1);
+      const hullAfter = hullBefore - dp / SWARM_DEBRIS_WEAR_DIV;
+      rock.hull = hullAfter;
+      d.oreHP = Math.max(0, Math.round(hullAfter));
+      d.miningWear = Math.min(1, Math.max(0, 1 - hullAfter / hullMax));
+      if (hullAfter <= 0) this._fractureDebris(rock);
+      return;
+    }
+  },
+
+  /**
+   * A worn-through monolith leaves two smaller rocks where it stood — still solid, still tagged
+   * so census and teardown own them exactly like the parent, and `tetherPayload`-legal so the
+   * rope can pick one up. A remnant (isChunk) that breaks again just dies; leftovers do not
+   * recurse.
+   */
+  _fractureDebris(rock) {
+    const state = this.state;
+    const d = (rock && rock.data) || {};
+    const rng = state && typeof state.rng === 'function' ? state.rng : null;
+    const helpers = this.helpers;
+    const ids = [];
+    if (!d.isChunk && rng && helpers && typeof helpers.spawnEntity === 'function'
+      && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)) {
+      const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+      const parentRadius = Math.max(1, Number(rock.radius) || Number(d.size) || 8);
+      for (let i = 0; i < SWARM_DEBRIS_REMNANTS; i++) {
+        const ang = rng() * Math.PI * 2;
+        const radius = Math.max(6, parentRadius * (SWARM_DEBRIS_REMNANT_RATIO + rng() * 0.08));
+        const dist = parentRadius * 0.55 + radius;
+        const oreHP = Math.max(40, Math.round(parentRadius * 10));
+        const spawned = helpers.spawnEntity({
+          type: 'asteroid',
+          pos: {
+            x: rock.pos.x + Math.cos(ang) * dist,
+            z: rock.pos.z + Math.sin(ang) * dist,
+          },
+          vel: { x: 0, z: 0 },
+          radius,
+          physicsBody: { radius: asteroidColliderRadius(TYPE_ID, radius) },
+          // Remnant mass is written for the rope, not the wall: heavy enough to read as rock,
+          // light enough that the massline can actually pick it up.
+          mass: Math.round(radius * radius * SWARM_DEBRIS_REMNANT_MASS_K),
+          angVel: (rng() - 0.5) * 0.3,
+          hull: oreHP,
+          hullMax: oreHP,
+          collides: true,
+          data: withBankStone({
+            typeId: TYPE_ID,
+            tier: 0,
+            tierCap: 0,
+            oreHP,
+            oreHPMax: oreHP,
+            yieldU: 2,
+            size: radius,
+            [SWARM_DEBRIS_TAG]: true,
+            terrainAnchor: true,
+            terrainAnchorEncounterIds: [],
+            despawnAt: now + SWARM_DEBRIS_TTL_S,
+            isChunk: true,
+            tetherPayload: true,
+          }),
+        });
+        const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
+        if (id != null) {
+          ids.push(id);
+          this._ids.push(id);
+          this._emit('asteroid:chunked', {
+            parentId: rock.id,
+            chunkId: id,
+            minerId: null,
+            massU: 0,
+            bulkCore: false,
+            commodityId: null,
+          });
+        }
+      }
+    }
+    d.miningWear = 1;
+    rock.alive = false;
+    this._emit('swarmArena:debrisFractured', {
+      id: rock.id,
+      remnantIds: ids,
+      tick: Number.isFinite(state && state.tick) ? state.tick : null,
+    });
+    this._emit('asteroid:destroyed', {
+      id: rock.id,
+      typeId: TYPE_ID,
+      pos: rock.pos ? { x: rock.pos.x, z: rock.pos.z } : null,
     });
   },
 
