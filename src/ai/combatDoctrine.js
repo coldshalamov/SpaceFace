@@ -7,6 +7,7 @@ import {
   distance2,
   finite,
   hashUnit,
+  memberObservedTarget,
   stableId,
   wrapAngle,
 } from './contracts.js';
@@ -103,6 +104,22 @@ const SWARM_INGRESS_RANGE_WU = 340;
 // Pack pursuit stays inside the fight. No breakaway, no 960 WU egress point.
 const PACK_PRESS_RANGE_WU = 200;
 const PACK_ORBIT_RANGE_WU = 130;
+// SF-056 wounded fallback: damage to a meaningful subsystem breaks the press into a bounded
+// retreat toward a perceived affordance (the nearest friendly hull — the pack IS the cover — or
+// the shadow of a hazard), never toward a fresh firing line. Enter at a subsystem half-dead; the
+// latch re-arms only when it is repaired past the exit band, so a crippled hull cannot flicker
+// press/retreat on the same wound. The run is bounded: arrive-and-settle or a max-tick cap, then
+// it fights hurt rather than kiting forever.
+const PACK_WOUND_ENTER_FRACTION = 0.5;
+const PACK_WOUND_EXIT_FRACTION = 0.75;
+const PACK_RETREAT_ARRIVE_WU = 90;
+const PACK_RETREAT_MIN_TICKS = 60;
+const PACK_RETREAT_MAX_TICKS = 60 * 14;
+const PACK_RETREAT_FLEE_WU = 700;
+const PACK_RETREAT_COVER_DEPTH_WU = 60;
+const PACK_WOUND_SUBSYSTEMS = Object.freeze([
+  'subsystem_drive', 'subsystem_weapon', 'subsystem_sensor', 'subsystem_power',
+]);
 // Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage.
 // PQ-205.02: the drop line is the pursuit-lane bomb doctrine — npcBombMirror calls
 // bombs.drop / commandDetonate after the wake_mines telegraph. Physical mines still
@@ -270,7 +287,7 @@ export class CombatDoctrineRuntime {
     // Fodder that was stamped to stay packed never takes the flyby egress, including the
     // disabled-target and pressure-break hatches that aim a point 960 WU away.
     if (doctrineId === CombatDoctrineId.PACK_PURSUIT) {
-      updatePackPursuit(record, tick, self, target, distance);
+      updatePackPursuit(record, tick, self, target, distance, perception);
       return snapshot(record, target, directive, factionBehavior, self);
     }
     // Production supplies this from aiPorts' live combat-runtime query. The contact fallback keeps
@@ -338,7 +355,7 @@ export class CombatDoctrineRuntime {
   }
 }
 
-export function overrideDirectiveForCombatDoctrine(directive, doctrine) {
+export function overrideDirectiveForCombatDoctrine(directive, doctrine, perception = null) {
   if (!directive || !doctrine || doctrine.targetId == null) return directive;
   let kind = ObjectiveKind.FOCUS;
   if (doctrine.doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -361,10 +378,20 @@ export function overrideDirectiveForCombatDoctrine(directive, doctrine) {
       : ObjectiveKind.SCREEN;
   }
   const targetId = doctrine.actionTargetId != null ? doctrine.actionTargetId : doctrine.targetId;
+  // SF-057: this rebuild must not launder a stale mark into a firing solution. Same target → the
+  // squad's merged verdict carries; a re-pointed target (a doctrine-selected contact, dispatched
+  // or stale) → the member's own contact decides. Pass the perception the doctrine ran on.
+  const observed = directive.objective && directive.objective.targetId != null
+    && stableId(directive.objective.targetId) === stableId(targetId)
+    ? directive.objective.targetObserved
+    : memberObservedTarget(perception, targetId);
   return Object.freeze({
     ...directive,
     focusTargetId: doctrine.targetId,
-    objective: Object.freeze({ kind, targetId, reason: `combat_doctrine:${doctrine.doctrineId}:${doctrine.phase}` }),
+    objective: Object.freeze({
+      kind, targetId, reason: `combat_doctrine:${doctrine.doctrineId}:${doctrine.phase}`,
+      ...(observed !== undefined ? { targetObserved: observed } : {}),
+    }),
     formation: Object.freeze({
       ...directive.formation,
       breakFormation: true,
@@ -771,12 +798,101 @@ function updateCapitalBroadside(record, tick, self, distance) {
  * The light-hull pack identity: short committed passes with a tight extend, so a swarm fight is
  * a rapid sequence of flank→flare→strike→extend beats instead of the raider flyby's long cycles.
  */
-function updatePackPursuit(record, tick, self, target, distance) {
+function updatePackPursuit(record, tick, self, target, distance, perception) {
+  const wound = woundedSubsystemFraction(self);
+  // Hysteresis: a repaired-above-exit hull re-arms its one fallback; until then the spent wound
+  // cannot re-trigger, so a crippled hull fights hurt instead of flickering press/retreat.
+  if (wound >= PACK_WOUND_EXIT_FRACTION) record.fallbackArmed = true;
+  if (record.phase === 'retreat') {
+    // Allies move — re-resolve the anchor from current perception every tick rather than chasing
+    // the position the packmate occupied when the run began.
+    const anchor = retreatAnchorFor(self, target, perception);
+    record.flightPoint = anchor || retreatFleePoint(self, target);
+    const age = tick - record.phaseStartedTick;
+    if ((anchor && pointWithin(self, anchor, PACK_RETREAT_ARRIVE_WU) && age >= PACK_RETREAT_MIN_TICKS)
+      || age >= PACK_RETREAT_MAX_TICKS) {
+      record.outcome = 'wounded_fallback';
+      record.flightPoint = null;
+      enter(record, 'press', tick, null);
+    }
+    return;
+  }
+  if (record.fallbackArmed !== false && wound <= PACK_WOUND_ENTER_FRACTION) {
+    record.fallbackArmed = false;
+    record.outcome = 'wounded_fallback';
+    enter(record, 'retreat', tick, null);
+    record.flightPoint = retreatAnchorFor(self, target, perception) || retreatFleePoint(self, target);
+    return;
+  }
   if (record.phase !== 'press' && distance <= PACK_PRESS_RANGE_WU) {
     enter(record, 'press', tick, null);
   }
-  void self;
-  void target;
+}
+
+/**
+ * SF-056: damage to a meaningful subsystem — drive, teeth, eyes, or the power feeding all three.
+ * A hull with no subsystem state reads intact and never takes the fallback.
+ */
+function woundedSubsystemFraction(self) {
+  const fractions = self && self.subsystemFractions;
+  if (!fractions || typeof fractions !== 'object') return 1;
+  let min = 1;
+  for (const id of PACK_WOUND_SUBSYSTEMS) {
+    const fraction = Number(fractions[id]);
+    if (Number.isFinite(fraction) && fraction < min) min = fraction;
+  }
+  return min;
+}
+
+/**
+ * The pack's cover is its own hulls: nearest currently-visible friendly contact wins. Absent
+ * friendlies, the shadow of the nearest hazard — put the rock between the hull and the shooter.
+ * Both come from live perception only: a retreat toward a contact nobody holds is a guess at a
+ * stale picture, not cover. Returns null when perception offers no affordance.
+ */
+function retreatAnchorFor(self, target, perception) {
+  if (!perception || !Array.isArray(perception.contacts) || !self || !self.pos) return null;
+  let ally = null, allyDistance = Infinity;
+  let hazard = null, hazardDistance = Infinity;
+  for (const contact of perception.contacts) {
+    if (!contact || contact.alive === false || !contact.pos || contact.id === self.id) continue;
+    const dx = contact.pos.x - self.pos.x;
+    const dz = contact.pos.z - self.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (contact.kind === ContactKind.SHIP && contact.hostile !== true
+      && contact.team != null && self.team != null && contact.team === self.team
+      && contact.visible === true) {
+      if (d < allyDistance || (d === allyDistance && ally && compareIds(contact.id, ally.id) < 0)) {
+        ally = contact; allyDistance = d;
+      }
+    } else if (contact.kind === ContactKind.HAZARD && contact.visible === true) {
+      if (d < hazardDistance || (d === hazardDistance && hazard && compareIds(contact.id, hazard.id) < 0)) {
+        hazard = contact; hazardDistance = d;
+      }
+    }
+  }
+  if (ally) return { x: ally.pos.x, z: ally.pos.z };
+  if (hazard && target && target.pos) {
+    // The cover shadow sits on the hazard's far side from the threat, one hull-width deep.
+    const dx = hazard.pos.x - target.pos.x;
+    const dz = hazard.pos.z - target.pos.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const depth = (Number(hazard.radius) || 0) + PACK_RETREAT_COVER_DEPTH_WU;
+    return { x: hazard.pos.x + (dx / len) * depth, z: hazard.pos.z + (dz / len) * depth };
+  }
+  return null;
+}
+
+/** No affordance perceived: run straight off the threat, bounded by PACK_RETREAT_MAX_TICKS. */
+function retreatFleePoint(self, target) {
+  const selfPos = self && self.pos ? self.pos : { x: 0, z: 0 };
+  const from = target && target.pos ? target.pos : { x: selfPos.x, z: selfPos.z - 1 };
+  let dx = selfPos.x - from.x;
+  let dz = selfPos.z - from.z;
+  const len = Math.hypot(dx, dz);
+  if (!(len > 0.001)) { dx = 0; dz = 1; }
+  else { dx /= len; dz /= len; }
+  return { x: selfPos.x + dx * PACK_RETREAT_FLEE_WU, z: selfPos.z + dz * PACK_RETREAT_FLEE_WU };
 }
 
 function updateSwarmPack(record, tick, self, target, distance) {
@@ -864,6 +980,11 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     ramAuthorized: false,
     preferredRange: null,
     aimCommitBearing: null,
+    // SF-056: the wounded fallback is armed until a subsystem wound spends it; it re-arms only
+    // when the wounded subsystem is repaired past the exit band.
+    fallbackArmed: true,
+    // SF-048: the escort's sticky custody bind (carrier contact id), revalidated every update.
+    custodyTargetId: null,
     _cachePosX: null,
     _cachePosZ: null,
     _cacheRot: null,
@@ -1001,9 +1122,17 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     if (phase === 'anchor_hold') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.PACK_PURSUIT) {
     formationLocked = false;
-    faceTarget = true;
     lateralSign = record.side;
-    maneuverKind = phase === 'press' ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
+    if (phase === 'retreat') {
+      // SF-056: the wounded fallback flies record.flightPoint (ally hull or hazard shadow) as a
+      // real retreat leg — guns off, nose off the target.
+      maneuverKind = ManeuverKind.RETREAT;
+      maneuverTargetId = null;
+      faceTarget = false;
+    } else {
+      faceTarget = true;
+      maneuverKind = phase === 'press' ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
+    }
     preferredRange = PACK_ORBIT_RANGE_WU;
     if (phase === 'press') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
