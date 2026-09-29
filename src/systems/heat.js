@@ -47,6 +47,10 @@ const BUST_CONTRABAND = 0.16;      // smuggling scan bust
 const FactionsAggroAdd = 0.20;     // a faction flipping hostile (the law noticed)
 
 const WANTED_THRESHOLD = 0.15;     // above this, lawful patrols hunt you (playerWanted=true)
+// How long the convicting-incident explanation can still start a new response. Past this,
+// heat and reputation stay; only the actionable index goes quiet. Strictly greater than,
+// so the record still explains on the exact boundary.
+export const ACTIONABLE_EVIDENCE_S = 120;
 // Hit-chips are suspicion, never conviction: they plateau just under WANTED so an
 // unwitnessed assault cannot mint a warrant — a validated receipt must convict.
 const HIT_SUSPICION_MAX = WANTED_THRESHOLD * 0.95;
@@ -134,6 +138,20 @@ function ensureAppliedIncidentIds(player) {
   return player.heatIncidentsApplied;
 }
 
+function appliedReportIds(player) {
+  const ledger = player && player.heatReportsApplied;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger) ? ledger : EMPTY_LEDGER;
+}
+
+function rememberAppliedReport(player, reportId) {
+  if (!reportId) return;
+  if (!player.heatReportsApplied || typeof player.heatReportsApplied !== 'object'
+    || Array.isArray(player.heatReportsApplied)) {
+    player.heatReportsApplied = {};
+  }
+  player.heatReportsApplied[reportId] = true;
+}
+
 const EMPTY_LEDGER = Object.freeze({});
 
 // Compact label coercion for the convicting-incident record: short trimmed strings only,
@@ -147,9 +165,17 @@ function shortText(value, max) {
 
 // Defensive copy of the convicting-incident record for the public packet. Unknown shapes
 // (old saves, foreign writers) degrade to null rather than a half-invented explanation.
-function incidentSnapshot(record) {
+function evidenceAgePassed(record, now) {
+  if (now == null || !record) return false;
+  const at = Number(record.at);
+  const t = Number(now);
+  return Number.isFinite(at) && Number.isFinite(t) && t - at > ACTIONABLE_EVIDENCE_S;
+}
+
+function incidentSnapshot(record, now = null) {
   if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
   if (typeof record.incidentReceiptId !== 'string' || !record.incidentReceiptId) return null;
+  if (evidenceAgePassed(record, now)) return null;
   return {
     kind: shortText(record.kind, 32),
     incidentReceiptId: record.incidentReceiptId,
@@ -157,8 +183,17 @@ function incidentSnapshot(record) {
     witnessCount: Number.isFinite(Number(record.witnessCount))
       ? Math.max(0, Number(record.witnessCount) | 0) : 0,
     jurisdiction: shortText(record.jurisdiction, 48),
+    evidenceClass: shortText(record.evidenceClass, 32),
     at: Number.isFinite(Number(record.at)) ? Number(record.at) : 0,
   };
+}
+
+function expireActionableEvidence(player, now) {
+  const incident = player && player.heatLastIncident;
+  if (!incident || typeof incident !== 'object') return false;
+  if (!evidenceAgePassed(incident, now)) return false;
+  player.heatLastIncident = null;
+  return true;
 }
 
 function defaultHeatZone() {
@@ -327,7 +362,19 @@ export const heat = {
     if (!player) {
       return { applied: false, reason: 'no_player', incidentReceiptId, delta: 0 };
     }
+    const discovered = receipt.discovery === true
+      || receipt.evidence === 'wreck_provenance'
+      || receipt.evidenceClass === 'discovered';
+    const reportId = typeof receipt.reportId === 'string' && receipt.reportId.trim().length > 0
+      ? receipt.reportId.trim()
+      : null;
+    // Any later receipt for a report the law already priced is refused, even when the relay
+    // drops the discovered label and claims a direct witness. The explanation stays as stored.
+    if (reportId && appliedReportIds(player)[reportId]) {
+      return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
+    }
     if (appliedIncidentIds(player)[incidentReceiptId]) {
+      rememberAppliedReport(player, reportId);
       return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
     }
 
@@ -346,18 +393,23 @@ export const heat = {
     // which is the survivable failure.
     const ledger = ensureAppliedIncidentIds(player);
     ledger[incidentReceiptId] = true;
+    rememberAppliedReport(player, reportId);
 
     // INF-077: remember the convicting incident in compact form so presentation can trace a
-    // heat increase to the actual accepted receipt. Only accepted, witnessed receipts reach
-    // this line — denials and unwitnessed acts return above and never set this field.
+    // heat increase to the actual accepted receipt. A discovered wreck forces zero witnesses
+    // so a relay cannot relabel hearsay as a direct sighting. Theft receipts keep their own
+    // class (null when the law did not stamp one).
+    const witnessCount = discovered ? 0
+      : (Number.isFinite(Number(receipt.witnessCount))
+        ? Math.max(0, Number(receipt.witnessCount) | 0) : 0);
     player.heatLastIncident = {
       kind: shortText(receipt.kind, 32),
       incidentReceiptId,
       affected: shortText(
         receipt.victimStableId || receipt.victimClass || receipt.payloadStableId || null, 48),
-      witnessCount: Number.isFinite(Number(receipt.witnessCount))
-        ? Math.max(0, Number(receipt.witnessCount) | 0) : 0,
+      witnessCount,
       jurisdiction: shortText(receipt.stationId || null, 48),
+      evidenceClass: discovered ? 'discovered' : shortText(receipt.evidenceClass, 32),
       at: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
     };
 
@@ -441,6 +493,11 @@ export const heat = {
   update(dt, state) {
     const player = state.player;
     if (!player) return;
+    // The explanation expires on the sim clock even while heat itself is held, docked, or
+    // outside flight. This does not raise or clear heat, and it does not touch reputation.
+    if (expireActionableEvidence(player, state && state.simTime)) {
+      this._emitChanged('evidence expired', true);
+    }
     const zone = ensureHeatZone(player);
     if (!player.heat) {
       publishWantedTier(player);
@@ -587,7 +644,7 @@ export const heat = {
       wantedCrossed: wanted !== wasWanted,
       // The convicting incident, when a validated receipt caused the current heat. A plain
       // snapshot (never a live reference) so presentation cannot mutate owned state.
-      incident: incidentSnapshot(player.heatLastIncident),
+      incident: incidentSnapshot(player.heatLastIncident, now),
       // 0..1 approach toward the WANTED gate. 1 at/above threshold. Presentation-only scalar.
       suspicion: value <= 0 ? 0 : Math.min(1, value / WANTED_THRESHOLD),
       threshold: WANTED_THRESHOLD,

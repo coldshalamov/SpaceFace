@@ -49,8 +49,22 @@ function boot(seed) {
   return { sim, state, bus, player, posted, broken };
 }
 
-function killCivilian(bus, state, id = 404) {
-  bus.emit('entity:killed', {
+function withLawfulEye(sim, state, emit) {
+  const player = state.entities && state.entities.get(state.playerId);
+  const pos = player && player.pos ? player.pos : { x: 0, z: 0 };
+  const eye = sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: pos.x + 30, z: pos.z },
+    hull: 80, hullMax: 80, radius: 8,
+    data: { ai: { lawful: true }, witnessEye: true },
+  });
+  emit();
+  eye.alive = false;
+  eye.hull = 0;
+}
+
+function killCivilian(sim, state, id = 404) {
+  withLawfulEye(sim, state, () => sim.bus.emit('entity:killed', {
     id,
     killerId: state.playerId,
     type: 'ship',
@@ -58,11 +72,11 @@ function killCivilian(bus, state, id = 404) {
     factionId: 'faction_free',
     factionLawful: false,
     targetHostileToPlayer: false,
-  });
+  }));
 }
 
-function killLawman(bus, state, id = 505) {
-  bus.emit('entity:killed', {
+function killLawman(sim, state, id = 505) {
+  withLawfulEye(sim, state, () => sim.bus.emit('entity:killed', {
     id,
     killerId: state.playerId,
     type: 'ship',
@@ -70,12 +84,12 @@ function killLawman(bus, state, id = 505) {
     factionId: 'faction_scn',
     factionLawful: true,
     targetHostileToPlayer: false,
-  });
+  }));
 }
 
-function raiseToNets(bus, state) {
-  killCivilian(bus, state);
-  killLawman(bus, state);
+function raiseToNets(sim, state) {
+  killCivilian(sim, state);
+  killLawman(sim, state);
 }
 
 function liveNet(state) {
@@ -99,7 +113,7 @@ test('nets band is playable and names break_net as the escape', () => {
 
 test(`seed ${SEED_POST}: nets tier posts a lane net and a cutter from reserve`, () => {
   const { sim, state, player, posted } = boot(SEED_POST);
-  raiseToNets(sim.bus, state);
+  raiseToNets(sim, state);
   sim.step();
 
   assert.equal(state.player.wantedTier, WANTED_TIER.NETS);
@@ -142,7 +156,7 @@ test(`seed ${SEED_POST}: nets tier posts a lane net and a cutter from reserve`, 
 
 test(`seed ${SEED_POST}: a light slow hull is held by the net, not broken`, () => {
   const { sim, state, player, broken } = boot(SEED_POST);
-  raiseToNets(sim.bus, state);
+  raiseToNets(sim, state);
   sim.step();
   const net = liveNet(state);
   assert.ok(net);
@@ -165,7 +179,7 @@ test(`seed ${SEED_POST}: a light slow hull is held by the net, not broken`, () =
 
 test(`seed ${SEED_MASS}: heavy hull contact breaks the net by mass`, () => {
   const { sim, state, player, broken } = boot(SEED_MASS);
-  raiseToNets(sim.bus, state);
+  raiseToNets(sim, state);
   sim.step();
   const raised = state.player.heat;
   const net = liveNet(state);
@@ -189,7 +203,7 @@ test(`seed ${SEED_MASS}: heavy hull contact breaks the net by mass`, () => {
 
 test(`seed ${SEED_SPEED}: fast light hull contact breaks the net by speed`, () => {
   const { sim, state, player, broken } = boot(SEED_SPEED);
-  raiseToNets(sim.bus, state);
+  raiseToNets(sim, state);
   sim.step();
   const raised = state.player.heat;
   const net = liveNet(state);
@@ -210,7 +224,7 @@ test(`seed ${SEED_SPEED}: fast light hull contact breaks the net by speed`, () =
 
 test(`seed ${SEED_DECOY}: a thrown decoy in the scan cone breaks the net`, () => {
   const { sim, state, player, broken } = boot(SEED_DECOY);
-  raiseToNets(sim.bus, state);
+  raiseToNets(sim, state);
   sim.step();
   const raised = state.player.heat;
   const net = liveNet(state);

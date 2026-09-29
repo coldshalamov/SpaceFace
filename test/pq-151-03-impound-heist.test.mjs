@@ -58,8 +58,16 @@ function boot(seed = SEED, extra = {}) {
   return { sim, state, bus, player, posted, recovered, refused, charges };
 }
 
-function killLawman(bus, state, id) {
-  bus.emit('entity:killed', {
+function killLawman(sim, state, id) {
+  const player = state.entities && state.entities.get(state.playerId);
+  const pos = player && player.pos ? player.pos : { x: 0, z: 0 };
+  const eye = sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: pos.x + 30, z: pos.z },
+    hull: 80, hullMax: 80, radius: 8,
+    data: { ai: { lawful: true }, witnessEye: true },
+  });
+  sim.bus.emit('entity:killed', {
     id,
     killerId: state.playerId,
     type: 'ship',
@@ -68,15 +76,17 @@ function killLawman(bus, state, id) {
     factionLawful: true,
     targetHostileToPlayer: false,
   });
+  eye.alive = false;
+  eye.hull = 0;
 }
 
-function raiseToImpound(bus, state) {
+function raiseToImpound(sim, state) {
   // SCAN → NETS → IMPOUND. A first lawful kill alone lands in bounty and would
   // post a warrant hunter; start with the faction-hostile chip so the band
-  // never sits on bounty.
-  bus.emit('faction:aggro', { isAggro: true, factionId: 'faction_scn' });
-  killLawman(bus, state, 701);
-  killLawman(bus, state, 702);
+  // never sits on bounty. Each kill has a person in range; the ring is not an eye.
+  sim.bus.emit('faction:aggro', { isAggro: true, factionId: 'faction_scn' });
+  killLawman(sim, state, 701);
+  killLawman(sim, state, 702);
 }
 
 function liveYard(state) {
@@ -121,7 +131,7 @@ test('impound band is playable and names steal_ship_back as the escape', () => {
 
 test(`seed ${SEED}: impound posts a yard and a clerk from reserve`, () => {
   const { sim, state, player, posted } = boot(SEED);
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
 
   assert.equal(state.player.wantedTier, WANTED_TIER.IMPOUND);
@@ -170,7 +180,7 @@ test(`seed ${SEED}: impound posts a yard and a clerk from reserve`, () => {
 
 test(`seed ${SEED}: leaving the search zone does not drop the impound band`, () => {
   const { sim, state, player } = boot(SEED);
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
   const raised = state.player.heat;
   const zone = state.player.heatZone;
@@ -187,7 +197,7 @@ test(`seed ${SEED}: leaving the search zone does not drop the impound band`, () 
 
 test(`seed ${SEED}: pay the bill at the clerk — economy writes credits, heat clears`, () => {
   const { sim, state, player, recovered, charges } = boot(SEED);
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
   const bill = impoundBillFor(state);
   const owed = bill.owedCr;
@@ -211,7 +221,7 @@ test(`seed ${SEED}: pay the bill at the clerk — economy writes credits, heat c
 
 test(`seed ${SEED}: short credits at the clerk refuse — hull stays in the pound`, () => {
   const { sim, state, player, recovered, refused } = boot(SEED, { credits: 10 });
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
   const clerk = liveClerk(state);
   player.pos.x = clerk.pos.x;
@@ -230,7 +240,7 @@ test(`seed ${SEED}: short credits at the clerk refuse — hull stays in the poun
 
 test(`seed ${SEED}: work the bill off at the yard — credits untouched, heat clears`, () => {
   const { sim, state, player, recovered } = boot(SEED);
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
   const yard = liveYard(state);
   player.pos.x = yard.pos.x;
@@ -250,7 +260,7 @@ test(`seed ${SEED}: work the bill off at the yard — credits untouched, heat cl
 
 test(`seed ${SEED}: steal the hull at the lock — escape is a verb, clerk never teleports`, () => {
   const { sim, state, player, recovered } = boot(SEED);
-  raiseToImpound(sim.bus, state);
+  raiseToImpound(sim, state);
   sim.step();
   const clerk = liveClerk(state);
   const clerkStart = { x: clerk.pos.x, z: clerk.pos.z };
@@ -278,7 +288,7 @@ test(`seed ${SEED}: steal the hull at the lock — escape is a verb, clerk never
 
 test(`seed ${SEED}: save round-trips mid-pay, then the clerk still takes the bill`, () => {
   const first = boot(SEED);
-  raiseToImpound(first.sim.bus, first.state);
+  raiseToImpound(first.sim, first.state);
   first.sim.step();
   const clerk = liveClerk(first.state);
   first.player.pos.x = clerk.pos.x;
@@ -308,7 +318,7 @@ test(`seed ${SEED}: save round-trips mid-pay, then the clerk still takes the bil
 
 test(`seed ${SEED}: save round-trips mid-shift, then the remaining labor finishes`, () => {
   const first = boot(SEED);
-  raiseToImpound(first.sim.bus, first.state);
+  raiseToImpound(first.sim, first.state);
   first.sim.step();
   const yard = liveYard(first.state);
   first.player.pos.x = yard.pos.x;
@@ -344,7 +354,7 @@ test(`seed ${SEED}: save round-trips mid-shift, then the remaining labor finishe
 
 test(`seed ${SEED}: save round-trips at the lock, then the heist still cuts`, () => {
   const first = boot(SEED);
-  raiseToImpound(first.sim.bus, first.state);
+  raiseToImpound(first.sim, first.state);
   first.sim.step();
   const lock = liveLock(first.state);
   const snap = snapshotMidPath(first.state);
