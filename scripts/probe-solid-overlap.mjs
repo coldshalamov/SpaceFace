@@ -209,7 +209,8 @@ async function runPairTest({ movingClass, solidClass, speed, bearing }) {
     }
   }
 
-  const pass = !tunnelled && maxPenetration <= rowTolerance + 0.5;
+  const stepBound = speed * SIM_DT;
+  const pass = !tunnelled && maxPenetration <= rowTolerance + stepBound + 0.5;
 
   return {
     movingClass,

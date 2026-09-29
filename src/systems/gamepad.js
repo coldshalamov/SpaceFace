@@ -77,6 +77,10 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   dropBomb: Object.freeze(['dRight']),
   cycleBomb: Object.freeze(['dLeft']),
   chargeDetonate: Object.freeze(['dDown']), // flight only; UI navigation remains modal-owned
+  // Hull burst (Gravity Bumper / Fire Lance / Grip Bumper). Every standard button is already claimed by a
+  // flight verb, so the burst has no default pad button; it is rebindable (Settings > Controller) and the
+  // edge is read in input.js like every other pad verb.
+  hullBurst: Object.freeze([]),
 });
 const ACTION_MAP = GAMEPAD_DEFAULT_BINDINGS;
 
@@ -136,6 +140,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   dropBomb: 'flight',
   cycleBomb: 'flight',
   chargeDetonate: 'flight',
+  hullBurst: 'flight',
   massline: 'flight',
   deployRepulsor: 'flight',
   dock: 'flight',

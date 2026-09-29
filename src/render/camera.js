@@ -163,14 +163,7 @@ export const IMPACT_KICK_WU_MAX = 4;        // absolute displacement ceiling, wo
 export const CAMERA_HOLD_S = 0.15;
 export const DEATH_CAM_HOLD_S = 1.2;
 export const DEATH_CAM_PUSH_ZOOM = 0.22;
-// Structural clearance: the renderer reports the roof height of any large structure whose
-// footprint contains the camera's XZ. A roof has to stay put for a third of a second before
-// the camera believes it — a model swapping in, or a bound that flickers while it loads, is
-// not a roof. Once believed, the camera eases up and eases down at the same rate. A one-frame
-// appearance or disappearance does nothing.
-export const CAMERA_CLEARANCE_RELEASE_WU_S = 110;
-export const CAMERA_CLEARANCE_ADOPT_S = 0.30;
-const CAMERA_CLEARANCE_ROOF_JUMP_WU = 12;
+
 // PQ-159.03 photo mode. Free camera + exposure live on the chase controller; filters stay off
 // unless the player turns them on. Capture lives on the pause surface.
 export const PHOTO_EXPOSURE_DEFAULT = 1;
@@ -1176,23 +1169,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _recenterT = 0;         // seconds remaining in the recenter window
   let _recenterDur = 0;       // total window length (for the ease fraction)
   let _snappedPlayerId = null;
-  // World-Y floor the camera is actually riding. A reported roof becomes the target only
-  // after it has held still; the ridden floor eases toward that target in both directions.
-  let _clearanceY = 0;
-  let _clearanceCandidate = -Infinity;
-  let _clearanceCandidateAge = 0;
-  let _keepOutX = 0;
-  let _keepOutZ = 0;
-  let _keepOutTargetX = 0;
-  let _keepOutTargetZ = 0;
-  let _keepOutCandidateX = 0;
-  let _keepOutCandidateZ = 0;
-  let _keepOutCandidateAge = 0;
-  let _clearanceAbsentAge = 0;
-  let _clearanceTarget = 0;
-  // Predictive obstacle glide (cameraGlide.js). Owns clearance whenever the renderer offers a
-  // column-addressable roof query; the reactive floor/keep-out state above is the fallback for
-  // callers that only pass the bare floor callback.
+  // Predictive obstacle glide (cameraGlide.js). Owns clearance via the column-addressable roof query.
   const _glide = createCameraGlide();
   let _exceptionalHold = 0;
   let _anchorHoldX = 0;
@@ -1260,19 +1237,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // A snap is a teleport; any in-flight kick would read as the world sliding after a cut.
     _kick.envX = 0; _kick.envZ = 0; _kick.x = 0; _kick.z = 0;
     if (c.kickOffset) c.kickOffset.set(0, 0, 0);
-    _clearanceY = 0; // a teleport re-derives structure clearance at the destination, not here
-    _clearanceCandidate = -Infinity;
-    _clearanceCandidateAge = 0;
-    _clearanceAbsentAge = 0;
-    _clearanceTarget = 0;
     resetCameraGlide(_glide);
-    _keepOutX = 0;
-    _keepOutZ = 0;
-    _keepOutTargetX = 0;
-    _keepOutTargetZ = 0;
-    _keepOutCandidateX = 0;
-    _keepOutCandidateZ = 0;
-    _keepOutCandidateAge = 0;
     _exceptionalHold = 0;
     _anchorHoldValid = false;
     computeOffset(_dynamicZoom);
@@ -1912,68 +1877,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         camY *= s;
         c.clearanceScale = s;
         c.clearanceDiag = _glide.diag;
-      } else if (typeof clearanceAt === 'function') {
-        const floor = clearanceAt(camX, camZ, camY);
-        // A roof above the far plane cannot be a real structure — only a broken bound (the
-        // 2026-09-25 compounded asteroid scale reported ~1.4e8 and orbited the camera). Refuse
-        // it. A roof that appears, grows, or vanishes for less than a third of a second is the
-        // same kind of lie: a model loading. Only a roof that holds still may move the camera,
-        // and then only by easing.
-        const clearanceCeiling = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
-        const saneFloor = Number.isFinite(floor) && floor <= clearanceCeiling ? floor : -Infinity;
-        if (saneFloor > -Infinity) {
-          const fresh = !Number.isFinite(_clearanceCandidate)
-            || Math.abs(saneFloor - _clearanceCandidate) > CAMERA_CLEARANCE_ROOF_JUMP_WU;
-          _clearanceCandidate = saneFloor;
-          _clearanceCandidateAge = fresh ? 0 : _clearanceCandidateAge + frameDt;
-          _clearanceAbsentAge = 0;
-          if (_clearanceCandidateAge >= CAMERA_CLEARANCE_ADOPT_S) {
-            _clearanceTarget = _clearanceCandidate;
-          }
-        } else {
-          _clearanceAbsentAge += frameDt;
-          if (_clearanceAbsentAge >= CAMERA_CLEARANCE_ADOPT_S) {
-            _clearanceTarget = 0;
-            _clearanceCandidate = -Infinity;
-            _clearanceCandidateAge = 0;
-          }
-        }
-        if (_clearanceY > clearanceCeiling) _clearanceY = _clearanceTarget;
-        const clearanceStep = CAMERA_CLEARANCE_RELEASE_WU_S * frameDt;
-        if (_clearanceY < _clearanceTarget) {
-          _clearanceY = Math.min(_clearanceTarget, _clearanceY + clearanceStep);
-        } else if (_clearanceY > _clearanceTarget) {
-          _clearanceY = Math.max(_clearanceTarget, _clearanceY - clearanceStep);
-        }
-        if (_clearanceY > camY) camY = _clearanceY;
-        // Measured shells slide the camera in the plane. The same adopt hold and the same
-        // 110 WU/s step as the roof, so a loading mesh cannot yank the view and the ship stays put.
-        if (typeof clearanceAt.keepOut === 'function') {
-          const focusX = c.focus.x + c.kickOffset.x;
-          const focusZ = c.focus.z + c.kickOffset.z;
-          const slid = clearanceAt.keepOut(camX, camZ, focusX, focusZ, camY);
-          const desiredX = slid && Number.isFinite(slid.x) ? slid.x - camX : 0;
-          const desiredZ = slid && Number.isFinite(slid.z) ? slid.z - camZ : 0;
-          const jumped = Math.hypot(desiredX - _keepOutCandidateX, desiredZ - _keepOutCandidateZ) > CAMERA_CLEARANCE_ROOF_JUMP_WU;
-          _keepOutCandidateX = desiredX;
-          _keepOutCandidateZ = desiredZ;
-          _keepOutCandidateAge = jumped ? 0 : _keepOutCandidateAge + frameDt;
-          if (_keepOutCandidateAge >= CAMERA_CLEARANCE_ADOPT_S) {
-            _keepOutTargetX = desiredX;
-            _keepOutTargetZ = desiredZ;
-          }
-          let ox = _keepOutTargetX - _keepOutX;
-          let oz = _keepOutTargetZ - _keepOutZ;
-          const olen = Math.hypot(ox, oz);
-          if (olen > clearanceStep && olen > 0) {
-            ox = ox / olen * clearanceStep;
-            oz = oz / olen * clearanceStep;
-          }
-          _keepOutX += ox;
-          _keepOutZ += oz;
-        }
       }
-      cam.position.set(camX + _keepOutX + dollyX, camY, camZ + _keepOutZ + dollyZ);
+      cam.position.set(camX + dollyX, camY, camZ + dollyZ);
       cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so

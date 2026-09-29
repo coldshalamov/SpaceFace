@@ -72,6 +72,10 @@ export const COMBAT_FLAGS = {
   // hold refuses converts to credits through the economy owner instead of sitting there.
   // Production ON; legacy47a OFF (47-A predates kill bursts).
   arcadeLoot: _initial.combat.arcadeLoot,
+  // Hull-burst overhaul slice D (design doc section 7.5): the player's own kill loot goes to a SEPARATE salvage bay
+  // (about 5x the hold, never refuses; the ordinary hold and its trade/mining role are untouched), and docking cashes
+  // the bay in at a scrap rate. Production ON; legacy47a OFF (the frozen golden has no bay).
+  salvageBay: _initial.combat.salvageBay,
 };
 
 /** Read a combat flag by name; unknown names read false. Pure over the MAP (or instance features). */

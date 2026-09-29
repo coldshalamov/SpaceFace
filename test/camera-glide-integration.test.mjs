@@ -126,8 +126,3 @@ test('chase camera flying through a station: never inside, keeps its aim, settle
   assert.ok(state.camera.clearanceScale < 1.02, `dolly returned to the set framing (scale ${state.camera.clearanceScale.toFixed(3)})`);
 });
 
-test('chase camera without a column query still uses the legacy floor (compat)', () => {
-  const { cam } = chaseHarness();
-  for (let i = 0; i < 40; i++) cam.follow(0.05, 1, undefined, () => -Infinity);
-  assert.ok(cam.obj.position.y > 100 && cam.obj.position.y < 160);
-});

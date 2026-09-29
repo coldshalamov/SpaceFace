@@ -23,7 +23,7 @@ import { MODULES } from '../data/modules.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
-import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity, readPhysicsTelemetry } from '../core/physicsAuthority.js';
+import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   clearPickupAcceptanceRetry,
@@ -1213,14 +1213,15 @@ export const mining = {
         // compatibility backend and body-less test entities; the impulse is only queued for a
         // bound DYNAMIC spec — a spec'd-but-static body has no consumer for it.
         // Combat loot homes from any distance, but the physics owner only admits bodies near the player,
-        // so a far pickup has no body for an impulse to act on and nothing else integrates it. It has no
-        // live body, so it is stepped directly (measured: 1500 and 3000 WU pickups never moved before);
-        // once it comes inside the physics ring the owner builds its body from this pose and takes over.
-        const looseCombatLoot = combatLoot && readPhysicsTelemetry(e) == null;
-        if (looseCombatLoot) {
-          e.pos.x += finiteNum(e.vel.x) * dt;
-          e.pos.z += finiteNum(e.vel.z) * dt;
-        } else if (e.physicsBody && typeof e.physicsBody === 'object' && isDynamicPhysicsBodyEntity(e)) {
+        // so a far pickup has no body for an impulse to act on and nothing else integrates it. Whether a
+        // pickup HAS a live body is the owner's own answer: the port's applyImpulse returns false when it
+        // holds no record for the entity (SG-02 telemetry is NOT a test for that: a production browser
+        // publishes none). A body-less pickup is stepped directly (measured: 1500 and 3000 WU pickups
+        // never moved before); once it comes inside the physics ring the owner builds its body from this
+        // pose and takes over. A pickup that has a body takes the impulse ONLY (a direct step as well
+        // would move it twice: the owner resyncs the stepped pose and integrates it again).
+        let impulseMass = 0;
+        if (e.physicsBody && typeof e.physicsBody === 'object' && isDynamicPhysicsBodyEntity(e)) {
           const specMass = finiteNum(e.physicsBody.mass, 0);
           const entityMass = finiteNum(e.mass, 0);
           const baseMass = specMass > 0 ? specMass : entityMass > 0 ? entityMass : 1;
@@ -1228,11 +1229,29 @@ export const mining = {
             && state.combat.entities[String(e.id)]
             && state.combat.entities[String(e.id)].physicsResponse
             && state.combat.entities[String(e.id)].physicsResponse.massScale) || 1;
-          const mass = baseMass * Math.max(0.25, Math.min(8, scale));
+          impulseMass = baseMass * Math.max(0.25, Math.min(8, scale));
+        }
+        let bodyless = false;
+        if (combatLoot) {
+          const port = this.helpers && this.helpers.combatPhysics;
+          const accepted = impulseMass > 0 && port && typeof port.applyImpulse === 'function'
+            && port.applyImpulse({
+              entityId: e.id,
+              impulse: { x: appliedDvx * impulseMass, z: appliedDvz * impulseMass },
+              point: null,
+              reason: 'loot_homing',
+              tick: state.tick,
+            }) === true;
+          bodyless = !accepted;
+        }
+        if (bodyless) {
+          e.pos.x += finiteNum(e.vel.x) * dt;
+          e.pos.z += finiteNum(e.vel.z) * dt;
+        } else if (!combatLoot && impulseMass > 0) {
           const impulse = this._magnetImpulse;
-          impulse.x = appliedDvx * mass;
+          impulse.x = appliedDvx * impulseMass;
           impulse.y = 0;
-          impulse.z = appliedDvz * mass;
+          impulse.z = appliedDvz * impulseMass;
           queuePhysicsImpulse(e, impulse);
         }
         this._diag.pickupsMagnetized++;
