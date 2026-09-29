@@ -326,6 +326,21 @@ export class SpaceRenderGraph {
     u.uGrain.value = finite(this.options.grain, 0);
     this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, POST_DEFAULTS.bloomThreshold);
     this.bloomMaterial.uniforms.uKnee.value = finite(this.options.bloomKnee, 0.18);
+    // Keep the pyramid allocated only while bloom is on (see _allocate). Release on
+    // hard-disable; rebuild on re-enable without reallocating the other targets.
+    if (this.options.bloom === false && this.bloomTargets && this.bloomTargets.length > 0) {
+      for (const target of this.bloomTargets) target.dispose();
+      this.bloomTargets = [];
+    } else if (this.options.bloom !== false && this.sceneTarget
+        && this.bloomTargets && this.bloomTargets.length === 0) {
+      const rw = Math.max(1, Math.floor(this.width * this.options.renderScale));
+      const rh = Math.max(1, Math.floor(this.height * this.options.renderScale));
+      let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
+      for (let i = 0; i < 4; i++) {
+        this.bloomTargets.push(hdrTarget(bw, bh, false, 0));
+        bw = Math.max(1, bw >> 1); bh = Math.max(1, bh >> 1);
+      }
+    }
     if (this.sceneTarget && (previousRenderScale !== this.options.renderScale
       || previousAoScale !== this.options.aoScale || previousAo !== this.options.ao)) {
       this._allocate();
@@ -593,11 +608,16 @@ export class SpaceRenderGraph {
       this.aoTarget = ldrTarget(aw, ah, false);
       this.aoBlurTarget = ldrTarget(aw, ah, false);
     }
+    // Bloom pyramid only exists while the option is on: composite binds blackBloomTexture
+    // with zero strength while disabled, so the levels are pure dead memory then. Same
+    // live-toggle treatment as the AO targets above.
     this.bloomTargets = [];
-    let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
-    for (let i=0; i<4; i++) {
-      this.bloomTargets.push(hdrTarget(bw,bh,false,0));
-      bw = Math.max(1,bw>>1); bh = Math.max(1,bh>>1);
+    if (this.options.bloom !== false) {
+      let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
+      for (let i=0; i<4; i++) {
+        this.bloomTargets.push(hdrTarget(bw,bh,false,0));
+        bw = Math.max(1,bw>>1); bh = Math.max(1,bh>>1);
+      }
     }
     const dw = Math.max(1, rw >> 1);
     const dh = Math.max(1, rh >> 1);
