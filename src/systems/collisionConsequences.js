@@ -6,7 +6,7 @@
 // transient episode/control state stays outside the entity graph.
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { readTumbleStatus } from '../combat/tumbleStatus.js';
+import { isRecovering, readTumbleStatus } from '../combat/tumbleStatus.js';
 import { bodyLife, evidenceForConsequence } from '../combat/stuntEvidence.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
@@ -14,6 +14,7 @@ import {
   isWorldHitstunBody,
   publishHitstunImpulse,
   readRecentImpulseProvenance,
+  recordImpulseProvenance,
   resolveCollisionConsequence,
   signedHitSide,
 } from '../combat/impulseKernel.js';
@@ -227,6 +228,9 @@ export const collisionConsequences = {
       surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
     const provenance = ramPlate?.provenance || (observed?{actorId:observed.root.actorId,weaponId:observed.root.weaponId,
       tag:observed.root.kind==='constraint'?'massline':'weapon_hit',tick:observed.root.tick,rootId:observed.root.id}:causalProvenance);
+    // Hull-burst overhaul slice A (`combat.tumbleFling`): a hull that has lost its helm is a projectile,
+    // so what it strikes is knocked by the closing speed and both masses, not by one solver tick.
+    const strikerLoose = combatFlag('tumbleFling') && isLooseHull(state, other);
     const receipt = resolveCollisionConsequence({
       target,
       other,
@@ -238,8 +242,31 @@ export const collisionConsequences = {
       pos: payload.pos,
       normal: payload.normal,
       preSolveClosingSpeed: payload.preSolveClosingSpeed,
+      projectileStrike: strikerLoose
+        ? { strikerMass: positiveMass(other), closingSpeed: payload.preSolveClosingSpeed }
+        : null,
     });
     if (!receipt) return;
+    // The struck hull is now loose because of whoever knocked the striker loose: that credit chains.
+    // The struck hull gets its OWN fresh record (this contact is a new cause on it) so the flight hold
+    // in tumbleStates can carry the credit through ITS flight too; without it the second hull in a
+    // chain dies on a rock credited to nobody.
+    let hitProvenance = receipt.provenance;
+    if (strikerLoose && receipt.projectileKnock === true) {
+      const actorId = receipt.provenance.actorId;
+      const tag = receipt.provenance.tag;
+      if (actorId != null && actorId !== target.id && actorId !== other.id
+        && tag && tag !== 'environment' && tag !== 'direct_contact') {
+        recordImpulseProvenance(target, {
+          actorId,
+          weaponId: receipt.provenance.weaponId,
+          tag,
+          appliedTick: tick,
+          magnitude: receipt.exchangedMomentum,
+        });
+        hitProvenance = Object.freeze({ ...receipt.provenance, appliedTick: tick });
+      }
+    }
 
     publishHitstunImpulse(this.bus, {
       source: 'collision',
@@ -252,7 +279,7 @@ export const collisionConsequences = {
       dirZ: finite(receipt.normal && receipt.normal.z),
       hitSide: signedHitSide(target, receipt.normal, { pos: receipt.pos }, target.id),
       worldBody: isWorldHitstunBody(other),
-      provenance: receipt.provenance,
+      provenance: hitProvenance,
       tick,
     });
     const helmLossSeconds = helmLossFromTumbleStatus(readTumbleStatus(state, target), tick);
@@ -405,6 +432,12 @@ function helmLossFromTumbleStatus(status, tick) {
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+// A hull that has lost its helm: tumbling, or in the recovery beat that follows.
+function isLooseHull(state, entity) {
+  if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) return false;
+  return readTumbleStatus(state, entity) !== null || isRecovering(state, entity);
 }
 
 function contactImpulseProvenance(a, b, tick) {
