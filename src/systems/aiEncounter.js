@@ -1,4 +1,4 @@
-import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
+import { AI_CONTRACT_VERSION, wrapAngle } from '../ai/contracts.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -27,6 +27,26 @@ function publishAiEncounterQuiet(state, latched) {
 }
 
 const HISTORY_CAPACITY = 128;
+
+/** SF-053: reinforcements arrive FROM somewhere — one ingress lane per squad, resolved against
+ * live collision, the playable bound, and the pilot's escape pocket. A blocked candidate walks the
+ * lane deterministically; a squad that still has no legal spot by its deadline cancels and returns
+ * its reserved slots. */
+const REINFORCEMENT_INGRESS = Object.freeze({
+  fanSpreadRad: 0.75,        // members fan at most ±this around the lane bearing on the first try
+  laneSpacingWu: 90,         // lateral member spacing across the lane
+  radialStepWu: 140,         // a fully-blocked lane walks outward in this step
+  playerClearanceWu: 420,    // never materialize inside the pilot's immediate escape pocket
+  collisionMarginWu: 40,     // spawn point must clear a collidable's body by this margin
+  collisionScanWu: 600,      // query radius wide enough to catch station-scale bodies
+  boundsMarginWu: 90,        // land inside the playable soft radius by this margin
+  escapeConeRad: 0.6,        // a running pilot's flee line — preferred off, never required
+  escapeMinSpeedWu: 40,
+  maxPlacementAttempts: 16,
+  arrivalDeadlineTicks: 600, // a due squad that still cannot resolve a legal lane cancels
+  approachSpeedWu: 130,      // arrivals enter already flying inbound along the lane
+});
+const INGRESS_ANGLE_STEPS = Object.freeze([0, 0.55, -0.55, 1.1, -1.1, 1.65, -1.65, Math.PI]);
 
 const REINFORCEMENT_PACKAGES = Object.freeze({
   fixture_wing_pair: Object.freeze({
@@ -227,8 +247,40 @@ export const aiEncounter = {
       lastAppliedSeq: owner.lastAppliedSeq,
       pendingReinforcements: owner.pendingReinforcements.length,
       spawned: owner.spawned.length,
+      cancelled: owner.cancelled.length,
       rejectedCommands: owner.rejectedCommands.length,
     });
+  },
+
+  /** Live facts the ingress resolver needs: player pose, playable bound, collidable oracle. */
+  _ingressCtx(state) {
+    const ctx = this._ingressScratch || (this._ingressScratch = { scratch: [] });
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    ctx.playerPos = player && player.alive !== false && player.pos ? player.pos : null;
+    ctx.playerVel = player && player.vel ? player.vel : null;
+    ctx.bounds = state && state.bounds && Number.isFinite(state.bounds.radius) ? state.bounds : null;
+    ctx.queryRadius = typeof (this.helpers && this.helpers.queryRadius) === 'function'
+      ? this.helpers.queryRadius : null;
+    return ctx;
+  },
+
+  /** Re-validate the recorded spot, else walk the lane again against the world as it is NOW. */
+  _resolvePendingSpot(ctx, pending, state) {
+    if (pending.pos && ingressSpotLegal(ctx, pending.pos)) return pending.pos;
+    const seed = state && state.meta && state.meta.seed || 1;
+    const pkg = reinforcementPackage(pending.packageId);
+    return resolveIngressPosition(
+      ctx,
+      pending.anchor && Number.isFinite(pending.anchor.x) ? pending.anchor : spawnAnchor(state, null),
+      Number.isFinite(pending.ingressBearing) ? pending.ingressBearing
+        : unitHash(seed, pending.commandSeq, 'ingress') * Math.PI * 2,
+      pkg || {},
+      finiteInt(pending.memberIndex),
+      Math.max(1, finiteInt(pending.memberCount, 1)),
+      seed,
+      pending.commandSeq,
+    );
   },
 
   newGame() {
@@ -247,6 +299,16 @@ export const aiEncounter = {
       const authored = data.reinforcements;
       if (!authored || !authored.packageId || ai._calledReinforcements === true) continue;
       if (!(entity.hullMax > 0) || entity.hull / entity.hullMax >= finite(authored.hullThreshold, 0.3)) continue;
+      // SF-053: never announce a call whose squad cannot be reserved — the caller holds its
+      // latch and retries when a slot frees, so the banner only runs when help can actually come.
+      // The survival-run refusal mirrors spawnBudget.request's own gate: a Crucible round owns
+      // its combat population and a caller there can never field a squad.
+      const budget = this.helpers && this.helpers.spawnBudget;
+      if (budget && typeof budget.available === 'function' && budget.available() < 1) continue;
+      if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') continue;
+      // And never burn the once-ever latch on a package the owner cannot resolve — a bad
+      // authored id would announce once and then stay silent forever.
+      if (!reinforcementPackage(authored.packageId)) continue;
       const seq = encounter.nextSeq++;
       const command = Object.freeze({
         version: AI_CONTRACT_VERSION,
@@ -313,8 +375,21 @@ export const aiEncounter = {
     const count = reinforcementCount(pkg, state, command);
     const dueTick = Math.max(finiteInt(state.tick) + 1, finiteInt(state.tick) + finiteInt(pkg.delayTicks, 1));
     const squadId = `${pkg.squadPrefix}_${String(command.seq).padStart(4, '0')}`;
+    // SF-053: reserve the squad's slots when the promise is made, not when it lands. A partial
+    // grant reserves that many members; the rest stay queued unreserved and admit one-per-freed-
+    // slot at materialization (the shared-capacity contract) — never silently dropped, never
+    // spawned past the cap.
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const budgeted = !!(budget && typeof budget.request === 'function');
+    const granted = budgeted
+      ? Math.min(count, Math.max(0, finiteInt(budget.request(count, squadId))))
+      : count;
+    const seed = state && state.meta && state.meta.seed || 1;
+    const ingressBearing = unitHash(seed, command.seq, 'ingress') * Math.PI * 2;
+    const sectorId = state && state.world ? (state.world.currentSectorId || null) : null;
+    const ctx = this._ingressCtx(state);
     for (let index = 0; index < count; index++) {
-      const pos = spawnPosition(anchor, state, command, pkg, index);
+      const pos = resolveIngressPosition(ctx, anchor, ingressBearing, pkg, index, count, seed, command.seq);
       owner.pendingReinforcements.push({
         id: `reinforcement_${command.seq}_${index}`,
         commandSeq: command.seq,
@@ -322,8 +397,14 @@ export const aiEncounter = {
         typeId: pkg.typeId,
         level: pkg.level,
         dueTick,
+        deadlineTick: dueTick + REINFORCEMENT_INGRESS.arrivalDeadlineTicks,
         pos,
         anchor,
+        sectorId,
+        ingressBearing,
+        memberIndex: index,
+        memberCount: count,
+        reservedBudget: budgeted && index < granted,
         leashRadius: finite(pkg.leashRadius, 2600),
         doctrine: pkg.doctrine,
         factionId: pkg.factionId,
@@ -338,6 +419,7 @@ export const aiEncounter = {
       tick: command.tick,
       packageId: pkg.id,
       count,
+      reserved: granted,
       dueTick,
       budgetRemaining: Math.max(0, finiteInt(command.budgetRemaining)),
       callerId: command.callerId == null ? null : command.callerId,
@@ -347,117 +429,169 @@ export const aiEncounter = {
       tick: command.tick,
       packageId: pkg.id,
       count,
+      reserved: granted,
       dueTick,
+      anchor: Object.freeze({ x: anchor.x, z: anchor.z }),
+      ingressBearing,
       entityId: command.callerId == null ? null : command.callerId,
       callerId: command.callerId == null ? null : command.callerId,
     });
+    // A director-paced call has no caller hull to bark — announce the approach itself so the
+    // squad reads as an inbound lane, not a pop-in.
+    if (command.callerId == null) {
+      emit(this.bus, 'alert', {
+        key: `reinforcements_inbound_${command.seq}`, sev: 'warn',
+        text: 'HOSTILE REINFORCEMENTS INBOUND', ttl: 2.5,
+      });
+      emit(this.bus, 'toast', { text: 'Hostile reinforcements inbound!', kind: 'warn', ttl: 2.5 });
+    }
   },
 
   _spawnDue(owner, state) {
-    const helper = this.helpers && this.helpers.spawnEntity;
-    if (typeof helper !== 'function') return;
-    const budget = this.helpers && this.helpers.spawnBudget;
+    if (typeof (this.helpers && this.helpers.spawnEntity) !== 'function') return;
+    const ctx = this._ingressCtx(state);
     const keep = [];
     // Commit the survivors even when a spawn throws: without the finally a thrown helper leaves
     // already-spawned members in the pending array, so the next tick re-spawns duplicates and
     // leaks their budget grants.
     try {
-    for (const pending of owner.pendingReinforcements) {
-      if (finiteInt(pending.dueTick) > finiteInt(state.tick)) {
-        keep.push(pending);
-        continue;
+      for (const pending of owner.pendingReinforcements) {
+        try {
+          this._materializePending(ctx, owner, pending, keep, state);
+        } catch (error) {
+          // A failed member must not abort the tick or leak the pending tail: release this
+          // member's slot on the record and keep walking the rest of the queue.
+          cancelReinforcement(this.helpers, owner, pending, 'spawn_threw', state, this.bus);
+        }
       }
-      // Reinforcements are ordinary live combatants and therefore share the same hard cap as
-      // authored encounters. Keep a due ship pending when saturated; the first released slot lets
-      // it arrive on the next deterministic tick instead of silently overflowing the sector.
-      const budgeted = !!(budget && typeof budget.request === 'function');
-      if (budgeted && budget.request(1, pending.squadId) <= 0) {
-        keep.push(pending);
-        continue;
-      }
-      // Faction must enter the factory: its presence doctrine, contact behavior, and bark identity
-      // are derived there and cannot be repaired by patching only spec.factionId afterward.
-      const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos, {
-        factionId: pending.factionId || undefined,
-        startedTick: state.tick,
-      });
-      spec.data = spec.data || {};
-      const baseAI = spec.data.ai || {};
-      spec.data.ai = {
-        ...baseAI,
-        squadId: pending.squadId,
-        doctrine: pending.doctrine,
-        preferredRole: 'attack',
-        capabilities: mergeCapabilities(baseAI.capabilities, ['drive', 'sensor', 'weapon']),
-        spawnContext: 'sg06_reinforcement',
-        encounterId: `sg06:${pending.commandSeq}`,
-        encounterKind: 'sg06_reinforcement',
-        encounterRole: 'reinforcement',
-        cohortRecipe: pending.cohortRecipe || undefined,
-        squadRecipe: pending.squadRecipe || undefined,
-        activity: normalizeActivity({
-          kind: ActivityKind.ATTACK_RUN,
-          reason: `sg06_reinforcement:${pending.packageId}`,
-          anchor: pending.anchor,
-          leashRadius: pending.leashRadius,
-          startedTick: finiteInt(state.tick),
-          encounterId: `sg06:${pending.commandSeq}`,
-        }),
-        roe: RulesOfEngagement.WEAPONS_FREE,
-      };
-      spec.data.reinforcements = null;
-      spec.data.encounter = {
-        owner: 'sg06',
-        commandSeq: pending.commandSeq,
-        packageId: pending.packageId,
-        callerId: pending.callerId == null ? null : pending.callerId,
-      };
-      let entity;
-      try {
-        entity = helper(spec);
-      } catch (error) {
-        if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(pending.squadId, 1);
-        throw error;
-      }
-      if (!entity || entity.id == null) {
-        if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(pending.squadId, 1);
-        continue;
-      }
-      if (budgeted && typeof budget.bindEntity === 'function') {
-        budget.bindEntity(entity.id, pending.squadId);
-      }
-      // Persisted proof the call produced arrivals: the caller's latch survives saves while the
-      // pending queue is transient, so load reconciliation needs this to tell "squad arrived"
-      // from "squad lost to the rebuild" (caller re-calls then).
-      const caller = pending.callerId == null || !state.entities || typeof state.entities.get !== 'function'
-        ? null : state.entities.get(pending.callerId);
-      if (caller && caller.data) {
-        caller.data.ai = caller.data.ai || {};
-        caller.data.ai._reinforcementsDelivered = true;
-      }
-      const record = {
-        commandSeq: pending.commandSeq,
-        packageId: pending.packageId,
-        entityId: entity.id,
-        typeId: pending.typeId,
-        tick: finiteInt(state.tick),
-        pos: { x: finite(pending.pos && pending.pos.x), z: finite(pending.pos && pending.pos.z) },
-      };
-      const firstOfSquad = !owner.spawned.some((r) => r.commandSeq === pending.commandSeq);
-      pushCapped(owner.spawned, record);
-      emit(this.bus, 'ai:reinforcementSpawned', record);
-      if (firstOfSquad) {
-        emit(this.bus, 'alert', {
-          key: `reinforcements_arrived_${pending.commandSeq}`,
-          sev: 'warn',
-          text: 'REINFORCEMENTS ON FIELD',
-          ttl: 2.5,
-        });
-        emit(this.bus, 'toast', { text: 'Reinforcements have arrived.', kind: 'warn', ttl: 2.5 });
-      }
-    }
     } finally {
       owner.pendingReinforcements = keep;
+    }
+  },
+
+  _materializePending(ctx, owner, pending, keep, state) {
+    const helper = this.helpers && this.helpers.spawnEntity;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const budgeted = !!(budget && typeof budget.request === 'function');
+    // The call was made against a sector the world has since left. Continuous corridor
+    // handoffs keep the corridor bound so the lane stays legal; a real departure abandons
+    // the squad — its reserved slots return and the cancellation is on the record. Checked
+    // before the due gate: a departed squad is not "inbound" anywhere, and the director
+    // reads pendingReinforcements as committed threat.
+    if (reinforcementAbandoned(pending, state)) {
+      cancelReinforcement(this.helpers, owner, pending, 'sector_departure', state, this.bus);
+      return;
+    }
+    if (finiteInt(pending.dueTick) > finiteInt(state.tick)) {
+      keep.push(pending);
+      return;
+    }
+    const spot = this._resolvePendingSpot(ctx, pending, state);
+    if (!spot) {
+      if (finiteInt(state.tick) >= finiteInt(pending.deadlineTick, finiteInt(pending.dueTick))) {
+        cancelReinforcement(this.helpers, owner, pending, 'placement_unreachable', state, this.bus);
+        return;
+      }
+      keep.push(pending);
+      return;
+    }
+    pending.pos = spot;
+    // Fallback for pending records written without a schedule-time reservation (a budget-less
+    // fixture or a future producer): claim the slot at materialization, same as always. The
+    // claim must mark the record reserved — an unflagged slot would leak through
+    // cancelReinforcement's release gate if the spawn then fails.
+    if (budgeted && pending.reservedBudget !== true) {
+      if (budget.request(1, pending.squadId) <= 0) {
+        if (finiteInt(state.tick) >= finiteInt(pending.deadlineTick, finiteInt(pending.dueTick))) {
+          cancelReinforcement(this.helpers, owner, pending, 'budget_unavailable', state, this.bus);
+          return;
+        }
+        keep.push(pending);
+        return;
+      }
+      pending.reservedBudget = true;
+    }
+    // Faction must enter the factory: its presence doctrine, contact behavior, and bark identity
+    // are derived there and cannot be repaired by patching only spec.factionId afterward.
+    const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos, {
+      factionId: pending.factionId || undefined,
+      startedTick: state.tick,
+    });
+    // SF-053: arrive THROUGH the lane — nose and velocity already carry the squad inbound
+    // toward the anchor, so the approach reads as a flight-in instead of a materialization.
+    const inward = unitTowardAnchor(pending.pos, pending.anchor);
+    spec.rot = wrapAngle(Math.atan2(inward.z, inward.x));
+    spec.vel = {
+      x: inward.x * REINFORCEMENT_INGRESS.approachSpeedWu,
+      z: inward.z * REINFORCEMENT_INGRESS.approachSpeedWu,
+    };
+    spec.data = spec.data || {};
+    const baseAI = spec.data.ai || {};
+    spec.data.ai = {
+      ...baseAI,
+      squadId: pending.squadId,
+      doctrine: pending.doctrine,
+      preferredRole: 'attack',
+      capabilities: mergeCapabilities(baseAI.capabilities, ['drive', 'sensor', 'weapon']),
+      spawnContext: 'sg06_reinforcement',
+      encounterId: `sg06:${pending.commandSeq}`,
+      encounterKind: 'sg06_reinforcement',
+      encounterRole: 'reinforcement',
+      cohortRecipe: pending.cohortRecipe || undefined,
+      squadRecipe: pending.squadRecipe || undefined,
+      activity: normalizeActivity({
+        kind: ActivityKind.ATTACK_RUN,
+        reason: `sg06_reinforcement:${pending.packageId}`,
+        anchor: pending.anchor,
+        leashRadius: pending.leashRadius,
+        startedTick: finiteInt(state.tick),
+        encounterId: `sg06:${pending.commandSeq}`,
+      }),
+      roe: RulesOfEngagement.WEAPONS_FREE,
+    };
+    spec.data.reinforcements = null;
+    spec.data.encounter = {
+      owner: 'sg06',
+      commandSeq: pending.commandSeq,
+      packageId: pending.packageId,
+      callerId: pending.callerId == null ? null : pending.callerId,
+    };
+    const entity = helper(spec);
+    if (!entity || entity.id == null) {
+      cancelReinforcement(this.helpers, owner, pending, 'spawn_refused', state, this.bus);
+      return;
+    }
+    if (budgeted && typeof budget.bindEntity === 'function') {
+      budget.bindEntity(entity.id, pending.squadId);
+    }
+    // Persisted proof the call produced arrivals: the caller's latch survives saves while the
+    // pending queue is transient, so load reconciliation needs this to tell "squad arrived"
+    // from "squad lost to the rebuild" (caller re-calls then).
+    const caller = pending.callerId == null || !state.entities || typeof state.entities.get !== 'function'
+      ? null : state.entities.get(pending.callerId);
+    if (caller && caller.data) {
+      caller.data.ai = caller.data.ai || {};
+      caller.data.ai._reinforcementsDelivered = true;
+    }
+    const record = {
+      commandSeq: pending.commandSeq,
+      packageId: pending.packageId,
+      entityId: entity.id,
+      typeId: pending.typeId,
+      tick: finiteInt(state.tick),
+      pos: { x: finite(pending.pos && pending.pos.x), z: finite(pending.pos && pending.pos.z) },
+    };
+    const firstOfSquad = !owner.spawned.some((r) => r.commandSeq === pending.commandSeq);
+    pushCapped(owner.spawned, record);
+    emit(this.bus, 'ai:reinforcementSpawned', record);
+    if (firstOfSquad) {
+      emit(this.bus, 'alert', {
+        key: `reinforcements_arrived_${pending.commandSeq}`,
+        sev: 'warn',
+        text: 'REINFORCEMENTS ON FIELD',
+        ttl: 2.5,
+      });
+      emit(this.bus, 'toast', { text: 'Reinforcements have arrived.', kind: 'warn', ttl: 2.5 });
     }
   },
 
@@ -485,6 +619,7 @@ function ensureOwnerState(state) {
   owner.pendingReinforcements = array(owner.pendingReinforcements);
   owner.scheduled = array(owner.scheduled);
   owner.spawned = array(owner.spawned);
+  owner.cancelled = array(owner.cancelled);
   owner.rejectedCommands = array(owner.rejectedCommands);
   owner.phaseHistory = array(owner.phaseHistory);
   owner.retreatOrders = array(owner.retreatOrders);
@@ -516,15 +651,144 @@ function reinforcementCount(pkg, state, command) {
   return Math.min(max, min + Math.floor(roll * (max - min + 1)));
 }
 
-function spawnPosition(anchor, state, command, pkg, index) {
-  const seed = state && state.meta && state.meta.seed || 1;
-  const a = unitHash(seed, command.seq, index, 'angle') * Math.PI * 2;
-  const t = unitHash(seed, command.seq, index, 'radius');
-  const radius = finite(pkg.radiusMin, 180) + (finite(pkg.radiusMax, 240) - finite(pkg.radiusMin, 180)) * t;
-  return {
-    x: anchor.x + Math.cos(a) * radius,
-    z: anchor.z + Math.sin(a) * radius,
-  };
+/**
+ * Resolve one member's spawn point on the squad's ingress lane. Members fan inside
+ * ±fanSpreadRad around the bearing and spread laneSpacingWu across it, so the wing arrives
+ * from a readable direction instead of popping onto a ring. Candidates are walked through a
+ * fixed angle/radius retry table; the first pass also prefers spots off a running pilot's
+ * flee line (a preference — the hard gates are bounds, collision, and the clearance floor).
+ */
+function resolveIngressPosition(ctx, anchor, bearing, pkg, index, count, seed, seq) {
+  const cfg = REINFORCEMENT_INGRESS;
+  const t = unitHash(seed, seq, index, 'radius');
+  const radiusMin = finite(pkg && pkg.radiusMin, 180);
+  let baseRadius = radiusMin + (finite(pkg && pkg.radiusMax, 240) - radiusMin) * t;
+  const fan = (unitHash(seed, seq, index, 'fan') * 2 - 1) * (count > 1 ? cfg.fanSpreadRad : 0);
+  const lateral = (index - (count - 1) / 2) * cfg.laneSpacingWu;
+  // An anchor inside the pilot's pocket (director calls anchor on the pilot) leaves no authored
+  // ring point on the lane's far side legal — widen the ring just enough that far-side angles
+  // clear the floor. The legality gate still verifies every candidate; this only stops a
+  // hopeless authored band from walking the whole retry table.
+  const playerPos = ctx && ctx.playerPos;
+  if (playerPos) {
+    const anchorDist = Math.hypot(anchor.x - finite(playerPos.x), anchor.z - finite(playerPos.z));
+    if (anchorDist < cfg.playerClearanceWu) {
+      baseRadius = Math.max(baseRadius,
+        cfg.playerClearanceWu - anchorDist + Math.abs(lateral) + 60);
+    }
+  }
+  const perpX = -Math.sin(bearing);
+  const perpZ = Math.cos(bearing);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let attempt = 0; attempt < cfg.maxPlacementAttempts; attempt++) {
+      const angle = bearing + fan + INGRESS_ANGLE_STEPS[attempt % INGRESS_ANGLE_STEPS.length];
+      const radius = baseRadius + Math.floor(attempt / INGRESS_ANGLE_STEPS.length) * cfg.radialStepWu;
+      const pos = {
+        x: anchor.x + Math.cos(angle) * radius + perpX * lateral,
+        z: anchor.z + Math.sin(angle) * radius + perpZ * lateral,
+      };
+      if (pass === 0 && inEscapeCone(ctx, pos)) continue;
+      if (ingressSpotLegal(ctx, pos)) return pos;
+    }
+  }
+  return null;
+}
+
+/** Hard placement gates: inside the playable bound, out of the pilot's pocket, no collision. */
+function ingressSpotLegal(ctx, pos) {
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+  const cfg = REINFORCEMENT_INGRESS;
+  const bounds = ctx && ctx.bounds;
+  if (bounds) {
+    const c = bounds.center || { x: 0, z: 0 };
+    const limit = Math.max(0, finite(bounds.radius) - cfg.boundsMarginWu);
+    const dx = pos.x - finite(c.x);
+    const dz = pos.z - finite(c.z);
+    if (dx * dx + dz * dz > limit * limit) return false;
+  }
+  const playerPos = ctx && ctx.playerPos;
+  if (playerPos) {
+    const dx = pos.x - finite(playerPos.x);
+    const dz = pos.z - finite(playerPos.z);
+    if (dx * dx + dz * dz < cfg.playerClearanceWu * cfg.playerClearanceWu) return false;
+  }
+  const query = ctx && ctx.queryRadius;
+  if (query) {
+    const scratch = ctx.scratch || [];
+    query(pos, cfg.collisionScanWu, scratch);
+    for (const entity of scratch) {
+      if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
+      // Stations/gates carry a compound collision proxy whose spars outrun `radius`; their
+      // authored physical extent is dockRadius. Clear the real footprint, not the core scalar.
+      const footprint = Math.max(finite(entity.radius, 0),
+        finite(entity.data && entity.data.dockRadius));
+      const need = footprint + cfg.collisionMarginWu;
+      const dx = entity.pos.x - pos.x;
+      const dz = entity.pos.z - pos.z;
+      if (dx * dx + dz * dz < need * need) return false;
+    }
+    scratch.length = 0;
+  }
+  return true;
+}
+
+/** Soft preference: a running pilot's flee line is the last place an arrival should cut off. */
+function inEscapeCone(ctx, pos) {
+  const playerPos = ctx && ctx.playerPos;
+  const playerVel = ctx && ctx.playerVel;
+  if (!playerPos || !playerVel) return false;
+  const speed = Math.hypot(finite(playerVel.x), finite(playerVel.z));
+  if (speed < REINFORCEMENT_INGRESS.escapeMinSpeedWu) return false;
+  const dx = pos.x - finite(playerPos.x);
+  const dz = pos.z - finite(playerPos.z);
+  const d = Math.hypot(dx, dz);
+  if (d < 1e-6) return true;
+  return (dx * playerVel.x + dz * playerVel.z) / (d * speed)
+    > Math.cos(REINFORCEMENT_INGRESS.escapeConeRad);
+}
+
+/**
+ * The call is abandoned when the squad would now land in a world the pilot is no longer in.
+ * Continuous corridor handoffs keep the shared corridor bound — the lane stays legal — while
+ * a real departure puts the anchor outside the playable bound and cancels the squad.
+ */
+function reinforcementAbandoned(pending, state) {
+  const currentSector = state && state.world ? state.world.currentSectorId || null : null;
+  if (pending.sectorId == null || currentSector == null || pending.sectorId === currentSector) return false;
+  const bounds = state && state.bounds;
+  if (!bounds || !Number.isFinite(bounds.hardRadius)) return true;
+  const c = bounds.center || { x: 0, z: 0 };
+  const dx = finite(pending.anchor && pending.anchor.x) - finite(c.x);
+  const dz = finite(pending.anchor && pending.anchor.z) - finite(c.z);
+  return dx * dx + dz * dz > bounds.hardRadius * bounds.hardRadius;
+}
+
+function cancelReinforcement(helpers, owner, pending, reason, state, bus) {
+  if (pending.reservedBudget === true) {
+    const budget = helpers && helpers.spawnBudget;
+    if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(pending.squadId, 1);
+  }
+  pushCapped(owner.cancelled, {
+    commandSeq: pending.commandSeq,
+    packageId: pending.packageId,
+    tick: finiteInt(state && state.tick),
+    reason: String(reason),
+  });
+  emit(bus, 'ai:reinforcementCancelled', {
+    seq: pending.commandSeq,
+    tick: finiteInt(state && state.tick),
+    packageId: pending.packageId,
+    reason: String(reason),
+    callerId: pending.callerId == null ? null : pending.callerId,
+  });
+}
+
+/** Unit vector from the spawn spot toward the anchor — the direction the arrival flies in. */
+function unitTowardAnchor(pos, anchor) {
+  const dx = finite(anchor && anchor.x) - finite(pos && pos.x);
+  const dz = finite(anchor && anchor.z) - finite(pos && pos.z);
+  const d = Math.hypot(dx, dz);
+  return d > 1e-6 ? { x: dx / d, z: dz / d } : { x: 1, z: 0 };
 }
 
 function reject(owner, command, reason) {

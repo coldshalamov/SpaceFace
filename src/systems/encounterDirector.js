@@ -313,6 +313,9 @@ export const encounterDirector = {
     this.state.encounterDirector = freshState();
     ensureNamed(this.state.encounterDirector);
     publishEscalationSeeds([]);
+    // The tactical director reads this published phase — a stale 'quiet' from the previous run
+    // would hold its respite into the new session until the first flight tick republished.
+    publishSessionRhythmPhase(null);
   },
 
   update(dt, state) {
@@ -332,7 +335,11 @@ export const encounterDirector = {
     const lastNow = Number.isFinite(dir._lastUpdateNow) ? dir._lastUpdateNow : now;
     dir._lastUpdateNow = now;
     dir._accum = (dir._accum || 0) + Math.max(0, now - lastNow);
-    if (dir._accum < 1) return;                        // director runs at 1 Hz — no per-frame work
+    // The 1 Hz accumulator must not starve the rhythm's FIRST publish: the baseline phase is
+    // what the tactical director reads, and holding it back for a full second of sim makes an
+    // update at the same simTime as ensure (fresh boot, the pinned test) emit nothing.
+    if (dir._accum < 1 && dir.sessionRhythm != null) return;  // director runs at 1 Hz after baseline
+
     const step = dir._accum;
     dir._accum = 0;
     this._accrue(dir, state, step);

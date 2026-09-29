@@ -39,6 +39,18 @@ const DEFAULT_CONFIG = Object.freeze({
   reinforcementCooldownTicks: 240,
   maxReinforcementBudget: 4,
   narrativeCooldownTicks: 300,
+  // SF-054: a breather arms only after sustained real safety, holds under a hysteresis band,
+  // ends the tick a threat becomes actionable, and cannot re-arm during the refractory cooldown.
+  // The max-hold bound keeps the interval "temporary" even if the pilot kites forever.
+  breatherEnterThreat: 0.1,
+  breatherExitThreat: 0.3,
+  breatherArmTicks: 120,
+  breatherCooldownTicks: 360,
+  breatherMaxTicks: 720,
+  breatherTargetCeiling: 0.22,
+  // A reinforcement call stays "committed" through its announced approach window: the squad may
+  // not stand down while its own inbound screen is still on the lane.
+  breatherReinforceGraceTicks: 210,
 });
 
 export class EncounterDirector {
@@ -56,6 +68,11 @@ export class EncounterDirector {
       reinforcementCooldown: 0,
       narrativeCooldown: 0,
       beatIndex: 0,
+      breatherActive: false,
+      breatherTicks: 0,
+      breatherHoldTicks: 0,
+      breatherCooldown: 0,
+      lastReinforceTick: null,
       lastDecision: 'initial_respite',
     };
   }
@@ -74,9 +91,18 @@ export class EncounterDirector {
       (telemetry.friendlyLowHullFraction || 0) * 0.25 +
       (telemetry.recentDamage || 0) * 0.2,
     );
+    // SF-054: dominance reads ACTIONABLE opposition — contacts that can hurt the squad now —
+    // not every remembered hostile. A producer that cannot compute actionability degrades to the
+    // legacy coarse fields instead of silently reporting zero pressure.
+    const actionableThreat = telemetry.actionableThreat != null
+      ? saturate(telemetry.actionableThreat)
+      : saturate(telemetry.visibleThreat || 0);
+    const actionableContacts = telemetry.actionableContacts != null
+      ? finiteInt(telemetry.actionableContacts)
+      : finiteInt(telemetry.hostileContacts);
     const dominance = saturate(
-      (telemetry.visibleThreat || 0) * 0.45 +
-      Math.min(1, (telemetry.hostileContacts || 0) / 6) * 0.25 +
+      actionableThreat * 0.45 +
+      Math.min(1, actionableContacts / 6) * 0.25 +
       (telemetry.objectiveProgress || 0) * 0.2 +
       Math.min(1, (telemetry.tetherThreats || 0) / 2) * 0.1,
     );
@@ -86,8 +112,13 @@ export class EncounterDirector {
       this._setPhase(DirectorPhase.RESPITE);
     }
 
+    const committedInbound = finiteInt(authored.pendingReinforcements) > 0
+      || (s.lastReinforceTick != null && tick - s.lastReinforceTick <= cfg.breatherReinforceGraceTicks);
+    this._updateBreather(actionableThreat, committedInbound);
+
     const authoredBias = clamp(Number(authored.pressureBias) || 0, -0.35, 0.35);
-    const target = clamp(0.22 + dominance * 0.62 - distress * 0.48 + authoredBias, envelope.min, envelope.max);
+    let target = clamp(0.22 + dominance * 0.62 - distress * 0.48 + authoredBias, envelope.min, envelope.max);
+    if (s.breatherActive) target = Math.min(target, cfg.breatherTargetCeiling);
     s.targetPressure = target;
     const delta = target - s.pressure;
     const slew = delta >= 0 ? cfg.pressureRisePerTick : cfg.pressureFallPerTick;
@@ -101,11 +132,15 @@ export class EncounterDirector {
       push('hold_phase', 1, 'session rhythm quiet/aftermath holds respite');
     } else if (s.phase === DirectorPhase.RESPITE) {
       push('begin_build', s.phaseTick >= cfg.respiteMinTicks ? saturate((target - cfg.respiteThreshold) * 1.8) : 0, 'pressure target recovered');
-      if (s.phaseTick >= cfg.respiteMaxTicks) push('begin_build', 1, 'maximum respite elapsed');
+      // A live breather is real safety, not a pause: even the maximum-dwell force may not start
+      // a build while the field is clear. The breather's own max-hold bound ends it instead.
+      if (s.phaseTick >= cfg.respiteMaxTicks && !s.breatherActive) push('begin_build', 1, 'maximum respite elapsed');
     } else if (s.phase === DirectorPhase.BUILD) {
       push('enter_peak', s.phaseTick >= cfg.buildMinTicks ? saturate((s.pressure - cfg.peakThreshold) * 3 + dominance * 0.4) : 0, 'pressure reached authored peak band');
       if (s.phaseTick >= cfg.buildMaxTicks) push('enter_peak', 1, 'maximum build elapsed');
       push('retreat', distress >= cfg.distressThreshold ? distress : 0, 'observed squad distress');
+      // The build dissolves back to respite when the pilot has actually made the field safe.
+      if (s.breatherActive) push('begin_respite', 0.8, 'opposition created real breathing room');
     } else if (s.phase === DirectorPhase.PEAK) {
       push('begin_respite', s.phaseTick >= cfg.peakMinTicks ? saturate((cfg.peakThreshold - target) * 2 + distress * 0.8) : 0, 'peak delivered or squad distressed');
       if (s.phaseTick >= cfg.peakMaxTicks) push('begin_respite', 1, 'maximum peak elapsed');
@@ -115,7 +150,7 @@ export class EncounterDirector {
     }
 
     const huntAlreadySeeded = sessionHasHuntEscalation(authored, telemetry);
-    if (!holdRespite && !huntAlreadySeeded && s.phase === DirectorPhase.BUILD
+    if (!holdRespite && !huntAlreadySeeded && !s.breatherActive && s.phase === DirectorPhase.BUILD
       && s.reinforcementBudget > 0 && s.reinforcementCooldown === 0) {
       push('reinforce', dominance >= cfg.reinforceThreshold && distress < 0.45 ? dominance : 0, 'visible opposition supports escalation');
     }
@@ -135,7 +170,7 @@ export class EncounterDirector {
         decision: 'pace_encounter',
         selected: { ...selected, phase: s.phase, pressure: s.pressure, command },
         candidates,
-        context: { telemetry, distress, dominance, envelope, targetPressure: target },
+        context: { telemetry, distress, dominance, actionableThreat, committedInbound, envelope, targetPressure: target },
       });
     }
 
@@ -145,8 +180,37 @@ export class EncounterDirector {
       pressure: s.pressure,
       targetPressure: s.targetPressure,
       reinforcementBudget: s.reinforcementBudget,
+      breather: s.breatherActive,
       command,
     });
+  }
+
+  _updateBreather(actionableThreat, committedInbound) {
+    const cfg = this.config;
+    const s = this.state;
+    if (s.breatherActive) {
+      s.breatherHoldTicks++;
+      if (committedInbound
+        || actionableThreat >= cfg.breatherExitThreat
+        || s.breatherHoldTicks >= cfg.breatherMaxTicks) {
+        s.breatherActive = false;
+        s.breatherTicks = 0;
+        s.breatherHoldTicks = 0;
+        s.breatherCooldown = cfg.breatherCooldownTicks;
+      }
+      return;
+    }
+    s.breatherCooldown = Math.max(0, s.breatherCooldown - 1);
+    if (s.breatherCooldown === 0 && !committedInbound && actionableThreat <= cfg.breatherEnterThreat) {
+      s.breatherTicks++;
+      if (s.breatherTicks >= cfg.breatherArmTicks) {
+        s.breatherActive = true;
+        s.breatherTicks = 0;
+        s.breatherHoldTicks = 0;
+      }
+    } else {
+      s.breatherTicks = 0;
+    }
   }
 
   _applyDecision(id, tick, authored) {
@@ -170,6 +234,7 @@ export class EncounterDirector {
     } else if (id === 'reinforce') {
       s.reinforcementBudget--;
       s.reinforcementCooldown = cfg.reinforcementCooldownTicks;
+      s.lastReinforceTick = tick;
       command = {
         type: 'request_reinforcement',
         packageId: authored.reinforcementPackageId || null,

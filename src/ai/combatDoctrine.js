@@ -282,9 +282,11 @@ export class CombatDoctrineRuntime {
       : disabledNonlethalTargetId != null && stableId(disabledNonlethalTargetId) === stableId(target.id);
     if (disabledNonlethalTarget) {
       // The disabled-target egress must name a phase the doctrine's own update loop advances —
-      // egressPhaseFor owns that mapping (a hardcoded 'retreat'/'breakaway' here parked doctrines
-      // whose update has no such branch on the egress point forever).
-      const egressPhase = egressPhaseFor(record);
+      // egressPhaseFor owns that mapping for a PRESSURE break, but a completed disable is not a
+      // disengage leg: an interceptor's 'extend' re-approaches for another pass, which would
+      // loop back onto the disabled hull it was sent to spare. Completion takes 'breakaway'.
+      const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY
+        ? 'breakaway' : egressPhaseFor(record);
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
       return snapshot(record, target, directive, factionBehavior, self);
     }
@@ -424,6 +426,12 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
     }
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
     (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
+    beginReform(record, tick);
+  } else if (record.phase === 'breakaway' && age >= INTERCEPTOR_EXTEND_TICKS &&
+    (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
+    // A completed-disable egress lands here so the hull never re-approaches its spared target.
+    // While the target stays disabled the caller re-pins this phase each tick; a repaired
+    // target must release the ship back to its cycle instead of parking on a stale egress.
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');

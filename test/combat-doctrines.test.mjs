@@ -9,6 +9,7 @@ import { createSG03ActionPort } from '../src/ai/sg03ActionPort.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { ENCOUNTERS, NAMED_CAPTAINS } from '../src/data/encounters.js';
+import { sampleFactionBehavior } from '../src/data/factionDoctrines.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { planEncounterShape } from '../src/systems/encounterDirector.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
@@ -719,6 +720,33 @@ for (const [label, selfOverrides, contactOverrides] of [
     return trace;
   };
   assert.deepEqual(run(), run(), 'same seed and sensor frames produce identical doctrine traces');
+}
+
+{
+  // A completed disable parks the interceptor in 'breakaway' so it never re-approaches the
+  // spared hull — but the egress must stay bounded: a repaired target releases the ship back
+  // into its cycle instead of freezing on a stale egress point.
+  const runtime = new CombatDoctrineRuntime({ seed: 4242 });
+  const spared = shipContact(1, { x: 900, mobilityBand: 'high', threat: 0.9 });
+  // Pitborn's authored profile carries disableThenRun — the doctrine's disabled-target fallback
+  // only evaluates a real normalized faction profile, not a partial shape.
+  const selfOpts = { factionBehavior: sampleFactionBehavior('faction_pitborn', 4242, 1)[0] };
+  const call = (tick) => runtime.update({
+    tick, entityId: 55, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([spared], selfOpts), directive,
+  });
+  call(0);
+  spared.disabled = true;
+  assert.equal(call(30).phase, 'breakaway', 'a completed disable takes the breakaway egress');
+  for (let t = 60; t <= 600; t += 60) {
+    assert.equal(call(t).phase, 'breakaway', `the hold persists while the hull stays disabled (tick ${t})`);
+  }
+  spared.disabled = false;
+  let released = false;
+  for (let t = 630; t <= 1400; t += 10) {
+    if (call(t).phase === 'ingress') { released = true; break; }
+  }
+  assert.ok(released, 'a repaired target releases the interceptor back into its cycle');
 }
 
 {

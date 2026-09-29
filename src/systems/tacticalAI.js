@@ -453,7 +453,16 @@ export function createTacticalAISystem({
       const authored = typeof authoredEncounter === 'function'
         ? authoredEncounter(tick, state, ctxRef)
         : (authoredEncounter || {});
-      const result = liveStack.update(tick, authored);
+      // SF-054: a reinforcement squad that was announced but has not landed is still a committed
+      // threat — the director's safety window must see it, so the breather cannot fire while help
+      // is inbound on the lane.
+      const pendingReinforcements = state && state.aiEncounter && state.aiEncounter.owner
+        && Array.isArray(state.aiEncounter.owner.pendingReinforcements)
+        ? state.aiEncounter.owner.pendingReinforcements.length : 0;
+      const authoredForStack = pendingReinforcements > 0
+        ? { ...authored, pendingReinforcements }
+        : authored;
+      const result = liveStack.update(tick, authoredForStack);
       lastDecisionEntityRefs.clear();
       if (tick - lastOwnershipRefreshTick >= OWNERSHIP_REFRESH_TICKS) {
         refreshFirstSessionAttackerOwnership(state, result.decisions || []);

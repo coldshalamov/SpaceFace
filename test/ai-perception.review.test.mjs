@@ -35,6 +35,8 @@ test('encounter telemetry honors the sensor hostility verdict instead of team mi
       reports: 1,
       hostileContacts: 0,
       visibleThreat: 0,
+      actionableThreat: 0,
+      actionableContacts: 0,
       friendlyDisabledFraction: 0,
       friendlyLowHullFraction: 0,
       tetherThreats: 0,

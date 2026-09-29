@@ -1,4 +1,4 @@
-import { TraceLayer, normalizeSensorFrame, saturate, stableId } from './contracts.js';
+import { TraceLayer, distance2, normalizeSensorFrame, saturate, stableId } from './contracts.js';
 
 export class PerceptionMemory {
   constructor({ memoryTicks = 300, confidenceFloor = 0.08, trace = null, freezeResults = true } = {}) {
@@ -167,9 +167,36 @@ function liveSnapshot(memory, now, memoryTicks, confidenceFloor) {
   return snapshot;
 }
 
+// SF-054: an "actionable" contact is one that can hurt the opposition now — near a squad member or
+// actively prosecuted by that member. The ramp is smooth on purpose: a contact hovering at the far
+// edge changes the weight continuously, so jitter across a distance line cannot flicker the signal.
+const ACTIONABLE_NEAR_WU = 650;
+const ACTIONABLE_FAR_WU = 1700;
+const ACTIONABLE_ENGAGED_WEIGHT = 0.9;
+const ACTIONABLE_COUNT_WEIGHT = 0.3;
+const ACTIONABLE_PROSECUTION_KINDS = new Set(['attack_run', 'reposition']);
+
+function actionableContactWeight(self, contact) {
+  // A contact the squad remembers but cannot currently localize fails safe toward NEAR — a
+  // hostile with no fix must not read as safely distant. (distance2 alone would measure a
+  // missing pos as distance-to-origin, which reads far for any off-origin perceiver.)
+  const distance = self && self.pos && contact && contact.pos
+    ? distance2(self.pos, contact.pos) : 0;
+  const proximity = saturate(
+    1 - (distance - ACTIONABLE_NEAR_WU) / (ACTIONABLE_FAR_WU - ACTIONABLE_NEAR_WU),
+  );
+  const activity = self && self.activity;
+  const engaged = !!(activity
+    && activity.targetId != null && activity.targetId === contact.id
+    && ACTIONABLE_PROSECUTION_KINDS.has(activity.kind));
+  return Math.max(proximity, engaged ? ACTIONABLE_ENGAGED_WEIGHT : 0);
+}
+
 export function aggregatePerceivedTelemetry(perceptions, freeze = Object.freeze) {
   let hostileContacts = 0;
   let hostileThreat = 0;
+  let actionableThreat = 0;
+  let actionableContacts = 0;
   let friendlyDisabled = 0;
   let friendlyLowHull = 0;
   let tetherThreats = 0;
@@ -187,6 +214,11 @@ export function aggregatePerceivedTelemetry(perceptions, freeze = Object.freeze)
       if (contact.kind === 'ship' && contact.hostile === true) {
         hostileContacts++;
         hostileThreat += contact.threat * contact.confidence;
+        if (contact.alive !== false) {
+          const weight = actionableContactWeight(perception.self, contact);
+          actionableThreat += contact.threat * contact.confidence * weight;
+          if (weight >= ACTIONABLE_COUNT_WEIGHT) actionableContacts++;
+        }
       }
       if (contact.kind === 'objective') objectiveProgress = Math.max(objectiveProgress, contact.objectiveValue);
     }
@@ -201,6 +233,8 @@ export function aggregatePerceivedTelemetry(perceptions, freeze = Object.freeze)
     reports,
     hostileContacts,
     visibleThreat: saturate(hostileThreat / denom),
+    actionableThreat: saturate(actionableThreat / denom),
+    actionableContacts,
     friendlyDisabledFraction: saturate(friendlyDisabled / denom),
     friendlyLowHullFraction: saturate(friendlyLowHull / denom),
     tetherThreats,
