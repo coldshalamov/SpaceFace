@@ -98,9 +98,27 @@ if (baseline) {
       if (strays.length) console.error(`  strays hashed but not tracked: ${strays.slice(0, 12).join(', ')}`);
       if (missing.length) console.error(`  tracked but absent: ${missing.slice(0, 12).join(', ')}`);
       if (!strays.length && !missing.length) {
+        // Same file set — find the byte drift directly: hash every walked file and
+        // diff it against the committed per-file manifest (test/ui-frame-references/
+        // source-manifest.json), which names exactly which inputs moved the digest.
+        const manifestPath = path.join(ROOT, 'test/ui-frame-references/source-manifest.json');
+        if (existsSync(manifestPath)) {
+          const expected = JSON.parse(readFileSync(manifestPath, 'utf8'));
+          const changed = [];
+          const { createHash } = await import('node:crypto');
+          const { readFileSync: readBytes } = await import('node:fs');
+          for (const rel of walked) {
+            const digest = createHash('sha256').update(readBytes(path.join(ROOT, rel))).digest('hex');
+            if (expected[rel] !== digest) changed.push(rel);
+          }
+          changed.sort();
+          console.error(changed.length
+            ? `  bytes diverge from manifest in ${changed.length} files: ${changed.slice(0, 12).join(', ')}`
+            : '  per-file bytes identical to manifest — drift is inside the hash ordering');
+        }
         const dirty = spawnSync('git', ['status', '--porcelain', '--', ...roots],
           { cwd: ROOT, encoding: 'utf8' }).stdout || '';
-        console.error(`  identical file set; tracked-byte drift:\n${dirty.trim() || '    (none — content matches the index; drift is inside the hash inputs)'}`);
+        console.error(`  tracked-byte drift vs index:\n${dirty.trim() || '    (none — content matches the index)'}`);
       }
     }
   }
