@@ -349,9 +349,11 @@ export const survivalWave = {
       const emptyBoard = this._cohort.size === 0;
       // A carried reservoir hold is a protected hole. Ordinary opening packages must not refill
       // it. Champions stay owed — they defer until the hold finishes rather than being dropped.
-      // An empty board is the emergency exception.
+      // Debuts, wall heavies, and the lesson rock's body carry the same debt: a staged arrival
+      // that is DROPPED here simply never happens. An empty board is the emergency exception.
       if (this._swarm && holding && !emptyBoard) {
-        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) {
+        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID
+          || entry.debut === true || entry.wall === true || entry.lesson === true) {
           this._pending[write++] = item;
           continue;
         }
@@ -372,7 +374,8 @@ export const survivalWave = {
       let count = entry.count;
       // A debut body is owed like a champion is owed (SF-064): the wave's staged introduction
       // must not be silently dropped because the room happened to be full when its tick came.
-      if (this._swarm && entry.champion !== true && entry.debut !== true) {
+      // The same debt applies to a mass-gap wall's late heavies (SF-062) — they ARE the lesson.
+      if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true) {
         count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
         if (count <= 0) continue;
       }
@@ -411,8 +414,8 @@ export const survivalWave = {
         if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
       }
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
-      // The same is true of a staged debut: a specialist's first body must land, not vanish.
-      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true)
+      // The same is true of a staged debut or a wall's heavies: a staged body must land, not vanish.
+      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true || entry.wall === true)
         && receipt.admitted < count) {
         this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted } };
       }
@@ -477,7 +480,16 @@ export const survivalWave = {
     const rng = mulberry32(swarmStreamSeed(seed, this._wave, index));
     // The plan's roster may carry build-pressure shares (SF-072); an unbent plan roster is
     // weight-identical to the static one, so an unpressured run picks exactly as before.
-    const archetype = pickSwarmArchetype(this._wave, rng(), this._swarm && this._swarm.roster);
+    let roster = this._swarm && this._swarm.roster;
+    // SF-064: while a debut is still owed, the stream must not field the specialist early —
+    // the fresh-silhouette boost would otherwise make its first sighting a mid-room batch.
+    const newcomerId = this._swarm && this._swarm.newcomer && this._swarm.newcomer.enemyId;
+    if (newcomerId && Array.isArray(roster)
+      && this._pending.some((it) => it && it.entry && it.entry.debut === true)) {
+      const held = roster.filter((entry) => entry.enemyId !== newcomerId);
+      if (held.length > 0) roster = held;
+    }
+    const archetype = pickSwarmArchetype(this._wave, rng(), roster);
     const gateGroup = swarmGateFor(this._wave, index + 4);
     const ownerId = waveOwnerId(this._wave);
     if (!this._owners.includes(ownerId)) this._owners.push(ownerId);

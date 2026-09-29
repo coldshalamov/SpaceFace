@@ -578,6 +578,52 @@ export function swarmNewcomerFor(wave) {
 }
 
 /**
+ * SF-062 — the mass-and-gap round. Every sixth wave (boss waves excluded) the room becomes a
+ * geometry problem: light pursuers open first — ammunition, not threat — while a chord of
+ * monolith cover closes one side of the room with exactly two gaps left navigable, and the
+ * wave's heaviest legal body arrives late through that wall's gate. Nothing inflates: hull,
+ * quota and concurrency stay authored; the wall is collision geometry, and SF-067 wear means
+ * the player can break a third gap open if they spend the hull for it.
+ */
+export const SWARM_MASS_GAP_EVERY = 6;
+/** The wall's muscle lands ~4.5 s in — after the fodder opens, before the stream fills. */
+export const SWARM_MASS_GAP_CLOSE_TICKS = 270;
+export const SWARM_MASS_GAP_WALL_ROCKS = 9;
+export const SWARM_MASS_GAP_WALL_DISTANCE = 250;
+export const SWARM_MASS_GAP_ROCK_RADIUS = 26;
+/** Stream bias for light pursuers on a mass-gap wave — the room keeps feeding ammunition. */
+export const SWARM_MASS_GAP_FODDER_SCALE = 1.4;
+
+/** Light pursuer roles — the bodies a mass-gap wave hands the player to throw. */
+export const SWARM_FODDER_ROLES = Object.freeze(['mass', 'pressure']);
+/** Wall muscle in preference order — the body that makes the corridor read as closed. */
+const SWARM_WALL_ROLES = Object.freeze(['anchor', 'elite', 'control', 'disruptor']);
+
+export function isSwarmMassGapWave(wave) {
+  const w = swarmWaveOf(wave);
+  return w >= SWARM_MASS_GAP_EVERY && w % SWARM_MASS_GAP_EVERY === 0 && !isSwarmBossWave(w);
+}
+
+/** The light-pursuer slice of the legal roster, for the mass-gap opening burst. */
+export function swarmFodderRoster(wave) {
+  return swarmRosterFor(wave).filter((entry) => SWARM_FODDER_ROLES.includes(entry.role));
+}
+
+/** The heaviest legal wall-muscle archetype for the wave, or null before one unlocks. */
+export function swarmWallPickFor(wave, excludeId) {
+  const legal = swarmRosterFor(wave).filter((entry) => entry.enemyId !== excludeId);
+  for (const role of SWARM_WALL_ROLES) {
+    let best = null;
+    for (const entry of legal) {
+      if (entry.role !== role) continue;
+      if (!best || entry.weight > best.weight) best = entry;
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+/**
  * The room for this wave. Boss waves get the arc's loudest room; everything else walks the cycle.
  */
 export function swarmArenaPhase(wave) {
@@ -708,8 +754,8 @@ export function swarmOpeningPackages(wave, rng, roster) {
     left -= count;
     const archetype = pickSwarmArchetype(w, roll(), roster);
     packages.push({
-      // Tight: every opening group is on the board inside 24 ticks (0.4s), so "surrounded" is the
-      // first thing the wave says rather than something it works up to.
+      // Tight: opening groups land 12 ticks apart — the last group of a 4-group wave walks in
+      // at tick 36 — so "surrounded" is the first thing the wave says, not something it works up to.
       atTick: g === 0 ? 0 : 12 * g,
       gateGroup: swarmGateFor(w, g + 1),
       role: archetype.role,

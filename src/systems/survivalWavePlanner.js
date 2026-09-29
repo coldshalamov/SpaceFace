@@ -25,16 +25,26 @@ import {
 } from '../data/survivalWaves.js';
 import {
   SWARM_CLEANUP_TICKS,
+  SWARM_ROSTER,
   SWARM_RULESET,
   SWARM_WAVE_DURATION_TICKS,
   isSwarmDraftWave,
   isSwarmRefitWave,
   SWARM_DEBUT_DISTANCE,
   SWARM_DEBUT_TICKS,
+  SWARM_MASS_GAP_CLOSE_TICKS,
+  SWARM_MASS_GAP_FODDER_SCALE,
+  SWARM_MASS_GAP_ROCK_RADIUS,
+  SWARM_MASS_GAP_WALL_DISTANCE,
+  SWARM_MASS_GAP_WALL_ROCKS,
+  SWARM_FODDER_ROLES,
+  isSwarmMassGapWave,
   swarmArenaPhase,
+  swarmFodderRoster,
   swarmFreeGateFor,
   swarmLevel,
   swarmNewcomerFor,
+  swarmWallPickFor,
   swarmOpeningCount,
   swarmOpeningPackages,
   swarmPlanBlock,
@@ -65,6 +75,7 @@ for (const recipe of SURVIVAL_WAVES) {
 const HEAVY_ROLES = new Set(['anchor', 'elite']);
 const FODDER_ENEMIES = new Set(['wasp_swarmer', 'choir_zealot']);
 const HEAVIES_ONLY_FALLBACK = Object.freeze({ role: 'anchor', enemyId: 'bruiser_brawler' });
+const SWARM_NAME_BY_ID = new Map(SWARM_ROSTER.map((entry) => [entry.enemyId, entry.name]));
 // fromWave: 1 — the mutator fields heavies from the first wave, matching applyHeaviesOnly's
 // wave-agnostic package rewrite; pickSwarmArchetype honors a plan-declared unlock timing.
 const HEAVIES_ONLY_ROSTER = Object.freeze([
@@ -182,6 +193,7 @@ function expandSchedule(packages) {
       if (pkg.champion === true) entry.champion = true;
       if (pkg.lesson === true) entry.lesson = true;
       if (pkg.debut === true) entry.debut = true;
+      if (pkg.wall === true) entry.wall = true;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
@@ -394,6 +406,11 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
   const biasedRoster = dominant && !heaviesOnly
     ? biasSwarmRosterForBuild(swarmRosterFor(w), dominant)
     : null;
+  // SF-062 — the mass-and-gap round. A light-pursuer opening is ammunition first; the wall and
+  // its late heavies turn one side of the room into a corridor the player navigates or breaks.
+  // The mutator owns the room outright, so heavies_only suppresses the shape entirely.
+  const massGap = !heaviesOnly && isSwarmMassGapWave(w);
+  const fodderRoster = massGap && swarmFodderRoster(w).length > 0 ? swarmFodderRoster(w) : null;
   // SF-064 — a specialist's first wave stages one readable arrival: its tell lands alone on its
   // own bearing a beat after the opening burst, before the stream mixes it with other bodies.
   // The debut is a function of the wave number alone — no tutorial state, and later waves field
@@ -401,13 +418,18 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
   const newcomer = swarmNewcomerFor(w);
   const debuting = !!newcomer && w === newcomer.fromWave;
   const openingRoster = debuting
-    ? (biasedRoster || swarmRosterFor(w)).filter((entry) => entry.enemyId !== newcomer.enemyId)
-    : (biasedRoster || undefined);
+    ? (fodderRoster || biasedRoster || swarmRosterFor(w))
+      .filter((entry) => entry.enemyId !== newcomer.enemyId)
+    : (fodderRoster || biasedRoster || undefined);
   let packages = swarmOpeningPackages(w, rng, openingRoster);
   if (debuting) {
     // The debut is one of the wave's bodies, not an extra: hand its seat back from the largest
     // ordinary group so the opening budget stays exactly what the pressure math asked for.
-    const donor = [...packages].reverse().find((pkg) => !pkg.champion && !pkg.debut && pkg.count > 1);
+    let donor = null;
+    for (const pkg of packages) {
+      if (pkg.champion || pkg.debut || pkg.wall || !(pkg.count > 1)) continue;
+      if (!donor || pkg.count > donor.count) donor = pkg;
+    }
     if (donor) {
       donor.count -= 1;
       donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
@@ -426,6 +448,40 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
       distance: SWARM_DEBUT_DISTANCE,
     });
   }
+  let massGapBlock = null;
+  if (massGap) {
+    // The wall takes the first gate no arrival already uses, and its heavies pour through it
+    // LATE — the corridor closes after the fodder is already on the board. `wall: true` owes
+    // the batch like a champion: the lesson dies if concurrency quietly drops it.
+    const wallGate = swarmFreeGateFor(w, packages.map((pkg) => pkg.gateGroup));
+    // A debuting newcomer never doubles as wall muscle — its first sighting is the solo
+    // arrival, not a 2-pack half a second later (debut waves 6/18 would otherwise collide).
+    const wallPick = swarmWallPickFor(w, debuting ? newcomer.enemyId : null);
+    if (wallPick) {
+      packages.push({
+        atTick: SWARM_MASS_GAP_CLOSE_TICKS,
+        gateGroup: wallGate,
+        role: wallPick.role,
+        enemyId: wallPick.enemyId,
+        count: 2,
+        batchSize: 2,
+        batchGapTicks: 0,
+        wall: true,
+        // Materialize beyond the chord — the muscle pours through the gaps it just installed,
+        // on the far side of the wall line, never stacked on the player side of it.
+        distance: SWARM_MASS_GAP_WALL_DISTANCE + 60,
+      });
+    }
+    // Two navigable gaps, always — but never the same two slots twice in a row for a seed.
+    massGapBlock = {
+      gate: wallGate,
+      distance: SWARM_MASS_GAP_WALL_DISTANCE,
+      rocks: SWARM_MASS_GAP_WALL_ROCKS,
+      gapSlots: [1 + Math.floor(rng() * 3), 5 + Math.floor(rng() * 3)],
+      rockRadius: SWARM_MASS_GAP_ROCK_RADIUS,
+      heavyEnemyId: wallPick ? wallPick.enemyId : null,
+    };
+  }
   // The mutator owns the whole room, debut included: the newcomer's staged arrival still lands
   // alone on its own bearing, but its body joins the heavies like every other package.
   if (heaviesOnly) packages = applyHeaviesOnly(packages);
@@ -442,6 +498,21 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
     swarm.pressureLine = SWARM_PRESSURE_LINE[dominant] || null;
     swarm.buildPressure = dominant;
   }
+  if (massGapBlock) {
+    swarm.massGap = massGapBlock;
+    swarm.wallLine = 'A wall is closing on the room — mind the gaps.';
+    // The stream keeps feeding ammunition: fodder share bends up, no role leaves the room.
+    if (!biasedRoster) {
+      swarm.roster = swarmRosterFor(w).map((entry) => ({
+        enemyId: entry.enemyId,
+        role: entry.role,
+        weight: SWARM_FODDER_ROLES.includes(entry.role)
+          ? entry.weight * SWARM_MASS_GAP_FODDER_SCALE
+          : entry.weight,
+        fromWave: entry.fromWave,
+      }));
+    }
+  }
   if (heaviesOnly) {
     swarm.roster = HEAVIES_ONLY_ROSTER.map((entry) => ({
       enemyId: entry.enemyId,
@@ -451,6 +522,15 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
     }));
     delete swarm.pressureLine;
     delete swarm.buildPressure;
+    // The mutator rewrote the debut's body with everything else — name the silhouette that
+    // actually steps out, not the archetype that would have debuted on a plain wave.
+    const debutPkg = packages.find((p) => p && p.debut === true);
+    if (debutPkg && swarm.newcomer && debutPkg.enemyId !== swarm.newcomer.enemyId) {
+      swarm.newcomer = {
+        enemyId: debutPkg.enemyId,
+        name: SWARM_NAME_BY_ID.get(debutPkg.enemyId) || swarm.newcomer.name,
+      };
+    }
   }
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
     return invalid([issue('packages', `swarm opening burst ${opening} exceeds 24`)]);

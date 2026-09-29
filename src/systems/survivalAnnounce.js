@@ -208,15 +208,19 @@ export function waveOpeningLine(wave, plan) {
     const pressure = typeof swarm.pressureLine === 'string' && swarm.pressureLine
       ? ` ${swarm.pressureLine}`
       : '';
+    // SF-062: a mass-gap wave names its lesson — the wall is the room, the gaps are the route.
+    const wall = typeof swarm.wallLine === 'string' && swarm.wallLine
+      ? ` ${swarm.wallLine}`
+      : '';
     if (swarm.boss) {
       // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure} Survive the minute.`;
+      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure}${wall} Break the pack.`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${arrival}${namecheck}${pressure} Survive the minute.`;
+    return `Wave ${wave}. ${arrival}${namecheck}${pressure}${wall} Break the pack.`;
   }
 
   let bodies = 0;
