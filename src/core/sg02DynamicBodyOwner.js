@@ -24,6 +24,7 @@ import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
 import { SIM_TIER } from '../world/activityClassification.js';
+import { combatFlag } from '../data/featureFlags.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -134,6 +135,27 @@ const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per t
 const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick (debris/rocks)
 const CRAFT_CONTACT_YAW_EPS = 0.05;     // leftover contact spin; above damping/solver noise
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
+// Hull-burst overhaul slice A, "pinging off of objects" (owner, 2026-09-29): a hull that has lost
+// its helm (control mode 'tumbling') is a projectile, not a piloted craft. Under `combat.tumbleFling`
+// it gets a bouncy contact material (Max combine rule, so it beats the ship material's Min and any
+// rock/hull it meets), contact may spin it (the helm-locked yaw strip is off), and the per-tick
+// contact-sourced velocity bound is raised so a real rebound is not truncated to a 40 WU/s nudge.
+// Controlled hulls and the player keep the scraping material above. Placeholders; nothing has
+// tuned them (design doc §11.6).
+const TUMBLE_RESTITUTION = 0.6;
+const TUMBLE_MAX_CONTACT_DV = 160;
+// The ship contact material's angularDamping (0.4/s) is documented as an RCS model of the hull's own
+// attitude control. A hull that has lost its helm is not acted on by its own propulsion, so it
+// carries only a token drag (a debris-like 0.05/s): a 6 rad/s entry spin keeps ~85% of itself over
+// a 3 s stun instead of ~30%.
+const TUMBLE_ANGULAR_DAMPING = 0.05;
+// The solver alone does not ping a SPINNING hull off a rock: an off-centre capsule contact point
+// moves faster than the approach (4 rad/s x the hull's length beats a 28 WU/s hit), so the impact
+// turns into spin and the hull stops dead against the face (measured: a real Wasp at 28 WU/s
+// rebounds 16.8 WU/s with no spin and ~0 with 4.3 rad/s). So the post-step contact pass also
+// enforces the ricochet for a tumbling hull that meets a fixed body: the velocity leaving the
+// surface is at least TUMBLE_RESTITUTION x the closing speed (bounded by TUMBLE_MAX_CONTACT_DV).
+const TUMBLE_RICOCHET_MIN_CLOSING = 6; // WU/s: a graze is not a ping
 // Coincident-center guard: a Rapier narrow phase on nearly-concentric collider centers
 // degenerates to a ~10^6-unit penetration and the step teleports both bodies — co-created
 // spawns land on it deterministically (the aftermath wreck and the manifest payload both spawn
@@ -682,6 +704,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   _stepFixed() {
+    const tumbleFling = combatFlag('tumbleFling');
     this._refreshSleepPolicy();
     for (const rec of this.dynamicRecords) {
       setZero3(rec.appliedForce);
@@ -689,6 +712,7 @@ export class Sg02DynamicBodyOwner {
       setZero3(rec.controlForce);
       setZero3(rec.controlTorque);
       rec.maxSpeed = Infinity;
+      rec._tumbling = false;
       const command = consumePhysicsCommand(rec.entity);
       // PQ-133.04: a projectile bounce continuation queued during the previous hit emit lands
       // here, at the start of the next step, before the expected-kinematics capture reads the
@@ -704,6 +728,12 @@ export class Sg02DynamicBodyOwner {
       this._applyBodyResponse(rec, command && command.bodyResponse);
       if (command) this._applyCommand(rec, command);
       if (continuation) this._applyProjectileContinuation(rec, continuation);
+    }
+
+    if (tumbleFling) {
+      for (const rec of this.dynamicRecords) {
+        if (rec._tumbling !== rec._tumbleMaterial) this._syncTumbleMaterial(rec, rec._tumbling === true);
+      }
     }
 
     this._applyAttachmentSprings();
@@ -729,6 +759,17 @@ export class Sg02DynamicBodyOwner {
     // by the give pass and _enforcePlane; fields a give rewrites are flagged so the plane pass
     // re-reads the authoritative value instead of the stale scratch.
     this._stepContactReceipts = stepReceipts;
+    const looseContactIds = this._looseContactIds || (this._looseContactIds = new Set());
+    looseContactIds.clear();
+    for (let i = 0; i < stepReceipts.length; i++) {
+      const receipt = stepReceipts[i];
+      const ra = this.records.get(receipt.aId);
+      const rb = this.records.get(receipt.bId);
+      if ((ra && ra._tumbling === true) || (rb && rb._tumbling === true)) {
+        looseContactIds.add(receipt.aId);
+        looseContactIds.add(receipt.bId);
+      }
+    }
     for (const rec of this.dynamicRecords) {
       this._readPostStepKinematics(rec);
       this._applyStructuralGive(rec);
@@ -1183,16 +1224,18 @@ export class Sg02DynamicBodyOwner {
     const dvx = vx - e.vx;
     const dvz = vz - e.vz;
     const dv = Math.hypot(dvx, dvz);
-    if (dv > MAX_CONTACT_DV) {
-      const scale = MAX_CONTACT_DV / dv;
+    const maxContactDv = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
+      ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
+    if (dv > maxContactDv) {
+      const scale = maxContactDv / dv;
       vx = e.vx + dvx * scale;
       vz = e.vz + dvz * scale;
       touched = true;
     }
     const dw = wy - e.wy;
-    const helmLocked = craftKeepsHelmThroughContact(rec);
+    const helmLocked = craftKeepsHelmThroughContact(rec) && rec._tumbling !== true;
     const contactYaw = helmLocked && Math.abs(dw) > CRAFT_CONTACT_YAW_EPS;
-    const yawCap = helmLocked ? 0 : MAX_CONTACT_DW;
+    const yawCap = helmLocked ? 0 : (rec._tumbling === true ? SANE_MAX_YAW_RATE : MAX_CONTACT_DW);
     if (Math.abs(dw) > (helmLocked ? CRAFT_CONTACT_YAW_EPS : yawCap)) {
       wy = e.wy + Math.sign(dw) * yawCap;
       touched = true;
@@ -1206,6 +1249,33 @@ export class Sg02DynamicBodyOwner {
       wy = clamp(wy, -SANE_MAX_YAW_RATE, SANE_MAX_YAW_RATE);
       touched = true;
     }
+    if (rec._tumbling === true && this._stepContactReceipts && this._stepContactReceipts.length) {
+      const receipts = this._stepContactReceipts;
+      const own = rec.entity.id;
+      for (let i = 0; i < receipts.length; i++) {
+        const receipt = receipts[i];
+        const otherId = receipt.aId === own ? receipt.bId : (receipt.bId === own ? receipt.aId : null);
+        if (otherId == null) continue;
+        const other = this.records.get(otherId);
+        if (!other || other.spec.dynamic) continue; // hull-on-hull stays with the solver + raised bounds
+        const at = rec.body.translation();
+        const from = other.body.translation();
+        let nx = finite(receipt.normal && receipt.normal.x);
+        let nz = finite(receipt.normal && receipt.normal.z);
+        // Orient the contact normal from the fixed body toward this hull.
+        if (nx * (finite(at.x) - finite(from.x)) + nz * (finite(at.z) - finite(from.z)) < 0) { nx = -nx; nz = -nz; }
+        const closing = -(finite(e.vx) * nx + finite(e.vz) * nz);
+        if (!(closing > TUMBLE_RICOCHET_MIN_CLOSING)) continue;
+        const wanted = TUMBLE_RESTITUTION * closing;
+        const leaving = vx * nx + vz * nz;
+        if (leaving < wanted) {
+          const add = Math.min(wanted - leaving, TUMBLE_MAX_CONTACT_DV);
+          vx += add * nx;
+          vz += add * nz;
+          touched = true;
+        }
+      }
+    }
     if (!touched) return;
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
@@ -1218,6 +1288,25 @@ export class Sg02DynamicBodyOwner {
     if (post) {
       post.vDirty = true;
       post.wDirty = true;
+    }
+  }
+
+  // A tumbling hull swaps to the projectile contact material and back. Rapier reads the collider's
+  // restitution and combine rule at each contact, so the change lands on the next world.step().
+  _syncTumbleMaterial(rec, tumbling) {
+    const R = this.RAPIER;
+    const rules = R && R.CoefficientCombineRule;
+    rec._tumbleMaterial = tumbling;
+    if (!rules || !Array.isArray(rec.colliders)) return;
+    const base = CONTACT_MATERIALS[(rec.spec && rec.spec.material) || 'default'] || CONTACT_MATERIALS.default;
+    const restitution = tumbling ? TUMBLE_RESTITUTION : base.restitution;
+    const rule = tumbling ? rules.Max : (base.restitutionCombine === 'min' ? rules.Min : rules.Average);
+    if (rec.body && typeof rec.body.setAngularDamping === 'function') {
+      rec.body.setAngularDamping(tumbling ? TUMBLE_ANGULAR_DAMPING : base.angularDamping);
+    }
+    for (const collider of rec.colliders) {
+      if (typeof collider.setRestitution === 'function') collider.setRestitution(restitution);
+      if (rule != null && typeof collider.setRestitutionCombineRule === 'function') collider.setRestitutionCombineRule(rule);
     }
   }
 
@@ -1523,8 +1612,11 @@ export class Sg02DynamicBodyOwner {
       if (!(rawImpulse > 0)) return;
       // Scalar running min; identical to Math.min(...dynamicCaps) including NaN propagation.
       let cap = Infinity;
-      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * MAX_CONTACT_DV);
-      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * MAX_CONTACT_DV);
+      // A contact with a hull that has lost its helm is a projectile hit: the raised bound applies to
+      // BOTH sides, or the struck hull's own 40 WU/s per-tick bound would truncate the knock.
+      const pairBound = recA._tumbling === true || recB._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
+      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * pairBound);
+      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * pairBound);
       if (cap === Infinity) return;
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
@@ -1758,6 +1850,7 @@ export class Sg02DynamicBodyOwner {
       add3Into(rec.controlForce, force);     // continuous-only tracker for the structural-give
       add3Into(rec.controlTorque, torque);   // baseline (impulses mutate velocity immediately)
       rec.maxSpeed = positive(command.control.maxSpeed, Infinity);
+      rec._tumbling = command.control.mode === 'tumbling' && combatFlag('tumbleFling');
     }
     for (const impulse of command.impulses || []) {
       const before = journalFor() ? rec.body.linvel() : null;
@@ -2728,6 +2821,8 @@ function craftKeepsHelmThroughContact(rec) {
 }
 
 function contactAngularDamping(rec) {
+  // The owner's own prediction of the spin the solver will damp; it must match the body's damping.
+  if (rec && rec._tumbling === true) return TUMBLE_ANGULAR_DAMPING;
   const material = CONTACT_MATERIALS[(rec && rec.spec && rec.spec.material) || 'default']
     || CONTACT_MATERIALS.default;
   return Math.max(0, finite(material.angularDamping));
@@ -2793,20 +2888,58 @@ function ghostProjectilePoolKey(spec) {
   return [spec.shape || 'ball', spec.radius, spec.mass, spec.inertiaY, spec.ccd ? 1 : 0, finite(com.x), finite(com.z)].join('|');
 }
 
-const ENEMY_SILHOUETTE_PROPORTIONS = Object.freeze({
-  drone_swarm: Object.freeze({ length: 1.0, halfWidth: 0.40, height: 0.30 }),
-  sniper_lance: Object.freeze({ length: 1.6, halfWidth: 0.35, height: 0.25 }),
-  bruiser_armor: Object.freeze({ length: 1.2, halfWidth: 0.75, height: 0.45 }),
-  trader_haul: Object.freeze({ length: 1.3, halfWidth: 0.50, height: 0.40 }),
-  pirate_swoop: Object.freeze({ length: 1.45, halfWidth: 0.65, height: 0.30 }),
-  corsair_blade: Object.freeze({ length: 1.50, halfWidth: 0.55, height: 0.30 }),
-  patrol_interdict: Object.freeze({ length: 1.55, halfWidth: 0.62, height: 0.38 }),
-  dreadnought_enemy: Object.freeze({ length: 2.00, halfWidth: 0.85, height: 0.70 }),
+export const ENEMY_SILHOUETTE_PROPORTIONS = Object.freeze({
+  drone_swarm: Object.freeze({ length: 1.72, halfWidth: 0.36, height: 0.26 }),
+  sniper_lance: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  detonator_dart: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  bruiser_armor: Object.freeze({ length: 1.72, halfWidth: 0.43, height: 0.31 }),
+  trader_haul: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
+  pirate_swoop: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.27 }),
+  corsair_blade: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.24 }),
+  patrol_interdict: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
+  dreadnought_enemy: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
+});
+
+export const TRAFFIC_ROLE_PROPORTIONS = Object.freeze({
+  arclight: Object.freeze({ length: 1.72, halfWidth: 0.32, height: 0.48 }),
+  courier: Object.freeze({ length: 1.72, halfWidth: 0.39, height: 0.28 }),
+  customs: Object.freeze({ length: 1.72, halfWidth: 0.21, height: 0.49 }),
+  express: Object.freeze({ length: 1.72, halfWidth: 0.40, height: 0.56 }),
+  hauler: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
+  miner: Object.freeze({ length: 1.72, halfWidth: 0.34, height: 0.51 }),
+  ore_carrier: Object.freeze({ length: 1.72, halfWidth: 0.19, height: 0.35 }),
+  pirate: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  prospector: Object.freeze({ length: 1.72, halfWidth: 0.24, height: 0.30 }),
+  rescue: Object.freeze({ length: 1.72, halfWidth: 0.23, height: 0.31 }),
+  salvor: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.39 }),
+  shuttle: Object.freeze({ length: 1.72, halfWidth: 0.25, height: 0.33 }),
+  smuggler: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
+  surveyor: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.42 }),
+  sweeper: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.38 }),
+  tanker: Object.freeze({ length: 1.72, halfWidth: 0.16, height: 0.33 }),
+  tender: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.33 }),
+  tug: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
+});
+
+export const FACTION_HULL_PROPORTIONS = Object.freeze({
+  'span:faction_dmc': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
+  'span:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
+  'span:faction_reach': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
+  'wasp:faction_free': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  'wasp:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
 });
 
 const CRAFT_PROPORTIONS_CACHE = new Map();
 for (const [sil, prop] of Object.entries(ENEMY_SILHOUETTE_PROPORTIONS)) {
   CRAFT_PROPORTIONS_CACHE.set(sil, prop);
+}
+for (const [role, prop] of Object.entries(TRAFFIC_ROLE_PROPORTIONS)) {
+  CRAFT_PROPORTIONS_CACHE.set(role, prop);
+  CRAFT_PROPORTIONS_CACHE.set(`traffic:${role}`, prop);
+}
+for (const [key, prop] of Object.entries(FACTION_HULL_PROPORTIONS)) {
+  CRAFT_PROPORTIONS_CACHE.set(key, prop);
 }
 for (const ship of SHIPS || []) {
   if (ship && ship.id && ship.visuals && ship.visuals.proportions) {
@@ -2830,7 +2963,15 @@ export function resolveCraftProportions(entity, spec = null) {
   if (data.silhouette && ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette]) {
     return ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette];
   }
-  for (const key of [data.defId, data.shipId, data.typeId, data.chassisId, entity && entity.id]) {
+  for (const key of [
+    data.defId,
+    data.shipId,
+    data.typeId,
+    data.chassisId,
+    data.trafficRole,
+    data.trafficRole ? `traffic:${data.trafficRole}` : null,
+    entity && entity.id,
+  ]) {
     if (typeof key === 'string' && CRAFT_PROPORTIONS_CACHE.has(key)) {
       return CRAFT_PROPORTIONS_CACHE.get(key);
     }

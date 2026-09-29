@@ -548,8 +548,9 @@ const RECOVERY_CONTROL_SCRATCH = {
 
 // Hull-burst overhaul slice A (owner, 2026-09-29): "the ship tumbling out of control ... not being
 // acted on by its own propulsion". While the helm is lost the hull commands no thrust AND no torque:
-// the entry spin the hit gave it carries it round, slowed only by the bare hull's own angular drag
-// (the ship contact material), and the real thrusters that damp the spin are the recovery beat's.
+// the entry spin the hit gave it carries it round, slowed only by a token angular drag (the physics
+// owner drops the ship material's RCS-model damping to 0.05/s while the control mode is 'tumbling'),
+// and the real thrusters that damp the spin are the recovery beat's.
 // Before this the active tumble wrote a full yaw-brake counter-torque from its first tick, so a hull
 // that took a 6 rad/s entry spin was back to ~0 within 0.2 s and a blasted ship never visibly
 // tumbled (feel.fling_scene: 0.59 turns over a 2.8 s stun). Same retained-literal law as
