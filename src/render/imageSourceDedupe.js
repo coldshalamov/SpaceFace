@@ -24,6 +24,23 @@
 const SHARED_SOURCE_KEY = 'spacefaceSharedImageSourceKey';
 const SHARED_SOURCE_TRACKED = 'spacefaceSharedImageSourceTracked';
 
+// packageCpuDetach releases a resident package texture's CPU payload (CompressedTexture.mipmaps,
+// Texture.source.data) right after the residency pass proves the GPU upload. A texture whose
+// payload is gone still LOOKS complete — dims survive on the compressed image stub — but
+// Texture.clone() copies the emptied mipmaps, three's upload reads mipmaps[0].width, and any
+// uploader that touches the clone (preview initTexture, a residency re-upload, the frame's own
+// texture bind) throws instead of drawing. It also covers the shared-Source case: detaching one
+// package's texture nulls source.data for every texture that adopted the same Source object.
+function texturePayloadIntact(texture) {
+  if (!texture || !texture.isTexture) return false;
+  if (texture.isCompressedTexture) {
+    return Array.isArray(texture.mipmaps) && texture.mipmaps.length > 0;
+  }
+  return !!(texture.source && texture.source.data);
+}
+
+export { texturePayloadIntact };
+
 const entries = new Map(); // key -> { owner: Texture, users: Set<Texture> }
 let hits = 0;
 let misses = 0;
@@ -163,6 +180,12 @@ export function claimSharedImageTexture(key, texture) {
   // second's decode is redundant. Adopt a clone of the OWNER — sharing the first decode's
   // THREE.Source is the whole point — and retire the duplicate so it can never upload a second
   // copy of the same pixels.
+  if (!texturePayloadIntact(entry.owner)) {
+    // The owner's CPU payload was released by the package-detach residency pass (or its shared
+    // Source was): cloning it now would mint an uploadable-looking texture with empty mips that
+    // crashes the first uploader. Keep this decode — it has real bytes — instead of retiring it.
+    return adoptUser(entry, key, texture);
+  }
   const clone = entry.owner.clone();
   try { texture.dispose(); } catch { /* a never-rendered decode has no GPU entry to remove */ }
   return adoptUser(entry, key, clone);
@@ -186,7 +209,9 @@ export function adoptTextureImageSource(key, texture) {
   }
   hits++;
   if (!entry.source) entry.source = entry.owner.source;
-  if (texture.source !== entry.source) texture.source = entry.source;
+  // Adopting a detached source hands the texture a null payload; keep the freshly decoded source
+  // this document already holds. Once rehydrate refills the owner the swap is safe again.
+  if (texture.source !== entry.source && texturePayloadIntact(entry.owner)) texture.source = entry.source;
   return adoptUser(entry, key, texture);
 }
 
@@ -280,6 +305,9 @@ export async function dedupeGltfTextureSources(gltf) {
 export function sharedImageTextureFor(key) {
   const entry = key && entries.get(key);
   if (!entry) return null;
+  // A detached owner clones to empty mips/source — treat the dead payload as a miss so the
+  // caller decodes real bytes instead of handing a crash to the next uploader.
+  if (!texturePayloadIntact(entry.owner)) return null;
   hits++;
   const clone = entry.owner.clone();
   return adoptUser(entry, key, clone);

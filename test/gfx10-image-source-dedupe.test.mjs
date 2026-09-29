@@ -20,6 +20,10 @@ function bytes(seed, length = 64) {
 function decodedTexture(seed) {
   const texture = new THREE.Texture();
   texture.name = `decoded-${seed}`;
+  // Decodes always resolve with a populated source; a bare Texture has source.data === null,
+  // which is exactly what a CPU-detached package texture looks like — dedupe would (correctly)
+  // refuse to hand out its payload, so the fixture must carry one.
+  texture.image = { width: 4, height: 4, seed };
   return texture;
 }
 
@@ -148,4 +152,39 @@ test('post-parse pass never shares different bytes and skips compressed textures
   assert.notEqual(b.texture.source, a.texture.source, 'different bytes keep separate sources');
   assert.equal(c.texture.source, a.texture.source, 'same bytes still share');
   assert.notEqual(compressed.source, a.texture.source, 'compressed textures are left to the KTX2 path');
+});
+
+test('a payload-released owner is a miss: clones of empty mips would crash the uploader', async () => {
+  const key = await imageSourceKeyAsync(bytes(41), 64, 'image/ktx2');
+  const owner = claimSharedImageTexture(key, decodedTexture(1));
+  // packageCpuDetach releases the CPU mirror after a proven GPU upload; source.data is then null
+  // while the texture still reports its dimensions. Cloning that state mints a texture that
+  // throws inside three's upload (mipmaps[0].width / image.width) instead of drawing.
+  owner.source.data = null;
+
+  assert.equal(sharedImageTextureFor(key), null,
+    'a detached owner must behave as a miss so callers decode real bytes');
+
+  const fresh = decodedTexture(2);
+  const adopted = claimSharedImageTexture(key, fresh);
+  assert.equal(adopted, fresh,
+    'a fresh decode is adopted as a user, not retired for a clone of the dead owner');
+  assert.ok(adopted.source && adopted.source.data, 'the adopted texture keeps its own pixels');
+});
+
+test('a payload-released owner keeps later PNG adopters on their own source', async () => {
+  const { dedupeGltfTextureSources } = await import('../src/render/imageSourceDedupe.js');
+  const imageBytes = bytes(43, 96);
+  const a = fakeParsedGltf({ imageBytes });
+  const b = fakeParsedGltf({ imageBytes: imageBytes.slice() });
+
+  await dedupeGltfTextureSources(a);
+  const ownSource = b.texture.source;
+  // Same release as packageCpuDetach's source.data drop: the shared Source dies with it.
+  a.texture.source.data = null;
+  await dedupeGltfTextureSources(b);
+
+  assert.equal(b.texture.source, ownSource,
+    'a document must not adopt a source whose payload was already released');
+  assert.ok(b.texture.source.data, 'the adopter keeps its own decoded pixels');
 });
