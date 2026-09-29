@@ -971,6 +971,9 @@ export const swarmArena = {
     if (ids.length === 0) return;
     this._wallWave = wave;
     this._ids = this._ids.concat(ids);
+    // The banner announced the shape at wave start; the drop itself gets its own beat so the
+    // room changing underfoot is a felt event, not a silent edit.
+    this._emit('toast', { text: 'The wall is closing — mind the gaps.', kind: 'warn', ttl: 3.5 });
     this._emit('swarmArena:massGapWall', {
       wave,
       gate: massGap.gate,
