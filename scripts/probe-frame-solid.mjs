@@ -18,7 +18,7 @@
 //     links, bodies that left the frame undrawn) rises. Timing regressions warn; add
 //     --strict-timing to fail on them (only meaningful on a quiet machine).
 import { spawn, execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus, loadavg } from 'node:os';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +36,12 @@ import {
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
+// No bundled playwright chromium on this box — fall back to an installed browser.
+const browserPath = process.env.SF_PROBE_BROWSER
+  || [
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  ].find((candidate) => existsSync(candidate));
 const CENSUS = process.argv.includes('--census');
 const NO_CANON = process.argv.includes('--no-program-canon');
 // Main-thread CPU profile over the flight route (sampling adds a little overhead; compare
@@ -99,6 +105,7 @@ try {
   await waitForServer(baseUrl);
   browser = await chromium.launch({
     headless: HEADLESS,
+    executablePath: browserPath || undefined,
     args: [
       '--disable-renderer-backgrounding',
       '--disable-background-timer-throttling',
