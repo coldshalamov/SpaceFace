@@ -127,6 +127,11 @@ import {
   createRenderEntityFrame,
   endRenderEntityFrame,
 } from './renderEntityFrame.js';
+import {
+  cameraOccluderDiagnostics,
+  createCameraOccluderState,
+  updateCameraOccluders,
+} from './cameraOccluders.js';
 
 // The dense snapshot is the render boundary for ordinary flight. The simulation-owned world still
 // provides mesh bindings and cosmetic bank/pitch hooks, but pose submission reads the fenced frame.
@@ -1916,7 +1921,12 @@ function meshNeedsAuthoredDecode(owner, entity) {
  * to contain the camera participate — a nav buoy or skiff-sized wreck cannot push the camera.
  */
 export const CAMERA_CLEARANCE_MARGIN_WU = 16;
-const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
+// A solid smaller than this in every direction cannot swallow the camera; one that never rises
+// above MIN_TOP cannot reach even the lowest chase framing (45 WU zoom is ~39 WU high). The old
+// 120 WU span bar let every mid-size rock, wreck and hull pass through the camera unnoticed.
+const CAMERA_CLEARANCE_MIN_SPAN_WU = 48;
+const CAMERA_CLEARANCE_MIN_TOP_WU = 24;
+const CAMERA_CLEARANCE_ANALYTIC_MAX_SPAN_WU = 120;
 // The chase camera's far plane: a bound bigger than the camera can even see cannot be a real
 // structure — it can only be a broken mesh bound (2026-09-25: one asteroid body scale
 // compounded to ±2e8 and this box reported a ~1.4e8 roof, orbiting the camera). Rejected
@@ -2060,10 +2070,33 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.bvhQuery = false;
       rec.layout = null;
       rec.bvhCache = null;
+      rec.cellRoofs = null;
       _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
       return rec;
     }
     data.cameraClearanceNeverRoof = false;
+    // Mid-size field rocks: a conservative analytic box from the authored scale. Re-measuring the
+    // mesh every time a drifting rock crosses a half-WU cell is what made the span bar 120 in
+    // the first place; a rock this size only needs "roughly here, roughly this tall".
+    if (hint > 0 && hint < CAMERA_CLEARANCE_ANALYTIC_MAX_SPAN_WU) {
+      const half = hint * 0.5;
+      const rec = cached || (data.cameraClearanceBox = {});
+      const box = rec.box || (rec.box = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 });
+      box.minX = mesh.position.x - half; box.maxX = mesh.position.x + half;
+      box.minZ = mesh.position.z - half; box.maxZ = mesh.position.z + half;
+      box.minY = -half; box.maxY = half;
+      rec.assetState = assetState;
+      rec.compositionId = compositionId;
+      rec.posX = posX;
+      rec.posZ = posZ;
+      rec.grid = null;
+      rec.bvhQuery = false;
+      rec.layout = null;
+      rec.bvhCache = null;
+      rec.cellRoofs = null;
+      _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+      return rec;
+    }
   }
   _clearanceBoxScratch.setFromObject(mesh);
   let box = null;
@@ -2075,7 +2108,8 @@ function cameraClearanceBoxForMesh(mesh) {
     const span = finite
       ? Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z)
       : Infinity;
-    if (finite && span >= CAMERA_CLEARANCE_MIN_SPAN_WU && span <= CAMERA_CLEARANCE_MAX_SPAN_WU) {
+    if (finite && span >= CAMERA_CLEARANCE_MIN_SPAN_WU && span <= CAMERA_CLEARANCE_MAX_SPAN_WU
+        && b.max.y >= CAMERA_CLEARANCE_MIN_TOP_WU) {
       box = (cached && cached.box) || {
         minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0,
       };
@@ -2096,6 +2130,7 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.bvhQuery = bvhQuery && box != null;
   rec.layout = rec.bvhQuery ? clearanceLayoutFromBox(box) : null;
   rec.bvhCache = null;
+  rec.cellRoofs = null;
   _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
   return rec;
 }
@@ -2125,12 +2160,24 @@ export function isOnLiveCameraView(frustum, position, radius) {
   return frustum.intersectsSphere(_liveViewSphere);
 }
 
-/** Pure renderer-side clearance policy used by the camera callback and focused tests. */
-export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+/**
+ * Lowest camera Y at an arbitrary column — the anticipation query behind cameraGlide.js. Same
+ * roofs and margin as cameraClearanceFloorAt but answered for any (x, z), not the camera's own,
+ * and never short-circuited by the camera's current height. `pad` widens the coarse box test so a
+ * sample spaced along a flight path cannot step over a narrow tower. Per-cell results are cached
+ * on the mesh record, so sweeping a path costs one BVH window query per cell per structure.
+ */
+export function cameraRoofAt(owner, x, z, pad = 0) {
+  const structural = clearanceStructuralMeshes(owner);
+  if (!structural) return -Infinity;
+  return cameraClearanceFloorWalk(structural, x, z, -Infinity, pad);
+}
+
+// Structural-only list rebuilt on the _meshes mutation version — the per-frame query walks a
+// handful of stations/places/rocks instead of every live mesh root.
+function clearanceStructuralMeshes(owner) {
   const meshes = owner && owner._meshes;
-  if (!meshes) return -Infinity;
-  // Structural-only list rebuilt on the _meshes mutation version — the per-frame query walks a
-  // handful of stations/places/rocks instead of every live mesh root.
+  if (!meshes) return null;
   let structural = owner._clearanceMeshes;
   if (!structural || owner._clearanceMeshesVersion !== owner._meshesVersion) {
     if (!structural) structural = owner._clearanceMeshes = [];
@@ -2158,6 +2205,13 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
     }
     owner._clearanceMeshesVersion = owner._meshesVersion;
   }
+  return structural;
+}
+
+/** Pure renderer-side clearance policy used by the camera callback and focused tests. */
+export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+  const structural = clearanceStructuralMeshes(owner);
+  if (!structural) return -Infinity;
   if (CAMERA_CLEARANCE_FLOOR_RETAIN) {
     // Moving structural kinds (asteroid / wreck) can drift or grow without a
     // _meshesVersion bump; never retain across them — full walk stays authoritative.
@@ -2216,7 +2270,7 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
 
 // The structural walk itself — neighborhood query for wide roots, coarse box otherwise.
 // Shared by the retain and always-walk paths so a bench-off frame matches a retained miss.
-function cameraClearanceFloorWalk(structural, camX, camZ, camY) {
+function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
   let floor = -Infinity;
   for (let i = 0; i < structural.length; i++) {
     const rec = cameraClearanceBoxForMesh(structural[i]);
@@ -2227,7 +2281,13 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY) {
       const gz = sample.gz;
       let raw = -Infinity;
       let useBvh = true;
-      if (rec.bvhCache && rec.bvhCache.gx === gx && rec.bvhCache.gz === gz) {
+      // Cell answers persist on the record until the box is rebuilt (position/asset change), so
+      // a path sweep that revisits cells never repeats a BVH window query.
+      const cellKey = (gz + 2) * 1024 + (gx + 2);
+      const cellRaw = rec.cellRoofs ? rec.cellRoofs.get(cellKey) : undefined;
+      if (cellRaw !== undefined) {
+        raw = cellRaw;
+      } else if (rec.bvhCache && rec.bvhCache.gx === gx && rec.bvhCache.gz === gz) {
         raw = rec.bvhCache.raw;
       } else if (!clearanceCellInRange(rec.layout, gx, gz)) {
         raw = -Infinity;
@@ -2248,6 +2308,9 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY) {
           } else {
             raw = hit.raw;
             rec.bvhCache = { gx, gz, raw };
+            const cells = rec.cellRoofs || (rec.cellRoofs = new Map());
+            if (cells.size >= 512) cells.clear();
+            cells.set(cellKey, raw);
           }
         } catch {
           useBvh = false;
@@ -2273,8 +2336,9 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY) {
     }
     const box = rec.box;
     if (!box) continue;
-    if (camX < box.minX - CAMERA_CLEARANCE_MARGIN_WU || camX > box.maxX + CAMERA_CLEARANCE_MARGIN_WU) continue;
-    if (camZ < box.minZ - CAMERA_CLEARANCE_MARGIN_WU || camZ > box.maxZ + CAMERA_CLEARANCE_MARGIN_WU) continue;
+    const reach = CAMERA_CLEARANCE_MARGIN_WU + pad;
+    if (camX < box.minX - reach || camX > box.maxX + reach) continue;
+    if (camZ < box.minZ - reach || camZ > box.maxZ + reach) continue;
     const roof = box.maxY + CAMERA_CLEARANCE_MARGIN_WU;
     if (camY >= roof) continue;
     if (roof > floor) floor = roof;
@@ -5555,8 +5619,8 @@ export const render = {
     // Real shadow maps (graphics spec Workstream G). Keep one reusable key light regardless of the
     // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled keeps the
     // key-visible flags pinned while the tally gates the depth pass. This lets a default
-    // shadows:false profile enable shadows live without allocating a new light.
-    const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
+    // shadows:false profile enable shadows live without allocating a new light. `shadowsOn` is
+    // read below GPU detection, where the discrete-tier default may still flip the setting once.
 
     // --- GPU capability detection (adaptiveQuality.js) -----------------------------------------
     // Detection MUST publish state.render.gpu before createSpaceBackground below. SpaceBackground
@@ -5570,6 +5634,17 @@ export const render = {
     // below reads state.render.gpu (the ?perf overlay closure reads it lazily, per frame).
     const gpu = detectGpu(renderer);
     state.render.gpu = gpu;
+    // Discrete-tier shadow default (assessment packet B3): the texel-snapped 2048 depth pass is a
+    // bounded extra raster on hardware GL and only re-renders while a caster moves, so shadows opt
+    // in once per profile on discrete GPUs. The stamp protects every choice made afterwards — a
+    // player who turns shadows off, or a preset that writes them off, is never re-flipped — and
+    // integrated/software keep the opt-in default (SwiftShader measured ~2.3x frame cost at z144).
+    const video = state.settings && state.settings.video;
+    if (gpu.tier === 'discrete' && video && video.shadowsDiscreteTierDefault !== true) {
+      if (video.shadows !== true) video.shadows = true;
+      video.shadowsDiscreteTierDefault = true;
+    }
+    const shadowsOn = !(video && video.shadows === false);
     // The tier now bounds the pixel ratio (applyRendererSize); re-apply before the bloom chain
     // and LOD viewport below are sized from drawSize (the shared _drawSize vector).
     if (gpu.tier === 'integrated' || gpu.tier === 'software') applyRendererSize(renderer, state);
@@ -6128,6 +6203,7 @@ export const render = {
       onMeshCreated: (mesh) => { void admitSubjectPipelines(mesh); },
     });
     this._entityFrame = createRenderEntityFrame();
+    this._cameraOccluderState = createCameraOccluderState();
     this._presentationWorld = createPresentationWorld();
     this._presentationPublisher = createPresentationPublisher(
       this._presentationWorld,
@@ -6323,6 +6399,8 @@ export const render = {
     this._cameraClearanceAt = (camX, camZ, camY) => cameraClearanceFloorAt(this, camX, camZ, camY);
     this._cameraClearanceAt.keepOut = (camX, camZ, focusX, focusZ, camY) =>
       cameraKeepOutTarget(this, camX, camZ, focusX, focusZ, camY);
+    // Column-addressable roof for the predictive glide (cameraGlide.js) — bound once.
+    this._cameraClearanceAt.roofAt = (x, z, pad) => cameraRoofAt(this, x, z, pad);
     // Measurement-only entity-layer isolation. The probe never reaches into the
     // renderer's private mesh map; this owner-held seam snapshots each mesh's
     // exact visibility and restores it atomically after the sample window.
@@ -6669,6 +6747,8 @@ export const render = {
     // setContentScale — zero realloc on scale change — so integrated can opt in safely.
     // Discrete stays off: steady-state already holds the frame budget at full quality.
     this._dynResAllowed = gpu.tier === 'software' || gpu.tier === 'integrated';
+    // Published for renderGraphDynResBlocked (route selection + buffer sizing read it there).
+    state.render.dynResAllowed = this._dynResAllowed;
     this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
 
     if (gpu.software) {
@@ -14172,8 +14252,10 @@ export const render = {
       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
       // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
+      // 'place' covers the landmark casters (hub, refinery, wreck cathedral) — the same
+      // cast-radius + LOD gate as stations bounds them to the shadow ortho.
       let shadowPolicyRefreshed = false;
-      if (typeName === 'ship' || typeName === 'station') {
+      if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
         // entity may be null for a world-record row; the retained stand-in keeps the old
         // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
         if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || _shadowFallbackEntity, mesh))) {
@@ -14239,7 +14321,7 @@ export const render = {
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
-      if (typeName === 'ship' || typeName === 'station') {
+      if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
         // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
         // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
         if (shouldNoteRealtimeShadowCasterPose(mesh, {
@@ -14566,6 +14648,10 @@ export const render = {
     options.camera = this.cam.obj;
     options.entityFrame = this._entityFrame;
     options.authoredRecords = this._entityFrame.authored;
+    // Owner roots ducked below the sightline this frame — syncSceneState marks those owners
+    // dirty so their pooled proxies re-submit the dipped matrixWorld (the sink itself rides
+    // the owner root's transform; this map only breaks the clean-frame early-out).
+    options.occluderSinks = this._cameraOccluderState && this._cameraOccluderState.sinkByOwner;
     options.playerX = 0;
     options.playerZ = 0;
     options.castRadiusSq = shadowRadius * shadowRadius;
@@ -14606,6 +14692,10 @@ export const render = {
       if (!mesh) return false;
       const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
       mesh.position.set(local.x, 0, local.z);
+      // A table row under a sightline duck keeps its sink through this re-pose — the
+      // occluder pass already ran this frame and will not write again until next frame.
+      const occEntry = this._cameraOccluderState && this._cameraOccluderState.entries.get(row.id);
+      if (occEntry && occEntry.applied !== 0) mesh.position.y = -occEntry.applied;
       mesh.rotation.y = -(row.rot || 0);
       if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       return true;
@@ -14638,13 +14728,41 @@ export const render = {
     return posedField;
   },
 
+  /**
+   * Duck solid bodies that sit between the settled chase camera and the player out of the
+   * sightline (cameraOccluders.js). Runs after cam.follow so the ray targets the real camera,
+   * before either instanced submission so the duck reaches this frame's matrices. Writes only
+   * root position.y — presentation state, never sim.
+   */
+  _updateCameraOccluders(frameDt) {
+    const occluders = this._cameraOccluderState;
+    if (!occluders) return;
+    const camPos = this.cam && this.cam.obj && this.cam.obj.position;
+    const focusMesh = this.state && this._meshes ? this._meshes.get(this.state.playerId) : null;
+    const focusPos = focusMesh && focusMesh.position;
+    if (!camPos || !focusPos) return;
+    const moved = updateCameraOccluders(
+      occluders,
+      this._entityFrame && this._entityFrame.records,
+      camPos,
+      focusPos,
+      Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0,
+      { playerId: this.state.playerId },
+    );
+    if (moved && this._asteroidInstancePool) invalidateAsteroidInstancePool(this._asteroidInstancePool);
+    if (this.state && this.state.render) {
+      this.state.render.cameraOccluders = cameraOccluderDiagnostics(occluders).active;
+    }
+  },
+
   _syncAsteroidInstanceSubmission(shadowCamera) {
     this._syncWorldPresentationTableMeshes();
     const options = this._asteroidInstanceSyncOptions;
     options.camera = this.cam.obj;
     options.shadowCamera = shadowCamera || null;
     options.records = this._entityFrame.asteroids;
-    options.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
+    options.recordsDirty = this._presentationWorld.consumeAsteroidDirty()
+      || (this._cameraOccluderState && this._cameraOccluderState.sinksDirty === true);
     const result = syncAsteroidInstancePool(this._asteroidInstancePool, options);
     if ((result?.shadowMatrixUploads || 0) > 0) this._shadowMapDirty = true;
     if (this.state && this.state.render) this.state.render.asteroidInstancePool = result;
@@ -15046,6 +15164,7 @@ export const render = {
           ? pm.position
           : null;
         this.cam.follow(frameDt, alpha, presented, this._cameraClearanceAt);
+        this._updateCameraOccluders(frameDt);
       }
     } else if (this.state && this.state.render) {
       // prepareOpeningFirstPicture already published the exact final pose, visibility, camera, and
@@ -16170,7 +16289,8 @@ export const render = {
       return POST_PROCESS_ROUTE.NATIVE;
     }
     const video = this.state?.settings?.video || {};
-    if (video.renderGraph === true && this._ensureRenderGraph() && this._renderGraph) {
+    if (video.renderGraph === true && !renderGraphDynResBlocked(this.state)
+        && this._ensureRenderGraph() && this._renderGraph) {
       return POST_PROCESS_ROUTE.GRAPH;
     }
     if (this.bloom) return POST_PROCESS_ROUTE.BLOOM;
@@ -16554,6 +16674,19 @@ function afterBrowserPaint(callback, schedule = null) {
   });
 }
 
+// The render graph owns its internal renderScale and ignores state.render.dynResScale — so
+// any configuration where the adaptive-resolution controller can move the scale (the software
+// emergency floor, or an opt-in dynamicResolution on a dyn-res tier) stays on the bloom path,
+// whose content sub-rect honours every scale step. The predicate is shared by _selectPostRoute
+// and applyRendererSize so route selection and buffer sizing can never disagree.
+function renderGraphDynResBlocked(state) {
+  const render = state && state.render;
+  const video = (state && state.settings && state.settings.video) || {};
+  if (render && render.dynResAllowed !== true) return false;
+  if (render && render.gpu && render.gpu.software === true) return true;
+  return video.dynamicResolution !== false;
+}
+
 function applyRendererSize(renderer, state) {
   const vd = (state.settings && state.settings.video) || {};
   // Per-tier ceiling on the device pixel ratio. The renderScale 1.0 A/B that set the default
@@ -16567,7 +16700,8 @@ function applyRendererSize(renderer, state) {
   // native presentation buffer and owns its clamped internal scene scale, so applying the same
   // setting here too would square every downscale (0.7 -> 0.49) and silently overcharge quality.
   const graphOwnsScale = vd.renderGraph === true
-    && state.render?.renderGraphUnavailable !== true;
+    && state.render?.renderGraphUnavailable !== true
+    && !renderGraphDynResBlocked(state);
   const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
   // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
   // single size entry-point aware of the live multiplier (tests/probes still see the field), but
@@ -16651,10 +16785,10 @@ function writeRigToSectorPaletteFrame(frame, rig) {
 // key source, weak rim separation" note that independent review kept returning. The lerp machinery
 // already interpolated intensities per frame; only the source of the numbers was hardcoded.
 function writePaletteToSectorPaletteFrame(frame, palette, lighting = null) {
-  frame.colors.ambient.setHex(palette.ambient);
-  frame.colors.key.setHex(palette.key);
-  frame.colors.rim.setHex(palette.rim);
-  frame.colors.fill.setHex(palette.fill);
+  frame.colors.ambient.setHex(authoredLightColor(lighting, 'ambientColor', palette.ambient));
+  frame.colors.key.setHex(authoredLightColor(lighting, 'keyColor', palette.key));
+  frame.colors.rim.setHex(authoredLightColor(lighting, 'rimColor', palette.rim));
+  frame.colors.fill.setHex(authoredLightColor(lighting, 'fillColor', palette.fill));
   frame.colors.fog.setHex(palette.fog);
   frame.intensities.ambient = authoredIntensity(lighting, 'ambient');
   frame.intensities.key = authoredIntensity(lighting, 'key');
@@ -16666,6 +16800,13 @@ function writePaletteToSectorPaletteFrame(frame, palette, lighting = null) {
 function authoredIntensity(lighting, channel) {
   const authored = lighting && Number(lighting[channel]);
   return Number.isFinite(authored) && authored >= 0 ? authored : SECTOR_LIGHT_INTENSITIES[channel];
+}
+
+// Per-sector mood lives in tinted rig colours (sectorVisualProfiles `lighting.*Color`) while the
+// palette class still owns nebula/dust. Missing or malformed channels inherit the palette hex.
+function authoredLightColor(lighting, channel, fallback) {
+  const authored = lighting && Number(lighting[channel]);
+  return Number.isFinite(authored) ? (Math.floor(authored) & 0xffffff) : fallback;
 }
 
 function applySectorPaletteFrame(rig, frame) {

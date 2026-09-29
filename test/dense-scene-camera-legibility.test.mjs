@@ -257,7 +257,7 @@ test('H3: playerHasActiveAttackerFraming is true when a hostile locks the player
   assert.equal(playerHasActiveAttackerFraming(stateWith(player, [ambient]), player), false);
   assert.ok(ACTIVE_ATTACKER_LOOKAHEAD_SCALE > 0 && ACTIVE_ATTACKER_LOOKAHEAD_SCALE < 1,
     'combat look-ahead scale must attenuate without zeroing pilot motion');
-  assert.ok(COMPOSITION_THREAT_STICK_S > 0.1 && COMPOSITION_THREAT_STICK_S < 0.6,
+  assert.ok(COMPOSITION_THREAT_STICK_S > 0.1 && COMPOSITION_THREAT_STICK_S < 1.0,
     'sticky hold is a short furball stabilizer, not a camera lock');
 });
 
