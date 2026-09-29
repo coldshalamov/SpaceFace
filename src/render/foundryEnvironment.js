@@ -19,6 +19,14 @@
 // assets/background/env/PROVENANCE.md (CC0 Poly Haven, retrieved 2026-09-22).
 export const FOUNDRY_IBL_URL = '/assets/background/env/industrial_workshop_foundry_2k.hdr';
 
+// Build-time product of the .hdr + the decode/normalize/neutralize chain below
+// (scripts/bake-foundry-ibl.mjs, schema spaceface.foundryIblBake.v1). The runtime fast path
+// wraps the shipped Float32 payload in the same DataTexture the decode path produces — same
+// pixels, ~120 ms of boot-window main-thread decode+transform skipped.
+export const FOUNDRY_IBL_BAKED_URL = '/assets/background/env/industrial_workshop_foundry_2k.f32.bin';
+export const FOUNDRY_IBL_BAKED_MANIFEST_URL = '/assets/background/env/industrial_workshop_foundry_2k.f32.json';
+export const FOUNDRY_IBL_BAKED_SCHEMA = 'spaceface.foundryIblBake.v1';
+
 // Normalize the HDR's mean luminance to the card rig's diffuse band (radiance 4.2/3.0/1.15
 // cards covering a modest fraction of a near-black sky ≈ ~1 mean). The environment therefore
 // lifts surfaces exactly as much as the shipped rig did; only the reflected structure changes.
@@ -37,10 +45,26 @@ export function resolveIblSource({ foundryTexture = null, background = null } = 
   return IBL_SOURCE_REFLECTION_CARDS;
 }
 
-// Load + normalize the foundry HDRI. Returns the DataTexture or null when unavailable — the
-// renderer treats it as an optional upgrade and keeps whichever env it already has.
-export async function loadFoundryIblTexture(THREE, { url = FOUNDRY_IBL_URL } = {}) {
+// Load + normalize the foundry HDRI. Prefers the baked f32 artifact (FOUNDRY_IBL_BAKED_URL):
+// its bytes ARE the decode + normalize + neutralize output, so the served texture is identical
+// and the ~120 ms of Float32 decode + two full-image passes never runs at boot. Any artifact
+// that fails the manifest + sha256 check is rejected and the .hdr decode path below produces
+// the same pixels instead — the env is identical either way. Returns the DataTexture or null
+// when unavailable — the renderer treats it as an optional upgrade and keeps whichever env it
+// already has.
+export async function loadFoundryIblTexture(THREE, {
+  url = FOUNDRY_IBL_URL,
+  bakedUrl = FOUNDRY_IBL_BAKED_URL,
+  bakedManifestUrl = FOUNDRY_IBL_BAKED_MANIFEST_URL,
+  fetchImpl = undefined,
+} = {}) {
   if (!THREE) throw new TypeError('loadFoundryIblTexture requires THREE');
+  const baked = await loadBakedFoundryIblTexture(THREE, {
+    url: bakedUrl,
+    manifestUrl: bakedManifestUrl,
+    fetchImpl,
+  });
+  if (baked) return baked;
   let HDRLoader;
   try {
     ({ HDRLoader } = await import('three/addons/loaders/HDRLoader.js'));
@@ -56,6 +80,47 @@ export async function loadFoundryIblTexture(THREE, { url = FOUNDRY_IBL_URL } = {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     normalizeHdrMeanRadiance(texture, FOUNDRY_IBL_TARGET_MEAN_RADIANCE);
     neutralizeHdrGreenCast(texture);
+    texture.needsUpdate = true;
+    return texture;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Runtime check that the baked value is used: the shipped payload bytes must hash to the
+// manifest's sha256 — i.e. the bytes wrapped into the texture are exactly what the bake (and
+// therefore the runtime algorithm) produced. A missing/mismatched artifact returns null so the
+// caller falls back to the decode path rather than trusting unverified pixels.
+export async function loadBakedFoundryIblTexture(THREE, {
+  url = FOUNDRY_IBL_BAKED_URL,
+  manifestUrl = FOUNDRY_IBL_BAKED_MANIFEST_URL,
+  fetchImpl = undefined,
+} = {}) {
+  const fetcher = fetchImpl || (typeof fetch === 'function' ? fetch : null);
+  const subtle = (typeof crypto !== 'undefined' && crypto && crypto.subtle) || null;
+  if (!fetcher || !subtle || typeof subtle.digest !== 'function') return null;
+  try {
+    const [manifestRes, binRes] = await Promise.all([fetcher(manifestUrl), fetcher(url)]);
+    if (!manifestRes.ok || !binRes.ok) return null;
+    const manifest = await manifestRes.json();
+    const payload = await binRes.arrayBuffer();
+    if (!manifest || manifest.schema !== FOUNDRY_IBL_BAKED_SCHEMA) return null;
+    if (manifest.pixelFormat !== 'float32-rgba' || manifest.channels !== 4) return null;
+    const width = manifest.width | 0, height = manifest.height | 0;
+    if (width <= 0 || height <= 0) return null;
+    if (payload.byteLength !== width * height * 4 * Float32Array.BYTES_PER_ELEMENT) return null;
+    if (typeof manifest.sha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(manifest.sha256)) return null;
+    const digest = await subtle.digest('SHA-256', payload);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (hex !== manifest.sha256.toLowerCase()) return null;
+    const texture = new THREE.DataTexture(new Float32Array(payload), width, height);
+    // Match DataTextureLoader's field setup exactly (LinearFilter overrides DataTexture's
+    // Nearest defaults; wrap/format/anisotropy already agree with the decode path's product).
+    texture.type = THREE.FloatType;
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.userData.foundryIblBaked = { verified: true, sha256: manifest.sha256 };
     texture.needsUpdate = true;
     return texture;
   } catch (_) {

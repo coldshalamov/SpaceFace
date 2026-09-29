@@ -65,6 +65,35 @@ const AUTHORED_MODEL_TUNING = Object.freeze({
 const ASSISTED_NEUTRAL_COUNTERTHRUST = 0.36;
 const DRIFT_NEUTRAL_COUNTERTHRUST = 0.10;
 
+// Retained scratch objects for the per-craft step packet. Each helper writes every field of
+// its scratch before returning, so callers observe exactly the same values as fresh literals
+// while the tick loop stops re-allocating them. Nothing that escapes into retained state is
+// pooled: diagnostics objects stay fresh per call, and the force/torque vectors that merge
+// into diagnostics (and are read back by renderers via e._flightFrame) are allocated fresh
+// inside the scratch results for that reason.
+const _probe = { vel: { x: 0, z: 0 }, rot: 0 };
+const _axes = { fx: 0, fz: 0, rx: 0, rz: 0 };
+const _localVel = { forward: 0, lateral: 0 };
+const _translationStep = {
+  throttle: 0, strafe: 0, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
+  assistStrength: 0, neutralCounterThrust: false, boosting: false,
+};
+const _translationControl = {
+  throttle: 0, strafe: 0, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
+  assistStrength: 0, neutralCounterThrust: false, boosting: false, maxSpeed: 0, force: null,
+};
+const _yawStep = { turnIntent: 0, turnRate: 0, targetYawRate: 0, turnFraction: 0 };
+const _yawControl = {
+  turnIntent: 0, turnRate: 0, targetYawRate: 0, requestedYawRate: 0, turnFraction: 0, torque: null,
+};
+const _bankStep = { targetBank: 0, bank: 0 };
+const _bankSettle = { targetBank: 0, bank: 0 };
+const _frame = {
+  mode: '', flightClass: '', speed: 0, forwardSpeed: 0, lateralSpeed: 0, slipAngle: 0,
+  yawRate: 0, bank: 0, mass: 0, inertia: 0, assistStrength: 0, maxYawRate: 0, maxSpeed: 0,
+};
+const _control = { source: '', mode: '', force: null, torque: null, maxSpeed: 0 };
+
 export function resolveFlightProfile(e, stateOrMode = null) {
   const mode = normalizeMode(
     typeof stateOrMode === 'string'
@@ -142,16 +171,15 @@ export function stepPlayerFlight(e, input, dt, profile = resolveFlightProfile(e)
       turnIntent: clampUnit((input && input.turnIntent) || 0),
     });
   }
-  const yaw = stepYawController(e, clampUnit((input && input.turnIntent) || 0), dt, profile);
+  const yaw = stepYawController(e, clampUnit((input && input.turnIntent) || 0), dt, profile, _yawStep);
   const translation = stepTranslation(e, input, dt, profile, {
     boosting: !!(opts.boosting || (input && input.boosting)),
-  });
-  const bank = stepBankPose(e, yaw.turnFraction, dt, profile);
-  const frame = computeFlightFrame(e, profile);
-  const diagnostics = Object.assign({}, frame, yaw, translation, bank, {
-    mode: profile.mode,
-    flightClass: profile.flightClass,
-  });
+  }, _translationStep);
+  const bank = stepBankPose(e, yaw.turnFraction, dt, profile, _bankStep);
+  const frame = computeFlightFrame(e, profile, _frame);
+  const diagnostics = Object.assign({}, frame, yaw, translation, bank);
+  diagnostics.mode = profile.mode;
+  diagnostics.flightClass = profile.flightClass;
   e._flightFrame = diagnostics;
   return diagnostics;
 }
@@ -171,41 +199,40 @@ export function stepNpcFlight(e, intent = {}, dt, profile = resolveFlightProfile
       aimError: err,
     });
   }
-  const yaw = stepYawController(e, turnIntent, dt, profile);
-  const translation = stepTranslation(e, intent, dt, profile, { boosting: !!intent.boost, npc: true });
-  const bank = stepBankPose(e, yaw.turnFraction, dt, profile);
-  const frame = computeFlightFrame(e, profile);
-  const diagnostics = Object.assign({}, frame, yaw, translation, bank, {
-    aimError: err,
-    mode: profile.mode,
-    flightClass: profile.flightClass,
-  });
+  const yaw = stepYawController(e, turnIntent, dt, profile, _yawStep);
+  const translation = stepTranslation(e, intent, dt, profile, { boosting: !!intent.boost, npc: true }, _translationStep);
+  const bank = stepBankPose(e, yaw.turnFraction, dt, profile, _bankStep);
+  const frame = computeFlightFrame(e, profile, _frame);
+  const diagnostics = Object.assign({}, frame, yaw, translation, bank);
+  diagnostics.aimError = err;
+  diagnostics.mode = profile.mode;
+  diagnostics.flightClass = profile.flightClass;
   e._flightFrame = diagnostics;
   return diagnostics;
 }
 
-export function computeFlightFrame(e, profile = resolveFlightProfile(e)) {
-  const axes = localAxes(e.rot || 0);
+export function computeFlightFrame(e, profile = resolveFlightProfile(e), out) {
+  const axes = localAxesInto(e.rot || 0, _axes);
   const vx = (e.vel && e.vel.x) || 0;
   const vz = (e.vel && e.vel.z) || 0;
   const forwardSpeed = vx * axes.fx + vz * axes.fz;
   const lateralSpeed = vx * axes.rx + vz * axes.rz;
   const speed = Math.hypot(vx, vz);
-  return {
-    mode: profile.mode,
-    flightClass: profile.flightClass,
-    speed,
-    forwardSpeed,
-    lateralSpeed,
-    slipAngle: Math.atan2(lateralSpeed, Math.max(0.0001, Math.abs(forwardSpeed))),
-    yawRate: e.angVel || 0,
-    bank: e.bank || 0,
-    mass: profile.mass,
-    inertia: profile.inertia,
-    assistStrength: profile.assistStrength,
-    maxYawRate: profile.maxYawRate,
-    maxSpeed: profile.maxSpeed,
-  };
+  const r = out || {};
+  r.mode = profile.mode;
+  r.flightClass = profile.flightClass;
+  r.speed = speed;
+  r.forwardSpeed = forwardSpeed;
+  r.lateralSpeed = lateralSpeed;
+  r.slipAngle = Math.atan2(lateralSpeed, Math.max(0.0001, Math.abs(forwardSpeed)));
+  r.yawRate = e.angVel || 0;
+  r.bank = e.bank || 0;
+  r.mass = profile.mass;
+  r.inertia = profile.inertia;
+  r.assistStrength = profile.assistStrength;
+  r.maxYawRate = profile.maxYawRate;
+  r.maxSpeed = profile.maxSpeed;
+  return r;
 }
 
 export function stepPhysicsDamping(e, dt, profile = resolveFlightProfile(e), opts = {}) {
@@ -228,22 +255,20 @@ export function stepPhysicsDamping(e, dt, profile = resolveFlightProfile(e), opt
     y: ((av * wScale) - av) * profile.inertia / dtSafe,
     z: 0,
   };
-  writePhysicsControl(e, {
-    source: opts.source || 'flight-damping',
-    mode: profile.mode,
-    force,
-    torque,
-    maxSpeed: profile.maxSpeed * profile.normalMaxSpeedMult,
-  });
-  const bank = settleBankPose(e, dtSafe);
-  const frame = computeFlightFrame(e, profile);
-  const diagnostics = Object.assign({}, frame, bank, {
-    mode: profile.mode,
-    flightClass: profile.flightClass,
-    physicsAuthority: 'sg02-dynamic',
-    force,
-    torque,
-  });
+  _control.source = opts.source || 'flight-damping';
+  _control.mode = profile.mode;
+  _control.force = force;
+  _control.torque = torque;
+  _control.maxSpeed = profile.maxSpeed * profile.normalMaxSpeedMult;
+  writePhysicsControl(e, _control);
+  const bank = settleBankPose(e, dtSafe, DEFAULT_FLIGHT_TUNING, _bankSettle);
+  const frame = computeFlightFrame(e, profile, _frame);
+  const diagnostics = Object.assign({}, frame, bank);
+  diagnostics.mode = profile.mode;
+  diagnostics.flightClass = profile.flightClass;
+  diagnostics.physicsAuthority = 'sg02-dynamic';
+  diagnostics.force = force;
+  diagnostics.torque = torque;
   e._flightFrame = diagnostics;
   return diagnostics;
 }
@@ -260,7 +285,7 @@ export function stepPlayerTranslation(e, input, dt, opts = {}) {
   return stepTranslation(e, input, dt, profile, opts);
 }
 
-export function stepBankPose(e, turnFraction, dt, tuningOrProfile = DEFAULT_FLIGHT_TUNING) {
+export function stepBankPose(e, turnFraction, dt, tuningOrProfile = DEFAULT_FLIGHT_TUNING, out) {
   const profileLike = tuningOrProfile && tuningOrProfile.model ? tuningOrProfile : null;
   const bankMax = profileLike ? profileLike.bankMax : (tuningOrProfile.bankMax ?? DEFAULT_FLIGHT_TUNING.bankMax);
   const bankFactor = profileLike
@@ -272,13 +297,18 @@ export function stepBankPose(e, turnFraction, dt, tuningOrProfile = DEFAULT_FLIG
     bankResponse: DEFAULT_FLIGHT_TUNING.bankResponse,
     bankReturnResponse: DEFAULT_FLIGHT_TUNING.bankReturnResponse,
   });
-  return { targetBank, bank: e.bank || 0 };
+  const r = out || {};
+  r.targetBank = targetBank;
+  r.bank = e.bank || 0;
+  return r;
 }
 
-export function settleBankPose(e, dt, tuning = DEFAULT_FLIGHT_TUNING) {
-  if (!e.bank) return { targetBank: 0, bank: 0 };
-  integrateBank(e, 0, dt, tuning);
-  return { targetBank: 0, bank: e.bank || 0 };
+export function settleBankPose(e, dt, tuning = DEFAULT_FLIGHT_TUNING, out) {
+  const r = out || {};
+  r.targetBank = 0;
+  if (e.bank) integrateBank(e, 0, dt, tuning);
+  r.bank = e.bank || 0;
+  return r;
 }
 
 export function effectivePlayerTurnRate(e, tuning = DEFAULT_FLIGHT_TUNING) {
@@ -290,23 +320,28 @@ export function npcBankPose(e, turnRate, dt, tuning = DEFAULT_FLIGHT_TUNING) {
   return stepBankPose(e, turnFraction, dt, tuning);
 }
 
-function stepYawController(e, turnIntent, dt, profile) {
+// NOTE (heap audit): the module scratches above are only safe because every consumer either
+// reads scalar fields synchronously (Object.assign merge) or copies vectors into its own
+// retained record (writePhysicsControl). Do not pass a scratch into any path that retains the
+// object itself.
+
+function stepYawController(e, turnIntent, dt, profile, out) {
   const targetYawRate = turnIntent * profile.maxYawRate;
   const accel = Math.abs(targetYawRate) > Math.abs(e.angVel || 0) ? profile.angularAccel : profile.angularBrake;
   e.angVel = approachValue(e.angVel || 0, targetYawRate, Math.max(0, accel) * dt);
   if (!turnIntent && Math.abs(e.angVel) < DEFAULT_FLIGHT_TUNING.turnDeadband) e.angVel = 0;
   e.rot = wrapAngle((e.rot || 0) + e.angVel * dt);
-  return {
-    turnIntent,
-    turnRate: profile.maxYawRate,
-    targetYawRate,
-    turnFraction: clampUnit((e.angVel || 0) / Math.max(0.01, profile.maxYawRate)),
-  };
+  const r = out || {};
+  r.turnIntent = turnIntent;
+  r.turnRate = profile.maxYawRate;
+  r.targetYawRate = targetYawRate;
+  r.turnFraction = clampUnit((e.angVel || 0) / Math.max(0.01, profile.maxYawRate));
+  return r;
 }
 
-function stepTranslation(e, input = {}, dt, profile, opts = {}) {
+function stepTranslation(e, input = {}, dt, profile, opts = {}, out) {
   ensureVelocity(e);
-  const axes = localAxes(e.rot || 0);
+  const axes = localAxesInto(e.rot || 0, _axes);
   const throttle = clampUnit(input.moveZ || 0);
   const strafe = clampUnit(input.moveX || 0);
   const boosting = !!opts.boosting;
@@ -323,7 +358,7 @@ function stepTranslation(e, input = {}, dt, profile, opts = {}) {
     applyCounterThrust(e, axes, profile, dt, brakeCommanded ? 1 : neutralScale);
   }
 
-  const before = computeLocalVelocity(e, axes);
+  const before = computeLocalVelocity(e, axes, _localVel);
   let forwardSpeed = dampScalar(before.forward, profile.linearDrag, dt);
   let lateralSpeed = dampScalar(before.lateral, profile.linearDrag + profile.lateralDrag + profile.assistStrength, dt);
 
@@ -336,16 +371,16 @@ function stepTranslation(e, input = {}, dt, profile, opts = {}) {
 
   const max = profile.maxSpeed * (boosting ? profile.boostMaxSpeedMult : profile.normalMaxSpeedMult);
   const speed = clampSpeed(e, max);
-  return {
-    throttle,
-    strafe,
-    speed,
-    forwardSpeed,
-    lateralSpeed,
-    assistStrength: profile.assistStrength,
-    neutralCounterThrust,
-    boosting,
-  };
+  const r = out || {};
+  r.throttle = throttle;
+  r.strafe = strafe;
+  r.speed = speed;
+  r.forwardSpeed = forwardSpeed;
+  r.lateralSpeed = lateralSpeed;
+  r.assistStrength = profile.assistStrength;
+  r.neutralCounterThrust = neutralCounterThrust;
+  r.boosting = boosting;
+  return r;
 }
 
 function applyLocalThrust(e, axes, throttle, strafe, profile, dt, thrustMult = 1) {
@@ -370,63 +405,66 @@ function stepPhysicsAuthorityFlight(e, input = {}, dt, profile, opts = {}) {
   ensureVelocity(e);
   const dtSafe = Math.max(1e-6, dt || 0);
   const turnIntent = clampUnit(opts.turnIntent || 0);
-  const yaw = computeYawControl(e, turnIntent, dtSafe, profile);
-  const translation = computeTranslationControl(e, input, dtSafe, profile, opts);
-  const bank = stepBankPose(e, yaw.turnFraction, dtSafe, profile);
-  writePhysicsControl(e, {
-    source: opts.source || 'flight',
-    mode: profile.mode,
-    force: translation.force,
-    torque: yaw.torque,
-    maxSpeed: translation.maxSpeed,
-  });
-  const frame = computeFlightFrame(e, profile);
-  const diagnostics = Object.assign({}, frame, yaw, translation, bank, {
-    mode: profile.mode,
-    flightClass: profile.flightClass,
-    physicsAuthority: 'sg02-dynamic',
-  });
+  const yaw = computeYawControl(e, turnIntent, dtSafe, profile, _yawControl);
+  const translation = computeTranslationControl(e, input, dtSafe, profile, opts, _translationControl);
+  const bank = stepBankPose(e, yaw.turnFraction, dtSafe, profile, _bankStep);
+  _control.source = opts.source || 'flight';
+  _control.mode = profile.mode;
+  _control.force = translation.force;
+  _control.torque = yaw.torque;
+  _control.maxSpeed = translation.maxSpeed;
+  writePhysicsControl(e, _control);
+  const frame = computeFlightFrame(e, profile, _frame);
+  const diagnostics = Object.assign({}, frame, yaw, translation, bank);
+  diagnostics.mode = profile.mode;
+  diagnostics.flightClass = profile.flightClass;
+  diagnostics.physicsAuthority = 'sg02-dynamic';
   if (Number.isFinite(opts.aimError)) diagnostics.aimError = opts.aimError;
   e._flightFrame = diagnostics;
   return diagnostics;
 }
 
-function computeYawControl(e, turnIntent, dt, profile) {
+function computeYawControl(e, turnIntent, dt, profile, out) {
   const currentYawRate = finiteNumber(e.angVel);
   const targetYawRate = turnIntent * profile.maxYawRate;
   const accel = Math.abs(targetYawRate) > Math.abs(currentYawRate) ? profile.angularAccel : profile.angularBrake;
   let requestedYawRate = approachValue(currentYawRate, targetYawRate, Math.max(0, accel) * dt);
   if (!turnIntent && Math.abs(requestedYawRate) < DEFAULT_FLIGHT_TUNING.turnDeadband) requestedYawRate = 0;
   const angularAccelerationY = (requestedYawRate - currentYawRate) / dt;
-  return {
-    turnIntent,
-    turnRate: profile.maxYawRate,
-    targetYawRate,
-    requestedYawRate,
-    turnFraction: clampUnit(requestedYawRate / Math.max(0.01, profile.maxYawRate)),
-    torque: { x: 0, y: angularAccelerationY * profile.inertia, z: 0 },
-  };
+  const r = out || {};
+  r.turnIntent = turnIntent;
+  r.turnRate = profile.maxYawRate;
+  r.targetYawRate = targetYawRate;
+  r.requestedYawRate = requestedYawRate;
+  r.turnFraction = clampUnit(requestedYawRate / Math.max(0.01, profile.maxYawRate));
+  r.torque = { x: 0, y: angularAccelerationY * profile.inertia, z: 0 };
+  return r;
 }
 
-function computeTranslationControl(e, input, dt, profile, opts) {
-  const before = {
-    x: finiteNumber(e.vel && e.vel.x),
-    z: finiteNumber(e.vel && e.vel.z),
-  };
-  const probe = Object.assign({}, e, {
-    vel: { x: before.x, z: before.z },
-    rot: finiteNumber(e.rot),
-  });
-  const translation = stepTranslation(probe, input, dt, profile, opts);
+function computeTranslationControl(e, input, dt, profile, opts, out) {
+  const bx = finiteNumber(e.vel && e.vel.x);
+  const bz = finiteNumber(e.vel && e.vel.z);
+  _probe.vel.x = bx;
+  _probe.vel.z = bz;
+  _probe.rot = finiteNumber(e.rot);
+  const translation = stepTranslation(_probe, input, dt, profile, opts, _translationStep);
   const maxSpeed = profile.maxSpeed * (translation.boosting ? profile.boostMaxSpeedMult : profile.normalMaxSpeedMult);
-  return Object.assign({}, translation, {
-    maxSpeed,
-    force: {
-      x: (probe.vel.x - before.x) * profile.mass / dt,
-      y: 0,
-      z: (probe.vel.z - before.z) * profile.mass / dt,
-    },
-  });
+  const r = out || {};
+  r.throttle = translation.throttle;
+  r.strafe = translation.strafe;
+  r.speed = translation.speed;
+  r.forwardSpeed = translation.forwardSpeed;
+  r.lateralSpeed = translation.lateralSpeed;
+  r.assistStrength = translation.assistStrength;
+  r.neutralCounterThrust = translation.neutralCounterThrust;
+  r.boosting = translation.boosting;
+  r.maxSpeed = maxSpeed;
+  r.force = {
+    x: (_probe.vel.x - bx) * profile.mass / dt,
+    y: 0,
+    z: (_probe.vel.z - bz) * profile.mass / dt,
+  };
+  return r;
 }
 
 function buildRuntimeModel(e) {
@@ -477,18 +515,24 @@ function legacyProfile(e, tuning) {
   return profile;
 }
 
-function localAxes(rot) {
+function localAxesInto(rot, out) {
   const fx = Math.cos(rot), fz = Math.sin(rot);
-  return { fx, fz, rx: -fz, rz: fx };
+  out.fx = fx;
+  out.fz = fz;
+  out.rx = -fz;
+  out.rz = fx;
+  return out;
 }
 
-function computeLocalVelocity(e, axes) {
+function computeLocalVelocity(e, axes, out) {
   const vx = (e.vel && e.vel.x) || 0;
   const vz = (e.vel && e.vel.z) || 0;
-  return {
-    forward: vx * axes.fx + vz * axes.fz,
-    lateral: vx * axes.rx + vz * axes.rz,
-  };
+  const forward = vx * axes.fx + vz * axes.fz;
+  const lateral = vx * axes.rx + vz * axes.rz;
+  const r = out || {};
+  r.forward = forward;
+  r.lateral = lateral;
+  return r;
 }
 
 function ensureVelocity(e) {

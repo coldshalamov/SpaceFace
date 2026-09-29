@@ -331,6 +331,14 @@ const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spaw
 const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
 const CRITICAL_SPAWN_RETRY_TICKS = 15;
 const WORLD_RECORD_GC_TICKS = 60;
+// Observational proximity scans run at 30 Hz. Every output of _tickResidency /
+// _tickZoneLabel / _tickPOIScan / requestDecodeRunwayPromote is a monotonic
+// transition (corridor membership dwell, zone enter/exit, POI discovered or
+// identified, far-row decode promotion), so an even-tick cadence defers each
+// transition by at most one tick while halving the per-tick O(pois + zones +
+// corridor sectors + far/field queries) walk. On-run ordering is unchanged:
+// the gate skips whole ticks, never reorders inside one.
+const WORLD_OBSERVE_SCAN_TICKS = 2;
 const ARRIVAL_RESIDENCY_BUDGET = 1;
 // Field regrowth: the memory clock lives in fieldDepletion (slow, durable); the world only decides
 // where the fresh rocks land and caps how many may stand. A worked field reopens a seam batch on
@@ -3746,13 +3754,14 @@ export const world = {
       default: break;
     }
 
+    const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
     this._tickFrameOrigin(state);
-    this._tickResidency(state);
+    if (observeTick) this._tickResidency(state);
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
-    this._tickZoneLabel(state);
-    this._tickPOIScan(state);
+    if (observeTick) this._tickZoneLabel(state);
+    if (observeTick) this._tickPOIScan(state);
     this._tickWorldOneOffSpin(dt, state);
     this._tickAsteroidFieldInteractions(state);
     this._tickFieldRegrowth(state);
@@ -3772,7 +3781,7 @@ export const world = {
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
     // hull cannot be omitted by a stale activity frame on the present beat.
-    requestDecodeRunwayPromote(state, this.helpers);
+    if (observeTick) requestDecodeRunwayPromote(state, this.helpers);
   },
 
   _tickAsteroidFieldInteractions(state) {

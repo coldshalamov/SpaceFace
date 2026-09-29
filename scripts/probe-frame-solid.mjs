@@ -18,7 +18,7 @@
 //     links, bodies that left the frame undrawn) rises. Timing regressions warn; add
 //     --strict-timing to fail on them (only meaningful on a quiet machine).
 import { spawn, execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus, loadavg } from 'node:os';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +36,12 @@ import {
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
+// No bundled playwright chromium on this box — fall back to an installed browser.
+const browserPath = process.env.SF_PROBE_BROWSER
+  || [
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  ].find((candidate) => existsSync(candidate));
 const CENSUS = process.argv.includes('--census');
 const NO_CANON = process.argv.includes('--no-program-canon');
 // Main-thread CPU profile over the flight route (sampling adds a little overhead; compare
@@ -43,6 +49,9 @@ const NO_CANON = process.argv.includes('--no-program-canon');
 const CPU_PROFILE = process.argv.includes('--cpu-profile');
 const STRICT_TIMING = process.argv.includes('--strict-timing');
 const COMPARE_PATH = (process.argv.find((arg) => arg.startsWith('--compare=')) || '').slice('--compare='.length) || null;
+// Probe-side only: extra V8 flags to A/B heap/GC pacing (e.g. SF_PROBE_V8_FLAGS=
+// "--max-semi-space-size=64"). Merged into the same --js-flags switch the shell sets.
+const EXTRA_V8_FLAGS = (process.env.SF_PROBE_V8_FLAGS || '').trim();
 const OUT_DIR = `${ROOT}.devshots/frame-solid`;
 const AWAY_WU = 2500;
 const AWAY_MS = 35_000;
@@ -99,6 +108,7 @@ try {
   await waitForServer(baseUrl);
   browser = await chromium.launch({
     headless: HEADLESS,
+    executablePath: browserPath || undefined,
     args: [
       '--disable-renderer-backgrounding',
       '--disable-background-timer-throttling',
@@ -106,7 +116,7 @@ try {
       '--window-size=1600,900',
       // Probe-only: expose window.gc() so the boot window's garbage can be dropped
       // before frame measurement instead of landing inside it as a stray GC pause.
-      '--js-flags=--expose-gc',
+      `--js-flags=--expose-gc${EXTRA_V8_FLAGS ? ` ${EXTRA_V8_FLAGS}` : ''}`,
     ],
   });
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });

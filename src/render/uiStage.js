@@ -876,6 +876,11 @@ function buildLights(spec) {
     key.shadow.camera.far = 420;
     key.shadow.bias = -0.0012;
     key.shadow.normalBias = 0.05;
+    // Authored stage casters are static for the mount's lifetime — the hull and props are
+    // placed once and the light never moves — so the depth map bakes once when the content
+    // is admitted (`prepareForFirstDraw` arms needsUpdate for its warm-up render) and the
+    // light is skipped after that. Live-owned scenes keep dynamic shadows.
+    if (spec.live == null) key.shadow.autoUpdate = false;
   }
   lights.push(key);
   lights.push(key.target);
@@ -894,7 +899,7 @@ function buildLights(spec) {
   const depthMaterial = key.castShadow
     ? new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking })
     : null;
-  return { lights, shadows: key.castShadow, depthMaterial };
+  return { lights, shadows: key.castShadow, depthMaterial, shadowLight: key.castShadow ? key : null };
 }
 
 /**
@@ -985,8 +990,10 @@ async function prepareForFirstDraw(roots, renderer, built) {
   if (built.disposed) return;
 
   // One shadow pass before the reveal. With a single shared depth program this is cheap, and doing
-  // it here puts the last link inside the window the plate is already covering.
+  // it here puts the last link inside the window the plate is already covering. This is also the
+  // moment the casters exist, so an autoUpdate-latched light bakes its only map in this pass.
   if (built.rig.shadows) {
+    if (built.rig.shadowLight) built.rig.shadowLight.shadow.needsUpdate = true;
     for (const root of roots) root.visible = true;
     const shadowsBefore = renderer.shadowMap.enabled;
     const targetBefore = renderer.getRenderTarget();

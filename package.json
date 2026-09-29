@@ -105,6 +105,8 @@
     "check:steam:achievements": "node scripts/export-steam-achievements.mjs --check",
     "build:store-assets": "node scripts/build-store-assets.mjs",
     "check:store-assets": "node scripts/build-store-assets.mjs --check",
+    "bake:foundry-ibl": "node scripts/bake-foundry-ibl.mjs",
+    "check:foundry-ibl": "node scripts/bake-foundry-ibl.mjs --check && node --test test/foundry-environment.test.mjs",
     "dist:steam": "node scripts/dist-steam.mjs",
     "check:build-identity": "node scripts/check-build-identity.mjs",
     "check:synergy-tells": "node scripts/check-synergy-tells.mjs",
@@ -659,7 +661,8 @@
     "playwright": "^1.61.1",
     "pngjs": "^7.0.0",
     "spectorjs": "^0.9.30",
-    "stats-gl": "^4.2.3"
+    "stats-gl": "^4.2.3",
+    "wabt": "^1.0.39"
   },
   "build": {
     "appId": "com.spaceface.game",
