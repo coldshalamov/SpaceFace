@@ -877,14 +877,14 @@ export const crucibleDraftScreen = {
     // any row that reaches the rail without it.
     const categoryFor = offer => typeof offer.category === 'string' && ARMORY_CATEGORY_SET.has(offer.category)
       ? offer.category
-      : (offer.defId.startsWith('wpn_') ? 'Weapons'
-        : /engine|shield|thermal|afterburner|chaff|thruster/.test(offer.defId) ? 'Motion' : 'Rigs');
+      : (typeof offer.defId === 'string' && offer.defId.startsWith('wpn_') ? 'Weapons'
+        : /engine|shield|thermal|afterburner|chaff|thruster/.test(offer.defId || '') ? 'Motion' : 'Rigs');
     const query = (this._query || '').trim().toLowerCase();
     const matchesQuery = (offer) => !query
       || (offer.name || '').toLowerCase().includes(query)
       || (offer.verb || '').toLowerCase().includes(query)
       || (offer.blurb || '').toLowerCase().includes(query)
-      || offer.defId.toLowerCase().includes(query);
+      || (offer.defId || '').toLowerCase().includes(query);
     for (const button of this._filters.children) {
       const category = button.dataset.category;
       button.setAttribute('aria-pressed', String(category === this._category));
@@ -1055,7 +1055,7 @@ export const crucibleDraftScreen = {
     const compare = offerCompare(offer, best);
     if (compare) parts.compare.appendChild(compare);
     parts.budget.textContent = '';
-    if (Number.isFinite(offer.price) && !offer.purchased) {
+    if (Number.isFinite(offer.price) && !offer.purchased && offer.price > 0) {
       const gauge = budgetGauge(context.state?.run?.credits, offer.price);
       if (gauge) parts.budget.appendChild(gauge);
     }
@@ -1064,7 +1064,8 @@ export const crucibleDraftScreen = {
     parts.buy.textContent = '';
     if (offer.purchased) parts.buy.textContent = 'Fitted';
     else if (offer.available) {
-      parts.buy.appendChild(el('span', 'orr-armory-reading__buy-word', `Buy \u00b7 ${offer.price} cr`));
+      parts.buy.appendChild(el('span', 'orr-armory-reading__buy-word',
+        offer.price > 0 ? `Buy \u00b7 ${offer.price} cr` : `${offer.verb || 'Take'} — free`));
       parts.buy.appendChild(el('span', 'orr-armory-keycap', 'Enter'));
     } else parts.buy.textContent = offer.unavailableReason || '';
     parts.buy.classList.toggle('is-off', !offer.available);

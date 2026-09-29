@@ -2035,14 +2035,27 @@ export function resultStamp(result) {
 
 /**
  * The run-identity signature refresh() compares against the mount's own stamp: the seed, where
- * the run stopped, how it ended, and its end mark. Two runs back to back always differ — the
- * plate is never allowed to show the previous one's numbers.
+ * the run stopped, how it ended, and its end mark. It is only a fallback — a same-seed retry
+ * ending on the same tick CAN share every field, so the owner's monotonic result revision is
+ * the primary key whenever it offers one.
  */
 function resultSignature(result) {
   if (!result) return 'none';
   const mark = result.endedAt || {};
   return `${result.seed}|${result.wave}|${result.deepestWave}|${result.outcome}|${result.stopReason}`
     + `|${mark.tick}|${mark.simTime}`;
+}
+
+/**
+ * The plate's freshness key: the owner's monotonic revision when it offers one — a retry can
+ * repeat a signature, never a revision. lastResult deep-clones, so identity cannot serve.
+ */
+function resultVersion(owner) {
+  if (owner && typeof owner.resultRevision === 'function') {
+    return `rev:${owner.resultRevision()}`;
+  }
+  const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
+  return resultSignature(result);
 }
 
 /** The band name for a section. The damage band means something different after a clear. */
@@ -2658,7 +2671,7 @@ export const crucibleResultsScreen = {
     // The screen manager mounts a screen once and re-shows the cached root on every later push.
     // The plate's signature is what refresh() compares — a new run always ends at a new mark.
     this._root = rootEl;
-    this._resultSig = resultSignature(result);
+    this._resultSig = resultVersion(owner);
     rootEl.dataset.stamp = resultStamp(result);
     rootEl.dataset.outcome = (result && result.outcome) || 'empty';
 
@@ -2946,9 +2959,7 @@ export const crucibleResultsScreen = {
   refresh(ctx) {
     const root = this._root;
     if (!root) return;
-    const owner = resultsOwner(ctx);
-    const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
-    if (resultSignature(result) === this._resultSig) return;
+    if (resultVersion(resultsOwner(ctx)) === this._resultSig) return;
     this.dispose();
     this.mount(root, ctx);
   },

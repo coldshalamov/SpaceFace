@@ -941,7 +941,10 @@ export const survivalArena = {
       if (system && typeof system.updateExternal === 'function') {
         const elapsed = simTimeOf(st) - (this._installedAt || 0);
         const cycle = stepCinderMachinery(elapsed);
-        const strength = cycle.strength === 0 ? 0 : this._authoredStrength;
+        // The surge factor rides INSIDE the per-tick write — a one-shot patch would die on the
+        // next machinery update, and the authored strength coming back is the window's calm.
+        const strength = cycle.strength === 0 ? 0
+          : this._authoredStrength * this._surgeScale(ARENA_FIELD_SLOT_IDS[0]);
         system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
       }
     } else if (this._lawId === CRYO_ARENA_ID) {
@@ -1460,6 +1463,13 @@ export const survivalArena = {
         strength: 0,
       });
     }
+  },
+
+  /** The director's overdrive factor for an installed field — 1 while nothing runs hot. */
+  _surgeScale(fieldId) {
+    const dir = this._swarmEvents;
+    return dir && typeof dir.fieldStrengthScale === 'function'
+      ? dir.fieldStrengthScale(fieldId) : 1;
   },
 
   _reset() {

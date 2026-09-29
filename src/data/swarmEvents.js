@@ -90,13 +90,17 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
   }),
 
   // ── storm_lattice: the relay graph and the grid ──
+  // The lattice's own fields are occupancy markers authored at strength 0 — a multiplier has
+  // nothing to bite, so its signature cards are pulses: temporary fields for the window only.
   relay_arc: event({
-    id: 'relay_arc', name: 'Relay arc', kind: 'surge', factor: 2.0, windupS: 4, windowS: 9,
+    id: 'relay_arc', name: 'Relay arc', kind: 'pulse', windupS: 4, windowS: 9,
     telegraph: 'RELAY ARC — the lattice is about to energize',
+    field: { kind: 'repulsor', bearing: 'spin', dist: 300, radius: 340, strength: 170, falloff: 1.2 },
   }),
   grid_surge: event({
-    id: 'grid_surge', name: 'Grid surge', kind: 'surge', factor: 1.9, windupS: 4, windowS: 12,
+    id: 'grid_surge', name: 'Grid surge', kind: 'pulse', windupS: 4, windowS: 12,
     telegraph: 'GRID SURGE — the whole room is hot',
+    field: { kind: 'well', bearing: 'center', radius: 520, strength: 140, falloff: 1.15 },
   }),
 
   // ── shared cards — every arena can draw these ──

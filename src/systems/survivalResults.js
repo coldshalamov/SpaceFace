@@ -499,11 +499,21 @@ export const survivalResults = {
     return this._result ? JSON.parse(JSON.stringify(this._result)) : null;
   },
 
+  /**
+   * Monotonic revision of the result slot — bumps on every write, so a consumer can tell a
+   * fresh run's result from a same-signature retry. lastResult deep-clones, so object identity
+   * can never serve as the change signal.
+   */
+  resultRevision() {
+    return this._resultSeq || 0;
+  },
+
   _reset() {
     this._highestEntered=0;this._stuntRules=null;
     this._planFailure = null;
     this._stopReason = null;
     this._result = null;
+    this._resultSeq = (this._resultSeq || 0) + 1;
     this._kills = 0;
     this._bestChain = 0;
     this._chainPeak = null;
@@ -925,6 +935,7 @@ export const survivalResults = {
       // A local-record failure must not swallow the results the player is owed.
     }
     this._result = result;
+    this._resultSeq = (this._resultSeq || 0) + 1;
     this._emit('run:resultsReady', result);
   },
 

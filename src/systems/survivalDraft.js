@@ -161,11 +161,15 @@ export const survivalDraft = {
       .map(offer => {
       const purchased = this._purchased?.has(offer.id) === true;
       const current = legalById.get(offer.id);
+      const demoed = Number.isInteger(offer.slotIndex)
+        && this._trials?.get(offer.slotIndex)?.defId === offer.defId;
+      // The live demo IS the legality — offerDraft drops a fitted support module, so the card
+      // that seeded the trial would read "No compatible slot" while it is still wearing it.
+      const legal = !!current || demoed;
       const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
-      return { ...offer, ...(current || {}), price, purchased,
-        demoed: Number.isInteger(offer.slotIndex) && this._trials?.get(offer.slotIndex)?.defId === offer.defId,
-        available: !purchased && !!current && price != null && run.credits >= price,
-        unavailableReason: purchased ? 'Fitted' : !current ? 'No compatible slot' :
+      return { ...offer, ...(current || {}), price, purchased, demoed,
+        available: !purchased && legal && price != null && run.credits >= price,
+        unavailableReason: purchased ? 'Fitted' : !legal ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null };
     });
     const shown = new Set(rows.map((row) => row.id));
@@ -192,9 +196,12 @@ export const survivalDraft = {
           : entry.service === 'ordnance' && (entry._serviceCharges || 0) >= SWARM_ORDNANCE_RACK_MAX
             ? 'Rack already full'
             : null;
+      // A hull already on the manifest is a switch, not a sale — "bought this armory" must not
+      // freeze it, or buying a second hull locks the first out of the cradle for the round.
+      const spent = purchased && entry.kind !== SWARM_HULL_OFFER_KIND;
       rows.push({ ...entry, purchased,
-        available: !purchased && !blocked && run.credits >= entry.price,
-        unavailableReason: purchased ? 'Done' : blocked
+        available: !spent && !blocked && run.credits >= entry.price,
+        unavailableReason: spent ? 'Done' : blocked
           || (run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null) });
     }
     return rows;
@@ -300,19 +307,21 @@ export const survivalDraft = {
     const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
     this._wave = run.wave;
     this._resolved = false;
-    if (offers.length === 0) {
+    this._offers = preferRoleCounterOffers(offers, this.state);
+    // Named syntheses ride the armory list, gated to swarm: the gauntlet draft grants its pick
+    // outright and has no run wallet, so "explicit conversion and cost" cannot exist there.
+    // The extras are appended BEFORE the empty check: a bare hull stocks an empty fitting shelf
+    // but still has a cradle and a service counter, and that armory must open too.
+    if (isSwarmRuleset(run.ruleset)) {
+      this._offers = this._offers.concat(this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
+    }
+    if (this._offers.length === 0) {
       // Nothing legal to offer on this hull. Resolve immediately rather than opening an empty
       // surface the player cannot dismiss.
       this._offers = null;
       this._emit('run:draftOffered', { wave: run.wave, offers: [], reason: result && result.reason });
       this._finish({ picked: null, applied: false, reason: 'no_legal_offer' });
       return;
-    }
-    this._offers = preferRoleCounterOffers(offers, this.state);
-    // Named syntheses ride the armory list, gated to swarm: the gauntlet draft grants its pick
-    // outright and has no run wallet, so "explicit conversion and cost" cannot exist there.
-    if (isSwarmRuleset(run.ruleset)) {
-      this._offers = this._offers.concat(this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
     }
     this._emit('run:draftOffered', {
       wave: run.wave, offers: this._offers.map((o) => ({ ...o })), rerolls: 0,
@@ -599,6 +608,10 @@ export const survivalDraft = {
       this._notice = 'Fitting is unavailable. Your money is safe.';
       return false;
     }
+    // A manifest row never meets the wallet — the hull is already owned, the switch is free.
+    if (offer.kind === SWARM_HULL_OFFER_KIND && Number.isInteger(offer._ownedIndex)) {
+      return this._switchToOwnedHull(offer);
+    }
     if (offer.kind === EVOLUTION_OFFER_KIND) {
       // Mounted parts come off BEFORE the blocker: the conversion frees their hardpoints, so the
       // fitting authority must judge the build as it will look after the trade, not before it.
@@ -666,18 +679,26 @@ export const survivalDraft = {
     });
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
       ? player.cargo.usedVolume : 0;
+    const ownedList = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
     for (const ship of SHIPS) {
       if (!ship || typeof ship.id !== 'string') continue;
+      const ownedIndex = ownedList.findIndex((entry) => entry && entry.defId === ship.id);
+      const owned = ownedIndex >= 0 ? ownedList[ownedIndex] : null;
       // setActiveShip refuses the swap when the run's hold is heavier than the new hull takes —
       // the row must say so up front, because the charge is real by the time the cradle would.
-      const cargoCap = getDerivedStats(ship.id, [], player).cargoCap || 0;
+      // An owned hull is judged against ITS OWN capacity (the fittings it actually carries).
+      const cargoCap = getDerivedStats(ship.id, owned && Array.isArray(owned.fittings)
+        ? owned.fittings : [], player).cargoCap || 0;
       extras.push({
         id: `hull_${ship.id}`, kind: SWARM_HULL_OFFER_KIND, defId: ship.id,
-        verb: 'Hull', name: ship.name,
-        blurb: `${ship.role} hull · tier ${ship.tier} · ${buildSlotList(ship).length} hardpoints`,
-        price: swarmHullPrice(ship), category: 'Hulls', slotLabel: 'Ship cradle',
+        verb: owned ? 'Switch' : 'Hull', name: ship.name,
+        blurb: owned
+          ? `On your manifest · ${ship.role} · ${buildSlotList(ship).length} hardpoints`
+          : `${ship.role} hull · tier ${ship.tier} · ${buildSlotList(ship).length} hardpoints`,
+        price: owned ? 0 : swarmHullPrice(ship), category: 'Hulls', slotLabel: 'Ship cradle',
         _flying: ship.id === (loadout && loadout.hullId),
         _cargoBlocked: cargoUsed > cargoCap,
+        _ownedIndex: ownedIndex >= 0 ? ownedIndex : null,
       });
     }
     return extras;
@@ -797,6 +818,38 @@ export const survivalDraft = {
       wave: this._wave,
     });
     this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+  },
+
+  /**
+   * The manifest row: a free switch back to a hull the run already owns — no grant, no charge.
+   * setActiveShip is the one switch authority; its cargo refusal was priced into the row up
+   * front, so landing here means the swap takes. Demos retire exactly as a bought swap does —
+   * they were receipts for the hull being left.
+   */
+  _switchToOwnedHull(offer) {
+    const ships = this._ships();
+    const player = this.state && this.state.player;
+    const owned = player && Array.isArray(player.ownedShips)
+      ? player.ownedShips[offer._ownedIndex] : null;
+    if (!ships || typeof ships.setActiveShip !== 'function'
+      || !owned || owned.defId !== offer.defId) {
+      this._notice = 'That hull is no longer on your manifest.';
+      return false;
+    }
+    if (!ships.setActiveShip(offer._ownedIndex)
+      || player.ownedShips[player.activeShipIndex] !== owned) {
+      this._notice = 'Your cargo would overflow its hold.';
+      return false;
+    }
+    this._retireAllTrials();
+    this._notice = `${offer.name} back in the cradle — the shelf just re-priced your hardpoints.`;
+    this._emit('run:modifierRecordRequested', {
+      record: { kind: 'hull', offerId: offer.id, defId: offer.defId, wave: this._wave },
+      draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: offer.id },
+      wave: this._wave,
+    });
+    this._emit('run:shopPurchased', { wave: this._wave, offerId: offer.id, price: 0 });
+    return true;
   },
 
   /**

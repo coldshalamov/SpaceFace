@@ -46,6 +46,7 @@ import {
   validateSwarmEvents,
 } from '../src/data/swarmEvents.js';
 import { SWARM_RULESET, isSwarmBossWave } from '../src/data/swarmMode.js';
+import { createSwarmEventDirector, swarmEventFrame } from '../src/systems/swarmEvents.js';
 import {
   crucibleHullSetupFor,
   crucibleSetupFor,
@@ -423,6 +424,133 @@ test('the opening armory survives the game:started close-all', async () => {
   h.bus.emit('game:started', {});
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(pushes(), 2, 'the live draft re-opens after the handoff');
+});
+
+// ── S6.7b — the manifest is a switchyard, not a storefront ───────────────────
+
+test('an owned hull switches back for free and stays switchable', () => {
+  const h = boot(); // the hornet is already on the manifest, flying
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  // The hornet's own row is a free switch, not a second sale.
+  const ownedRow = survivalDraft.currentOffers()
+    .find((o) => o.kind === 'hull' && o.defId === 'ship_hornet');
+  assert.ok(ownedRow && ownedRow._flying, 'the flown hull reads as the one in the cradle');
+  assert.equal(ownedRow.price, 0, 'an owned hull is never priced again');
+  // Buy a foreign hull — the swap lands; the hornet leaves the cradle but not the manifest.
+  const foreign = survivalDraft.currentOffers().find((o) =>
+    o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
+  assert.ok(foreign, 'a foreign hull is on the shelf');
+  h.bus.emit('run:draftPickRequested', { offerId: foreign.id });
+  const player = h.state.player;
+  assert.equal(player.ownedShips[player.activeShipIndex].defId, foreign.defId, 'the bought hull flies');
+  // The hornet row re-shelves as a free switch.
+  const hornetRow = survivalDraft.currentOffers()
+    .find((o) => o.kind === 'hull' && o.defId === 'ship_hornet');
+  assert.equal(hornetRow.verb, 'Switch', 'the manifest row is a switch');
+  assert.equal(hornetRow.price, 0, 'the manifest row is free');
+  assert.ok(hornetRow.available, `the switch is live (${hornetRow.unavailableReason || 'ready'})`);
+  const creditsBefore = h.state.run.credits;
+  h.bus.emit('run:draftPickRequested', { offerId: hornetRow.id });
+  assert.equal(h.state.player.ownedShips[h.state.player.activeShipIndex].defId, 'ship_hornet',
+    'the hornet is back in the cradle');
+  assert.equal(h.state.run.credits, creditsBefore, 'the wallet never moved');
+  // And the bought hull is still a live switch row — a purchase must not freeze the door.
+  const foreignRow = survivalDraft.currentOffers()
+    .find((o) => o.kind === 'hull' && o.defId === foreign.defId);
+  assert.ok(foreignRow && foreignRow.available,
+    `the bought hull stays switchable (${foreignRow && foreignRow.unavailableReason || 'ready'})`);
+});
+
+test('a demoed module stays buyable — the trial is not a lock', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  const card = survivalDraft.currentOffers().find((o) =>
+    Number.isInteger(o.slotIndex) && o.kind === 'number'
+    && MODULES.some((m) => m.id === o.defId));
+  assert.ok(card, 'a support module card is on the shelf');
+  h.bus.emit('run:draftPickRequested', { offerId: card.id, demo: true });
+  assert.equal(activeFittings(h)[card.slotIndex], card.defId, 'the demo is wearing');
+  const trial = survivalDraft.currentOffers().find((o) => o.id === card.id);
+  assert.ok(trial && trial.demoed, 'the card knows it is on trial');
+  assert.ok(trial.available, `buy-to-keep stays live (${trial.unavailableReason || 'ready'})`);
+  h.bus.emit('run:draftPickRequested', { offerId: card.id });
+  assert.equal(activeFittings(h)[card.slotIndex], card.defId, 'the paid copy is on the slot');
+  // Walk to the next armory — a paid copy was never a trial, so nothing strips.
+  h.bus.emit('run:draftPickRequested', { offerId: null });
+  h.state.run.wave = 1;
+  transition(h, 'draft', 'wave_intro');
+  transition(h, 'wave_intro', 'active');
+  transition(h, 'active', 'cleanup');
+  transition(h, 'cleanup', 'draft');
+  assert.ok(activeFittings(h).includes(card.defId), 'the kept module rides on');
+});
+
+// ── S6.6b — a surge holds its window inside the per-tick write ───────────────
+
+test('a surge overdrive rides the per-tick write for its whole window', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'contender' });
+  h.state.run.phase = 'active';
+  const writes = [];
+  const fields = {
+    updateExternal(id, patch) { writes.push({ id, ...patch }); return { id }; },
+    unregisterExternal() { return true; },
+  };
+  const registry = { get: (name) => (name === 'fields' ? fields : null) };
+  const director = createSwarmEventDirector({ state: h.state, bus: h.bus, helpers: {}, registry });
+  director.init();
+  // The draw is seeded — walk to the seed whose wave-5 cinder card is the sluice surge.
+  let seed = 1;
+  while (swarmEventFor({ arenaId: 'cinder_sluice', wave: 5, seed })?.id !== 'sluice_surge') seed++;
+  h.state.run.seed = seed;
+  h.state.run.arenaId = 'cinder_sluice';
+  h.state.run.wave = 5;
+  director.setFrame(swarmEventFrame({ at: { x: 0, z: 0 }, laneGate: null, seed, wave: 5 }));
+  director.setInstalledFields([{ id: 'survival_arena_field_a', strength: 40 }]);
+  h.bus.emit('run:waveStarted', { wave: 5 });
+  // Past the windup: the overdrive is live, and the per-tick write must carry it.
+  h.state.simTime += 10;
+  director.update(0.016, h.state);
+  assert.equal(director.fieldStrengthScale('survival_arena_field_a'), 2.0,
+    'the sluice runs hot through the window');
+  assert.ok(writes.some((w) => w.id === 'survival_arena_field_a' && w.strength === 80),
+    'the authored field got its overdrive patch');
+  // Past the window: the scale is calm again — the machinery's own write restores the base.
+  h.state.simTime += 11;
+  director.update(0.016, h.state);
+  assert.equal(director.fieldStrengthScale('survival_arena_field_a'), 1,
+    'the window closed calm');
+});
+
+test('the lattice signatures are pulses — its authored fields are strength-0 markers', () => {
+  // A surge multiplies what is already there; storm relays are occupancy fields authored at
+  // zero, so storm's signature cards are temporary fields, not multipliers.
+  for (const id of SWARM_EVENT_TABLES.storm_lattice) {
+    const card = SWARM_EVENT_BY_ID[id];
+    assert.equal(card.kind, 'pulse', `${id} is a temporary field, not a multiplier on zero`);
+    assert.ok(card.field && card.field.strength > 0, `${id} carries a real authored field`);
+  }
+});
+
+test('the result revision moves on every write — a retry cannot repeat a plate', () => {
+  const h = boot();
+  survivalResults.init(h.ctx);
+  const first = survivalResults.resultRevision();
+  beginSwarm(h, { stake: 'veteran' });
+  h.bus.emit('run:waveStarted', { wave: 1, tick: 1 });
+  h.bus.emit('run:ended', { outcome: 'defeat', reason: 'player_death' });
+  const revA = survivalResults.resultRevision();
+  assert.ok(revA > first, 'a result write bumped the revision');
+  // The same seed, the same death on the same tick — the revision still moves.
+  beginSwarm(h, { stake: 'veteran' });
+  h.bus.emit('run:waveStarted', { wave: 1, tick: 1 });
+  h.bus.emit('run:ended', { outcome: 'defeat', reason: 'player_death' });
+  assert.ok(survivalResults.resultRevision() > revA, 'the identical retry still moved');
+  survivalResults.destroy();
 });
 
 // ── S6.8 — the stake rides the run record and the ghost comparison ───────────

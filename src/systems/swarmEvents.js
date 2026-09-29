@@ -103,6 +103,19 @@ export function createSwarmEventDirector(ctx) {
     /** The host's installed field specs — surge needs their authored strengths to overdrive. */
     setInstalledFields(specs) { this._installedFields = Array.isArray(specs) ? specs : []; },
 
+    /**
+     * The overdrive factor a per-tick strength write must carry for this field — the surge
+     * factor while the field id is inside the live window, 1 otherwise. Rooms whose law
+     * rewrites strengths every tick (the cinder machinery) read it here; restoring the
+     * authored strength is then just the window ending.
+     */
+    fieldStrengthScale(id) {
+      const live = this._live;
+      if (!live || !live.event || live.event.kind !== 'surge') return 1;
+      const surged = (live.restores || []).some((entry) => entry && entry.id === id);
+      return surged && Number.isFinite(live.event.factor) ? live.event.factor : 1;
+    },
+
     _onWaveStarted(payload) {
       const state = this._state;
       const run = liveSwarmRun(state);
