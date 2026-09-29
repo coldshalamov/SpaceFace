@@ -289,6 +289,12 @@ const VERB_BINDINGS = {
   // VERB-13: one flight key dumps the selected hold lot as the payload body cargo already spawns.
   // Period is free of the verb tables and the UI bindings. Cargo owns the dump.
   jettisonLot: ['Period'],
+  // Hull-burst overhaul slice C: light the fitted hull-burst module's wedge (Gravity Bumper). Every
+  // left-hand key and every standard pad button is already spoken for, and Backslash is referenced
+  // nowhere (audited 2026-09-29 against both scheme tables, ui/bindings.js and ui/input.js), so the
+  // default is Backslash and the verb is rebindable like every other. No default pad button: the
+  // pad has none unclaimed (same posture as the field tools). The hullBurst system owns timing.
+  hullBurst: ['Backslash'],   // edge: light the hull-burst wedge (needs a fitted hull-burst module)
   // Travel Burn latch (atlas D5 / W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
@@ -556,7 +562,7 @@ function applyFlightKeyTransition(keys, nextKeys) {
 const SAMPLED_EDGE_ACTIONS = new Set([
   'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'deployBeacon',
   'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
-  'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
+  'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot', 'hullBurst',
 ]);
 const KEY_EDGE_CAP = 64;
 
@@ -1132,7 +1138,7 @@ export const input = {
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
-      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
+      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false, hullBurst: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (shouldNeutralizeFlightInput(state, modalInputActive())) {
@@ -1150,7 +1156,7 @@ export const input = {
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
-      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false;
+      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false; acts.hullBurst = false;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1507,6 +1513,7 @@ export const input = {
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
     acts.jettisonLot = edge('jettisonLot');
+    acts.hullBurst = edge('hullBurst');
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
