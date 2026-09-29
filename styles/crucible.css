@@ -109,6 +109,16 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
 }
 .sf-cru-filters { margin-bottom: 18px; }
 .sf-cru-filters[hidden] { display: none; }
+/* The search rides the filter row, same printed-field voice as the shelf words. */
+.sf-cru-search {
+  margin-left: auto; align-self: center; width: min(240px, 34vw);
+  font: inherit; color: var(--k-bone); background: transparent;
+  border: 0; border-bottom: 1px solid var(--k-rule, currentColor);
+  padding: 2px 4px 5px; outline: none;
+}
+.sf-cru-search:focus-visible { border-bottom-color: var(--k-gold, currentColor); }
+.sf-cru-search::placeholder { color: var(--k-fine, currentColor); opacity: 0.7; }
+.sf-cru-search[hidden] { display: none; }
 .sf-crucible-armory .sf-cru-card { text-align: left; min-height: 0; }
 .sf-crucible-armory .sf-cru-name { font-size: clamp(18px, 1.5vw, 24px); }
 .sf-crucible-armory .sf-cru-blurb { font-size: 15px; line-height: 1.45; }

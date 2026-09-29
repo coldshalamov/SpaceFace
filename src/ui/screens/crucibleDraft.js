@@ -29,6 +29,7 @@
 
 import { MODULES } from '../../data/modules.js';
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
+import { SWARM_CATEGORIES } from '../../data/swarmCatalog.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
@@ -61,6 +62,10 @@ function setWordShown(button, show) {
     else li.style.setProperty('display', 'none', 'important');
   }
 }
+
+// The armory's shelf row: 'All' plus the six shelves the catalog files every card under.
+const ARMORY_CATEGORIES = Object.freeze(['All', ...SWARM_CATEGORIES]);
+const ARMORY_CATEGORY_SET = new Set(ARMORY_CATEGORIES);
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -618,12 +623,23 @@ export const crucibleDraftScreen = {
     filters.setAttribute('role', 'group');
     filters.setAttribute('aria-label', 'Armory category');
     this._category = 'All';
-    for (const category of ['All', 'Weapons', 'Rigs', 'Survival']) {
+    // The shelves the whole sandbox stocks — generated catalog rows file under the same
+    // words as authored cards (offer.category is stamped at draw time).
+    for (const category of ARMORY_CATEGORIES) {
       const button = word(category, 'k-word--fine');
       button.dataset.category = category;
       button.addEventListener('click', () => { this._category = category; this.refresh(ctx); });
       filters.appendChild(button);
     }
+    // A hundred-and-forty-deep shelf needs a name filter, not just a shelf picker.
+    const search = el('input', 'sf-cru-search');
+    search.type = 'search';
+    search.placeholder = 'Search the armory…';
+    search.setAttribute('aria-label', 'Search the armory');
+    this._query = '';
+    search.addEventListener('input', () => { this._query = search.value || ''; this.refresh(ctx); });
+    filters.appendChild(search);
+    this._search = search;
     this._filters = filters;
     stage.appendChild(filters);
     // the category words ride a ruled line with the amber index under the open one
@@ -757,9 +773,20 @@ export const crucibleDraftScreen = {
     // leave a paused player with a key that does nothing.
     rootEl.addEventListener('keydown', (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      // While the search field owns the keyboard, the rails' keys stand down: typing 'r'
+      // must not re-roll, and Escape backs out of the field first, the shop second.
+      const inSearch = event.target === this._search;
+      if (inSearch && event.key === 'Escape') {
+        event.preventDefault();
+        this._search.value = '';
+        this._query = '';
+        this._search.blur();
+        this.refresh(ctx);
+        return;
+      }
       const all = [...cards.querySelectorAll('.sf-cru-card')];
       const index = '123'.indexOf(event.key);
-      if (index >= 0 && all[index]) {
+      if (!inSearch && index >= 0 && all[index]) {
         event.preventDefault();
         all[index].click();
         return;
@@ -769,6 +796,7 @@ export const crucibleDraftScreen = {
         skip.click();
         return;
       }
+      if (inSearch) return;
       // Not reroll.click(): the button is drawn dead when the price is out of reach, and a dead
       // button swallows a click. The owner is the authority on the refusal either way, and the
       // player gets told why instead of nothing happening.
@@ -839,8 +867,19 @@ export const crucibleDraftScreen = {
     this._title.textContent = shop ? 'Armory' : 'Rearm';
     this._filters.hidden = !shop;
     this._refitBtn.hidden = !shop;
-    const categoryFor = offer => offer.defId.startsWith('wpn_') ? 'Weapons'
-      : /engine|shield|thermal|afterburner|chaff/.test(offer.defId) ? 'Survival' : 'Rigs';
+    if (this._search) this._search.hidden = !shop;
+    // offer.category is stamped when the card is drawn; the regex stays as the fallback for
+    // any row that reaches the rail without it.
+    const categoryFor = offer => typeof offer.category === 'string' && ARMORY_CATEGORY_SET.has(offer.category)
+      ? offer.category
+      : (offer.defId.startsWith('wpn_') ? 'Weapons'
+        : /engine|shield|thermal|afterburner|chaff|thruster/.test(offer.defId) ? 'Motion' : 'Rigs');
+    const query = (this._query || '').trim().toLowerCase();
+    const matchesQuery = (offer) => !query
+      || (offer.name || '').toLowerCase().includes(query)
+      || (offer.verb || '').toLowerCase().includes(query)
+      || (offer.blurb || '').toLowerCase().includes(query)
+      || offer.defId.toLowerCase().includes(query);
     for (const button of this._filters.children) {
       const category = button.dataset.category;
       button.setAttribute('aria-pressed', String(category === this._category));
@@ -866,7 +905,9 @@ export const crucibleDraftScreen = {
     const savedFocus = focusedControlId(rootEl);
     cards.innerHTML = '';
     const visibleOffers = shop
-      ? offers.filter(offer => this._category === 'All' || categoryFor(offer) === this._category)
+      ? offers
+        .filter(offer => (this._category === 'All' || categoryFor(offer) === this._category)
+          && matchesQuery(offer))
         .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))
       : offers.slice(0, SURVIVAL_DRAFT_CHOICES);
     let lastPrice = null;
