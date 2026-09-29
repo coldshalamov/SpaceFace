@@ -2376,6 +2376,55 @@ What is in the working tree (verify, then commit by pathspec — foreign dirty f
   arrival wake/flash; visible retro jet.
 - Also from the assessment: Sker Haven's purple soft-sphere crystals read as blobs (part of E).
 
+### CI stabilization campaign — IN PROGRESS, handoff (2026-09-29)
+
+Ledger truth lives in `DEMO_READINESS_2026-09-20.md` D90; this is the working state.
+
+**Goal:** get `.github/workflows/check.yml` (groups: static×3, sim, feel, browser×3) green on a quiet
+head. Runs cancel in-flight on every push (`concurrency.cancel-in-progress`), so the proof is one
+full green run, not a permanently green history.
+
+**Landed and pushed — real defects fixed (six waves, ~40 commits):**
+- Infra: browser sharded 2→3 (`71d21ea41`), blobless full-history checkouts (`7e9d5d638`).
+- Sim/harness: miningHud DOM guard (`a6e831ba5`), sf.mjs JSON stdout drain (`9f2cb70d5`), clientless
+  mission expiry (`3d1c3054e`), depth-program re-pins (`b339de8c7`), env-machinery crash (`d9ba5c266`).
+- Assets/tooling: place KTX2 role encodings re-published (`34e8a05f9`), forge root-node
+  `spacefaceAsset` stamp (`f50b45ee3`), cross-platform Chrome discovery (`5f3c898d3`), native
+  `title=` → `data-why` (`b6d7447ce`), texture-dedupe detached-payload guard (`c4ee3bd01`).
+- Browser boot: serial-GL-route queue pacing — `gpuQueuePace.js` wired into bloom/opening admission/
+  renderer/residency (`c48d13648`); signal cue lane-critical (`5a06e86ce`); dock pointer rAF+timer
+  backstop (`def5cd899`); ORRERY glyph aria-label hold (`1a249e88a`); bar nav budget (`7c479fed6`);
+  headed-capture anti-occlusion flags (`a7694369d`); `@elemaudio/core` importmap + vendored deps
+  (`f35d15203`).
+- Wave 4–6: sector-arrival headless-on-CI (`42760041c`), whole-ship LOD hysteresis across family
+  swaps — real thrash fix (`13e8b7966`), probe scores ships by the renderer's own admission policy
+  (`3a91603d3`), input gamepad-boost helm claim (`8516173bd`), sg06 port whitelist (`280e15718`),
+  K1 committed-corridor fire-window hold (`e2c4199f2`), probe resolve-window + menu budgets
+  (`160036aff`), save-index card assertions (`a64c6676b`).
+
+**OPEN — the blocking cluster (CI run 36594590047 @ `48c4def72`):**
+The Slice-A physics packages (`954a0ab8c` dynamic compound colliders, `b7b499263` non-landmark
+solids dynamic, `604d19831`, `41e035b11`, `30cb519bd`) drifted the sim hard. Failing now:
+`check-sim-v3`, `check-sim`, `check-sim-dynamic`, `check-sim-compare`, `check-sim-v3-compare`,
+`check-sim-profile`, `check-replay` (all telemetry-envelope hash drift — re-derive if the new
+physics is sanctioned, name the landing commits), `sg02-coincident-spawn-test`,
+`check-phase0-slice-contract` (4 vs 7), `check-sg06-formation` (interceptor separation 122.652),
+`check-pq146-stunt-proofs`, `check-shipworks-dock-composition`, `check-47a-tactics` +
+`check-47a-live-branch` (`surrender_evidence` never fires — behavioral, not a pin), `check-k1`
+re-fail, `check-station-tabs` (market pointer response absent), `check-sector-arrival-admission`,
+`probe-ship-visual-stability`. Adjudicate per-check: sanctioned drift → re-derive fixture; real
+regression → production fix.
+
+**OPEN — `check-ui-budgets` baseline treadmill:**
+`baseline:stale` fails static-2 whenever any lane commits to `src/ui`/`styles`/`src/core`/`src/render`
+(the digest roots). Fix per cycle: headed re-shoot —
+`node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 --budgets-out=test/ui-frame-references/budgets.json`
+on a CLEAN tree at the pushed head (~30-40 min). A race loop doing exactly this runs locally:
+`scratch/budget-loop.ps1` in `.worktrees/budget-shoot`, polls origin/master every 60 s and
+re-shoots the newest head, restarts on digest drift; wins → `scratch/budget-loop.done`. When it
+lands, copy `budgets.json` to main, commit, push immediately. Headed is a hard integrity gate —
+headless numbers are not evidence.
+
 ### Wave D — shelf that beats live
 
 Reuse before authoring. A variant counts.
