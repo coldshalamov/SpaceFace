@@ -6817,6 +6817,11 @@ export const missions = {
     // nothing silently (postAndAcceptAuthoredOffer's storyTag dedupe would report `reused`).
     if ((m.mutationDepth || 0) >= MUTATION_MAX_DEPTH) return null;
     if ((this.state.missions.active || []).some((a) => a && a.mutatedFromMissionId === m.id)) return null;
+    // Client-bound: the successor is the client refiling the leg at its own board. A mission that
+    // never carried an origin station — hand-placed legs, legacy-save actives, loose jobs — has no
+    // client, so it settles plainly instead of inventing a board at its destination. The
+    // destination fallback below only rescues a STAMPED origin that no longer resolves.
+    if (!m.stationId) return null;
     // The successor's dock reads off the failing contract's own stations — never a fresh pick.
     // A scan bust overrides that with the jurisdiction post that ran the scan (stamped on the
     // contract by _onScannedByPatrol before either the busted or scan-clause settlement).
