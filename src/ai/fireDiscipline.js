@@ -4,6 +4,7 @@ import {
   OPTIC_MAX_GENERATION,
   OPTIC_RAY_COUNT,
   OPTIC_RAY_RADIUS,
+  OPTIC_RAY_RANGE,
   opticHeadings,
   opticMaterialOf,
   traceOpticRay,
@@ -66,14 +67,34 @@ export const OPTIC_SPLINTER_RETURN_REASON = 'optic_splinter_return';
 export function firesEnergyVolley(weapons) {
   if (!Array.isArray(weapons)) return false;
   for (const w of weapons) {
-    if (!w || w.defensiveOnly === true) continue;
-    const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
-    const tracking = w.tracking || (def && def.tracking);
-    if (tracking === 'hitscan' || (def && def.continuous) || w.continuous === true) continue;
-    const type = w.damageType || (def && def.damageType) || 'kinetic';
-    if (type === 'energy') return true;
+    if (isOpticVolleyWeapon(w)) return true;
   }
   return false;
+}
+
+/**
+ * Per-mount half of firesEnergyVolley. Callers steering a planned bearing need to know WHICH
+ * mounts can field an energy bolt — a ship whose optic-capable battery is all turrets can never
+ * aim a corridor, since a turret leads the target itself and ignores the ship's aim angle.
+ */
+function isOpticVolleyWeapon(w) {
+  if (!w || w.defensiveOnly === true) return false;
+  const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
+  const tracking = w.tracking || (def && def.tracking);
+  if (tracking === 'hitscan' || (def && def.continuous) || w.continuous === true) return false;
+  const type = w.damageType || (def && def.damageType) || 'kinetic';
+  return type === 'energy';
+}
+
+/**
+ * The resolved tracking mode of an optic-capable mount ('fixed', 'auto_turret', 'homing', …),
+ * or null when the mount cannot field an energy bolt. Aims-side callers use it to tell mounts
+ * that follow the ship's aim angle from mounts that solve their own.
+ */
+export function opticVolleyMountTracking(w) {
+  if (!isOpticVolleyWeapon(w)) return null;
+  const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
+  return w.tracking || (def && def.tracking) || 'fixed';
 }
 
 function opticLaneIterable(entities) {
@@ -90,6 +111,53 @@ function splinterBody(entity) {
     && entity.collides !== false
     && !!entity.pos
     && (Number(entity.radius) || 0) > 0;
+}
+
+/**
+ * Replay one prism cascade the way `settleOpticContact` resolves it: the struck diamond throws
+ * the eight-way ring once per family, each splinter dies on the first body it meets, and chained
+ * diamonds re-prism under the generation/family caps. Returns the Set of `bodies` indexes a live
+ * splinter corridor lands on. Pure — no spend bookkeeping, no clocks.
+ */
+function opticCascadeHits(bodies, originIndex) {
+  const hits = new Set();
+  if (originIndex < 0) return hits;
+  const visited = new Set();
+  const queue = [{ index: originIndex, rayGeneration: 1 }];
+  let spawned = 0;
+  for (let cursor = 0; cursor < queue.length; cursor++) {
+    const { index, rayGeneration } = queue[cursor];
+    if (visited.has(index)) continue;
+    visited.add(index);
+    // planOpticContact emits the first `count` headings of the ring and spends them from the
+    // family budget — a dried-up family prisms nothing further down the chain.
+    const count = Math.min(OPTIC_HEADINGS.length, Math.max(0, OPTIC_MAX_FAMILY - spawned));
+    if (count <= 0) break;
+    spawned += count;
+    // Mirror the grammar's own emit exactly: a partial ring re-derives headings at `count`,
+    // not the first count of the fixed eight.
+    const headings = opticHeadings(count);
+    for (let h = 0; h < count; h++) {
+      const hit = traceOpticRay(bodies, index, headings[h]);
+      if (hit < 0) continue;
+      hits.add(hit);
+      if (rayGeneration < OPTIC_MAX_GENERATION) {
+        const hitEntity = bodies[hit].entity;
+        const hitMaterial = opticMaterialOf(hitEntity);
+        if (hitMaterial && hitMaterial.response === 'prism' && !visited.has(hit)) {
+          queue.push({ index: hit, rayGeneration: rayGeneration + 1 });
+        }
+      }
+    }
+  }
+  return hits;
+}
+
+/** True when `entity` is the shooter or a same-team hull a splinter must never land on. */
+function cascadeThreatensOwnSide(entity, shooter) {
+  if (!entity || entity === shooter) return true;
+  return (entity.type === 'ship' || entity.type === 'drone')
+    && entity.team != null && entity.team === shooter.team;
 }
 
 /**
@@ -144,6 +212,23 @@ export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities,
   // The shot prisms `firstOptic`. Map every lane-solid body into the flat {x,z,radius} shape the
   // optic tracer consumes, then walk the cascade exactly like the family book: each diamond
   // fires once, splinters under OPTIC_MAX_GENERATION re-prism the next diamond they meet.
+  const bodies = opticLaneBodiesFlat(entities);
+  const originIndex = bodies.findIndex((body) => body.entity === firstOptic);
+  const hits = opticCascadeHits(bodies, originIndex);
+  for (const hit of hits) {
+    if (cascadeThreatensOwnSide(bodies[hit].entity, shooter)) {
+      return Object.freeze({
+        clear: false,
+        blockerId: firstOptic.id != null ? firstOptic.id : null,
+        reason: OPTIC_SPLINTER_RETURN_REASON,
+      });
+    }
+  }
+  return CLEAR;
+}
+
+/** Flat {x,z,radius,entity} rows — the shape `traceOpticRay` consumes. */
+function opticLaneBodiesFlat(entities) {
   const bodies = [];
   for (const entity of opticLaneIterable(entities)) {
     if (!splinterBody(entity)) continue;
@@ -154,41 +239,119 @@ export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities,
       entity,
     });
   }
-  const originIndex = bodies.findIndex((body) => body.entity === firstOptic);
-  if (originIndex < 0) return CLEAR;
+  return bodies;
+}
 
-  const visited = new Set();
-  const queue = [{ index: originIndex, rayGeneration: 1 }];
-  let spawned = 0;
-  for (let cursor = 0; cursor < queue.length; cursor++) {
-    const { index, rayGeneration } = queue[cursor];
-    if (visited.has(index)) continue;
-    visited.add(index);
-    // planOpticContact emits the first `count` headings of the ring and spends them from the
-    // family budget — a dried-up family prisms nothing further down the chain.
-    const count = Math.min(OPTIC_HEADINGS.length, Math.max(0, OPTIC_MAX_FAMILY - spawned));
-    if (count <= 0) break;
-    spawned += count;
-    for (let h = 0; h < count; h++) {
-      const hit = traceOpticRay(bodies, index, OPTIC_HEADINGS[h]);
-      if (hit < 0) continue;
-      const hitEntity = bodies[hit].entity;
-      if (hitEntity === shooter
-        || ((hitEntity.type === 'ship' || hitEntity.type === 'drone')
-          && hitEntity.team != null && hitEntity.team === shooter.team)) {
-        return Object.freeze({
-          clear: false,
-          blockerId: firstOptic.id != null ? firstOptic.id : null,
-          reason: OPTIC_SPLINTER_RETURN_REASON,
-        });
-      }
-      if (rayGeneration < OPTIC_MAX_GENERATION) {
-        const hitMaterial = opticMaterialOf(hitEntity);
-        if (hitMaterial && hitMaterial.response === 'prism' && !visited.has(hit)) {
-          queue.push({ index: hit, rayGeneration: rayGeneration + 1 });
-        }
-      }
-    }
+/**
+ * Optic bank shot — the offensive half of the same grammar. When the firing lane dies on a
+ * body that is not the target and not a prism (a stone wall, a plain rock, a station — anything
+ * that eats the bolt cold), the shooter looks for a diamond it CAN reach whose ring lands on
+ * the target. A candidate must clear three proofs: the shooter→cell lane puts the cell first
+ * (a bolt that strikes anything else en route never prisms it), the replayed cascade hits the
+ * target, and no corridor lands on the shooter or a same-team hull — the bank inherits the
+ * splinter-return refusal instead of routing around it. A prism already first on the direct
+ * lane needs no override: the aimed shot lands on the lattice and the gate above has already
+ * judged its cascade. The nearest reachable cell wins; equal distances keep collidable-index
+ * order, which is deterministic for a fixed spawn pass.
+ */
+export function planOpticBankShot({ shooter, target, aimAngle, entities, weapons } = {}) {
+  if (!shooter || !shooter.pos || !target || !target.pos || !Number.isFinite(aimAngle)) return null;
+  if (!firesEnergyVolley(weapons)) return null;
+  const dirX = Math.cos(aimAngle);
+  const dirZ = Math.sin(aimAngle);
+  const targetRange = Math.hypot(target.pos.x - shooter.pos.x, target.pos.z - shooter.pos.z);
+  if (!(targetRange > 1e-6)) return null;
+  const muzzleClear = Math.max(1, Number(shooter.radius) || 0);
+  // The aimed bolt reaches the target only if nothing's entry distance beats the target's own:
+  // center projection would let a big body parked past the target but leaning back over the
+  // lane count as nothing while the bolt strikes its edge first.
+  const targetEntry = targetRange - ((Number(target.radius) || 0) + OPTIC_RAY_RADIUS);
+  let firstSolid = null;
+  let firstEntry = Infinity;
+  for (const entity of opticLaneIterable(entities)) {
+    if (!splinterBody(entity) || entity === shooter || entity === target) continue;
+    const bx = entity.pos.x - shooter.pos.x;
+    const bz = entity.pos.z - shooter.pos.z;
+    const along = bx * dirX + bz * dirZ;
+    const lateralSq = Math.max(0, bx * bx + bz * bz - along * along);
+    const reach = (Number(entity.radius) || 0) + OPTIC_RAY_RADIUS;
+    if (lateralSq > reach * reach) continue;
+    const entry = along - Math.sqrt(reach * reach - lateralSq);
+    if (entry <= muzzleClear || entry >= targetEntry) continue;
+    if (entry < firstEntry) { firstEntry = entry; firstSolid = entity; }
   }
-  return CLEAR;
+  if (!firstSolid) return null;
+  const firstMaterial = opticMaterialOf(firstSolid);
+  if (firstMaterial && firstMaterial.response === 'prism') return null;
+
+  // A certified corridor is only worth the volley if a bolt can physically reach the cell:
+  // bound candidates by the furthest-ranging optic-capable mount (range-less mounts fall back
+  // to the grammar's own ray cap).
+  let maxBoltRange = 0;
+  for (const w of weapons || []) {
+    if (!isOpticVolleyWeapon(w)) continue;
+    const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
+    const r = Number.isFinite(w.range) ? w.range : (def && Number.isFinite(def.range) ? def.range : 0);
+    if (r > maxBoltRange) maxBoltRange = r;
+  }
+  const boltReach = maxBoltRange > 0 ? Math.min(maxBoltRange, OPTIC_RAY_RANGE) : OPTIC_RAY_RANGE;
+
+  // Direct fire is a wasted bolt. The replay needs the flat body set — build it only now.
+  const bodies = opticLaneBodiesFlat(entities);
+  const indexOf = new Map();
+  for (let i = 0; i < bodies.length; i++) indexOf.set(bodies[i].entity, i);
+  const targetIndex = indexOf.get(target);
+  if (targetIndex == null) return null; // a bank can only bank onto a body the sim can see
+
+  let best = null;
+  let bestDist = Infinity;
+  for (let i = 0; i < bodies.length; i++) {
+    const cell = bodies[i];
+    if (cell.entity === firstSolid || cell.entity === shooter || cell.entity === target) continue;
+    const material = opticMaterialOf(cell.entity);
+    if (!material || material.response !== 'prism') continue;
+    const px = cell.x - shooter.pos.x;
+    const pz = cell.z - shooter.pos.z;
+    const dist = Math.hypot(px, pz);
+    if (!(dist > muzzleClear) || dist > boltReach || dist >= bestDist) continue;
+
+    // The bolt must reach this cell: the cell must be the first contact on the corridor —
+    // entry-distance ordering, so a body leaning over the approach from just past the cell's
+    // center cannot sneak a shadow lane.
+    const cDirX = px / dist;
+    const cDirZ = pz / dist;
+    const cellEntry = dist - (cell.radius + OPTIC_RAY_RADIUS);
+    let blocked = false;
+    for (let j = 0; j < bodies.length; j++) {
+      if (j === i) continue;
+      const other = bodies[j];
+      if (other.entity === shooter) continue;
+      const ox = other.x - shooter.pos.x;
+      const oz = other.z - shooter.pos.z;
+      const oalong = ox * cDirX + oz * cDirZ;
+      const olateralSq = Math.max(0, ox * ox + oz * oz - oalong * oalong);
+      const oreach = other.radius + OPTIC_RAY_RADIUS;
+      if (olateralSq > oreach * oreach) continue;
+      const oentry = oalong - Math.sqrt(oreach * oreach - olateralSq);
+      if (oentry <= muzzleClear) continue;
+      if (oentry < cellEntry) { blocked = true; break; }
+    }
+    if (blocked) continue;
+
+    const hits = opticCascadeHits(bodies, i);
+    if (!hits.has(targetIndex)) continue;
+    let unsafe = false;
+    for (const hit of hits) {
+      if (cascadeThreatensOwnSide(bodies[hit].entity, shooter)) { unsafe = true; break; }
+    }
+    if (unsafe) continue;
+    best = { index: i, dist };
+    bestDist = dist;
+  }
+  if (!best) return null;
+  const cell = bodies[best.index];
+  return Object.freeze({
+    aimAngle: Math.atan2(cell.z - shooter.pos.z, cell.x - shooter.pos.x),
+    opticId: cell.entity.id != null ? cell.entity.id : null,
+  });
 }
