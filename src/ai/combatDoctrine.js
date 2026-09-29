@@ -870,7 +870,12 @@ function updatePackPursuit(record, tick, self, target, distance, perception) {
   // Hysteresis: a repaired-above-exit hull re-arms its one fallback; until then the spent wound
   // cannot re-trigger, so a crippled hull fights hurt instead of flickering press/retreat.
   if (wound >= PACK_WOUND_EXIT_FRACTION) {
-    if (record.fallbackArmed === false) record.fallbackRearmed = true;
+    // The persisted latch counts as spent too: a record rebuilt after save:loaded starts armed,
+    // so without the self flag here the re-arm pulse would never fire and the saved latch would
+    // hold every later retreat closed.
+    if (record.fallbackArmed === false || (self && self.woundedFallbackSpent === true)) {
+      record.fallbackRearmed = true;
+    }
     record.fallbackArmed = true;
   }
   if (record.phase === 'retreat') {
