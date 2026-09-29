@@ -11,6 +11,7 @@
 //   node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 \
 //     --budgets-out=test/ui-frame-references/budgets.json
 import { existsSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -66,7 +67,18 @@ if (baseline) {
       + `(grammar budget ${MAX_UI_FRAME_MS} ms) · worst DOM count: ${byDom[0]} ${byDom[1].domNodes} `
       + `(grammar budget ${MAX_SURFACE_DOM_NODES})`);
   }
-  for (const failure of verdict.failures) console.error(`  FAIL ${failure}`);
+  for (const failure of verdict.failures) {
+    console.error(`  FAIL ${failure}`);
+    if (failure.startsWith('baseline:stale')) {
+      // A stale verdict means the digest over the working tree no longer matches the
+      // committed baseline. Name the drift rather than guessing: untracked/modified files
+      // under the digest roots are the only thing that can move the hash.
+      const dirty = spawnSync('git', ['status', '--porcelain', '--', 'src/ui', 'styles', 'src/core', 'src/render'],
+        { cwd: ROOT, encoding: 'utf8' }).stdout || '';
+      console.error(`  digest computed: ${uiSourceDigest(ROOT)} vs baseline ${baseline.uiSourceDigest}`);
+      console.error(`  digest-root deviations vs index:\n${dirty.trim() || '    (none — working tree matches the index)'}`);
+    }
+  }
   for (const breach of verdict.breaches) console.error(`  REGRESSION ${breach}`);
   for (const debt of verdict.debt) console.log(`  GRAMMAR DEBT ${debt} (red under --strict)`);
   for (const strict of verdict.strictFailures) console.error(`  FAIL ${strict}`);
