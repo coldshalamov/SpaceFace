@@ -24,6 +24,13 @@ import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import {
+  buildElementaryVoiceGraph,
+  legacyContinuousGain,
+  readPublishedThrottle,
+  readTetherLoad,
+  stepElementaryVoices,
+} from './elementaryVoices.js';
+import {
   resolveThemeMatrix,
   TRAVEL_MOTIF,
   COMBAT_MOTIF,
@@ -5602,6 +5609,9 @@ export const audio = {
     // Do not start engine/brake/tether beds on the main-menu gesture unlock — that is the boop.
     if (ctx.state === 'running' && !rt._paused && !rt.engineOsc1) this._ensureContinuousSources();
 
+    // CV-EAR-1: rope and engine, one Elementary voice each, on this same context.
+    this._pushElementaryVoices(dt);
+
     // Update continuous procedural sources
     this._updateEngineHum();
     this._syncRemoteEngines(now);
@@ -6038,6 +6048,195 @@ export const audio = {
     return rt._engineIdentity;
   },
 
+  _loadElementaryRenderer() {
+    return import('@elemaudio/web-renderer');
+  },
+
+  _retireElementaryMount() {
+    const rt = this.rt;
+    if (!rt) return;
+    try { if (rt._elemNode && rt._elemNode.disconnect) rt._elemNode.disconnect(); } catch (_) {}
+    try { if (rt._elemSplit && rt._elemSplit.disconnect) rt._elemSplit.disconnect(); } catch (_) {}
+    try { if (rt._elemToEngine && rt._elemToEngine.disconnect) rt._elemToEngine.disconnect(); } catch (_) {}
+    try { if (rt._elemToRope && rt._elemToRope.disconnect) rt._elemToRope.disconnect(); } catch (_) {}
+    rt._elemNode = null;
+    rt._elemCore = null;
+    rt._elemSplit = null;
+    rt._elemToEngine = null;
+    rt._elemToRope = null;
+    rt._elemStarting = false;
+    rt._elemToken = null;
+    rt._elemSig = '';
+    rt._elemCtx = null;
+  },
+
+  _failElementaryVoices() {
+    const rt = this.rt;
+    const ctx = rt && rt._elemCtx;
+    this._retireElementaryMount();
+    if (!rt) return;
+    rt._elemFailed = true;
+    rt._elemCtx = ctx;
+  },
+
+  _holdLegacyContinuousSilent() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!ctx || legacyContinuousGain(true) !== 0) return;
+    const t = ctx.currentTime;
+    const gains = [
+      rt.engineHumGain, rt.engineSubGain, rt.engineNoiseGain,
+      rt.tetherHum, rt.tetherOverloadGain, rt._tetherSpoolGain,
+    ];
+    for (let i = 0; i < gains.length; i += 1) {
+      const node = gains[i];
+      if (node && node.gain) this._setParam(node.gain, 0, t, 0.02);
+    }
+  },
+
+  _elementaryHeardVoice(voice) {
+    const source = voice || {};
+    return {
+      engineHz: source.engineHz,
+      engineGain: source.engineGain,
+      ropeHz: source.ropeHz,
+      ropeGain: source.ropeGain,
+      duck: source.duck,
+    };
+  },
+
+  _elementarySilentVoice(voice) {
+    const source = voice || {};
+    return {
+      engineHz: source.engineHz,
+      engineGain: 0,
+      ropeHz: source.ropeHz,
+      ropeGain: 0,
+      duck: 0,
+    };
+  },
+
+  _startElementaryVoices() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!ctx || rt._elemStarting || rt._elemNode || rt._elemFailed) return;
+    rt._elemStarting = true;
+    rt._elemCtx = ctx;
+    const token = {};
+    rt._elemToken = token;
+    this._loadElementaryRenderer().then((mod) => {
+      if (rt._elemToken !== token || rt.ctx !== ctx) return null;
+      const WebRenderer = mod.default || mod.WebRenderer || mod;
+      const core = new WebRenderer();
+      rt._elemCore = core;
+      return core.initialize(ctx, {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      });
+    }).then((node) => {
+      if (!node || rt._elemToken !== token || rt.ctx !== ctx) {
+        try { if (node && node.disconnect) node.disconnect(); } catch (_) {}
+        if (rt._elemToken === token) {
+          rt._elemStarting = false;
+          rt._elemCore = null;
+          // A resolved empty node on this same context will not start working next frame.
+          if (!node && rt.ctx === ctx) rt._elemFailed = true;
+          if (rt.ctx !== ctx) rt._elemFailed = false;
+        }
+        return;
+      }
+      const splitter = ctx.createChannelSplitter(2);
+      const toEngine = ctx.createGain();
+      const toRope = ctx.createGain();
+      toEngine.gain.value = 1;
+      toRope.gain.value = 1;
+      node.connect(splitter);
+      splitter.connect(toEngine, 0);
+      splitter.connect(toRope, 1);
+      if (rt.engineBus) toEngine.connect(rt.engineBus);
+      if (rt.combatBus) toRope.connect(rt.combatBus);
+      rt._elemNode = node;
+      rt._elemSplit = splitter;
+      rt._elemToEngine = toEngine;
+      rt._elemToRope = toRope;
+      rt._elemStarting = false;
+      rt._elemSig = '';
+      this._holdLegacyContinuousSilent();
+      const inFlight = !!(this.state && this.state.mode === 'flight' && !rt._paused);
+      const voice = rt._elemVoice;
+      this._renderElementaryGraph(
+        inFlight ? this._elementaryHeardVoice(voice) : this._elementarySilentVoice(voice),
+        true,
+      );
+    }).catch(() => {
+      const seen = rt._elemCtx;
+      this._retireElementaryMount();
+      rt._elemFailed = true;
+      rt._elemCtx = seen;
+    });
+  },
+
+  _renderElementaryGraph(voice, force) {
+    const rt = this.rt;
+    if (!rt || !rt._elemCore || !voice) return;
+    const sig = [voice.engineHz, voice.engineGain, voice.ropeHz, voice.ropeGain, voice.duck].join('|');
+    if (!force && sig === rt._elemSig) return;
+    try {
+      const graph = buildElementaryVoiceGraph(voice);
+      rt._elemCore.render(graph.left, graph.right);
+      rt._elemSig = sig;
+    } catch (_) {
+      this._failElementaryVoices();
+    }
+  },
+
+  _pushElementaryVoices(dt) {
+    const rt = this.rt;
+    if (!rt || !rt.ctx) return;
+    if (rt._elemCtx && rt._elemCtx !== rt.ctx) {
+      this._retireElementaryMount();
+      rt._elemFailed = false;
+    }
+    if (rt._elemFailed) return;
+    const inFlight = !!(this.state && this.state.mode === 'flight');
+    const paused = !!rt._paused;
+    if (inFlight && !paused && !rt._elemNode && !rt._elemStarting) this._startElementaryVoices();
+    const entities = this.state && this.state.entities;
+    const player = entities && typeof entities.get === 'function'
+      ? entities.get(this.state.playerId)
+      : null;
+    const input = (this.state && this.state.input) || {};
+    const tetherState = this.state && this.state.player && this.state.player.tether;
+    const tether = readTetherLoad(tetherState);
+    const prev = rt._elemVoice || (rt._elemVoice = { engineGain: 0, ropeGain: 0 });
+    const stepDt = (inFlight && !paused) ? Math.min(Math.max(0, Number(dt) || 0), 0.25) : 0;
+    const next = stepElementaryVoices(prev, {
+      throttle: readPublishedThrottle({
+        frame: player && player._flightFrame,
+        moveZ: input.moveZ,
+        moveX: input.moveX,
+      }),
+      load: tether.load,
+      playing: tether.playing,
+      sidechainDuck: rt.sidechainDuck,
+      priorityDuck: rt._priorityDuckEngine,
+      motionReduce: this._motionReduced(),
+      tier: this.state ? this._resolveEngineTier(player) : 'idle',
+      dt: stepDt,
+      paused,
+      flight: inFlight,
+    });
+    rt._elemVoice = next;
+    if (!rt._elemNode || !rt._elemCore) return;
+    const audible = inFlight && !paused;
+    this._renderElementaryGraph(
+      audible ? this._elementaryHeardVoice(next) : this._elementarySilentVoice(next),
+      false,
+    );
+    this._holdLegacyContinuousSilent();
+  },
+
   _updateEngineHum() {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || !rt.engineOsc1 || rt._paused) return;
@@ -6062,6 +6261,13 @@ export const audio = {
       }
       rt._engineTier = tier;
       rt._engineTierSince = nowMs;
+    }
+
+    // Elementary owns the continuous engine voice. Hold the old oscillators down every
+    // frame so their cue ramp cannot turn them back up beside it.
+    if (rt._elemNode) {
+      this._holdLegacyContinuousSilent();
+      return;
     }
 
     // Read-only identity: ships/flight still own mass and propulsion. Audio maps those authored
@@ -6312,6 +6518,10 @@ export const audio = {
     const taut = !!(tether && (tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload'));
     if (taut && !rt._tetherWasTaut) this._playAccessibilityCue('taut');
     rt._tetherWasTaut = taut;
+    if (rt._elemNode) {
+      this._holdLegacyContinuousSilent();
+      return;
+    }
     // F2: pitch and loudness follow the published tether.load (phase floors included) through one
     // voice. The sidechain duck factor rides along so the tone ducks under weapons with the world;
     // reduced motion quiets the tone, never silences it — it is information, not ornament.
