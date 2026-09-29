@@ -421,6 +421,10 @@ const SHIPPED_MODULES = [
     // One hull-burst module per hull: the type is the build.
     id: 'mod_gravity_bumper_s', name: 'Gravity Bumper S', slotType: 'utility', size: 'S', tier: 2, mass: 5, price: 24000,
     requiresTech: 'tech_graviton_drives',
+    // The headline verb of the hull-burst overhaul sits on the first station's rack at first-haul terms
+    // (same door as Swing Drive): docked at Helios it sells with no Graviton Drives stop. The catalog
+    // price and the research gate stand at every other berth.
+    shopOffers: { station_helios: { price: 12000 } },
     energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 1 },
   },
   {

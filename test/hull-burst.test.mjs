@@ -21,7 +21,7 @@ import test from 'node:test';
 import { HULL_BURST_TYPES, resolveHullBurst, hullBurstType } from '../src/data/hullBurst.js';
 import { MODULES } from '../src/data/modules.js';
 import { TECH_NODES } from '../src/data/tech.js';
-import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
+import { fittingsFromDefaultModules, getDerivedStats, stationShopOffer } from '../src/systems/ships.js';
 import { HITSTUN_IMPULSE_EVENT, readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { hullBurst, hullBurstDeltaV, hullBurstWedgeHit } from '../src/systems/hullBurst.js';
 
@@ -231,4 +231,12 @@ test('the fitted module reaches the derived stats (and a bare hull has none)', (
   const bare = getDerivedStats('ship_wasp', []);
   assert.equal(bare.hullBurstKind, null);
   assert.equal(bare.hullBurstRank, 0);
+});
+
+test('the first station stocks it at first-haul terms; everywhere else the catalog price and the gate stand', () => {
+  const mod = MODULES.find((m) => m.id === 'mod_gravity_bumper_s');
+  assert.equal(mod.price, 24000, 'catalog price');
+  assert.equal(mod.requiresTech, 'tech_graviton_drives', 'catalog research gate');
+  assert.equal(stationShopOffer(mod, 'station_helios').price, 12000, 'the rack at Helios');
+  assert.equal(stationShopOffer(mod, 'station_tethys'), null, 'no special listing elsewhere');
 });

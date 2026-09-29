@@ -4,7 +4,7 @@
 // THE REAL-PATH LAW (same as feel.fling_scene): every number comes out of runtime.step() on
 // bootRealPath — the live rapier-dynamic authority, the live tumble writer, the live
 // collision-consequence and combat kernels, the live tactical AI, the live loot systems. The burst
-// is lit through the system's own activate(); the throw is whatever the production impulse route
+// is lit through the input edge (state.input.actions.hullBurst); the throw is whatever the production impulse route
 // does with it. Nothing here writes a velocity.
 //
 // What it must show: THE MASSLINE MATTERS. A crawling touch is a nudge, a full-speed arrival (a
@@ -50,10 +50,16 @@ export const BUMPER_TARGETS = Object.freeze({
   fieldLandedShare: 1,
 });
 
-/** The runtime instantiates its own copy of each system: light THAT copy's wedge, not the imported module's. */
+/**
+ * Light the wedge the way the keyboard does: the input system's edge on state.input.actions.hullBurst,
+ * which the runtime's own copy of the hullBurst system consumes on its next update (the runtime
+ * instantiates its own copy of each system, so calling the imported module's activate() would light a
+ * different object). `lit` is then read off the system's own `hullBurst:activated` event.
+ */
 function light(host) {
-  const system = host.runtime.getSystem('hullBurst');
-  return !!(system && system.activate());
+  if (!host.state.input.actions) host.state.input.actions = {};
+  host.state.input.actions.hullBurst = true;
+  return true;
 }
 
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
@@ -135,6 +141,8 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
 
   const hits = [];
   const tumbled = [];
+  let activated = false;
+  host.bus.on('hullBurst:activated', () => { activated = true; });
   host.bus.on('hullBurst:hit', (p) => { if (p && p.targetId === target.id) hits.push({ tick: host.state.tick | 0, ...p }); });
   host.bus.on('combat:tumbled', (p) => { if (p && p.victimId === target.id) tumbled.push({ tick: p.tick, durationS: p.durationS, source: p.source }); });
 
@@ -193,7 +201,7 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
     hullId,
     playerSpeed,
     playerSpeedAtHit: round(playerSpeedBeforeHit, 1),
-    lit,
+    lit: activated,
     hit: hit ? { deltaV: round(hit.deltaV, 2), closing: round(hit.closing, 2), hostile: hit.hostile, tick: hit.tick - startTick } : null,
     targetMass: round(finite(target.mass, 1), 1),
     stunS: stun ? round(stun.durationS, 3) : 0,
@@ -231,6 +239,8 @@ async function runField(seed) {
   const waspIds = new Set(wasps.map((w) => w.id));
   const killed = [];
   const hits = [];
+  let activated = false;
+  host.bus.on('hullBurst:activated', () => { activated = true; });
   const collected = [];
   const overflow = [];
   const drops = [];
@@ -279,7 +289,7 @@ async function runField(seed) {
     measured: true,
     tag: 'field3',
     rocks: rocks.length,
-    lit,
+    lit: activated,
     hostiles: wasps.length,
     burstHits: hits.length,
     killed: killed.length,
