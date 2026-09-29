@@ -502,7 +502,10 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.shape_coded_signal',
     },
     budgets: { particles: 40, voices: 1, uiPulses: 1 },
-    tags: ['scenario', 'objective', 'slice'],
+    // Critical: the opening objective pulse is addressed to the player and must survive
+    // same-tick flavor saturation (cold-open spawn noise charges the camera lane's general
+    // pool before the queued scenario:beatEntered flushes; see check-47a-live-cold-open).
+    tags: ['critical', 'scenario', 'objective', 'slice'],
   }),
   'scenario.comms.kessler': recipe({
     importance: 0.74,
