@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Overdraw / depth-complexity probe — measures how many opaque fragment layers the real
-// frame rasterizes per pixel at a given camera pose, in the same order WebGLRenderList
-// emits them (groupOrder → renderOrder → material.id → variant → z → id).
+// frame rasterizes per pixel at a given camera pose, in the engine's real draw order:
+// WebGLRenderer.projectObject traversal order (opaqueSort is disabled — see
+// src/render/renderer.js setOpaqueSort(() => 0)).
 //
 // Method (fragment coverage, API-semantic — exact on any conforming rasterizer incl.
 // SwiftShader; timings are NOT read off this box):
@@ -72,6 +73,24 @@ async function main() {
     });
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
     const page = await context.newPage();
+    // TEST-ONLY workaround for an upstream boot blocker: master's elementaryVoices.js
+    // statically imports bare '@elemaudio/core' which index.html's importmap does not
+    // map (its real dist also needs unmapped CJS deps). SF_OVERDRAW_ELEMAUDIO_STUB=<path>
+    // injects an importmap entry pointing at a stub module so the graph boots.
+    const elemaudioStub = process.env.SF_OVERDRAW_ELEMAUDIO_STUB;
+    if (elemaudioStub) {
+      await page.route('**/*', async (route) => {
+        if (route.request().resourceType() !== 'document') return route.continue();
+        const res = await route.fetch();
+        let body = await res.text();
+        body = body.replace(
+          '"@elemaudio/web-renderer":',
+          `"@elemaudio/core": "${elemaudioStub}",\n      "@elemaudio/web-renderer":`,
+        );
+        await route.fulfill({ response: res, body });
+      });
+      console.log(`[probe-overdraw] elemaudio importmap stub: ${elemaudioStub}`);
+    }
     page.on('console', (msg) => {
       const txt = msg.text();
       if (txt.includes('[overdraw]') || txt.includes('[SpaceFace]')) console.log(`[browser] ${txt}`);
@@ -93,6 +112,10 @@ async function main() {
     const mode = await page.evaluate(() => window.SF.state.mode);
     if (mode !== 'flight') throw new Error(`New game did not reach flight (mode=${mode})`);
     console.log('[probe-overdraw] In flight. Installing probe...');
+    if (process.env.SF_OVERDRAW_NO_PREPASS === '1') {
+      await page.evaluate(() => { window.__SF_OVERDRAW_NO_PREPASS = true; });
+      console.log('[probe-overdraw] A/B control: depth-prepass meshes excluded from measurement');
+    }
     await page.evaluate(IN_PAGE_PROBE);
 
     const targets = await page.evaluate(() => {
@@ -226,14 +249,16 @@ main().catch((err) => { console.error('[probe-overdraw] failed:', err); process.
 
 // ---------------------------------------------------------------------------
 // Injected into the page. Builds the opaque render list exactly like
-// WebGLRenderer.projectObject + painterSortStable do (frustum culling by world
-// bounding sphere, per-material-group items, groupOrder assumed 0 — the game
-// uses no THREE.RenderGroups), then rasterizes the list into a small RGBA8
-// target with +1/255 additive writes so the red channel IS the per-pixel layer
-// count. Four sweeps: no-depth (D), real-order depth-tested (S — fragments that
-// pass = layers early-Z cannot reject), full depth prewrite then depth-tested
-// (S_pre — the prepass floor), and an A-only sanity pass. Per-pixel stats are
-// returned, no timing data.
+// WebGLRenderer.projectObject does in this build: the engine installs
+// `renderer.setOpaqueSort(() => 0)` (src/render/renderer.js) so opaque draw
+// order IS scene-traversal order — renderOrder and material-id sorting are
+// dead config. The probe therefore keeps the walk's encounter order (frustum
+// culling by world bounding sphere, per-material-group items), then rasterizes
+// the list into a small RGBA8 target with +1/255 additive writes so the red
+// channel IS the per-pixel layer count. Four sweeps: no-depth (D), real-order
+// depth-tested (S — fragments that pass = layers early-Z cannot reject), full
+// depth prewrite then depth-tested (S_pre — the prepass floor), and an A-only
+// sanity pass. Per-pixel stats are returned, no timing data.
 const IN_PAGE_PROBE = () => {
   window.__sfOverdrawProbe = function __sfOverdrawProbe(probeW, probeH) {
     const THREE = window.SF.THREE;
@@ -288,13 +313,14 @@ const IN_PAGE_PROBE = () => {
     };
     walk(scene);
 
-    const variantOf = (o) => (o.isInstancedMesh ? 2 : 0) + (o.isSkinnedMesh ? 1 : 0);
-    items.sort((a, b) =>
-      (a.object.renderOrder - b.object.renderOrder)
-      || (a.material.id - b.material.id)
-      || (variantOf(a.object) - variantOf(b.object))
-      || (a.z - b.z)
-      || (a.object.id - b.object.id));
+    // No sort: opaqueSort is disabled engine-wide, so traversal order is the
+    // real draw order — prepass siblings prepended at index 0 land here first,
+    // exactly like the live render.
+    // A/B counterfactual: with __SF_OVERDRAW_NO_PREPASS the prepass meshes are
+    // dropped entirely — equivalent to measuring the same tree unpatched.
+    if (window.__SF_OVERDRAW_NO_PREPASS === true) {
+      for (let i = items.length - 1; i >= 0; i--) if (items[i].depthOnly) items.splice(i, 1);
+    }
 
     const unit = 1 / 255;
     const mkCount = (depthTest, depthWrite, depthFunc) => {

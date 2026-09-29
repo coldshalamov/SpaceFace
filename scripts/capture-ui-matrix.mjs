@@ -1749,6 +1749,25 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
   });
   const page = await context.newPage();
   try {
+    // TEST-ONLY workaround for an upstream boot blocker: master's elementaryVoices.js
+    // statically imports bare '@elemaudio/core' which index.html's importmap does not
+    // map (its real dist also needs unmapped CJS deps). SF_CAPTURE_ELEMAUDIO_STUB=<path>
+    // injects an importmap entry pointing at a stub module so the graph boots; without
+    // it the capture cannot measure anything on affected trees.
+    const elemaudioStub = process.env.SF_CAPTURE_ELEMAUDIO_STUB;
+    if (elemaudioStub) {
+      await page.route('**/*', async (route) => {
+        if (route.request().resourceType() !== 'document') return route.continue();
+        const res = await route.fetch();
+        let body = await res.text();
+        body = body.replace(
+          '"@elemaudio/web-renderer":',
+          `"@elemaudio/core": "${elemaudioStub}",\n      "@elemaudio/web-renderer":`,
+        );
+        await route.fulfill({ response: res, body });
+      });
+      console.log(`[capture-ui-matrix] elemaudio importmap stub: ${elemaudioStub}`);
+    }
     await page.addInitScript(() => {
       try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
     });

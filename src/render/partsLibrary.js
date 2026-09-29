@@ -3443,7 +3443,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   installAuthoredApproachYaw(root, entity, ownerBoundary?.userData?.placeId || placeId);
   installWorldSitePresentation(root, entity);
   installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
-  installStationOpaqueDepthPrepass(root, entity);
+  installStationOpaqueDepthPrepass(root, entity, bindings);
   specializeClaimRelayOpaqueMaterials(root, placeId);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
@@ -3661,10 +3661,14 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
 }
 
 // Stations are the measured overdraw hotspot (see design/perf/w4-depthprepass-REPORT.md):
-// the approach pose stacks ~3.7 opaque layers per covered pixel. Unlike the Cathedral's
-// sibling-clone wiring, each prepass mesh is parented INSIDE its source mesh, so LOD swaps,
-// damage visibility, and every other source.visible path stay synced structurally — no
-// binding registration needed. Only the bulkiest occluders participate; greebles, hooks,
+// the approach pose stacks ~3.7 opaque layers per covered pixel. The engine disables the
+// default opaque painter sort (`setOpaqueSort(() => 0)` in renderer.js — opaque draw order
+// is scene-traversal order, and renderOrder is dead config), so ordering must be structural:
+// each prepass mesh is PREPENDED to index 0 of the highest ancestor whose transform chain
+// stays static (the place root in practice), drawing before every sibling subtree —
+// including its own source — without reordering existing children.
+// Visibility syncs through the same binding buckets the source joins (LOD, damage
+// secondary) via cloned tags; only bulkiest occluders participate — greebles, hooks,
 // transparent canopies, and collision hulls fall through the eligibility gates below.
 const STATION_DEPTH_PREPASS_MIN_WORLD_RADIUS = 40;
 let stationOpaqueDepthPrepassMaterial = null;
@@ -3711,18 +3715,41 @@ function stationDepthPrepassEligibleMaterial(material) {
 
 const _stationDepthPrepassScale = new THREE.Vector3();
 
-function installStationOpaqueDepthPrepass(root, entity) {
+function stationDepthPrepassDynamicNode(object) {
+  const userData = object.userData || {};
+  const tags = userData.spacefaceTags || {};
+  return !!(userData.animated || userData.hlod || userData.spacefaceSocket
+    || userData.updateRuntimeState || userData.updateDriveState || userData.updateLod
+    || tags.drive || tags.mount);
+}
+
+function stationDepthPrepassScope(source, root) {
+  // The copied local matrix is only valid while every node between the attach parent and
+  // the source stays static — climb to the last ancestor before the first dynamic link.
+  let scope = source.parent;
+  while (scope && scope !== root && !stationDepthPrepassDynamicNode(scope)) {
+    scope = scope.parent;
+  }
+  return scope || source.parent;
+}
+
+function installStationOpaqueDepthPrepass(root, entity, bindings) {
   if (!root || !entity || entity.type !== 'station') return;
   const sources = [];
   root.traverse((object) => {
     if (!object.isMesh || object.isSkinnedMesh || object.isInstancedMesh) return;
     if (object.userData?.spacefaceDepthPrepass) return;
+    if (!object.parent) return;
     if (object.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return;
     const geometry = object.geometry;
     if (!geometry?.attributes?.position) return;
     if (geometry.morphAttributes && Object.keys(geometry.morphAttributes).length) return;
     const tags = object.userData?.spacefaceTags || {};
     if (object.visible === false && !tags.lod) return;
+    // A prepass sibling copies the source's local matrix once — only meshes whose own
+    // transform never animates qualify (the same markers shouldFreezeStaticChild uses).
+    if (tags.drive || object.userData?.animated || object.userData?.hlod
+      || object.userData?.updateRuntimeState || object.userData?.updateDriveState) return;
     if (!geometry.boundingSphere) geometry.computeBoundingSphere();
     const localRadius = Number(geometry.boundingSphere?.radius) || 0;
     if (localRadius <= 0) return;
@@ -3788,23 +3815,39 @@ function installStationOpaqueDepthPrepass(root, entity) {
       }).filter((view) => view.drawRange.count > 0);
       if (!depthGeometries.length) continue;
     }
+    // Attach into the highest ancestor whose transform chain to the source is static —
+    // the earlier the prepass draws, the more overlapping geometry it rejects.
+    const scope = stationDepthPrepassScope(source, root);
+    const local = new THREE.Matrix4();
+    for (let node = source; node && node !== scope; node = node.parent) {
+      if (node.matrixAutoUpdate) node.updateMatrix();
+      local.premultiply(node.matrix);
+    }
+    const tags = clonePrimitiveTags(source.userData?.spacefaceTags);
+    if (tags) delete tags.mount; // a depth shell must never resolve as an attachment target
     for (const depthGeometry of depthGeometries) {
       const prepass = new THREE.Mesh(depthGeometry, depthMaterial);
       prepass.name = `${source.name || 'StationMesh'}_OpaqueDepthPrepass`;
       prepass.matrixAutoUpdate = false;
+      prepass.matrix.copy(local);
       prepass.layers.mask = source.layers.mask;
       prepass.frustumCulled = source.frustumCulled;
-      prepass.renderOrder = Math.min(-1, (source.renderOrder || 0) - 1);
       prepass.castShadow = false;
       prepass.receiveShadow = false;
+      prepass.visible = source.visible;
       prepass.userData = {
         spacefaceDepthPrepass: true,
         spacefaceDepthRole: 'station-occluder',
         spacefacePartUrl: source.userData?.spacefacePartUrl,
-        spacefaceTags: clonePrimitiveTags(source.userData?.spacefaceTags),
+        spacefacePartUrls: source.userData?.spacefacePartUrls,
+        spacefaceTags: tags,
       };
-      source.add(prepass);
+      // Traversal order is draw order — prepend before every other subtree in the scope.
+      scope.add(prepass);
+      scope.children.splice(scope.children.indexOf(prepass), 1);
+      scope.children.unshift(prepass);
       prepass.matrixWorldNeedsUpdate = true;
+      registerBinding(prepass, tags, bindings);
       prepasses.push(prepass);
     }
   }
@@ -3814,6 +3857,7 @@ function installStationOpaqueDepthPrepass(root, entity) {
     sources: sources.length,
     geometry: 'shared-position-index-views',
     material: 'position-only-front-sided',
+    ordering: 'traversal-prepend-before-siblings',
     minWorldRadius: STATION_DEPTH_PREPASS_MIN_WORLD_RADIUS,
   };
 }

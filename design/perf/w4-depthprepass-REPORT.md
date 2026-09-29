@@ -3,141 +3,160 @@
 Lane question: *is opaque overdraw actually heavy enough that a depth prepass on the
 largest occluders pays for its extra geometry pass + binds?*
 
-Branch: `devin/1790655742-w4-depthprepass` off `origin/master` (070f8215).
+Branch: `devin/1790655742-w4-depthprepass` off `origin/master`.
 
 ## Verdict
 
 **Overdraw is demonstrably heavy at the canonical heavy view, and a partial depth
-prepass eliminates essentially all of it.** Measured on the seed-47 station-approach
-pose (the worst real view: station fills 46% of a 320×180 probe frame):
+prepass removes 50–98% of the wasted shading.** All numbers below are measured in the
+engine's *real* draw order — see "Ordering discovery" for why that matters.
 
-- Geometric depth complexity **D = 3.72 opaque layers per covered pixel** — nearly
-  4 authored hulls stacked behind each pixel, vs the lane's ~2× negative-EV gate.
-- In the real `painterSortStable` draw order (groupOrder → renderOrder → material.id
-  → materialVariant → z → id — material bucketing *before* depth, so only weakly
-  front-to-back), **S = 1.91 fragments passed the depth test and were shaded** per
-  covered pixel: ~0.42 screen-equivalents of PBR fragment work shaded and then
-  overwritten every frame in that pose (~48% of the covered region's shading).
-- With the prepass patch: **S = 1.00** — the full depth-prewrite floor. Wasted
-  shaded layers went to zero at every station pose measured (W: 0.91 → 0.00 at
-  approach, 0.84 → 0.01 inside, 1.49 → 0.01 inside station 74, 0.02 at coalition).
-  Coverage was unchanged (0.455 vs 0.460 — settling drift), i.e. the prepass
-  occluded **zero** fragments it should not have — depth writes are exact.
+Measured on seed-47 poses (`scripts/probe-overdraw.mjs`, 320×180 RGBA8 layer counting —
+API-semantic, exact on SwiftShader):
 
-The patch adds a position-only `colorWrite:false` pass over the station's bulkiest
-opaque occluders (authored hull/lane shells and merged static groups, world radius
-≥ 40): ~30 extra draws / ~130k tris of vertex-only work at `renderOrder = -1`, all
-sharing source geometry — no new vertex buffers, one shared `ShaderMaterial`, zero
-visible-quality change (color writes off; identical transforms → bitwise-identical
-clip-space depth; `LessEqualDepth` still admits the real surfaces at equal depth).
+| pose | coverage | D (layers/px) | S control (no prepass) | S with prepass | waste cut |
+|---|---|---|---|---|---|
+| station_helios approach | 0.48 | 3.64 | **2.08** | **1.52** | −51% |
+| station_helios inside | 0.18 | 3.45 | **2.03** | **1.52** | −49% |
+| station_coalition approach | 0.18 | 3.32 | 1.91 | 1.01 | −99% |
+| station_coalition inside | 0.07 | 3.45 | 1.96 | 1.02 | −98% |
+| station 74 approach | 0.09 | 4.53 | 2.09 | 1.02 | −98% |
+| station 74 inside | 0.02 | 6.22 | 2.39 | 1.04 | −98% |
+| world_site_helios_relay approach | 0.13 | 1.98 | 1.40 | 1.40 | 0%* |
 
-This is the textbook partial z-prepass: it spends cheap vertex/draw overhead on the
-few meshes that carry the screen, and hardware early-Z then rejects the remaining
-~2.7 occluded layers per pixel *before* their PBR fragment shaders run.
+*world_site is not `entity.type === 'station'` so no prepass installs there — the
+unchanged S is a built-in sanity check that the A/B isolation works.
+
+- **D ≈ 3.5–6 opaque layers per covered pixel** at every station pose — far over the
+  lane's ~2× gate. Control **S ≈ 2.0–2.4**: ~1.0–1.4 screen-equivalents of PBR fragment
+  work shaded and then overwritten per covered pixel, every frame.
+- The prepass floor `Spre ≈ 1.0` validates the method (full prewrite ⇒ ~1 layer/px).
+- Helios keeps 0.52 residual waste: its overlap includes sub-40 m sources and surfaces
+  excluded by the eligibility gates — the heavy hull layers are gone either way.
+
+**Pixel-exactness:** rendering the real scene into an offscreen RT with the prepass
+meshes toggled on vs. hidden produces **0 differing pixels** at both station_helios
+approach and inside poses (129,600 px frames). Zero visible quality change.
+
+## Ordering discovery (why the prepass is structured the way it is)
+
+The engine **disables three.js's opaque sort**: `src/render/renderer.js` installs
+`renderer.setOpaqueSort(() => 0)` — "Opaque order is depth-tested. Skipping the default
+painter sort saves a full scene comparison on the iGPU thread." Consequences verified
+by instrumenting `renderBufferDirect` on a live frame:
+
+- Opaque draw order is **scene-traversal order**, not `painterSortStable`.
+  `renderOrder` is dead config for opaque objects (three.js still sorts
+  *transparent* objects separately — unaffected).
+- A prepass mesh parented *inside* its source therefore draws immediately *after*
+  that source — useless for it. First iteration of this lane made exactly that
+  mistake; the live-instrumentation result (prepassIdx = srcIdx+1 for every pair)
+  forced the restructure below.
+
+**Patch ordering:** each prepass mesh is spliced to **index 0 of an ancestor's
+`children` list** — the highest ancestor whose transform chain to the source is static
+(`stationDepthPrepassScope`). That node is the authored place root for station_helios:
+its 41 prepass drawables occupy child indices 0–40 and draw before *all* authored
+station content — the maximal safe coverage. Static-chain parents mean the composed
+local matrix stays correct forever; LOD/damage visibility syncs through
+`registerBinding` with cloned tags (same mechanism as the Cathedral prepass).
 
 ## Research citations
 
-- **GPU Gems, Ch. 29 "Efficient Occlusion Culling"** (Widerberg/Gems): early-z
-  rejects a fragment *before* texture fetches and the fragment program — the saving
-  mechanism this lane relies on. Requires front-to-back submission to do its work;
-  a prepass manufactures exactly that order.
+- **GPU Gems, Ch. 29 "Efficient Occlusion Culling"** (Widerberg): early-z rejects a
+  fragment *before* texture fetches and the fragment program — requires front-to-back
+  submission; a prepass manufactures that order.
 - **Interplay of Light, "Depth pre-pass"** (interplayoflight.wordpress.com): partial
-  prepass on the largest occluders is the recommended tradeoff — position-only VBs
-  (here: shared geometry + a bare `gl_Position` shader), and the cost side is extra
-  draw calls + vertex processing, which is why we gate on measured overdraw first.
-- **Utah CS "Early-Z" lecture** (early-z fails with `discard`/alpha-test/`gl_FragDepth`
-  writes): drives the eligibility predicate — transparent, alphaTest>0,
-  polygonOffset, displacement, `depthWrite:false`, `depthFunc!==LessEqualDepth`,
-  and skinned/morph/instanced sources are all excluded, so every prepassed depth
-  value equals what the color pass would write.
-- **ARM Mali "Depth Prepass" developer guide**: prepass ROI is scene-dependent —
+  prepass on the largest occluders — position-only output (here: shared geometry +
+  bare `gl_Position` shader); the cost side is extra draw calls + vertex processing,
   hence the mandatory measurement gate.
-- **dawnarc forward-rendering notes**: fragment shading is evaluated in 2×2 quads,
-  so overdraw waste exceeds the naive pixel count at silhouette edges — strengthens,
-  not weakens, the EV.
-- **three.js r184 `WebGLRenderList` sort** (vendored `painterSortStable`): opaque
-  items order by material.id before z, so the engine's baseline order is only
-  incidentally front-to-back — the prepass items get `renderOrder = -1` to run
-  first as a unit.
+- **Utah CS "Early-Z" lecture**: early-z fails on `discard`/alpha-test/`gl_FragDepth`
+  writes → drives the eligibility predicate (transparent, alphaTest>0, polygonOffset,
+  displacement, `depthWrite:false`, non-`LessEqualDepth`, skinned/morph/instanced all
+  excluded, so every prepassed depth equals what the color pass writes).
+- **ARM Mali "Depth Prepass" developer guide**: prepass ROI is scene-dependent — the
+  lane's measure-first gate.
+- **dawnarc forward-rendering notes**: fragment shading runs in 2×2 quads — silhouette
+  edges waste more than the pixel count suggests; strengthens the EV.
+- **three.js r184 `WebGLRenderList`/`setOpaqueSort`**: `painterSortStable` exists but
+  is bypassed here — the probe therefore reproduces **traversal order**, not a sort.
 
-## Profile evidence
+## Profile evidence (method)
 
-Probe: `scripts/probe-overdraw.mjs` (Playwright, SwiftShader — **counts are
-API-semantic and exact; timings are not used as evidence anywhere**). For each
-pose it renders three passes into a 320×180 RGBA8 target with `+1/255` additive
-counting: **D** = depth complexity (no depth test), **S** = shaded layers in the
-real render-list order with depth test (post-early-Z shaded fragments — what
-hardware cannot save after the fact), **Spre** = the same count behind a full
-depth prewrite (the theoretical floor), all built from a render list assembled
-with the engine's own `projectObject`/`painterSortStable` semantics. `Spre ≈ 1.0`
-at every pose validates the method.
+`scripts/probe-overdraw.mjs` (Playwright + the game's own vendored three.js):
+walks the scene in `projectObject` traversal order (frustum culling by world bounding
+sphere, per-material-group items — no sort, matching the engine), then rasterizes into
+a small RGBA8 target with `+1/255` additive writes:
 
-Baseline (`origin/master` before the patch):
+- **D** — count with depth test off = geometric depth complexity per pixel.
+- **S** — count with depth test on in traversal order = fragments that pass and get
+  shaded (wasted layers = S−1).
+- **Spre** — full depth prewrite, then the S count again = the theoretical floor.
+- `SF_OVERDRAW_NO_PREPASS=1` — drops `spacefaceDepthPrepass` items from the list:
+  same-tree counterfactual control for the A/B (the two tables above).
 
-| pose | coverage | D | S | W = S−1 | Spre |
-|---|---|---|---|---|---|
-| station_helios approach (1.2R, z200) | 0.460 | 3.72 | 1.91 | **0.91** | 1.00 |
-| station_helios inside (0.3R, z330) | 0.152 | 3.50 | 1.84 | 0.84 | 1.00 |
-| station_coalition approach | 0.175 | 3.32 | 1.89 | 0.89 | 1.00 |
-| station 74 inside | 0.023 | 6.02 | 2.49 | 1.49 | 1.00 |
-| world_site_helios_relay approach | 0.124 | 1.97 | 1.43 | 0.43 | 1.00 |
-
-After the patch (same probe, `.devshots/overdraw/overdraw-1790657902369.json`):
-
-| pose | coverage | D | S | W | Spre |
-|---|---|---|---|---|---|
-| station_helios approach | 0.455 | 3.70 | **1.00** | **0.00** | 1.00 |
-| station_helios inside | 0.156 | 3.49 | 1.01 | 0.01 | 1.00 |
-| station_coalition approach | 0.141 | 3.37 | 1.02 | 0.02 | 1.00 |
-| station 74 approach | 0.087 | 4.53 | 1.02 | 0.02 | 1.01 |
-| station 74 inside | 0.024 | 6.11 | 1.01 | 0.01 | 1.00 |
-
-Prepass inventory at `place_station_trade_hub` (`stationOpaqueDepthPrepass`
-userData on the place root): ~30 drawables parenting ~130k tris of shared
-geometry — the `flight-static-lane*` authored hull shells (full-geometry shares)
-plus `GLTFKit_StaticGroup_*` merged batches (drawRange views over their eligible
-material runs). Hooks (~1.6u), the transparent LOD2 canopy, and the invisible
-collision hull all fail the eligibility/size gates by design.
+Prepass inventory at `station_helios` (place root `stationOpaqueDepthPrepass`
+userData): 41 drawables — `GLTFKit_StaticGroup_*` merged batches and
+`flight-static-lane*` hull shells ≥ 40 m world radius, sharing source
+`position`/index buffers (concatenated index views or `setDrawRange` views for
+partially-eligible group sets — zero new vertex buffers, one shared
+`ShaderMaterial`).
 
 ## Patch
 
-`src/render/partsLibrary.js` — new `installStationOpaqueDepthPrepass(root, entity)`,
-called from `buildPlacePropRoot` next to the Cathedral precedent
-(`installWreckCathedralOpaqueDepthPrepass`). Gated on `entity.type === 'station'`.
+`src/render/partsLibrary.js`:
 
-Differences from the Cathedral pattern, and why:
+- `stationDepthPrepassMaterial()` — singleton position-only `ShaderMaterial`:
+  `colorWrite:false`, `depthTest/depthWrite`, `FrontSide`, `gl_Position` vertex,
+  zero-work fragment. One extra program.
+- `stationDepthPrepassEligibleMaterial(material)` — opaque, visible, depthWrite,
+  LessEqualDepth, no alphaTest/opacity<1/displacementMap/polygonOffset,
+  FrontSide-or-DoubleSide (BackSide excluded — prepass must not write faces the
+  color pass culls).
+- `stationDepthPrepassDynamicNode(object)` / `stationDepthPrepassScope(source, root)`
+  — dynamic markers (`animated`, `hlod`, `spacefaceSocket`, `updateRuntimeState`,
+  `updateDriveState`, `updateLod`, `tags.drive`, `tags.mount`) stop the climb; the
+  prepass attaches at the last static ancestor (the place root in practice).
+- `installStationOpaqueDepthPrepass(root, entity, bindings)` — gates
+  `entity.type === 'station'`; skips skinned/instanced/morph/custom-onBeforeRender
+  sources, invisible non-LOD sources, and self-marked prepasses; world-radius ≥ 40
+  via `localRadius × max|worldScale|`; per-material-group eligibility with
+  full-share / indexed-view / drawRange-view depth geometries; cloned tags minus
+  `mount` (a depth shell must never resolve as an attachment target);
+  `registerBinding` puts the prepass in the same LOD/damage buckets as its source;
+  `children.splice+unshift` prepends it at traversal index 0 of the scope.
 
-- **Child-of-source parenting** instead of sibling clones + `registerBinding`:
-  the prepass mesh is added *inside* its source mesh, so LOD swaps
-  (`updateLod` → `source.visible`), damage secondary-hides, and every other
-  visibility path keep it synced structurally — zero binding registration,
-  and it stays correct even under animated/driven subtrees (identity local
-  matrix; world matrix composes under the per-frame ancestor walk; the vendored
-  `sfMatrixFrozen` patch re-marks it at the next freeze).
-- **World-radius gate** (`localRadius × worldScale ≥ 40`) rather than a
-  static-batch-only gate, so merged static groups *and* the lane hulls qualify.
-- **Eligibility is per material group**, not per mesh: a mesh keeps eligible
-  opaque groups prepassed while its transparent/alphaTest groups stay out —
-  via full-geometry share (all groups eligible), a concatenated index view
-  (indexed partial), or per-run `setDrawRange` views (non-indexed partial).
-- Ordinary `LessEqualDepth` on the main surfaces is kept (the Cathedral's
-  `EqualDepth` specialization was unnecessary complexity here — equal-depth
-  fragments still draw normally, and the waste this lane measured comes from
-  *occluded* layers, which prepass depth already rejects).
+`scripts/probe-overdraw.mjs` — the measurement tool (committed; the
+`SF_OVERDRAW_ELEMAUDIO_STUB` env hook exists for the boot blocker below).
 
 ## Metrics
 
 - Golden sim hash: `cc9419388b2608d697345bb94a786c4120cfc21e04365f437e15c4c4c0a4e885`
-  — **identical** to baseline (`--repeat 20 --reload-at 600`, deterministic).
-- `check-src-reachability`: PASS.
-- Wasted shaded layers W: **0.91 → 0.00** at the gated heavy pose; ≈0 everywhere.
-- Cost: ~30 extra draws, ~130k tris vertex-only, 1 added shader program, 0 new
-  vertex buffers (shared attributes / index views only).
-- Zero visible quality change: `colorWrite:false` prepass; identical vertex
-  transforms; coverage unchanged within settling noise in the A/B probe.
+  — **identical** on the merged tree (`--repeat 20 --reload-at 600`, deterministic).
+- Wasted shaded layers/px: **1.08 → 0.52** helios approach, **0.91 → 0.01**
+  coalition approach, **1.09 → 0.02** station 74 approach.
+- Visual A/B: **0 differing pixels** (129,600 px) at both measured poses.
+- Cost: 41 extra depth draws, ~130 k tris vertex-only, 1 shader program, 0 new
+  vertex buffers.
+- Zero visible quality change: `colorWrite:false` + identical transforms ⇒
+  identical clip-space depth; `LessEqualDepth` admits the real surfaces.
 
-Caveat (recorded for the record): this box renders WebGL on SwiftShader — no
-hardware GPU. All reported numbers are rasterization-semantic layer counts, which
-are exact; wall-clock GPU timing deltas are not measurable here and should be
-confirmed on a real-GPU box via `node scripts/gpu-evidence-run.mjs` if a
+## Upstream finding (not this lane's fix)
+
+Master commit `4b708d40c` (CV-EAR-1) added `src/audio/elementaryVoices.js` with a
+static `import { el } from '@elemaudio/core'`, but `index.html`'s importmap maps only
+`@elemaudio/web-renderer` — the module graph fails to resolve and **the game boots to
+a blank page on current master** (reproduced there). A bare importmap entry is not a
+fix: `@elemaudio/core`'s real dist imports `shallowequal`, `invariant`,
+`eventemitter3` (all unmapped; mostly CJS-only packages). Likely resolution: vendor a
+bundled ESM build of `@elemaudio/core`, or revert to the dynamic-import pattern
+`audioSystem.js` already uses at line ~6052. Verified harmless to this lane via a
+test-only `page.route` importmap stub (`scratch-shims/elemaudio-core.mjs`, local
+scratch — not committed).
+
+## Caveat
+
+This box renders WebGL on SwiftShader — no hardware GPU. Layer counts are
+rasterization-semantic and exact; wall-clock GPU timing deltas are not measurable
+here. Confirm on a real-GPU box via `node scripts/gpu-evidence-run.mjs` if a
 frame-time attribution is wanted.
