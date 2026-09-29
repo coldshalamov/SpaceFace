@@ -270,7 +270,7 @@ Rules:
 5. **Salvage bay.** A separate combat-loot store, base about 5x the ship's ordinary hold
    (placeholder), upgradeable by module/tech. It auto-fills, is written only by the cargo owner, and
    never refuses a pickup: overflow is converted to credits by the economy owner at a scrap rate
-   (placeholder 60% of reference value). The ordinary hold and its trade/mining role are unchanged.
+   (placeholder 60% of reference value; **as built in slice A it is 8%**, section 13, because a light kill's materials are worth ~1,200 cr at reference against a ~65 cr chip). The ordinary hold and its trade/mining role are unchanged.
 6. **Leaving banks it.** Loot still in flight when the player jumps or docks is banked instantly.
 7. **Salvage skill (optional).** A fresh wreck lingers a few seconds; working it with the beam strips
    extra rare parts. A bonus for players who like it, never a requirement. The existing wreck-salvage
@@ -504,3 +504,62 @@ pathspec commit. Where a file carries another lane's uncommitted edits, stage on
   `design/VISION.md`, `design/program/INFERENCE_INTENTIONAL_FUN.md`, `design/FEEL_CONTRACT.md`.
 - **Doc hygiene.** This file is `DURABLE`: rationale only, never a lease or dispatch. If it becomes a
   packet, follow the lifetimes in `docs/POLICY_MANIFEST.md`.
+
+## 13. Slice A as built (2026-09-29): what exists, the numbers, the traps
+
+Design rationale only; the code and `feel.fling_scene` are the authority. Two production-ON /
+`legacy47a`-OFF flags (`src/data/featureFlags.js`, `src/runtime/runtimeProfiles.js`):
+`combat.tumbleFling` (a knocked-loose hull is a projectile) and `combat.arcadeLoot`.
+
+**The yardstick.** `scripts/lib/bench/scenarios/feel.fling_scene.mjs` (real runtime, production
+damage router, live AI; results in `metrics.targets`, never `metrics.bars`, so no FEEL_CONTRACT bar
+moves). Measured before, then after: head-on outbound speed when the helm returns -9.5 / +24 / +5.8 WU/s
+-> 57.5 (0.55 of cruise, ~one screen); spin during a stun 0.59 -> 2.9 turns; rebound off a rock 0 ->
+0.6 of impact speed; a kill after 3.4 s of flight credited to the victim -> credited to the player;
+flung Wasp meets a second at closing 110: knock 12 -> 88 WU/s and the second dies (killerId = player);
+busy-hold loot 10 of 21 floating -> 0; far loot (1500 / 3000 WU) never moved -> lands in ~3 / ~6 s.
+**Not covered yet: a real Massline throw** (every arm delivers its hit with a concussion gun shot);
+rope throws, whips, wells and tether shares write no impulse-provenance record, so their credit rides on
+the stunt-evidence window.
+
+**As built (constants are untuned placeholders).**
+
+| Rule | Where | Value |
+|---|---|---|
+| Credit outlives the flight | `holdImpulseProvenance` (`src/combat/impulseKernel.js`), called from `tumbleStates._beginFromImpulse` | held to tumble end + 0.9 s; never revives a dead record, never re-stamps `appliedTick` (the RCS-disruptor latch reads it), extends only a record that caused the tumble or is already held |
+| Free spin | `tumbleControl` (`src/systems/tumbleStates.js`) | zero force and zero torque while the helm is lost; recovery beat keeps real thruster torque |
+| Head-on floor | `tumbleStates._cancelInboundVelocity` | a shove-class hit that takes the helm first cancels the hull's inbound velocity along the push (one impulse through the combat physics port) |
+| Bounce | `src/core/sg02DynamicBodyOwner.js` (`_tumbling`, `_syncTumbleMaterial`, ricochet in `_applyStructuralGive`) | restitution 0.6 with the Max rule, contact bound 160 WU/s (was 40) for the loose hull AND anything it touches, angular drag 0.05/s (was 0.4), ricochet vs fixed bodies at 0.6 of closing (closing > 6 WU/s) |
+| Chain | `PROJECTILE_HULL_LAW` + `resolveCollisionConsequence` `projectileStrike`; `collisionConsequences._resolveContact` | struck hull's knock = (1 + 0.6) x closing x mStriker / (mStriker + mTarget), only when the striker is tumbling or recovering, closing >= 20 WU/s, never lowers the solver's reading; loose-ness read once per contact so id order does not matter; the struck hull gets its own provenance record so its flight credit chains |
+| Loot | `src/systems/mining.js` (`combatLoot`, `homeAt`, `_convertOverflowToCredits`) | 0.5 s beat, then home from any distance; overflow ore pays credits through `economy:grantCredits` at **8%** of reference value |
+
+**Traps found the hard way.**
+
+- The old "buzz" was not thrust: engines are already zero in a tumble. It is momentum arithmetic
+  (deltaV minus closing speed) plus a counter-torque written from the first tumble tick that killed the
+  spin in ~0.2 s, plus ship restitution 0 / Min rule / a 40 WU/s per-tick contact bound.
+- **A spinning capsule does not bounce off a rock** even with restitution: the off-centre contact point
+  moves faster than the approach, so the solver turns the impact into spin. The ricochet is enforced
+  explicitly in the post-step contact pass (measured: a real Wasp rebounds 16.8 at 28 WU/s with no spin,
+  ~0 with 4.3 rad/s).
+- The ship contact material's `angularDamping` (0.4/s) is documented in the owner as an RCS model, so it
+  is "acting on the hull with its own propulsion"; a loose hull drops to 0.05/s.
+- Craft-on-craft consequences used to read ONLY the first solver tick's exchange, and the struck hull's own
+  per-tick contact bound truncated the knock: both had to change for a chain to exist.
+- Impulse provenance (`RECENT_IMPULSES`) lived 180 ticks and `tumbleStates._tickRcsLatches` deleted stale
+  records every tick; drones are not scanned at all.
+- SG-02 gives bodies only near the player (a static rock publishes no telemetry). A pickup beyond the
+  physics ring has no body, so "home from anywhere" needed a direct position step for body-less combat loot.
+- **The economy.** A light kill's materials are worth ~1,200 cr at reference against a ~65 cr chip (hauled
+  ore is this economy's real payoff; chips are the points). The 60% overflow placeholder in section 7.5
+  would have made a full hold pay ~10x the chip and combat the dominant income, so it was set to 8%
+  (~one chip per fully refused burst). Owner may retune; run the career benchmarks on a quiet host.
+- The frozen 47-A golden (`test/47a.telemetry.expected.json`) is stable under this work (both flags are OFF
+  in `legacy47a`); another lane's commit `954a0ab8c` moved it independently. Gate on "identical to the
+  commit before your change", not a fixed hash.
+- Several commits swept other lanes' hunks (same-file pathspec commits while another lane edited the
+  file). Stage by hunk, and read `git show --stat HEAD` afterwards.
+
+**Still open in slice A:** the bling (pitch-stepping pickup audio keyed off `acceptedAmount`, rolling
+counter), banking loot in flight on jump or dock, homing for Survival/Crucible run-wallet chips (wallet
+unchanged), and the real Massline throw arms.
