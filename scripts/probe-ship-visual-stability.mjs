@@ -10,6 +10,19 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_FRAMES = 360;
 const DEFAULT_WARMUP_FRAMES = 45;
 const DEFAULT_MIN_INSPECTED_FRAMES = 300;
+// A boundary's `compiling-pipelines` span covers its authored-admission queue position, a
+// present-sliced pipeline compile and sliced residency uploads — and, for a non-urgent commit, the
+// first-flight publication hold that releases at sim-time 20 s. The authored queue admits one
+// entity per presented frame and drains ~one compile batch per present, so a ship near the tail of
+// the opening cohort can legitimately need far more than the default 360-frame window on any
+// contended host (an order of magnitude more on the KHR-less serial route, where every unit also
+// pays a synchronous gl.finish() drain). The extension below only runs while a relevant ship is
+// still unresolved, and the verdict is unchanged — still pending at the cap is a real
+// never-resolved failure, not a truncated measurement.
+const DEFAULT_RESOLVE_FRAME_CAP = 1800;
+const DEFAULT_RESOLVE_MS = 240_000;
+const DEFAULT_PENDING_GRACE_FRAMES = 120;
+const RESOLVE_EXTENSION_TICK_MS = 250;
 const PLAYER_LOD_SETTLE_FRAMES = 30;
 const PLAYER_READABLE_SCREEN_RADIUS_PX = 80;
 const PLAYER_MIN_VISIBLE_AUTHORED_SURFACES = 8;
@@ -27,10 +40,17 @@ const AUTHORED_BODY_PROOF = Object.freeze({
 const DEFAULT_FLIGHT_START_TIMEOUT_MS = 90000;
 const WIDTH = readIntArg('--width', 1440);
 const HEIGHT = readIntArg('--height', 900);
-const FRAME_COUNT = readIntArg('--frames', DEFAULT_FRAMES);
+const FRAME_COUNT = readIntArg('--frames', Number(process.env.SF_VISUAL_STABILITY_FRAMES) || DEFAULT_FRAMES);
 const WARMUP_FRAMES = Math.min(readIntArg('--warmup-frames', DEFAULT_WARMUP_FRAMES), Math.max(0, FRAME_COUNT - 1));
+const RESOLVE_FRAME_CAP = readIntArg('--resolve-frames',
+  Number(process.env.SF_VISUAL_STABILITY_RESOLVE_FRAMES) || DEFAULT_RESOLVE_FRAME_CAP);
+const RESOLVE_MS = readIntArg('--resolve-ms',
+  Number(process.env.SF_VISUAL_STABILITY_RESOLVE_MS) || DEFAULT_RESOLVE_MS);
+const PENDING_GRACE_FRAMES = readIntArg('--pending-grace',
+  Number(process.env.SF_VISUAL_STABILITY_GRACE_FRAMES) || DEFAULT_PENDING_GRACE_FRAMES);
 const SF_BOOT_TIMEOUT_MS = readIntArg('--boot-timeout', Number(process.env.SF_VISUAL_STABILITY_BOOT_MS) || 90000);
-const FLIGHT_START_TIMEOUT_MS = readIntArg('--flight-timeout', DEFAULT_FLIGHT_START_TIMEOUT_MS);
+const FLIGHT_START_TIMEOUT_MS = readIntArg('--flight-timeout',
+  Number(process.env.SF_VISUAL_STABILITY_FLIGHT_MS) || DEFAULT_FLIGHT_START_TIMEOUT_MS);
 
 const { chromium } = await loadPlaywright();
 let server = null;
@@ -65,6 +85,10 @@ try {
     frames: FRAME_COUNT,
     warmupFrames: WARMUP_FRAMES,
     minInspectedFrames: DEFAULT_MIN_INSPECTED_FRAMES,
+    pendingGraceFrames: PENDING_GRACE_FRAMES,
+    resolveFrameCap: RESOLVE_FRAME_CAP,
+    resolveMs: RESOLVE_MS,
+    resolveExtensionTickMs: RESOLVE_EXTENSION_TICK_MS,
     playerLodSettleFrames: PLAYER_LOD_SETTLE_FRAMES,
     playerReadableScreenRadiusPx: PLAYER_READABLE_SCREEN_RADIUS_PX,
     playerMinVisibleAuthoredSurfaces: PLAYER_MIN_VISIBLE_AUTHORED_SURFACES,
@@ -79,6 +103,9 @@ try {
     viewport: { width: WIDTH, height: HEIGHT },
     frames: FRAME_COUNT,
     warmupFrames: WARMUP_FRAMES,
+    resolveFrameCap: RESOLVE_FRAME_CAP,
+    resolveMs: RESOLVE_MS,
+    pendingGraceFrames: PENDING_GRACE_FRAMES,
     stability,
     pageErrors: summarizeIssues(errorIssues),
   }, null, 2));
@@ -94,6 +121,10 @@ async function sampleVisualStability(page, options) {
     frames,
     warmupFrames,
     minInspectedFrames,
+    pendingGraceFrames,
+    resolveFrameCap,
+    resolveMs,
+    resolveExtensionTickMs,
     playerLodSettleFrames,
     playerReadableScreenRadiusPx,
     playerMinVisibleAuthoredSurfaces,
@@ -102,9 +133,41 @@ async function sampleVisualStability(page, options) {
   }) => {
     const failures = [];
     const tracks = new Map();
-    const inspectedFrameCount = Math.max(0, frames - warmupFrames);
+    const plannedInspectedFrames = Math.max(0, frames - warmupFrames);
+    let inspectedFrameCount = 0;
     let maxShipCount = 0;
     let finalShips = [];
+    const wallNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now());
+
+    // Record which pipeline-compile route this context took — the same check the renderer's own
+    // queue pacer (makeGpuQueuePacer) makes. No KHR_parallel_shader_compile means every admission
+    // unit pays a presented-frame wait plus a synchronous gl.finish() drain: diagnostic context for
+    // how long `compiling-pipelines` legitimately spans on this host, not a verdict input.
+    const bootRender = (window.SF && window.SF.state && window.SF.state.render) || null;
+    const bootRenderer = bootRender && bootRender.renderer || null;
+    let serialCompileRoute = !!(bootRender && bootRender.gpu
+      && (bootRender.gpu.software === true || bootRender.gpu.tier === 'software'));
+    if (!serialCompileRoute) {
+      try {
+        let parallel = bootRenderer && bootRenderer.extensions
+          && typeof bootRenderer.extensions.get === 'function'
+          ? bootRenderer.extensions.get('KHR_parallel_shader_compile')
+          : null;
+        if (!parallel) {
+          const gl = bootRenderer && typeof bootRenderer.getContext === 'function'
+            ? bootRenderer.getContext()
+            : null;
+          parallel = gl && typeof gl.getExtension === 'function'
+            ? gl.getExtension('KHR_parallel_shader_compile')
+            : null;
+        }
+        serialCompileRoute = !parallel;
+      } catch (_) {
+        serialCompileRoute = true;
+      }
+    }
 
     // Pending-admission boundaries present the ship's designed low-detail stand-in (GFX-12)
     // while its authored body lands — a placeholder, not the authored identity the asserts below
@@ -134,25 +197,72 @@ async function sampleVisualStability(page, options) {
     } catch (_) {}
     // Frames a ship may sit upgrade-relevant and still pending before it counts as stuck. A
     // relevant admission job is designed to finish in seconds, not across a full window.
-    const pendingRelevantGraceFrames = Math.min(120, Math.max(1, inspectedFrameCount - 1));
-
-    if (inspectedFrameCount < minInspectedFrames) {
+    if (plannedInspectedFrames < minInspectedFrames) {
       failures.push({
         frame: null,
         reason: 'insufficient-inspected-frames',
-        detail: { inspectedFrameCount, minInspectedFrames },
+        detail: { inspectedFrameCount: plannedInspectedFrames, minInspectedFrames },
         ship: null,
       });
     }
 
-    for (let frame = 0; frame < frames; frame++) {
+    const sampleFrame = (frame) => {
       const ships = captureShips(frame);
       maxShipCount = Math.max(maxShipCount, ships.length);
       finalShips = ships;
       if (frame >= warmupFrames) inspectFrame(frame, ships);
+    };
+
+    // A tracked ship the renderer's own policy still owes a resolution for — pending-and-upgrade-
+    // relevant or meshless-and-render-relevant. The two-frame recency bound ignores tracks whose
+    // entity has left the census entirely; there is nothing left to wait on for those.
+    const hasUnresolvedRelevantTrack = (frame) => {
+      for (const track of tracks.values()) {
+        if (track.sawTerminal !== false) continue;
+        if ((track.relevantPendingFrames + track.meshlessRelevantFrames) <= 0) continue;
+        if (track.lastFrame < frame - 2) continue;
+        return true;
+      }
+      return false;
+    };
+
+    let frame = 0;
+    for (; frame < frames; frame++) {
+      sampleFrame(frame);
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
-    inspectFinalPlayer(finalShips, Math.max(0, frames - 1));
+    // Resolution extension: while any relevant ship is still unresolved, keep sampling up to the
+    // resolve cap. Each presented frame is the currency the authored admission queue drains in
+    // (one entity admission plus one compile batch per present, with bounded task resumes between),
+    // so on a contended host the default window ends before a queued ship's turn — the CI failure
+    // this prevents measured boot pacing, not resolution. The tick races a short task fallback
+    // because every admission wait in the chain already resumes on its own unstick timer when rAF
+    // starves; the wall cap bounds the wait regardless. A ship still unresolved at the cap fails
+    // the same verdict below — this only gives a queued ship its real chance to resolve.
+    const frameCap = Math.max(frames, Number(resolveFrameCap) || 0);
+    const resolveDeadlineMs = wallNow() + Math.max(0, Number(resolveMs) || 0);
+    while (frame < frameCap
+        && wallNow() < resolveDeadlineMs
+        && hasUnresolvedRelevantTrack(frame)) {
+      sampleFrame(frame);
+      frame++;
+      await new Promise((resolve) => {
+        let fired = false;
+        const fire = () => {
+          if (fired) return;
+          fired = true;
+          resolve();
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fire);
+        setTimeout(fire, Math.max(1, Number(resolveExtensionTickMs) || 250));
+      });
+    }
+    inspectedFrameCount = Math.max(0, frame - warmupFrames);
+    // The grace is measured against the window actually inspected: a ship must resolve within the
+    // frame budget the route's admission cost can honestly fit inside.
+    const graceSource = Number.isFinite(Number(pendingGraceFrames)) ? Number(pendingGraceFrames) : 120;
+    const pendingRelevantGraceFrames = Math.min(graceSource, Math.max(1, inspectedFrameCount - 1));
+    inspectFinalPlayer(finalShips, Math.max(0, frame - 1));
     for (const track of tracks.values()) {
       if (track.sawTerminal !== false) continue;
       const unresolvedRelevantFrames = track.relevantPendingFrames + track.meshlessRelevantFrames;
@@ -163,14 +273,18 @@ async function sampleVisualStability(page, options) {
         meshlessRelevantFrames: track.meshlessRelevantFrames,
         deferredPendingFrames: track.deferredPendingFrames,
         graceFrames: pendingRelevantGraceFrames,
+        frameCap,
       });
     }
 
     return {
       ok: failures.length === 0,
       frameCount: frames,
+      sampledFrameCount: frame,
       warmupFrames,
       inspectedFrameCount,
+      serialCompileRoute,
+      frameCap,
       maxShipCount,
       failureCount: failures.length,
       failures: failures.slice(0, 80),
@@ -272,6 +386,36 @@ async function sampleVisualStability(page, options) {
           track.instanceProxyCount = ship.instanceProxyCount;
           track.compositionId = ship.compositionId;
           track.slotsKey = ship.slotsKey;
+        }
+        // A live render-package pool promotion or restore flips a mesh's draw path in place
+        // (promoteRenderPackageMeshToPoolProxy / restoreDirectPackageMesh): the node keeps its
+        // geometry, part tags and visibility while isMesh and the spacefaceInstanceProxy flag
+        // trade — one designed mount-path event, not authored churn. Its arithmetic signature is
+        // exact: every mesh count lost became a proxy (or back) in the same frame, and the
+        // surface/batch counters move only by the converted meshes' own flags — same direction as
+        // the mesh delta, bounded by its magnitude. Rebase the mount-shape baselines on that
+        // signature — the same designed-transition class as the whole-ship level swap above — so
+        // a deferred pool publish landing mid-window does not report as churn on every remaining
+        // frame. Identity counters (rootUuid, composition, slots, authoredState) are untouched and
+        // still assert below; a mesh added or lost outside a proxy conversion still fails.
+        {
+          const meshDelta = ship.meshCount - track.meshCount;
+          const proxyDelta = ship.instanceProxyCount - track.instanceProxyCount;
+          const withinSwap = (before, after) => {
+            const delta = after - before;
+            return delta === 0
+              || (Math.sign(delta) === Math.sign(meshDelta) && Math.abs(delta) <= Math.abs(meshDelta));
+          };
+          if (meshDelta !== 0 && proxyDelta === -meshDelta
+            && withinSwap(track.authoredSurfaceCount, ship.authoredSurfaceCount)
+            && withinSwap(track.authoredBodySurfaceCount, ship.authoredBodySurfaceCount)
+            && withinSwap(track.staticBatchCount, ship.staticBatchCount)) {
+            track.meshCount = ship.meshCount;
+            track.authoredSurfaceCount = ship.authoredSurfaceCount;
+            track.authoredBodySurfaceCount = ship.authoredBodySurfaceCount;
+            track.staticBatchCount = ship.staticBatchCount;
+            track.instanceProxyCount = ship.instanceProxyCount;
+          }
         }
         if (ship.compositionId !== track.compositionId) {
           fail(frame, ship, 'composition-changed-after-warmup', { was: track.compositionId, now: ship.compositionId });
