@@ -94,13 +94,23 @@ export function isUnsellableCargo(state, commodityId) {
   return false;
 }
 
-/** The lot a flight jettison dumps: the focused commodity, else the first positive lot. */
+/** The lot a flight jettison dumps.
+ *  A held explicit focus is that lot, or a refusal when the lot is sealed.
+ *  Another dumpable lot is the default only when no held focus was chosen.
+ */
 export function selectedJettisonLot(state) {
   const cargo = state && state.player && state.player.cargo;
   const items = cargo && cargo.items;
   if (!items || typeof items !== 'object') return null;
-  const focus = cargo.selectedId || (state.ui && state.ui.selectedCommodityId);
-  if (typeof focus === 'string' && Number(items[focus]) > 0 && !isUnsellableCargo(state, focus)) return focus;
+  const fromHold = typeof cargo.selectedId === 'string' && cargo.selectedId ? cargo.selectedId : '';
+  const fromUi = !fromHold && state.ui && typeof state.ui.selectedCommodityId === 'string'
+    ? state.ui.selectedCommodityId
+    : '';
+  const focus = fromHold || fromUi;
+  // An explicit sealed or persistent lot is a refusal. Do not substitute a different good.
+  if (focus && Number(items[focus]) > 0) {
+    return isUnsellableCargo(state, focus) ? null : focus;
+  }
   const ids = Object.keys(items)
     .filter((id) => Number(items[id]) > 0 && !isUnsellableCargo(state, id))
     .sort();
