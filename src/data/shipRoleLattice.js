@@ -103,7 +103,7 @@ export const SHIP_ROLE_PATHS = Object.freeze({
   }),
   ship_saucer: Object.freeze({
     id: 'path_inertialess_disc', signatureVerb: 'Stop on a dime, turn on the spot, and tow what outweighs the escorts.',
-    counterplay: 'The field is a hard 190 WU/s ceiling — run outside its reach and bleed the capacitor with sustained fire.',
+    counterplay: 'Sustained fire bleeds the 360 boost pool; a saucer that cannot dash is heavy prey.',
     kit: Object.freeze([{ defId: 'wpn_gravity_well_m', count: 1 }, { defId: 'wpn_momentum_sink_s', count: 1 }, { defId: 'mod_massline_spool_m', count: 1 }, { defId: 'mod_frame_coupler_m', count: 1 }]),
   }),
 });
@@ -426,9 +426,9 @@ const LATTICE_ROWS = Object.freeze([
     thrustBias: 0.85,
     turnBias: 1.20,
     strengths: Object.freeze(['best-in-class authority per tonne', 'turret-mounted S arc', 'tow mass far above its class']),
-    weaknesses: Object.freeze(['hard 190 WU/s ceiling', 'thin weapon map', 'capacitor-bound drive']),
+    weaknesses: Object.freeze(['boost pool drains under sustained pressure', 'exotic tech gate and price', 'capacitor-bound drive']),
     upgradeAdjacency: Object.freeze([]),
-    counterRoles: Object.freeze(['kite interceptors', 'capacitor pressure']),
+    counterRoles: Object.freeze(['sustained focus fire', 'capacitor pressure']),
     identityLine: 'It does not obey your momentum. It obeys you.',
   }),
 ]);
