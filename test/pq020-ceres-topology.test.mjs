@@ -24,8 +24,11 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // Re-pinned 2026-09-28 for the alien-ecology additive seam (PR #170): the Closed Refinery's
 // 12-fauna colony joins the structural census (entities 23 → 35, byType +fauna:12); colliders
 // unchanged at 190. Prior digest daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188.
+// Re-pinned 2026-09-29 for the Kettle Line (WF-10): three drift-trail POIs each stand a live fx
+// marker (pois 6 → 9, entities 35 → 38, fx 9 → 12); colliders unchanged at 190. Prior digest
+// 1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  '1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db';
+  'c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -142,9 +145,10 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // Pre-shelf this was total 38 / fx 10 / wreck 14 / collidable 21.
   // PR #170: the Closed Refinery colony adds 12 fauna bodies to the live core census
   // (23 → 35); they are not collider-backed, so `collidable` stays at 14.
+  // The Kettle Line (WF-10) adds three drift-trail POIs whose markers are live fx (35 → 38, fx 9 → 12).
   assert.deepEqual(first.structuralCost.entities, {
-    total: 35,
-    byType: { asteroid: 6, fauna: 12, fx: 9, ship: 2, station: 6 },
+    total: 38,
+    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 2, station: 6 },
     collidable: 14,
   });
   // Colliders went 14 → 66 with the compound-collision rollout, then kept moving as measured

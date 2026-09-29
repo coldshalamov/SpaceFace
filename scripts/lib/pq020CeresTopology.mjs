@@ -105,8 +105,13 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // census and adds one authored POI + one appended zone (pois 5→6, zones 6→7, entities
 // 23→35, colliders unchanged at 190). No cathedral/route/pocket geometry moved.
 // Prior digest was daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188.
+// 2026-09-29: re-pinned for the Kettle Line (WF-10, 7885a276d): three authored drift-trail POIs
+// (poi_kettle_hopper / poi_kettle_ribs / poi_kettle_stern) each stand a live fx marker in the
+// sector, so authored pois 6 → 9, entities 35 → 38, byType fx 9 → 12; colliders unchanged at 190.
+// No cathedral/route/pocket geometry moved and every other assertion still passes. Prior digest
+// was 1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db';
+  'c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
