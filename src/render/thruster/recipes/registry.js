@@ -17,6 +17,8 @@ import {
   VECTOR_RCS_RECIPE,
   PLASMA_RING_MAIN_PLUME_RECIPE,
   PLASMA_RING_RCS_RECIPE,
+  FIELD_SPRINT_MAIN_PLUME_RECIPE,
+  FIELD_SPRINT_RCS_RECIPE,
   continuumForRecipe,
 } from './familyRecipes.js';
 import { KESTREL_MAIN_PLUME_RECIPE, KESTREL_RCS_RECIPE } from './kestrelRecipes.js';
@@ -29,6 +31,7 @@ export const LIVE_ENGINE_PROFILE_IDS = Object.freeze([
   'engine_resonator',
   'engine_vector',
   'engine_plasma_ring',
+  'engine_field_sprint',
 ]);
 
 const FAMILY_BY_PROFILE = Object.freeze({
@@ -73,6 +76,13 @@ const FAMILY_BY_PROFILE = Object.freeze({
     main: PLASMA_RING_MAIN_PLUME_RECIPE,
     rcs: PLASMA_RING_RCS_RECIPE,
     continuum: continuumForRecipe(PLASMA_RING_MAIN_PLUME_RECIPE),
+  }),
+  engine_field_sprint: Object.freeze({
+    profileId: 'engine_field_sprint',
+    style: 'sprint',
+    main: FIELD_SPRINT_MAIN_PLUME_RECIPE,
+    rcs: FIELD_SPRINT_RCS_RECIPE,
+    continuum: continuumForRecipe(FIELD_SPRINT_MAIN_PLUME_RECIPE),
   }),
 });
 
