@@ -1,0 +1,336 @@
+SFQ-B001 | Reconcile this package without a second queue | The first worker receives one current task, with overlaps resolved before mutation. | prog: Truth, integration, and the first playable reference
+SFQ-B002 | Establish one ordinary-play reference | A reproducible boot-to-fight and boot-to-dock route makes improvements comparable. | prog: Truth, integration, and the first playable reference
+SFQ-B003 | Integrate the alien branch deliberately | Alien capabilities are either present on the chosen build or explicitly absent, never assumed. | prog: Truth, integration, and the first playable reference
+SFQ-B004 | Retire false work from stale diagnoses | Agents stop repeatedly fixing the old cruise and draw-to-fly problems. | prog: Truth, integration, and the first playable reference
+SFQ-B005 | Prove player-route feature reachability | A purchased or discovered capability can actually be fitted, invoked and understood. | prog: Truth, integration, and the first playable reference
+SFQ-B006 | Adopt useful remote work without regressions | Valuable completed VM work reaches the game without erasing concurrent changes. | prog: Truth, integration, and the first playable reference
+SFQ-B007 | Unify the weakness ledger | The project has one actionable current defect list instead of several contradictory reports. | prog: Truth, integration, and the first playable reference
+SFQ-B008 | Use a golden ordinary-world scene | The art, interaction and narrative teams tune the same legible physical situation. | prog: Truth, integration, and the first playable reference
+SFQ-B009 | Make done mean playable | Completion states distinguish code, focused checks, public route and integration. | prog: Truth, integration, and the first playable reference
+SFQ-B010 | Close the first import with useful output | Agents can start the next safe unit without another planning conversation. | prog: Truth, integration, and the first playable reference
+SFQ-B011 | Calibrate the existing G combat stick | A trackpad user can steer and fight without drawing paths or chasing the screen edge. | prog: The hand: nimble control without stealing momentum
+SFQ-B012 | Resolve input hand conflicts | The pilot can steer, latch, release and fire with two hands on keyboard and trackpad. | prog: The hand: nimble control without stealing momentum
+SFQ-B013 | Protect earned speed across all launch causes | A sling, shove, collision or well release keeps the momentum it earned. | prog: The hand: nimble control without stealing momentum
+SFQ-B014 | Make control-mode transitions continuous | Opening/closing the map or toggling assistance does not lurch the ship. | prog: The hand: nimble control without stealing momentum
+SFQ-B015 | Tune loaded-hull handling visibly | Heavy cargo changes piloting in a predictable, learnable way. | prog: The hand: nimble control without stealing momentum
+SFQ-B016 | Separate chase framing from steering | Camera changes help anticipate travel without feeling like control takeover. | prog: The hand: nimble control without stealing momentum
+SFQ-B017 | Make emergency braking a choice | A player can intentionally spend speed to escape a bad trajectory. | prog: The hand: nimble control without stealing momentum
+SFQ-B018 | Keep input responsive during time effects | Slow motion does not turn the controls into syrup. | prog: The hand: nimble control without stealing momentum
+SFQ-B019 | Recover gracefully from contact | Scrapes remain steerable, hard earned impacts remain dramatic. | prog: The hand: nimble control without stealing momentum
+SFQ-B020 | Teach handling through an actual job | The player learns drift, brake and release while accomplishing something useful. | prog: The hand: nimble control without stealing momentum
+SFQ-B021 | Make latch eligibility honest | What looks latchable behaves as the kind of anchor the player was promised. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B022 | Prove light medium heavy coupling | The same rope yields throw, mutual swing or self-sling according to the actual mass relationship. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B023 | Make release and break unambiguous | A clean release feels different from overloaded failure and both preserve the correct trajectory. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B024 | Build a deliberate snap-catch challenge | A skilled pilot can change anchors mid-flight without accidental double constraints. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B025 | Turn fresh wrecks into ammunition | Winning a fight changes the physical options in that same fight. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B026 | Make tension actionable | Players can anticipate a line failure and choose release, reel or reduced thrust. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B027 | Author terrain for swing decisions | Asteroids and machinery form useful routes, not a random obstacle soup. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B028 | Preserve roped cargo as matter | A payload stays physical until the appropriate collection or handoff action completes. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B029 | Give enemies counter-tether intentions | A specialist threatens the relationship rather than erasing it arbitrarily. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B030 | Compose a three-verb physical scene | Players combine rope, field and ordnance with ordinary terrain in a repeatable combat situation. | prog: Massline, contact, and terrain as the signature toy
+SFQ-B031 | Differentiate the existing starter loadout | A new player understands gun, shove, rope and bomb as different choices. | prog: Weapons, states, and combinatorial combat
+SFQ-B032 | Complete ordnance interaction coverage | Bombs affect every explicitly eligible body, including admitted physical fauna. | prog: Weapons, states, and combinatorial combat
+SFQ-B033 | Make status combinations explain themselves | Primed, pinned, gooed, tumbling and burning states have readable setup and payoff. | prog: Weapons, states, and combinatorial combat
+SFQ-B034 | Keep moving traps moving honestly | Dropped bombs inherit velocity and stay relevant to pursuit geometry. | prog: Weapons, states, and combinatorial combat
+SFQ-B035 | Make directional impulse aim matter | Hitting a flank produces a different opportunity from hitting a nose. | prog: Weapons, states, and combinatorial combat
+SFQ-B036 | Bound control denial without removing power | Earned stuns are strong, but the player is not permanently unable to act. | prog: Weapons, states, and combinatorial combat
+SFQ-B037 | Give environmental destruction distinct physics | Fuel, armor, rock and industrial machinery break into useful different aftermaths. | prog: Weapons, states, and combinatorial combat
+SFQ-B038 | Turn defense into positional play | Protection is a direction/relationship decision rather than a permanent bright bubble. | prog: Weapons, states, and combinatorial combat
+SFQ-B039 | Prove two unusual builds without a dominant answer | Fitting choices alter how a pilot solves a fight. | prog: Weapons, states, and combinatorial combat
+SFQ-B040 | Ship a shared combat composition matrix | The core toys, alien matter and machinery obey compatible rules across modes. | prog: Weapons, states, and combinatorial combat
+SFQ-B041 | Give each encounter an ingress and exit | Threats arrive from somewhere and leave for a reason rather than appearing in the pilot's lap. | prog: Readable adversaries and a living encounter director
+SFQ-B042 | Stabilize tactical commitment | Enemies carry out a readable plan long enough for counterplay to matter. | prog: Readable adversaries and a living encounter director
+SFQ-B043 | Make formations physically breakable | A field or thrown wreck disrupts a group instead of a script restoring the formation instantly. | prog: Readable adversaries and a living encounter director
+SFQ-B044 | Author specialist intention tells | A cutter, sniper and anchor fighter each create a distinct question before attacking. | prog: Readable adversaries and a living encounter director
+SFQ-B045 | Make thrown bodies a perceived threat | NPCs respond to a moving wreck as a collision problem rather than ignoring it. | prog: Readable adversaries and a living encounter director
+SFQ-B046 | Give morale an observable consequence | Crew confidence changes attack commitment and escape routes rather than just dialogue. | prog: Readable adversaries and a living encounter director
+SFQ-B047 | Make civilians protect what matters | A hauler avoids fire, a tug tries to recover cargo, and a patrol chooses what to protect. | prog: Readable adversaries and a living encounter director
+SFQ-B048 | Escalate problems rather than health bars | Difficulty adds coordinated situations while retaining throwable light enemies. | prog: Readable adversaries and a living encounter director
+SFQ-B049 | Separate combat and ecology intent | Animals, machines and crews have different reasons to move or harm the player. | prog: Readable adversaries and a living encounter director
+SFQ-B050 | Ship the roster as a readable collection | Each admitted enemy has a recognizable outline, job and counter. | prog: Readable adversaries and a living encounter director
+SFQ-B051 | Make the first minute demonstrate the game | A new run provides a throwable body, a clear pursuer and a readable payoff quickly. | prog: Crucible: the repeatable physics showcase
+SFQ-B052 | Compose an escalation arc | Early, middle and late rounds test different skills, not the same crowd with larger numbers. | prog: Crucible: the repeatable physics showcase
+SFQ-B053 | Preserve meaningful arena aftermath | Wrecks and hazards make the next decisions interesting without unbounded debris growth. | prog: Crucible: the repeatable physics showcase
+SFQ-B054 | Make draft choices change play | The between-round choice has an observable effect in the next fight. | prog: Crucible: the repeatable physics showcase
+SFQ-B055 | Keep ordinary kills fairly paid | Guns fund survival, while unusual physics adds bounded style and readable celebration. | prog: Crucible: the repeatable physics showcase
+SFQ-B056 | Create arena laws with counterplay | Local machinery changes trajectories and creates decisions. | prog: Crucible: the repeatable physics showcase
+SFQ-B057 | Make recovery an earned interval | Clearing pressure produces a short perceptible release before the next challenge. | prog: Crucible: the repeatable physics showcase
+SFQ-B058 | Show why the run ended | Death/replay makes the decisive cause intelligible and retry immediate. | prog: Crucible: the repeatable physics showcase
+SFQ-B059 | Keep seed and build sharing truthful | A shared challenge reproduces the rules and starting configuration it names. | prog: Crucible: the repeatable physics showcase
+SFQ-B060 | Converge the full run loop | Boot, play, shop, die, retry and return to Adventure behave like one finished product. | prog: Crucible: the repeatable physics showcase
+SFQ-B061 | Audit and complete the actual story spine | Existing story beats connect through playable actions rather than missing offers or unexplained jumps. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B062 | Put a real choice in the opening job | The first work contract can produce help, theft, collateral or refusal with visible consequences. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B063 | Teach by need and recovery | Hints arrive when a player is stuck and disappear when the action is understood. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B064 | Make the first upgrade felt on departure | The player earns, fits and immediately experiences a new capability. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B065 | Pace freedom and narrative pressure | Story progression creates new opportunities without trapping the player in busywork. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B066 | Make failure mutate the job | A damaged convoy can become rescue, restitution or salvage rather than an unexplained hard reset. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B067 | Introduce alien evidence gradually | A player first sees a wrong detail, then earns the vocabulary to understand it. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B068 | Make characters interrupt for reasons | Comms correspond to observable events and relationships. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B069 | Finish chapter transitions as gameplay | Crossing into a new region changes the physical and economic problem before the title card explains it. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B070 | Close the campaign without closing the world | The main arc reaches a coherent conclusion and leaves bounded optional play. | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-B071 | Make authored interactions use actual objects | The mission names the body the player is towing, damaging, scanning or delivering. | prog: Mission craft and authored world-site interactions
+SFQ-B072 | Publish a mission clause grammar | Existing contract families can express optional constraints and distinct solutions without new type proliferation. | prog: Mission craft and authored world-site interactions
+SFQ-B073 | Build the industrial rescue trilogy | Three ordinary-world jobs teach tow, controlled throw and protecting fragile cargo. | prog: Mission craft and authored world-site interactions
+SFQ-B074 | Build the physical heist trilogy | Theft is a problem of trajectories, custody and escape. | prog: Mission craft and authored world-site interactions
+SFQ-B075 | Build the investigation trilogy | Information is earned through interventions and contradictory instruments. | prog: Mission craft and authored world-site interactions
+SFQ-B076 | Build ecology jobs around existing fauna | Alien missions require following, isolating, diverting or capturing rather than extermination. | prog: Mission craft and authored world-site interactions
+SFQ-B077 | Build machine jobs around work | Robots alter the situation through construction, logistics or classification. | prog: Mission craft and authored world-site interactions
+SFQ-B078 | Compose cross-system set pieces | Existing human, biological and machine rules collide without bespoke cinematic physics. | prog: Mission craft and authored world-site interactions
+SFQ-B079 | Stress mission edge paths | Abandonment, late arrival, sold cargo and destroyed targets do not produce softlocks. | prog: Mission craft and authored world-site interactions
+SFQ-B080 | Curate the finished mission set | Only distinct, fully built situations remain on the launch route. | prog: Mission craft and authored world-site interactions
+SFQ-B081 | Expose the cause of a price | A pilot can distinguish scarcity, reputation, fees and stale intelligence in a quote. | prog: An economy the pilot can understand and physically influence
+SFQ-B082 | Close one industrial supply chain | An observable miner-to-hauler-to-market chain has real goods and bounded accounting. | prog: An economy the pilot can understand and physically influence
+SFQ-B083 | Make useful upgrades affordable without trivializing trade | Early work leads to meaningful hardware choices at a measured pace. | prog: An economy the pilot can understand and physically influence
+SFQ-B084 | Make cargo mass a tactical decision | Heavy freight buys money at the cost of maneuver and escape options. | prog: An economy the pilot can understand and physically influence
+SFQ-B085 | Preserve custody through dirty salvage | Ownership and contamination survive theft, transfer, wreck conversion and sale. | prog: An economy the pilot can understand and physically influence
+SFQ-B086 | Build a recovery economy | Damage or insolvency leaves a playable route back to agency. | prog: An economy the pilot can understand and physically influence
+SFQ-B087 | Make shortages produce jobs | A disrupted route produces a useful delivery, rescue or repair opportunity. | prog: An economy the pilot can understand and physically influence
+SFQ-B088 | Create a bounded xenotech market | Alien materials have concrete uses, handling requirements and a limited buyer network. | prog: An economy the pilot can understand and physically influence
+SFQ-B089 | Stress economy exploits | Transfers, refunds, partial deliveries and save interruption remain conservative. | prog: An economy the pilot can understand and physically influence
+SFQ-B090 | Make the long-game economy optional depth | Automation supports flying instead of replacing the game with menus. | prog: An economy the pilot can understand and physically influence
+SFQ-B091 | Make each extraction phase readable | Survey, cut, fracture and collect communicate different physical jobs. | prog: Mining, salvage and construction as tactile work
+SFQ-B092 | Design interesting rock geometry | Ore access depends on approach, shielding and safe chunk trajectories. | prog: Mining, salvage and construction as tactile work
+SFQ-B093 | Make freight handling enjoyable | Loading and recovering chunks offer useful choices between precision, throughput and danger. | prog: Mining, salvage and construction as tactile work
+SFQ-B094 | Turn salvage into structural decisions | Recovering one valuable component changes the wreck's stability or access. | prog: Mining, salvage and construction as tactile work
+SFQ-B095 | Make repair a visible operation | Repair has a source, target, material cost and completion state. | prog: Mining, salvage and construction as tactile work
+SFQ-B096 | Create a small construction kit | One player-owned site grows through useful modules rather than a building catalog. | prog: Mining, salvage and construction as tactile work
+SFQ-B097 | Make industrial hazards manipulable | Vents, flywheels and charged cargo can help or hurt the player. | prog: Mining, salvage and construction as tactile work
+SFQ-B098 | Develop industrial NPC competence | Workers complete recognizable jobs and respond sensibly to disruption. | prog: Mining, salvage and construction as tactile work
+SFQ-B099 | Make industrial upgrades change technique | Better gear opens a distinct operation, not merely a shorter timer. | prog: Mining, salvage and construction as tactile work
+SFQ-B100 | Finish one complete working district | A district can be visited, worked, disrupted and repaired across a session. | prog: Mining, salvage and construction as tactile work
+SFQ-B101 | Give six existing regions distinct flying questions | Each chosen region introduces a recognizable geometry, work pattern and risk. | prog: Regions, routes and places with a physical identity
+SFQ-B102 | Make approaches compose the scene | A station or landmark is legible before the player reaches its service radius. | prog: Regions, routes and places with a physical identity
+SFQ-B103 | Make travel contain optional action | Routes offer observable opportunities without constant interruption. | prog: Regions, routes and places with a physical identity
+SFQ-B104 | Treat wreck fields as topology | Persistent wreckage creates cover, anchor choices and evidence. | prog: Regions, routes and places with a physical identity
+SFQ-B105 | Make local maps describe playable space | Map landmarks, hazard extents and actionable contacts agree with the world. | prog: Regions, routes and places with a physical identity
+SFQ-B106 | Preserve safe escape topology | New gates, quarantines or moving hazards cannot silently imprison a save. | prog: Regions, routes and places with a physical identity
+SFQ-B107 | Stage ordinary life before catastrophe | A region establishes work and relationships before alien or combat transformation. | prog: Regions, routes and places with a physical identity
+SFQ-B108 | Make the sky support orientation | Distant landmarks guide travel without competing with near action. | prog: Regions, routes and places with a physical identity
+SFQ-B109 | Give optional discoveries useful returns | Exploration earns routes, knowledge or tools that matter elsewhere. | prog: Regions, routes and places with a physical identity
+SFQ-B110 | Close the regional content set | Each retained region supports one complete local loop and a reason to revisit. | prog: Regions, routes and places with a physical identity
+SFQ-B111 | Attribute physical collateral honestly | The game can explain why the player is or is not responsible for a thrown object's collision. | prog: People, law and memorable consequences
+SFQ-B112 | Make the first law response readable | A pilot receives warning, cause and options before escalation where fiction permits. | prog: People, law and memorable consequences
+SFQ-B113 | Give rescue durable recognition | Saving a named pilot changes a future opportunity or response. | prog: People, law and memorable consequences
+SFQ-B114 | Let rivals remember tactics | An escaped opponent changes one observable countermeasure on return. | prog: People, law and memorable consequences
+SFQ-B115 | Make restitution playable | A mistake can be repaired through a job instead of only a fine. | prog: People, law and memorable consequences
+SFQ-B116 | Show factions in action | Human factions differ by work and choices as well as paint. | prog: People, law and memorable consequences
+SFQ-B117 | Keep comms from drowning the fight | Useful voices have priority, locality and a cooldown. | prog: People, law and memorable consequences
+SFQ-B118 | Give the ship a legible history | Scars, selected recognition and lawful status make the hull feel personal. | prog: People, law and memorable consequences
+SFQ-B119 | Create aftermath choices | After a fight the player chooses among rescue, salvage, pursuit and escape. | prog: People, law and memorable consequences
+SFQ-B120 | Review the consequence chain end to end | Complex incidents remain fair when several systems react. | prog: People, law and memorable consequences
+SFQ-B121 | Prove one fauna interaction matrix | The same organism can be observed, shoved, captured or left alone according to explicit capabilities. | prog: Alien ecology that shares the physical world
+SFQ-B122 | Make drives observable | The player can infer feeding, alarm, defense and retreat from motion. | prog: Alien ecology that shares the physical world
+SFQ-B123 | Make relay severance interesting | Removing coherence changes coordination without switching animals off. | prog: Alien ecology that shares the physical world
+SFQ-B124 | Build a three-species food web | One predator, prey and cleaner/scavenger interact around finite resources. | prog: Alien ecology that shares the physical world
+SFQ-B125 | Give capture a handling problem | Live recovery requires a gentle physical approach and suitable containment. | prog: Alien ecology that shares the physical world
+SFQ-B126 | Create behavioral fossils | A dumb host repeats a fragment of another host's past without becoming intelligent. | prog: Alien ecology that shares the physical world
+SFQ-B127 | Make corpses and molts useful | Dead fauna leaves finite habitat, material or shelter rather than a generic explosion. | prog: Alien ecology that shares the physical world
+SFQ-B128 | Make parasites removable through play | An attachment creates a local problem with clear counter-actions. | prog: Alien ecology that shares the physical world
+SFQ-B129 | Develop the Cinder Nursery beyond its checklist | One colony is convincing as a place before species are mass-produced. | prog: Alien ecology that shares the physical world
+SFQ-B130 | Expand only distinct ecological roles | Additional fauna earns its place through a new decision or relationship. | prog: Alien ecology that shares the physical world
+SFQ-B131 | Make one caustic sprayer a complete weapon | A forward stream deposits visible adhesive matter on an actual struck hull. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B132 | Represent coating by sparse hull regions | The victim's deposits follow its pose and explain the handling effect. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B133 | Add one elastic bridge interaction | Two coated bodies briefly stretch a visible breakable connection. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B134 | Make pressure-sac placement matter | A sticky bladder builds pressure and kicks a target from its contact normal. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B135 | Give alien matter two counters | Heat treatment and mechanical purge offer different costs and residues. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B136 | Make shedding physically readable | Torn parcels depart with the target's point velocity and bounded extra release impulse. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B137 | Create a sterile industrial derivative | Research turns dangerous adhesive into a predictable towing/repair tool. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B138 | Introduce calcite as a material state | Cured deposits become brittle and interact differently with impact. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B139 | Build one memorable alien combo scene | Spray, attach and shove create a surprising but understandable outcome. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B140 | Bound the xenotech content family | Only proven matter laws receive additional weapons and enemies. | prog: Xenotechnology: useful matter with strange behavior
+SFQ-B141 | Turn one Courier delivery into a physical transaction | A token exists in space and reaches a real recipient. | prog: Ancient machines that perform consequential work
+SFQ-B142 | Give a Custodian a real repair job | The robot restores a named damaged component with finite material and work. | prog: Ancient machines that perform consequential work
+SFQ-B143 | Let a Mason relocate one workpiece | A huge machine moves an asteroid or gate segment through an observable field. | prog: Ancient machines that perform consequential work
+SFQ-B144 | Give Sorters finite custody | Reclamation transports rather than silently deletes valuable wreck material. | prog: Ancient machines that perform consequential work
+SFQ-B145 | Compose a small machine work cycle | Courier, Custodian and Mason depend on one another in a legible local chain. | prog: Ancient machines that perform consequential work
+SFQ-B146 | Make machine directives actionable | PRESENT, HOLD, RETURN and ISOLATE refer to specific objects and spaces. | prog: Ancient machines that perform consequential work
+SFQ-B147 | Make an appeal a physical test | One incorrect classification can be overturned by a reproducible experiment. | prog: Ancient machines that perform consequential work
+SFQ-B148 | Create one jurisdiction conflict | Two old procedures disagree about a workpiece without becoming warring factions. | prog: Ancient machines that perform consequential work
+SFQ-B149 | Make enforcement forewarned and reversible | Ancient capability is frightening without arbitrary deletion of player progress. | prog: Ancient machines that perform consequential work
+SFQ-B150 | Finish one living machine site | Robots work when observed, remember interruption and resume sensibly on return. | prog: Ancient machines that perform consequential work
+SFQ-B151 | Build one velocity-plane prototype | A finite field damps the normal component relative to an explicit local frame while preserving tangent motion. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B152 | Make field selectivity explicit | A containment boundary affects admitted matter categories and visibly lets others pass. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B153 | Build a curl field only after radial counterplay works | One deployed source produces a bounded tangential pull that winds loose mass into motion. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B154 | Create a machine vector conveyor | An authored lane transfers momentum in a fixed direction with a visible entry and exit. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B155 | Make deactivation honest | Fields stop exerting force when power or authority ends, while residual motion continues. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B156 | Teach geometry through safe work | A low-stakes delivery lets players learn a field before meeting it in combat. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B157 | Stage mixed-material interactions | A physical human object, a goo-coated hull and a passive organism encounter one boundary. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B158 | Audit reference frames and force composition | Two overlapping new fields do not create numerical or conceptual contradictions. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B159 | Reserve nonlocal tricks as optional research | Momentum routing/teleportation remains a contained experiment until it earns its engine cost. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B160 | Admit at most a distinct launch subset | The finished game includes only field laws players can recognize and use. | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-B161 | Build one falsifiable field experiment | A player can test whether an organism responds to heat rather than proximity. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B162 | Make behavioral archaeology playable | A repeated route can be compared to an old human record and followed to a place. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B163 | Separate sterile, suppressed and unknown | Instruments express biomass, activity and confidence independently. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B164 | Create one reversible site succession | A wreck progresses through a small authored sequence after meaningful events. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B165 | Make one settlement respond to ecology | A site changes one service or route because of a visible local biological event. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B166 | Show machine-biological interdependence | An ancient waste-heat or suppression mechanism unintentionally supports a habitat. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B167 | Make research unlock a usable derivative | One validated observation leads to a recipe and a practical field trial. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B168 | Give knowledge a careful market | Survey data can be shared or sold without erasing the player's memory. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B169 | Build the domain approach through indirect effects | Deep regions feel different before any apex is seen. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B170 | Constrain the long-lived world | Bounded state changes remain comprehensible and save-safe. | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-B171 | Audit silhouettes in a real mixed scene | The player distinguishes light, heavy, industrial and specialist objects at combat zoom. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B172 | Complete missing functional model parts | Engines, guns, clamps and moving parts visibly attach to solid bodies. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B173 | Build the mission workpiece kit | Cargo cages, flywheels, couplers and salvage pieces make mission actions visible. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B174 | Author a coherent infestation kit | Existing human structures can acquire biological occupation without bespoke full duplicates. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B175 | Make fauna animation express the drive | A creature's body visibly prepares, acts and recovers. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B176 | Give ancient machines functional geometry | Robots communicate their job through deployable instruments and exact motion. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B177 | Build landmarks from navigable composition | A site has a memorable silhouette and clear usable approach. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B178 | Model state changes that matter | Damage, repair, infestation and machine deployment create authored visible transitions. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B179 | Publish assets with complete runtime contracts | Source art becomes the exact released asset players receive. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B180 | Converge the art set by its weakest visible members | The scene looks like one intentional game at normal zoom. | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-B181 | Make nozzle and history agree | Current thrust and the actual flown path look connected but remain separate truths. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B182 | Make each weapon family visibly distinct | A player recognizes a shove, coherent beam, ballistic hit and reactive material by motion and shape. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B183 | Make impulses explain displacement | A shove or slam depicts the actual contact point and direction before its aftermath. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B184 | Give fields volume without hiding the fight | Well, Repulsor, Tarburst and admitted precursor fields have distinct substantial forms. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B185 | Make surface reactions follow matter | Goo, burn, shield and fracture effects conform to the affected object and state. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B186 | Make destruction depend on material and cause | Rock, armor, reactor and volatile cargo fail differently. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B187 | Show biological and machine work | Feeding, relay pulses, repair, token transfer and containment are animated processes. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B188 | Budget visual attention | Critical threat, player action, reward and ambient texture have a stable hierarchy. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B189 | Harden every effect lifecycle | Spawn, pause, source death, rebase, menu, load and disposal are correct. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B190 | Converge effects in real combinations | The final art reads when several tools and materials interact. | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-B191 | Hear the actual weight of contact | Scout scrape and freighter slam differ in transient, pitch, body and decay. | prog: Sound, music and silence as mechanical information
+SFQ-B192 | Make the Massline speak load | Latch, increasing tension, safe release and break have distinct sounds. | prog: Sound, music and silence as mechanical information
+SFQ-B193 | Give each weapon a sonic verb | Gun, shove, field, parasite and pressure sac carry different timing and texture. | prog: Sound, music and silence as mechanical information
+SFQ-B194 | Make engine audio track intention and motion separately | Thrust, boost, idle and inherited speed remain distinguishable. | prog: Sound, music and silence as mechanical information
+SFQ-B195 | Keep threat information audible under density | Critical warnings survive explosions without a wall of alarms. | prog: Sound, music and silence as mechanical information
+SFQ-B196 | Give ordinary work a convincing soundscape | Mines, yards and traffic produce local purposeful sounds. | prog: Sound, music and silence as mechanical information
+SFQ-B197 | Contrast fungus with machinery | Biological tension and ancient precision sound like different material processes. | prog: Sound, music and silence as mechanical information
+SFQ-B198 | Make music support pace without stealing it | Exploration, danger and recovery transition coherently around actual play. | prog: Sound, music and silence as mechanical information
+SFQ-B199 | Finish audio settings and delivery | Device changes, mute, focus, restart and volume controls behave predictably. | prog: Sound, music and silence as mechanical information
+SFQ-B200 | Mix by the weakest actual route | Sound quality is judged in play, not isolated asset auditions. | prog: Sound, music and silence as mechanical information
+SFQ-B201 | Finish the boot-to-play instrument | Title, mode selection, loading and first input form one responsive route. | prog: ORRERY as a complete usable instrument
+SFQ-B202 | Make flight HUD answer the next decision | Hull, shield, speed, target, rig and ordnance communicate current action without covering it. | prog: ORRERY as a complete usable instrument
+SFQ-B203 | Make the map a planning instrument | Navigation connects known routes, hazards, jobs and services with clear selection. | prog: ORRERY as a complete usable instrument
+SFQ-B204 | Make Shipworks explain physical tradeoffs | Fitting previews show what the actual ship will do differently. | prog: ORRERY as a complete usable instrument
+SFQ-B205 | Make the market usable under pressure | Buying, selling and comparing a route are concise but truthful. | prog: ORRERY as a complete usable instrument
+SFQ-B206 | Make station services feel like one place | Repair, contracts, research, contacts and departure share context and focus. | prog: ORRERY as a complete usable instrument
+SFQ-B207 | Make menus preserve player agency | Pause, settings, saves and results support quick recovery and deliberate destructive actions. | prog: ORRERY as a complete usable instrument
+SFQ-B208 | Make density and accessibility coexist | Long lists, small screens, large text and reduced motion retain useful information. | prog: ORRERY as a complete usable instrument
+SFQ-B209 | Make interface motion feel responsive | Choreography supports comprehension but never postpones interaction or repeats needlessly. | prog: ORRERY as a complete usable instrument
+SFQ-B210 | Converge every ordinary screen | One complete action walk catches gaps a beauty still cannot. | prog: ORRERY as a complete usable instrument
+SFQ-B211 | Attribute the worst visible hitch | A real frame stall has a named CPU, GPU, asset or scheduling cause. | prog: Smoothness, residency and predictable work
+SFQ-B212 | Warm actual first-use assets | The first weapon, fauna or wave does not compile/upload unexpectedly during its action. | prog: Smoothness, residency and predictable work
+SFQ-B213 | Bound dense simulation work | Local complexity scales with relevant nearby actors rather than all entities or all pairs. | prog: Smoothness, residency and predictable work
+SFQ-B214 | Control hot-path allocation | Repeated flight/combat frames do not create avoidable garbage bursts. | prog: Smoothness, residency and predictable work
+SFQ-B215 | Reduce rendering submission cost honestly | Material reuse, batching and visibility lower work while preserving the picture. | prog: Smoothness, residency and predictable work
+SFQ-B216 | Make state-driven UI quiet | Unchanged UI does not redo layout or write DOM on every simulation tick. | prog: Smoothness, residency and predictable work
+SFQ-B217 | Close asset lifetime leaks | Repeated travel/load/refit does not retain dead generations or GPU resources. | prog: Smoothness, residency and predictable work
+SFQ-B218 | Handle contention and context failure gracefully | Resource failure gives a recoverable state rather than an indefinite frozen-looking screen. | prog: Smoothness, residency and predictable work
+SFQ-B219 | Budget new content before multiplying it | Each admitted family has measured marginal scene cost and bounded counts. | prog: Smoothness, residency and predictable work
+SFQ-B220 | Verify sustained full-quality play | The selected reference build survives repeated loops on declared minimum and target hardware. | prog: Smoothness, residency and predictable work
+SFQ-B221 | Prove save-resume through new interactions | Tethers, material states, site changes and mission transactions resume or expire intentionally. | prog: Save integrity, input access and product completeness
+SFQ-B222 | Make old saves recover safely | Added content does not invalidate a player’s existing campaign silently. | prog: Save integrity, input access and product completeness
+SFQ-B223 | Protect overlapping new/load operations | Rapid user actions cannot commit a stale async scene or overwrite the wrong save. | prog: Save integrity, input access and product completeness
+SFQ-B224 | Finish input rebinding and device changes | Keyboard, trackpad, mouse and supported controller can reach essential verbs. | prog: Save integrity, input access and product completeness
+SFQ-B225 | Make settings truthful | Displayed values actually control gameplay presentation and persist correctly. | prog: Save integrity, input access and product completeness
+SFQ-B226 | Preserve critical information access | Reduced motion, reduced flash, larger text and non-color cues keep the game playable. | prog: Save integrity, input access and product completeness
+SFQ-B227 | Prepare localization without scope inflation | Text is consistently sourced and survives expansion, without inventing a localization project size. | prog: Save integrity, input access and product completeness
+SFQ-B228 | Make errors leave an exit | Missing assets, failed services and corrupted optional state produce useful recovery paths. | prog: Save integrity, input access and product completeness
+SFQ-B229 | Audit packaged parity and media provenance | The same game, assets and licenses work in the intended local product. | prog: Save integrity, input access and product completeness
+SFQ-B230 | Close whole-session reliability | The complete play session tolerates ordinary interruption and return. | prog: Save integrity, input access and product completeness
+SFQ-B231 | Freeze the finish scope around complete loops | The team knows exactly which modes, regions, missions and feature families must finish. | prog: A finite finish line and the final convergence campaign
+SFQ-B232 | Converge the worst player-facing bottleneck | The next pass fixes the weakest link in the ordinary route rather than the easiest task. | prog: A finite finish line and the final convergence campaign
+SFQ-B233 | Run a full new-player route | Fresh players can learn, earn, fail, recover and choose a next goal. | prog: A finite finish line and the final convergence campaign
+SFQ-B234 | Run the physical possibility audit | The world supports the combinations its appearance and rules promise. | prog: A finite finish line and the final convergence campaign
+SFQ-B235 | Converge the weakest art and sound | No retained ordinary route is pulled back into prototype quality by one missing family. | prog: A finite finish line and the final convergence campaign
+SFQ-B236 | Burn down confirmed severe defects | Current player-blocking and progress-damaging defects disappear from the one live ledger. | prog: A finite finish line and the final convergence campaign
+SFQ-B237 | Review depth without content inflation | Missions, builds and regions are distinct enough to sustain interest. | prog: A finite finish line and the final convergence campaign
+SFQ-B238 | Validate long-session and cross-shell parity | The completed local game remains coherent beyond the showcase minute. | prog: A finite finish line and the final convergence campaign
+SFQ-B239 | Prepare release only when activated | Store, distribution and support materials reflect the completed product. | prog: A finite finish line and the final convergence campaign
+SFQ-B240 | Close with an honest product verdict | The final handoff says what works, what remains and what evidence supports confidence. | prog: A finite finish line and the final convergence campaign
+SFQ-I001 | Default-backend guidance |  | prog: Truth, integration, and the first playable reference
+SFQ-I002 | Already-true cruise row |  | prog: Truth, integration, and the first playable reference
+SFQ-I003 | Alien branch status label |  | prog: Truth, integration, and the first playable reference
+SFQ-I004 | Task-to-player route link |  | prog: Truth, integration, and the first playable reference
+SFQ-I005 | Stick reset on focus return |  | prog: The hand: nimble control without stealing momentum
+SFQ-I006 | Actual brake cue |  | prog: The hand: nimble control without stealing momentum
+SFQ-I007 | Loaded-turn preview label |  | prog: The hand: nimble control without stealing momentum
+SFQ-I008 | G hint names the live mechanic |  | prog: The hand: nimble control without stealing momentum
+SFQ-I009 | Denied latch names the actual reason |  | prog: Massline, contact, and terrain as the signature toy
+SFQ-I010 | Clean cut does not fake a snap |  | prog: Massline, contact, and terrain as the signature toy
+SFQ-I011 | Tethered pickup survives collector tick |  | prog: Massline, contact, and terrain as the signature toy
+SFQ-I012 | Anchor highlight matches real eligibility |  | prog: Massline, contact, and terrain as the signature toy
+SFQ-I013 | Bomb refusal is truthful |  | prog: Weapons, states, and combinatorial combat
+SFQ-I014 | Goo expiry clears active force |  | prog: Weapons, states, and combinatorial combat
+SFQ-I015 | One cause one detonation cue |  | prog: Weapons, states, and combinatorial combat
+SFQ-I016 | Heavy target response label |  | prog: Weapons, states, and combinatorial combat
+SFQ-I017 | Cancelled attack clears its tell |  | prog: Readable adversaries and a living encounter director
+SFQ-I018 | Patrol respects current hostility |  | prog: Readable adversaries and a living encounter director
+SFQ-I019 | Flee route keeps the actor |  | prog: Readable adversaries and a living encounter director
+SFQ-I020 | Threat glyph follows role |  | prog: Readable adversaries and a living encounter director
+SFQ-I021 | Run seed visible on results |  | prog: Crucible: the repeatable physics showcase
+SFQ-I022 | Empty rack refusal |  | prog: Crucible: the repeatable physics showcase
+SFQ-I023 | Retry clears one stale loop |  | prog: Crucible: the repeatable physics showcase
+SFQ-I024 | Reward receipt follows true cause |  | prog: Crucible: the repeatable physics showcase
+SFQ-I025 | Next objective names a physical action |  | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-I026 | Completed tutorial stops repeating |  | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-I027 | Reward has a usable fit route |  | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-I028 | Chapter denial explains prerequisite |  | prog: Adventure: first-hour trust and a complete campaign spine
+SFQ-I029 | Objective follows moved target |  | prog: Mission craft and authored world-site interactions
+SFQ-I030 | Capacity checked before payment |  | prog: Mission craft and authored world-site interactions
+SFQ-I031 | Physical finish does not pay twice |  | prog: Mission craft and authored world-site interactions
+SFQ-I032 | Timeout leaves a meaningful object |  | prog: Mission craft and authored world-site interactions
+SFQ-I033 | Quote shows its timestamp |  | prog: An economy the pilot can understand and physically influence
+SFQ-I034 | Empty hold explanation |  | prog: An economy the pilot can understand and physically influence
+SFQ-I035 | One custody flag survives a split |  | prog: An economy the pilot can understand and physically influence
+SFQ-I036 | Cancelled offer clears its escrow once |  | prog: An economy the pilot can understand and physically influence
+SFQ-I037 | Beam contact follows the seam |  | prog: Mining, salvage and construction as tactile work
+SFQ-I038 | Rich-core cue has a termination |  | prog: Mining, salvage and construction as tactile work
+SFQ-I039 | Work-order label names the object |  | prog: Mining, salvage and construction as tactile work
+SFQ-I040 | Salvage preview distinguishes intact yield |  | prog: Mining, salvage and construction as tactile work
+SFQ-I041 | Map marker uses discovered position |  | prog: Regions, routes and places with a physical identity
+SFQ-I042 | Landmark has a quiet approach |  | prog: Regions, routes and places with a physical identity
+SFQ-I043 | Route refusal identifies a remedy |  | prog: Regions, routes and places with a physical identity
+SFQ-I044 | Wreck identity survives revisit |  | prog: Regions, routes and places with a physical identity
+SFQ-I045 | Incident shows the responsible event |  | prog: People, law and memorable consequences
+SFQ-I046 | Rescued contact does not pay twice |  | prog: People, law and memorable consequences
+SFQ-I047 | Bark suppresses duplicate cause |  | prog: People, law and memorable consequences
+SFQ-I048 | Ship history avoids stale hull IDs |  | prog: People, law and memorable consequences
+SFQ-I049 | Fauna label respects knowledge |  | prog: Alien ecology that shares the physical world
+SFQ-I050 | Purge clears the same attachment |  | prog: Alien ecology that shares the physical world
+SFQ-I051 | Captured specimen cannot be double-collected |  | prog: Alien ecology that shares the physical world
+SFQ-I052 | Relay-off text matches live behavior |  | prog: Alien ecology that shares the physical world
+SFQ-I053 | Goo residue ends on status expiry |  | prog: Xenotechnology: useful matter with strange behavior
+SFQ-I054 | Sac warning follows its host |  | prog: Xenotechnology: useful matter with strange behavior
+SFQ-I055 | Sprayer inherits shooter velocity |  | prog: Xenotechnology: useful matter with strange behavior
+SFQ-I056 | Purge distinguishes sterile residue |  | prog: Xenotechnology: useful matter with strange behavior
+SFQ-I057 | Courier token has one custody owner |  | prog: Ancient machines that perform consequential work
+SFQ-I058 | HOLD shows the relevant drift |  | prog: Ancient machines that perform consequential work
+SFQ-I059 | Repair light reads actual work |  | prog: Ancient machines that perform consequential work
+SFQ-I060 | Executor warning names affected cargo |  | prog: Ancient machines that perform consequential work
+SFQ-I061 | Plane cue matches finite extent |  | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-I062 | Shutdown clears only its field source |  | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-I063 | Selective refusal has a material tell |  | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-I064 | Field center remains finite |  | prog: Precursor geometry as a small coherent force vocabulary
+SFQ-I065 | Evidence names its actual source |  | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-I066 | Suppressed is not sterile |  | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-I067 | Report sale retains knowledge |  | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-I068 | Site return states its change |  | prog: Discovery, behavioral archaeology and bounded regional change
+SFQ-I069 | Nozzle socket follows authored engine |  | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-I070 | One model loses a floating part |  | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-I071 | LOD preserves one gameplay feature |  | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-I072 | Prop collision matches its visible gap |  | prog: Authored models, spaces and animation at the gameplay camera
+SFQ-I073 | Release stops new emission |  | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-I074 | Effect anchor survives origin shift |  | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-I075 | Paused material stops advancing |  | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-I076 | Minor impact keeps its own scale |  | prog: Force-readable VFX with materially distinct lifecycles
+SFQ-I077 | Loop dies with its emitter |  | prog: Sound, music and silence as mechanical information
+SFQ-I078 | Denied action differs from success |  | prog: Sound, music and silence as mechanical information
+SFQ-I079 | Caption names the actual warning |  | prog: Sound, music and silence as mechanical information
+SFQ-I080 | Volume change reaches both shells |  | prog: Sound, music and silence as mechanical information
+SFQ-I081 | Disabled action states its reason |  | prog: ORRERY as a complete usable instrument
+SFQ-I082 | Focus returns to its origin |  | prog: ORRERY as a complete usable instrument
+SFQ-I083 | One leader label stops overlapping |  | prog: ORRERY as a complete usable instrument
+SFQ-I084 | Reduced motion reaches the final state |  | prog: ORRERY as a complete usable instrument
+SFQ-I085 | Empty effect owner takes its quiet path |  | prog: Smoothness, residency and predictable work
+SFQ-I086 | One shared material is not reallocated |  | prog: Smoothness, residency and predictable work
+SFQ-I087 | Cancelled load releases its own handle |  | prog: Smoothness, residency and predictable work
+SFQ-I088 | UI label only writes when changed |  | prog: Smoothness, residency and predictable work
+SFQ-I089 | Transient handle does not enter save |  | prog: Save integrity, input access and product completeness
+SFQ-I090 | Disconnect clears held action |  | prog: Save integrity, input access and product completeness
+SFQ-I091 | Large text preserves primary action |  | prog: Save integrity, input access and product completeness
+SFQ-I092 | Error path has a safe return |  | prog: Save integrity, input access and product completeness
+SFQ-I093 | Scope row links to a playable route |  | prog: A finite finish line and the final convergence campaign
+SFQ-I094 | Fixed ledger row is actually removed |  | prog: A finite finish line and the final convergence campaign
+SFQ-I095 | One optional dependency leaves the critical path |  | prog: A finite finish line and the final convergence campaign
+SFQ-I096 | Build identity is visible in support output |  | prog: A finite finish line and the final convergence campaign

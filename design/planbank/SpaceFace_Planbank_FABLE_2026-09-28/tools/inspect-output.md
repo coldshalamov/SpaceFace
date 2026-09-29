@@ -1,0 +1,872 @@
+# STRICT — emitted, and the literal appears in NO other src file (258)
+- aftermathWreck:retired  [tests listening: 0]  ← src/systems/aftermathWrecks.js:1291
+- ai:egressExit  [tests listening: 0]  ← src/ai/egressExit.js:74
+- ambientComms:register  [tests listening: 0]  ← src/systems/e1EncounterRuntime.js:114
+- ambientComms:toneChanged  [tests listening: 0]  ← src/systems/e1EncounterRuntime.js:202
+- anomaly:bearing  [tests listening: 0]  ← src/systems/scanner.js:1037
+- automation:assetResumed  [tests listening: 0]  ← src/systems/automation.js:2144
+- automation:incomeCredited  [tests listening: 0]  ← src/systems/automation.js:1852, src/systems/automation.js:1863
+- automation:traderCycleCompleted  [tests listening: 1]  ← src/systems/automation.js:1481
+- band:bearingReceipt  [tests listening: 0]  ← src/systems/bandRadio.js:543
+- beam:denied  [tests listening: 2]  ← src/systems/mining.js:285, src/systems/mining.js:328
+- bombs:armed  [tests listening: 1]  ← src/systems/bombs.js:655
+- bombs:cycle  [tests listening: 2]  ← src/systems/bombs.js:357, src/systems/bombs.js:592
+- bombs:denied  [tests listening: 1]  ← src/systems/bombs.js:243, src/systems/bombs.js:350
+- bombs:primed  [tests listening: 0]  ← src/systems/bombs.js:624
+- bombs:rackChanged  [tests listening: 0]  ← src/systems/bombs.js:498
+- bombs:stockChanged  [tests listening: 0]  ← src/systems/bombs.js:379, src/systems/bombs.js:490
+- boss:defeated  [tests listening: 1]  ← src/systems/world.js:836
+- buildIdentity:revealed  [tests listening: 1]  ← src/systems/buildIdentity.js:299
+- career:origin:declined  [tests listening: 0]  ← src/careers/origins/haulerOriginSystem.js:160
+- career:origin:offered  [tests listening: 0]  ← src/careers/origins/haulerOriginSystem.js:178
+- cargo:hotDockSpill  [tests listening: 1]  ← src/systems/cargo.js:507
+- cargo:persistentAdded  [tests listening: 0]  ← src/systems/e1EncounterRuntime.js:84
+- chain:tetherShare  [tests listening: 0]  ← src/systems/tetherGameplay.js:1876
+- claim:defenseEncounterRequested  [tests listening: 0]  ← src/systems/claims.js:1332
+- claim:defenseStarted  [tests listening: 0]  ← src/systems/claims.js:1337
+- claim:defenseWarning  [tests listening: 0]  ← src/systems/claims.js:1256
+- claim:depotPatrolRotation  [tests listening: 0]  ← src/systems/claims.js:2135
+- claim:depotSupport  [tests listening: 0]  ← src/systems/claims.js:2050, src/systems/claims.js:2075
+- claim:infrastructureConstructed  [tests listening: 0]  ← src/systems/claims.js:404
+- claim:receipt  [tests listening: 0]  ← src/systems/claims.js:1625
+- claim:specialized  [tests listening: 0]  ← src/systems/claims.js:463
+- claim:teleportRequest  [tests listening: 0]  ← src/systems/claims.js:669
+- claims:migrated  [tests listening: 0]  ← src/systems/claims.js:1743
+- cloak:burned  [tests listening: 1]  ← src/systems/cloak.js:250
+- cloak:faded  [tests listening: 0]  ← src/systems/aiPorts.js:1067
+- combat:outcomeConsequence  [tests listening: 1]  ← src/systems/combatOutcome.js:297
+- combat:warded  [tests listening: 0]  ← src/combat/damage.js:52
+- conflict:warDeclared  [tests listening: 0]  ← src/systems/factions.js:633
+- contract:clauseHonored  [tests listening: 0]  ← src/systems/contractClauses.js:380, src/systems/missions.js:6657
+- countermeasure:denied  [tests listening: 0]  ← src/systems/countermeasures.js:406
+- customs:breakScan  [tests listening: 0]  ← src/ui/customsPrompt.js:231
+- customs:submit  [tests listening: 0]  ← src/ui/customsPrompt.js:210
+- danger:miningNoise  [tests listening: 1]  ← src/systems/mining.js:2055
+- detonator:detonated  [tests listening: 0]  ← src/systems/impulseCharges.js:479
+- difficulty:stanceChanged  [tests listening: 0]  ← src/systems/difficultyDirector.js:410
+- distress:call  [tests listening: 2]  ← src/systems/traffic.js:5147
+- dock:denied  [tests listening: 2]  ← src/ui/dockDenyBanner.js:141
+- economy:debtEscalated  [tests listening: 1]  ← src/systems/economy.js:2381
+- economy:demandShift  [tests listening: 0]  ← src/systems/economy.js:1342
+- economy:resourceWork:cancel  [tests listening: 1]  ← src/systems/world.js:4318
+- economy:resourceWork:reserve  [tests listening: 5]  ← src/systems/world.js:4220
+- economy:resourceWork:settle  [tests listening: 3]  ← src/systems/world.js:4300
+- economy:salvageIntakeApplied  [tests listening: 0]  ← src/systems/economy.js:2266
+- economy:tradeFailed  [tests listening: 1]  ← src/systems/economy.js:2137, src/systems/economy.js:2160
+- emergent:audio  [tests listening: 0]  ← src/systems/emergentPrimitives.js:161
+- encounter:fingerprint  [tests listening: 0]  ← src/systems/encounterDirector.js:1712
+- encounter:hostileCommitted  [tests listening: 1]  ← src/data/encounters/353-the-wake.js:179, src/data/encounters/354-the-sweep.js:203
+- encounter:patrolIntervened  [tests listening: 1]  ← src/systems/encounterDirector.js:2281
+- encounter:predationCleared  [tests listening: 2]  ← src/systems/encounterScripts.js:1149
+- encounter:predationEngaged  [tests listening: 2]  ← src/systems/encounterScripts.js:1066, src/systems/encounterScripts.js:1134
+- encounter:predationTelegraph  [tests listening: 3]  ← src/systems/encounterScripts.js:1039
+- encounter:stale  [tests listening: 0]  ← src/systems/encounterDirector.js:415
+- encounter:voice  [tests listening: 7]  ← src/systems/encounterDirector.js:1610
+- encounter:waitStarted  [tests listening: 1]  ← src/systems/e1EncounterRuntime.js:395
+- encounter:winnerHostile  [tests listening: 0]  ← src/systems/e1EncounterRuntime.js:354
+- endgame:archive  [tests listening: 0]  ← src/systems/story.js:165
+- endgame:finaleCompleted  [tests listening: 0]  ← src/systems/story.js:722
+- endgame:finaleReady  [tests listening: 0]  ← src/systems/story.js:953
+- faction:tradePosture  [tests listening: 0]  ← src/systems/e1EncounterRuntime.js:126, src/systems/e1EncounterRuntime.js:130
+- factionPresence:administrativeRouting  [tests listening: 0]  ← src/systems/factionPresence.js:1234
+- factionPresence:fulfillmentProvoked  [tests listening: 0]  ← src/systems/factionPresence.js:838
+- factionPresence:service  [tests listening: 0]  ← src/systems/factionPresence.js:939
+- factionPresence:serviceAction  [tests listening: 0]  ← src/systems/factionPresence.js:1015
+- factionPresence:spawned  [tests listening: 0]  ← src/systems/factionPresence.js:572, src/systems/factionPresence.js:657
+- field:opportunity  [tests listening: 2]  ← src/systems/world.js:4000
+- field:richSeamMissed  [tests listening: 0]  ← src/systems/fieldDepletion.js:717, src/systems/traffic.js:1745
+- field:richSeamOpened  [tests listening: 0]  ← src/systems/traffic.js:9552
+- field:richSeamWorked  [tests listening: 0]  ← src/systems/mining.js:817, src/systems/traffic.js:9211
+- fields:anchorRegistered  [tests listening: 0]  ← src/systems/fields.js:940
+- fields:cleared  [tests listening: 0]  ← src/systems/fields.js:1445
+- fields:deployDenied  [tests listening: 0]  ← src/systems/fields.js:1007
+- fields:ended  [tests listening: 0]  ← src/systems/fields.js:959, src/systems/fields.js:1240
+- flybyFocus:end  [tests listening: 7]  ← src/systems/flybyFocus.js:365
+- freight:custodyChanged  [tests listening: 0]  ← src/systems/encounterScripts.js:1413
+- freight:custodyRebound  [tests listening: 0]  ← src/systems/encounterDirector.js:589
+- freight:raiderEscaped  [tests listening: 0]  ← src/systems/encounterScripts.js:1906
+- frontierRumor:acquired  [tests listening: 0]  ← src/systems/world.js:3616
+- frontierRumor:blackMarketAccess  [tests listening: 1]  ← src/systems/world.js:5892
+- frontierRumor:contacted  [tests listening: 0]  ← src/systems/world.js:5788
+- frontierRumor:resolved  [tests listening: 0]  ← src/systems/world.js:3633
+- fuel:changed  [tests listening: 0]  ← src/systems/economy.js:2423, src/systems/stationServices.js:422
+- gamepad:connected  [tests listening: 0]  ← src/systems/gamepad.js:454
+- gamepad:disconnected  [tests listening: 0]  ← src/systems/gamepad.js:425
+- harasser:disengaged  [tests listening: 0]  ← src/systems/encounterDirector.js:2127
+- hazard:changed  [tests listening: 0]  ← src/systems/world.js:784
+- heist:capsuleResumed  [tests listening: 0]  ← src/systems/heistFacilities.js:1213
+- heist:launchCue  [tests listening: 3]  ← src/systems/heistFacilities.js:339
+- heist:launchScheduleReceipt  [tests listening: 0]  ← src/systems/heistFacilities.js:457, src/systems/heistFacilities.js:466
+- heist:launchScheduleReleased  [tests listening: 0]  ← src/systems/heistFacilities.js:1867
+- heist:receiverAborted  [tests listening: 0]  ← src/systems/heistFacilities.js:1809
+- heist:receiverPrepared  [tests listening: 0]  ← src/systems/heistFacilities.js:1728
+- intervention:closed  [tests listening: 1]  ← src/systems/intervention.js:265
+- intervention:jumperRipped  [tests listening: 1]  ← src/systems/intervention.js:384
+- intervention:logged  [tests listening: 1]  ← src/systems/intervention.js:124
+- loot:magnetCaptured  [tests listening: 0]  ← src/systems/lootShards.js:612
+- massline:bridleCut  [tests listening: 0]  ← src/systems/tetherGameplay.js:815
+- massline:bridleEnded  [tests listening: 0]  ← src/systems/tetherGameplay.js:760, src/systems/tetherGameplay.js:776
+- massline:bridleEndpointSelected  [tests listening: 0]  ← src/systems/tetherGameplay.js:624
+- massline:bridleLinked  [tests listening: 0]  ← src/systems/tetherGameplay.js:678
+- massline:bridleSetupEnded  [tests listening: 0]  ← src/systems/tetherGameplay.js:825
+- massline:cadenceChanged  [tests listening: 0]  ← src/systems/tetherGameplay.js:1950
+- massline:npcCounterplay  [tests listening: 0]  ← src/systems/tetherGameplay.js:2105
+- massline:npcLineCut  [tests listening: 3]  ← src/systems/tetherGameplay.js:1564
+- massline:playerLineCut  [tests listening: 2]  ← src/systems/tetherGameplay.js:1685
+- massline:recovered  [tests listening: 1]  ← src/systems/tumbleStates.js:214
+- massline:recovering  [tests listening: 0]  ← src/systems/tumbleStates.js:458
+- massline:releaseCancelled  [tests listening: 0]  ← src/systems/masslineThrow.js:165
+- massline:releaseWindow  [tests listening: 1]  ← src/systems/masslineThrow.js:226
+- massline:snareArmed  [tests listening: 0]  ← src/systems/masslineSnares.js:223
+- massline:snareCut  [tests listening: 0]  ← src/systems/masslineSnares.js:532
+- massline:snareDeployed  [tests listening: 0]  ← src/systems/masslineSnares.js:325
+- massline:snareEnded  [tests listening: 0]  ← src/systems/masslineSnares.js:534
+- massSeed:cleared  [tests listening: 0]  ← src/systems/massSeed.js:591
+- massSeed:collapsed  [tests listening: 0]  ← src/systems/massSeed.js:414, src/systems/massSeed.js:464
+- massSeed:collapsing  [tests listening: 0]  ← src/systems/massSeed.js:413, src/systems/massSeed.js:435
+- massSeed:deployDenied  [tests listening: 0]  ← src/systems/massSeed.js:154
+- massSeed:deployed  [tests listening: 0]  ← src/systems/massSeed.js:249
+- massSeed:destroyed  [tests listening: 0]  ← src/systems/massSeed.js:571
+- massSeed:locked  [tests listening: 0]  ← src/systems/massSeed.js:302
+- massSeed:locking  [tests listening: 0]  ← src/systems/massSeed.js:365
+- massSeed:tetherCut  [tests listening: 1]  ← src/systems/massSeed.js:492
+- massSeed:warning  [tests listening: 0]  ← src/systems/massSeed.js:328
+- mines:capReached  [tests listening: 1]  ← src/systems/mines.js:57
+- mines:released  [tests listening: 1]  ← src/systems/mines.js:265
+- mines:triggered  [tests listening: 2]  ← src/systems/mines.js:230
+- mission:conditionBroken  [tests listening: 0]  ← src/systems/contractClauses.js:348, src/systems/missions.js:1527
+- mission:conditionPending  [tests listening: 0]  ← src/systems/missions.js:1580
+- mission:conditionProgress  [tests listening: 0]  ← src/systems/contractClauses.js:316, src/systems/missions.js:1510
+- mission:setPieceTransition  [tests listening: 0]  ← src/systems/missions.js:6591
+- mission:setPieceTravelLine  [tests listening: 0]  ← src/systems/missions.js:8543
+- mission:spawnDeferred  [tests listening: 1]  ← src/systems/missions.js:7839
+- moment:amended  [tests listening: 1]  ← src/systems/bulletTime.js:240
+- moralMemory:vengefulReturn  [tests listening: 0]  ← src/systems/e1EncounterRuntime.js:425
+- news:dockCards  [tests listening: 0]  ← src/ui/marketNews.js:364
+- npcjobs:loadEmpty  [tests listening: 4]  ← src/systems/npcJobsRuntime.js:1050
+- npcjobs:lotClaimed  [tests listening: 3]  ← src/systems/npcJobsRuntime.js:1043
+- npcjobs:lotPosted  [tests listening: 3]  ← src/systems/npcJobsRuntime.js:1031
+- npcjobs:lotReplaced  [tests listening: 0]  ← src/systems/npcJobsRuntime.js:1029
+- npcjobs:minerRelocated  [tests listening: 0]  ← src/systems/npcJobsRuntime.js:3052
+- npcjobs:resumed  [tests listening: 2]  ← src/systems/npcJobsRuntime.js:4139
+- npcjobs:threatened  [tests listening: 1]  ← src/systems/npcJobsRuntime.js:4211
+- npcjobs:yardDispatch  [tests listening: 0]  ← src/systems/npcJobsRuntime.js:4306
+- npcjobs:yardDispatchDone  [tests listening: 0]  ← src/systems/npcJobsRuntime.js:4327
+- onboarding:rangePrompt  [tests listening: 2]  ← src/systems/onboarding.js:1689, src/systems/onboarding.js:2493
+- orrinWitness:evidenceEnsured  [tests listening: 0]  ← src/systems/world.js:1825
+- orrinWitness:evidenceRecovered  [tests listening: 0]  ← src/systems/story.js:1097
+- orrinWitness:submitted  [tests listening: 0]  ← src/systems/story.js:1125
+- pallasHiddenCache:cargoChanged  [tests listening: 0]  ← src/systems/world.js:5754
+- pallasHiddenCache:clueRecovered  [tests listening: 0]  ← src/systems/world.js:5550
+- pallasHiddenCache:pickupReady  [tests listening: 0]  ← src/systems/world.js:5714
+- pds:intercept  [tests listening: 0]  ← src/systems/countermeasures.js:324
+- planet:collector  [tests listening: 0]  ← src/systems/planetRuntime.js:507
+- planet:harvest  [tests listening: 1]  ← src/systems/planetRuntime.js:540
+- planet:harvestDenied  [tests listening: 0]  ← src/systems/planetRuntime.js:544
+- planet:plungeStage  [tests listening: 1]  ← src/systems/planetRuntime.js:407, src/systems/planetRuntime.js:419
+- planet:recoveryBurn  [tests listening: 1]  ← src/systems/planetRuntime.js:485
+- planet:registered  [tests listening: 0]  ← src/systems/planetRuntime.js:195
+- planet:unregistered  [tests listening: 0]  ← src/systems/planetRuntime.js:256
+- research:pointsChanged  [tests listening: 0]  ← src/systems/missions.js:4407, src/systems/missions.js:4459
+- resonance:patrolQueued  [tests listening: 1]  ← src/systems/encounterDirector.js:2429
+- rumor:ghostConvoy  [tests listening: 0]  ← src/systems/lossLedger.js:317
+- run:roleProblemStamped  [tests listening: 1]  ← src/systems/survivalSwarm.js:247
+- salvage:cookerFlight  [tests listening: 1]  ← src/systems/salvageActions.js:459
+- salvage:coreDetonated  [tests listening: 1]  ← src/systems/salvageActions.js:595
+- salvage:coreEjected  [tests listening: 1]  ← src/systems/salvageActions.js:261
+- save:backup  [tests listening: 0]  ← src/save/saveSystem.js:1171
+- save:exportRecovery  [tests listening: 0]  ← src/save/saveSystem.js:3682
+- scan:debrisCache  [tests listening: 2]  ← src/systems/mining.js:1480, src/systems/scanReveal.js:184
+- scan:wreckInvestigated  [tests listening: 3]  ← src/systems/scanReveal.js:89
+- scan:wreckRevealed  [tests listening: 1]  ← src/systems/scanReveal.js:85
+- scanner:ghostEscaped  [tests listening: 2]  ← src/systems/scanner.js:886
+- sectorsim:tick  [tests listening: 0]  ← src/systems/sectorSim.js:286
+- sensorGhost:swarm  [tests listening: 0]  ← src/systems/e1EncounterRuntime.js:543
+- service:aborted  [tests listening: 0]  ← src/systems/stationServices.js:256
+- service:progress  [tests listening: 0]  ← src/systems/stationServices.js:417
+- service:queued  [tests listening: 0]  ← src/systems/stationServices.js:324
+- service:started  [tests listening: 0]  ← src/systems/stationServices.js:406
+- ship:loadoutPresetApplyRejected  [tests listening: 0]  ← src/systems/ships.js:2235
+- ship:loadoutPresetDeleted  [tests listening: 0]  ← src/systems/ships.js:2194
+- ship:loadoutPresetSaved  [tests listening: 0]  ← src/systems/ships.js:2173
+- signal:receipt  [tests listening: 1]  ← src/systems/scanner.js:1470
+- site:created  [tests listening: 0]  ← src/systems/asteroidSites.js:867
+- site:laneSpilled  [tests listening: 2]  ← src/systems/asteroidSites.js:1275, src/systems/asteroidSites.js:1359
+- site:machineMode  [tests listening: 0]  ← src/systems/asteroidSites.js:1381
+- site:machineRemoved  [tests listening: 0]  ← src/systems/asteroidSites.js:1292
+- site:overlayChanged  [tests listening: 0]  ← src/systems/asteroidSites.js:1365
+- site:rematerialized  [tests listening: 0]  ← src/systems/asteroidSites.js:1519
+- station:berthAssigned  [tests listening: 0]  ← src/systems/stationServices.js:386
+- station:broadcastTic  [tests listening: 2]  ← src/systems/stationBroadcast.js:228
+- station:holding  [tests listening: 0]  ← src/systems/stationServices.js:390
+- station:throughput  [tests listening: 0]  ← src/systems/claims.js:1834
+- station:yardChanged  [tests listening: 0]  ← src/systems/stationServices.js:544
+- stationContact:changed  [tests listening: 0]  ← src/systems/stationContacts.js:309, src/systems/stationContacts.js:345
+- stationContact:counterChanged  [tests listening: 2]  ← src/systems/stationContacts.js:245, src/systems/stationContacts.js:468
+- stationLife:trafficChanged  [tests listening: 0]  ← src/systems/stationContacts.js:333
+- story:kurtzLedger  [tests listening: 0]  ← src/systems/story.js:1461, src/systems/story.js:1472
+- story:playerChoiceRecorded  [tests listening: 0]  ← src/systems/encounterDirector.js:1667
+- story:postEndingContinuity  [tests listening: 1]  ← src/systems/story.js:1361
+- story:vergeEvidenceRecorded  [tests listening: 0]  ← src/systems/story.js:1159
+- story:vergeObserversRevealed  [tests listening: 1]  ← src/systems/story.js:1015
+- story:vergeValeGatesRevoked  [tests listening: 0]  ← src/systems/story.js:1179
+- stunt:bridge  [tests listening: 1]  ← src/systems/stuntGrammar.js:194
+- stunt:lineContractCompleted  [tests listening: 2]  ← src/systems/stuntGrammar.js:179
+- stunt:salvageRights  [tests listening: 1]  ← src/systems/stuntGrammar.js:104
+- stunt:salvageRightsClaimed  [tests listening: 0]  ← src/systems/stuntGrammar.js:126
+- survivorPod:delivered  [tests listening: 1]  ← src/systems/traffic.js:5909
+- survivorPod:promoted  [tests listening: 0]  ← src/systems/survivorPod.js:1069
+- survivorPod:resolved  [tests listening: 0]  ← src/systems/survivorPod.js:946
+- tether:rebound  [tests listening: 0]  ← src/combat/attachments.js:770
+- traffic:oreCollected  [tests listening: 2]  ← src/systems/traffic.js:5706
+- traffic:passengerLinerReceipt  [tests listening: 0]  ← src/systems/traffic.js:3681
+- traffic:passengerLinerSuspended  [tests listening: 0]  ← src/systems/traffic.js:10476
+- traffic:richSeamHelpReserved  [tests listening: 0]  ← src/systems/traffic.js:9087
+- traffic:spillNoticed  [tests listening: 0]  ← src/systems/traffic.js:6271
+- ui:bulkHaulTag  [tests listening: 2]  ← src/ui/prompts/bulkHaulTag.js:185
+- ui:bulkHaulTagCleared  [tests listening: 1]  ← src/ui/prompts/bulkHaulTag.js:204
+- ui:cancel  [tests listening: 1]  ← src/ui/input.js:990, src/ui/input.js:1004
+- ui:entityRoute  [tests listening: 0]  ← src/ui/entityLinks.js:197
+- ui:navigate  [tests listening: 1]  ← src/ui/input.js:978, src/ui/input.js:982
+- uniqueLoot:choirBellPulse  [tests listening: 1]  ← src/systems/uniqueLootAbilities.js:337
+- uniqueLoot:nestbreakerSplit  [tests listening: 0]  ← src/systems/uniqueLootAbilities.js:287
+- uniqueLoot:paleCoilBlink  [tests listening: 1]  ← src/systems/uniqueLootAbilities.js:222
+- uniqueWreck:complicationScheduled  [tests listening: 0]  ← src/systems/uniqueWrecks.js:789
+- uniqueWreck:encounterCompleted  [tests listening: 0]  ← src/systems/uniqueWrecks.js:1048
+- uniqueWreck:encounterRequested  [tests listening: 2]  ← src/systems/uniqueWrecks.js:554, src/systems/uniqueWrecks.js:958
+- uniqueWreck:salvaged  [tests listening: 0]  ← src/systems/uniqueWrecks.js:1625
+- uniqueWreck:storyRewardGranted  [tests listening: 1]  ← src/systems/uniqueWrecks.js:1555
+- vestaOreCache:cargoChanged  [tests listening: 0]  ← src/systems/world.js:5514
+- vestaOreCache:clueRecovered  [tests listening: 0]  ← src/systems/world.js:5335
+- vestaOreCache:pickupReady  [tests listening: 0]  ← src/systems/world.js:5477
+- weapons:mineDeployed  [tests listening: 1]  ← src/systems/weapons.js:1602
+- weapons:momentumSinkPlanted  [tests listening: 0]  ← src/systems/weapons.js:346
+- weapons:momentumSinkReleased  [tests listening: 0]  ← src/systems/weapons.js:1300
+- web:linked  [tests listening: 0]  ← src/combat/tetherWebs.js:95
+- wingMorale:broken  [tests listening: 2]  ← src/systems/wingMorale.js:261
+- wingMorale:enraged  [tests listening: 1]  ← src/systems/wingMorale.js:346
+- wingMorale:reinforcementBlocked  [tests listening: 1]  ← src/systems/wingMorale.js:373
+- wingOrder:blocked  [tests listening: 0]  ← src/systems/automation.js:1979
+- wingOrder:converted  [tests listening: 0]  ← src/systems/wingmen.js:394
+- wingOrder:status  [tests listening: 0]  ← src/systems/automation.js:1980
+- world:criticalSpawnDeferred  [tests listening: 1]  ← src/systems/world.js:1674, src/systems/world.js:3348
+- world:originShift  [tests listening: 2]  ← src/systems/world.js:4395
+- world:spawnLimited  [tests listening: 1]  ← src/systems/world.js:3284
+- wreckEcology:decayed  [tests listening: 0]  ← src/systems/aftermathWrecks.js:2411
+- wreckEcology:departed  [tests listening: 0]  ← src/systems/aftermathWrecks.js:1106
+- wreckEcology:scavenged  [tests listening: 0]  ← src/systems/aftermathWrecks.js:1149
+- wreckEcology:seeded  [tests listening: 0]  ← src/systems/aftermathWrecks.js:2158
+- wreckMission:choiceApplied  [tests listening: 0]  ← src/systems/missions.js:4968
+
+# STRICT — listened, and the literal appears in NO other src file (24)
+- beacon:deploy  [tests emitting: 4]  ← src/systems/beacons.js:43
+- career:hauler:accept  [tests emitting: 1]  ← src/careers/origins/haulerOriginSystem.js:76
+- career:hauler:checkSpread  [tests emitting: 0]  ← src/careers/origins/haulerOriginSystem.js:103
+- career:hauler:decline  [tests emitting: 0]  ← src/careers/origins/haulerOriginSystem.js:77
+- career:hauler:delivered  [tests emitting: 1]  ← src/careers/origins/haulerOriginSystem.js:94
+- claim:defenseIgnore  [tests emitting: 0]  ← src/systems/claims.js:285
+- combat:requestAction  [tests emitting: 0]  ← src/combat/kernel.js:180
+- dock:launder  [tests emitting: 2]  ← src/systems/pirateDisguise.js:38
+- entity:kill  [tests emitting: 0]  ← src/core/coreSystem.js:217
+- flybyFocus:cancel  [tests emitting: 1]  ← src/systems/flybyFocus.js:315
+- miningDrone:sellOre  [tests emitting: 1]  ← src/systems/economy.js:965
+- npcjobs:hold  [tests emitting: 0]  ← src/systems/traffic.js:1386
+- physics:attachmentBroken  [tests emitting: 0]  ← src/combat/kernel.js:179
+- run:arenaIntroComplete  [tests emitting: 1]  ← src/systems/survivalRun.js:114
+- run:modifierChosen  [tests emitting: 0]  ← src/systems/survivalRun.js:118
+- run:waveIntroComplete  [tests emitting: 1]  ← src/systems/survivalRun.js:115
+- save:dirty  [tests emitting: 0]  ← src/save/saveSystem.js:212
+- sector:entered  [tests emitting: 0]  ← src/systems/dockingCorridor.js:82
+- title:holdResolved  [tests emitting: 2]  ← src/systems/titles.js:395
+- ui:endgameConfirm  [tests emitting: 5]  ← src/systems/story.js:160
+- ui:endingArchiveOpen  [tests emitting: 0]  ← src/systems/story.js:163
+- ui:heliosBay7Scan  [tests emitting: 0]  ← src/systems/story.js:196
+- ui:undock  [tests emitting: 0]  ← src/ui/input.js:742
+- voice:dismiss  [tests emitting: 1]  ← src/ui/voiceArbiter.js:324
+
+# SEAMS — 866 distinct events emitted in src/, 588 distinct listened
+
+## Emitted in src/ with NO listener in src/ (403)
+- aftermath:causeRecorded  [tests/scripts listening: 0]  ← src/systems/aftermathWrecks.js:725
+- aftermath:remedied  [tests/scripts listening: 0]  ← src/systems/aftermathWrecks.js:1703
+- aftermathWreck:completed  [tests/scripts listening: 1]  ← src/systems/aftermathWrecks.js:1971
+- aftermathWreck:retired  [tests/scripts listening: 0]  ← src/systems/aftermathWrecks.js:1291
+- ai:egressExit  [tests/scripts listening: 0]  ← src/ai/egressExit.js:74
+- ai:encounterCommand  [tests/scripts listening: 0]  ← src/systems/aiPorts.js:240
+- ai:formationBroken  [tests/scripts listening: 1]  ← src/systems/ai.js:436, src/systems/wingMorale.js:253
+- ambientComms:register  [tests/scripts listening: 0]  ← src/systems/e1EncounterRuntime.js:114
+- ambientComms:toneChanged  [tests/scripts listening: 0]  ← src/systems/e1EncounterRuntime.js:202
+- anomaly:bearing  [tests/scripts listening: 0]  ← src/systems/scanner.js:1037
+- automation:assetResumed  [tests/scripts listening: 0]  ← src/systems/automation.js:2144
+- automation:incomeCredited  [tests/scripts listening: 0]  ← src/systems/automation.js:1852, src/systems/automation.js:1863, src/systems/automation.js:2561
+- automation:traderCycleCompleted  [tests/scripts listening: 1]  ← src/systems/automation.js:1481
+- band:bearingReceipt  [tests/scripts listening: 0]  ← src/systems/bandRadio.js:543
+- band:bearingRequest  [tests/scripts listening: 2]  ← src/systems/bandRadio.js:516
+- band:bearingResolved  [tests/scripts listening: 2]  ← src/systems/uniqueWrecks.js:718, src/systems/uniqueWrecks.js:761
+- band:bearingUnavailable  [tests/scripts listening: 0]  ← src/systems/uniqueWrecks.js:725, src/systems/uniqueWrecks.js:733, src/systems/uniqueWrecks.js:747
+- band:cycle  [tests/scripts listening: 1]  ← src/ui/bandHud.js:83, src/ui/input.js:319
+- beam:denied  [tests/scripts listening: 2]  ← src/systems/mining.js:285, src/systems/mining.js:328, src/systems/mining.js:342 (+2)
+- beam:repaired  [tests/scripts listening: 1]  ← src/systems/mining.js:445
+- beam:transferred  [tests/scripts listening: 0]  ← src/systems/mining.js:499
+- bombs:armed  [tests/scripts listening: 1]  ← src/systems/bombs.js:655
+- bombs:commanded  [tests/scripts listening: 0]  ← src/systems/bombs.js:613
+- bombs:cycle  [tests/scripts listening: 2]  ← src/systems/bombs.js:357, src/systems/bombs.js:592
+- bombs:denied  [tests/scripts listening: 1]  ← src/systems/bombs.js:243, src/systems/bombs.js:350, src/systems/bombs.js:372 (+5)
+- bombs:destroyed  [tests/scripts listening: 0]  ← src/systems/bombs.js:892
+- bombs:primed  [tests/scripts listening: 0]  ← src/systems/bombs.js:624
+- bombs:rackChanged  [tests/scripts listening: 0]  ← src/systems/bombs.js:498
+- bombs:stockChanged  [tests/scripts listening: 0]  ← src/systems/bombs.js:379, src/systems/bombs.js:490, src/systems/bombs.js:597
+- boss:defeated  [tests/scripts listening: 1]  ← src/systems/world.js:836
+- buildIdentity:revealed  [tests/scripts listening: 1]  ← src/systems/buildIdentity.js:299
+- camera:kill  [tests/scripts listening: 0]  ← src/render/feel.js:1226, src/render/feel.js:1702
+- camera:shake  [tests/scripts listening: 4]  ← src/render/shipMicroMotion.js:2213, src/render/vfx.js:5733, src/render/vfx.js:6023 (+11)
+- camera:zoom  [tests/scripts listening: 3]  ← src/ui/crucibleFocus.js:169, src/ui/crucibleFocus.js:174, src/ui/input.js:485 (+2)
+- capitalBoss:detach  [tests/scripts listening: 0]  ← src/systems/missions.js:1361
+- capitalBoss:start  [tests/scripts listening: 0]  ← src/systems/missions.js:5576
+- capitalBoss:telegraphEnd  [tests/scripts listening: 0]  ← src/systems/capitalBossEncounters.js:110, src/systems/capitalBossEncounters.js:132
+- career:ladder:abandon  [tests/scripts listening: 0]  ← src/ui/screens/missionLog.js:2257
+- career:ladder:choose  [tests/scripts listening: 0]  ← src/ui/screens/missionLog.js:2234
+- career:ladder:recover  [tests/scripts listening: 0]  ← src/ui/screens/missionLog.js:2241
+- career:origin:choose  [tests/scripts listening: 0]  ← src/ui/screens/missionLog.js:2211
+- career:origin:declined  [tests/scripts listening: 0]  ← src/careers/origins/haulerOriginSystem.js:160
+- career:origin:offered  [tests/scripts listening: 0]  ← src/careers/origins/haulerOriginSystem.js:178
+- career:origin:reoffer  [tests/scripts listening: 0]  ← src/ui/screens/missionLog.js:2203
+- cargo:fragileLost  [tests/scripts listening: 2]  ← src/systems/fragileCargo.js:200
+- cargo:hotDockSpill  [tests/scripts listening: 1]  ← src/systems/cargo.js:507
+- cargo:persistentAdded  [tests/scripts listening: 0]  ← src/systems/e1EncounterRuntime.js:84
+- cargo:volatileCorrosive  [tests/scripts listening: 1]  ← src/systems/lootShards.js:901
+- cargo:volatileCryo  [tests/scripts listening: 1]  ← src/systems/lootShards.js:937
+- cargo:volatileSlam  [tests/scripts listening: 2]  ← src/systems/lootShards.js:821, src/systems/lootShards.js:877
+- chain:primed  [tests/scripts listening: 3]  ← src/systems/impulseCharges.js:722
+- chain:primeEnded  [tests/scripts listening: 0]  ← src/systems/impulseCharges.js:745
+- chain:tetherShare  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:1876
+- charge:armed  [tests/scripts listening: 0]  ← src/systems/impulseCharges.js:819
+- charge:combo  [tests/scripts listening: 1]  ← src/systems/impulseCharges.js:1022, src/systems/impulseCharges.js:1081
+- claim:defenseEncounterRequested  [tests/scripts listening: 0]  ← src/systems/claims.js:1332
+- claim:defenseResolved  [tests/scripts listening: 0]  ← src/systems/claims.js:1408
+- claim:defenseStarted  [tests/scripts listening: 0]  ← src/systems/claims.js:1337
+- claim:defenseWarning  [tests/scripts listening: 0]  ← src/systems/claims.js:1256
+- claim:depotPatrolRotation  [tests/scripts listening: 0]  ← src/systems/claims.js:2135
+- claim:depotSupport  [tests/scripts listening: 0]  ← src/systems/claims.js:2050, src/systems/claims.js:2075
+- claim:freightDelivered  [tests/scripts listening: 0]  ← src/systems/traffic.js:2874
+- claim:infrastructureConstructed  [tests/scripts listening: 0]  ← src/systems/claims.js:404
+- claim:moduleBuilt  [tests/scripts listening: 0]  ← src/systems/claims.js:422
+- claim:raidRepelled  [tests/scripts listening: 0]  ← src/systems/claims.js:1205
+- claim:raidWarning  [tests/scripts listening: 0]  ← src/systems/claims.js:1198
+- claim:receipt  [tests/scripts listening: 0]  ← src/systems/claims.js:1625
+- claim:specialized  [tests/scripts listening: 0]  ← src/systems/claims.js:463
+- claim:teleportRequest  [tests/scripts listening: 0]  ← src/systems/claims.js:669
+- claim:trophyHeadGranted  [tests/scripts listening: 0]  ← src/systems/claims.js:2335
+- claims:migrated  [tests/scripts listening: 0]  ← src/systems/claims.js:1743
+- cloak:burned  [tests/scripts listening: 1]  ← src/systems/cloak.js:250
+- cloak:faded  [tests/scripts listening: 0]  ← src/systems/aiPorts.js:1067
+- combat:actionCancelled  [tests/scripts listening: 0]  ← src/combat/actions.js:336
+- combat:actionCompleted  [tests/scripts listening: 0]  ← src/combat/actions.js:322
+- combat:actionPhase  [tests/scripts listening: 0]  ← src/combat/actions.js:195
+- combat:collisionDebris  [tests/scripts listening: 2]  ← src/systems/collisionConsequences.js:300
+- combat:kill  [tests/scripts listening: 0]  ← src/systems/world.js:5153
+- combat:outcomeConsequence  [tests/scripts listening: 1]  ← src/systems/combatOutcome.js:297
+- combat:statusApplied  [tests/scripts listening: 1]  ← src/combat/statuses.js:181
+- combat:warded  [tests/scripts listening: 0]  ← src/combat/damage.js:52
+- comms:message  [tests/scripts listening: 2]  ← src/systems/traffic.js:5149, src/systems/traffic.js:5914
+- conflict:frontAction  [tests/scripts listening: 0]  ← src/systems/factions.js:576
+- conflict:warDeclared  [tests/scripts listening: 0]  ← src/systems/factions.js:633
+- contactHail:availability  [tests/scripts listening: 0]  ← src/systems/scanner.js:1387, src/systems/scanner.js:1398
+- contactHail:clear  [tests/scripts listening: 0]  ← src/systems/scanner.js:1409
+- contactHail:deck:open  [tests/scripts listening: 0]  ← src/ui/contactHailPrompt.js:192
+- contactHail:handoff  [tests/scripts listening: 0]  ← src/systems/scanner.js:1247
+- contactHail:offer  [tests/scripts listening: 2]  ← src/systems/scanner.js:1269
+- contract:clauseHonored  [tests/scripts listening: 0]  ← src/systems/contractClauses.js:380, src/systems/missions.js:6657
+- countermeasure:denied  [tests/scripts listening: 0]  ← src/systems/countermeasures.js:406
+- customs:breakScan  [tests/scripts listening: 0]  ← src/ui/customsPrompt.js:231
+- customs:submit  [tests/scripts listening: 0]  ← src/ui/customsPrompt.js:210
+- danger:miningNoise  [tests/scripts listening: 1]  ← src/systems/mining.js:2055
+- detonator:detonated  [tests/scripts listening: 0]  ← src/systems/impulseCharges.js:479
+- difficulty:stanceChanged  [tests/scripts listening: 0]  ← src/systems/difficultyDirector.js:410
+- distress:call  [tests/scripts listening: 2]  ← src/systems/traffic.js:5147
+- dock:denied  [tests/scripts listening: 2]  ← src/ui/dockDenyBanner.js:141
+- economy:debtEscalated  [tests/scripts listening: 1]  ← src/systems/economy.js:2381
+- economy:demandShift  [tests/scripts listening: 0]  ← src/systems/economy.js:1342
+- economy:resourceWork:cancel  [tests/scripts listening: 1]  ← src/systems/world.js:4318
+- economy:resourceWork:reserve  [tests/scripts listening: 5]  ← src/systems/world.js:4220
+- economy:resourceWork:settle  [tests/scripts listening: 3]  ← src/systems/world.js:4300
+- economy:salvageIntakeApplied  [tests/scripts listening: 0]  ← src/systems/economy.js:2266
+- economy:sinkCharged  [tests/scripts listening: 0]  ← src/systems/economy.js:2309
+- economy:tradeFailed  [tests/scripts listening: 1]  ← src/systems/economy.js:2137, src/systems/economy.js:2160
+- emergent:audio  [tests/scripts listening: 0]  ← src/systems/emergentPrimitives.js:161
+- encounter:fingerprint  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:1712
+- encounter:hostileCommitted  [tests/scripts listening: 1]  ← src/data/encounters/353-the-wake.js:179, src/data/encounters/354-the-sweep.js:203, src/systems/encounterDirector.js:2317
+- encounter:namedCaptainDefeated  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:1923, src/systems/encounterScripts.js:2831
+- encounter:patrolIntervened  [tests/scripts listening: 1]  ← src/systems/encounterDirector.js:2281
+- encounter:predationCleared  [tests/scripts listening: 2]  ← src/systems/encounterScripts.js:1149
+- encounter:predationEngaged  [tests/scripts listening: 2]  ← src/systems/encounterScripts.js:1066, src/systems/encounterScripts.js:1134
+- encounter:predationTelegraph  [tests/scripts listening: 3]  ← src/systems/encounterScripts.js:1039
+- encounter:stale  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:415
+- encounter:voice  [tests/scripts listening: 7]  ← src/systems/encounterDirector.js:1610
+- encounter:waitStarted  [tests/scripts listening: 1]  ← src/systems/e1EncounterRuntime.js:395
+- encounter:winnerHostile  [tests/scripts listening: 0]  ← src/systems/e1EncounterRuntime.js:354
+- endgame:archive  [tests/scripts listening: 0]  ← src/systems/story.js:165
+- endgame:finaleCompleted  [tests/scripts listening: 0]  ← src/systems/story.js:722
+- endgame:finaleReady  [tests/scripts listening: 0]  ← src/systems/story.js:953
+- endgame:ineligible  [tests/scripts listening: 1]  ← src/systems/story.js:732, src/systems/story.js:809, src/systems/story.js:874
+- endgame:promptChoiceC  [tests/scripts listening: 0]  ← src/systems/story.js:794
+- endgame:promptChoiceD  [tests/scripts listening: 0]  ← src/systems/story.js:758
+- endgame:promptSandbox  [tests/scripts listening: 1]  ← src/systems/story.js:657
+- escalation:arrived  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:455
+- escalation:seeded  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:442
+- faction:repSpillover  [tests/scripts listening: 0]  ← src/systems/factions.js:469
+- faction:tradePosture  [tests/scripts listening: 0]  ← src/systems/e1EncounterRuntime.js:126, src/systems/e1EncounterRuntime.js:130, src/systems/e1EncounterRuntime.js:140
+- factionPresence:administrativeRouting  [tests/scripts listening: 0]  ← src/systems/factionPresence.js:1234
+- factionPresence:fulfillmentProvoked  [tests/scripts listening: 0]  ← src/systems/factionPresence.js:838
+- factionPresence:service  [tests/scripts listening: 0]  ← src/systems/factionPresence.js:939
+- factionPresence:serviceAction  [tests/scripts listening: 0]  ← src/systems/factionPresence.js:1015
+- factionPresence:spawned  [tests/scripts listening: 0]  ← src/systems/factionPresence.js:572, src/systems/factionPresence.js:657
+- field:opportunity  [tests/scripts listening: 2]  ← src/systems/world.js:4000
+- field:richSeamMissed  [tests/scripts listening: 0]  ← src/systems/fieldDepletion.js:717, src/systems/traffic.js:1745, src/systems/traffic.js:10499
+- field:richSeamOpened  [tests/scripts listening: 0]  ← src/systems/traffic.js:9552
+- field:richSeamWorked  [tests/scripts listening: 0]  ← src/systems/mining.js:817, src/systems/traffic.js:9211
+- fields:anchorRegistered  [tests/scripts listening: 0]  ← src/systems/fields.js:940
+- fields:cleared  [tests/scripts listening: 0]  ← src/systems/fields.js:1445
+- fields:deployDenied  [tests/scripts listening: 0]  ← src/systems/fields.js:1007
+- fields:ended  [tests/scripts listening: 0]  ← src/systems/fields.js:959, src/systems/fields.js:1240, src/systems/fields.js:1261 (+1)
+- fields:hitchCut  [tests/scripts listening: 1]  ← src/systems/fields.js:641
+- fields:hitchLatched  [tests/scripts listening: 1]  ← src/systems/fields.js:629
+- fields:specialistDisrupt  [tests/scripts listening: 0]  ← src/systems/fields.js:519
+- firsthour:beat  [tests/scripts listening: 2]  ← src/systems/onboarding.js:2703
+- firsthour:complete  [tests/scripts listening: 2]  ← src/systems/onboarding.js:2716
+- firsthour:sentence  [tests/scripts listening: 1]  ← src/systems/onboarding.js:1484
+- firsthour:started  [tests/scripts listening: 2]  ← src/systems/onboarding.js:2501
+- firsthour:verb  [tests/scripts listening: 2]  ← src/systems/onboarding.js:2640
+- flight:modeChanged  [tests/scripts listening: 0]  ← src/systems/flightV3.js:578
+- flybyFocus:end  [tests/scripts listening: 7]  ← src/systems/flybyFocus.js:365
+- formation:discovered  [tests/scripts listening: 0]  ← src/systems/asteroidFormations.js:284
+- freight:arrival  [tests/scripts listening: 8]  ← src/systems/traffic.js:7267
+- freight:custodyChanged  [tests/scripts listening: 0]  ← src/systems/encounterScripts.js:1413
+- freight:custodyRebound  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:589
+- freight:custodyReceipt  [tests/scripts listening: 1]  ← src/systems/encounterScripts.js:1470
+- freight:raiderEscaped  [tests/scripts listening: 0]  ← src/systems/encounterScripts.js:1906
+- frontierRumor:acquired  [tests/scripts listening: 0]  ← src/systems/world.js:3616
+- frontierRumor:blackMarketAccess  [tests/scripts listening: 1]  ← src/systems/world.js:5892
+- frontierRumor:contacted  [tests/scripts listening: 0]  ← src/systems/world.js:5788
+- frontierRumor:resolved  [tests/scripts listening: 0]  ← src/systems/world.js:3633
+- fuel:changed  [tests/scripts listening: 0]  ← src/systems/economy.js:2423, src/systems/stationServices.js:422, src/systems/stationServices.js:489 (+2)
+- gamepad:connected  [tests/scripts listening: 0]  ← src/systems/gamepad.js:454
+- gamepad:disconnected  [tests/scripts listening: 0]  ← src/systems/gamepad.js:425
+- gate:verdict  [tests/scripts listening: 3]  ← src/systems/gateControlDirector.js:135
+- harasser:disengaged  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:2127
+- hazard:changed  [tests/scripts listening: 0]  ← src/systems/world.js:784
+- heist:capsuleResumed  [tests/scripts listening: 0]  ← src/systems/heistFacilities.js:1213
+- heist:launchCue  [tests/scripts listening: 3]  ← src/systems/heistFacilities.js:339
+- heist:launchScheduleReceipt  [tests/scripts listening: 0]  ← src/systems/heistFacilities.js:457, src/systems/heistFacilities.js:466, src/systems/heistFacilities.js:470 (+1)
+- heist:launchScheduleReleased  [tests/scripts listening: 0]  ← src/systems/heistFacilities.js:1867
+- heist:receiverAborted  [tests/scripts listening: 0]  ← src/systems/heistFacilities.js:1809
+- heist:receiverPrepared  [tests/scripts listening: 0]  ← src/systems/heistFacilities.js:1728
+- hull:fractured  [tests/scripts listening: 2]  ← src/systems/hullFracture.js:292
+- intervention:available  [tests/scripts listening: 5]  ← src/systems/intervention.js:212
+- intervention:closed  [tests/scripts listening: 1]  ← src/systems/intervention.js:265
+- intervention:jumperRipped  [tests/scripts listening: 1]  ← src/systems/intervention.js:384
+- intervention:logged  [tests/scripts listening: 1]  ← src/systems/intervention.js:124
+- loot:magnetCaptured  [tests/scripts listening: 0]  ← src/systems/lootShards.js:612
+- lossInvestigation:promoted  [tests/scripts listening: 0]  ← src/systems/lossInvestigation.js:160
+- massline:bridleCut  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:815
+- massline:bridleEnded  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:760, src/systems/tetherGameplay.js:776, src/systems/tetherGameplay.js:945
+- massline:bridleEndpointSelected  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:624
+- massline:bridleLinked  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:678
+- massline:bridleSetupEnded  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:825
+- massline:cadenceChanged  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:1950
+- massline:npcCounterplay  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:2105
+- massline:npcLineCut  [tests/scripts listening: 3]  ← src/systems/tetherGameplay.js:1564
+- massline:playerLineCut  [tests/scripts listening: 2]  ← src/systems/tetherGameplay.js:1685
+- massline:recovered  [tests/scripts listening: 1]  ← src/systems/tumbleStates.js:214
+- massline:recovering  [tests/scripts listening: 0]  ← src/systems/tumbleStates.js:458
+- massline:releaseCancelled  [tests/scripts listening: 0]  ← src/systems/masslineThrow.js:165
+- massline:releaseWindow  [tests/scripts listening: 1]  ← src/systems/masslineThrow.js:226
+- massline:snareArmed  [tests/scripts listening: 0]  ← src/systems/masslineSnares.js:223
+- massline:snareCaught  [tests/scripts listening: 0]  ← src/systems/masslineSnares.js:418
+- massline:snareCut  [tests/scripts listening: 0]  ← src/systems/masslineSnares.js:532
+- massline:snareDeployed  [tests/scripts listening: 0]  ← src/systems/masslineSnares.js:325
+- massline:snareEnded  [tests/scripts listening: 0]  ← src/systems/masslineSnares.js:534
+- massSeed:cleared  [tests/scripts listening: 0]  ← src/systems/massSeed.js:591
+- massSeed:collapsed  [tests/scripts listening: 0]  ← src/systems/massSeed.js:414, src/systems/massSeed.js:464, src/systems/massSeed.js:544 (+1)
+- massSeed:collapsing  [tests/scripts listening: 0]  ← src/systems/massSeed.js:413, src/systems/massSeed.js:435, src/systems/massSeed.js:530 (+1)
+- massSeed:deployDenied  [tests/scripts listening: 0]  ← src/systems/massSeed.js:154
+- massSeed:deployed  [tests/scripts listening: 0]  ← src/systems/massSeed.js:249
+- massSeed:destroyed  [tests/scripts listening: 0]  ← src/systems/massSeed.js:571
+- massSeed:locked  [tests/scripts listening: 0]  ← src/systems/massSeed.js:302
+- massSeed:locking  [tests/scripts listening: 0]  ← src/systems/massSeed.js:365
+- massSeed:tetherCut  [tests/scripts listening: 1]  ← src/systems/massSeed.js:492
+- massSeed:warning  [tests/scripts listening: 0]  ← src/systems/massSeed.js:328
+- mines:capReached  [tests/scripts listening: 1]  ← src/systems/mines.js:57
+- mines:released  [tests/scripts listening: 1]  ← src/systems/mines.js:265
+- mines:triggered  [tests/scripts listening: 2]  ← src/systems/mines.js:230
+- mining:beamLocked  [tests/scripts listening: 1]  ← src/systems/mining.js:725
+- mining:podSplit  [tests/scripts listening: 1]  ← src/systems/mining.js:1350
+- mining:ventBonus  [tests/scripts listening: 3]  ← src/systems/mining.js:605
+- mission:conditionBroken  [tests/scripts listening: 0]  ← src/systems/contractClauses.js:348, src/systems/missions.js:1527
+- mission:conditionPending  [tests/scripts listening: 0]  ← src/systems/missions.js:1580
+- mission:conditionProgress  [tests/scripts listening: 0]  ← src/systems/contractClauses.js:316, src/systems/missions.js:1510
+- mission:setPieceTransition  [tests/scripts listening: 0]  ← src/systems/missions.js:6591
+- mission:setPieceTravelLine  [tests/scripts listening: 0]  ← src/systems/missions.js:8543
+- mission:spawnDeferred  [tests/scripts listening: 1]  ← src/systems/missions.js:7839
+- module:granted  [tests/scripts listening: 1]  ← src/systems/ships.js:1906
+- module:purchased  [tests/scripts listening: 0]  ← src/systems/ships.js:1893
+- moment:amended  [tests/scripts listening: 1]  ← src/systems/bulletTime.js:240
+- moralMemory:vengefulReturn  [tests/scripts listening: 0]  ← src/systems/e1EncounterRuntime.js:425
+- namedAce:appeared  [tests/scripts listening: 3]  ← src/systems/encounterScripts.js:2781
+- nav:waypoint  [tests/scripts listening: 1]  ← src/save/saveSystem.js:3468, src/systems/claims.js:1435, src/systems/claims.js:1443 (+7)
+- nemesis:encounterRejected  [tests/scripts listening: 0]  ← src/nemesis/encounterHost.js:123
+- nemesis:encounterStarted  [tests/scripts listening: 0]  ← src/nemesis/encounterHost.js:188
+- nemesis:escaped  [tests/scripts listening: 0]  ← src/nemesis/encounterHost.js:119
+- nemesis:spare  [tests/scripts listening: 0]  ← src/ui/nemesisComms.js:67
+- news:dockCards  [tests/scripts listening: 0]  ← src/ui/marketNews.js:364
+- news:headline  [tests/scripts listening: 9]  ← src/systems/aftermathWrecks.js:758, src/systems/e1EncounterRuntime.js:225, src/systems/nemesisSignals.js:25 (+3)
+- news:publish  [tests/scripts listening: 11]  ← src/systems/aftermathWrecks.js:776, src/systems/choirReliefBerth.js:181, src/systems/claims.js:1871 (+9)
+- news:render  [tests/scripts listening: 0]  ← src/ui/hud.js:1486
+- npcjobs:loadEmpty  [tests/scripts listening: 4]  ← src/systems/npcJobsRuntime.js:1050
+- npcjobs:lotClaimed  [tests/scripts listening: 3]  ← src/systems/npcJobsRuntime.js:1043
+- npcjobs:lotPosted  [tests/scripts listening: 3]  ← src/systems/npcJobsRuntime.js:1031
+- npcjobs:lotReplaced  [tests/scripts listening: 0]  ← src/systems/npcJobsRuntime.js:1029
+- npcjobs:minerRelocated  [tests/scripts listening: 0]  ← src/systems/npcJobsRuntime.js:3052
+- npcjobs:resumed  [tests/scripts listening: 2]  ← src/systems/npcJobsRuntime.js:4139
+- npcjobs:threatened  [tests/scripts listening: 1]  ← src/systems/npcJobsRuntime.js:4211
+- npcjobs:yardDispatch  [tests/scripts listening: 0]  ← src/systems/npcJobsRuntime.js:4306
+- npcjobs:yardDispatchDone  [tests/scripts listening: 0]  ← src/systems/npcJobsRuntime.js:4327
+- onboarding:rangePrompt  [tests/scripts listening: 2]  ← src/systems/onboarding.js:1689, src/systems/onboarding.js:2493
+- optic:beamContact  [tests/scripts listening: 0]  ← src/systems/combat.js:1167
+- orrinWitness:evidenceEnsured  [tests/scripts listening: 0]  ← src/systems/world.js:1825
+- orrinWitness:evidenceRecovered  [tests/scripts listening: 0]  ← src/systems/story.js:1097
+- orrinWitness:submitted  [tests/scripts listening: 0]  ← src/systems/story.js:1125
+- pallasHiddenCache:cargoChanged  [tests/scripts listening: 0]  ← src/systems/world.js:5754
+- pallasHiddenCache:clueRecovered  [tests/scripts listening: 0]  ← src/systems/world.js:5550
+- pallasHiddenCache:pickupReady  [tests/scripts listening: 0]  ← src/systems/world.js:5714
+- pds:intercept  [tests/scripts listening: 0]  ← src/systems/countermeasures.js:324
+- planet:collector  [tests/scripts listening: 0]  ← src/systems/planetRuntime.js:507
+- planet:harvest  [tests/scripts listening: 1]  ← src/systems/planetRuntime.js:540
+- planet:harvestDenied  [tests/scripts listening: 0]  ← src/systems/planetRuntime.js:544
+- planet:plungeStage  [tests/scripts listening: 1]  ← src/systems/planetRuntime.js:407, src/systems/planetRuntime.js:419
+- planet:recoveryBurn  [tests/scripts listening: 1]  ← src/systems/planetRuntime.js:485
+- planet:registered  [tests/scripts listening: 0]  ← src/systems/planetRuntime.js:195
+- planet:unregistered  [tests/scripts listening: 0]  ← src/systems/planetRuntime.js:256
+- presentation:audioCue  [tests/scripts listening: 4]  ← src/render/vfx.js:5474, src/systems/presentationAdapters.js:546
+- presentation:cameraCue  [tests/scripts listening: 1]  ← src/systems/presentationAdapters.js:468
+- presentation:cueApplied  [tests/scripts listening: 4]  ← src/systems/presentationAdapters.js:450
+- presentation:uiCue  [tests/scripts listening: 3]  ← src/systems/presentationAdapters.js:371, src/systems/presentationAdapters.js:617
+- presentation:vfxCue  [tests/scripts listening: 17]  ← src/render/vfx.js:2469, src/systems/countermeasures.js:332, src/systems/fields.js:2178 (+15)
+- recovery:choose  [tests/scripts listening: 1]  ← src/ui/recoveryEncounterPrompt.js:319
+- recovery:vent  [tests/scripts listening: 0]  ← src/ui/recoveryEncounterPrompt.js:281
+- rescue:beat  [tests/scripts listening: 3]  ← src/systems/onboarding.js:1865, src/systems/onboarding.js:1897
+- rescue:complete  [tests/scripts listening: 3]  ← src/systems/onboarding.js:1876
+- research:pointsChanged  [tests/scripts listening: 0]  ← src/systems/missions.js:4407, src/systems/missions.js:4459, src/systems/missions.js:6711 (+2)
+- resonance:patrolQueued  [tests/scripts listening: 1]  ← src/systems/encounterDirector.js:2429
+- rhythm:phase  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:426
+- rumor:ghostConvoy  [tests/scripts listening: 0]  ← src/systems/lossLedger.js:317
+- run:roleProblemStamped  [tests/scripts listening: 1]  ← src/systems/survivalSwarm.js:247
+- salvage:actionRead  [tests/scripts listening: 0]  ← src/systems/salvageActions.js:212
+- salvage:cookerFlight  [tests/scripts listening: 1]  ← src/systems/salvageActions.js:459
+- salvage:coreDetonated  [tests/scripts listening: 1]  ← src/systems/salvageActions.js:595
+- salvage:coreEjected  [tests/scripts listening: 1]  ← src/systems/salvageActions.js:261
+- salvage:npcExtraction  [tests/scripts listening: 0]  ← src/systems/traffic.js:6573
+- salvage:reactorBurst  [tests/scripts listening: 1]  ← src/systems/salvageActions.js:702
+- salvage:reactorTowedClear  [tests/scripts listening: 0]  ← src/systems/salvageActions.js:317
+- salvage:reactorVented  [tests/scripts listening: 0]  ← src/render/vfx/damagedPortVfx.js:128, src/systems/salvageActions.js:227
+- save:backup  [tests/scripts listening: 0]  ← src/save/saveSystem.js:1171
+- save:exportRecovery  [tests/scripts listening: 0]  ← src/save/saveSystem.js:3682
+- scan:debrisCache  [tests/scripts listening: 2]  ← src/systems/mining.js:1480, src/systems/scanReveal.js:184
+- scan:wreckInvestigated  [tests/scripts listening: 3]  ← src/systems/scanReveal.js:89
+- scan:wreckRevealed  [tests/scripts listening: 1]  ← src/systems/scanReveal.js:85
+- scanner:ghostEscaped  [tests/scripts listening: 2]  ← src/systems/scanner.js:886
+- scanner:ghostRevealed  [tests/scripts listening: 1]  ← src/systems/scanner.js:947
+- scenario:actorBindings  [tests/scripts listening: 1]  ← src/systems/scenarioRuntime.js:138
+- scenario:dialogueLine  [tests/scripts listening: 0]  ← src/systems/scenarioRuntime.js:366
+- scenario:factChanged  [tests/scripts listening: 1]  ← src/systems/scenarioRuntime.js:554
+- scenario:factsInitialized  [tests/scripts listening: 1]  ← src/systems/scenarioRuntime.js:133
+- scenario:loaded  [tests/scripts listening: 1]  ← src/systems/scenarioRuntime.js:123
+- scenario:safeOpeningDemand  [tests/scripts listening: 1]  ← src/systems/scenarioRuntime.js:190
+- sectorsim:tick  [tests/scripts listening: 0]  ← src/systems/sectorSim.js:286
+- sensorGhost:swarm  [tests/scripts listening: 0]  ← src/systems/e1EncounterRuntime.js:543
+- service:aborted  [tests/scripts listening: 0]  ← src/systems/stationServices.js:256
+- service:progress  [tests/scripts listening: 0]  ← src/systems/stationServices.js:417
+- service:queued  [tests/scripts listening: 0]  ← src/systems/stationServices.js:324
+- service:started  [tests/scripts listening: 0]  ← src/systems/stationServices.js:406
+- ship:cargoCapChanged  [tests/scripts listening: 1]  ← src/systems/ships.js:1785
+- ship:deathFlash  [tests/scripts listening: 0]  ← src/render/shipMicroMotion.js:2209
+- ship:deathPop  [tests/scripts listening: 0]  ← src/render/shipMicroMotion.js:994, src/render/shipMicroMotion.js:2199
+- ship:loadoutPresetApplied  [tests/scripts listening: 0]  ← src/systems/ships.js:2262
+- ship:loadoutPresetApplyRejected  [tests/scripts listening: 0]  ← src/systems/ships.js:2235
+- ship:loadoutPresetDeleted  [tests/scripts listening: 0]  ← src/systems/ships.js:2194
+- ship:loadoutPresetSaved  [tests/scripts listening: 0]  ← src/systems/ships.js:2173
+- ship:rcsPulse  [tests/scripts listening: 0]  ← src/render/shipMicroMotion.js:1043, src/render/shipMicroMotion.js:2186
+- ship:sold  [tests/scripts listening: 0]  ← src/systems/ships.js:1985
+- ship:thrust  [tests/scripts listening: 0]  ← src/systems/flight.js:431, src/systems/flightV3.js:1509
+- signal:receipt  [tests/scripts listening: 1]  ← src/systems/scanner.js:1470
+- site:anchored  [tests/scripts listening: 0]  ← src/systems/asteroidSites.js:929
+- site:courierDelivered  [tests/scripts listening: 1]  ← src/systems/asteroidSites.js:1915
+- site:courierLost  [tests/scripts listening: 1]  ← src/systems/asteroidSites.js:1903
+- site:created  [tests/scripts listening: 0]  ← src/systems/asteroidSites.js:867
+- site:laneSpilled  [tests/scripts listening: 2]  ← src/systems/asteroidSites.js:1275, src/systems/asteroidSites.js:1359
+- site:machineMode  [tests/scripts listening: 0]  ← src/systems/asteroidSites.js:1381
+- site:machineRemoved  [tests/scripts listening: 0]  ← src/systems/asteroidSites.js:1292
+- site:overlayChanged  [tests/scripts listening: 0]  ← src/systems/asteroidSites.js:1365
+- site:podBuilt  [tests/scripts listening: 0]  ← src/systems/asteroidSites.js:1719
+- site:rematerialized  [tests/scripts listening: 0]  ← src/systems/asteroidSites.js:1519
+- station:berthAssigned  [tests/scripts listening: 0]  ← src/systems/stationServices.js:386
+- station:broadcastTic  [tests/scripts listening: 2]  ← src/systems/stationBroadcast.js:228
+- station:holding  [tests/scripts listening: 0]  ← src/systems/stationServices.js:390
+- station:navigate  [tests/scripts listening: 0]  ← src/ui/screens/automationPanel.js:1502, src/ui/station/screens/bar.js:765, src/ui/station/screens/bar.js:770 (+1)
+- station:sideEvent  [tests/scripts listening: 2]  ← src/systems/stationSideEventDirector.js:257
+- station:throughput  [tests/scripts listening: 0]  ← src/systems/claims.js:1834
+- station:yardChanged  [tests/scripts listening: 0]  ← src/systems/stationServices.js:544
+- stationContact:changed  [tests/scripts listening: 0]  ← src/systems/stationContacts.js:309, src/systems/stationContacts.js:345, src/systems/stationContacts.js:427 (+1)
+- stationContact:counterChanged  [tests/scripts listening: 2]  ← src/systems/stationContacts.js:245, src/systems/stationContacts.js:468
+- stationContact:counterDelta  [tests/scripts listening: 0]  ← src/systems/missions.js:6576
+- stationLife:trafficChanged  [tests/scripts listening: 0]  ← src/systems/stationContacts.js:333
+- story:kurtzLedger  [tests/scripts listening: 0]  ← src/systems/story.js:1461, src/systems/story.js:1472
+- story:playerChoiceRecorded  [tests/scripts listening: 0]  ← src/systems/encounterDirector.js:1667
+- story:postEndingContinuity  [tests/scripts listening: 1]  ← src/systems/story.js:1361
+- story:vergeEvidenceRecorded  [tests/scripts listening: 0]  ← src/systems/story.js:1159
+- story:vergeObserversRevealed  [tests/scripts listening: 1]  ← src/systems/story.js:1015
+- story:vergeValeGatesRevoked  [tests/scripts listening: 0]  ← src/systems/story.js:1179
+- stunt:bridge  [tests/scripts listening: 1]  ← src/systems/stuntGrammar.js:194
+- stunt:lineContractCompleted  [tests/scripts listening: 2]  ← src/systems/stuntGrammar.js:179
+- stunt:salvageRights  [tests/scripts listening: 1]  ← src/systems/stuntGrammar.js:104
+- stunt:salvageRightsClaimed  [tests/scripts listening: 0]  ← src/systems/stuntGrammar.js:126
+- survivalArena:rosterPrewarm  [tests/scripts listening: 1]  ← src/systems/survivalArena.js:1020
+- survivorPod:delivered  [tests/scripts listening: 1]  ← src/systems/traffic.js:5909
+- survivorPod:promoted  [tests/scripts listening: 0]  ← src/systems/survivorPod.js:1069
+- survivorPod:resolved  [tests/scripts listening: 0]  ← src/systems/survivorPod.js:946
+- tether:cutDenied  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:1711
+- tether:lineControlDenied  [tests/scripts listening: 1]  ← src/systems/tetherGameplay.js:1410
+- tether:rebound  [tests/scripts listening: 0]  ← src/combat/attachments.js:770
+- tether:reelPump  [tests/scripts listening: 1]  ← src/systems/masslineTelemetry.js:251
+- tether:snapCatch  [tests/scripts listening: 2]  ← src/systems/masslineTelemetry.js:329
+- tether:whipSnap  [tests/scripts listening: 0]  ← src/systems/tetherGameplay.js:1763
+- traffic:oreCollected  [tests/scripts listening: 2]  ← src/systems/traffic.js:5706
+- traffic:passengerLinerReceipt  [tests/scripts listening: 0]  ← src/systems/traffic.js:3681
+- traffic:passengerLinerSuspended  [tests/scripts listening: 0]  ← src/systems/traffic.js:10476
+- traffic:richSeamHelpReserved  [tests/scripts listening: 0]  ← src/systems/traffic.js:9087
+- traffic:spillNoticed  [tests/scripts listening: 0]  ← src/systems/traffic.js:6271
+- ui:bulkHaulTag  [tests/scripts listening: 2]  ← src/ui/prompts/bulkHaulTag.js:185
+- ui:bulkHaulTagCleared  [tests/scripts listening: 1]  ← src/ui/prompts/bulkHaulTag.js:204
+- ui:cancel  [tests/scripts listening: 1]  ← src/ui/input.js:990, src/ui/input.js:1004
+- ui:closeComms  [tests/scripts listening: 0]  ← src/ui/input.js:342
+- ui:entityRoute  [tests/scripts listening: 0]  ← src/ui/entityLinks.js:197
+- ui:navigate  [tests/scripts listening: 1]  ← src/ui/input.js:978, src/ui/input.js:982, src/ui/input.js:1046
+- ui:toggleComms  [tests/scripts listening: 0]  ← src/ui/input.js:465
+- uniqueLoot:choirBellPulse  [tests/scripts listening: 1]  ← src/systems/uniqueLootAbilities.js:337
+- uniqueLoot:nestbreakerSplit  [tests/scripts listening: 0]  ← src/systems/uniqueLootAbilities.js:287
+- uniqueLoot:paleCoilBlink  [tests/scripts listening: 1]  ← src/systems/uniqueLootAbilities.js:222
+- uniqueWreck:choose  [tests/scripts listening: 1]  ← src/systems/missions.js:4613, src/ui/recoveryEncounterPrompt.js:339
+- uniqueWreck:complicationScheduled  [tests/scripts listening: 0]  ← src/systems/uniqueWrecks.js:789
+- uniqueWreck:encounterCompleted  [tests/scripts listening: 0]  ← src/systems/uniqueWrecks.js:1048
+- uniqueWreck:encounterRequested  [tests/scripts listening: 2]  ← src/systems/uniqueWrecks.js:554, src/systems/uniqueWrecks.js:958
+- uniqueWreck:rumorHeard  [tests/scripts listening: 0]  ← src/ui/station/screens/bar.js:736
+- uniqueWreck:salvaged  [tests/scripts listening: 0]  ← src/systems/uniqueWrecks.js:1625
+- uniqueWreck:storyRewardGranted  [tests/scripts listening: 1]  ← src/systems/uniqueWrecks.js:1555
+- verb:used  [tests/scripts listening: 0]  ← src/systems/onboarding.js:2646
+- vestaOreCache:cargoChanged  [tests/scripts listening: 0]  ← src/systems/world.js:5514
+- vestaOreCache:clueRecovered  [tests/scripts listening: 0]  ← src/systems/world.js:5335
+- vestaOreCache:pickupReady  [tests/scripts listening: 0]  ← src/systems/world.js:5477
+- weapons:inertialShunt  [tests/scripts listening: 3]  ← src/systems/weapons.js:366
+- weapons:mineArmed  [tests/scripts listening: 0]  ← src/systems/weapons.js:1645
+- weapons:mineDeployed  [tests/scripts listening: 1]  ← src/systems/weapons.js:1602
+- weapons:mineDetonated  [tests/scripts listening: 1]  ← src/systems/weapons.js:1775
+- weapons:momentumSinkPlanted  [tests/scripts listening: 0]  ← src/systems/weapons.js:346
+- weapons:momentumSinkReleased  [tests/scripts listening: 0]  ← src/systems/weapons.js:1300
+- web:linked  [tests/scripts listening: 0]  ← src/combat/tetherWebs.js:95
+- well:capture  [tests/scripts listening: 1]  ← src/systems/fields.js:2063
+- well:fling  [tests/scripts listening: 1]  ← src/systems/fields.js:1988
+- wingMorale:broken  [tests/scripts listening: 2]  ← src/systems/wingMorale.js:261
+- wingMorale:enraged  [tests/scripts listening: 1]  ← src/systems/wingMorale.js:346
+- wingMorale:reinforcementBlocked  [tests/scripts listening: 1]  ← src/systems/wingMorale.js:373
+- wingOrder:blocked  [tests/scripts listening: 0]  ← src/systems/automation.js:1979
+- wingOrder:converted  [tests/scripts listening: 0]  ← src/systems/wingmen.js:394
+- wingOrder:status  [tests/scripts listening: 0]  ← src/systems/automation.js:1980
+- world:criticalSpawnDeferred  [tests/scripts listening: 1]  ← src/systems/world.js:1674, src/systems/world.js:3348
+- world:originShift  [tests/scripts listening: 2]  ← src/systems/world.js:4395
+- world:residency  [tests/scripts listening: 2]  ← src/systems/world.js:1071, src/systems/world.js:1104, src/systems/world.js:1877
+- world:spawnLimited  [tests/scripts listening: 1]  ← src/systems/world.js:3284
+- wreckEcology:decayed  [tests/scripts listening: 0]  ← src/systems/aftermathWrecks.js:2411
+- wreckEcology:departed  [tests/scripts listening: 0]  ← src/systems/aftermathWrecks.js:1106
+- wreckEcology:scavenged  [tests/scripts listening: 0]  ← src/systems/aftermathWrecks.js:1149
+- wreckEcology:seeded  [tests/scripts listening: 0]  ← src/systems/aftermathWrecks.js:2158
+- wreckMission:choiceApplied  [tests/scripts listening: 0]  ← src/systems/missions.js:4968
+
+## Listened in src/ with NO emitter in src/ (125)
+- aceMemory:transition  [tests/scripts emitting: 3]  ← src/systems/claims.js:281, src/systems/encounterDirector.js:291, src/ui/discoveryPlate.js:140
+- ai:reinforcementScheduled  [tests/scripts emitting: 2]  ← src/systems/barkDirector.js:316
+- barkDirector:voice  [tests/scripts emitting: 1]  ← src/audio/audioSystem.js:1990
+- beacon:deploy  [tests/scripts emitting: 4]  ← src/systems/beacons.js:43
+- career:hauler:accept  [tests/scripts emitting: 1]  ← src/careers/origins/haulerOriginSystem.js:76
+- career:hauler:checkSpread  [tests/scripts emitting: 0]  ← src/careers/origins/haulerOriginSystem.js:103
+- career:hauler:decline  [tests/scripts emitting: 0]  ← src/careers/origins/haulerOriginSystem.js:77
+- career:hauler:delivered  [tests/scripts emitting: 1]  ← src/careers/origins/haulerOriginSystem.js:94
+- career:ladder:choiceResolved  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2429
+- career:ladder:completed  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2430
+- career:ladder:progress  [tests/scripts emitting: 2]  ← src/ui/screens/missionLog.js:2424
+- career:ladder:stepActive  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2425
+- career:ladder:stepDone  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2427
+- career:ladder:stepFailed  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2426
+- career:ladder:stepRecovered  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2428
+- career:origins:accepted  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2432
+- career:origins:declined  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2433
+- career:origins:offered  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2431
+- career:origins:progress  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2434
+- chronicler:radio  [tests/scripts emitting: 0]  ← src/chronicler/voiceBridge.js:18
+- chronicler:recall  [tests/scripts emitting: 0]  ← src/chronicler/voiceBridge.js:19
+- claim:defenseIgnore  [tests/scripts emitting: 0]  ← src/systems/claims.js:285
+- combat:requestAction  [tests/scripts emitting: 0]  ← src/combat/kernel.js:180
+- combat:subsystemDisabled  [tests/scripts emitting: 18]  ← src/systems/combatOutcome.js:157, src/systems/encounterDirector.js:274, src/systems/factionPresence.js:427 (+5)
+- combat:surrendered  [tests/scripts emitting: 4]  ← src/systems/combatOutcome.js:158, src/systems/surrenderRecovery.js:65
+- customs:weirBolt  [tests/scripts emitting: 2]  ← src/systems/economy.js:1015
+- dock:launder  [tests/scripts emitting: 2]  ← src/systems/pirateDisguise.js:38
+- endgame:loopBack  [tests/scripts emitting: 0]  ← src/systems/story.js:173
+- entity:kill  [tests/scripts emitting: 0]  ← src/core/coreSystem.js:217
+- flybyFocus:cancel  [tests/scripts emitting: 1]  ← src/systems/flybyFocus.js:315
+- freight:recovery  [tests/scripts emitting: 3]  ← src/systems/encounterDirector.js:279, src/systems/traffic.js:1392
+- freight:recoveryAbandoned  [tests/scripts emitting: 1]  ← src/systems/encounterDirector.js:280, src/systems/traffic.js:1393
+- heat:clear  [tests/scripts emitting: 2]  ← src/systems/heat.js:272
+- heist:requestLaunchSchedule  [tests/scripts emitting: 2]  ← src/systems/heistFacilities.js:249
+- law:custodyTransfer  [tests/scripts emitting: 1]  ← src/systems/custodyConsequences.js:39
+- law:dispatchStarted  [tests/scripts emitting: 0]  ← src/systems/barkDirector.js:327
+- law:impoundPayOffer  [tests/scripts emitting: 4]  ← src/ui/impoundPayPrompt.js:30
+- law:impoundPayRefused  [tests/scripts emitting: 1]  ← src/ui/impoundPayPrompt.js:31
+- law:impoundPosted  [tests/scripts emitting: 0]  ← src/systems/custodyConsequences.js:41
+- law:impoundRecovered  [tests/scripts emitting: 1]  ← src/systems/custodyConsequences.js:43, src/systems/heat.js:282, src/ui/impoundPayPrompt.js:32
+- law:impoundReleased  [tests/scripts emitting: 0]  ← src/ui/impoundPayPrompt.js:33
+- law:impoundWorked  [tests/scripts emitting: 0]  ← src/systems/custodyConsequences.js:42
+- law:incidentOpened  [tests/scripts emitting: 1]  ← src/systems/traffic.js:1401
+- law:killedAdjudicated  [tests/scripts emitting: 0]  ← src/systems/factions.js:229
+- law:reportIncidentReceipt  [tests/scripts emitting: 6]  ← src/systems/barkDirector.js:330, src/systems/factions.js:294, src/systems/heat.js:293
+- law:wantedCheckpointBroken  [tests/scripts emitting: 0]  ← src/systems/heat.js:278
+- law:wantedCheckpointPosted  [tests/scripts emitting: 0]  ← src/systems/barkDirector.js:329
+- law:wantedWarrantPosted  [tests/scripts emitting: 0]  ← src/systems/barkDirector.js:328
+- law:witnessChoice  [tests/scripts emitting: 1]  ← src/systems/encounterDirector.js:300
+- lawfulInspection:offered  [tests/scripts emitting: 1]  ← src/ui/lawfulInspectionPrompt.js:80
+- lawfulInspection:resolved  [tests/scripts emitting: 1]  ← src/ui/lawfulInspectionPrompt.js:82
+- lawfulInspection:scanning  [tests/scripts emitting: 1]  ← src/ui/lawfulInspectionPrompt.js:81
+- miningDrone:sellOre  [tests/scripts emitting: 1]  ← src/systems/economy.js:965
+- mission:forceEvent  [tests/scripts emitting: 0]  ← src/systems/economy.js:1019
+- moment:holyShit  [tests/scripts emitting: 2]  ← src/render/feel.js:1346
+- moralMemory:remember  [tests/scripts emitting: 4]  ← src/systems/encounterDirector.js:290
+- namedAce:fled  [tests/scripts emitting: 9]  ← src/systems/encounterDirector.js:304
+- nav:abortRoute  [tests/scripts emitting: 2]  ← src/systems/routeFollower.js:316
+- nav:engageRoute  [tests/scripts emitting: 3]  ← src/systems/routeFollower.js:315
+- npcjobs:hold  [tests/scripts emitting: 0]  ← src/systems/traffic.js:1386
+- npcjobs:load  [tests/scripts emitting: 0]  ← src/systems/traffic.js:1384
+- npcjobs:unload  [tests/scripts emitting: 17]  ← src/systems/traffic.js:1385
+- npcjobs:work  [tests/scripts emitting: 13]  ← src/systems/traffic.js:1383
+- optic:rekindled  [tests/scripts emitting: 1]  ← src/audio/audioSystem.js:1783
+- physics:attachmentBroken  [tests/scripts emitting: 0]  ← src/combat/kernel.js:179
+- pirateDisengage:triggered  [tests/scripts emitting: 1]  ← src/systems/combatOutcome.js:187
+- pirateParley:resolved  [tests/scripts emitting: 0]  ← src/systems/combatOutcome.js:186, src/ui/pirateParleyPrompt.js:161
+- pirateParley:started  [tests/scripts emitting: 0]  ← src/systems/combatOutcome.js:185
+- postEndingReplay:cycleCompleted  [tests/scripts emitting: 0]  ← src/ui/screens/missionLog.js:2442
+- presentation:cue  [tests/scripts emitting: 11]  ← src/audio/audioSystem.js:1932, src/systems/presentationAdapters.js:196
+- recovery:completed  [tests/scripts emitting: 1]  ← src/ui/recoveryEncounterPrompt.js:472
+- regionalEcology:applied  [tests/scripts emitting: 0]  ← src/ui/sectorPostcard.js:157
+- regionalEcology:changed  [tests/scripts emitting: 0]  ← src/ui/sectorPostcard.js:158
+- run:arenaIntroComplete  [tests/scripts emitting: 1]  ← src/systems/survivalRun.js:114
+- run:awarded  [tests/scripts emitting: 0]  ← src/ui/survivalHud.js:205
+- run:awardRequested  [tests/scripts emitting: 14]  ← src/systems/runSession.js:53
+- run:draftResolved  [tests/scripts emitting: 14]  ← src/systems/survivalRun.js:117
+- run:ended  [tests/scripts emitting: 15]  ← src/systems/survivalAnnounce.js:298, src/systems/survivalArena.js:836, src/systems/survivalDraft.js:108 (+6)
+- run:levelUp  [tests/scripts emitting: 7]  ← src/systems/survivalAnnounce.js:296, src/ui/survivalHud.js:206
+- run:modifierChosen  [tests/scripts emitting: 0]  ← src/systems/survivalRun.js:118
+- run:modifierRecordRequested  [tests/scripts emitting: 2]  ← src/systems/runSession.js:55
+- run:refitClosed  [tests/scripts emitting: 8]  ← src/systems/survivalRun.js:119
+- run:resultsReady  [tests/scripts emitting: 6]  ← src/systems/achievements.js:785, src/ui/uiRoot.js:1276
+- run:spendRejected  [tests/scripts emitting: 0]  ← src/systems/survivalDraft.js:107
+- run:spendRequested  [tests/scripts emitting: 3]  ← src/systems/runSession.js:54
+- run:spent  [tests/scripts emitting: 1]  ← src/systems/survivalDraft.js:106
+- run:started  [tests/scripts emitting: 13]  ← src/sim/killcamTape.js:425, src/systems/survivalAnnounce.js:291, src/systems/survivalArena.js:811 (+4)
+- run:threatRequested  [tests/scripts emitting: 0]  ← src/systems/runSession.js:56
+- run:transitioned  [tests/scripts emitting: 5]  ← src/systems/survivalAnnounce.js:297, src/systems/survivalDraft.js:98, src/systems/survivalResults.js:483 (+3)
+- run:waveCleared  [tests/scripts emitting: 40]  ← src/systems/survivalAnnounce.js:295, src/systems/survivalArena.js:835, src/systems/survivalResults.js:447
+- run:waveIntroComplete  [tests/scripts emitting: 1]  ← src/systems/survivalRun.js:115
+- run:waveMaterialized  [tests/scripts emitting: 1]  ← src/systems/survivalAnnounce.js:294
+- run:wavePlanFailed  [tests/scripts emitting: 2]  ← src/systems/survivalResults.js:456
+- run:wavePlanned  [tests/scripts emitting: 70]  ← src/systems/survivalAnnounce.js:292, src/systems/survivalArena.js:802, src/systems/survivalWave.js:128 (+2)
+- run:waveProgress  [tests/scripts emitting: 2]  ← src/ui/survivalHud.js:219
+- run:waveStarted  [tests/scripts emitting: 14]  ← src/systems/survivalAnnounce.js:293, src/systems/survivalResults.js:446, src/systems/survivalWave.js:129 (+1)
+- salvage:ventReactor  [tests/scripts emitting: 11]  ← src/systems/salvageActions.js:127
+- save:dirty  [tests/scripts emitting: 0]  ← src/save/saveSystem.js:212
+- sector:entered  [tests/scripts emitting: 0]  ← src/systems/dockingCorridor.js:82
+- ships:grantModule  [tests/scripts emitting: 1]  ← src/systems/ships.js:1439
+- signal:investigate  [tests/scripts emitting: 5]  ← src/systems/scanner.js:834
+- signal:track  [tests/scripts emitting: 15]  ← src/systems/scanner.js:833
+- story:stuntIncidentRecorded  [tests/scripts emitting: 0]  ← src/systems/barkDirector.js:322
+- story:stuntIncidentUpdated  [tests/scripts emitting: 0]  ← src/systems/barkDirector.js:321
+- stunt:trickAmended  [tests/scripts emitting: 3]  ← src/systems/bulletTime.js:134, src/systems/survivalResults.js:450, src/systems/titles.js:402 (+1)
+- stunt:trickDetected  [tests/scripts emitting: 42]  ← src/audio/audioSystem.js:1834, src/systems/bulletTime.js:133, src/systems/survivalResults.js:449 (+3)
+- surrender:escaped  [tests/scripts emitting: 0]  ← src/systems/combatOutcome.js:183
+- surrender:secured  [tests/scripts emitting: 0]  ← src/systems/traffic.js:1391
+- surrender:tethered  [tests/scripts emitting: 0]  ← src/systems/traffic.js:1390
+- survivorPod:rescued  [tests/scripts emitting: 0]  ← src/systems/traffic.js:1396
+- swarm:chain  [tests/scripts emitting: 6]  ← src/systems/survivalResults.js:459, src/ui/survivalHud.js:220
+- swarm:chainBest  [tests/scripts emitting: 0]  ← src/systems/survivalResults.js:472
+- swarm:chainBroken  [tests/scripts emitting: 3]  ← src/ui/survivalHud.js:221
+- title:holdResolved  [tests/scripts emitting: 2]  ← src/systems/titles.js:395
+- traffic:ceresCausalChain  [tests/scripts emitting: 0]  ← src/audio/audioSystem.js:1829
+- ui:buy  [tests/scripts emitting: 2]  ← src/systems/economy.js:943
+- ui:closeScreen  [tests/scripts emitting: 0]  ← src/ui/uiRoot.js:1034
+- ui:endgameConfirm  [tests/scripts emitting: 5]  ← src/systems/story.js:160
+- ui:endgameUnfiledJumpConfirm  [tests/scripts emitting: 1]  ← src/systems/story.js:169
+- ui:endingArchiveOpen  [tests/scripts emitting: 0]  ← src/systems/story.js:163
+- ui:heliosBay7Scan  [tests/scripts emitting: 0]  ← src/systems/story.js:196
+- ui:sell  [tests/scripts emitting: 2]  ← src/systems/economy.js:944
+- ui:talkContact  [tests/scripts emitting: 6]  ← src/systems/story.js:197
+- ui:undock  [tests/scripts emitting: 0]  ← src/ui/input.js:742
+- voice:dismiss  [tests/scripts emitting: 1]  ← src/ui/voiceArbiter.js:324
+
+# DATA — src/data catalogs and their importers under src/
+- src/data/asteroidMotion.js  importers=0  tests/scripts=1  
+- src/data/commodityFlavor.js  importers=0  tests/scripts=3  
+- src/data/contentFactoryExamples.js  importers=0  tests/scripts=8  
+- src/data/factionPaletteClaims.js  importers=0  tests/scripts=3  
+- src/data/intentGlyphs.js  importers=0  tests/scripts=1  
+- src/data/modelTruthMath.js  importers=0  tests/scripts=2  
+- src/data/occupationalYardDressing.js  importers=0  tests/scripts=2  
+- src/data/runModifiers.js  importers=0  tests/scripts=2  
+- src/data/sectorWayOfLife.js  importers=0  tests/scripts=2  
+- src/data/silhouetteRoles.js  importers=0  tests/scripts=1  
+- src/data/starterBuilds.js  importers=0  tests/scripts=2  
+- src/data/stationGlyphs.js  importers=0  tests/scripts=2  
+- src/data/swarmDraft.js  importers=0  tests/scripts=4  
+- src/data/waveRecipeSimulator.js  importers=0  tests/scripts=6  
+- src/data/adventureArenaSites.js  importers=1  tests/scripts=1  src/systems/adventureMigration.js
+- src/data/adventureCombatLab.js  importers=1  tests/scripts=1  src/systems/adventureMigration.js
+- src/data/adventureDoctrines.js  importers=1  tests/scripts=1  src/systems/adventureMigration.js
+- src/data/adventureTraitMap.js  importers=1  tests/scripts=2  src/systems/adventureMigration.js
+- src/data/ambushSignatures.js  importers=1  tests/scripts=0  src/systems/ambushSignatures.js
+- src/data/bountyMarks.js  importers=1  tests/scripts=1  src/systems/missions.js
+- src/data/careerContracts.js  importers=1  tests/scripts=2  src/systems/careerContracts.js
+- src/data/causePhrases.js  importers=1  tests/scripts=2  src/ui/causeLedger.js
+- src/data/combatLab.js  importers=1  tests/scripts=2  src/ui/screens/sandbox.js
+- src/data/commodityMoralTags.js  importers=1  tests/scripts=1  src/ui/cargoConscience.js
+- src/data/demoConfig.js  importers=1  tests/scripts=0  src/ui/screens/demoEnd.js
+- src/data/economyDemandProfiles.js  importers=1  tests/scripts=3  src/economy/demandModel.js
+- src/data/enemyMindTuning.js  importers=1  tests/scripts=0  src/ai/enemyMind/runtime.js
+- src/data/hunterTricks.js  importers=1  tests/scripts=3  src/systems/bountyHunt.js
+- src/data/impulseCharges.js  importers=1  tests/scripts=6  src/systems/impulseCharges.js
+- src/data/landmarkMissions.js  importers=1  tests/scripts=4  src/systems/missions.js
+- src/data/masslineCounters.js  importers=1  tests/scripts=0  src/ui/screens/range.js
+- src/data/massSeed.js  importers=1  tests/scripts=6  src/systems/massSeed.js
+- src/data/moralTraps.js  importers=1  tests/scripts=5  src/systems/moralTrap.js
+- src/data/occupationalSilhouettes.js  importers=1  tests/scripts=0  src/systems/barkDirector.js
+- src/data/occupationalTrafficCraft.js  importers=1  tests/scripts=1  src/systems/traffic.js
+- src/data/opticStructures.js  importers=1  tests/scripts=11  src/systems/world.js
+- src/data/pirateDisguise.js  importers=1  tests/scripts=2  src/systems/pirateDisguise.js
+- src/data/planets.js  importers=1  tests/scripts=10  src/systems/planetRuntime.js
+- src/data/poiBehaviorFamilies.js  importers=1  tests/scripts=3  src/systems/livingPoiBehaviors.js
+- src/data/sandboxSetPieceFollowOns.js  importers=1  tests/scripts=1  src/systems/missions.js
+- src/data/shipLedgerTemplates.js  importers=1  tests/scripts=2  src/systems/shipLedger.js
+- src/data/shipPaints.js  importers=1  tests/scripts=1  src/ui/station/screens/shipworks.js
+- src/data/stationSideEvents.js  importers=1  tests/scripts=4  src/systems/stationSideEventDirector.js
+- src/data/survivalArenas.js  importers=1  tests/scripts=4  src/ui/screens/crucible.js
+- src/data/survivalEvolutions.js  importers=1  tests/scripts=2  src/systems/survivalDraft.js
+- src/data/swarmOpticArenas.js  importers=1  tests/scripts=1  src/systems/swarmArena.js
+- src/data/synergies.js  importers=1  tests/scripts=1  src/systems/buildIdentity.js
+- src/data/techVerbLadder.js  importers=1  tests/scripts=4  src/systems/economy.js
+- src/data/travelLaneRoutes.js  importers=1  tests/scripts=5  src/systems/travelLanes.js
+- src/data/worldSiteAssetBindings.js  importers=1  tests/scripts=12  src/systems/worldSiteKernel.js
+- src/data/wreckCathedralEvidenceCatalog.js  importers=1  tests/scripts=9  src/systems/shipLedger.js

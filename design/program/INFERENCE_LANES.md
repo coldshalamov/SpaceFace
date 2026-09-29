@@ -83,7 +83,7 @@ Owner, 2026-09-22. Two kinds of agent work this repo.
 When the catalog has an OPEN line, that line outranks look-then-rotate (§0) and outranks a
 §23 campaign. `N` is how many catalog lines you finish. Take the first OPEN line whose
 paths are not in a live NOW row and not named by another CLAIMED line. The next line is a
-different group (picture, verb, world, instrument) when one is free.
+different group (picture, verb, world, instrument, fight, econ, story, law, mach, pro, teach — the seven latter opened by the Fable bank 2026-09-29) when one is free.
 
 Do not EXPAND a catalog line into a new fantasy, a new system, or a second queue. If the
 live owner already meets the done check, mark the line SHIPPED with "already true" and

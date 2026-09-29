@@ -1,0 +1,7 @@
+packets: 142  lines: 141
+packets per domain: 01-hand=8 02-massline=7 03-fight=9 04-crucible=7 05-world=17 06-law-factions=7 07-economy=7 08-industry=7 09-ship-identity=6 10-story-missions=10 11-vfx-picture=9 12-ear=8 13-camera-replay=4 14-machine=12 15-professional=20 16-teach=4
+lines per group: PICTURE=18 VERB=17 WORLD=22 INSTRUMENT=18 FIGHT=10 ECON=7 STORY=7 LAW=9 MACH=9 PRO=15 TEACH=9
+coverage: hands=16p/25l fight=17p/21l world=23p/42l longgame=24p/18l presentation=12p/7l machine=12p/9l professionalism=19p/15l parity=19p/4l
+symbol index: 206764 identifiers, 11395 quoted events
+
+PASS — no flags
