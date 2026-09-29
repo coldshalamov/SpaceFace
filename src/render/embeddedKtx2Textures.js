@@ -21,8 +21,17 @@ import {
   NearestMipmapNearestFilter,
   RepeatWrapping,
 } from 'three';
+import {
+  adoptSharedImageSourceClone,
+  claimSharedImageTexture,
+  imageSourceKeyAsync,
+  sharedImageTextureFor,
+} from './imageSourceDedupe.js';
 
 const EXTENSION = 'KHR_texture_basisu';
+// Records which userData keys a document's image extras applied, so a dedupe-shared clone can drop
+// the first document's extras before stamping its own.
+const APPLIED_EXTRAS_KEY = 'spacefaceAppliedImageExtras';
 
 const WEBGL_FILTERS = {
   9728: NearestFilter,
@@ -96,17 +105,42 @@ export class EmbeddedKtx2TexturePlugin {
 
 function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
   if (parser.sourceCache[sourceIndex] !== undefined) {
-    return parser.sourceCache[sourceIndex].then((texture) => texture.clone());
+    // The cached texture is a tracked registry user; its clone carries the shared-source key in
+    // userData, so re-adopting keeps the per-document refcount honest.
+    return parser.sourceCache[sourceIndex].then((texture) => adoptSharedImageSourceClone(texture.clone()));
   }
 
   const promise = transferableSourceBytes(parser, sourceDef.bufferView)
-    .then((bytes) => new Promise((resolve, reject) => {
-      loader.parse(bytes, resolve, reject);
-    }))
+    .then(async (bytes) => {
+      // GFX-10 cross-GLB dedupe: Forge bodies embed byte-identical finish/detail atlases, so key on
+      // the image bufferView's content (SHA-256 via crypto.subtle + byteLength + mimeType; the
+      // digest runs on the platform path, not a JS byte loop). A hit returns a tracked clone
+      // sharing the cached THREE.Source — three uploads one copy per Source — while the caller
+      // still applies this document's sampler/colorSpace/flipY. On a miss the bytes go to the
+      // transcoder as before and the decoded texture claims the entry.
+      const view = bytes instanceof ArrayBuffer
+        ? new Uint8Array(bytes)
+        : new Uint8Array(bytes.buffer, bytes.byteOffset || 0, bytes.byteLength);
+      const key = await imageSourceKeyAsync(view, bytes.byteLength, sourceDef.mimeType || 'image/ktx2');
+      const shared = sharedImageTextureFor(key);
+      if (shared) return shared;
+      return new Promise((resolve, reject) => {
+        loader.parse(bytes, resolve, reject);
+      }).then((texture) => claimSharedImageTexture(key, texture));
+    })
     .then((texture) => {
+      // A dedupe-hit clone deep-copied the first document's userData — including its extras. Clear
+      // the keys that document applied before stamping this document's extras and mimeType.
+      const priorExtras = texture.userData && texture.userData[APPLIED_EXTRAS_KEY];
+      if (Array.isArray(priorExtras)) {
+        for (const key of priorExtras) delete texture.userData[key];
+      }
+      delete texture.userData[APPLIED_EXTRAS_KEY];
       if (sourceDef.extras !== undefined) {
-        if (typeof sourceDef.extras === 'object') Object.assign(texture.userData, sourceDef.extras);
-        else console.warn(`THREE.GLTFLoader: Ignoring primitive type .extras, ${sourceDef.extras}`);
+        if (typeof sourceDef.extras === 'object') {
+          Object.assign(texture.userData, sourceDef.extras);
+          texture.userData[APPLIED_EXTRAS_KEY] = Object.keys(sourceDef.extras);
+        } else console.warn(`THREE.GLTFLoader: Ignoring primitive type .extras, ${sourceDef.extras}`);
       }
       texture.userData.mimeType = sourceDef.mimeType || 'image/ktx2';
       return texture;

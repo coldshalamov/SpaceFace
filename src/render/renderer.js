@@ -27,7 +27,7 @@ import {
   resolveIblSource,
 } from './foundryEnvironment.js';
 import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides } from './visualOverrides.js';
+import { installVisualOverrides, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -82,6 +82,7 @@ import {
   swarmRosterShipExemplarSpecs,
   paletteWarmSubjectsForRecord,
   spawnableShipArchetypePrewarmUrls,
+  residentWholeShipStandInRecord,
   wholeShipVisualForEntity,
   PQ_193_05_WRECK_PACKAGED_FILES,
   PQ_193_05_DRONE_PACKAGED_FILE,
@@ -2384,9 +2385,15 @@ export function cameraKeepOutTarget(owner, camX, camZ, focusX, focusZ, camY) {
  * off the same frame the state stops being pending.
  */
 function syncResolvingMarker(mesh) {
-  const marker = mesh && mesh.userData && mesh.userData.resolvingMarker;
-  if (!marker) return;
-  marker.visible = isAuthoredPendingStatus(mesh.userData.authoredAssetState);
+  if (!mesh || !mesh.userData || !mesh.userData.resolvingMarker) return;
+  // GFX-12: a substrate built before the canonical library resolved retries its resident-record
+  // lookup while pending, so a cold boot still converges on the ship's own low-detail stand-in.
+  // Once the pending window closes the octahedron's fallback count is released with it.
+  if (mesh.userData.admissionStandInPending === true) {
+    if (isAuthoredPendingStatus(mesh.userData.authoredAssetState)) upgradeAdmissionStandIn(mesh);
+    else releaseAdmissionStandInFallback(mesh);
+  }
+  mesh.userData.resolvingMarker.visible = isAuthoredPendingStatus(mesh.userData.authoredAssetState);
 }
 
 /**
@@ -5505,6 +5512,10 @@ export const render = {
       // Live play mounts a zero-draw admission substrate and publishes the authored GLB as the first
       // visible identity. Preview-only factories may still opt into hidden diagnostic geometry.
       directAuthoredMount: true,
+      // GFX-12: the pending substrate borrows the ship's own resident low-detail record when the
+      // canonical library already has it — an octahedron only when nothing is resident. The
+      // residency/decode registries key on the WebGLRenderer, not this system instance.
+      admissionStandInRecord: (entity) => residentWholeShipStandInRecord(entity, { renderer: this.renderer }),
       onAuthoredAssetSwap: ({ boundary, root, entity } = {}) => {
         const target = boundary || root;
         if (target) {
@@ -5524,6 +5535,9 @@ export const render = {
         this._shadowReceiversDirty = true;
       },
     });
+    // GFX-12 probe diagnostic: published as 0 up front so a clean cold New Game reports an actual
+    // zero rather than a missing field; each octahedron fallback re-publishes the running count.
+    state.render.resolvingMarkerFallbacks = resolvingMarkerFallbackCount();
 
     // Bake a PMREM environment map from the nebula backdrop (scene.background) so chrome/authority
     // hulls can mirror the actual space around them — real reflections of the nebula + stars rather

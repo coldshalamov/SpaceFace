@@ -136,7 +136,7 @@ try {
     document.addEventListener('webglcontextlost', () => { window.__SF_CONTEXT_LOSSES__++; }, true);
   }, { noProgramCanon: NO_CANON });
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 300_000 });
   await page.bringToFront();
 
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Frame Solid' }));
@@ -428,7 +428,7 @@ try {
 
   // What one frame draws, near the station at the end of the route: visible drawables per scene
   // root (a draw call each, instanced meshes once), and the renderer's own per-frame counters.
-  const drawCensus = await page.evaluate(() => {
+  const drawCensus = await page.evaluate(async () => {
     const render = window.SF && window.SF.state && window.SF.state.render;
     const scene = render && render.scene;
     const renderer = render && render.renderer;
@@ -456,6 +456,63 @@ try {
     }
     roots.sort((a, b) => b.drawables - a.drawables);
     const info = renderer && renderer.info;
+
+    // Texture-memory estimate: unique image Sources (what the GPU uploads once per source)
+    // and unique Texture objects (samplers/views into them). Compressed sources carry a
+    // mipmaps array of {data} payloads; when the CPU copy is gone, fall back to
+    // width*height*bytesPerTexel for the format. Uncompressed sources estimate
+    // width*height*4, times 4/3 when a mip chain is generated.
+    const textures = new Set();
+    const sourceTexture = new Map(); // Source -> first Texture seen (for format/mipmap shape)
+    scene.traverse((o) => {
+      const materials = o && o.material
+        ? (Array.isArray(o.material) ? o.material : [o.material])
+        : [];
+      for (const material of materials) {
+        if (!material) continue;
+        for (const value of Object.values(material)) {
+          if (value && value.isTexture) {
+            textures.add(value);
+            if (value.source && !sourceTexture.has(value.source)) {
+              sourceTexture.set(value.source, value);
+            }
+          }
+        }
+      }
+    });
+    const COMPRESSED_BYTES_PER_TEXEL = {
+      0x83F1: 0.5, 0x83F2: 1, 0x83F3: 1, // S3TC DXT1 / DXT3 / DXT5 (RGBA)
+      0x8C4C: 0.5, 0x8C4D: 1, // ETC1/ETC2 RGB / ETC2 RGBA
+      0x8DBB: 0.5, 0x8DBC: 1, 0x8DBD: 1, // ETC2 R11 / RG11 / RGBA8 punches through below
+      0x8E8C: 1, 0x8E8D: 1, 0x8E8E: 1, 0x8E8F: 1, // BC7 / BC6H / BC5 / BC4 approx
+      0x93B0: 1, 0x93B1: 1, 0x93B2: 1, 0x93D0: 1, // ASTC 4x4 .. 8x8 approximations
+    };
+    let estimatedBytes = 0;
+    for (const [source, texture] of sourceTexture) {
+      const mipmaps = Array.isArray(texture.mipmaps) ? texture.mipmaps : [];
+      const levels = mipmaps.filter((level) => level && level.data && level.data.byteLength);
+      if (texture.isCompressedTexture && levels.length) {
+        for (const level of levels) estimatedBytes += level.data.byteLength;
+        continue;
+      }
+      const image = source && source.data;
+      const width = Number((mipmaps[0] && mipmaps[0].width) || (image && image.width) || 0);
+      const height = Number((mipmaps[0] && mipmaps[0].height) || (image && image.height) || 0);
+      if (!(width > 0) || !(height > 0)) continue;
+      if (texture.isCompressedTexture) {
+        estimatedBytes += width * height * (COMPRESSED_BYTES_PER_TEXEL[texture.format] || 1);
+      } else {
+        const mipmapped = texture.generateMipmaps !== false || mipmaps.length > 1;
+        estimatedBytes += width * height * 4 * (mipmapped ? 4 / 3 : 1);
+      }
+    }
+    // GFX-10 dedupe ledger: entries/users/hits plus total hashed bytes and digest wall time.
+    // Same module URL the app imported, so this reads the live registry, not a second instance.
+    let imageSourceDedupe = null;
+    try {
+      const mod = await import('/src/render/imageSourceDedupe.js');
+      imageSourceDedupe = mod.imageSourceDedupeStats();
+    } catch { /* older tree or module unreachable — field stays null */ }
     return {
       drawables,
       instancedMeshes: instanced,
@@ -465,6 +522,13 @@ try {
       programs: info && Array.isArray(info.programs) ? info.programs.length : null,
       geometries: info && info.memory ? info.memory.geometries : null,
       textures: info && info.memory ? info.memory.textures : null,
+      uniqueSources: sourceTexture.size,
+      uniqueTextures: textures.size,
+      estimatedTextureMB: Math.round(estimatedBytes / 104857.6) / 10,
+      resolvingMarkerFallbacks: Number.isFinite(Number(render && render.resolvingMarkerFallbacks))
+        ? Number(render.resolvingMarkerFallbacks)
+        : null,
+      imageSourceDedupe,
       topRoots: roots.slice(0, 20),
     };
   }).catch(() => null);

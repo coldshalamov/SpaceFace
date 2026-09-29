@@ -158,6 +158,120 @@ const RESOLVING_MARKER_MATERIAL = new THREE.MeshStandardMaterial({
 });
 RESOLVING_MARKER_MATERIAL.userData.spacefaceSharedAsset = true;
 
+// GFX-12: a pending authored ship shows its own lowest-detail resident body instead of the
+// abstract marker whenever the catalog record is already resident (the normal cold-start case —
+// the canonical library completes before control). Stand-in meshes share the record's geometry
+// buffers outright and draw through this module-level cache of opaque MeshStandardMaterial keyed
+// by the primitive's base/emissive colour — no maps, no vertex colours, no instancing — so the
+// stand-in links no new program variant in bloomScene, same as the marker it replaces.
+const STAND_IN_MATERIALS = new Map();
+const STAND_IN_LOD_PREFERENCE = ['lod2', 'lod1', 'lod0'];
+const WHOLE_SHIP_STAND_IN_TARGET_LENGTH = 1.72;
+// A pending substrate retries its resident-record lookup at this cadence, not every frame —
+// the lookup scans the renderer's resolved libraries and settled decode cache.
+const STAND_IN_RETRY_MS = 200;
+
+let resolvingMarkerFallbacks = 0;
+// wrapShipWithAuthoredParts Object.assign()s the substrate's userData onto the boundary, so the
+// pending flag exists on two nodes and every settle path can run twice. Settlement is keyed by
+// the marker OBJECT — shared by both userData copies — which makes every release idempotent.
+const countedFallbackMarkers = new WeakSet();
+
+/**
+ * Gauge: how many admission substrates are currently on the abstract octahedron. Raised when a
+ * substrate cannot find a resident record at build, dropped when the pending retry lands the
+ * ship's own stand-in. A settled cold New Game reads 0.
+ */
+export function resolvingMarkerFallbackCount() {
+  return resolvingMarkerFallbacks;
+}
+
+function publishResolvingMarkerFallbacks() {
+  const render = globalThis && globalThis.window && globalThis.window.SF
+    && globalThis.window.SF.state && globalThis.window.SF.state.render;
+  if (render) render.resolvingMarkerFallbacks = resolvingMarkerFallbacks;
+}
+
+function settleFallbackMarker(marker) {
+  if (!marker || !countedFallbackMarkers.delete(marker)) return false;
+  resolvingMarkerFallbacks--;
+  publishResolvingMarkerFallbacks();
+  return true;
+}
+
+function standInMaterialFor(primitiveMaterial) {
+  const color = primitiveMaterial && primitiveMaterial.color
+    ? primitiveMaterial.color.getHex() : 0x6a7688;
+  const emissive = primitiveMaterial && primitiveMaterial.emissive
+    ? primitiveMaterial.emissive.getHex() : 0;
+  const key = `${color}|${emissive}`;
+  let material = STAND_IN_MATERIALS.get(key);
+  if (!material) {
+    material = new THREE.MeshStandardMaterial({
+      color,
+      emissive,
+      emissiveIntensity: emissive ? 0.9 : 0,
+      roughness: 0.9,
+      metalness: 0.08,
+      vertexColors: false,
+    });
+    material.userData.spacefaceSharedAsset = true;
+    material.userData.authoredResolvingMarker = true;
+    material.dispose = () => {};
+    STAND_IN_MATERIALS.set(key, material);
+  }
+  return material;
+}
+
+/**
+ * Coarsest detail tier the record carries: lod2 where authored, else the lowest level present.
+ * Untagged primitives are always-visible in the composed body, so they ride every tier here too.
+ */
+function standInPrimitivesFor(record) {
+  const primitives = record && Array.isArray(record.primitives) ? record.primitives : [];
+  const tagged = new Set();
+  for (const primitive of primitives) {
+    const level = primitive.tags && primitive.tags.lod;
+    if (level) tagged.add(level);
+  }
+  const level = STAND_IN_LOD_PREFERENCE.find((candidate) => tagged.has(candidate)) || null;
+  return primitives.filter((primitive) => (
+    !primitive.tags || !primitive.tags.lod || primitive.tags.lod === level
+  ));
+}
+
+function lodStandInFor(entity, record) {
+  const primitives = standInPrimitivesFor(record);
+  const boundsSize = record && record.bounds && record.bounds.size;
+  const sourceLength = Array.isArray(boundsSize) ? Number(boundsSize[0]) : 0;
+  if (!primitives.length || !(sourceLength > 0)) return null;
+  const group = new THREE.Group();
+  group.name = 'AuthoredResolvingStandIn';
+  // Identical normalization to the composed body: the hull part mounts at target length 1.72 and
+  // the hull group scales by entity.radius — the stand-in applies both in one transform.
+  const entityScale = Number.isFinite(entity && entity.radius) ? entity.radius : 1;
+  group.scale.setScalar((WHOLE_SHIP_STAND_IN_TARGET_LENGTH * entityScale) / sourceLength);
+  for (const primitive of primitives) {
+    if (!primitive.geometry) continue;
+    // The substrate teardown path respects this flag; residency eviction disposes through its own
+    // resource handles, not detached-object traversal, so the record's buffers stay safe.
+    primitive.geometry.userData = primitive.geometry.userData || {};
+    primitive.geometry.userData.spacefaceSharedAsset = true;
+    const mesh = new THREE.Mesh(primitive.geometry, standInMaterialFor(primitive.material));
+    mesh.name = `StandIn_${primitive.name || 'Primitive'}`;
+    if (primitive.matrix) primitive.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.userData.spacefaceSharedAsset = true;
+    mesh.userData.authoredResolvingMarker = true;
+    group.add(mesh);
+  }
+  if (!group.children.length) return null;
+  group.userData.spacefaceSharedAsset = true;
+  group.userData.authoredResolvingMarker = true;
+  return group;
+}
+
 function resolvingMarkerFor(entity) {
   const marker = new THREE.Mesh(RESOLVING_MARKER_GEOMETRY, RESOLVING_MARKER_MATERIAL);
   marker.name = 'AuthoredResolvingMarker';
@@ -168,17 +282,105 @@ function resolvingMarkerFor(entity) {
   return marker;
 }
 
-function directAuthoredAdmissionSubstrate(entity) {
+/**
+ * Late-library retry for a substrate that fell back because no record was resident at build time.
+ * Called from the renderer's per-frame marker sync while the boundary stays pending; resolves the
+ * resident record again, swaps the octahedron for the ship's own stand-in, and drops the fallback
+ * count back out — the published counter is a gauge of substrates still on the abstract marker.
+ */
+export function upgradeAdmissionStandIn(boundary, resolveRecord) {
+  const boundaryData = boundary && boundary.userData;
+  if (!boundaryData || boundaryData.admissionStandInPending !== true) return false;
+  const marker = boundaryData.resolvingMarker;
+  const substrate = marker && marker.parent;
+  if (!marker || !substrate || !substrate.userData || !substrate.userData.authoredAdmissionSubstrate) {
+    delete boundaryData.admissionStandInPending;
+    return false;
+  }
+  // The resolver walks every resolved library plus the settled decode cache — throttle the retry
+  // so N pending substrates do not each run that scan per frame.
+  const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+  if (boundaryData.admissionStandInRetryAt > now) return false;
+  boundaryData.admissionStandInRetryAt = now + STAND_IN_RETRY_MS;
+  const entity = substrate.userData.admissionEntity || boundaryData.admissionEntity;
+  const resolver = typeof resolveRecord === 'function'
+    ? resolveRecord
+    : substrate.userData.admissionStandInResolver;
+  let record = null;
+  try { record = typeof resolver === 'function' ? resolver(entity) : null; }
+  catch { record = null; }
+  const standIn = record ? lodStandInFor(entity, record) : null;
+  if (!standIn) return false; // still nothing resident — keep waiting while pending
+  substrate.remove(marker);
+  substrate.add(standIn);
+  substrate.userData.resolvingMarker = standIn;
+  substrate.userData.admissionStandInPending = false;
+  substrate.userData.authoredAdmissionTemporaryDrawables = Math.max(1, standIn.children.length);
+  boundaryData.resolvingMarker = standIn;
+  boundaryData.admissionStandInPending = false;
+  boundaryData.authoredAdmissionTemporaryDrawables = substrate.userData.authoredAdmissionTemporaryDrawables;
+  settleFallbackMarker(marker);
+  return true;
+}
+
+/**
+ * The pending window ended while the substrate was still on the octahedron — the authored root
+ * committed, or the admission went terminal. Release the fallback gauge; the marker itself leaves
+ * with the detached substrate.
+ */
+export function releaseAdmissionStandInFallback(boundary) {
+  const boundaryData = boundary && boundary.userData;
+  if (!boundaryData || boundaryData.admissionStandInPending !== true) return false;
+  boundaryData.admissionStandInPending = false;
+  const marker = boundaryData.resolvingMarker;
+  const substrate = marker && marker.parent;
+  if (substrate && substrate.userData) {
+    // Clear the substrate's own flag so the detach-time release hook cannot double-count.
+    substrate.userData.admissionStandInPending = false;
+  }
+  settleFallbackMarker(marker);
+  return true;
+}
+
+function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null) {
   const root = new THREE.Group();
   root.name = `${entity && entity.data && entity.data.defId || 'ship'}_DirectAuthoredAdmission`;
   root.visible = false;
   root.userData.kind = 'ship';
   root.userData.authoredAdmissionSubstrate = true;
-  const marker = resolvingMarkerFor(entity);
+  const standIn = standInRecord ? lodStandInFor(entity, standInRecord) : null;
+  let marker;
+  if (standIn) {
+    marker = standIn;
+  } else {
+    marker = resolvingMarkerFor(entity);
+    countedFallbackMarkers.add(marker);
+    resolvingMarkerFallbacks++;
+    publishResolvingMarkerFallbacks();
+    if (standInRecord) {
+      // A resident record that cannot build a stand-in (no primitives/bounds) never becomes
+      // usable — do not retry it every frame.
+      root.userData.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
+    } else {
+      // Built before the canonical library resolved: retry while pending so a cold boot still
+      // converges on the ship's own low-detail body instead of sitting on the octahedron.
+      root.userData.resolvingMarkerFallbackReason = 'no-resident-record';
+      root.userData.admissionStandInPending = true;
+    }
+    root.userData.admissionEntity = entity;
+    root.userData.admissionStandInResolver = resolveRecord;
+    // Detach paths that never see a terminal marker sync (despawn mid-pending, teardown) still
+    // release the gauge — disposeDetachedObject invokes this hook on the substrate root.
+    root.userData.admissionStandInRelease = () => {
+      if (root.userData.admissionStandInPending !== true) return;
+      root.userData.admissionStandInPending = false;
+      settleFallbackMarker(root.userData.resolvingMarker);
+    };
+  }
   root.add(marker);
   root.userData.resolvingMarker = marker;
   root.userData.authoredResolvingMarker = true;
-  root.userData.authoredAdmissionTemporaryDrawables = 1;
+  root.userData.authoredAdmissionTemporaryDrawables = Math.max(1, marker.isMesh ? 1 : marker.children.length);
   root.userData.shipConstruction = 'authored-direct';
   root.userData.assetId = 'DIRECT_AUTHORED_ADMISSION';
   root.userData.renderContract = {
@@ -486,6 +688,11 @@ export function installVisualOverrides(factory, options = {}) {
   const authoredStationBuilder = typeof options.authoredStationBuilder === 'function'
     ? options.authoredStationBuilder
     : buildAuthoredStationArchetype;
+  // GFX-12: optional synchronous resident-record lookup — the live renderer injects the canonical
+  // library resolver; preview/bench factories without one keep the abstract marker fallback.
+  const admissionStandInRecord = typeof options.admissionStandInRecord === 'function'
+    ? options.admissionStandInRecord
+    : () => null;
   factory.build = (entity) => {
     let visual = null;
     const requiredWholeShip = requiresProductionWholeShip(entity);
@@ -503,7 +710,10 @@ export function installVisualOverrides(factory, options = {}) {
       // zero-draw ownership boundary while the exact GLB composition is committed; constructing a
       // complete bespoke/procedural ship here would allocate and dispose an object graph that is
       // intentionally never shown.
-      visual = directAuthoredAdmissionSubstrate(entity);
+      let standInRecord = null;
+      try { standInRecord = admissionStandInRecord(entity); }
+      catch (error) { reportVisualWarning(options, '[visualOverrides] admission stand-in lookup failed', error); }
+      visual = directAuthoredAdmissionSubstrate(entity, standInRecord, admissionStandInRecord);
     } else if (isWorldPlaceProp(entity)) {
       const geologyFallback = hasExplicitAuthoredGeologyPresentation(entity)
         ? fallbackBuild(entity)

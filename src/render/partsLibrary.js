@@ -16,7 +16,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
 import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
-import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
+import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
@@ -2081,6 +2081,52 @@ export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
   ));
   if (!record) throw new Error(requiredWholeShipMessage(entity, wholeShipFile, records, partRoot));
   return record;
+}
+
+/**
+ * The resident whole-ship record an admission stand-in may borrow — a synchronous lookup, never a
+ * load. The production catalog is resident before control, so a pending ship's own low-detail body
+ * is already decoded: split-file hulls keep it in the `_lod2` sibling GLB, single-file bodies carry
+ * it as `tags.lod === 'lod2'` primitives on the lod0 record. Returns null when nothing is resident;
+ * the caller falls back to the abstract resolving marker and counts the miss.
+ */
+export function residentWholeShipStandInRecord(entity, options = {}) {
+  const selection = wholeShipVisualForEntity(entity, options);
+  if (!selection) return null;
+  const lod2File = wholeShipLodFileForEntity(entity, 'lod2', options);
+  const baseFile = wholeShipFileForResolution(entity, selection, options);
+  const candidates = lod2File && lod2File !== baseFile ? [lod2File, baseFile] : [baseFile];
+  const seen = new Set();
+  // Scan every resolved library the renderer holds: the entity plan lands in the canonical map,
+  // while a split-file `_lod2` sibling decoded for a LOD demotion lives under the
+  // 'whole-ship-lod-family' scope.
+  const resolved = options.renderer && resolvedLibraryByRenderer.get(options.renderer);
+  for (const file of candidates) {
+    if (!file || seen.has(file)) continue;
+    seen.add(file);
+    if (resolved instanceof Map) {
+      for (const library of resolved.values()) {
+        if (!(library instanceof Map)) continue;
+        for (const records of library.values()) {
+          const record = (records || []).find((candidate) => recordUrlEndsWith(candidate, file));
+          if (record) return record;
+        }
+      }
+    }
+  }
+  // Sector prewarm decodes spawnable hulls straight into the runtime's asset cache long before
+  // their owners' admission jobs run — that settled decode is resident too.
+  const decoded = peekSettledAuthoredRecords(options.renderer);
+  for (const file of candidates) {
+    if (!file) continue;
+    const record = decoded.find((candidate) => (
+      recordIsResident(candidate)
+        && typeof candidate.url === 'string'
+        && normalizePartUrl(candidate.url).endsWith(file)
+    ));
+    if (record) return record;
+  }
+  return null;
 }
 
 /**
@@ -12311,7 +12357,9 @@ function firstRenderable(root) {
   return visible || any;
 }
 
-function disposeDetachedObject(root) {
+export function disposeDetachedObject(root) {
+  const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
+  if (typeof releaseStandIn === 'function') releaseStandIn();
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
   root.traverse((object) => {

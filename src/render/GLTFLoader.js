@@ -7,6 +7,11 @@
 // It is intentionally failure-explicit: unsupported compression, sparse accessors, or animation data
 // throw a useful error so the visual override can retain the procedural fallback.
 import * as THREE from 'three';
+import {
+  claimSharedImageTexture,
+  imageSourceKeyAsync,
+  sharedImageTextureFor,
+} from './imageSourceDedupe.js';
 
 const COMPONENT = Object.freeze({
   5120: Int8Array,
@@ -112,11 +117,22 @@ async function createTexture(json, binary, textureIndex, colorSpace, cache, obje
     assert(imageDef.bufferView != null, 'only embedded bufferView images are supported');
     const bufferView = json.bufferViews[imageDef.bufferView];
     const start = (bufferView.byteOffset || 0);
-    const bytes = binary.slice(start, start + bufferView.byteLength);
-    const blob = new Blob([bytes], { type: imageDef.mimeType || 'image/png' });
-    const url = URL.createObjectURL(blob);
-    objectUrls.push(url);
-    const texture = await new THREE.TextureLoader().loadAsync(url);
+    const mimeType = imageDef.mimeType || 'image/png';
+    // Cross-GLB image-source dedupe: identical embedded bytes decode once and share one
+    // THREE.Source; this document's texture still applies its own colorSpace and sampler.
+    const sourceKey = await imageSourceKeyAsync(
+      binary.subarray(start, start + bufferView.byteLength),
+      bufferView.byteLength,
+      mimeType,
+    );
+    let texture = sharedImageTextureFor(sourceKey);
+    if (!texture) {
+      const bytes = binary.slice(start, start + bufferView.byteLength);
+      const blob = new Blob([bytes], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      objectUrls.push(url);
+      texture = claimSharedImageTexture(sourceKey, await new THREE.TextureLoader().loadAsync(url));
+    }
     texture.name = imageDef.name || `gltf-image-${textureDef.source}`;
     texture.colorSpace = colorSpace || THREE.NoColorSpace;
     texture.anisotropy = 4;
