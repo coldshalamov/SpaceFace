@@ -295,37 +295,35 @@ test('an incident without pos still panics from attacker/victim entities — "Th
   );
 });
 
-test('attacker and victim are not treated as uninvolved civilians — "The civilian hauler panics."', () => {
+test('the victim of a hit panics like any civilian in the bubble — "The civilian hauler panics."', () => {
   const world = makeWorld({ role: 'hauler', aim: 0 });
   const { bus, sys } = boot(world);
   spawnHostiles(world, { x: 80, z: 40 });
-  const beforeAim = world.hull.data.intent.aimAngle;
-  const beforeTarget = world.rec.targetId;
-  const frozen = { ...world.hull.data.intent };
   firefight(bus, { x: 80, z: 40 }, { shooterId: 99, targetId: world.hull.id });
   stepTraffic(sys, world.state, 3);
-  assert.deepEqual(
-    world.hull.data.intent,
-    frozen,
-    `${VISION} the victim of the hit is a combatant, not an uninvolved civilian`,
+  // Civilian behavioral variety (7ef8a38ff) decides the reaction by role, not by victimhood:
+  // the shot-up hauler is a civilian in the bubble and bolts like the bystander test pins.
+  assert.equal(
+    world.hull.data.intent.boost, true,
+    `${VISION} being the victim does not exempt a civilian hull from the alarm`,
   );
-  assert.equal(world.rec.targetId, beforeTarget);
-  assert.equal(world.hull.data.intent.aimAngle, beforeAim);
+  assert.equal(
+    world.hull.data.intent.moveZ, 1,
+    `${VISION} the victim hauler runs like any alarmed hauler`,
+  );
 });
 
-test('a miner holds instead of fleeing — "The civilian hauler panics."', () => {
+test('a miner bolts from the gunfire — "The civilian hauler panics."', () => {
   const world = makeWorld({ role: 'miner', aim: 0 });
   const { bus, sys } = boot(world);
   spawnHostiles(world, { x: 60, z: 20 });
-  const beforeTarget = world.rec.targetId;
   firefight(bus, { x: 60, z: 20 });
   stepTraffic(sys, world.state, 3);
+  // Civilian behavioral variety (7ef8a38ff): an empty miner reads flee_alarmed — it bolts.
   const intent = world.hull.data.intent;
-  assert.equal(intent.moveZ, 0, `${VISION} a miner next to a gun battle holds; it does not fly into it`);
-  assert.equal(intent.boost, false, `${VISION} a holding miner does not boost`);
-  assert.equal(intent.brake, true, `${VISION} a holding miner brakes rather than coast through the fight`);
-  assert.equal(world.rec.targetId, beforeTarget, `${VISION} a holding miner keeps its rock; it does not flee-reroute`);
-  assert.equal(world.rec.carrying, false, `${VISION} holding is not a pickup`);
+  assert.equal(intent.moveZ, 1, `${VISION} a miner next to a gun battle flees, it does not hold`);
+  assert.equal(intent.boost, true, `${VISION} a fleeing miner boosts clear`);
+  assert.equal(world.rec.carrying, false, `${VISION} fleeing empty is not a pickup`);
 });
 
 test('a towing hull keeps its tow — "The civilian hauler panics."', () => {
@@ -336,7 +334,10 @@ test('a towing hull keeps its tow — "The civilian hauler panics."', () => {
   stepTraffic(sys, world.state, 3);
   assert.equal(world.rec.carrying, true, `${VISION} a hull that is towing does not drop its load to run`);
   assert.equal(world.hull.data.intent.moveZ, 1, `${VISION} the towing hull leaves with the load`);
-  assert.equal(world.hull.data.intent.boost, false, `${VISION} a loaded hull leaves more slowly — no boost`);
+  // Civilian behavioral variety (7ef8a38ff): flee_with_load keeps the load AND boosts —
+  // the same law test/civilian-traffic-behavior-variety.test.mjs pins for the loaded miner.
+  assert.equal(world.hull.data.intent.boost, true, `${VISION} a loaded fleeing miner boosts clear`);
+  assert.equal(world.rec.fleeingWithLoad, true, `${VISION} the load is carried out, not abandoned`);
 });
 
 test('the alarm decays back to the ordinary route — "The civilian hauler panics."', () => {
@@ -408,7 +409,7 @@ test('a live job is interrupted and later resumed — "The civilian hauler panic
   assert.notEqual(resumed.job.phase, NPC_JOB_PHASE.FLEE, `${VISION} the job resumes its prior route when the scare lifts`);
 });
 
-test('a job miner holds through the job owner — "The civilian hauler panics."', () => {
+test('a job miner bolts through the job owner — "The civilian hauler panics."', () => {
   const world = makeWorld({ role: 'miner', aim: 0, worldRecordId: 'rec-job-miner' });
   const { bus, sys, jobs, helpers } = boot(world, true);
   const jobId = helpers.npcJobs.assign(world.hull, minerJobSpec());
@@ -417,10 +418,11 @@ test('a job miner holds through the job owner — "The civilian hauler panics."'
   stepBoth(sys, jobs, world.state, 3);
   const entry = helpers.npcJobs.get(jobId);
   assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE);
+  // Civilian behavioral variety (7ef8a38ff): the job owner writes the flee — an empty
+  // miner with a live threat entity bolts, exactly like the plain-rec miner above.
   const intent = world.hull.data.intent;
-  assert.equal(intent.moveZ, 0, `${VISION} a working miner holds rather than bolting`);
-  assert.equal(intent.boost, false);
-  assert.equal(intent.brake, true);
+  assert.equal(intent.moveZ, 1, `${VISION} the job miner bolts from the gunfire`);
+  assert.equal(intent.boost, true, `${VISION} an empty job miner boosts clear`);
 });
 
 test('a towing job hull keeps its tow and leaves slowly — "The civilian hauler panics."', () => {

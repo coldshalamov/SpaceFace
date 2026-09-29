@@ -474,7 +474,6 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 72 | PB-MIS-A | SF-136 real crusher in the yard tow-out (deep-dive 01) — private timeout radius becomes real machine law with recoverable result | PB | CLAIMED pb-ten-lanes — seam missions.js |
-| 73 | PB-JOBS-A | SF-076+089 Ceres handoff: reproduce D89 drop scenario, then repair first missing real transition + stale-pin audit | PB | CLAIMED pb-ten-lanes — CHECK pair; boards-3x3 staleness verified 2026-09-28 (traffic.js clean, last commit 43cbaeb38) |
 | 74 | PB-ECON-A | SF-106+120 hauler viability re-measure post-D80 + cohort-vs-live reconciliation instrument | PB | OPEN — CHECK pair |
 | 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
 | 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | DONE — bound-wreck pool reattach + classified-mint idempotence fix; 3/3 focused + 116/116 adjacent; receipt SF-286-FIRST-VICTORY-WRECK.md |
