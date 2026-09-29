@@ -130,6 +130,8 @@ export const hullBurst = {
     // so an id latch would skip a new hull that reused a dead hull's id inside one window. It lives on the
     // system, not in state, so nothing that snapshots or clones state ever meets a Set.
     this._latched = new WeakSet();
+    // The hull the Grip Bumper is carrying (an entity object; state.hullBurst.grip holds only its id, as plain data).
+    this._held = null;
     this._ensureRuntime();
     if (this.bus && typeof this.bus.on === 'function') {
       for (const event of ['game:new', 'save:loaded', 'save:restoring']) {
@@ -150,7 +152,7 @@ export const hullBurst = {
     const state = this.state;
     if (!state) return null;
     if (!state.hullBurst) {
-      state.hullBurst = { phase: 'ready', kind: null, activeUntil: 0, readyAt: 0, hits: 0 };
+      state.hullBurst = { phase: 'ready', kind: null, activeUntil: 0, readyAt: 0, hits: 0, grip: null };
     }
     return state.hullBurst;
   },
@@ -158,7 +160,8 @@ export const hullBurst = {
   _reset() {
     const rt = this._ensureRuntime();
     if (!rt) return;
-    rt.phase = 'ready'; rt.kind = null; rt.activeUntil = 0; rt.readyAt = 0; rt.hits = 0;
+    rt.phase = 'ready'; rt.kind = null; rt.activeUntil = 0; rt.readyAt = 0; rt.hits = 0; rt.grip = null;
+    this._held = null;
     this._latched = new WeakSet();
   },
 
@@ -199,6 +202,7 @@ export const hullBurst = {
   _end(reason) {
     const rt = this.state && this.state.hullBurst;
     if (!rt || rt.phase !== 'active') return;
+    if (this._held) this._release(reason);
     rt.phase = 'cooling';
     this._latched = new WeakSet();
     const now = simNow(this.state);
@@ -215,7 +219,10 @@ export const hullBurst = {
     const actions = state.input && state.input.actions;
     if (actions && actions.hullBurst) {
       actions.hullBurst = false;
-      this.activate();
+      // Pressing the key again while the Grip Bumper holds a hostage lets it go (and ends the burst: the
+      // recharge starts now, from the cut). For every other burst a press while active is simply refused.
+      if (rt.phase === 'active' && this._held) this._end('cut');
+      else this.activate();
     }
     const now = simNow(state);
     if (rt.phase === 'cooling' && now >= rt.readyAt) {
@@ -227,7 +234,8 @@ export const hullBurst = {
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     const def = fittedHullBurst(state);
     if (!player || player.alive === false || !def) { this._end('interrupted'); return; }
-    this._sweep(state, rt, def, player);
+    if (this._held) this._carry(state, rt, def, player);
+    else this._sweep(state, rt, def, player);
   },
 
   _sweep(state, rt, def, player) {
@@ -253,6 +261,7 @@ export const hullBurst = {
   _deliver(state, rt, def, player, target, geo, closing, bumperMass, hostile) {
     switch (def.effect) {
       case 'lance': return this._lance(state, rt, def, player, target, closing, hostile);
+      case 'grip': return this._grip(state, rt, def, player, target, closing, hostile);
       default: return this._hurl(state, rt, def, player, target, geo, closing, bumperMass, hostile);
     }
   },
@@ -297,6 +306,138 @@ export const hullBurst = {
       this.bus.emit('hullBurst:hit', { kind: def.id, targetId: target.id, hostile: true, damage, closing, scale, burnStacks: stacks, lethal: light && scale >= 0.99, pos: at });
       this.bus.emit('audio:cue', { id: 'sfx_bomb_thermite_ignite', position: at, gain: 0.5 + 0.5 * scale });
       this.bus.emit('presentation:vfxCue', { id: 'hullburst.lance', lane: 'hullburst', pos: at, particles: Math.round(10 + 24 * scale), lights: 1, flashReduced: flashReduced(state) });
+    }
+  },
+
+  /**
+   * GRIP BUMPER: catch the first light hostile hull the wedge meets. It is held by _carry every tick until the
+   * burst ends, the player presses the key again, or the hostage dies. Anything else in the wedge is ignored
+   * while a hull is held (one hostage), and a hull too heavy to catch is not touched at all.
+   */
+  _grip(state, rt, def, player, target, closing, hostile) {
+    if (!hostile || this._held) return;
+    if (massOf(target, 1) > def.gripMaxMass) return;
+    this._held = target;
+    rt.grip = { targetId: target.id, since: simNow(state), refreshAt: simNow(state) + def.refreshS };
+    rt.hits += 1;
+    this._takeHelm(state, def, player, target, def.massScale * massOf(player, 1), 'catch');
+    if (this.bus) {
+      const at = { x: finite(target.pos.x), z: finite(target.pos.z) };
+      this.bus.emit('hullBurst:hit', { kind: def.id, targetId: target.id, hostile: true, caught: true, closing: finite(closing), pos: at });
+      this.bus.emit('audio:cue', { id: 'sfx_tether_latch_lock', position: at, gain: 0.9 });
+      this.bus.emit('presentation:vfxCue', { id: 'hullburst.catch', lane: 'hullburst', pos: at, particles: 16, lights: 1, flashReduced: flashReduced(state) });
+    }
+  },
+
+  /**
+   * Keep the hostage's helm lost and credit the player for it. A hitstun impulse takes the helm for a duration
+   * set by the one law; the carry re-takes it every `refreshS` so the stun always outlasts the hold. The
+   * impulse record names the player, so a rock the carried hull meets is the player's kill.
+   */
+  _takeHelm(state, def, player, target, bumperMass, phase) {
+    const targetMass = massOf(target, 1);
+    const rot = finite(player.rot);
+    const dirX = Math.cos(rot);
+    const dirZ = Math.sin(rot);
+    recordImpulseProvenance(target, { actorId: state.playerId, weaponId: def.moduleId, tag: 'hull_burst', appliedTick: state.tick | 0, magnitude: 0 });
+    publishHitstunImpulse(this.bus, {
+      // 'hull_grip' is deliberately NOT a shove-class source: a held hull must not have its inbound velocity
+      // cancelled or be handed the outbound floor; the carry moves it. It still gets the law's helm loss.
+      source: 'hull_grip',
+      victimId: target.id,
+      attackerId: state.playerId,
+      attackerMass: bumperMass,
+      victimMass: targetMass,
+      deltaV: 0.9 * Math.max(60, finite(target.combatSpeed, 120)),
+      dirX,
+      dirZ,
+      hitSide: signedHitSide(target, { x: dirX, z: dirZ }, null, target.id),
+      provenance: Object.freeze({ schemaVersion: 1, kind: 'hull_burst', source: def.id, tag: 'hull_burst', phase }),
+      tick: state.tick,
+    });
+  },
+
+  /** One tick of the carry: a spring-damper toward the nose socket, delivered as an impulse. */
+  _carry(state, rt, def, player) {
+    const held = this._held;
+    if (!held || held.alive === false) { this._held = null; rt.grip = null; return; }
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    const fx = Math.cos(finite(player.rot));
+    const fz = Math.sin(finite(player.rot));
+    const reach = finite(player.radius, 12) + finite(held.radius, 8) + def.gapWu;
+    const dt = 1 / 60;
+    let ax = def.springK * (finite(player.pos.x) + fx * reach - finite(held.pos.x)) + def.springDamp * (finite(player.vel && player.vel.x) - finite(held.vel && held.vel.x));
+    let az = def.springK * (finite(player.pos.z) + fz * reach - finite(held.pos.z)) + def.springDamp * (finite(player.vel && player.vel.z) - finite(held.vel && held.vel.z));
+    const mag = Math.hypot(ax, az);
+    if (mag > def.maxAccelWuS2) { ax *= def.maxAccelWuS2 / mag; az *= def.maxAccelWuS2 / mag; }
+    const m = massOf(held, 1);
+    physics.applyImpulse({
+      entityId: held.id,
+      impulse: { x: ax * m * dt, z: az * m * dt },
+      point: null,
+      reason: 'hull_grip',
+      tick: state.tick,
+      provenance: { actorId: state.playerId, weaponId: def.moduleId, tag: 'hull_burst' },
+    });
+    const now = simNow(state);
+    if (rt.grip && now >= rt.grip.refreshAt) {
+      rt.grip.refreshAt = now + def.refreshS;
+      this._takeHelm(state, def, player, held, def.massScale * massOf(player, 1), 'carry');
+    }
+  },
+
+  /**
+   * Let the hostage go at the player's speed plus a kick along the nose, so it always leaves ahead of the
+   * player, then it is an ordinary flung hull: helm lost (a shove-class 'hull_burst' hit takes it, with the
+   * outbound floor), credit held by the slice-A pipeline, whatever it hits afterwards is the player's doing.
+   */
+  _release(reason) {
+    const held = this._held;
+    const state = this.state;
+    const rt = state && state.hullBurst;
+    this._held = null;
+    if (rt) rt.grip = null;
+    if (!held || held.alive === false || !state) return;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const def = fittedHullBurst(state) || resolveHullBurst('grip', 1);
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!player || !def || !physics || typeof physics.applyImpulse !== 'function') return;
+    const fx = Math.cos(finite(player.rot));
+    const fz = Math.sin(finite(player.rot));
+    const wantX = finite(player.vel && player.vel.x) * def.releaseBoost + fx * def.releaseKickWuS;
+    const wantZ = finite(player.vel && player.vel.z) * def.releaseBoost + fz * def.releaseKickWuS;
+    const dvX = wantX - finite(held.vel && held.vel.x);
+    const dvZ = wantZ - finite(held.vel && held.vel.z);
+    const deltaV = Math.hypot(dvX, dvZ);
+    const m = massOf(held, 1);
+    physics.applyImpulse({
+      entityId: held.id,
+      impulse: { x: dvX * m, z: dvZ * m },
+      point: null,
+      reason: 'hull_burst',
+      tick: state.tick,
+      provenance: { actorId: state.playerId, weaponId: def.moduleId, tag: 'hull_burst' },
+    });
+    recordImpulseProvenance(held, { actorId: state.playerId, weaponId: def.moduleId, tag: 'hull_burst', appliedTick: state.tick | 0, magnitude: deltaV * m });
+    if (deltaV > 1e-6) {
+      publishHitstunImpulse(this.bus, {
+        source: def.hitStunSource,
+        victimId: held.id,
+        attackerId: state.playerId,
+        attackerMass: def.massScale * massOf(player, 1),
+        victimMass: m,
+        deltaV: Math.max(deltaV, 0.9 * Math.max(60, finite(held.combatSpeed, 120))),
+        dirX: dvX / deltaV,
+        dirZ: dvZ / deltaV,
+        hitSide: signedHitSide(held, { x: dvX, z: dvZ }, null, held.id),
+        provenance: Object.freeze({ schemaVersion: 1, kind: 'hull_burst', source: def.id, tag: 'hull_burst', phase: 'release' }),
+        tick: state.tick,
+      });
+    }
+    if (this.bus) {
+      this.bus.emit('hullBurst:released', { kind: def.id, targetId: held.id, reason, deltaV });
+      this.bus.emit('audio:cue', { id: 'sfx_massline_release', position: { x: finite(held.pos.x), z: finite(held.pos.z) }, gain: 0.8 });
     }
   },
 

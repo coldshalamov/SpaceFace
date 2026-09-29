@@ -49,6 +49,7 @@ export const BUMPER_TARGETS = Object.freeze({
   outboundAtHelmReturnWuS: 40,    // no buzz: a thrown hull is still leaving when its helm returns
   fieldKillsCreditedToPlayer: 2,  // of three, by the wedge and the hulls it flings
   fieldLandedShare: 1,
+  gripMaxSeparationWu: 15,        // the carried hull stays within 15 WU of its nose socket
 });
 
 /**
@@ -409,6 +410,111 @@ async function runLance(seed) {
   };
 }
 
+/**
+ * GRIP BUMPER. The player closes on a parked light hostile, the wedge catches it, and it rides the nose.
+ *   ram    the pilot holds course into a rock: the carried hull is the battering ram. The kill is the player's.
+ *   cut    the pilot presses the key again after a beat: the hostage is released faster than the player flies.
+ * Reports how tightly the hostage rides the nose socket, and whatever the hostage did to the world.
+ */
+async function runGrip(seed, { cutAfterS = null, tag }) {
+  const boot = await bootBumper(seed, {
+    systems: [...BUMPER_SYSTEMS, lootShards, mining, ships, cargo, economy],
+    playerPos: { x: -700, z: 0 },
+    moduleId: 'mod_grip_bumper_s',
+    kind: 'grip',
+  });
+  if (boot.reason) return { measured: false, tag, reason: boot.reason };
+  const { host } = boot;
+  const player = host.player;
+  const derivedCap = player.data && player.data.derived && player.data.derived.cargoCap;
+  if (Number.isFinite(derivedCap) && host.state.player && host.state.player.cargo) host.state.player.cargo.capVolume = derivedCap;
+  player.vel.x = 200;
+  player.vel.z = 0;
+  const rock = cutAfterS == null ? host.spawnObstacle({ pos: { x: 120, z: 0 }, radius: ROCK_RADIUS_WU * 1.5, mass: 9000, inertiaY: 9000, hull: 4000 }) : null;
+  const wasp = spawnHostileHull(host, 'ship_wasp', { x: -500, z: 0 });
+  host.step(1);
+  const walletBefore = finite(host.state.player && host.state.player.credits);
+  let activated = false;
+  let caughtTick = null;
+  let released = null;
+  const killed = [];
+  host.bus.on('hullBurst:activated', () => { activated = true; });
+  host.bus.on('hullBurst:hit', (p) => { if (p && p.caught && caughtTick == null) caughtTick = host.state.tick | 0; });
+  host.bus.on('hullBurst:released', (p) => { if (p) released = { tick: host.state.tick | 0, reason: p.reason, deltaV: round(p.deltaV, 1) }; });
+  host.bus.on('entity:killed', (p) => { if (p && p.id === wasp.id) killed.push({ killerId: p.killerId == null ? null : p.killerId, tick: host.state.tick | 0 }); });
+  const pickupLives = new Map();
+  let pickupsSeen = 0;
+  let maxSeparation = 0;
+  let sumSeparation = 0;
+  let carrySamples = 0;
+  let outboundAfterRelease = null;
+  let lit = false;
+  let cutSent = false;
+  host.step(60 * 14, {
+    before: ({ state }) => {
+      if (!lit) lit = light(host);
+      // A press of the key AFTER the catch, cutAfterS later, lets the hostage go.
+      if (cutAfterS != null && !cutSent && caughtTick != null && ((state.tick | 0) - caughtTick) >= cutAfterS * 60) {
+        state.input.actions.hullBurst = true;
+        cutSent = true;
+      }
+      const stop = killed.length > 0 || released != null;
+      writeRealPathInput(state, stop ? { brake: true } : { moveZ: 1, boost: true });
+    },
+    after: ({ state }) => {
+      // How tightly the hostage rides the nose socket once it is caught and pulled in (after 1 s).
+      if (caughtTick != null && released == null && wasp.alive !== false && ((state.tick | 0) - caughtTick) >= 60) {
+        const fx = Math.cos(finite(player.rot));
+        const fz = Math.sin(finite(player.rot));
+        const reach = finite(player.radius, 12) + finite(wasp.radius, 8) + 4;
+        const sep = Math.hypot(finite(wasp.pos.x) - (finite(player.pos.x) + fx * reach), finite(wasp.pos.z) - (finite(player.pos.z) + fz * reach));
+        maxSeparation = Math.max(maxSeparation, sep);
+        sumSeparation += sep;
+        carrySamples++;
+      }
+      if (released && outboundAfterRelease == null && ((state.tick | 0) - released.tick) >= 6) {
+        outboundAfterRelease = round(finite(wasp.vel.x) - finite(player.vel.x), 1);
+      }
+      const list = state.entityList || [];
+      for (let k = 0; k < list.length; k++) {
+        const e = list[k];
+        if (!e || e.type !== 'pickup') continue;
+        const life = pickupLives.get(e.id);
+        if (life && life.entity === e) continue;
+        pickupsSeen++;
+        pickupLives.set(e.id, { entity: e, leftTick: null });
+      }
+      for (const [id, life] of pickupLives) {
+        if (life.leftTick != null) continue;
+        const live = state.entities && state.entities.get ? state.entities.get(id) : null;
+        if (!live || live !== life.entity || live.alive === false) life.leftTick = state.tick | 0;
+      }
+      return undefined;
+    },
+  });
+  const stranded = [...pickupLives.values()].filter((l) => l.leftTick == null).length;
+  return {
+    measured: true,
+    tag,
+    lit: activated,
+    caught: caughtTick != null,
+    catchTick: caughtTick,
+    carrySamples,
+    maxSeparationWu: round(maxSeparation, 2),
+    meanSeparationWu: round(carrySamples ? sumSeparation / carrySamples : 0, 2),
+    released,
+    outboundAfterReleaseWuS: outboundAfterRelease,
+    killed: killed.length,
+    killedCreditedToPlayer: killed.filter((k) => k.killerId === player.id).length,
+    hostageAlive: wasp.alive !== false,
+    pickupsSeen,
+    pickupsStranded: stranded,
+    walletDelta: round(finite(host.state.player && host.state.player.credits) - walletBefore, 1),
+    rock: !!rock,
+    realPathProof: host.proof(),
+  };
+}
+
 export const scenario = {
   id: 'feel.bumper_scene',
   label: 'BUMPER Gravity Bumper yardstick: crawl vs swing fling distance, heavy shrug, three Wasps into a rock wall',
@@ -424,6 +530,8 @@ export const scenario = {
     const control = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'control_heavy', throttle: 1, boost: true, burst: false });
     const field = await runField(seed);
     const lance = await runLance(seed);
+    const gripRam = await runGrip(seed, { tag: 'grip_ram' });
+    const gripCut = await runGrip(seed, { tag: 'grip_cut', cutAfterS: 1.6 });
 
     const targets = [];
     const push = (id, label, value, unit, met, note) => targets.push({ id, label, value, unit, met: !!met, ...(note ? { note } : {}) });
@@ -497,12 +605,28 @@ export const scenario = {
         `alive ${lance.wardenAlive}, burning seen ${lance.wardenBurnSeen}, shield+armour+hull lost ${lance.wardenPoolLostShare}`);
     }
 
+    if (gripRam.measured) {
+      push('grip.caught', 'Grip Bumper: a light hostile in the line of flight is caught on the nose', gripRam.caught ? 1 : 0, 'bool', gripRam.caught,
+        `caught at tick ${gripRam.catchTick}`);
+      push('grip.rides', 'Grip Bumper: the hostage rides the nose socket (largest distance from it, WU, after the first second of carry)',
+        gripRam.maxSeparationWu, 'WU', gripRam.carrySamples > 0 && gripRam.maxSeparationWu <= BUMPER_TARGETS.gripMaxSeparationWu,
+        `${gripRam.carrySamples} samples; target <= ${BUMPER_TARGETS.gripMaxSeparationWu}`);
+      push('grip.ram', 'Grip Bumper: the carried hull is a battering ram: it dies on the rock and the kill is the player\'s',
+        gripRam.killedCreditedToPlayer, 'kills', gripRam.killedCreditedToPlayer === 1,
+        `killed ${gripRam.killed}, credited ${gripRam.killedCreditedToPlayer}; loot ${gripRam.pickupsSeen} pickups, ${gripRam.pickupsStranded} floating, wallet +${gripRam.walletDelta}`);
+    }
+    if (gripCut.measured) {
+      push('grip.cut', 'Grip Bumper: pressing the key again releases the hostage ahead of the player (its speed relative to the player, WU/s)',
+        gripCut.outboundAfterReleaseWuS, 'WU/s', gripCut.released && gripCut.released.reason === 'cut' && gripCut.outboundAfterReleaseWuS != null && gripCut.outboundAfterReleaseWuS > 0,
+        `released ${JSON.stringify(gripCut.released)}; hostage alive ${gripCut.hostageAlive}`);
+    }
+
     return {
       metrics: {
         schema: 'spaceface.feel.bumperScene.v1',
         realPathProof: (crawl && crawl.realPathProof) || null,
         targetsDefinition: BUMPER_TARGETS,
-        crawl, swing, medium, heavy, control, field, lance,
+        crawl, swing, medium, heavy, control, field, lance, gripRam, gripCut,
         targets,
       },
     };

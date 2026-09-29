@@ -80,6 +80,35 @@ export const HULL_BURST_TYPES = Object.freeze({
     nudgeMaxDeltaVWuS: 0,     // a non-hostile hull is simply left alone by a lance
     hitStunSource: 'hull_burst',
   }),
+  // GRIP BUMPER (design doc section 4): catches ONE light hostile hull on the nose and carries it: a
+  // battering ram with a hostage. The hull is held at the nose by a spring-damper delivered as impulses
+  // through the physics port (never a position write), its helm stays lost, and whatever it hits while
+  // carried is the player's doing (it is a loose hull, so slice A's projectile law applies). When the window
+  // ends, the player presses the key again, or the hostage dies, it is released at the player's speed and
+  // flies on as an ordinary flung hull (credit held, tumbling). Medium and heavy hulls are not catchable.
+  grip: Object.freeze({
+    id: 'grip',
+    effect: 'grip',
+    blurb: 'catches a light hull on the nose and carries it; press again to let it go',
+    name: 'Grip Bumper',
+    moduleId: 'mod_grip_bumper_s',
+    durationS: 6,
+    cooldownS: 20,
+    reachWu: 110,
+    halfAngleRad: 0.35,
+    noseWidthWu: 16,
+    massScale: 4,             // the player counts this much heavier: the hitstun mass factor on the catch and release
+    gripMaxMass: 40,          // a Wasp (16) or Hornet (24) is catchable; a Drifter (48) and up is not
+    gapWu: 4,                 // clear space between the two hulls' edges while carried (so they never overlap)
+    springK: 120,             // 1/s^2, the carry's stiffness (about a 0.6 s pull-in)
+    springDamp: 20,           // 1/s, the carry's damping (near critical)
+    maxAccelWuS2: 3000,       // ceiling on the carry's acceleration, so a hull caught at the reach is not fired at the nose
+    refreshS: 2.5,            // the helm is re-taken this often while carried (a stun outlasts the hold)
+    releaseBoost: 1.15,       // released at this multiple of the player's velocity...
+    releaseKickWuS: 40,       // ...plus this much along the nose, so it always leaves ahead of the player
+    nudgeMaxDeltaVWuS: 0,     // a non-hostile hull is left alone
+    hitStunSource: 'hull_burst',
+  }),
 });
 
 /** Ranks scale a fitted type's duration and reach; rank 1 is the module as sold. */

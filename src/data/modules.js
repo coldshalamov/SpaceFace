@@ -437,6 +437,16 @@ const SHIPPED_MODULES = [
     energyDraw: 0, mods: { hullBurst: 'lance', hullBurstRank: 1 },
   },
   {
+    // GRIP BUMPER — a battering ram with a hostage (design doc 2026-09-29 section 4). Press the burst key and
+    // the nose catches the first LIGHT hostile hull it meets and carries it, helm lost; whatever the carried
+    // hull hits is your doing. It lets go when the window ends, when you press the key again, or when the
+    // hostage dies, and leaves faster than you fly. Medium and heavy hulls cannot be caught. One hull burst
+    // per hull; the type is the build. Tuned in data/hullBurst.js.
+    id: 'mod_grip_bumper_s', name: 'Grip Bumper S', slotType: 'utility', size: 'S', tier: 2, mass: 5, price: 22000,
+    requiresTech: 'tech_tractor_systems',
+    energyDraw: 0, mods: { hullBurst: 'grip', hullBurstRank: 1 },
+  },
+  {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
     energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
   },
@@ -819,6 +829,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_ram_plate: 'The hull itself hits harder when you mean to ram.',
   mod_gravity_bumper_s: 'Press the burst key and, for a few seconds, the nose throws every hostile hull it touches. The faster you arrive, the farther they fly.',
   mod_fire_lance_s: 'Press the burst key and, for a few seconds, a narrow lance burns whatever the nose touches: light and medium hulls die, heavies ignite. Fly straight at it, fast.',
+  mod_grip_bumper_s: 'Press the burst key and the nose catches the first light hostile hull it meets and carries it: ram things with it, then press again to let it go.',
   mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
   mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
   mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',

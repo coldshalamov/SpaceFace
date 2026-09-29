@@ -155,7 +155,7 @@ export const TECH_NODES = [
   {
     id: 'tech_tractor_systems', name: 'Tractor Systems', branch: 'logistics', prereqs: [],
     cost: { credits: 1200, rp: 0 },
-    unlocks: { ships: ['ship_hawser'], modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_tether_capacitor', 'mod_loot_magnet_s', 'mod_mass_flail_rig_m'] },
+    unlocks: { ships: ['ship_hawser'], modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_tether_capacitor', 'mod_loot_magnet_s', 'mod_mass_flail_rig_m', 'mod_grip_bumper_s'] },
   },
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'logistics', prereqs: ['tech_tractor_systems'],

@@ -27,7 +27,7 @@ import { hullBurst, hullBurstDeltaV, hullBurstWedgeHit } from '../src/systems/hu
 
 const GRAVITY = resolveHullBurst('gravity', 1);
 
-function harness({ fitted = 'gravity', playerVel = { x: 0, z: 0 }, docked = false } = {}) {
+function harness({ fitted = 'gravity', playerVel = { x: 0, z: 0 }, docked = false, integrate = false } = {}) {
   const player = {
     id: 1, alive: true, type: 'ship', team: 1, pos: { x: 0, z: 0 }, vel: { ...playerVel }, rot: 0, radius: 12,
     mass: 18, flags: { docked }, data: { derived: fitted ? { hullBurstKind: fitted, hullBurstRank: 1 } : {} },
@@ -47,7 +47,21 @@ function harness({ fitted = 'gravity', playerVel = { x: 0, z: 0 }, docked = fals
     on(type, fn) { (listeners[type] = listeners[type] || []).push(fn); return () => {}; },
     emit(type, payload) { events.push({ type, payload }); for (const fn of listeners[type] || []) fn(payload); },
   };
-  const helpers = { combatPhysics: { applyImpulse: (req) => { impulses.push(req); return true; } }, routeCombatDamage: (req) => { damages.push(req); return null; } };
+  // `integrate` makes the stub port behave like a physics owner: an impulse changes the hull's velocity (dv = J / m)
+  // and each tick moves every entity by its velocity, so a carry can be judged by where the hull actually ends up.
+  const helpers = {
+    combatPhysics: {
+      applyImpulse: (req) => {
+        impulses.push(req);
+        if (integrate) {
+          const e = state.entities.get(req.entityId);
+          if (e) { e.vel.x += req.impulse.x / e.mass; e.vel.z += req.impulse.z / e.mass; }
+        }
+        return true;
+      },
+    },
+    routeCombatDamage: (req) => { damages.push(req); return null; },
+  };
   hullBurst.init({ state, bus, helpers });
   const add = (over) => {
     const ent = {
@@ -58,7 +72,13 @@ function harness({ fitted = 'gravity', playerVel = { x: 0, z: 0 }, docked = fals
     state.entityList.push(ent);
     return ent;
   };
-  const tick = (n = 1) => { for (let i = 0; i < n; i++) { state.tick += 1; state.simTime = state.tick / 60; hullBurst.update(1 / 60); } };
+  const tick = (n = 1) => {
+    for (let i = 0; i < n; i++) {
+      state.tick += 1; state.simTime = state.tick / 60;
+      hullBurst.update(1 / 60);
+      if (integrate) for (const e of state.entityList) { e.pos.x += e.vel.x / 60; e.pos.z += e.vel.z / 60; }
+    }
+  };
   return { state, player, add, tick, impulses, damages, events, bus };
 }
 
@@ -357,4 +377,94 @@ test('the Fire Lance module is real: sold, researchable, taught, one hull burst 
   assert.equal(derived.hullBurstKind, 'lance');
   assert.ok(GRAVITY.reachWu > LANCE.reachWu && GRAVITY.halfAngleRad > LANCE.halfAngleRad, 'the lance is the narrow, short wedge');
   assert.ok(LANCE.cooldownS > LANCE.durationS, 'recharge clearly longer than the window');
+});
+
+// ---- GRIP BUMPER -----------------------------------------------------------------------------------------------
+
+const GRIP = resolveHullBurst('grip', 1);
+
+test('the Grip Bumper catches ONE light hostile hull and takes its helm; a medium hull and a civilian are left alone', () => {
+  const h = harness({ fitted: 'grip', playerVel: { x: 120, z: 0 } });
+  const stun = [];
+  h.bus.on(HITSTUN_IMPULSE_EVENT, (p) => stun.push(p));
+  const medium = h.add({ pos: { x: 50, z: 0 }, mass: 48 });
+  const civilian = h.add({ team: 2, data: {}, pos: { x: 55, z: 8 } });
+  hullBurst.activate();
+  h.tick(2);
+  assert.equal(h.state.hullBurst.grip, null, 'nothing catchable yet');
+  assert.equal(h.impulses.filter((i) => i.entityId === medium.id || i.entityId === civilian.id).length, 0, 'a medium hull and a civilian are not touched');
+  const wasp = h.add({ pos: { x: 60, z: 4 } });
+  const wasp2 = h.add({ pos: { x: 62, z: -4 } });
+  h.tick(2);
+  assert.equal(h.state.hullBurst.grip.targetId, wasp.id, 'the first light hostile is the hostage');
+  assert.equal(stun.length, 1);
+  assert.equal(stun[0].source, 'hull_grip', 'the helm goes through the one law, but not as a shove-class source (no outbound floor)');
+  assert.equal(stun[0].victimId, wasp.id);
+  assert.equal(h.impulses.filter((i) => i.entityId === wasp2.id).length, 0, 'one hostage at a time');
+  assert.equal(readRecentImpulseProvenance(wasp, h.state.tick).actorId, 1, 'the player is credited for what the hostage meets');
+});
+
+test('the carry holds the hostage at the nose at the player\u2019s velocity (a spring-damper through the port, no overlap)', () => {
+  const h = harness({ fitted: 'grip', playerVel: { x: 100, z: 0 }, integrate: true });
+  const wasp = h.add({ pos: { x: 90, z: 30 }, vel: { x: 0, z: 0 } });
+  hullBurst.activate();
+  h.tick(90);
+  assert.equal(h.state.hullBurst.grip.targetId, wasp.id, 'still held');
+  const socket = h.player.pos.x + h.player.radius + wasp.radius + GRIP.gapWu;
+  assert.ok(Math.abs(wasp.pos.x - socket) < 3, `at the nose socket (${wasp.pos.x.toFixed(1)} vs ${socket.toFixed(1)})`);
+  assert.ok(Math.abs(wasp.pos.z - h.player.pos.z) < 3, `on the line of flight (z ${wasp.pos.z.toFixed(1)})`);
+  assert.ok(Math.abs(wasp.vel.x - h.player.vel.x) < 3, `at the player\u2019s speed (${wasp.vel.x.toFixed(1)})`);
+  assert.ok(wasp.pos.x - wasp.radius > h.player.pos.x + h.player.radius, 'and never overlapping the player');
+  assert.ok(h.impulses.filter((i) => i.reason === 'hull_grip').length > 60, 'the carry is impulses, every tick');
+});
+
+test('pressing the key again lets it go: released ahead of the player at 1.15x its speed, recharge starts at the cut', () => {
+  const h = harness({ fitted: 'grip', playerVel: { x: 100, z: 0 }, integrate: true });
+  const wasp = h.add({ pos: { x: 60, z: 0 } });
+  const stun = [];
+  h.bus.on(HITSTUN_IMPULSE_EVENT, (p) => stun.push(p));
+  hullBurst.activate();
+  h.tick(60);
+  h.state.input.actions.hullBurst = true;
+  h.tick();
+  assert.equal(h.state.hullBurst.phase, 'cooling', 'the cut ends the burst');
+  assert.equal(h.state.hullBurst.grip, null);
+  assert.ok(h.events.some((e) => e.type === 'hullBurst:released' && e.payload.reason === 'cut'));
+  h.tick();
+  assert.ok(wasp.vel.x >= h.player.vel.x * GRIP.releaseBoost - 1e-6 + GRIP.releaseKickWuS - 1, `leaves faster than the player (${wasp.vel.x.toFixed(0)})`);
+  const release = stun.filter((p) => p.source === 'hull_burst');
+  assert.equal(release.length, 1, 'the release is a shove-class hull_burst hit: helm lost, credit held');
+  assert.ok(h.state.hullBurst.readyAt >= h.state.simTime + GRIP.cooldownS - 0.05, 'recharge from the cut');
+});
+
+test('the window ending, or the hostage dying, ends the hold', () => {
+  const expire = harness({ fitted: 'grip', playerVel: { x: 100, z: 0 }, integrate: true });
+  expire.add({ pos: { x: 60, z: 0 } });
+  hullBurst.activate();
+  expire.tick(Math.round(GRIP.durationS * 60) + 3);
+  assert.equal(expire.state.hullBurst.phase, 'cooling');
+  assert.ok(expire.events.some((e) => e.type === 'hullBurst:released' && e.payload.reason === 'expired'), 'released when the window closes');
+
+  const dies = harness({ fitted: 'grip', playerVel: { x: 100, z: 0 }, integrate: true });
+  const wasp = dies.add({ pos: { x: 60, z: 0 } });
+  hullBurst.activate();
+  dies.tick(30);
+  wasp.alive = false;
+  const before = dies.impulses.length;
+  dies.tick(3);
+  assert.equal(dies.state.hullBurst.grip, null, 'the hold is dropped');
+  assert.equal(dies.impulses.length, before, 'and nothing more is applied to a dead hull');
+  assert.equal(dies.state.hullBurst.phase, 'active', 'the burst itself keeps running and can catch another');
+});
+
+test('the Grip Bumper module is real: sold, researchable, taught', () => {
+  const mod = MODULES.find((m) => m.id === 'mod_grip_bumper_s');
+  assert.ok(mod, 'the module exists');
+  assert.equal(mod.mods.hullBurst, 'grip');
+  assert.equal(HULL_BURST_TYPES.grip.moduleId, mod.id);
+  assert.ok(typeof mod.sentence === 'string' && mod.sentence.length > 0);
+  const tech = TECH_NODES.find((t) => t.id === mod.requiresTech);
+  assert.ok(tech && tech.unlocks.modules.includes(mod.id), 'its tech node lists it');
+  assert.equal(getDerivedStats('ship_wasp', fittingsFromDefaultModules('ship_wasp', ['mod_grip_bumper_s'])).hullBurstKind, 'grip');
+  assert.ok(GRIP.cooldownS > GRIP.durationS);
 });
