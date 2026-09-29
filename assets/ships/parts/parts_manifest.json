@@ -7339,13 +7339,14 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_saucer",
-      "tris": 42428,
-      "bytes": 2503236,
+      "tris": 60570,
+      "bytes": 3488652,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
         "canopy": "Material_Canopy"
       },
       "hooks": [
@@ -7371,18 +7372,18 @@
       "bounds": {
         "min": [
           -9.75,
-          -3.5999999046325684,
-          -10.55003547668457
+          -3.996148109436035,
+          -11.030622482299805
         ],
         "max": [
-          10.550785064697266,
-          3.5654420852661133,
-          10.55003547668457
+          11.212514877319336,
+          3.5662574768066406,
+          11.030397415161133
         ],
         "dimensionsM": [
-          20.300785064697266,
-          7.165441989898682,
-          21.10007095336914
+          20.962514877319336,
+          7.562405586242676,
+          22.061019897460938
         ]
       },
       "note": "Forge-v1 production build (tools/blender/forge/ships/saucer.py): inertialess exotic player hull — lenticular gunmetal disc, cyan rim light chain, ventral drive core."

@@ -44,16 +44,22 @@ band. The heaviest authority in the catalog is `drive_pulse_plate_m` (maxAccel 3
 figures, multi-axis plates) and the fastest servo is `drive_gravimetric_s` at 4.8 Hz. The
 saucer needed ~6x the gravitic accel and ~2x the response.
 
-Built: `drive_inertialess_s` in the GRAVIMETRIC family — maxSpeed 190, boostMaxSpeed 255,
-maxAccel 950, maxBrakeAccel 1200, responseHz 9.5, yawAccel 26 / yawBrake 34 / maxYawRate 4.2,
-solverSpeedLimit 640, travelCeiling 252, resources idle 0.6 / perAccel 0.03 / heat 0.024 /
-cooling 5.0. The GRAVIMETRIC family choice is load-bearing: `TRAVEL_CEILING_FAMILY_MULT`
+Built: `drive_inertialess_s` in the GRAVIMETRIC family — maxSpeed 340, boostMaxSpeed 900,
+maxAccel 1800, maxBrakeAccel 2800, responseHz 14, yawAccel 44 / yawBrake 60 / maxYawRate 6.5,
+solverSpeedLimit 1024, travelCeiling 420, resources idle 0.9 / perAccel 0.034 / heat 0.028 /
+cooling 7.0. The GRAVIMETRIC family choice is load-bearing: `TRAVEL_CEILING_FAMILY_MULT`
 gives gravimetric drives ×1.5 supercruise ceiling — the saucer keeps that reach.
 
-Counterweights that keep it honest: maxSpeed 190 is *below* the gravimetric S drive's own
-168→245 boost profile; the drive spends a capacitor at 0.03 energyPerAccel — sustained
-maximum-authority flight drains `energyCap` against `energyRegen`. The identity is *control
-authority*, not raw pace.
+Revision 2 took the drive from "best in fleet" to "cheat code": maxSpeed 190→340 (fleet
+fastest is ~280), boost ceiling 255→900 (nearly 3× the next highest), accel 950→1800 and
+brake 1200→2800 (roughly 3× the heaviest authority anywhere else), responseHz 9.5→14,
+maxYawRate 4.2→6.5 rad/s. `solverSpeedLimit` 1024 stays above boostMaxSpeed so the kernel
+never clips the boost band.
+
+Counterweights that keep it honest: the drive spends a capacitor at 0.034 energyPerAccel —
+sustained maximum-authority flight drains `energyCap` against `energyRegen`; mining utility
+and cargo stay deliberately weak so the hull wins fights by repositioning, not by hauling.
+The identity is *control authority*, and now also raw pace.
 
 ### Dynamic body owner — `src/core/sg02DynamicBodyOwner.js`
 
@@ -71,11 +77,12 @@ Nothing was fighting the brief here; no changes needed. The mass does the work.
 `lateralKill` (how fast uncommanded lateral velocity dies), `stopHorizon`/`brakeHorizon`
 (how far ahead the stop engages), `neutralBrake` (stick-neutral braking), `governor`.
 
-Built: a `ship_saucer` envelope — translation 1.0 (the drive is already past sanity;
-scaling further would clip the kernel), strafe 1.0 (the field answers identically in every
-direction — a disc has no preferred axis), yaw 1.10/1.15/1.10, lateralKill 1.15,
-stopHorizon 0.72, governor 0.95, brakeHorizon 0.75, neutralBrake 1.10. New
-`CLASS_FALLBACK.exotic` entry so any future exotic hull inherits the shaping, and a
+Built: a `ship_saucer` envelope — translation 1.0, strafe 1.0 (the field answers
+identically in every direction — a disc has no preferred axis), yaw 1.30/1.40/1.30,
+lateralKill 1.45, stopHorizon 0.45, governor 1.0, brakeHorizon 0.50, neutralBrake 1.30 —
+the revision-2 pass sharpened every stop/turn axis to match the drive's new numbers:
+lateral velocity dies ~45% faster and the stop engages much closer to the contact.
+New `CLASS_FALLBACK.exotic` entry so any future exotic hull inherits the shaping, and a
 `ENEMY_HULL_FEEL_ALIASES.ship_saucer` self-map so an NPC saucer keeps the same envelope
 rather than silently borrowing the capital row.
 
@@ -84,22 +91,30 @@ rather than silently borrowing the capital row.
 `ship_saucer`: T5 `role: 'exotic'` — the first hull of a new role class. mass 520,
 cargo 120, handling 2.2, designMass 780 (the drive is rated well above the hull's own
 operational mass: loading cargo or hanging a tow never wallows it — the inertialess field
-reads the same to the pilot), hull 1700 / shield 1900 / regen 26, energyCap 1400 /
-regen 120, collisionRadius 19, price 3.2 M, bankFactor 0.12 (saucers bank almost
-imperceptibly — the field doesn't roll to turn).
+reads the same to the pilot), hull 2200 / shield 2600 / regen 30, energyCap 2200 /
+regen 170, collisionRadius 19, price 4.2 M, bankFactor 0.10 (saucers bank almost
+imperceptibly — the field doesn't roll to turn), outfitSpace 240 / weaponCapacity 96 /
+engineCapacity 14.
 
-Weapon map: two M hardpoints plus `{size:'S', facing:'turret'}` — the turret-facing S mount
-is load-bearing for the fiction. A disc has no nose arc; the turret is its native
-engagement cone. `combat` computes to 90 from the slot score (5×14 + tier 5×4).
+Boost spec is the mega-boost the revision brief asked for: pool `max 360` (largest boost
+pool in the fleet), `dashImpulse 400` (the strongest instant velocity kick in the fleet —
+the same number feeds the tether-swing pendulum, so a saucer slinging a tow gets the
+biggest swing impulse too), `drainRate 22`, authored `regenRate 48` (doubled at spawn),
+cooldown 1.4 s. Full pool at authored regen recharges in 7.5 s.
+
+Weapon map: two L hardpoints plus `{size:'L', facing:'turret'}` — all large mounts, with
+the turret-facing L load-bearing for the fiction. A disc has no nose arc; the turret is
+its native engagement cone. `combat` computes to 146 on the hull-dimension pass.
 
 Lattice row: `flightClass: 'exotic'` (new class — `flightClassForHull` consults the row
 first), `roleLabel 'Inertialess Disc'`, biases opMass 1.20 / handling 1.15 / thrust 0.85 /
 turn 1.20 (all inside the validator's 0.8–1.2 band), careerFit hunter 0.75 / hauler 0.60 /
 prospector 0.35 — the hull hunts by repositioning and hauls by dragging.
 
-Pareto legality: `findDominatedSameTierHulls` pairs every same-tier hull. The saucer wins
-handling (100) and speed (17.2) vs the Leviathan while losing combat/cargo/tank/utility —
-strictly non-dominated and non-dominating. Verified: zero dominated pairs with the row live.
+Pareto legality: `findDominatedSameTierHulls` pairs every same-tier hull. With the
+revision-2 numbers the saucer wins handling (100), speed (17.2) and tank (77.4) while
+losing cargo/mining/utility — strictly non-dominated and non-dominating. Verified: zero
+dominated pairs with the row live.
 
 Role path (`path_inertialess_disc`): signature verb "Stop on a dime, turn on the spot, and
 tow what outweighs the escorts." Kit is the graviton line the hull's tech already unlocks:
@@ -120,7 +135,16 @@ engine visual; the saucer's real drive glow is the authored rim light chain in t
 `WHOLE_SHIP_FILE_BY_DEF_ID` → `wholeships/saucer_production_v1.glb`,
 `WHOLE_SHIP_ASSET_ID_BY_DEF_ID` → `SF_SAUCER_PRODUCTION_V1`, and
 `WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID` → the authored lod0/1/2 family so distant NPC saucers
-LOD correctly. Matching `vfxProfiles.js` entries map def and drive to `engine_resonator`.
+LOD correctly. `vfxProfiles.js` maps both def and drive to `engine_field_sprint` — a new
+profile authored for revision 2: a brighter, longer, faster-flowing resonator plume
+cyan-shifted toward the saucer's rim-light identity (coreIntensity 10.5, streak/particle
+multipliers ~1.5×, plume length ×1.6) so the boost reads as oversized as the drive feels.
+
+Note: master commit 33184a813 swept in `renderer.js` hunks importing `./cameraOccluders.js`
+without the module itself. This branch carries a minimal placeholder implementing the
+interface (`createCameraOccluderState` / `updateCameraOccluders` / `cameraOccluderDiagnostics`,
+ducks nothing) so the renderer and the suites that import it stay green; when the owning
+lane lands the real module it should replace the placeholder wholesale.
 
 ### Model toolchain — `tools/blender/forge/`
 
@@ -130,10 +154,19 @@ the edge keeps finite thickness and a slight rim droop for the classic lenticula
 Metallic central dome with dark glass canopy and a cyan light ring at its base; ventral
 gunmetal dish with the glowing cyan drive core (`HOOK_DRIVE_CORE` + `SOCKET_Engine_Main`);
 a 24-bead `glow_cyan` rim light chain that persists through every LOD (the identity element
-and the de-facto drive visual); annulus rim bezel; radial `band()` seams as panel lines;
-small ventral field vanes; red port / green starboard / amber apex nav lights. Damage hooks
-on the ventral core, a rim segment, the apex beacon, and a rim plate. Sockets: camera focus,
-cargo ventral, engine main, RCS port/starboard, tether massline (ventral core offset —
+and the de-facto drive visual); annulus rim bezel + groove; radial `band()` seams as panel
+lines; a warm-porthole row around the dome base; a dark glass collar under the dome glass;
+mast antenna + apex beacon; two dorsal `sensor_dome` blisters; 24 rim armor tabs; eight
+ventral field vanes with `glow_cyan` emitter tips; red port / green starboard nav lights.
+
+Revision 2 added the guns the brief asked for — three `emitter_turret` rim turrets in the
+fleet's barbette/collar/house/mantlet vocabulary, saucer-accented: a 4-barrel emitter
+battery on the nose rim and twin-barrel mounts at the port and starboard rim points, every
+barrel sleeved and ending in a `glow_amber` lens. The ventral dish became a real concave
+`dish()` bowl with a `glow_cyan` throat ring, and the glowing drive core hangs in a
+gyroscope cage of three orthogonal machine rings. Damage hooks on the ventral core, a rim
+segment, the apex beacon, and a rim plate. Sockets: camera focus, cargo ventral, engine
+main, RCS port/starboard, tether massline (ventral core offset —
 the tow point lives under the drive core), trail main/port/starboard on the underside rear
 rim, utility dorsal, and weapon front/port/starboard on the rim.
 
@@ -151,8 +184,9 @@ added to `fleet-player-wholeship-routing` expected map and to `FAMILY_DEF_IDS` i
 
 ### Deliberately not built
 
-- **Custom drive VFX body** — the rim light chain *is* the drive visual; a separate VFX
-  profile would double-read.
+- ~~**Custom drive VFX body**~~ — revision 2 built it (`engine_field_sprint`): the rim
+  light chain stays the identity read; the profile only lengthens and brightens the
+  resonator plume under boost, not a second visual system.
 - **Saucer audio cue** — engine cue routing already keys off drive family (gravimetric).
 - **NPC saucer variant** — the LOD family and enemy feel alias leave the door open; no
   roster or traffic wiring yet.
@@ -188,8 +222,10 @@ The working recipe that produced this, in the order it ran:
    fiction), lattice + feel last (they are checked against the def by validators).
 3. **Verify numerically before visually.** Import-only node checks: derived dims,
    Pareto legality, lattice errors, role-path kit fit — all green before any GLB existed.
-   Measured on the live kernel: 90° turn converges in ~0.3 s with ~1 hull-length of drift;
-   190→0 in 0.47 s. Those are the mythology numbers.
+   Measured on the live kernel (revision 2 numbers): a commanded 90° turn at full 340
+   wu/s cruise settles rot+velocity onto the new heading in ~2.3 s; 340→0 in 0.37 s;
+   900→0 in 0.53 s; 0→340 in 0.30 s. Those are the mythology numbers — a 520-tonne hull
+   doing fighter-in-a-drill choreography.
 4. **Model through the forge loop.** Design on paper (five words, silhouette, three values,
    one identity color) → `saucer.py` → Blender preview export → `fleet-look.mjs`
    inspect/close/top renders → critique the PNGs → iterate ≥10 cycles → `publish.mjs`
@@ -200,15 +236,21 @@ The working recipe that produced this, in the order it ran:
 ## 5. Verification
 
 - `validateRoleLattice(SHIPS)` → zero errors; `findDominatedSameTierHulls` → none.
-- Dims: `{combat 90, cargo 23.1, mining 0, handling 100, tank 58.1, utility 132, speed 17.2}`.
-- Kernel feel (measured): 90° right-angle turn ~0.3 s, ~1 hull-length drift;
-  190 WU/s→0 in 0.47 s under `maxBrakeAccel` 1200.
+- Dims: `{combat 146, cargo 23.1, mining 0, handling 100, tank 77.4, utility 132, speed 17.2}`.
+- Kernel feel (measured, revision 2): 90° right-angle turn settles heading+velocity in
+  ~2.3 s at cruise; 340→0 in 0.37 s; boost-ceiling 900→0 in 0.53 s; 0→340 in 0.30 s.
+- Boost: pool 360 (fleet largest), `dashImpulse` 400 (fleet strongest kick), authored
+  regen 48 (doubled at spawn) — drain 22 gives ~16 s of continuous burn or nine full
+  dashes per pool.
 - Mass authority: 520 t operational (2nd heaviest hull); contact solver transfers the
   capped 40 wu/s contact Δv — a 30 t fighter takes ~17× the saucer's Δv from the same
   impulse. It is knocked around; the saucer is not.
 - Publish pipeline: manifest row synced (tris/bytes/bounds from real GLB), pilots
   refreshed (real hashes), all render packages rebuilt, census regenerated clean.
-- Baseline: `check:baseline` 16/16 green; `hull-integrity` + `j07-hud-contract` 63 green;
-  wholeship LOD/admission/roles/propulsion suites green. Model went through 10
+- Baseline: `check:baseline` green with the `cameraOccluders.js` placeholder in the
+  tree (see note); `hull-integrity` + `j07-hud-contract` + wholeship LOD/admission/roles/
+  propulsion suites green — 101 focused tests. The revision-2 model went through the
+  forge critique loop again (buried field vanes re-seated, dish throat light added;
+  60,570 tris LOD0 — mid-pack vs the 65k fleet ceiling) after the first pass's 10
   critique-driven iterations (tri budget, rim language, gun placement, dish/drive-core
   exposure, dome ring, mass-read proportions) plus a LOD1 identity check before publish.

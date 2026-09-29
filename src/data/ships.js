@@ -384,15 +384,15 @@ export const SHIPS = [
     // field drive — right-angle turns, stops on a dime, and enough mass to drag what it bumps
     // or tows like a ragdoll. No heavyMotion: the field never wallows, whatever the load.
     id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, requiresTech: 'tech_graviton_drives',
-    hull: 1700, shield: 1900, baseShieldRegen: 26, cargo: 120, mass: 520, handling: 2.2,
-    outfitSpace: 220, weaponCapacity: 70, engineCapacity: 14, designMass: 780,
-    bankFactor: 0.12,
+    hull: 2200, shield: 2600, baseShieldRegen: 30, cargo: 120, mass: 520, handling: 2.2,
+    outfitSpace: 240, weaponCapacity: 96, engineCapacity: 14, designMass: 780,
+    bankFactor: 0.10,
     driveId: 'drive_inertialess_s',  // gravimetric envelope tuned past the fleet — the inertialess hull
-    energyCap: 1400, energyRegen: 120, collisionRadius: 19, price: 3200000,
-    boost: { max: 120, drainRate: 40, regenRate: 20, dashImpulse: 60, dashCooldown: 3.2 },
-    // Two M hardpoints plus a full-turret S mount: the disc fights in any direction it is already
+    energyCap: 2200, energyRegen: 170, collisionRadius: 19, price: 4200000,
+    boost: { max: 360, drainRate: 22, regenRate: 48, dashImpulse: 400, dashCooldown: 1.4 },  // mega boost: fleet-largest pool, fleet-strongest kick
+    // Two L hardpoints plus a full-turret L mount: the disc fights in any direction it is already
     // facing — the turret is the saucer's native arc.
-    slots: { weapon: ['M', 'M', { size: 'S', facing: 'turret' }], shield: ['L', 'L', 'L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M', 'M', 'M', 'M'], thruster: ['L'] },
+    slots: { weapon: ['L', 'L', { size: 'L', facing: 'turret' }], shield: ['L', 'L', 'L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M', 'M', 'M', 'M'], thruster: ['L'] },
     thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'capital',

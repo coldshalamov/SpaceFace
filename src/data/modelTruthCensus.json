@@ -46046,62 +46046,62 @@
     {
       "bounds": {
         "center": [
-          0.400393,
-          -0.017279,
-          0
+          0.730935,
+          -0.214945,
+          -0.000113
         ],
         "max": [
-          10.551184,
-          3.56594,
-          10.550035
+          11.212445,
+          3.566473,
+          11.030397
         ],
         "min": [
-          -9.750399,
-          -3.600498,
-          -10.550035
+          -9.750576,
+          -3.996363,
+          -11.030622
         ],
         "size": [
-          20.301582,
-          7.166439,
-          21.100071
+          20.963021,
+          7.562836,
+          22.06102
         ]
       },
-      "bytes": 878920,
+      "bytes": 1142668,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:ship_saucer",
         "kind": "proxy",
         "outline": [
-          15.695274,
-          15.695834,
-          15.695529,
-          15.700223,
-          15.694689,
-          16.039451,
-          17.014324,
-          15.695527,
-          15.700234,
-          15.695525,
-          15.695444,
-          16.982741,
-          16.984589,
-          15.695444,
-          15.695525,
-          15.698645,
-          15.695527,
-          17.014324,
-          16.039451,
-          15.694689,
-          15.700223,
-          15.695529,
-          15.695834,
-          15.695477
+          15.20033,
+          15.200635,
+          15.199494,
+          15.199532,
+          15.199901,
+          17.195067,
+          17.207182,
+          15.200049,
+          15.199706,
+          15.199701,
+          15.19887,
+          17.505325,
+          17.505325,
+          15.19913,
+          15.199552,
+          15.19947,
+          15.199723,
+          17.206935,
+          17.195067,
+          15.199228,
+          15.199597,
+          15.199269,
+          15.200515,
+          15.20052
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 2.041719,
+        "toleranceWu": 2.100639,
         "worstSize": null
       },
       "drawOffset": [
@@ -46109,7 +46109,7 @@
         0,
         0
       ],
-      "drawScale": 1.609727,
+      "drawScale": 1.558936,
       "family": "player-hull",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -46132,13 +46132,21 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.001288,
-          "lod2": 0.006206
+          "lod1": 0.003046,
+          "lod2": 0.027273
         },
         "overTolerance": false,
         "toleranceWu": 4
       },
       "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
@@ -46190,6 +46198,14 @@
         {
           "additive": false,
           "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
           "name": "Material_Hull",
@@ -46221,24 +46237,24 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.893825,
-        "height": 0.607158,
+        "halfWidth": 0.905045,
+        "height": 0.620525,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 13,
-      "nodes": 28,
+      "meshes": 16,
+      "nodes": 31,
       "note": null,
       "opening": null,
       "pivot": [
-        0.400393,
-        -0.017279,
-        0
+        0.730935,
+        -0.214945,
+        -0.000113
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 2.041719,
+        "cellWu": 2.100639,
         "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 24,
@@ -46246,8 +46262,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.808564,
-            "bz": -0.106449,
+            "bx": -0.782737,
+            "bz": -0.103049,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.023684
@@ -46255,8 +46271,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.753489,
-            "bz": -0.312105,
+            "bx": -0.729409,
+            "bz": -0.302131,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.023684
@@ -46264,8 +46280,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.647023,
-            "bz": -0.496478,
+            "bx": -0.62631,
+            "bz": -0.480585,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.023684
@@ -46273,8 +46289,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.496628,
-            "bz": -0.647219,
+            "bx": -0.480586,
+            "bz": -0.626312,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.023684
@@ -46282,8 +46298,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.312082,
-            "bz": -0.753433,
+            "bx": -0.302117,
+            "bz": -0.729374,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.023684
@@ -46291,8 +46307,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.108814,
-            "bz": -0.826523,
+            "bx": -0.116753,
+            "bz": -0.886825,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.023684
@@ -46300,8 +46316,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.115511,
-            "bz": -0.877393,
+            "bx": 0.116836,
+            "bz": -0.887457,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.023684
@@ -46309,8 +46325,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.312099,
-            "bz": -0.753474,
+            "bx": 0.302119,
+            "bz": -0.729381,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.023684
@@ -46318,8 +46334,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.496629,
-            "bz": -0.647219,
+            "bx": 0.480592,
+            "bz": -0.626319,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.023684
@@ -46327,8 +46343,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.647022,
-            "bz": -0.496478,
+            "bx": 0.626319,
+            "bz": -0.480592,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.023684
@@ -46336,8 +46352,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.75347,
-            "bz": -0.312097,
+            "bx": 0.729324,
+            "bz": -0.302096,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.023684
@@ -46345,8 +46361,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.875745,
-            "bz": -0.115294,
+            "bx": 0.903014,
+            "bz": -0.118884,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.023684
@@ -46354,8 +46370,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.875842,
-            "bz": 0.115307,
+            "bx": 0.903014,
+            "bz": 0.118884,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.023684
@@ -46363,8 +46379,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.75347,
-            "bz": 0.312097,
+            "bx": 0.729336,
+            "bz": 0.302101,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.023684
@@ -46372,8 +46388,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.647022,
-            "bz": 0.496478,
+            "bx": 0.626313,
+            "bz": 0.480587,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.023684
@@ -46381,8 +46397,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.496578,
-            "bz": 0.647153,
+            "bx": 0.480584,
+            "bz": 0.626309,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.023684
@@ -46390,8 +46406,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.312099,
-            "bz": 0.753474,
+            "bx": 0.302113,
+            "bz": 0.729365,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.023684
@@ -46399,8 +46415,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.115511,
-            "bz": 0.877393,
+            "bx": 0.116834,
+            "bz": 0.887444,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.023684
@@ -46408,8 +46424,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.108814,
-            "bz": 0.826523,
+            "bx": -0.116753,
+            "bz": 0.886825,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.023684
@@ -46417,8 +46433,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.312082,
-            "bz": 0.753433,
+            "bx": -0.302103,
+            "bz": 0.729341,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.023684
@@ -46426,8 +46442,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.496628,
-            "bz": 0.647219,
+            "bx": -0.480588,
+            "bz": 0.626315,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.023684
@@ -46435,8 +46451,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.647023,
-            "bz": 0.496478,
+            "bx": -0.626301,
+            "bz": 0.480578,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.023684
@@ -46444,8 +46460,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.753489,
-            "bz": 0.312105,
+            "bx": -0.729404,
+            "bz": 0.302129,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.023684
@@ -46453,23 +46469,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.808574,
-            "bz": 0.106451,
+            "bx": -0.782747,
+            "bz": 0.103051,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.023684
           }
         ],
-        "silhouetteRadius": 17.014324,
-        "toleranceWu": 2.041719
+        "silhouetteRadius": 17.505325,
+        "toleranceWu": 2.100639
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 141,
-        "inwardFaceFraction": 0.27725,
-        "silhouetteRadius": 17.014324,
+        "boundaryEdges": 331,
+        "inwardFaceFraction": 0.4205,
+        "silhouetteRadius": 17.505325,
         "sliceY": 0
       },
       "sockets": [
@@ -46485,7 +46501,7 @@
           "name": "SOCKET_Cargo_Ventral",
           "position": [
             0,
-            -1.3,
+            -1.9,
             0
           ]
         },
@@ -46493,15 +46509,15 @@
           "name": "SOCKET_Engine_Main",
           "position": [
             0,
-            -1.7,
+            -3.1,
             0
           ]
         },
         {
           "name": "SOCKET_Mining_Front",
           "position": [
-            10.05,
-            -0.168,
+            10.712,
+            -0.366074,
             0
           ]
         },
@@ -46525,7 +46541,7 @@
           "name": "SOCKET_Tether_Massline",
           "position": [
             0.8,
-            -1.5,
+            -1.9,
             0
           ]
         },
@@ -46564,25 +46580,25 @@
         {
           "name": "SOCKET_Weapon_Front",
           "position": [
-            9.4,
-            -0.1,
+            10.5,
+            -0.18,
             0
           ]
         },
         {
           "name": "SOCKET_Weapon_Port",
           "position": [
-            0,
-            -0.1,
-            -9.4
+            0.35,
+            0.1,
+            -10.1
           ]
         },
         {
           "name": "SOCKET_Weapon_Starboard",
           "position": [
-            0,
-            -0.1,
-            9.4
+            0.35,
+            0.1,
+            10.1
           ]
         }
       ],
@@ -46590,15 +46606,15 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 42428,
+      "triangles": 60570,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/saucer_production_v1.glb",
       "worldSize": [
         32.68,
-        11.536008,
-        33.965348
+        11.789974,
+        34.39171
       ]
     },
     {

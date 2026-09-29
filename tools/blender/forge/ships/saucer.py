@@ -2,9 +2,10 @@
 
 Plan read at the chase camera: a featureless lenticular silhouette — the only ship in the
 fleet with no nose, no tail, no preferred facing. The identity lives in the rim: a bezel of
-dark machinery carrying an unbroken chain of cyan field lamps, a low metallic dome over a
-dark glass crown, and a ventral dish whose glowing core is the drive. Radial seams break the
-upper shell into plates so the disc reads manufactured, not sculpted.
+dark machinery carrying an unbroken chain of cyan field lamps, a low metallic dome ringed by
+warm portholes under a dark glass crown, and a ventral dish whose gyroscope-caged glowing
+core is the drive. Radial seams break the upper shell into plates so the disc reads
+manufactured, not sculpted, and three field-emitter turrets ride the rim edge.
 """
 import math
 import os
@@ -68,14 +69,71 @@ def rim_vents():
     return vents
 
 
+def rim_tabs():
+    """Small armour tabs alternating with the lamps on the outer rim face — the bead chain
+    reads as machinery seated in a toothed edge, not a string of fairy lights."""
+    tabs = []
+    for k in range(24):
+        a = 2 * math.pi * (k + 0.5) / 24
+        x = (R - 0.02) * math.cos(a)
+        y = (R - 0.02) * math.sin(a)
+        tabs.append(((x, y, RIM_Z - 0.02), (0.30, 0.34, 0.30), a))
+    return tabs
+
+
+def portholes():
+    """A warm-lit porthole ring around the dome's waist — the classic flying-saucer icon."""
+    ports = []
+    for k in range(10):
+        a = 2 * math.pi * k / 10
+        ports.append(((1.985 * math.cos(a), 1.985 * math.sin(a), 1.44),
+                      (0.34, 0.12, 0.18), a + math.pi / 2))
+    return ports
+
+
 def field_vanes():
-    """Four shallow ventral fins at 45° diagonals — the field vanes under the belly."""
+    """Eight ventral field fins on the belly slope — swept fins with glowing emitter tips."""
     vanes = []
-    for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4):
-        x = 4.6 * math.cos(a)
-        y = 4.6 * math.sin(a)
-        vanes.append(((x, y, -0.78), (1.5, 0.14, 0.34), a))
-    return vanes
+    tips = []
+    for i in range(8):
+        a = i * math.pi / 4 + math.pi / 8
+        x = 5.55 * math.cos(a)
+        y = 5.55 * math.sin(a)
+        vanes.append(((x, y, -0.88), (2.1, 0.16, 0.72), a))
+        tips.append(((6.55 * math.cos(a), 6.55 * math.sin(a), -1.06), (0.30, 0.14, 0.18), a))
+    return vanes, tips
+
+
+def emitter_turret(s, name, x, y, z, yaw=0.0, sc=1.0, barrels=2):
+    """A rim field-emitter turret — the fleet's barbette/collar/mantlet vocabulary spoken in
+    saucer: faceted armoured cupola on a dark collar, emitter barrels ending in amber lenses.
+    Barrels run along local +x rotated by yaw."""
+    c, sn = math.cos(yaw), math.sin(yaw)
+
+    def P(dx, dy, dz=0.0):
+        return (x + (dx * c - dy * sn) * sc, y + (dx * sn + dy * c) * sc, z + dz * sc)
+
+    F.cylinder(s, name + '_Barbette', P(0, 0, -0.30), P(0, 0, 0.20), 0.62 * sc,
+               material='paint2', segments=16, cap_material='dark', bevel=0.0)
+    F.cylinder(s, name + '_Collar', P(0, 0, 0.02), P(0, 0, 0.15), 0.72 * sc,
+               material='stripe', segments=16, bevel=0.0)
+    house = [(0.55, 0.50), (0.72, 0.28), (0.72, -0.28), (0.55, -0.50),
+             (-0.55, -0.50), (-0.70, -0.30), (-0.70, 0.30), (-0.55, 0.50)]
+    F.plate(s, name + '_House', [P(dx, dy)[:2] for dx, dy in house], z0=z + 0.14 * sc,
+            thickness=0.52 * sc, material='paint2', chamfer=0.16 * sc, bevel=0.02)
+    F.box(s, name + '_Mantlet', P(0.62, 0, 0.30), (0.30 * sc, (0.32 * barrels + 0.18) * sc, 0.32 * sc),
+          material='gunmetal', rot_z=yaw, bevel=0.0)
+    offs = [(i - (barrels - 1) / 2) * 0.32 for i in range(barrels)]
+    for i, dy in enumerate(offs):
+        F.cylinder(s, f'{name}_Sleeve{i}', P(0.72, dy, 0.30), P(1.06, dy, 0.30), 0.11 * sc,
+                   0.09 * sc, material='gunmetal', segments=10, bevel=0.0)
+        F.cylinder(s, f'{name}_Emitter{i}', P(1.02, dy, 0.30), P(1.74, dy, 0.30), 0.065 * sc,
+                   0.055 * sc, material='gunmetal', segments=10, bevel=0.0)
+        F.cylinder(s, f'{name}_Lens{i}', P(1.64, dy, 0.30), P(1.88, dy, 0.30), 0.085 * sc,
+                   0.05 * sc, material='glow_amber', segments=10, bevel=0.0)
+    # Rear feed spine — the emitter's power bus, and the silhouette that sells the turret.
+    F.box(s, name + '_Spine', P(-0.45, 0, 0.60), (0.24 * sc, 0.52 * sc, 0.18 * sc),
+          material='gunmetal', rot_z=yaw, bevel=0.0)
 
 
 def build():
@@ -84,7 +142,7 @@ def build():
 
     # --- the disc ---------------------------------------------------------------------------
     F.loft(s, 'Disc', disc_sections(), material='paint', belly='gunmetal',
-           back_material='paint2', count=42)
+           back_material='paint2', count=40)
 
     # Radial panel seams: six diameter cuts through the shell, recessed dark.
     for i in range(6):
@@ -99,40 +157,58 @@ def build():
     # Rim bezel: a torus of dark machinery seating the rim edge.
     F.ring(s, 'RimBezel', (0, 0, RIM_Z - 0.02), R - 0.15, 0.30, axis=(0, 0, 1),
            material='paint2', segments=36, sides=8)
-    # A continuous glow groove the lamps sit in, then the unbroken lamp chain.
+    # A continuous glow groove the lamps sit in, then the unbroken lamp chain and the
+    # armour tabs between them.
     F.ring(s, 'RimGroove', (0, 0, RIM_Z + 0.04), R - 0.28, 0.07, axis=(0, 0, 1),
            material='glow_cyan', segments=40, sides=6)
     F.boxes(s, 'RimLights', rim_beads(), 'glow_cyan', bevel=0.02)
     F.boxes(s, 'RimVents', rim_vents(), 'dark', bevel=0.02)
+    F.boxes(s, 'RimTabs', rim_tabs(), 'paint2', bevel=0.02)
 
-    # Weapon pods mounted ON the rim edge — the only placement a flat disc silhouette lets
-    # guns actually read. Two M pods on the flanks, S ball turret in the nose rim.
-    F.box(s, 'GunPort', (0.3, R - 0.15, -0.16), (1.7, 1.0, 0.52), material='paint2')
-    F.box(s, 'GunStarboard', (0.3, -R + 0.15, -0.16), (1.7, 1.0, 0.52), material='paint2')
-    F.cylinder(s, 'GunPortBarrel', (0.55, R + 0.1, -0.14), (0.55, R + 0.95, -0.14), 0.11,
-               material='gunmetal')
-    F.cylinder(s, 'GunStarboardBarrel', (0.55, -R - 0.1, -0.14), (0.55, -R - 0.95, -0.14), 0.11,
-               material='gunmetal')
-    F.sphere(s, 'TurretBall', (R - 0.15, 0, -0.14), 0.48, material='gunmetal', segments=16)
-    F.cylinder(s, 'TurretBarrel', (R + 0.15, 0, -0.14), (R + 0.95, 0, -0.14), 0.085,
-               material='gunmetal')
+    # --- guns: three field-emitter turrets riding the rim edge --------------------------------
+    # Flank hardpoints fire broadside; the chin turret owns the forward arc. On a disc the
+    # rim is the only place a gun silhouette survives the planform.
+    emitter_turret(s, 'GunPort', 0.2, R - 0.45, -0.02, yaw=math.pi / 2, barrels=2)
+    emitter_turret(s, 'GunStarboard', 0.2, -R + 0.45, -0.02, yaw=-math.pi / 2, barrels=2)
+    emitter_turret(s, 'TurretFront', R - 0.55, 0, -0.48, yaw=0.0, sc=1.15, barrels=4)
 
     # --- dorsal dome ------------------------------------------------------------------------
-    # Metallic dome with a dark glass crown and a cyan light ring at its base.
+    # Metallic dome with a warm porthole ring, a dark glass crown and a cyan base ring.
     F.sphere(s, 'Dome', (0, 0, 1.2), 2.0, material='gunmetal', segments=26)
+    F.boxes(s, 'DomePorts', portholes(), 'glow_warm', bevel=0.02)
     F.sphere(s, 'DomeGlass', (0, 0, 2.3), 1.1, material='glass', segments=20)
     F.ring(s, 'DomeRing', (0, 0, 1.62), 2.02, 0.13, axis=(0, 0, 1), material='glow_cyan',
            segments=40, sides=8)
+    F.ring(s, 'GlassCollar', (0, 0, 2.05), 1.08, 0.05, axis=(0, 0, 1), material='dark',
+           segments=24, sides=5)
     F.beacon(s, 'ApexBeacon', (0, 0, 3.42), 'glow_amber', size=0.16)
+    F.antenna(s, 'MastAntenna', (1.15, 0, 2.55), 0.85, tip='glow_cyan')
 
-    # --- ventral dish + drive core ------------------------------------------------------------
-    F.sphere(s, 'Dish', (0, 0, -0.55), 2.4, material='gunmetal', segments=22)
+    # Dorsal sensor blisters — low domes flanking the crown, lenses looking forward.
+    F.sensor_dome(s, 'SensorBlisterFore', (3.5, 2.7, 1.10), 0.5, material='paint2', lens='glow_cyan')
+    F.sensor_dome(s, 'SensorBlisterAft', (-3.5, -2.7, 1.10), 0.5, material='paint2', lens='glow_cyan')
+
+    # --- ventral dish + caged drive core ------------------------------------------------------
+    # A real concave bowl with a feed stalk; the glowing core hangs in the dish mouth inside
+    # a gyroscope cage of three machine rings — the field drive, worn on the outside.
+    F.dish(s, 'Dish', (0, 0, -0.90), 2.7, 0.75, axis=(0, 0, -1), material='gunmetal',
+           face='dark', segments=28, feed=None)
+    F.ring(s, 'DishThroat', (0, 0, -1.62), 1.55, 0.07, axis=(0, 0, 1),
+           material='glow_cyan', segments=24, sides=6)
     F.sphere(s, 'DriveCore', (0, 0, -2.45), 1.15, material='glow_cyan', segments=20)
-    s.hook('HOOK_DRIVE_CORE', (0, 0, -3.0))
+    F.ring(s, 'CageH', (0, 0, -2.45), 1.52, 0.05, axis=(0, 0, 1), material='paint2',
+           segments=18, sides=5)
+    F.ring(s, 'CageX', (0, 0, -2.45), 1.52, 0.05, axis=(1, 0, 0), material='paint2',
+           segments=18, sides=5)
+    F.ring(s, 'CageY', (0, 0, -2.45), 1.52, 0.05, axis=(0, 1, 0), material='paint2',
+           segments=18, sides=5)
+    s.hook('HOOK_DRIVE_CORE', (0, 0, -3.2))
 
-    # Ventral field vanes — detail tier: gone at LOD2.
+    # Ventral field vanes with lit tips — detail tier: gone at LOD2.
     s.detail = 1
-    F.boxes(s, 'FieldVanes', field_vanes(), 'gunmetal', bevel=0.02)
+    vanes, tips = field_vanes()
+    F.boxes(s, 'FieldVanes', vanes, 'gunmetal', bevel=0.02)
+    F.boxes(s, 'FieldVaneTips', tips, 'glow_cyan', bevel=0.02)
     s.detail = 0
 
     # --- lights -------------------------------------------------------------------------------
@@ -147,18 +223,18 @@ def build():
 
     # --- sockets --------------------------------------------------------------------------------
     s.socket('SOCKET_Camera_Focus', (0, 0, 0.5))
-    s.socket('SOCKET_Engine_Main', (0, 0, -1.7), forward=(0, 0, -1))
-    s.socket('SOCKET_Tether_Massline', (0.8, 0, -1.5))
-    s.socket('SOCKET_Weapon_Front', (R - 0.2, 0, -0.1))
-    s.socket('SOCKET_Weapon_Port', (0.0, R - 0.2, -0.1))
-    s.socket('SOCKET_Weapon_Starboard', (0.0, -R + 0.2, -0.1))
+    s.socket('SOCKET_Engine_Main', (0, 0, -3.1), forward=(0, 0, -1))
+    s.socket('SOCKET_Tether_Massline', (0.8, 0, -1.9))
+    s.socket('SOCKET_Weapon_Front', (R + 0.9, 0, -0.18))
+    s.socket('SOCKET_Weapon_Port', (0.35, R + 0.5, 0.10))
+    s.socket('SOCKET_Weapon_Starboard', (0.35, -R - 0.5, 0.10))
     s.socket('SOCKET_Trail_Main', (-R + 0.9, 0, -0.35))
     s.socket('SOCKET_Trail_Port', (-7.2, 4.5, -0.35))
     s.socket('SOCKET_Trail_Starboard', (-7.2, -4.5, -0.35))
     s.socket('SOCKET_RCS_Port', (-4.0, 8.3, -0.1))
     s.socket('SOCKET_RCS_Starboard', (-4.0, -8.3, -0.1))
     s.socket('SOCKET_Utility_Dorsal', (0, 0, 1.9))
-    s.socket('SOCKET_Cargo_Ventral', (0, 0, -1.3))
+    s.socket('SOCKET_Cargo_Ventral', (0, 0, -1.9))
     return s
 
 

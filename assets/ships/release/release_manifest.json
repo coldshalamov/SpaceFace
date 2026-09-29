@@ -4421,42 +4421,42 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/saucer_production_v1.glb",
       "release": "assets/ships/release/parts/wholeships/saucer_production_v1.glb",
-      "sourceSha256": "4b8441ee743421a1dbe6d4481ea93209e999b5e7d158ba1937025e7b9ff2789d",
-      "releaseSha256": "a59f0e64ba5c827ba9ce46f849001e782963077287a50c523ce98c90c360d9ec",
-      "sourceBytes": 2503236,
-      "releaseBytes": 878920,
+      "sourceSha256": "a32aa0e63f36b941a2c55cef44ecfcd5b9c32a511ae032f5c8ee9323c01814b2",
+      "releaseSha256": "2c54f9f858682b823ccf9f6895e2bc1b1a487dfd9221ac866f14520265b77b87",
+      "sourceBytes": 3488652,
+      "releaseBytes": 1142668,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 26
+      "meshoptBufferViews": 60,
+      "contractNodeCount": 29
     },
     {
       "id": "wholeship_saucer_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/saucer_production_v1_lod1.glb",
       "release": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb",
-      "sourceSha256": "4cbae18243c37505e4577406390304803be574e716c0426613e54270ff5fd9d8",
-      "releaseSha256": "7ed21d6a34dd95f234d2ac8ee3dd67739647b8e47ea3e5df6905c6efdfcedd4f",
-      "sourceBytes": 1157144,
-      "releaseBytes": 576888,
+      "sourceSha256": "caa89cd2640bd4aebfa160e12d91e74c1d56a23a687fc71129a2b4133ed8212a",
+      "releaseSha256": "0ac0d0c74a60c6de99ee24dce869a676c48aa9b76e913cb7c71bae07d12cf2ee",
+      "sourceBytes": 1631416,
+      "releaseBytes": 717032,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 26
+      "meshoptBufferViews": 60,
+      "contractNodeCount": 29
     },
     {
       "id": "wholeship_saucer_production_v1_lod2",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/saucer_production_v1_lod2.glb",
       "release": "assets/ships/release/parts/wholeships/saucer_production_v1_lod2.glb",
-      "sourceSha256": "2c4d780e61404f2a0f6cb2667ea045eb2b16f4711913283b9f10c1bd9e1980ee",
-      "releaseSha256": "e936db18d305fcb77164f5a79683c77cdfe46b5f038a431a7aa783783be51177",
-      "sourceBytes": 686160,
-      "releaseBytes": 449360,
+      "sourceSha256": "4fde624306c18f5ecd6387d622955bda1a96d09d98fac03daf2db073d2bef894",
+      "releaseSha256": "281ac6c8abc9387be647a97b98ce3a6bf7b24f27b9556b48c8d05655e2002dbd",
+      "sourceBytes": 901232,
+      "releaseBytes": 516368,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 44,
-      "contractNodeCount": 25
+      "meshoptBufferViews": 56,
+      "contractNodeCount": 28
     }
   ]
 }
