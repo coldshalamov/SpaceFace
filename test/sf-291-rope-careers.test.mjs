@@ -182,6 +182,14 @@ test('SF-291 tow career: a hitchable hull is a ride, not a tow strain — no dou
       h.latch(11);
       assert.equal(h.hints('masslineTowClass').length, 0, 'a ride is never a tow strain');
       assert.ok(h.hints('masslineHitchhiking').length <= 1, 'the hitch lesson owns the latch');
+      // Kinematic-scripted bodies (physicsBody===false: lane freighters, drift proxies) are
+      // un-towable — the line cannot strain on a body it cannot move, and the gate must not
+      // convert the opt-out into an authored spec either.
+      h.addLoad({ id: 12, type: 'ship', alive: true, team: 2, mass: 200, physicsBody: false,
+        pos: { x: 0, z: 0 }, data: {} });
+      h.latch(12);
+      assert.equal(h.hints('masslineTowClass').length, 0, 'a scripted body cannot strain the line');
+      assert.equal(h.entities.get(12).physicsBody, false, 'the observer never mutates the opt-out');
     } finally { h.restore(); }
   });
 });

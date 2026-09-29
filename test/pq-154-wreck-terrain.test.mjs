@@ -284,6 +284,9 @@ test('PQ-154/SF-293 terrain seed 15430: the fight continues around the heavy\'s 
   try {
     // The heavy dies with its wing still in the water: two live hostile escorts on the same
     // fight. "Continue fighting around the body" is the authored case, not a scripted phase.
+    // The "actors respond to its geometry" half is bound by ai-maneuver.review.test.mjs —
+    // dead hulks already enter the obstacle sweep — this case pins materialization timing,
+    // lane geometry, displacement, and retention around a live fight.
     const wingA = ctx.sim.spawn(shipSpec({ team: 1, defId: 'ship_wasp', pos: { x: -300, z: -200 } }));
     const wingB = ctx.sim.spawn(shipSpec({ team: 1, defId: 'ship_wasp', pos: { x: 300, z: 200 } }));
     const { wreck } = killHaulerIntoWreck(ctx);

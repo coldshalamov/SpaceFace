@@ -571,10 +571,13 @@ export const onboarding = {
       const load = ropeLoadMassT(target);
       // Anchored endpoints (stations, planet bodies, ordinary rocks) are hitch points, not tow
       // loads — latching one rides the hull, and a tow-class line would lie about a body that
-      // cannot be moved. Only a dynamic mass strains the rating. A hitchable hull is a ride,
-      // not freight: the hitch hint owns that lesson (and a 55 t mule IS past class — the two
-      // lines must never double-fire on one latch).
-      if (!(load > 0) || substanceFor(target).dynamic !== true
+      // cannot be moved. Only a dynamic mass strains the rating — and physicsBody===false
+      // bodies (lane freighters, drift proxies) are kinematic-scripted: the line can't haul
+      // them at all, so they don't strain it either. A hitchable hull is a ride, not freight:
+      // the hitch hint owns that lesson (and a 55 t mule IS past class — the two lines must
+      // never double-fire on one latch).
+      if (!(load > 0) || target.physicsBody === false
+        || substanceFor(target).dynamic !== true
         || isHitchHintTarget(target)) return;
       const towClass = towClassMassFor(player && player.data && player.data.derived);
       if (!(towClass > 0) || load <= towClass) return;
@@ -586,7 +589,13 @@ export const onboarding = {
       if (!massline2Flag('throw')) return;
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
       const towClass = towClassMassFor(player && player.data && player.data.derived);
-      const mass = Number(payload && payload.mass);
+      // Same stick as the tow gate: the thrown body's physics mass, resolved off the record's
+      // targetId (the thrown mass — masslineImpacts emits it), falling back to the payload's
+      // entity.mass copy when the body is already gone.
+      const thrown = payload && payload.targetId != null
+        ? this.state.entities && this.state.entities.get(payload.targetId)
+        : null;
+      const mass = ropeLoadMassT(thrown) || Number(payload && payload.mass);
       if (!(towClass > 0) || !(Number.isFinite(mass) && mass > towClass)) return;
       this._showHint('masslineThrowClass',
         'You just threw a mass your drive cannot tow — a winch kit cinches the next swing faster.',
