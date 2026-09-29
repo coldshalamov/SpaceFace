@@ -191,7 +191,13 @@ test('legends are earned from distinct receipts and preserve exemplar evidence a
   assert.equal(h.system.getLegends()[0].title, 'The Wreckwright');
   assert.equal(h.system.getLegends()[0].count, 3);
   assert.equal(h.system.getLegends()[0].evidence.length, 3);
-  assert.equal(h.events('chronicler:legend').length, 1);
+  // The legend is public memory: it surfaces on the news seam, once, with its citations.
+  const legends = h.events('news:publish').filter(p => p.kind === 'chronicler-legend');
+  assert.equal(legends.length, 1);
+  assert.equal(legends[0].headline, 'The Wreckwright');
+  assert.equal(legends[0].text, 'The Wreckwright — Your record: 3 confirmed collision kills.');
+  assert.ok(legends[0].sourceRef.startsWith('ch:legend:'));
+  assert.equal(legends[0].evidence.length, 3);
 });
 
 test('a public last event cannot launder private history into a legend', () => {
@@ -202,7 +208,7 @@ test('a public last event cannot launder private history into a legend', () => {
   h.step(10);
   assert.equal(h.system.getLegends().length, 0);
   assert.equal(h.system.getLegends({ includePrivate: true }).length, 1);
-  assert.equal(h.events('chronicler:legend').length, 0);
+  assert.equal(h.events('news:publish').filter(p => p.kind === 'chronicler-legend').length, 0);
 });
 
 test('escaped captain, return and defeat form a remembered saga without inventing mercy', () => {
@@ -362,9 +368,17 @@ test('context recall works while docked, is local, and persists anti-repeat keys
 
 test('headline budgets and meaningful-revision cooldowns suppress spam', () => {
   const h = harness(); for (let i = 0; i < 10; i++) chain(h, { suffix: `-${i}` });
-  h.step(13); assert.equal(h.events('news:publish').length, 1); assert.equal(h.events('chronicler:story').length, 4);
-  h.step(14); assert.equal(h.events('chronicler:story').length, 8); assert.equal(h.events('news:publish').length, 1);
-  h.step(73); assert.equal(h.events('news:publish').length, 2);
+  // Story headlines obey the news budget; legend lines ride the same seam on their own
+  // once-per-threshold cadence and are counted separately.
+  const storyNews = () => h.events('news:publish').filter(p => p.kind !== 'chronicler-legend');
+  const legendNews = () => h.events('news:publish').filter(p => p.kind === 'chronicler-legend');
+  h.step(13); assert.equal(storyNews().length, 1); assert.equal(h.events('chronicler:story').length, 4);
+  h.step(14); assert.equal(h.events('chronicler:story').length, 8); assert.equal(storyNews().length, 1);
+  h.step(73); assert.equal(storyNews().length, 2);
+  // All ten kills ingest in one batch, so the legend row is replaced in place up to the highest
+  // crossed threshold (7) before the first publish — the surviving legend announces once.
+  assert.equal(legendNews().length, 1);
+  assert.equal(legendNews()[0].text, 'The Wreckwright — Your record: 7 confirmed collision kills.');
 });
 
 test('wreck rematerialization neither republishes nor rejuvenates an old story', () => {
