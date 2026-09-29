@@ -17,7 +17,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const scenario = readJson(SCENARIO_PATH);
 const GAME_STATE_SOURCE = readText('src/core/gameState.js');
-const SF_SIM_SOURCE = readText('scripts/sf-sim.mjs');
+const SF_SIM_SOURCE = readText('scripts/sf-sim-cli.mjs');
 const EVENT_TRACE_SOURCE = readText('src/core/eventTrace.js');
 const COMMS_SOURCE = readText('src/ui/comms.js');
 
