@@ -643,6 +643,53 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 
 This section does not change existing rows, foreign claims or the legacy PQ schema. When finishing, use the current board/done-log convention; update dependent INFERENCE rows before retiring the parent. A finding outside the chosen scope uses the existing `DEMO_READINESS_2026-09-20.md` §6 ledger, not a new defect list.
 
+### I. Finish & Expansion Pack — loops-first finishing + the alien/machine extension (2026-09-29)
+
+Owner-delivered third reservoir, landed at [`design/finish-expansion-2026-09/`](./design/finish-expansion-2026-09/):
+24 programs, 240 `SFQ-B` build candidates, 96 `SFQ-I` inference candidates, 36 mission briefs, 36
+model-family briefs, 32 VFX/audio briefs, a 507-edge prerequisite DAG (validated: 5,185 internal
+links, topological order clean). Entry: [`START_HERE.md`](./design/finish-expansion-2026-09/START_HERE.md) ·
+[first wave](./design/finish-expansion-2026-09/FIRST_WAVE.md) · [machine-readable catalog](./design/finish-expansion-2026-09/catalog/task_catalog.json).
+
+Same law as section H, plus this pack's own admission rules:
+
+- **Reservoir, not a second queue.** Statuses live on this board and in `INFERENCE_IDEAS.md`; the
+  pack's JSON/CSV are candidate inventories. `SFQ-` IDs never go to `program-dispatch --id`.
+- **Map by outcome before building** ([admission + crosswalk](./design/finish-expansion-2026-09/integration/01_ADMISSION_AND_CROSSWALK.md)):
+  already-true → close with the native owner's evidence; residual → extend the native packet;
+  genuinely new → take it through a row here; conflicting → park in-pack as history.
+- **The alien/machine layers (programs 13–17) ride PR #170** (`AE-000…349`, in flight): reconcile
+  that branch before any ecology/machine row; never build a parallel alien system on master. The
+  `src/data/alienEcology*` / `precursorMachines` paths named in briefs exist only on that branch.
+- Presentation converges on ORRERY (UI), Forge (flyable hulls) and the current material VFX
+  direction; pre-release work stays parked (owner, 2026-09-27).
+- The 96 `SFQ-I` inference candidates enter `INFERENCE_IDEAS.md` one at a time, after their named
+  dependency actually lands and outcome-mapping confirms the gap is real.
+- **Cross-source dedupe is mandatory**: before taking any SFQ unit, check the §1C board, the
+  SF/NXB/PB rows it cites, and [`design/program/TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md)
+  (the running record of overlap dispositions between all delivered banks).
+- Milestone spine (full table in the pack's `direction/02_BUILD_MAP.md`): current reality → the
+  hand and physical toy → repeatable combat → a working adventure loop → two alien proofs →
+  selected deeper combinations → finished game → release prep (parked).
+
+First-wave lanes (each row is one lane opening; deeper units follow the pack's DAG):
+
+| # | Kind | Unit | Decided player outcome | Prerequisite / prior owner | Status |
+|---|---|---|---|---|---|
+| 219 | BUILD | SFQ-B011/B012 (prog 02) | Hand lane: verify the current G-stick and hand conflicts on the live route; one reproduced usability issue improved or verified-good | G-stick owners; NXB-002/NXB-003 adjacent (crosswalk) | OPEN |
+| 220 | BUILD | SFQ-B021/B025 (prog 03) | A real body that should be usable can be latched and manipulated without violating kinematic opt-outs; a fresh wreck is that body | PB-MASS-A/B adjacent; seam tetherGameplay serial | OPEN |
+| 221 | BUILD | SFQ-B031/B033 (prog 04) | A normal fight exposes distinct useful starter verbs and composable state responses, no new combat engine | PB-TAC rows adjacent | OPEN |
+| 222 | BUILD | SFQ-B071/B079 (prog 08) | One existing mission works end to end while its object moves, fails and reloads | PB-MIS rows adjacent; seam missions.js serial | OPEN |
+| 223 | ART | SFQ-B172 or SFQ-B181 (prog 18/19) | One actual visible defect corrected in the production asset/effect owner (attached parts or nozzle/history continuity) | graphics-lane coordination on Forge manifests | OPEN |
+| 224 | BUILD | SFQ-B003 → SFQ-B141 | Machine integration: branch-reality audit, then one physical Courier token through a real custody transaction — no blind merge | PR-170 reconciliation | WAITING PR-170 |
+| 225 | PERF | SFQ-B211/B217 | One demonstrated causal hitch or leak issue improves without altering scene quality | PQ-129.11–.17 / PQ-204 adjacent | OPEN |
+| 226 | BUILD | SFQ-B221/B223 | One adversarial ordinary transition (save boundary / async route) survives without lost progress or stale world | PB-CONT rows adjacent; seam saveSystem serial | OPEN |
+| 227 | BUILD | M4 first proofs (prog 13/15) | Two alien proofs on real ordinary routes: one ecological intervention and one consequential machine work cycle, with art/audio/persistence complete | rows 224 landed; PR-170 merged | WAITING row 224 |
+
+This section does not change existing rows, foreign claims or the legacy PQ schema. A finding
+outside the chosen scope uses the existing `DEMO_READINESS_2026-09-20.md` §6 ledger, not a new
+defect list.
+
 ## 2. Product north star
 
 SpaceFace is an open-source systemic space game with the legible economic and navigational base of games such as Endless Sky, but its distinctive play is physical. Gravity, inertia, collision, Massline attachment, boost, payload mass, fields, recoil, orbital geometry, and improvised physical tricks should produce tactics that are visible, learnable, and surprising.

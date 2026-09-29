@@ -1,0 +1,801 @@
+GitHub
+ in the spaceface repo, I’m thinking of adding aliens
+
+Worked for 50s
+Yes — and there’s a surprisingly strong foundation for it already in master.
+
+SpaceFace already has two different things that are almost begging to be separated into distinct alien layers. The Vael are currently coded as fleetClass: 'alien', but mechanically they still fly ordinary SpaceFace hulls and behave like a conventional faction. More importantly, the actual story canon already has the Vethari: genuinely non-human, biologically strange, ancient, fungus-linked, and central to Wren’s childhood. docs/worldbuilding/story/VETHARI.md explicitly says they should never appear on screen. They’re meant to be “the thing in the next room that you can hear through the wall.”
+
+I think that restraint is excellent. I would not turn the Vethari into mobs. The instant you have Vethari Fighter x4 with red health bars, something enormous becomes merely content.
+
+But I absolutely would add aliens.
+
+The interesting architecture would be:
+
+Vethari = the unknowable alien horror. Keep them offscreen. Hull fragments, impossible metallurgy, biological contamination, harmonics Wren recognizes, abandoned places, transmissions, evidence chains, sensor disturbances. You might eventually encounter a Vethari ship without ever seeing its occupants.
+One genuinely living alien civilization = interactable. Not humans with forehead prosthetics. Different ecology, incentives, communication, ships, territorial behavior and economy. Something the player can actually encounter repeatedly.
+Alien fauna/ecology = makes space physically alien. Organisms attached to asteroids, void colonies, migratory things following radiation gradients, parasites that grow into wrecks, enormous sessile organisms mistaken for terrain. This gives you aliens without making every alien a political faction.
+Precursor/remnant intelligence = civilization without people. SpaceFace already has candidate designs for things like ancient gate-builders, caretaker AIs and relativistic fleets. That gives the universe archaeological depth rather than Star-Trek-bar depth.
+And hilariously, somebody working on the repo has already independently walked straight into this problem. design/depth-program/research/verified/examples_A_factions.md literally contains a section called “A true alien / bio-tech race”, because the audit concluded that the Vael don't actually satisfy that role. It contains concepts including the Tessellate, Mycelium, Pelagic, Overgrowth and Verdent.
+
+I would reject one of those immediately: Mycelium is too close to the Vethari fungal concept. It dilutes one of your strongest pieces of canon.
+
+The Tessellate, though, has real potential: a distributed reef organism whose ships are calcified colonies rather than manufactured objects. It doesn't negotiate because the concept of an individual diplomatic speaker doesn't map cleanly onto it. It grows over derelicts. Mining what looks like an asteroid might actually constitute attacking it. That gives you a beautiful SpaceFace-style question: how does Concord bureaucracy assign mineral rights to something it doesn't legally recognize as alive?
+
+That is much better than “green alien faction shoots plasma.”
+
+I’d actually go even stranger. The first interactive alien species should force the player to learn a new grammar of gameplay. Humans teach you reputation. Pirates teach you violence. Markets teach you price. An alien should make some familiar variable suddenly meaningless.
+
+For example, imagine a species with no individual ships at all. What you think are ships are transient organs extruded by a distributed organism occupying several asteroid belts. Destroying one produces no reputation loss because it isn't regarded as an individual. But changing an asteroid's orbit, taking particular isotopes, or emitting a certain radar pattern causes the entire organism to react. You eventually realize you've been communicating with it for hours through your flight behavior. No dialogue wheel. No universal translator. You learn its syntax empirically.
+
+That feels like SpaceFace.
+
+And there’s an even better structural opportunity here: aliens could turn the galaxy from a collection of sectors into a place with layers of epistemology. Human civilization thinks it understands the map. Then the player slowly discovers that humans aren't actually the primary authors of everything on it. A gate that was assumed to be infrastructure becomes archaeology. A nebula that's treated as terrain becomes habitat. A “derelict field” becomes a living organism. REF 44-C stops looking like one weird bureaucratic secret and starts looking like humanity repeatedly stuffing ontological crises into dropdown menus.
+
+That preserves the Le Carré bureaucracy you've built while opening the door into genuinely cosmic science fiction.
+
+So my instinct is very strong here: yes, add aliens — but don't “add an alien faction.” Add the fact that humanity has misunderstood what kind of galaxy it lives in.
+
+And leave the Vethari behind the wall. That darkness is worth more than another hundred enemy models.
+
+Yeah alien fauna/ecology can be a good idea. Also I always liked the parasitic idea from the Zerg in StarCraft. They would infect animals and aliens and assimilate and mutate them into their gene pool, they were kind of fungus-esque
+Exactly. That evolutionary assimilation idea is powerful because it gives alien life a reason to have enormous morphological variety without feeling like a bestiary assembled by committee.
+
+The trick for SpaceFace is to steal the biological principle, not the Zerg silhouette.
+
+I’d separate it sharply from the Vethari fungus. The Vethari fungus is neurological: it corrupts communication between minds. This other organism should be fundamentally about genetic acquisition. It doesn’t connect minds. It consumes solutions.
+
+Imagine an organism—call it a xenophage for now—that arrived in this region millions of years ago. Its defining evolutionary innovation is unusually aggressive horizontal gene transfer: instead of waiting for mutation + selection over generations, it incorporates useful biological machinery from organisms it parasitizes.
+
+That gives you a beautiful rule:
+
+It cannot invent quickly. It can steal quickly.
+
+So every population tells you something about what it has encountered.
+
+A xenophage living around a sulfur-rich moon might have metabolized extremophile chemistry. Another population that infected armored megafauna develops enormous keratinous plating. One that got into a photosynthetic organism unfolds solar membranes when idle. One that infected something using electroreception starts sensing ships through their power systems. One that encounters humans eventually becomes much more disturbing.
+
+That means the creature design itself becomes environmental storytelling.
+
+You scan one and find:
+
+STRUCTURAL PROTEIN: UNKNOWN
+METABOLIC PATHWAY: LOCAL FAUNA MATCH 81%
+NEURAL PROTEIN: HUMAN HOMOLOG — 17%
+
+And suddenly the scanner has told a horror story.
+
+What I particularly like is that this could create an actual alien ecology, rather than "enemy faction #9."
+
+There could be several trophic forms of the same underlying organism.
+
+A seed/spore stage drifts nearly invisibly through space.
+
+A grazer colonizes asteroids and extracts organics/minerals.
+
+A parasite attaches to native fauna.
+
+A carrier moves reproductive material between habitats.
+
+A predator is something the organism has learned to manufacture only after absorbing sufficiently capable host genomes.
+
+And then extremely old colonies become almost ecosystem-scale organisms: reefs, nests, hollowed asteroids, dead stations converted into biological organs.
+
+This gives you something Zerg-like without requiring a Queen, Overmind, faction diplomacy, or even centralized intelligence.
+
+In fact, I think making them non-sapient would be stronger.
+
+They're not evil.
+
+They're astonishingly competent evolution.
+
+A human sees infection, mutilation and assimilation. The xenophage is merely doing what mitochondria, viruses, plasmids and transposons have been doing on Earth forever—except with the accelerator slammed through the floor.
+
+And then you can make the mechanism somewhat scientifically respectable.
+
+Real biology already performs horizontal gene transfer. Bacteria swap plasmids. Viruses shuttle DNA between organisms. Endogenous retroviruses comprise a substantial fraction of animal genomes. Some organisms steal functional biological machinery from prey. Evolution is much less respectful of species boundaries than the clean branches in textbooks suggest.
+
+SpaceFace's alien version could have evolved an absurdly sophisticated system of:
+
+host sampling → sequence acquisition → regulatory integration → developmental experimentation → selection.
+
+The crucial constraint should be that most acquisitions are garbage.
+
+Otherwise it's biological magic.
+
+Maybe only 0.01% of captured sequences become useful, and colonies run huge numbers of grotesque developmental experiments. That explains the mutant forms: they're not deliberately engineered soldiers. They're evolutionary scratch paper.
+
+And there is a fantastic gameplay system hiding inside that.
+
+Every local xenophage population maintains a trait pool.
+
+If it encounters:
+
+shielded ships, selection favors electromagnetic sensing;
+laser weapons, reflective/cooling tissue gets selected;
+kinetic weapons, thicker sacrificial armor emerges;
+mining vessels, it might acquire tolerance to industrial radiation;
+livestock or native megafauna, entirely new movement/body plans appear.
+Not instant Borg adaptation. That gets silly.
+
+Instead, actions alter ecological selection pressures over many encounters.
+
+The player might leave a region and return twenty hours later and realize:
+
+"Oh fuck. These things are different now."
+
+That is much scarier.
+
+It also produces a potentially magnificent SpaceFace mechanic: the player can accidentally teach the ecosystem how to kill them.
+
+Kill enough of them with one tactic and you're performing artificial selection.
+
+Now we're cooking.
+
+I'd also make their assimilation visually legible. You should be able to look at a creature and approximately reconstruct its evolutionary thefts:
+
+a recognizable six-limbed locomotive structure from indigenous fauna;
+
+a translucent pressure bladder stolen from an atmospheric organism;
+
+metal-bearing shell material derived from asteroid microbes;
+
+electrical organs from some deep-ocean analogue;
+
+and then this foreign connective tissue—the conserved xenophage morphology—holding the stolen parts together.
+
+So there's always a recognizable "grammar" beneath wildly different creatures.
+
+And here's where it fits wonderfully beside the Vethari:
+
+The Vethari fungus destroys individuality through connection.
+
+This organism destroys biological distinction through assimilation.
+
+Those are related themes without being the same organism.
+
+One merges minds.
+
+The other merges evolution.
+
+And humanity's response to both, inevitably, will be to assign them case numbers and argue about whether the quarantine budget belongs to Concord Agriculture or Concord Customs.
+
+Which is extremely SpaceFace.
+
+Naw, I think having 2 organisms so similar would be a bad call
+It’d make more sense to connect them somehow to the vethari fungus. There’s probably some hive mind connection between any organism with that fungus, but it doesn’t increase brain mass, and also it might degrade mental capability with the mutations it does to the animals and everything. 
+So there’d probably be some species of mighty advanced aliens that fell to the fungus and they make up the real off-screen doom enemy that maybe pops up in some later part in the game, but the fungus infects lots of things and maybe some animals that can survive in space or mutated to, but maybe those animals aren’t very smart and they retain some basic drives from the hive mind and maybe some of their experience makes it into the public hive mind record but it’s foggy, you might run into things like that. And I think in that way the game can progress through stages of becoming progressively more weird and inundated with this nasty fungus kind of like the creep from StarCraft, and it just gets thicker everywhere logically the closer you get to their central domain, and likely at some point in the game is going to take the player towards the big evil, so that’d make sense stylistically and make it creepy towards the end and build narrative tension through the growing unfamiliar weirdness everywhere
+Lot of opportunities for broken and abandoned areas, creepy models infected with weird fungus
+
+
+There’s probably some advanced legendary race that’s presumed mythical that evidences itself in the form of its robots and maybe some of its structures or wreckage sometimes. Really technologically advanced sort of godlike Zeus beings that maybe never show their faces directly but you’ll meet their ancient robots sometimes like in an Asimov novel
+…
+Yeah, I think you’re right.
+
+If you already have the Vethari fungus as one of the deepest weird things in the setting, then making a second separate “assimilating fungus-ish organism” would blur the silhouette of the universe instead of sharpening it.
+
+The stronger move is:
+
+one underlying biological horror, many expressions.
+
+That gives you a much cleaner cosmology.
+
+The core rule
+The fungus should not be:
+
+a magic intelligence booster
+a universal “make monster” goo
+or a perfect hivemind with no tradeoffs
+It should be something more specific and more disturbing:
+
+it links nervous systems, but at a cost.
+
+So:
+
+in highly intelligent hosts, it creates shared perception, distributed memory, compulsive coordination, and catastrophic loss of individual control
+in less intelligent animals, it creates crude instinct-sharing, migratory urges, pack behavior, aggression loops, and body-plan mutations
+in damaged hosts, it creates partial or broken connection: fragments of memory, phantom impulses, foggy directional behavior, ritual repetition, inherited fear, inherited attraction
+That is a very good rule because it explains a lot while keeping things eerie.
+
+A line I’d almost build the whole thing around is:
+
+The fungus does not make minds greater. It makes them less separate than they can survive.
+
+That feels like the right thesis.
+
+Why this is stronger
+This solves several problems at once:
+
+1. It preserves uniqueness
+You don’t have:
+
+Vethari fungus
+and then unrelated Zerg fungus
+You have one contamination logic that shows up across the galaxy in escalating forms.
+
+2. It creates progression
+The player can move from:
+
+rumor
+to contamination
+to infected fauna
+to infected infrastructure
+to regional ecological takeover
+to the shadow of the actual Vethari sphere/domain
+So the weirdness ramps naturally.
+
+3. It makes geography meaningful
+You can literally make the world stranger the closer you get to their domain.
+
+Not just “harder enemies.”
+Not just “more red fog.”
+
+But:
+
+denser filament growth
+more derelicts
+stranger movement patterns
+more partial shared-memory effects
+more dead zones and broken comms
+more off behavior in local wildlife
+more sectors where human civilization is decayed, abandoned, or holding on through quarantine measures
+That gives you that excellent “creep spreading toward the endgame” feeling.
+
+Best version of the Vethari ecosystem
+I think the cleanest lore split is this:
+
+A. The Vethari are the highest-order infected civilization
+They’re not the source of all life touched by it, necessarily, but they are the most terrifying successful expression of it:
+
+advanced
+ancient
+spacefaring
+ruined by the fungus
+still active
+still coherent enough to be dangerous
+no longer coherent enough to be morally or politically normal
+They are the off-screen doom presence.
+
+B. The fungus infects other species too
+But those become lesser expressions, not equal peer civilizations.
+
+That means you can have:
+
+infected vacuum fauna
+infected scavenger organisms
+infected megafauna
+infected station ecologies
+infected corpse-gardens in wreck fields
+infected feral post-human remnants if you ever want that
+partial colonies where multiple dead or living hosts have become one semi-organism
+These are your visible enemies and ecology.
+
+C. Intelligence degrades or distorts depending on the host
+This is the critical part.
+
+You don’t want every infected thing to be a genius hive node.
+
+Instead:
+
+Vethari-level hosts produce tragic, organized horror
+animal hosts produce instinctive, ugly, half-coordinated behavior
+low-neural or damaged hosts become semi-biological tools
+mixed colonies become grotesque and unreliable
+That gives you variation without losing the core concept.
+
+The public hive-memory idea is very good
+This is one of the best parts of what you said.
+
+If infected things contribute fragments of perception to the shared field, then even dumb space-animals can leave behind residue of experience without becoming smart.
+
+That’s incredibly rich.
+
+So an infected predator might not “understand” ships, but after many generations of infection it may still:
+
+avoid certain sensor frequencies
+be drawn to reactor heat
+circle stations in specific ways
+recoil from some ancient robot signal
+migrate along routes it could never have learned individually
+react to the player with an eerily half-familiar behavior because some prior infected host encountered similar craft
+That’s creepy as hell.
+
+Not tactical genius.
+Not language.
+Not strategy in the human sense.
+
+Just a foggy inherited pressure of remembered contact.
+
+That’s much better than “the animals got smart.”
+
+Great gameplay/narrative gradient
+You could divide the game into contamination bands.
+
+Stage 1 — rumor and trace
+Far from the central domain.
+
+What the player sees:
+
+strange hull residue
+quarantined cargo
+a weird scanner return
+abandoned outposts with unexplained damage
+sectors with contradictory logs
+animals acting wrong but not overtly monstrous
+fungal threads in sealed wrecks
+At this stage, the player wonders if it’s superstition, pollution, military secrecy, or something else.
+
+Stage 2 — localized infected ecology
+Further in.
+
+What the player sees:
+
+clearly mutated fauna
+fungal bloom on wrecks
+drifting spore mats
+sectors where mines, stations, or colonies failed for reasons nobody fully documented
+packs or swarms with unnatural coordination
+partial hive-memory behavior
+infected organisms using ship graveyards as habitat
+Now it’s undeniable that something biological and wrong is happening.
+
+Stage 3 — environmental takeover
+Near contested zones / historical Vethari pathways.
+
+What the player sees:
+
+sectors physically overgrown
+fungal structures bridging wrecks and asteroids
+derelict stations repurposed into biological organs
+comms interference
+weird audio phenomena
+local space “weather” affected by spores/filaments
+human settlements abandoned or living under quarantine protocols
+route planning matters because some lanes are becoming biologically hazardous
+At this point the fungus feels like a territorial phenomenon, not just a monster source.
+
+Stage 4 — the threshold of the doom enemy
+Close to the true Vethari sphere.
+
+What the player sees:
+
+near-total breakdown of normal ecology
+sectors where every form of life seems bent around the fungus
+large, ancient wreckage
+“holy shit” architectural evidence
+broken civilizations
+infected organisms that seem to be servicing some larger unseen process
+maybe rare glimpses of Vethari-adjacent consequences without directly showing the Vethari themselves
+This is where the game starts to feel mythic and dreadful.
+
+That arc is really strong.
+
+Infected fauna categories
+I think you want a few recurring ecological roles, not just random monsters.
+
+Drifters
+Slow floating organisms in open space.
+
+spore sacs
+filament kites
+heat-seeking floaters
+harmless unless disturbed, or only dangerous in groups
+Grazers / substrate forms
+Things attached to:
+
+asteroids
+wrecks
+hulls
+station undersides
+They consume minerals, organics, corrosion, or trapped atmosphere.
+
+These make environments feel alive.
+
+Hunters
+The obvious threat forms.
+
+ambush organisms
+fast attack forms
+grapplers
+parasites that attach to hulls
+things that disable rather than just damage
+Carriers / migrators
+The forms that spread contamination.
+
+bulky space-capable beasts
+swarm-bearers
+long-range drifting reproductive forms
+organisms drawn to shipping lanes
+These help make the spread feel systemic.
+
+Relay / signal forms
+Important because of the hivemind angle.
+
+stalk-like growths
+bio-antenna colonies
+nodal masses in wreck fields
+organisms that don’t fight much but intensify coordination nearby
+These are where gameplay can get interesting:
+kill the relay and nearby infected things become disorganized.
+
+Colony forms
+Whole areas, not just enemies.
+
+wreck gardens
+hollowed asteroids
+infected cargo depots
+station sectors fused into a living mesh
+These are content spaces, not just enemies.
+
+The “creep” idea works best if it’s not just floor paint
+You definitely want that StarCraft-esque spread feeling, but more grounded in SpaceFace.
+
+So instead of literal purple carpet, think in terms of progressive colonization signatures:
+
+dust-like filament veils across surfaces
+soft pale-red/whitish webs in seams and vents
+calcified bulb clusters around heat or moisture sources
+interior compartments turned into incubation chambers
+dead reactors wrapped in living insulation
+breathing hull blisters
+sectors where abandoned infrastructure has become scaffolding for biology
+The spread should feel like:
+an opportunistic ecological occupation of technological ruins.
+
+That’s stronger than generic goo terrain.
+
+The advanced “mythical god race” idea is also very good
+And it works especially well if it is a hard contrast to the fungus.
+
+If the fungus is:
+
+wet
+proliferating
+entangled
+bodily
+murky
+decayed
+loss of individuation
+then the legendary race should feel like:
+
+clean
+geometric
+impossible
+calm
+sparse
+luminous
+sovereign
+mathematically controlled
+That contrast is gold.
+
+Best version:
+A vanished or withdrawn ultra-advanced civilization whose machines remain active.
+
+You do not meet the beings directly.
+You meet:
+
+their robots
+their sentries
+their maintenance systems
+their vaults
+their intact or shattered structures
+their automated responses
+maybe their filtered messages
+maybe a very occasional remote interface that never truly gives itself away
+That feels very Asimov / Clarke / mythic.
+
+Why it pairs well with the fungus
+Because then the galaxy has two poles of weirdness:
+
+The fungus/Vethari pole
+biological catastrophe
+contamination
+collective madness
+spread
+grief
+ruin
+The ancient-machine pole
+austere order
+old containment systems
+impossible engineering
+ancient directives still executing
+silent judgment
+remnants of godlike intelligence
+That creates a beautiful deep-time setting.
+
+Best possible connection between the two
+The cleanest answer may be:
+
+the ancient race once fought, contained, studied, or routed around the fungus/Vethari threat.
+
+Not necessarily “they created it” — that can get too neat and too cliché.
+
+Better possibilities:
+
+they built quarantine lattices
+they sealed routes
+they left warning systems
+they abandoned regions rather than confront uncontrolled spread
+their robots still guard contaminated vaults or passages
+their structures sometimes appear precisely where the fungus is worst, implying old defensive lines
+the player gradually realizes that many “mysterious ruins” are actually containment architecture
+That’s excellent because it lets the mythic robot civilization matter directly to the fungal arc.
+
+It also gives you practical content:
+
+robot guardians
+inactive barriers
+ancient beacons
+ruined quarantine stations
+locked gates
+zones where machine order and biological overgrowth visibly clash
+That image alone is strong:
+cold geometric divine machinery half-swallowed by white-red fungal webs.
+
+Very memorable.
+
+Important rule: keep the Vethari themselves rare
+Even if the endgame moves toward them, I would still preserve the main canon strength:
+
+the Vethari should remain mostly off-screen.
+
+The player should fight:
+
+infected fauna
+infected derivatives
+infected colonies
+consequences
+perhaps specialized remote/auxiliary forms
+But the actual Vethari should be:
+
+glimpsed
+inferred
+heard
+felt in the environment
+maybe encountered at very high narrative moments, but never normalized into routine enemy traffic
+Because once you can farm them, loot them, or kite them around asteroids, they shrink.
+
+Their power is that they are the thing everything else bends around.
+
+If I were designing the big-picture ladder
+I’d make the weird layers of SpaceFace:
+
+Human layer
+Factions, trade, contracts, politics, smuggling, survival.
+
+Haunted layer
+Rumors, artifacts, contamination reports, abandoned sites, unexplained biology.
+
+Infected layer
+Fauna, overgrowth, hive traces, dead stations turned biological, growing environmental corruption.
+
+Mythic machine layer
+Ancient robots, impossible structures, warning systems, sealed corridors of history.
+
+Doom layer
+The Vethari domain and the realization that the galaxy’s administrative systems have been routing around this truth for centuries.
+
+That is a very powerful escalation curve.
+
+In short
+I think your revised instinct is much better than the separate-Zerg-organism version.
+
+The strongest shape is:
+
+one fungus
+many host expressions
+degraded/shared memory instead of universal intelligence
+infected fauna as the visible ecological layer
+Vethari as the off-screen apex horror
+contamination intensity increasing toward their domain
+ancient advanced god-race present only through robots/ruins/structures
+those machines possibly tied to old containment or warning systems
+That gives SpaceFace:
+
+creepiness
+escalation
+ecology
+visual identity
+faction contrast
+and endgame gravity
+without feeling like it imported the Zerg wholesale.
+
+If you want, I can turn this into a concrete design packet for SpaceFace with sections like:
+
+fungal ecology taxonomy
+progression by region/sector depth
+infected enemy classes
+environmental setpieces
+ancient robot civilization concept
+gameplay loops and mission hooks
+“do/don’t” guardrails to keep it from becoming generic slop.
+Yeah that all sounds good but working that all into the game physically would mean a ton of work in different ways, we’d have to get that work planned out
+
+Worked for 1m 25s
+Yes. And the important move is to plan this as a program with reusable machinery, not as “add 40 alien things.” Otherwise we end up paying the full engineering cost separately for every fungus-covered wreck, animal, sector and encounter.
+
+I looked through the live repo architecture, and there’s a workable route. SpaceFace already has most of the scaffolding we need: named sector zones in src/data/sectorZones.js, deterministic world materialization in world.js, mystery encounters in encounterDirector.js, scanner/anomaly behavior, the tactical AI stack, pooled VFX, narrative triggers, persistent world state, and the authored GLB pipeline. We should make those systems express the alien ecology rather than build a second game beside them.
+
+There is also one thing we should clean up before anything else: the repo already contains a live faction_understory, described as a xenomorphic saprophyte with “spore bloom on death,” wreck scavenging and fungus-like ships, plus the planned Mycelia world. That now collides directly with the stronger Vethari-fungus cosmology we just arrived at. I would merge/retcon that material rather than allow SpaceFace to develop two unrelated fungal civilizations.
+
+The program I’d use is roughly this:
+
+Canon consolidation — cheap, mandatory. Define one ontology: Vethari host civilization → fungus → infected organisms/ecologies → shared-field/hive-memory effects → contamination gradient. Decide what Understory/Mycelia become under that canon, audit the Vael’s current fleetClass: 'alien' designation so it doesn’t accidentally undermine the “humanity thinks it is alone” premise, and define the separate legendary machine civilization. No code proliferation until those rules stop moving.
+
+Build one contamination primitive that everything else reads. Instead of manually scripting “more fungus” everywhere, give sectors/zones an infectionPressure or contamination tier. Something like
+
+C
+s
+=
+c
+l
+a
+m
+p
+(
+C
+geography
++
+C
+story
++
+C
+local events
+,
+0
+,
+1
+)
+C 
+s
+​
+ =clamp(C 
+geography
+​
+ +C 
+story
+​
+ +C 
+local events
+​
+ ,0,1)
+where geography reflects distance toward the Vethari domain, story progression can reveal/escalate things, and exceptional events can locally modify it. Then C controls encounter weights, fungal dressing density, scanner noise, ambient audio, biological hazards, infected wreck probability, fauna behavior, salvage contamination and narrative availability.
+
+That one variable becomes the spine. It turns “make the galaxy progressively nastier” from hundreds of special cases into a data-driven system.
+
+Do a brutally small vertical slice. Before building an ecology, prove the entire pipeline with one infected location. I’d use an existing derelict_field or anomaly_deep zone because those are already recognized by the encounter director.
+The slice should contain exactly enough to prove the language:
+
+one fungus modular visual kit;
+one infested wreck;
+one space-fauna organism;
+one noncombat fungal environmental form;
+one hive-field behavioral effect;
+one scanner interaction;
+one salvage/hazard consequence;
+one small narrative clue;
+one sector with low→high contamination as you approach the site.
+If that feels creepy and distinct in actual flight, then we scale it. If it feels like “brown asteroid plus tentacles,” we fix the grammar before generating fifty assets.
+
+Build content multipliers, not content. This is where most of the eventual savings are.
+For fungus, I’d make perhaps 8–12 reusable authored modules: filament sheets, branching veins, nodal bulbs, spore sacs, calcified masses, tendril clusters, membrane patches, hull-entry lesions, etc. The runtime can deterministically compose them over existing wrecks, stations and rocks.
+
+That means we don’t need twenty “fungal station” GLBs. We need one infestation-dressing system that can make twenty existing locations look biologically colonized.
+
+Same idea for fauna: build a handful of morphological systems rather than thirty bespoke monsters.
+
+And here is a major engineering constraint worth respecting: SpaceFace is presently overwhelmingly a rigid-ship game. A conventional animal bestiary suddenly introduces skeletal animation, skinning, animation blending, foot placement and a lot of rendering/tooling baggage.
+
+So the first space fauna should deliberately have locomotion that works with the engine:
+
+drifting jelly/sac organisms;
+segmented worm forms;
+manta-like vacuum swimmers;
+radial organisms;
+tentacled grapplers;
+colonial swarms.
+Those can look extremely alien while using procedural deformation, articulated pieces, shader motion and ordinary rigid-body movement. We postpone “four-legged mutated alien tiger running around inside stations” until the game actually needs an animation stack.
+
+Create an ecology system, but keep its simulation small. The fauna do not need human tactical AI. Give them drives:
+drift → forage → investigate → avoid → defend → swarm → attach → flee
+
+Then add hive-field modifiers.
+
+A nearby relay organism might increase coordination. Kill it and the animals don’t suddenly turn off; their behavior becomes noisier, less synchronized and more primitive.
+
+Likewise the “shared memory” should initially be represented by behavioral priors, not some giant learning simulation. A local strain can possess tags such as:
+
+reactor_attraction
+beam_avoidance
+station_nesting
+ancient_signal_aversion
+predator_memory
+
+Later, if we love the mechanic, those traits can actually change from player actions. We do not need to build Darwinian Dwarf Fortress on day one.
+
+Then build the contamination gradient across existing space. This is where the idea becomes an arc rather than a creature pack.
+Early sectors: almost nothing.
+
+Outer sectors: suspicious growth on wrecks, unusual organisms, quarantine markers.
+
+Veil-ish territory: functioning alien ecology.
+
+Deeper space: abandoned infrastructure increasingly colonized.
+
+Near-domain: entire locations become composite biological/technological ruins.
+
+Very deep: the normal visual vocabulary of SpaceFace begins to lose the argument.
+
+Critically, we can do much of this by variant-dressing things the game already owns. Existing stations, wrecks, asteroids and zones are raw material.
+
+Only after that, build the legendary machine civilization. I would treat this as a second content lane sharing infrastructure, not another full faction simulator.
+Minimum viable version:
+
+one robot visual family;
+one architectural kit;
+one dormant structure/site type;
+one ancient-machine encounter behavior;
+one scanner language;
+one containment interaction with infected biology.
+Their first appearance should probably be a machine that is still doing something after an absurd span of time—not a guy standing there waiting to give Wren a quest.
+
+That produces the contrast we talked about: fungus everywhere, wet and entangled; then a perfectly clean geometric object that has been sitting there for 40,000 years and still works.
+
+Only then decide how much of the Vethari themselves becomes physical. The current canon explicitly protects them by keeping them offscreen. I would preserve that throughout most of the program. We can build an enormous amount of Vethari presence without ever requiring a routine Vethari enemy model.
+The player can encounter their ecology, their wake, their architecture, infected derivatives, perhaps a vessel, perhaps shadows or indirect physical evidence. Their actual appearance becomes a late-game narrative decision rather than an asset backlog item.
+
+The development dependency graph is therefore basically:
+
+canon
+→ contamination data model
+→ visual infestation kit + fauna entity primitive
+→ one complete vertical slice
+→ ecology behaviors
+→ world/sector gradient
+→ content multiplication
+→ ancient-machine layer
+→ late-game Vethari material
+→ full performance/polish pass
+
+And I would put a hard gate after that vertical slice. Don’t authorize the giant content run until one infected location is genuinely excellent.
+
+The good news is that this collapses what superficially looks like hundreds of bespoke tasks into maybe a dozen serious foundational engineering/design packets, followed by a much larger pile of comparatively cheap agent work: author a creature, dress a wreck, add a contaminated variant, place a zone, write a scanner event, make a robot relic, etc.
+
+There is one other hard constraint: performance. SpaceFace’s own performance campaign says the current machine is especially vulnerable to transient CPU hitches, and the renderer already has deliberate pooling/zero-allocation conventions. So alien ecology cannot mean “spawn 200 independently ticking tentacles.” Dense infection needs instancing, pooled VFX, cheap distant simulation and entity LOD from the beginning. Otherwise the cosmic horror will be the frame-time graph.
+
+I think the next move should be to turn this into a proper ALIEN_ECOLOGY_PROGRAM in the repo: canon contract, architecture, contamination model, vertical-slice specification, art families, fauna taxonomy, ancient-machine lane, dependency graph, acceptance tests, and then the individual agent-sized work packets underneath it. That would give us the actual construction map rather than a giant brainstorm.
+
+I think you should try to plan it out as meticulously as possible
+Milk whatever content you think you can out of these ideas and brainstorm all the cool unlocks, and make a plan folder with those docs in it and make a PR in the repo
+
+Worked for 17m 40s
+Done. I built the full planning program and opened the PR:
+
+PR #168 — Plan Vethari-linked alien ecology and precursor machine program
+
+It’s a deliberately large design package: 13 new planning documents, 5,437 lines, zero runtime changes. The branch is plan/alien-ecology-program.
+
+The folder is design/alien-ecology-program/, and it covers the whole thing rather than just brainstorming creatures:
+
+Canon synthesis: one fungus, Vethari as the off-frame apex, Understory reinterpreted as the human classification for Vethari-linked wreck ecology, Vael preserved as human, Verge-Layers reframed as surviving precursor machines.
+A physical contamination model separated from player knowledge, with C0–C5 ecological bands, regional strains, lossy hive-memory, host shadows, relay behavior, and eventual room for slow ecological adaptation.
+A fauna system built around ecological drives rather than ordinary enemy AI, with numerous organism families, multi-species interactions, giant organisms, non-hostile life, parasitism, migration, and hive-field behavior.
+A modular infestation system for turning existing wrecks, asteroids, stations, refineries, etc. into biologically colonized locations without needing a bespoke model for every site.
+A whole-game progression from ordinary human space → trace evidence → visible ecology → networked regions → precursor containment → domain threshold.
+Mission/encounter grammar built around scanning, following, towing, redirecting, capturing, quarantining, investigating, manipulating and surviving—not merely killing.
+A large unlock tree: xenobiology scanners, filters, quarantine cargo, hull-purge equipment, ecological lures, relay disruption, live-capture equipment, Massline tools, rare biological materials, precursor permissions, gate handshakes, containment fields, null-corridor maps, etc.
+A full precursor-machine design. The legendary godlike species stays mythic; what you actually meet are Asimovian machines operating ancient rules—Surveyor Prisms, Auditors, Custodians, Witnesses, Wardens, Shepherds, Masons, Executors—plus quarantine pylons, revoked gates, black vaults, null corridors, machine ossuaries and enormous containment architecture.
+A concrete engineering architecture tied into the actual SpaceFace systems rather than proposing a parallel alien engine.
+A deliberately small first vertical slice in Charon Expanse: “The Cinder Nursery.” One infested wreck, limited fauna, a relay creature, fungal modules, hull parasite, scanner discoveries, one ordinary DMC salvage objective, persistent aftermath and performance proof.
+An AE-000 through AE-159 implementation roadmap, dependency ordered from canon cleanup through late-game convergence.
+A giant content quarry with roughly 160 additional ideas: creatures, fungal morphology, infected places, ecological phenomena, missions, unlocks, salvage, precursor robots, structures, clues, hazards, ambient details and major setpieces.
+A migration document specifically handling the existing Understory, Mycelia, Vael, Vethari, Verge-Layers, Fulfillment, Choir and REF 44-C material so future agents don't create contradictory parallel lore.
+A few ideas became much stronger while putting the whole thing together.
+
+The Understory retcon is probably the cleanest. We don't have to throw away the work already done. faction_understory can remain a technical namespace for encounters/IFF/content routing, but fictionally “The Understory” becomes Concord/spacer shorthand for these colonized wreck ecologies. Its existing rule that it only re-flies hulls from the loss ledger becomes perfect: the fungus doesn't manufacture starships; it colonizes things that actually died.
+
+The precursor idea also clicked beautifully with the existing Verge-Layers. Rather than inventing another ancient alien faction, the Verge-Layers become the surviving machine institutions of the legendary race. One might spend eighteen thousand years watching one contaminated moon because its directive says witness. Another might consider a human station an unauthorized modification to a gate and quietly begin dismantling it. They aren't gods because they talk like gods. They're gods because they can move an asteroid and then issue a three-line maintenance notice.
+
+And I put a pretty severe production discipline into the plan: do not authorize the huge alien content wave until the Charon slice is genuinely excellent. If one derelict can't make the player think “what the fuck is happening here?” through behavior, sound, geometry and interaction rather than exposition, fifty species won't save us.
+
+That seems like the right place to put the knife before we start pouring money and agents into this thing.
