@@ -1,4 +1,4 @@
-// src/data/ships.js – 14 canonical player hulls across T0..T5.
+// src/data/ships.js – 15 canonical player hulls across T0..T5.
 // IDs use ship_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
 // Pure data, no imports.
 //
@@ -376,6 +376,34 @@ export const SHIPS = [
       ],
       cockpit: null, bridge: [0.44, 0.58, 0.0],
       drill: null, cargoRows: 3, sensor: [-0.04, 0.86, 0.0],
+    },
+  },
+  // ---------- EXOTIC ----------
+  {
+    // The saucer (design/FLYING_SAUCER_DESIGN.md): a 520-mass exotic hull on the inertialess
+    // field drive — right-angle turns, stops on a dime, and enough mass to drag what it bumps
+    // or tows like a ragdoll. No heavyMotion: the field never wallows, whatever the load.
+    id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, requiresTech: 'tech_graviton_drives',
+    hull: 1700, shield: 1900, baseShieldRegen: 26, cargo: 120, mass: 520, handling: 2.2,
+    outfitSpace: 220, weaponCapacity: 70, engineCapacity: 14, designMass: 780,
+    bankFactor: 0.12,
+    driveId: 'drive_inertialess_s',  // gravimetric envelope tuned past the fleet — the inertialess hull
+    energyCap: 1400, energyRegen: 120, collisionRadius: 19, price: 3200000,
+    boost: { max: 120, drainRate: 40, regenRate: 20, dashImpulse: 60, dashCooldown: 3.2 },
+    // Two M hardpoints plus a full-turret S mount: the disc fights in any direction it is already
+    // facing — the turret is the saucer's native arc.
+    slots: { weapon: ['M', 'M', { size: 'S', facing: 'turret' }], shield: ['L', 'L', 'L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M', 'M', 'M', 'M'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'capital',
+      proportions: { length: 1.0, halfWidth: 1.0, height: 0.35 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6 } },
+        { minTier: 16, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9 } },
+        { minTier: 32, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0 } },
+      ],
+      cockpit: null, bridge: [0.0, 0.55, 0.0],
+      drill: null, cargoRows: 1, sensor: [0.0, 0.72, 0.0],
     },
   },
 ];

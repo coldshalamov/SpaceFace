@@ -176,9 +176,13 @@ const ENGINE_FILE_BY_DEF_ID = Object.freeze({
   ship_warden: 'engine_plasma_ring',
   ship_colossus: 'engine_plasma_ring',
   ship_leviathan: 'engine_plasma_ring',
+  // The saucer's drive glow lives in its rim light chain (design/FLYING_SAUCER_DESIGN.md);
+  // the resonator profile is the nearest gravimetric visual.
+  ship_saucer: 'engine_resonator',
 });
 
 const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
+  drive_inertialess_s: 'engine_resonator',
   drive_reaction_s: 'engine_vector',
   drive_reaction_m: 'engine_ion_small',
   drive_reaction_l: 'engine_ion_twin',

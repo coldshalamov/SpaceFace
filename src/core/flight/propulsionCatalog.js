@@ -223,6 +223,33 @@ export const PROPULSION_PROFILES = Object.freeze({
     },
   }),
 
+  // The saucer's inertialess field drive (design/FLYING_SAUCER_DESIGN.md): a gravimetric
+  // envelope tuned so far past the fleet that the hull reads as inertia-free — right-angle
+  // turns inside ~0.3 s and a 190→0 stop under half a second. It trades a hard 190 WU/s
+  // ceiling and a hungry capacitor for that authority; there is no assist object because the
+  // servo IS the assist.
+  drive_inertialess_s: freezeProfile({
+    id: 'drive_inertialess_s',
+    family: DRIVE_FAMILIES.GRAVIMETRIC,
+    label: 'Inertialess Field Drive S',
+    maxSpeed: 190,
+    boostMaxSpeed: 255,
+    maxAccel: 950,
+    maxBrakeAccel: 1200,
+    responseHz: 9.5,
+    yawAccel: 26,
+    yawBrake: 34,
+    maxYawRate: 4.2,
+    solverSpeedLimit: 640,
+    travelCeiling: 252,
+    resources: {
+      idleEnergyPerS: 0.6,
+      energyPerAccel: 0.03,
+      heatPerAccel: 0.024,
+      coolingPerS: 5.0,
+    },
+  }),
+
   drive_pulse_plate_m: freezeProfile({
     id: 'drive_pulse_plate_m',
     family: DRIVE_FAMILIES.PULSE_PLATE,

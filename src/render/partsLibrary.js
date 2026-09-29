@@ -1073,6 +1073,7 @@ export const REQUIRED_WHOLE_SHIP_DEF_IDS = Object.freeze([
   'ship_colossus',
   'ship_leviathan',
   'ship_hawser',
+  'ship_saucer',
 ]);
 const REQUIRED_WHOLE_SHIP_DEF_ID_SET = Object.freeze(new Set(REQUIRED_WHOLE_SHIP_DEF_IDS));
 const REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES = Object.freeze(new Set([
@@ -1291,6 +1292,9 @@ const ENGINE_FILE_BY_DEF_ID = Object.freeze({
   ship_warden: 'engines/engine_plasma_ring.glb',
   ship_colossus: 'engines/engine_plasma_ring.glb',
   ship_leviathan: 'engines/engine_plasma_ring.glb',
+  // The saucer's drive glow lives in its rim light chain (design/FLYING_SAUCER_DESIGN.md);
+  // the resonator pod is the nearest gravimetric visual for the slot.
+  ship_saucer: 'engines/engine_resonator.glb',
 });
 
 const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
@@ -1298,6 +1302,7 @@ const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
   drive_reaction_m: 'engines/engine_ion_small.glb',
   drive_reaction_l: 'engines/engine_ion_twin.glb',
   drive_gravimetric_s: 'engines/engine_resonator.glb',
+  drive_inertialess_s: 'engines/engine_resonator.glb',
   drive_pulse_plate_m: 'engines/engine_vector.glb',
   drive_torch_l: 'engines/engine_plasma_ring.glb',
   drive_field_sail_m: 'engines/engine_resonator.glb',
@@ -1318,6 +1323,7 @@ const HULL_FILE_BY_DEF_ID = Object.freeze({
   ship_colossus: 'hulls/hull_capital.glb',
   ship_leviathan: 'hulls/hull_capital.glb',
   ship_hawser: 'hulls/hull_freighter.glb',
+  ship_saucer: 'hulls/hull_capital.glb',
 });
 
 // Only production-validated complete bodies belong here. Accessory-only exports remain unwired so a
@@ -1339,6 +1345,7 @@ const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
   // The Hawser player hull wears the accepted yard-tug body — the same packaged work
   // hull ambient tug traffic already flies. The fiction is the purchase, not a repaint.
   'ship_hawser': 'wholeships/yard_tug.glb',
+  'ship_saucer': 'wholeships/saucer_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'SF_K0_KESTREL_BORROWED_TIME_V4',
@@ -1355,6 +1362,7 @@ const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_colossus': 'SF_COLOSSUS_PRODUCTION_V1',
   'ship_leviathan': 'SF_LEVIATHAN_PRODUCTION_V1',
   'ship_hawser': 'SF_WHOLESHIP_YARD_TUG',
+  'ship_saucer': 'SF_SAUCER_PRODUCTION_V1',
 });
 // Independent GLBs let the distance selector load detail on demand. Keep player presentation at
 // LOD0 and associate traffic families with the selected visual body, never its gameplay chassis.
@@ -1423,6 +1431,11 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
     lod0: 'wholeships/leviathan_production_v1.glb',
     lod1: 'wholeships/leviathan_production_v1_lod1.glb',
     lod2: 'wholeships/leviathan_production_v1_lod2.glb',
+  }),
+  ship_saucer: Object.freeze({
+    lod0: 'wholeships/saucer_production_v1.glb',
+    lod1: 'wholeships/saucer_production_v1_lod1.glb',
+    lod2: 'wholeships/saucer_production_v1_lod2.glb',
   }),
 });
 const WHOLE_SHIP_LOD_FAMILY_BY_FILE = Object.freeze(Object.fromEntries([

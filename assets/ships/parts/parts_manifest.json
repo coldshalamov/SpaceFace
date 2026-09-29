@@ -7327,6 +7327,52 @@
       "note": "Fleet remaster production Leviathan. Live player flagship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
     },
     {
+      "id": "wholeship_saucer_production_v1",
+      "assetId": "SF_SAUCER_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/saucer_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/saucer_production_v1.glb",
+        "lod1": "wholeships/saucer_production_v1_lod1.glb",
+        "lod2": "wholeships/saucer_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_saucer",
+      "tris": 0,
+      "bytes": 0,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front",
+        "SOCKET_Weapon_Port",
+        "SOCKET_Weapon_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": null,
+      "note": "Exotic player hull (design/FLYING_SAUCER_DESIGN.md): flying-saucer disc — gunmetal shell, cyan rim light chain, ventral drive core. Authored LOD0/1/2 on disk; LOD0 is the packaged live body."
+    },
+    {
       "id": "wholeship_massline_express_liner_v1",
       "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
       "category": "wholeships",

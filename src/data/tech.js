@@ -139,7 +139,7 @@ export const TECH_NODES = [
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 9000, rp: 12 },
-    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
+    unlocks: { ships: ['ship_saucer'], modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],
