@@ -41,6 +41,10 @@ const COLLISION_KILL_CAUSES = new Set([KillCause.TERRAIN_COLLISION, KillCause.SH
 function isCollisionKillCause(cause) { return COLLISION_KILL_CAUSES.has(cause); }
 const LAW_TRUTH_CAP = 32;          // bounded per-tick adjudication receipts (victimId -> truth)
 const DISCOVERY_REP_LEDGER_CAP = 64; // reportIds already answered with a rep hit
+// WF-09 — the register keeps the deeds. Bounded per-faction ring of standing receipts the
+// Standing & Relations tab reads back ("distress rescue · +20 · 2 h ago"). The clock never
+// enters it: decay and baseline seeding move the number without being something the player did.
+const REP_HISTORY_CAP = 6;
 
 // Conflict / war tuning (spec Formulas) — kept simple but present.
 const WAR_THRESHOLD = 75;     // tension >= this → 'war'
@@ -135,6 +139,22 @@ function clampRep(r) { return Math.max(-1000, Math.min(1000, r)); }
 // runtime state without a bus round-trip. Set in init(); stays null in headless unit tests.
 let _state = null;
 
+/** Deed receipts a register surface may read back. Shape-validates and keeps the newest `cap`. */
+function normalizeRepHistory(raw, cap = REP_HISTORY_CAP) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const value = Math.round(Number(entry.value));
+    const reason = typeof entry.reason === 'string' ? entry.reason.slice(0, 64) : '';
+    if (!Number.isFinite(value) || value === 0 || !reason) continue;
+    const t = Math.max(0, Math.round(Number(entry.t) || 0));
+    out.push({ value, reason, t });
+    if (out.length >= cap) out.shift();
+  }
+  return out;
+}
+
 function defaultFactionRecord(id) {
   const meta = META_BY_ID[id];
   const startRep = (NEW_GAME.factionRep && NEW_GAME.factionRep[id] != null)
@@ -147,6 +167,7 @@ function defaultFactionRecord(id) {
     aggro: rep <= AGGRO_THRESHOLD,
     bribesPaid: 0,
     lastDelta: { value: 0, reason: 'init', t: 0 },
+    history: [],
     knownContrabandStrikes: 0,
     discoveredHostileBy: 0,
     // V2 §28b/§24 — faction power drives war momentum independent of the player. Derived
@@ -165,6 +186,7 @@ function backfillFactionRecord(rec, id) {
   rec.aggro = rec.rep <= AGGRO_THRESHOLD;
   if (!Number.isFinite(rec.bribesPaid)) rec.bribesPaid = 0;
   if (!rec.lastDelta || typeof rec.lastDelta !== 'object') rec.lastDelta = defaults.lastDelta;
+  rec.history = normalizeRepHistory(rec.history);
   if (!Number.isFinite(rec.knownContrabandStrikes)) rec.knownContrabandStrikes = 0;
   if (!Number.isFinite(rec.discoveredHostileBy)) rec.discoveredHostileBy = 0;
   if (!Number.isFinite(rec.power)) rec.power = defaults.power;
@@ -402,6 +424,7 @@ export const factions = {
     rec.tier = tierOf(rec.rep);
     rec.aggro = rec.rep <= AGGRO_THRESHOLD;
     rec.lastDelta = { value: soft, reason, t: state.simTime || 0 };
+    this._pushRepHistory(rec, soft, reason);
     const tierChanged = rec.tier !== oldTier;
     if (this.bus) {
       this.bus.emit('faction:repChanged', {
@@ -784,6 +807,22 @@ export const factions = {
       const target = power[id];
       rec.power = rec.power + (target - rec.power) * 0.5;
     }
+  },
+
+  /** WF-09 — one standing receipt on the register's deed ring. The clock (decay, baseline
+   *  seeding) moves standing without being something the player did, so it never files here. */
+  _pushRepHistory(rec, value, reason) {
+    const text = String(reason == null ? '' : reason);
+    if (!text || text === 'init' || text === 'decay' || text.startsWith('spillover:')) return;
+    if (!Array.isArray(rec.history)) rec.history = [];
+    const entry = {
+      value: Math.round(Number(value) || 0),
+      reason: text.slice(0, 64),
+      t: Math.max(0, Math.round(Number((this.state || _state) && (this.state || _state).simTime) || 0)),
+    };
+    if (entry.value === 0) return;
+    rec.history.push(entry);
+    while (rec.history.length > REP_HISTORY_CAP) rec.history.shift();
   },
 
   /** Decay path: write rep without diminishing returns, still recompute tier/flags + emit. */

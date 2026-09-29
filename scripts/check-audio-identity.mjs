@@ -371,6 +371,11 @@ const EMITTED_CUES = {
   'massline.cloakOn': { distinct: true }, 'massline.cloakOff': { distinct: true },
   'massline.jettisonKick': { distinct: true },
   'massline.bombDrop': { distinct: true },
+  // World/work receipts: the salvage plate torn free (vfx.js salvage completion) and the hauler
+  // foghorn greeting on a pass-by hail (barkDirector.js). Both own authored recipes — the plate is
+  // a direct recipe id, the foghorn maps through AUDIO_CUE_TO_RECIPE.
+  sfx_salvage_plate: { distinct: true },
+  'world.foghorn': { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

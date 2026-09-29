@@ -117,6 +117,54 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
   };
 }
 
+/** Copy the live bore's unpaid vein and pool onto the claim, so a respawned rock is the same rock. */
+function copyDrillSessionAccounting(site, data) {
+  if (!site || !data || typeof data !== 'object') return;
+  const raw = Array.isArray(data.drillVeinRemainders) ? data.drillVeinRemainders : null;
+  if (raw) {
+    const next = [];
+    for (const rec of raw) {
+      if (!rec) continue;
+      const idx = Math.trunc(Number(rec.idx));
+      const yieldU = Math.floor(Number(rec.yieldU) || 0);
+      if (!Number.isFinite(idx) || idx < 0 || yieldU <= 0) continue;
+      next.push({ idx, yieldU, ore: rec.ore || null });
+    }
+    site.drillVeinRemainders = next;
+  }
+  if (data.drillDepletion != null && Number.isFinite(Number(data.drillDepletion))) {
+    site.drillDepletion = Math.min(1, Math.max(0, Number(data.drillDepletion)));
+  }
+  if (data.drillYieldMax != null && Number.isFinite(Number(data.drillYieldMax)) && Number(data.drillYieldMax) > 0) {
+    site.drillYieldMax = Math.floor(Number(data.drillYieldMax));
+  }
+  if (data.lastDrillT != null && Number.isFinite(Number(data.lastDrillT))) {
+    site.lastDrillT = Number(data.lastDrillT);
+  }
+}
+
+function drillAccountingStamp(site) {
+  const stamp = {};
+  if (!site) return stamp;
+  if (Array.isArray(site.drillVeinRemainders)) {
+    stamp.drillVeinRemainders = site.drillVeinRemainders.map((rec) => ({
+      idx: rec.idx,
+      yieldU: rec.yieldU,
+      ore: rec.ore || null,
+    }));
+  }
+  if (site.drillDepletion != null && Number.isFinite(Number(site.drillDepletion))) {
+    stamp.drillDepletion = Math.min(1, Math.max(0, Number(site.drillDepletion)));
+  }
+  if (site.drillYieldMax != null && Number.isFinite(Number(site.drillYieldMax)) && Number(site.drillYieldMax) > 0) {
+    stamp.drillYieldMax = Math.floor(Number(site.drillYieldMax));
+  }
+  if (site.lastDrillT != null && Number.isFinite(Number(site.lastDrillT))) {
+    stamp.lastDrillT = Number(site.lastDrillT);
+  }
+  return stamp;
+}
+
 export const asteroidSites = {
   name: 'asteroidSites',
   // serialize() JSON-clones each site record and normalizes world records into fresh trees;
@@ -181,9 +229,14 @@ export const asteroidSites = {
       const site = this.siteForAsteroid(asteroidId);
       if (!site) return;
       const ent = state.entities && state.entities.get ? state.entities.get(asteroidId) : null;
-      if (ent && ent.data && Array.isArray(ent.data.drillCleared)) {
-        site.cleared = normalizeClearedTiles(ent.data.drillCleared);
-        this._markDirty(site.id, { field: true });
+      if (ent && ent.data) {
+        if (Array.isArray(ent.data.drillCleared)) {
+          site.cleared = normalizeClearedTiles(ent.data.drillCleared);
+          this._markDirty(site.id, { field: true });
+        }
+        // A preserved vein is not a cleared cell. The claim has to remember the unpaid yield
+        // and the pool, or the next rock is a fresh seed with a full budget.
+        copyDrillSessionAccounting(site, ent.data);
       }
     });
 
@@ -325,6 +378,10 @@ export const asteroidSites = {
       const site = sites.byId[id];
       if (!site) continue;
       site.cleared = normalizeClearedTiles(site.cleared);
+      if (site.drillVeinRemainders != null && !Array.isArray(site.drillVeinRemainders)) {
+        site.drillVeinRemainders = [];
+      }
+      copyDrillSessionAccounting(site, site);
       if (!site.overlays) site.overlays = { power: [], lane: [] };
       site.overlays.power = normalizeClearedTiles(site.overlays.power);
       site.overlays.lane = normalizeClearedTiles(site.overlays.lane);
@@ -861,6 +918,7 @@ export const asteroidSites = {
         createdT: state.simTime,
       });
       site.cleared = normalizeClearedTiles(ent.data && ent.data.drillCleared);
+      copyDrillSessionAccounting(site, ent && ent.data);
       sites.byId[id] = site;
       sites.order.push(id);
       ent.data.siteId = id;
@@ -1511,6 +1569,7 @@ export const asteroidSites = {
           fieldId: site.fieldId,
           size: site.anchor.radius,
           pctEjected: 0,
+          ...drillAccountingStamp(site),
         },
       });
       if (rock) {

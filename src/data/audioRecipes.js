@@ -2191,6 +2191,202 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.025, sustain: 0.02, release: 0.36 },
     filterType: 'lowpass', filterFreq: 600, filterQ: 0.7,
   },
+
+  // --- Sector arrival identities (WF-13) -------------------------------------------------
+  // The old sector identity cue was one shared voice for every sector on the map — the game's one
+  // deliberate "you have arrived somewhere" beat sounded identical over Ceres, Helios and the
+  // Ashfall Reach, and its sample body was the lane-lock recording pitched down. These ten voices
+  // give every live sector its own arrival chord, each rooted on that sector's bed tone
+  // (SECTOR_BEDS hzA/hzB in src/audio/themeMatrix.js) so the stinger melts into the bed that is
+  // already playing when it lands. The palette class carries the manner: core doors open (rising
+  // fifth), belt works acknowledge you (struck metal settling), fringe nods thinly (fourth down,
+  // dry), anomaly is not right (detuned pair under a long tail). Bound 1:1 with the designed
+  // 'arrival' samples in SAMPLE_BINDINGS; SECTOR_ARRIVAL_CUES (bottom of this file) is the
+  // sectorId -> voice table the presentation adapter reads.
+  {
+    // Helios Prime (core, E): the front door — a warm rising fifth with a civil shimmer.
+    id: 'sfx_arrival_helios_prime',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 82.4, freqSweep: [82.4, 123.6], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.012, sustain: 0.1, release: 0.55 },
+    filterType: 'lowpass', filterFreq: 1100, filterQ: 0.8,
+    subBass: { startFreq: 164.8, endFreq: 164.8, dur: 0.4, gain: 0.2 },
+    pitchRange: [0.99, 1.01],
+  },
+  {
+    // Tethys Junction (core, A): same civil door, a third brighter — the junction hums higher.
+    id: 'sfx_arrival_tethys_junction',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 110, freqSweep: [110, 165], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.09, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 1500, filterQ: 0.9,
+    subBass: { startFreq: 220, endFreq: 220, dur: 0.34, gain: 0.18 },
+    pitchRange: [0.99, 1.01],
+  },
+  {
+    // Ceres Belt (belt, D): struck ore-car metal settling onto the root — the works acknowledge you.
+    id: 'sfx_arrival_ceres_belt',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 146, freqSweep: [146, 73], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.38 },
+    filterType: 'bandpass', filterFreq: 620, filterQ: 1.3,
+    distortionAmount: 0.4, distortionCurve: 'tanh',
+    subBass: { startFreq: 73, endFreq: 49, dur: 0.34, gain: 0.85 },
+    transientClick: { gain: 0.55 },
+    pitchRange: [0.98, 1.02],
+  },
+  {
+    // Vesta Forge (belt, A): the forge answers — heavier clang, deeper settle than Ceres.
+    id: 'sfx_arrival_vesta_forge',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 110, freqSweep: [110, 55], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.003, sustain: 0.03, release: 0.46 },
+    filterType: 'bandpass', filterFreq: 480, filterQ: 1.1,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    subBass: { startFreq: 110, endFreq: 34, dur: 0.42, gain: 0.95 },
+    transientClick: { gain: 0.65 },
+    pitchRange: [0.98, 1.02],
+  },
+  {
+    // Charon Expanse (belt, G): the deep works — a long low settle, almost a bell underwater.
+    id: 'sfx_arrival_charon_expanse',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 73.5, freqSweep: [73.5, 49], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.02, sustain: 0.08, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 0.9,
+    subBass: { startFreq: 36.8, endFreq: 24.5, dur: 0.7, gain: 0.9 },
+    pitchRange: [0.98, 1.02],
+  },
+  {
+    // Pallas Drift (fringe, G): someone far away nods — a thin descending fourth, dry, no body.
+    id: 'sfx_arrival_pallas_drift',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 98, freqSweep: [98, 73.5], sweepTimeS: 0.26,
+    gainEnvelope: { attack: 0.03, sustain: 0.02, release: 0.42 },
+    filterType: 'highpass', filterFreq: 180, filterQ: 0.7,
+    pitchRange: [0.97, 1.03],
+  },
+  {
+    // Io Reach (fringe, C): the radiation belt's own nod — hollow square, gritty, narrow.
+    id: 'sfx_arrival_io_reach',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 65, freqSweep: [65, 48.8], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.02, sustain: 0.02, release: 0.4 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 2.2,
+    distortionAmount: 0.3, distortionCurve: 'tanh',
+    pitchRange: [0.97, 1.03],
+  },
+  {
+    // Sker Haven (fringe, C): the haven's thin vigil light — a fluttering fourth down, tighter.
+    id: 'sfx_arrival_sker_haven',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 72, freqSweep: [72, 54], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.015, sustain: 0.02, release: 0.36 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+    lfoRate: 7, lfoDepth: 0.15,
+    transientClick: { gain: 0.3 },
+    pitchRange: [0.97, 1.03],
+  },
+  {
+    // Veil Nebula (anomaly, B): the place is not right — a detuned pair beating under a long tail.
+    id: 'sfx_arrival_veil_nebula',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 61.8, freqSweep: [61.8, 63.4], sweepTimeS: 1.1,
+    gainEnvelope: { attack: 0.3, sustain: 0.22, release: 0.9 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.8,
+    subBass: { startFreq: 123.6, endFreq: 126.8, dur: 1.1, gain: 0.5 },
+  },
+  {
+    // Ashfall Reach (anomaly, F): the deepest wrong note — a grinding detuned swell, slow and dark.
+    id: 'sfx_arrival_ashfall_reach',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 44, freqSweep: [44, 46.2], sweepTimeS: 1.2,
+    gainEnvelope: { attack: 0.35, sustain: 0.2, release: 1.1 },
+    filterType: 'lowpass', filterFreq: 200, filterQ: 0.8,
+    lfoRate: 1.3, lfoDepth: 0.2,
+    subBass: { startFreq: 88, endFreq: 92.4, dur: 1.2, gain: 0.4 },
+  },
+
+  // Frontier sectors — same class grammar, built not hand-copied: each voice is rooted on the
+  // sector's own RUNTIME bed root. resolveSectorBed (src/audio/themeMatrix.js) derives an unknown
+  // sector's bed tone from a deterministic FNV hash of the sector id; this inline derivation
+  // mirrors it (audioRecipes.js stays import-free), so arrival chord and bed share a root and the
+  // focused test asserts the match against resolveSectorBed itself. Palette class per sector:
+  // fringe nods thinly, belts clang, anomalies swell detuned, the one frontier core door opens.
+  ...[
+    ['sector_nyx_march', 'fringe'], ['sector_hyperion_cut', 'belt'], ['sector_kepler_scar', 'fringe'],
+    ['sector_orcus_shadow', 'anomaly'], ['sector_rhea_cinder', 'belt'], ['sector_haumea_rift', 'fringe'],
+    ['sector_eris_margin', 'fringe'], ['sector_phoebe_echo', 'anomaly'], ['sector_nereid_shoal', 'fringe'],
+    ['sector_proteus_well', 'fringe'], ['sector_triton_wake', 'anomaly'], ['sector_eunomia_gulf', 'fringe'],
+    ['sector_sedna_dark', 'anomaly'], ['sector_dione_lane', 'core'],
+  ].map(([sectorId, paletteClass]) => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < sectorId.length; i++) h = Math.imul(h ^ sectorId.charCodeAt(i), 0x01000193) >>> 0;
+    const root = 48 + (h % 80);
+    const id = `sfx_arrival_${sectorId.slice('sector_'.length)}`;
+    if (paletteClass === 'fringe') {
+      return {
+        id, category: 'engine', type: 'oscillator',
+        wave: (h >>> 3) & 1 ? 'sine' : 'triangle',
+        baseFreq: root, freqSweep: [root, root * 0.75], sweepTimeS: 0.26,
+        gainEnvelope: { attack: 0.03, sustain: 0.02, release: 0.4 },
+        filterType: 'highpass', filterFreq: 160, filterQ: 0.7,
+        pitchRange: [0.97, 1.03],
+      };
+    }
+    if (paletteClass === 'belt') {
+      return {
+        id, category: 'engine', type: 'oscillator',
+        wave: 'triangle',
+        baseFreq: root * 2, freqSweep: [root * 2, root], sweepTimeS: 0.14,
+        gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.42 },
+        filterType: 'bandpass', filterFreq: root * 9, filterQ: 1.2,
+        distortionAmount: 0.45, distortionCurve: 'tanh',
+        subBass: { startFreq: root, endFreq: root * 0.66, dur: 0.34, gain: 0.85 },
+        transientClick: { gain: 0.55 },
+        pitchRange: [0.98, 1.02],
+      };
+    }
+    if (paletteClass === 'anomaly') {
+      return {
+        id, category: 'engine', type: 'oscillator',
+        wave: 'sine',
+        baseFreq: root, freqSweep: [root, root * 1.03], sweepTimeS: 1.1,
+        gainEnvelope: { attack: 0.3, sustain: 0.22, release: 0.9 },
+        filterType: 'lowpass', filterFreq: root * 4 + 140, filterQ: 0.8,
+        subBass: { startFreq: root * 2, endFreq: root * 2.05, dur: 1.1, gain: 0.45 },
+      };
+    }
+    return {
+      id, category: 'engine', type: 'oscillator',
+      wave: 'sine',
+      baseFreq: root, freqSweep: [root, root * 1.5], sweepTimeS: 0.2,
+      gainEnvelope: { attack: 0.012, sustain: 0.09, release: 0.5 },
+      filterType: 'lowpass', filterFreq: 1300, filterQ: 0.8,
+      subBass: { startFreq: root * 2, endFreq: root * 2, dur: 0.34, gain: 0.18 },
+      pitchRange: [0.99, 1.01],
+    };
+  }),
   {
     id: 'sfx_travel_cancel',
     category: 'engine',
@@ -2822,7 +3018,67 @@ export const SAMPLE_BINDINGS = {
   sfx_anomaly_swell: { id: 'ambient_swell', share: 0.55 },
   sfx_ambient_rock_groan: { id: 'rock_groan', share: 0.6 },
   sfx_ambient_rock_calve: { id: 'rock_calve', share: 0.6 },
+
+  // sector arrival identities (WF-13): each sector's arrival chord carries its own designed body,
+  // rooted on the sector bed tone (see the recipe block above and SECTOR_ARRIVAL_CUES below).
+  sfx_arrival_helios_prime: { id: 'arrival_helios_prime', share: 0.58 },
+  sfx_arrival_tethys_junction: { id: 'arrival_tethys_junction', share: 0.58 },
+  sfx_arrival_ceres_belt: { id: 'arrival_ceres_belt', share: 0.6 },
+  sfx_arrival_vesta_forge: { id: 'arrival_vesta_forge', share: 0.6 },
+  sfx_arrival_charon_expanse: { id: 'arrival_charon_expanse', share: 0.6 },
+  sfx_arrival_pallas_drift: { id: 'arrival_pallas_drift', share: 0.55 },
+  sfx_arrival_io_reach: { id: 'arrival_io_reach', share: 0.55 },
+  sfx_arrival_sker_haven: { id: 'arrival_sker_haven', share: 0.55 },
+  sfx_arrival_veil_nebula: { id: 'arrival_veil_nebula', share: 0.58 },
+  sfx_arrival_ashfall_reach: { id: 'arrival_ashfall_reach', share: 0.58 },
+  sfx_arrival_nyx_march: { id: 'arrival_nyx_march', share: 0.55 },
+  sfx_arrival_hyperion_cut: { id: 'arrival_hyperion_cut', share: 0.6 },
+  sfx_arrival_kepler_scar: { id: 'arrival_kepler_scar', share: 0.55 },
+  sfx_arrival_orcus_shadow: { id: 'arrival_orcus_shadow', share: 0.58 },
+  sfx_arrival_rhea_cinder: { id: 'arrival_rhea_cinder', share: 0.6 },
+  sfx_arrival_haumea_rift: { id: 'arrival_haumea_rift', share: 0.55 },
+  sfx_arrival_eris_margin: { id: 'arrival_eris_margin', share: 0.55 },
+  sfx_arrival_phoebe_echo: { id: 'arrival_phoebe_echo', share: 0.58 },
+  sfx_arrival_nereid_shoal: { id: 'arrival_nereid_shoal', share: 0.55 },
+  sfx_arrival_proteus_well: { id: 'arrival_proteus_well', share: 0.55 },
+  sfx_arrival_triton_wake: { id: 'arrival_triton_wake', share: 0.58 },
+  sfx_arrival_eunomia_gulf: { id: 'arrival_eunomia_gulf', share: 0.55 },
+  sfx_arrival_sedna_dark: { id: 'arrival_sedna_dark', share: 0.58 },
+  sfx_arrival_dione_lane: { id: 'arrival_dione_lane', share: 0.58 },
 };
+
+// WF-13 — sector arrival identity table. The presentation adapter reads this when the
+// 'travel.arrival.sector_identity' cue arrives: cue.targetId is the sector id, and the mapped
+// recipe (a live RECIPES id, so it resolves directly through AUDIO_RECIPE_BY_ID without touching
+// the audio system's cue map) plays instead of the one shared identity voice. An unknown sector
+// falls back to the original static mapping — the shared voice stays the honest default.
+// Every key must be a live sector id (src/data/sectors.js) with a bed (SECTOR_BEDS).
+export const SECTOR_ARRIVAL_CUES = Object.freeze({
+  sector_helios_prime: 'sfx_arrival_helios_prime',
+  sector_tethys_junction: 'sfx_arrival_tethys_junction',
+  sector_ceres_belt: 'sfx_arrival_ceres_belt',
+  sector_vesta_forge: 'sfx_arrival_vesta_forge',
+  sector_charon_expanse: 'sfx_arrival_charon_expanse',
+  sector_pallas_drift: 'sfx_arrival_pallas_drift',
+  sector_io_reach: 'sfx_arrival_io_reach',
+  sector_sker_haven: 'sfx_arrival_sker_haven',
+  sector_veil_nebula: 'sfx_arrival_veil_nebula',
+  sector_ashfall_reach: 'sfx_arrival_ashfall_reach',
+  sector_nyx_march: 'sfx_arrival_nyx_march',
+  sector_hyperion_cut: 'sfx_arrival_hyperion_cut',
+  sector_kepler_scar: 'sfx_arrival_kepler_scar',
+  sector_orcus_shadow: 'sfx_arrival_orcus_shadow',
+  sector_rhea_cinder: 'sfx_arrival_rhea_cinder',
+  sector_haumea_rift: 'sfx_arrival_haumea_rift',
+  sector_eris_margin: 'sfx_arrival_eris_margin',
+  sector_phoebe_echo: 'sfx_arrival_phoebe_echo',
+  sector_nereid_shoal: 'sfx_arrival_nereid_shoal',
+  sector_proteus_well: 'sfx_arrival_proteus_well',
+  sector_triton_wake: 'sfx_arrival_triton_wake',
+  sector_eunomia_gulf: 'sfx_arrival_eunomia_gulf',
+  sector_sedna_dark: 'sfx_arrival_sedna_dark',
+  sector_dione_lane: 'sfx_arrival_dione_lane',
+});
 
 // PQ-158.01 — the impact ladder: material (hull/rock/station) x force (light/medium/heavy).
 // A collision keeps its PQ-139.01 recipe and pitch/gain law; the ladder only decides WHICH

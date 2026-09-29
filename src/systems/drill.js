@@ -75,6 +75,9 @@ export const MOVE_COOLDOWN_CARGO = 0.03;    // full holds → 0.27 s/cell, still
 // reads the crack stage off avatar.isDrilling / avatar.drillTarget and by then the key is already up.
 export const BORE_BITE_S = 0.18;
 export const BORE_BITE_HOLD_S = 0.45;
+// A full hold must not chew the same vein again on the next cruise beat. This is the same
+// throttle the tier warning already uses, and it is a retry — not a blacklist.
+export const DRILL_CARGO_FULL_RETRY_S = 1.2;
 
 // Deep-core rocks remember being drilled. Each asteroid tracks:
 //   • drillDepletion / drillYieldMax — how much ore still *pays*
@@ -169,6 +172,127 @@ function recordClearedTile(data, col, row) {
   const idx = tileIndex(col, row);
   if (idx < 0 || idx >= COLS * ROWS) return;
   if (!d.drillCleared.includes(idx)) d.drillCleared.push(idx);
+}
+
+function writeVeinRemainder(data, col, row, yieldU, ore) {
+  const d = ensureAsteroidDeepCore(data);
+  if (!d) return;
+  const idx = tileIndex(col, row);
+  if (idx < 0 || idx >= COLS * ROWS) return;
+  const list = Array.isArray(d.drillVeinRemainders) ? d.drillVeinRemainders : [];
+  const next = [];
+  for (const rec of list) {
+    if (!rec || Math.trunc(Number(rec.idx)) === idx) continue;
+    next.push(rec);
+  }
+  const qty = Math.floor(Number(yieldU) || 0);
+  if (qty > 0) next.push({ idx, yieldU: qty, ore: ore || null });
+  d.drillVeinRemainders = next;
+}
+
+/** Reapply unaccepted vein yield after the seeded field is rebuilt. Cleared holes stay empty. */
+export function applyVeinRemainders(field, remainders) {
+  if (!field || !Array.isArray(remainders)) return;
+  for (const rec of remainders) {
+    if (!rec) continue;
+    const idx = Math.trunc(Number(rec.idx));
+    const yieldU = Math.floor(Number(rec.yieldU) || 0);
+    if (!Number.isFinite(idx) || idx < 0 || idx >= COLS * ROWS || yieldU <= 0) continue;
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    const tile = field[col] && field[col][row];
+    if (!tile || tile.type !== 'vein') continue;
+    tile.yieldU = yieldU;
+    if (rec.ore) {
+      tile.ore = rec.ore;
+      tile.tierReq = drillTierReqForOre(rec.ore);
+    }
+  }
+}
+
+/**
+ * Pay a broken vein through the cargo writer before the hole is committed.
+ * Returns 'preserve' when unaccepted ore is still on this cell, otherwise 'clear'.
+ */
+function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
+  const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
+  if (budget <= 0) {
+    host.bus.emit('drill:rockDepleted', {
+      asteroidId: d.asteroidId,
+      budget: 0,
+      commodityId: ore,
+      pos: { col, row },
+      text: 'Vein played out — this rock has no deep-core yield left.',
+    });
+    host.bus.emit('drill:warn', {
+      text: 'Vein played out — this rock has no deep-core yield left.',
+      reason: 'depleted',
+      commodityId: ore,
+      pos: { col, row },
+    });
+    if (rockEnt && rockEnt.data) writeVeinRemainder(rockEnt.data, col, row, 0);
+    return 'clear';
+  }
+
+  // Pay only whole units this visit can cover. A refused bite keeps the rest of the vein,
+  // including ore above this visit's budget — that tail is still in the rock, not destroyed.
+  const wholeYield = Math.max(0, Math.floor(Number(yieldU) || 0));
+  const avail = Math.min(wholeYield, Math.floor(budget));
+  const added = avail > 0 ? addCargo(host.state, ore, avail) : 0;
+  const rejected = Math.max(0, avail - added);
+  const remain = Math.max(0, wholeYield - added);
+  if (added > 0) {
+    d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
+    if (Number.isFinite(d.rockBudget)) d.rockBudget = Math.max(0, budget - added);
+    const entData = rockEnt && rockEnt.data;
+    if (entData && Number(d.rockBudgetMax) > 0 && Number.isFinite(d.rockBudget)) {
+      entData.drillDepletion = clamp01((Number(entData.drillDepletion) || 0) + added / Number(d.rockBudgetMax));
+      entData.lastDrillT = Number(host.state.simTime) || 0;
+    }
+    host.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col, row } });
+    if (Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0) {
+      host.bus.emit('drill:rockDepleted', {
+        asteroidId: d.asteroidId,
+        budget: 0,
+        text: 'Rock deep-core yield exhausted for this visit.',
+      });
+    }
+  }
+  if (rejected > 0) {
+    target.type = 'vein';
+    target.ore = ore;
+    target.yieldU = remain;
+    const restoredHp = Math.max(1, Number(target.maxHp) || 1);
+    target.hp = restoredHp;
+    target.maxHp = restoredHp;
+    if (rockEnt && rockEnt.data) writeVeinRemainder(rockEnt.data, col, row, remain, ore);
+    d.remainderHold = DRILL_CARGO_FULL_RETRY_S;
+    d.remainderAt = { col, row };
+    d.moveCooldown = DRILL_CARGO_FULL_RETRY_S;
+    d.avatar.isDrilling = true;
+    d.avatar.drillTarget = { col, row };
+    d.avatar.drillBlocked = false;
+    host.bus.emit('drill:cargoFull', {
+      commodityId: ore, qty: remain, pos: { col, row },
+    });
+    host.bus.emit('drill:warn', {
+      text: 'Cargo holds cannot take this ore — free volume is too tight or holds are full.',
+      reason: 'cargoFull',
+      commodityId: ore,
+      pos: { col, row },
+    });
+    return 'preserve';
+  }
+  if (avail <= 0) {
+    host.bus.emit('drill:warn', {
+      text: 'Vein played out — this rock has no deep-core yield left.',
+      reason: 'depleted',
+      commodityId: ore,
+      pos: { col, row },
+    });
+  }
+  if (rockEnt && rockEnt.data) writeVeinRemainder(rockEnt.data, col, row, 0);
+  return 'clear';
 }
 
 /**
@@ -708,6 +832,8 @@ export const drill = {
     // Resume prior bore: empty every tile this rock still remembers as dug after geometry recovery.
     const cleared = applyClearedTiles(field, data && data.drillCleared);
     if (data) data.drillCleared = cleared;
+    // A partial bite is not a cleared hole. The seed would otherwise put the original yield back.
+    applyVeinRemainders(field, data && data.drillVeinRemainders);
 
     const rock = this._computeRockBudget(asteroidId);
 
@@ -817,12 +943,10 @@ export const drill = {
     const data = ensureAsteroidDeepCore(ent && ent.data);
     if (!data) return;
 
-    // Authoritative depletion from remaining session budget (covers mid-session extracts).
+    // Session budget is already richness-scaled. Storing 1 - budget/max would scale it again
+    // on the next begin. Depletion moves only when cargo accepts units, inside the bite.
     if (Number.isFinite(d.rockBudget) && Number(d.rockBudgetMax) > 0) {
-      const remaining = Math.max(0, Math.floor(d.rockBudget));
-      const max = Math.max(1, Math.floor(d.rockBudgetMax));
-      data.drillYieldMax = max;
-      data.drillDepletion = clamp01(1 - (remaining / max));
+      data.drillYieldMax = Math.max(1, Math.floor(Number(d.rockBudgetMax) || 0));
       data.lastDrillT = Number(this.state.simTime) || 0;
     }
 
@@ -996,6 +1120,7 @@ export const drill = {
     // player who bites and walks away is never handed a dead drill when they come back.
     const boreDebtBefore = Math.max(0, Number(d.boreDebt) || 0);
     d.boreDebt = Math.max(0, boreDebtBefore - dt);
+    if (d.remainderHold > 0) d.remainderHold = Math.max(0, d.remainderHold - dt);
 
     // Advance visual move window so presentation can lerp for the full step duration.
     if (d.avatar.moveDuration > 0 && d.avatar.moveElapsed < d.avatar.moveDuration) {
@@ -1125,6 +1250,25 @@ export const drill = {
         return;
       }
 
+      // Unaccepted ore is still in this cell. Do not grind it down again until the retry hold ends.
+      if (d.remainderHold > 0 && d.remainderAt && d.remainderAt.col === nc && d.remainderAt.row === nr) {
+        d.boreHold = 0;
+        d.avatar.isDrilling = true;
+        d.avatar.drillTarget = { col: nc, row: nr };
+        d.avatar.drillBlocked = false;
+        recoverRig(d, dt);
+        if (d.moveCooldown <= 0) {
+          this.bus.emit('drill:warn', {
+            text: 'Cargo holds cannot take this ore — free volume is too tight or holds are full.',
+            reason: 'cargoFull',
+            commodityId: target.ore || null,
+            pos: { col: nc, row: nr },
+          });
+          d.moveCooldown = DRILL_CARGO_FULL_RETRY_S;
+        }
+        return;
+      }
+
       // Active drilling
       const wasBitingThisCell = !!d.avatar.drillTarget
         && d.avatar.drillTarget.col === nc && d.avatar.drillTarget.row === nr;
@@ -1175,16 +1319,19 @@ export const drill = {
       });
 
       if (target.hp <= 0) {
-        // Cleared!
         const wasVein = target.type === 'vein';
         const wasGas = target.type === 'gas';
         const wasType = target.type;
         const ore = target.ore;
         const yieldU = target.yieldU || 0;
+        const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+        // Cargo answers before the hole is committed. Unaccepted ore stays on this vein.
+        if (wasVein && ore && settleVeinYield(this, d, rockEnt, target, nc, nr, ore, yieldU) === 'preserve') {
+          return;
+        }
 
         d.field[nc][nr] = EMPTY_TILE();
         // Persist immediately so a crash/retract mid-session still leaves the hole next visit.
-        const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
         if (rockEnt && rockEnt.data) recordClearedTile(rockEnt.data, nc, nr);
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
@@ -1200,66 +1347,6 @@ export const drill = {
           wasVein,
           wasGas,
         });
-
-        if (wasVein && ore) {
-          const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
-          if (budget <= 0) {
-            // Rock played out: the vein tile clears, but it pays nothing until the rock recovers.
-            // Surface (flight) mining can still destroy the rock normally.
-            this.bus.emit('drill:rockDepleted', {
-              asteroidId: d.asteroidId,
-              budget: 0,
-              commodityId: ore,
-              pos: { col: nc, row: nr },
-              text: 'Vein played out — this rock has no deep-core yield left.',
-            });
-            this.bus.emit('drill:warn', {
-              text: 'Vein played out — this rock has no deep-core yield left.',
-              reason: 'depleted',
-              commodityId: ore,
-              pos: { col: nc, row: nr },
-            });
-          } else {
-            const avail = Math.min(yieldU, Math.floor(budget));
-            const added = avail > 0 ? addCargo(this.state, ore, avail) : 0;
-            if (added > 0) {
-              d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
-              d.rockBudget = Math.max(0, budget - added);
-              const ent = this.state.entities && this.state.entities.get(d.asteroidId);
-              if (ent && ent.data && Number(d.rockBudgetMax) > 0) {
-                ent.data.drillDepletion = clamp01((Number(ent.data.drillDepletion) || 0) + added / Number(d.rockBudgetMax));
-                ent.data.lastDrillT = Number(this.state.simTime) || 0;
-              }
-              this.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col: nc, row: nr } });
-              if (Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0) {
-                this.bus.emit('drill:rockDepleted', {
-                  asteroidId: d.asteroidId,
-                  budget: 0,
-                  text: 'Rock deep-core yield exhausted for this visit.',
-                });
-              }
-            } else if (avail > 0) {
-              // Holds have volume free in percent, but this unit would not fit (or cargo writer
-              // rejected it). Same player-facing "full" path so the wasted break is not silent.
-              this.bus.emit('drill:cargoFull', {
-                commodityId: ore, qty: avail, pos: { col: nc, row: nr },
-              });
-              this.bus.emit('drill:warn', {
-                text: 'Cargo holds cannot take this ore — free volume is too tight or holds are full.',
-                reason: 'cargoFull',
-                commodityId: ore,
-                pos: { col: nc, row: nr },
-              });
-            } else {
-              this.bus.emit('drill:warn', {
-                text: 'Vein played out — this rock has no deep-core yield left.',
-                reason: 'depleted',
-                commodityId: ore,
-                pos: { col: nc, row: nr },
-              });
-            }
-          }
-        }
 
         if (wasGas) {
           d.gasHits++;

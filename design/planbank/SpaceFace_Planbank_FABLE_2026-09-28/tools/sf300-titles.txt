@@ -1,0 +1,300 @@
+SF-001 — Stable intent when the camera changes
+SF-002 — Deadzone exit that feels deliberate
+SF-003 — Combat-stick takeover without a kick
+SF-004 — Cargo-weight preview through actual handling
+SF-005 — Brake authority under a side shove
+SF-006 — Precision arrival without autopilot orbiting
+SF-007 — Reverse thrust that reads as reverse thrust
+SF-008 — Boost exit with retained agency
+SF-009 — Cruise drop that explains itself
+SF-010 — Target assist that respects a chosen escape
+SF-011 — Angular damping that preserves hull character
+SF-012 — Near-obstacle assist that warns rather than steers
+SF-013 — Tether load handoff into ordinary flight
+SF-014 — Input recovery after losing focus
+SF-015 — A short flight proving ground that teaches through objects
+SF-016 — Acquisition confidence at the edge of a crowd
+SF-017 — Tension warning that distinguishes danger from useful load
+SF-018 — A clean ballistic cut through a moving target
+SF-019 — Anchor swapping as a physical maneuver
+SF-020 — Heavy enemies as usable terrain
+SF-021 — Towed cargo as a shield with a price
+SF-022 — Reel pumping that rewards timing, not button spam
+SF-023 — A cutter warning located on the threatened line
+SF-024 — A snag that becomes a choice instead of a dead control
+SF-025 — An impulse bank with an observable discharge
+SF-026 — Friendly towing with consent expressed physically
+SF-027 — Release-space awareness without auto-safety
+SF-028 — Two-step disable and strip
+SF-029 — Salvage sorting through the same combat grammar
+SF-030 — One physical stunt, one coherent answer
+SF-031 — Drift-bomb release that the pilot can predict
+SF-032 — Concussion demolition without hidden damage
+SF-033 — A moving singularity that has a readable wake
+SF-034 — Tarburst as temporary terrain rather than a stun button
+SF-035 — EMP that reveals a recovery opportunity
+SF-036 — Thermite with a visible commitment cost
+SF-037 — Havoc that destabilizes without confiscating control
+SF-038 — Ballast as a positional commitment
+SF-039 — Field overlap with readable vector competition
+SF-040 — Projectile bending with truthful ownership
+SF-041 — A mine corridor with multiple solutions
+SF-042 — Chain-reaction causality that survives simultaneous blasts
+SF-043 — Ammunition decisions before an expedition
+SF-044 — Enemy ordnance that teaches by mirroring
+SF-045 — An ordnance cleanup that leaves the fight intact
+SF-046 — A cutter that commits to geometry
+SF-047 — Field disruptor with an exposed working interval
+SF-048 — Cargo protector that protects a specific thing
+SF-049 — Anchor specialists that create a temporary arena
+SF-050 — A sniper whose shot can be baited
+SF-051 — Brawlers that commit their mass
+SF-052 — Two specialists, one solvable pressure pattern
+SF-053 — Reinforcements that arrive from somewhere
+SF-054 — Pressure that notices a real breather
+SF-055 — A pirate that values cargo more than revenge
+SF-056 — A wounded enemy that changes the tactical shape
+SF-057 — Squad cooperation without target omniscience
+SF-058 — Friendly traffic that does not become a target by label
+SF-059 — Terrain-aware orbit that does not pinball
+SF-060 — Enemy learning through a rematch, not stat inflation
+SF-061 — Opening wave as a physical promise
+SF-062 — A mass-and-gap round
+SF-063 — Earned breathing room that survives burst kills
+SF-064 — A specialist introduction with a physical rehearsal
+SF-065 — Draft choices that change the next maneuver
+SF-066 — A reroll that preserves trust
+SF-067 — Cover that stays useful through a round
+SF-068 — A boss round with ammunition, not escorts as chores
+SF-069 — Cleanup that never lies about surviving enemies
+SF-070 — Between-round preparation without accidental launch
+SF-071 — An arena law that creates opportunity
+SF-072 — Build pressure that tests rather than hard-counters
+SF-073 — Run rewards that follow physical collection
+SF-074 — A cash-out decision with an honest mode boundary
+SF-075 — A rematch that reveals mastery instead of a bigger score
+SF-076 — Restore the real Ceres miner-to-hauler cycle
+SF-077 — A tender that visibly repairs the failure
+SF-078 — A surveyor whose measurements matter
+SF-079 — A salvor that separates before it hauls
+SF-080 — A berth queue with understandable right of way
+SF-081 — A worker that responds to a close call
+SF-082 — A hauler that visibly chooses a safer continuation
+SF-083 — A patrol that performs a job before a fight
+SF-084 — Two occupations competing for a real resource
+SF-085 — A relief berth with limited capacity and a human rhythm
+SF-086 — A work shift that changes the same place
+SF-087 — Civilian assistance that carries an actual cost
+SF-088 — A rival recovery crew that can be negotiated with through action
+SF-089 — Occupational persistence without pinned ghosts
+SF-090 — A quiet encounter worth watching
+SF-091 — The Intake Waltz: feed a moving receiver
+SF-092 — Cinder Sluice repair with three distinct outcomes
+SF-093 — A jam cleared by the shape of the load
+SF-094 — A temporary bypass the player actually builds
+SF-095 — Source-to-sink visibility for one production lot
+SF-096 — A fragile shipment with a recoverable bad landing
+SF-097 — An industrial safety interlock worth bypassing
+SF-098 — A depot that is full in physical and economic terms
+SF-099 — A refinery outage that creates a local work opportunity
+SF-100 — Load geometry as a meaningful fitting constraint
+SF-101 — A worksite that retains the scar of a bad operation
+SF-102 — A shared power bottleneck with a visible tradeoff
+SF-103 — A maintenance convoy that transports its repair inputs
+SF-104 — A machine used against an attacker
+SF-105 — One durable owner-operated site loop
+SF-106 — Make competent hauling viable through real terms
+SF-107 — Net profit that uses the load the player can actually buy
+SF-108 — Contracts that can honestly share a journey
+SF-109 — A depletion response the pilot can anticipate
+SF-110 — A quote reservation that protects the stated trade
+SF-111 — Cargo custody that remains legible after a split
+SF-112 — Risk premium grounded in a visible threat
+SF-113 — A legal detour that competes with smuggling
+SF-114 — A damaged delivery with negotiated-by-terms value
+SF-115 — Operating costs that teach the business
+SF-116 — A local shortage with a physical cause and remedy
+SF-117 — A new route unlocked by capability, not a price multiplier
+SF-118 — A stalled operation that asks for the right intervention
+SF-119 — A no-money recovery route that still involves work
+SF-120 — Economic comparison that resists misleading simulation success
+SF-121 — Starter identities with immediate playable proof
+SF-122 — A Rammer-Truck that makes cargo a decision
+SF-123 — Control-Tug as a two-context capability
+SF-124 — Survey Control that turns information into a route
+SF-125 — Bulk Miner with a meaningful exit decision
+SF-126 — Capability predictions that state their conditions
+SF-127 — Fitting refusal that leaves the ship unchanged
+SF-128 — A respec path that encourages experimentation
+SF-129 — A tech unlock that creates a new physical question
+SF-130 — A hull upgrade that changes route geometry
+SF-131 — A ship history that follows the same hull
+SF-132 — A module drawback that can be played around
+SF-133 — Build identity that does not overclaim hidden fittings
+SF-134 — A rare capability with more than one useful home
+SF-135 — Progression pacing that respects a real first upgrade
+SF-136 — Put a real crusher into the yard tow-out
+SF-137 — A liner toll run with a real crossing decision
+SF-138 — The Borrowed Tug: recover without owning the tool
+SF-139 — The Split Manifest: choose what can be saved
+SF-140 — The Blind Transfer: intercept by observation
+SF-141 — The Warm Wreck: rescue before salvage
+SF-142 — The Quiet Berth: solve a job without a fight
+SF-143 — The Counterweight Job: hold one thing to move another
+SF-144 — The Wrong Convoy: verify before intervention
+SF-145 — The Salvage Auction: possession before paperwork
+SF-146 — The Broken Escort: protect the obligation, not just the hull
+SF-147 — The Hot Return: a heist's escape has a second act
+SF-148 — The False Shortcut: knowledge beats the map line
+SF-149 — A three-visit story told through a workplace
+SF-150 — Mission closure that preserves the scene's future
+SF-151 — A witness who can explain the accusation
+SF-152 — A customs boundary that can be read while flying
+SF-153 — Restitution that repairs something real
+SF-154 — Mercy that changes a later practical encounter
+SF-155 — A loss that becomes a recoverable address
+SF-156 — A rescued worker who returns to work
+SF-157 — A thief's escape that leaves a trace instead of a reset
+SF-158 — A faction response expressed through work and access
+SF-159 — Collateral that distinguishes accident, negligence and continued attack
+SF-160 — A memorial that changes without becoming a shop
+SF-161 — A local warrant with a plausible end
+SF-162 — A damaged place that redistributes nearby work
+SF-163 — Uncertain evidence presented as uncertain
+SF-164 — A debt that can be paid through an appropriate job
+SF-165 — Consequences that compose instead of multiplying blindly
+SF-166 — A wreck trail that can be navigated without a marker
+SF-167 — Ceres Wreck Cathedral as a route through a body
+SF-168 — A survey clue that changes a trade decision
+SF-169 — Tethys as a place learned through geometry
+SF-170 — A dead machine that still reveals its purpose
+SF-171 — An anomaly with a falsifiable local rule
+SF-172 — A quiet landmark allowed to remain quiet
+SF-173 — The abandoned tug as a persistent experiment
+SF-174 — A discovery with a second practical visit
+SF-175 — A moving clue that belongs to a real worker
+SF-176 — A dangerous discovery with a safe observation edge
+SF-177 — A sector identity expressed through ordinary approaches
+SF-178 — A scan that reveals a useful absence
+SF-179 — A landmark scale pass tied to actual navigation
+SF-180 — Discovery memory that remains useful after the world changes
+SF-181 — The Charon Bloom as one complete first encounter
+SF-182 — Separate physical contamination from what the pilot knows
+SF-183 — The synchronized turn with finite reach
+SF-184 — Relay disruption changes the ecology instead of turning it off
+SF-185 — Heat attraction that the pilot can deliberately exploit
+SF-186 — A hull leech with a visible body and real removal choices
+SF-187 — Contaminated salvage with custody rather than magic contagion
+SF-188 — A cyst rupture that changes one local pocket
+SF-189 — A grazer that is not a reskinned fighter
+SF-190 — A carrier habitat with a believable safe boundary
+SF-191 — Memory traces that are fragments, not a narrator
+SF-192 — Precursor suppression as a separate machine rule
+SF-193 — A sample choice with a real research tradeoff
+SF-194 — Infestation modules that transform a known workplace
+SF-195 — Four aftermaths for one localized ecology
+SF-196 — Diagnose and restore the submitted force-surface shader
+SF-197 — Thruster response from achieved work
+SF-198 — A field volume whose edge means something
+SF-199 — A projectile with a continuous authored body
+SF-200 — Impact hierarchy from material and transferred force
+SF-201 — A kill that becomes a body before becoming spectacle
+SF-202 — Rope release with a visible tangent and settling residue
+SF-203 — Bomb phases that can be read in a crowd
+SF-204 — A moving hazard that keeps its visual center
+SF-205 — A scar that grows from the actual hit
+SF-206 — Reduced motion that keeps force information
+SF-207 — Effect competition resolved by meaning
+SF-208 — A ricochet that shows the actual second path
+SF-209 — Industrial motion that stops for the right reason
+SF-210 — A VFX family with production-complete lifecycle ownership
+SF-211 — A player hull silhouette that survives normal zoom
+SF-212 — Enemy role recognition without a nameplate
+SF-213 — Whole-ship LOD without disappearing identity
+SF-214 — A destination entrance that advertises how to use it
+SF-215 — A quiet machine with visible residual life
+SF-216 — Background depth without dome edges
+SF-217 — A material hierarchy that preserves industrial function
+SF-218 — Camera context during a real throw
+SF-219 — A large place that stays usable during combat
+SF-220 — Aftermath variants with the same recognizable origin
+SF-221 — A convoy readable as a working group
+SF-222 — A layered sky that supports sector identity
+SF-223 — A damaged ship that remains readable and aimable
+SF-224 — A place family with meaningful operating states
+SF-225 — An authored-picture comparison that drives a real fix
+SF-226 — A Massline release distinct from a break
+SF-227 — Engine voice that communicates effort, not only speed
+SF-228 — A heavy impact with space around it
+SF-229 — Bomb families with recognizable mechanisms
+SF-230 — A field heard through its force direction
+SF-231 — Comms that yields to the player's immediate problem
+SF-232 — A working place with an audible cycle
+SF-233 — A quiet-sector bed that leaves room for discovery
+SF-234 — Music that follows an actual encounter arc
+SF-235 — A successful input with a specific answer
+SF-236 — Spatial sound that remains attached through origin shifts
+SF-237 — A sound budget that preserves the player's own verb
+SF-238 — Audio resume without a burst of expired history
+SF-239 — Captions that carry useful semantics without becoming a log
+SF-240 — An audio family accepted in the whole mix
+SF-241 — A trade confirmation that cannot lie about quantity
+SF-242 — Shipworks explains a real capability tradeoff
+SF-243 — Cargo custody visible at a transfer decision
+SF-244 — A local-map selection that survives entity replacement
+SF-245 — The map distinguishes a rumor from a route
+SF-246 — Mission progress points at the actual next action
+SF-247 — Remapped controls appear at the moment of use
+SF-248 — Focus returns to a meaningful place after a modal
+SF-249 — Disabled controls explain the missing condition
+SF-250 — A damaged ship remains readable without color
+SF-251 — A draft choice explains what happens to the current fit
+SF-252 — An alert that offers a usable recovery action
+SF-253 — A long-content screen stays operable at small viewports
+SF-254 — Reduced motion preserves mechanical timing
+SF-255 — One functional UI change closes on the real player route
+SF-256 — Remove needless direct-versus-instanced shader twins
+SF-257 — Publish authored sector assets only for their current generation
+SF-258 — Resolve main-thread starvation rather than inflating the Works watchdog
+SF-259 — Close any remaining package lifetime retention after disposal
+SF-260 — Attribute impossible pose jumps to the actual writer
+SF-261 — One measured material key per actual render contract
+SF-262 — Cold-route cooking predicts the next real body
+SF-263 — Bound presentation publication without revealing half a body
+SF-264 — Allocation reduction in an attributed render hot loop
+SF-265 — Visible-body residency follows current observation
+SF-266 — Queries scale with nearby interaction, not total universe size
+SF-267 — UI work occurs when the represented state changes
+SF-268 — Context restoration rebuilds the actual current scene
+SF-269 — Frame debt never changes the meaning of one input edge
+SF-270 — A performance change proves an intact playable picture
+SF-271 — Latest valid route wins an interleaved load
+SF-272 — A rejected save leaves the current game intact
+SF-273 — An interrupted cargo handoff conserves the same lot
+SF-274 — Site reconstruction preserves work, not stale machinery phases
+SF-275 — Pause requests release only their own hold
+SF-276 — Focus loss cannot leave a weapon or helm held
+SF-277 — Durable navigation does not target a recycled entity
+SF-278 — Once-only rewards survive repeated resume
+SF-279 — Destruction clears attachments before identity can be reused
+SF-280 — Old saves migrate a new feature without inventing progress
+SF-281 — A failed save is visible without destroying the previous slot
+SF-282 — Shared Browser and Electron continuation stays one game
+SF-283 — Restoring a scene does not replay yesterday's spectacle
+SF-284 — Save bounds preserve important world consequences
+SF-285 — An interrupted failure leads back to a playable recovery
+SF-286 — First victory becomes the first useful wreck
+SF-287 — A rescue interrupts a believable workday
+SF-288 — A bad throw creates a recoverable problem
+SF-289 — A customs crossing has three honest approaches
+SF-290 — A refinery shortage is solved by a visible delivery
+SF-291 — The same rope proves two careers
+SF-292 — A failed robbery becomes a pursuit over real cargo
+SF-293 — A heavy enemy becomes temporary terrain
+SF-294 — A quiet return visit reveals what the player changed
+SF-295 — An investigation changes the next physical choice
+SF-296 — A low-resource ship has a dignified recovery loop
+SF-297 — Combat pressure clears into audible breathing room
+SF-298 — A worksite hazard becomes a combat opportunity
+SF-299 — Remove a redundant layer from one confused interaction
+SF-300 — A coherent session connects work, risk and ownership

@@ -20,6 +20,7 @@ import {
   FACTION_AGGRO_THRESHOLD,
   factionStandingGuidance,
   factionContractLadderRows,
+  factionHistoryLines,
 } from '../../factionStanding.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -136,6 +137,25 @@ function nextRungLine(rep) {
 
 function heroHtml(n, w, cls = '') {
   return `<div class="k-hero"><span class="k-hero__n${cls ? ` ${cls}` : ''}">${n}</span>${w ? `<span class="k-hero__w">${w}</span>` : ''}</div>`;
+}
+
+/** WF-09 — what you actually did for and to this power, newest first, from the register's deed
+ *  ring. Nothing renders when the ring is empty: no deeds on file is silence, not filler. */
+function recentDeedsHtml(state, live, f) {
+  const lines = factionHistoryLines(live, state && state.simTime, 4);
+  if (!lines.length) return '';
+  const rows = lines.map((line) => (
+    `<li class="k-row k-row--static sx-fac-deed">` +
+      `<span class="k-row__name">${escapeHtml(line.label)}${line.ago ? ` <span class="k-row__sub">${escapeHtml(line.ago)}</span>` : ''}</span>` +
+      `<span class="k-row__num ${line.value > 0 ? 'k-good' : 'k-bad'}">${line.value > 0 ? '+' : '\u2212'}${Math.abs(line.value)}</span>` +
+    `</li>`
+  )).join('');
+  return (
+    `<div class="sx-fac-intent" aria-label="Recent deeds with ${escapeHtml(f.name)}">` +
+      `<p class="k-caps">Recent deeds</p>` +
+      `<ul class="k-rows">${rows}</ul>` +
+    `</div>`
+  );
 }
 
 export function createFactionsScreen(ctx) {
@@ -286,6 +306,7 @@ export function createFactionsScreen(ctx) {
             `<p class="k-caps">Next move</p>` +
             `<p class="k-sentence k-sentence--emph">${escapeHtml(String(guidance.plan || '').replace(/^\s*([a-z])/, (m, c) => c.toUpperCase()))}</p>` +
           `</div>` +
+          recentDeedsHtml(state, live, f) +
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
             // folded: a word that unfolds the relations when asked
             (relations.length ? `<p class="k-caps sx-fac-legend">${relations.filter((r) => r.weight > 0).length ? `<span class="sx-fac-legend__k">Aligned</span> · ${relations.filter((r) => r.weight > 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}` : ''}${relations.some((r) => r.weight > 0) && relations.some((r) => r.weight < 0) ? '<span class="sx-fac-legend__gap"> · </span>' : ''}${relations.filter((r) => r.weight < 0).length ? `<span class="sx-fac-legend__k is-hostile">Rival</span> · <span class="is-hostile">${relations.filter((r) => r.weight < 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}</span>` : ''}</p>` : '') +

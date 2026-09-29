@@ -304,6 +304,7 @@ import {
 } from './startupGpuResidency.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { rehydrateDetachedPackages } from './packageCpuDetach.js';
+import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
   collectOpeningSubmissionLeaves,
   combineOpeningProducerCensuses,
@@ -2691,10 +2692,13 @@ function getContactShadowTex() {
   const c = document.createElement('canvas'); c.width = c.height = 64;
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  // Same blue-violet ink as the painted shadow pools. A neutral grey disc read as a sticker.
-  g.addColorStop(0.0, 'rgba(18,14,36,0.72)');
-  g.addColorStop(0.42, 'rgba(28,22,58,0.34)');
-  g.addColorStop(1.0, 'rgba(28,22,58,0)');
+  // Pure-black ink: a shadow pool can only darken. The old blue-violet ink read as a soft
+  // purple glow disc over open space — any nonzero colour over black space is a light source,
+  // and the untagged canvas also decoded the violet linearly ~4x hot. Over a lit backdrop
+  // (nebula, rock, station skin) this still reads as the same painted shadow pool.
+  g.addColorStop(0.0, 'rgba(0,0,0,0.66)');
+  g.addColorStop(0.42, 'rgba(0,0,0,0.30)');
+  g.addColorStop(1.0, 'rgba(0,0,0,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
   _shadowTex = new THREE.CanvasTexture(c);
   return _shadowTex;
@@ -4154,13 +4158,26 @@ export async function settleLiveSectorBoundaryAdmissions(entries, options = {}) 
         || (expectedSectorId && String(entitySectorId(current) || '') !== expectedSectorId)) {
       continue;
     }
+    const boundary = options.meshes?.get(entry.id);
+    // Loss detection covers only entries still claiming this generation. An entry superseded
+    // while its admission promise was in flight — the population refresh replaced the claimant
+    // in liveBoundaryPromises, near-body early publication promoted a prepared record for the
+    // id, or a newer claim reseated the presented/registry boundary — resolves stale; whatever
+    // it settled or failed on belongs to the claim the fixpoint's next pass re-grades.
+    // Withdrawal, not loss (same rule the publish path applies via provablyRetired).
+    const stillClaimed = typeof options.currentLiveEntryForId !== 'function'
+      || options.currentLiveEntryForId(entry.id) === entry;
+    if (!stillClaimed
+        || current.mesh !== entry.boundary
+        || (boundary != null && boundary !== entry.boundary)) {
+      continue;
+    }
     const outcome = outcomes[index];
     if (outcome.status === 'rejected') {
       failures.push(outcome.reason);
       continue;
     }
     entry.receipt = outcome.value;
-    const boundary = options.meshes?.get(entry.id);
     const fingerprint = typeof options.fingerprintForEntity === 'function'
       ? options.fingerprintForEntity(current)
       : entry.fingerprint;
@@ -7002,6 +7019,36 @@ export const render = {
             touchExactTargetSubject(subject);
           } catch (error) {
             console.warn('[render] exact-target admission touch failed', error);
+            // Identify which texture threw on upload and why: package-detach empties a
+            // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
+            // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
+            // on the empty array. Fires only on failure; walks the subject once.
+            try {
+              const rows = [];
+              subject.traverse?.((o) => {
+                const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+                for (const m of mats) for (const k of Object.keys(m)) {
+                  const t = m[k];
+                  if (!t || !t.isTexture || !t.isCompressedTexture) continue;
+                  const empty = !(t.mipmaps && t.mipmaps.length > 0);
+                  let threw = null;
+                  try { renderer.initTexture(t); } catch (e) { threw = String(e && e.message || e); }
+                  if (empty || threw) rows.push({
+                    slot: k, name: t.name || '', src: t.source && t.source.uuid.slice(0, 8),
+                    mips: t.mipmaps ? t.mipmaps.length : -1,
+                    shared: !!(t.userData && t.userData.spacefaceSharedImageSourceKey),
+                    detachMark: t.userData && t.userData.spacefaceCpuDetach || null,
+                    colorSpace: t.colorSpace, flipY: t.flipY, wrapS: t.wrapS, wrapT: t.wrapT,
+                    magFilter: t.magFilter, minFilter: t.minFilter, version: t.version,
+                    users: sharedImageSourceUsers(t) || undefined,
+                    threw,
+                  });
+                }
+              });
+              console.warn('[render] touch-fail texture diag', JSON.stringify(rows));
+            } catch (diagError) {
+              console.warn('[render] touch-fail diag errored', String(diagError && diagError.message || diagError));
+            }
           } finally {
             restore();
           }
@@ -10541,6 +10588,10 @@ export const render = {
         settleLiveBoundaryEntries: (liveEntries) => settleLiveSectorBoundaryAdmissions(liveEntries, {
           entities: state.entities,
           meshes: this._meshes,
+          // The claimant map is the generation's ownership table for live admissions: an entry
+          // no longer installed there was superseded (refresh, early publication, lane switch)
+          // and is a withdrawal, not a loss.
+          currentLiveEntryForId: (id) => record.liveBoundaryPromises?.get(id),
           fingerprintForEntity: authoredCompositionFingerprintForEntity,
           preparationEpoch: this._authoredPreparationEpoch,
           contextGeneration: this._contextRecovery.generation,

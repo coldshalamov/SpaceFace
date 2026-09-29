@@ -183,7 +183,10 @@ export function claimSharedImageTexture(key, texture) {
   if (!texturePayloadIntact(entry.owner)) {
     // The owner's CPU payload was released by the package-detach residency pass (or its shared
     // Source was): cloning it now would mint an uploadable-looking texture with empty mips that
-    // crashes the first uploader. Keep this decode — it has real bytes — instead of retiring it.
+    // crashes the first uploader. Keep this decode — it has real bytes — instead of retiring it,
+    // and promote it to owner so later hits share its source again instead of re-decoding.
+    entry.owner = texture;
+    entry.source = texture.source;
     return adoptUser(entry, key, texture);
   }
   const clone = entry.owner.clone();
@@ -323,6 +326,50 @@ export function adoptSharedImageSourceClone(texture) {
   const entry = key && entries.get(key);
   if (!entry) return texture;
   return adoptUser(entry, key, texture);
+}
+
+/**
+ * How many live textures share this texture's dedupe entry, including itself (0 = untracked).
+ * packageCpuDetach defers payload release while siblings live: Texture.clone() slices the
+ * mipmap array but shares the mip records (and adopted users share source.data outright), so
+ * emptying one user's array frees no bytes while another user lives — it only leaves that
+ * texture one fresh-upload path away from reading mipmaps[0] on an empty array.
+ */
+export function sharedImageSourceUserCount(texture) {
+  const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
+  const entry = key && entries.get(key);
+  return entry ? entry.users.size : 0;
+}
+
+/**
+ * Diagnostic row per live user of a texture's dedupe entry — the fields that feed three's
+ * WebGLTextures upload cache key (a different key on a shared source forces a fresh upload).
+ * Used by the admission-touch failure diagnostics; not on a hot path.
+ */
+export function sharedImageSourceUsers(texture) {
+  const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
+  const entry = key && entries.get(key);
+  if (!entry) return null;
+  return [...entry.users].map((user) => ({
+    uuid: user.uuid && user.uuid.slice(0, 8),
+    name: user.name || '',
+    owner: user === entry.owner,
+    colorSpace: user.colorSpace,
+    flipY: user.flipY,
+    wrapS: user.wrapS,
+    wrapT: user.wrapT,
+    magFilter: user.magFilter,
+    minFilter: user.minFilter,
+    anisotropy: user.anisotropy,
+    internalFormat: user.internalFormat ?? null,
+    format: user.format ?? null,
+    type: user.type,
+    generateMipmaps: user.generateMipmaps,
+    premultiplyAlpha: user.premultiplyAlpha,
+    unpackAlignment: user.unpackAlignment,
+    mipmaps: Array.isArray(user.mipmaps) ? user.mipmaps.length : -1,
+    version: user.version,
+  }));
 }
 
 export function imageSourceDedupeStats() {

@@ -15,6 +15,11 @@ import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.j
 const VOL = Object.create(null);
 const MASS = Object.create(null);
 for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; }
+// Receipt copy needs the player-facing name (the mechanic voice uses the same registry).
+const COMMODITY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+function commodityName(commodityId) {
+  return COMMODITY_NAME.get(commodityId) || String(commodityId || '');
+}
 const PERSISTENT_FOOTPRINT = new Map(PERSISTENT_CARGO.map((c) => [c.id, { vol: 0, mass: c.mass, persistent: true }]));
 const JETTISON_POD_RADIUS = 3;
 const JETTISON_EJECT_SPEED = 60;
@@ -321,6 +326,7 @@ export const cargo = {
     this._dirty = false;
     this._massDirty = false;
     this._lastHotDockSpillTick = -1;
+    this._pendingSpillAnnounce = null;
 
     const state = this.state;
     // Collapse any number of synchronous cargo mutations into one settled mass receipt during
@@ -374,6 +380,10 @@ export const cargo = {
     });
 
     subscribe(binding, 'dock:docked', (payload) => this._spillHotArrival(payload || {}));
+    // The spill itself lands under the dock clunk and the station hub, so the undock is the
+    // legible moment: the player is back in flight right beside their spilled pods. Cargo owns
+    // the spill receipt, so cargo announces it here — once per spill, no repeat on later undocks.
+    subscribe(binding, 'dock:undocked', () => this._announceHotDockSpill());
 
     // Active-ship cargo capacity changes (fit swap / stats recompute) → adopt the new derived cap.
     const setCap = (shipId, cargoCap) => {
@@ -504,8 +514,38 @@ export const cargo = {
       spilled,
       tick,
     };
+    this._pendingSpillAnnounce = receipt;
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('cargo:hotDockSpill', receipt);
     return receipt;
+  },
+
+  /**
+   * One-shot undock receipt for a hot-dock spill: the cause ("came in hot"), the loss (named
+   * pods), and the remedy in place (they are floating right beside the ship, scoopable). The
+   * announcement rides the toast + alert voices; the spilled pods themselves are persistent
+   * payload entities, so the beat resolves in the world whether or not the player reacts.
+   */
+  _announceHotDockSpill() {
+    const receipt = this._pendingSpillAnnounce;
+    this._pendingSpillAnnounce = null;
+    if (!receipt || !this.bus || typeof this.bus.emit !== 'function') return;
+    const spilled = receipt.spilled && typeof receipt.spilled === 'object' ? receipt.spilled : {};
+    const names = Object.keys(spilled)
+      .filter((id) => Number(spilled[id]) > 0)
+      .sort()
+      .map((id) => commodityName(id))
+      .filter(Boolean);
+    if (!names.length) return;
+    const pods = Math.max(1, Math.floor(Number(receipt.pods) || names.length));
+    const list = names.length > 1
+      ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+      : names[0];
+    this.bus.emit('toast', {
+      text: `Came in hot — the hold cracked open. ${pods} ${list} pod${pods === 1 ? '' : 's'} floating by the dock.`,
+      kind: 'warn',
+      ttl: 6,
+    });
+    this.bus.emit('audio:cue', { id: 'alert' });
   },
 
   destroy() {
@@ -521,6 +561,7 @@ export const cargo = {
     this._dirty = false;
     this._massDirty = false;
     this._lastHotDockSpillTick = -1;
+    this._pendingSpillAnnounce = null;
   },
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */

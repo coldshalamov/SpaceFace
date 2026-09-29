@@ -3359,6 +3359,29 @@ function commitAuthoredPlaceBoundary(
   return true;
 }
 
+// Place draw-scale resolution. A POI's declared draw size (placeTargetRadius, else placeScale)
+// is authored placement intent and outranks the census radius ratio — the POI's entity radius is
+// its gameplay footprint, not the monument's authored scale. The same holds for world-site roots:
+// they carry placeScale = manifest visualRoot.initialScale while entity.radius is the site's
+// visualRadius footprint — applying the census ratio there blew the Wreck Cathedral out to ~30x
+// authored (D54).
+export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, censusScale }) {
+  const radius = Number(targetRadius);
+  const envelope = Math.max(1e-6, Number(authoredEnvelope) || 1e-6);
+  const targetScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : null;
+  const rawScale = Number(data && data.placeScale);
+  const authoredScale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : null;
+  const worldSiteScale = authoredScale != null
+    && data
+    && (data.role === 'world_site_root' || data.worldSitePresentation != null)
+    ? authoredScale
+    : null;
+  if (data && data.poi === true) {
+    return targetScale ?? authoredScale ?? censusScale ?? 1;
+  }
+  return worldSiteScale ?? censusScale ?? targetScale ?? authoredScale ?? 1;
+}
+
 function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) {
   const palette = paletteFor(entity || {});
   const root = new THREE.Group();
@@ -3382,7 +3405,6 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
       || placeId === CLAIM_RELAY_PLACE_ID,
   });
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
-  const rawScale = Number(data.placeScale);
   const censusScale = modelTruthPlaceDrawScale(entity);
   const targetRadius = Number(data.placeTargetRadius);
   const authoredEnvelope = Math.max(
@@ -3391,16 +3413,11 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
       ? record.bounds.size.map((value) => Number(value) || 0)
       : [authoredLength]),
   );
-  const targetScale = Number.isFinite(targetRadius) && targetRadius > 0
-    ? (targetRadius * 2) / authoredEnvelope
-    : null;
-  const authoredScale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : null;
-  // A POI's declared draw size is authored placement intent and outranks the
-  // census ratio — the POI's entity radius is its gameplay footprint, not the
-  // monument's authored scale.
-  const scale = data.poi === true
-    ? (targetScale ?? authoredScale ?? censusScale ?? 1)
-    : (censusScale ?? targetScale ?? authoredScale ?? 1);
+  const scale = resolvePlaceDrawScale(data, {
+    targetRadius,
+    authoredEnvelope,
+    censusScale,
+  });
   instantiatePart(record, root, {
     position: [0, 0, 0],
     rotation: [0, 0, 0],
@@ -6265,6 +6282,16 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     next.visible = true;
     if (next.parent !== boundary) boundary.add(next);
     if (typeof setActive === 'function') setActive(next);
+    // setActive → syncActiveSurface points boundary.userData.lod at the incoming root's own
+    // resolver, which holds whatever level it last resolved — fresh roots wake at lod0. Seed it
+    // with the level now presented and the outgoing resolver's px, or a hull parked inside the
+    // hysteresis band reads the opposite level off each root's resolver and swaps back every
+    // frame (the probe's visible-lod-thrashing).
+    const nextLod = next.userData && next.userData.lod;
+    const prevLod = prev && prev !== next && prev.userData ? prev.userData.lod : null;
+    if (nextLod && typeof nextLod.adopt === 'function') {
+      nextLod.adopt(level, prevLod && Number.isFinite(prevLod.lastPx) ? prevLod.lastPx : undefined);
+    }
     activeLevel = level;
     boundary.userData.wholeShipLodActiveLevel = level;
     return true;

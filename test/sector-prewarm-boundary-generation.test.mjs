@@ -1005,9 +1005,41 @@ test('live sector boundaries must finish exact authored admission before rotatio
   replacement.userData.authoredAssetState = 'authored';
   entity.mesh = replacement;
   meshes.set(entity.id, replacement);
-  await assert.rejects(settleLiveSectorBoundaryAdmissions([liveEntry()], options),
+  assert.equal(await settleLiveSectorBoundaryAdmissions([liveEntry()], options), true,
+    'a settled promise for an older same-id boundary withdraws — the slot was superseded, not lost');
+  entity.mesh = boundary;
+  meshes.set(entity.id, boundary);
+
+  // Supersession while a live admission is in flight resolves stale: withdrawal, not loss.
+  // The claimant map is the generation's ownership table — a replaced or dropped claim is the
+  // publish path's provablyRetired equivalent for live entries.
+  const claimants = new Map();
+  const claimedOptions = { ...options, currentLiveEntryForId: (id) => claimants.get(id) };
+  const staleEntry = liveEntry({
+    promise: Promise.resolve({ status: 'authored', result: true, error: null }),
+  });
+  claimants.set(entity.id, liveEntry({ boundary: new THREE.Group() }));
+  assert.equal(await settleLiveSectorBoundaryAdmissions([staleEntry], claimedOptions), true,
+    'an entry replaced in liveBoundaryPromises withdraws quietly');
+  claimants.set(entity.id, staleEntry);
+  assert.equal(await settleLiveSectorBoundaryAdmissions([staleEntry], claimedOptions), true,
+    'the still-claimed entry with an intact slot still certifies');
+
+  // Loss stays loud: the entry still claims this generation and its boundary slot is intact,
+  // but the admission finished without an accepted authored state.
+  const missingState = new THREE.Group();
+  entity.mesh = missingState;
+  meshes.set(entity.id, missingState);
+  const lostEntry = liveEntry({
+    boundary: missingState,
+    promise: Promise.resolve({ status: 'authored', result: true, error: null }),
+  });
+  claimants.set(entity.id, lostEntry);
+  await assert.rejects(
+    settleLiveSectorBoundaryAdmissions([lostEntry], claimedOptions),
     /did not finish exact admission/,
-    'a settled promise for an older same-id boundary cannot certify its replacement');
+    'a still-claimed entry whose slot did not reach an authored state is loss, not withdrawal',
+  );
   entity.mesh = boundary;
   meshes.set(entity.id, boundary);
 

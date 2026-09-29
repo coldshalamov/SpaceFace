@@ -67,7 +67,7 @@ import { admitModuleMetric, liveDamageRate } from '../moduleCardMetrics.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
-import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
+import { describeOutfittingSpendConfirm, focusNamedStationControl, statedHullStillViewed, statedModulePurchaseStillMatches } from '../../outfittingSpendConfirm.js';
 import { moduleRiskStrip } from '../../panels/moduleRisk.js';
 import { describeOutfittingPurchase, masslineHeadOutcome } from '../outfittingGuidance.js';
 import {
@@ -4275,6 +4275,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? activePresetRailModel.presets.find((row) => row.id === selectedPresetId) || null
       : null;
     if (!selectedPreset || !ctx.bus) return;
+    const statedShipIndex = viewIdx;
+    const statedHullDefId = ship.defId;
+    const statedPresetId = selectedPreset.id;
     presetDeleteBusy = true;
     let ok = false;
     try {
@@ -4292,7 +4295,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       return;
     }
-    ctx.bus.emit('ui:deleteLoadoutPreset', { shipIndex: viewIdx, presetId: selectedPreset.id });
+    const liveShip = viewedShip();
+    if (!statedHullStillViewed(
+      { shipIndex: statedShipIndex, hullDefId: statedHullDefId },
+      { shipIndex: viewIdx, hullDefId: liveShip && liveShip.defId, connected: el.isConnected !== false },
+    )) {
+      ctx.bus.emit('toast', {
+        text: 'That confirmation was for a different hull. Review it and confirm again.',
+        kind: 'error',
+        ttl: 3,
+      });
+      return;
+    }
+    ctx.bus.emit('ui:deleteLoadoutPreset', { shipIndex: statedShipIndex, presetId: statedPresetId, hullDefId: statedHullDefId });
     clearPresetSelectionForViewedHull({ remember: true });
     restoreCurrentPreview();
     ctx.bus.emit('audio:cue', { id: 'ui_accept' });
@@ -4670,14 +4685,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const credits = Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0);
       const shopStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
       const offer = stationShopOffer(def, shopStationId);
+      const viewedAtConfirm = viewedShip();
+      const statedShipIndex = viewIdx;
+      const statedHullDefId = viewedAtConfirm && viewedAtConfirm.defId;
+      const statedPrice = offer ? offer.price : moduleSimPrice(def);
       const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
         fitSlotIndex,
-        price: offer ? offer.price : moduleSimPrice(def),
+        price: statedPrice,
       });
       if (confirmOpts) {
-        try { bf.focus({ preventScroll: true }); } catch (_) {
-          try { bf.focus(); } catch (__) {}
-        }
+        focusNamedStationControl(bf, chooserEl);
         buyConfirmBusy = true;
         let ok = false;
         try {
@@ -4687,10 +4704,40 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }
         if (!ok) {
           if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          focusNamedStationControl(bf, chooserEl);
           return;
         }
       }
-      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex, shipIndex: viewIdx }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
+      const liveShip = viewedShip();
+      if (!statedHullStillViewed(
+        { shipIndex: statedShipIndex, hullDefId: statedHullDefId },
+        { shipIndex: viewIdx, hullDefId: liveShip && liveShip.defId, connected: el.isConnected !== false },
+      )) {
+        if (ctx.bus) ctx.bus.emit('toast', {
+          text: 'That confirmation was for a different hull. Review it and confirm again.',
+          kind: 'error',
+          ttl: 3,
+        });
+        focusNamedStationControl(bf, chooserEl);
+        return;
+      }
+      if (confirmOpts) {
+        const liveOffer = stationShopOffer(def, shopStationId);
+        const livePrice = liveOffer ? liveOffer.price : moduleSimPrice(def);
+        if (!statedModulePurchaseStillMatches(
+          { defId, shipIndex: statedShipIndex, fitSlotIndex, price: statedPrice, hullDefId: statedHullDefId },
+          { defId, shipIndex: statedShipIndex, fitSlotIndex, price: livePrice, hullDefId: liveShip && liveShip.defId },
+        )) {
+          if (ctx.bus) ctx.bus.emit('toast', {
+            text: `Price changed since the quote (${Math.round(livePrice)} vs ${Math.round(statedPrice)} cr) — review and confirm again.`,
+            kind: 'error',
+            ttl: 3,
+          });
+          focusNamedStationControl(bf, chooserEl);
+          return;
+        }
+      }
+      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex, shipIndex: statedShipIndex, expectedPrice: statedPrice, hullDefId: statedHullDefId }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
       // the bought module rides home into its socket
       explodeSeat(true, defId);
       explodeLockSeat = true;

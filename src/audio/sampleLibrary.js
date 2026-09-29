@@ -138,6 +138,35 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['rock_calve', { file: 'assets/audio/world/rock_calve.wav', tier: 2, loop: false, seconds: 1.2 }],
   ['ambient_swell', { file: 'assets/audio/world/ambient_swell.wav', tier: 2, loop: false, seconds: 2.2 }],
   ['fringe_tick', { file: 'assets/audio/world/fringe_tick.wav', tier: 2, loop: false, seconds: 0.2 }],
+  // Sector arrival identities (WF-13): one designed body per live sector, rooted on that sector's
+  // own bed tone. Authored by assets/audio/generate-samples.mjs (family 'arrival').
+  ['arrival_helios_prime', { file: 'assets/audio/arrival/arrival_helios_prime.wav', tier: 1, loop: false, seconds: 0.9 }],
+  ['arrival_tethys_junction', { file: 'assets/audio/arrival/arrival_tethys_junction.wav', tier: 1, loop: false, seconds: 0.85 }],
+  ['arrival_ceres_belt', { file: 'assets/audio/arrival/arrival_ceres_belt.wav', tier: 1, loop: false, seconds: 0.8 }],
+  ['arrival_vesta_forge', { file: 'assets/audio/arrival/arrival_vesta_forge.wav', tier: 1, loop: false, seconds: 0.9 }],
+  ['arrival_charon_expanse', { file: 'assets/audio/arrival/arrival_charon_expanse.wav', tier: 1, loop: false, seconds: 1.0 }],
+  ['arrival_pallas_drift', { file: 'assets/audio/arrival/arrival_pallas_drift.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_io_reach', { file: 'assets/audio/arrival/arrival_io_reach.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_sker_haven', { file: 'assets/audio/arrival/arrival_sker_haven.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_veil_nebula', { file: 'assets/audio/arrival/arrival_veil_nebula.wav', tier: 1, loop: false, seconds: 1.4 }],
+  ['arrival_ashfall_reach', { file: 'assets/audio/arrival/arrival_ashfall_reach.wav', tier: 1, loop: false, seconds: 1.5 }],
+  // Frontier sectors — same generator family, each rooted on the sector's own hashed bed root
+  // (mirrored between resolveSectorBed, the generator and the audioRecipes builder; the focused
+  // test asserts the three agree).
+  ['arrival_nyx_march', { file: 'assets/audio/arrival/arrival_nyx_march.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_hyperion_cut', { file: 'assets/audio/arrival/arrival_hyperion_cut.wav', tier: 1, loop: false, seconds: 0.8 }],
+  ['arrival_kepler_scar', { file: 'assets/audio/arrival/arrival_kepler_scar.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_orcus_shadow', { file: 'assets/audio/arrival/arrival_orcus_shadow.wav', tier: 1, loop: false, seconds: 1.4 }],
+  ['arrival_rhea_cinder', { file: 'assets/audio/arrival/arrival_rhea_cinder.wav', tier: 1, loop: false, seconds: 0.8 }],
+  ['arrival_haumea_rift', { file: 'assets/audio/arrival/arrival_haumea_rift.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_eris_margin', { file: 'assets/audio/arrival/arrival_eris_margin.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_phoebe_echo', { file: 'assets/audio/arrival/arrival_phoebe_echo.wav', tier: 1, loop: false, seconds: 1.4 }],
+  ['arrival_nereid_shoal', { file: 'assets/audio/arrival/arrival_nereid_shoal.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_proteus_well', { file: 'assets/audio/arrival/arrival_proteus_well.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_triton_wake', { file: 'assets/audio/arrival/arrival_triton_wake.wav', tier: 1, loop: false, seconds: 1.4 }],
+  ['arrival_eunomia_gulf', { file: 'assets/audio/arrival/arrival_eunomia_gulf.wav', tier: 1, loop: false, seconds: 0.7 }],
+  ['arrival_sedna_dark', { file: 'assets/audio/arrival/arrival_sedna_dark.wav', tier: 1, loop: false, seconds: 1.4 }],
+  ['arrival_dione_lane', { file: 'assets/audio/arrival/arrival_dione_lane.wav', tier: 1, loop: false, seconds: 0.85 }],
   ['ore_tick', { file: 'assets/audio/mining/ore_tick.wav', tier: 1, loop: false, seconds: 0.25 }],
   ['hopper_thock', { file: 'assets/audio/mining/hopper_thock.wav', tier: 1, loop: false, seconds: 0.3 }],
   ...THEME_ASSETS.map((asset) => [asset.id, {

@@ -8,7 +8,7 @@
 import { FACTION_META } from '../data/factions.js';
 import { MISSION_STANDING_LADDER } from '../data/missions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
-import { REP_REASON_LABELS } from '../data/repReasons.js';
+import { repReasonLabel } from '../data/repReasons.js';
 
 // 9 tiers over -1000..1000. Thresholds are the lower bound of each tier.
 const TIERS = [
@@ -59,14 +59,15 @@ function nextTierFor(rep) {
   return null;
 }
 
-function repReasonLabel(reason) {
-  const raw = String(reason || '').trim();
-  if (!raw) return 'unknown event';
-  if (raw.startsWith('spillover:')) {
-    const base = repReasonLabel(raw.slice('spillover:'.length));
-    return 'ally/rival spillover (' + base + ')';
-  }
-  return REP_REASON_LABELS[raw] || raw.replace(/[_-]+/g, ' ');
+/** "6 s", "12 min", "2 h ago" — how long ago a register receipt was written; '' when unknown. */
+function agoText(simTime, t) {
+  const now = Number(simTime);
+  const at = Number(t);
+  if (!Number.isFinite(now) || !Number.isFinite(at) || now < at) return '';
+  const s = now - at;
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  return `${Math.round(s / 3600)} h ago`;
 }
 
 function factionShort(meta = {}) {
@@ -78,6 +79,32 @@ export function factionLastDeltaText(lastDelta) {
   const value = Number(lastDelta && lastDelta.value);
   if (!lastDelta || !Number.isFinite(value) || value === 0) return 'none recorded this save';
   return signed(value) + ' rep from ' + repReasonLabel(lastDelta.reason);
+}
+
+/**
+ * WF-09 — the register reads the deeds back. The factions system keeps a bounded ring of the
+ * standing receipts its sole writer landed; this pure presenter turns the newest `limit` into
+ * labeled lines ("distress rescue · +20 · 2 h ago"), newest first. Clock movement (decay) and
+ * baseline seeding never enter the ring, so every line is something the player did.
+ */
+export function factionHistoryLines(record, simTime = 0, limit = 4) {
+  const history = record && Array.isArray(record.history) ? record.history : [];
+  const lines = [];
+  for (let i = history.length - 1; i >= 0 && lines.length < limit; i -= 1) {
+    const entry = history[i];
+    if (!entry || typeof entry !== 'object') continue;
+    const value = Math.round(Number(entry.value));
+    const label = repReasonLabel(entry.reason);
+    if (!Number.isFinite(value) || value === 0) continue;
+    const ago = agoText(simTime, entry.t);
+    lines.push({
+      value,
+      label,
+      ago,
+      text: `${label} · ${signed(value)}${ago ? ` · ${ago}` : ''}`,
+    });
+  }
+  return lines;
 }
 
 export function factionNextTierText(rep) {

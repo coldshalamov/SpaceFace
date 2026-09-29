@@ -22,6 +22,12 @@ import {
   rehydrateDetachedPackages,
   resetPackageDetachManifestsForTests,
 } from '../src/render/packageCpuDetach.js';
+import {
+  claimSharedImageTexture,
+  imageSourceKeyAsync,
+  resetImageSourceDedupeForTests,
+  sharedImageTextureFor,
+} from '../src/render/imageSourceDedupe.js';
 import { prepareStartupGpuResidency } from '../src/render/startupGpuResidency.js';
 
 const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
@@ -301,6 +307,63 @@ test('parser-cloned textures sharing one Source and mipmap buffers detach once, 
   const receipt = await rehydrateDetachedPackages({ yieldToMain: async () => {} });
   assert.equal(receipt.textures, 2);
   assert.ok(base.mipmaps.length > 0 && clone.mipmaps.length > 0);
+  loader.dispose();
+});
+
+test('a dedupe-shared payload is released only once its source has a single live user', async () => {
+  resetImageSourceDedupeForTests();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+  geometry.setIndex([0, 1, 2]);
+
+  // Package A's decode owns the dedupe entry; package B's byte-identical image resolves to a
+  // clone sharing the same THREE.Source — its own mipmap array over the same mip records —
+  // then carries its own colorSpace: a different WebGLTextures upload-cache key, so it needs
+  // its own GPU upload from payload a shared-source detach must not have emptied.
+  const owner = new THREE.CompressedTexture(compressedBytes(4096), 4, 4, THREE.RGBAFormat);
+  owner.name = 'SharedAtlas';
+  const key = await imageSourceKeyAsync(new Uint8Array([7, 7, 7]), 3, 'image/ktx2');
+  claimSharedImageTexture(key, owner);
+  const sibling = sharedImageTextureFor(key);
+  sibling.colorSpace = THREE.SRGBColorSpace;
+  assert.ok(sibling.mipmaps.length > 0, 'a live owner hands out a clone with real mips');
+  assert.equal(sibling.source, owner.source, 'the clone shares the dedupe Source');
+
+  const material = new THREE.MeshStandardMaterial({ map: owner });
+  const root = new THREE.Group();
+  const hull = new THREE.Mesh(geometry, material);
+  hull.name = 'Hull';
+  hull.userData = semanticLocator('Hull', ['fixture.body']);
+  root.add(hull);
+  const decoded = { scene: root };
+
+  const loader = freshLoader(async () => decoded);
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+
+  const renderer = stubRenderer();
+  await prepareStartupGpuResidency(renderer, subject, {
+    includeGeometry: false,
+    yieldToMain: async () => {},
+  });
+
+  assert.equal(renderer.uploads.length, 1, 'the upload was proven');
+  // The release defers while the sibling lives: emptying this array now would leave the
+  // texture one fresh upload (different cache key, or a dispose/rebind whose entry was freed)
+  // away from mipmaps[0].width on an empty array — and would free no bytes anyway, since the
+  // sibling's array still holds the same mip records.
+  assert.equal(isPackageTextureDetached(owner), false);
+  assert.ok(owner.mipmaps.length > 0, 'payload retained while a shared-source sibling lives');
+
+  // Once the sibling is gone the texture is the entry's last user — the next residency pass
+  // releases the mirror (the bytes could not have left any earlier).
+  sibling.dispose();
+  await prepareStartupGpuResidency(renderer, subject, {
+    includeGeometry: false,
+    yieldToMain: async () => {},
+  });
+  assert.equal(isPackageTextureDetached(owner), true);
+  assert.equal(owner.mipmaps.length, 0, 'sole live user releases its payload');
   loader.dispose();
 });
 

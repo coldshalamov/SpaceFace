@@ -18,6 +18,7 @@ import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.j
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import { focusNamedStationControl } from '../../outfittingSpendConfirm.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
@@ -76,10 +77,139 @@ export function maxAffordableQuantity({ limit, credits, quote }) {
  * total when the stashed render quote covers exactly the confirmed quantity, else
  * undefined (no binding — the authority settles at the live price, as before).
  */
-export function expectedTotalForTerms(lastQuotedTerms, qty) {
+export function expectedTotalForTerms(lastQuotedTerms, qty, commodityId) {
   if (!lastQuotedTerms || lastQuotedTerms.qty !== qty) return undefined;
+  if (commodityId != null && lastQuotedTerms.commodityId != null && lastQuotedTerms.commodityId !== commodityId) return undefined;
   const total = Math.round(Number(lastQuotedTerms.total));
   return Number.isFinite(total) && total >= 0 ? total : undefined;
+}
+
+/**
+ * The receipt and the commit name one commodity. A refresh that drops the lot does not
+ * adopt the next row; a filter that only hides it keeps the same trade.
+ */
+export function resolveMarketSelection({ selectedId = null, visibleIds = [], tradedIds = [] } = {}) {
+  const visible = Array.isArray(visibleIds) ? visibleIds.filter(Boolean) : [];
+  const traded = Array.isArray(tradedIds) ? tradedIds.filter(Boolean) : [];
+  if (!selectedId) {
+    const first = visible[0] || traded[0] || null;
+    return { selectedId: first, tradeId: first, focusId: first, cleared: false, adoptedInitial: !!first };
+  }
+  if (traded.includes(selectedId)) {
+    return {
+      selectedId,
+      tradeId: selectedId,
+      focusId: visible.includes(selectedId) ? selectedId : (visible[0] || selectedId),
+      cleared: false,
+      adoptedInitial: false,
+    };
+  }
+  return {
+    selectedId,
+    tradeId: null,
+    focusId: visible[0] || traded[0] || null,
+    cleared: true,
+    adoptedInitial: false,
+  };
+}
+
+/**
+ * A full paint may lift an empty quantity to one unit. It must not rewrite a named
+ * quantity down to whatever the hold or the shelf can take.
+ */
+export function marketQuantityAfterRefresh(qty, maxQty) {
+  const named = Math.floor(Number(qty));
+  const limit = Math.floor(Number(maxQty));
+  const safeNamed = Number.isFinite(named) ? Math.max(0, named) : 0;
+  const safeLimit = Number.isFinite(limit) ? Math.max(0, limit) : 0;
+  if (safeNamed < 1 && safeLimit >= 1) return 1;
+  return safeNamed;
+}
+
+/** A quote can commit only when it fills the named quantity on the named side. A short fill does not. */
+export function marketQuoteIsExecutable(quote, qty, side) {
+  if (!quote || quote.ok !== true || quote.partial === true) return false;
+  const named = Math.floor(Number(qty));
+  if (!Number.isFinite(named) || named <= 0) return false;
+  if (Math.floor(Number(quote.qty)) !== named) return false;
+  if (side != null && quote.side != null && quote.side !== side) return false;
+  return true;
+}
+
+/**
+ * Returning to the market keeps the lot and quantity already on screen.
+ * A requested mode, a job commodity, or a tracked contract applies only while
+ * nothing is selected yet.
+ */
+export function marketResumeSelection({
+  selectedId = null,
+  qty = 1,
+  requestedMode = null,
+  requestedCommodityId = null,
+  trackedCommodityId = null,
+  listedIds = [],
+} = {}) {
+  const namedQty = Math.floor(Number(qty));
+  const safeQty = Number.isFinite(namedQty) ? Math.max(0, namedQty) : 0;
+  if (selectedId) {
+    return { selectedId, qty: safeQty, applyMode: null };
+  }
+  const listed = new Set(Array.isArray(listedIds) ? listedIds.filter(Boolean) : []);
+  const applyMode = requestedMode === 'buy' || requestedMode === 'sell' ? requestedMode : null;
+  let nextId = null;
+  let nextQty = safeQty > 0 ? safeQty : 1;
+  if (requestedCommodityId && listed.has(requestedCommodityId)) {
+    nextId = requestedCommodityId;
+    nextQty = 1;
+  } else if (applyMode !== 'sell' && trackedCommodityId && listed.has(trackedCommodityId)) {
+    nextId = trackedCommodityId;
+  }
+  return { selectedId: nextId, qty: nextId ? nextQty : safeQty, applyMode };
+}
+
+/** Null when the click would trade a different lot, side, or quantity than the receipt just named. */
+export function marketCommitPayload(lastQuotedTerms, selectedId, qty, side) {
+  const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
+  if (!selectedId || tradeQty <= 0 || !lastQuotedTerms) return null;
+  if (lastQuotedTerms.commodityId !== selectedId || lastQuotedTerms.qty !== tradeQty) return null;
+  if (side != null && lastQuotedTerms.side != null && lastQuotedTerms.side !== side) return null;
+  const expectedTotal = expectedTotalForTerms(lastQuotedTerms, tradeQty, selectedId);
+  if (expectedTotal === undefined) return null;
+  return { commodityId: selectedId, qty: tradeQty, expectedTotal };
+}
+
+/**
+ * The go control emits only when the receipt, the selection, and a fresh quote
+ * still name the same lot, side, quantity, and total.
+ */
+export function marketGoDecision({ lastQuotedTerms = null, selectedId = null, qty = 0, side = null, freshQuote = null } = {}) {
+  const payload = marketCommitPayload(lastQuotedTerms, selectedId, qty, side);
+  if (!payload) return { emit: false, payload: null, reason: 'mismatch' };
+  if (!marketQuoteIsExecutable(freshQuote, payload.qty, side)) {
+    return { emit: false, payload: null, reason: 'quote' };
+  }
+  if (freshQuote.commodityId != null && freshQuote.commodityId !== payload.commodityId) {
+    return { emit: false, payload: null, reason: 'quote' };
+  }
+  const liveTotal = Math.round(Number(freshQuote.total));
+  if (!Number.isFinite(liveTotal) || liveTotal !== payload.expectedTotal) {
+    return {
+      emit: false,
+      payload: null,
+      reason: 'price',
+      liveTotal: Number.isFinite(liveTotal) ? liveTotal : null,
+      expectedTotal: payload.expectedTotal,
+    };
+  }
+  return { emit: true, payload, reason: null };
+}
+
+/** After the trade console is rebuilt, the Hand returns to the go control, the quantity, or the selected row. */
+export function marketTradeFocusChoice({ goEnabled = false, hasQuantity = false, hasRow = false } = {}) {
+  if (goEnabled) return 'go';
+  if (hasQuantity) return 'quantity';
+  if (hasRow) return 'row';
+  return null;
 }
 
 export function legalityRole(legal) {
@@ -369,6 +499,7 @@ export function createMarketScreen(ctx) {
   let modeEl = null;
   let searchEl = null;
   let filterEls = null;
+  let pressedFilterEl = null;
   let tbodyEl = null;
 
   function dressBrowser() {
@@ -708,6 +839,28 @@ export function createMarketScreen(ctx) {
     for (const row of existing.values()) row.remove();
   }
 
+  function placeTradeHand() {
+    const go = tradeEl && tradeEl.querySelector('[data-go]');
+    const qtyIn = tradeEl && tradeEl.querySelector('.sx-qty__in');
+    const row = tbodyEl && tbodyEl.querySelector('.sx-mkt-row.is-active');
+    const choice = marketTradeFocusChoice({
+      goEnabled: !!(go && !go.disabled && !go.hidden),
+      hasQuantity: !!(qtyIn && !qtyIn.hidden),
+      hasRow: !!(row && !row.hidden),
+    });
+    const target = choice === 'go' ? go : choice === 'quantity' ? qtyIn : choice === 'row' ? row : null;
+    const host = choice === 'row' ? listEl : tradeEl;
+    if (!focusNamedStationControl(target, host)) focusNamedStationControl(searchEl, listEl);
+  }
+
+  function placeMarketHand(preferredId) {
+    const listed = rowEls();
+    const row = listed.find((node) => node.getAttribute('data-cmdty') === preferredId);
+    if (focusNamedStationControl(row, listEl)) return;
+    if (focusNamedStationControl(searchEl, listEl)) return;
+    focusNamedStationControl(pressedFilterEl, listEl);
+  }
+
   function renderList(state) {
     const rows = tradedList(state);
     const tracked_ = trackedCmdty(state);
@@ -718,10 +871,16 @@ export function createMarketScreen(ctx) {
       if (marketFilter !== 'all' && marketFilter !== 'hold' && family !== marketFilter) return false;
       return !query || `${r.def.name} ${r.def.category || ''}`.toLocaleLowerCase().includes(query);
     });
-    if (visible.length && !visible.some((r) => r.id === selectedId)) {
-      selectedId = visible[0].id;
+    const decision = resolveMarketSelection({
+      selectedId,
+      visibleIds: visible.map((r) => r.id),
+      tradedIds: rows.map((r) => r.id),
+    });
+    // First open may adopt a listed lot. A later refresh must not replace the lot the receipt names.
+    if (decision.adoptedInitial && decision.selectedId) {
+      selectedId = decision.selectedId;
       qty = mode === 'sell' ? heldQty(state, selectedId) : 1;
-    } else if (!selectedId && rows.length) selectedId = rows[0].id;
+    }
     // Unknown stock prints no column of dashes: when no visible row carries a stock figure or
     // held cargo, the STOCK column yields.
     const stockKnown = visible.some((r) => (Number(r.entry && r.entry.stock) || 0) > 0 || heldQty(state, r.id) > 0);
@@ -753,15 +912,21 @@ export function createMarketScreen(ctx) {
       // tick would drop the caret to the end mid-word.
       if (searchEl.value !== marketQuery) searchEl.value = marketQuery;
 
-      const focused = typeof document !== 'undefined' && tbodyEl.contains(document.activeElement);
+      const prior = typeof document !== 'undefined' ? document.activeElement : null;
+      const focused = !!(prior && tbodyEl.contains(prior));
+      const priorCmdty = prior && prior.getAttribute ? prior.getAttribute('data-cmdty') : null;
       syncRows(visible.map((r) => [r.id, commodityRowHtml(r, state, tracked_, r.id === selectedId)]));
       const emptyEl = listEl.querySelector('.sx-mkt-browser__empty');
       emptyEl.hidden = visible.length > 0;
       emptyEl.textContent = visible.length ? '' : `No commodities match ${emptyFilterLabel()}.`;
       dressRows();
-      if (focused) {
+      const listed = rowEls();
+      const priorGone = !!(priorCmdty && !listed.some((row) => row.getAttribute('data-cmdty') === priorCmdty));
+      if (priorGone) {
+        placeMarketHand(decision.focusId);
+      } else if (focused) {
         const active = tbodyEl.querySelector('.is-active');
-        if (active) { try { active.focus({ preventScroll: true }); } catch (_) {} }
+        if (!focusNamedStationControl(active, listEl)) focusNamedStationControl(searchEl, listEl);
       }
     } else if (selectedId) {
       for (const row of rowEls()) {
@@ -777,31 +942,40 @@ export function createMarketScreen(ctx) {
 
   function renderStage(state) {
     const rows = tradedList(state);
-    const r = rows.find((x) => x.id === selectedId) || rows[0];
+    const r = rows.find((x) => x.id === selectedId) || null;
     if (!r) {
       stageEl.removeAttribute('aria-labelledby');
       stageEl.removeAttribute('aria-label');
       stageEl.removeAttribute('aria-describedby');
       consoleEl.hidden = true;
       if (decisionEl) decisionEl.innerHTML = '';
+      const next = rows[0] || null;
+      const lotGone = !!selectedId && !!next;
       mountDataState(quoteEl, 'empty', {
-        code: mode === 'sell' ? 'HOLD_EMPTY' : 'EXCHANGE_DARK',
-        headline: mode === 'sell' ? 'Your hold is empty.' : 'No market at this berth.',
-        fills: mode === 'sell'
-          ? 'Buy cargo here or bring material back from mining before opening Sell.'
-          : 'This station has no tradable stock. Another berth may still quote.',
-        verb: mode === 'sell'
+        code: lotGone ? 'LOT_GONE' : (mode === 'sell' ? 'HOLD_EMPTY' : 'EXCHANGE_DARK'),
+        headline: lotGone ? 'That lot left the board.' : (mode === 'sell' ? 'Your hold is empty.' : 'No market at this berth.'),
+        fills: lotGone
+          ? 'The confirmation still names the lot you had. Choose a listed lot before anything else is traded.'
+          : (mode === 'sell'
+            ? 'Buy cargo here or bring material back from mining before opening Sell.'
+            : 'This station has no tradable stock. Another berth may still quote.'),
+        verb: lotGone
           ? {
-            label: 'Switch to Buy',
-            onActivate: () => {
-              openTradeMode('buy', ctx.state || {});
-              renderAll(ctx.state || {});
-            },
+            label: 'Show ' + next.def.name,
+            onActivate: () => selectCommodity(next.id, { focus: true }),
           }
-          : {
-            label: 'Plot another berth',
-            onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'market-empty' }),
-          },
+          : (mode === 'sell'
+            ? {
+              label: 'Switch to Buy',
+              onActivate: () => {
+                openTradeMode('buy', ctx.state || {});
+                renderAll(ctx.state || {});
+              },
+            }
+            : {
+              label: 'Plot another berth',
+              onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'market-empty' }),
+            }),
       });
       dressStage();
       renderLaunderLedger(state);
@@ -1134,15 +1308,16 @@ export function createMarketScreen(ctx) {
 
   function renderConsole(state, { receiptOnly = false } = {}) {
     const rows = tradedList(state);
-    const r = rows.find((x) => x.id === selectedId) || rows[0];
+    const r = rows.find((x) => x.id === selectedId) || null;
     if (!r) {
+      lastQuotedTerms = null;
       tradeEl.innerHTML =
         `<div class="sx-trade sx-trade--empty">` +
           `<ul class="k-words k-words--row sx-seg" role="tablist">` +
             `<li><button type="button" ${stationControlAttrs('buy')} class="k-word k-word--emph sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy" aria-pressed="${mode === 'buy'}">${stationControlLabel('buy')}</button></li>` +
             `<li><button type="button" ${stationControlAttrs('sell')} class="k-word k-word--emph sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell" aria-pressed="${mode === 'sell'}">${stationControlLabel('sell')}</button></li>` +
           `</ul>` +
-          `<p class="k-empty sx-trade-empty">Nothing in the hold. Switch to Buy to load cargo.</p>` +
+          `<p class="k-empty sx-trade-empty">${selectedId ? 'That lot left the board. Choose another before confirming.' : 'Nothing in the hold. Switch to Buy to load cargo.'}</p>` +
         `</div>`;
       dressConsole();
       return;
@@ -1154,15 +1329,12 @@ export function createMarketScreen(ctx) {
     const cr = credits(state);
     const free = holdFree(state);
     const maxQty = tradeQuantityLimit(state, r);
-    if (!receiptOnly) {
-      if (qty > maxQty) qty = maxQty;
-      if (qty < 1 && maxQty >= 1) qty = 1;
-    }
+    if (!receiptOnly) qty = marketQuantityAfterRefresh(qty, maxQty);
     // This one selected-quantity quote drives both the receipt the pilot sees and the presenter.
     // execute() reuses the same economy integral, including the bulk price impact, on confirm.
     const quote = selectedTradeQuote(state, r);
-    const quoteReady = !!(quote && quote.ok);
-    lastQuotedTerms = quoteReady ? { qty, total: quote.total } : null;
+    const quoteReady = marketQuoteIsExecutable(quote, qty, mode);
+    lastQuotedTerms = quoteReady ? { commodityId: r.id, side: mode, qty, total: quote.total } : null;
     const total = quoteReady ? quote.total : unit * qty;
     const quoteUnit = quoteReady ? quote.unitAvg : unit;
     const creditReady = mode !== 'buy' || (quoteReady && quote.total <= cr);
@@ -1179,9 +1351,9 @@ export function createMarketScreen(ctx) {
     // construction, and checking it first blamed credits on first paint of a stockless market.
     const note = maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
       : qty < 1 ? ''
-      : !quoteReady ? 'Live quote unavailable.'
-      : mode === 'buy' && quote.total > cr ? 'Not enough credits for this quantity.'
       : qty > maxQty ? 'This quantity exceeds available stock or hold space.'
+      : !quoteReady ? (quote && quote.partial ? 'The board cannot fill this quantity. Lower it before confirming.' : 'Live quote unavailable.')
+      : mode === 'buy' && quote && quote.total > cr ? 'Not enough credits for this quantity.'
       : '';
     const goLabel = (side) => `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}`;
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
@@ -1266,11 +1438,14 @@ export function createMarketScreen(ctx) {
     deferred.clear();
     tradeBusy = false;
   }
-  function deferRefresh(delay, settleTrade = false) {
+  function deferRefresh(delay, settleTrade = false, restoreHand = false) {
     const timer = setTimeout(() => {
       deferred.delete(timer);
       if (settleTrade) tradeBusy = false;
-      if (visible && !disposed) renderAll(ctx.state || {});
+      if (visible && !disposed) {
+        renderAll(ctx.state || {});
+        if (restoreHand) placeTradeHand();
+      }
     }, delay);
     deferred.add(timer);
   }
@@ -1279,6 +1454,7 @@ export function createMarketScreen(ctx) {
   listEl.addEventListener('click', (ev) => {
     const filter = ev.target.closest('[data-market-filter]');
     if (filter) {
+      pressedFilterEl = filter;
       marketFilter = filter.getAttribute('data-market-filter') || 'all';
       listRenderSignature = '';
       const state = ctx.state || {};
@@ -1370,20 +1546,39 @@ export function createMarketScreen(ctx) {
       if (tradeBusy) return;
       const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
       if (tradeQty <= 0) return;
+      const tradeState = ctx.state || {};
+      const quotedRow = tradedList(tradeState).find((row) => row.id === selectedId) || null;
+      const freshQuote = quotedRow ? selectedTradeQuote(tradeState, quotedRow, tradeQty) : null;
+      const decision = marketGoDecision({
+        lastQuotedTerms,
+        selectedId,
+        qty: tradeQty,
+        side: mode,
+        freshQuote,
+      });
+      if (!decision.emit || !decision.payload) {
+        if (ctx.bus) {
+          const text = decision.reason === 'price'
+            ? `Price changed since the quote (${decision.liveTotal == null ? 'unavailable' : decision.liveTotal} vs ${decision.expectedTotal} cr). Review it and confirm again.`
+            : decision.reason === 'quote'
+              ? 'The board cannot fill that quantity. Review it and confirm again.'
+              : 'That confirmation no longer matches the lot on screen. Review it and confirm again.';
+          ctx.bus.emit('toast', { text, kind: 'error', ttl: 3 });
+        }
+        renderAll(tradeState);
+        placeTradeHand();
+        return;
+      }
       tradeBusy = true;
       go.disabled = true;
       if (ctx.bus) {
         // INF-084: bind the trade to the stated terms so a stale quote cannot settle
         // silently at a worse price. tradeBusy already stops a repeated confirmation
         // from emitting twice in-screen.
-        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', {
-          commodityId: selectedId,
-          qty: tradeQty,
-          expectedTotal: expectedTotalForTerms(lastQuotedTerms, tradeQty),
-        });
+        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', decision.payload);
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
-      deferRefresh(80, true);
+      deferRefresh(80, true, true);
       return;
     }
     const seg = ev.target.closest('[data-mode]');
@@ -1392,6 +1587,7 @@ export function createMarketScreen(ctx) {
       if (nextMode === mode) return;
       openTradeMode(nextMode, ctx.state || {}, { cargoOnly: nextMode === 'sell' });
       renderList(ctx.state || {}); renderStage(ctx.state || {}); renderConsole(ctx.state || {});
+      placeTradeHand();
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
       return;
     }
@@ -1405,6 +1601,7 @@ export function createMarketScreen(ctx) {
       if (v === 'max') qty = maxQty; else qty = Math.max(1, Math.min(maxQty, qty + Number(v)));
       renderStage(state);
       renderConsole(state);
+      placeTradeHand();
     }
   });
 
@@ -1628,17 +1825,22 @@ export function createMarketScreen(ctx) {
       // (parity with the legacy market panel — without this, ui:buy/ui:sell are no-ops).
       const sid = stationId(st);
       if (ctx.bus && sid) ctx.bus.emit('economy:marketOpened', { stationId: sid });
-      if (open.tradeMode === 'sell' || open.tradeMode === 'buy') {
-        openTradeMode(open.tradeMode, st, { cargoOnly: open.tradeMode === 'sell' });
-      }
-      if (open.commodityId && tradedList(st).some((r) => r.id === open.commodityId)) {
-        selectedId = open.commodityId;
-        qty = 1;
-      }
-      // If a tracked contract wants cargo sold/bought here, open straight to that commodity.
-      if (!cargoOnly) {
-        const tracked = trackedCmdty(st);
-        if (tracked && tradedList(st).some((r) => r.id === tracked)) selectedId = tracked;
+      const requestedMode = open.tradeMode === 'sell' || open.tradeMode === 'buy' ? open.tradeMode : null;
+      const resume = marketResumeSelection({
+        selectedId,
+        qty,
+        requestedMode,
+        requestedCommodityId: open.commodityId,
+        trackedCommodityId: (cargoOnly || requestedMode === 'sell') ? null : trackedCmdty(st),
+        listedIds: tradedList(st).map((row) => row.id),
+      });
+      // A lot already on screen stays there. The job and the tracked contract apply on the first open only.
+      if (!selectedId) {
+        if (resume.applyMode) openTradeMode(resume.applyMode, st, { cargoOnly: resume.applyMode === 'sell' });
+        if (resume.selectedId) {
+          selectedId = resume.selectedId;
+          qty = resume.qty;
+        }
       }
       renderAll(st);
       const active = tbodyEl && tbodyEl.querySelector('.is-active');

@@ -6,7 +6,7 @@ running record of **where each bank landed, which of their tasks overlap, and ho
 resolved**. It is a triage record, not a queue: statuses live only in `build_map.md` §1C and
 `INFERENCE_IDEAS.md`. No row here authorizes work by itself.
 
-Updated: 2026-09-29 (first pass: SF, NXB, SFQ recorded; FB and AE pending).
+Updated: 2026-09-29 (SF, NXB, SFQ, FB recorded; AE PR-170 and the alien brainstorm pending).
 
 ## 1. Source inventory
 
@@ -15,7 +15,7 @@ Updated: 2026-09-29 (first pass: SF, NXB, SFQ recorded; FB and AE pending).
 | Planbank 300 | `SF-001…300` | `design/planbank/SpaceFace_Planbank_300/` | 2026-09-28, triaged `TRIAGE_2026-09-28.md`, dispatched as §1C group G PB rows | external workflow assessment; verdicts READY/CHECK/SATISFIED/HOLD per domain |
 | Next Wave 300 | `NXB-001…060`, `NXI-001…240` | `design/program/next-wave-2026-09-28/` | 2026-09-29, commit `9acd2ebe3` — §1C section H rows 159–218 + 240 catalog lines | owner-delivered zip; baseline `9a30ffc00`; selector `scripts/next-wave-read.mjs` |
 | Finish & Expansion Pack | `SFQ-B001…240`, `SFQ-I001…096` (+36 mission, 36 model, 32 vfx/audio briefs) | `design/finish-expansion-2026-09/` | 2026-09-29 — §1C section I rows 219–227 (first-wave lanes); the 96 SFQ-I enter the catalog one-by-one as dependencies land | loops-first finishing + alien/machine extension; 507-edge DAG; `tools/validate_pack.py` green |
-| Fable task bank | `FB-…` (ids tentative) | `design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/` | **pending** — run died at the account session limit; auto-resume scheduled ~04:30 | brief `AGENT_BRIEF.md`; must dedupe against SF **and** NXB **and** SFQ at integration |
+| Fable bank | `FB-001…142`, catalog lines `PIC-13…30`, `VERB-14…30`, `WORLD-21…42`, `INST-17…34`, `FIGHT-01…10`, `ECON-01…07`, `STORY-01…07`, `LAW-01…09`, `MACH-01…09`, `PRO-01…15`, `TEACH-01…09` | `design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/` | 2026-09-29 — §1C section J rows 228–262 (35 dispatch batches); 141 lines merged into `INFERENCE_IDEAS.md` (continuing groups extended in place, seven new groups opened; `INFERENCE_LANES.md` §0.1 rotation list updated) | produced in-repo (Fable 5.1, xhigh) under its `AGENT_BRIEF.md`; own audit PASS zero-flags incl. near-duplicate checks against SF-300 + NXB/NXI + SFQ + defect ledger + live board rows; 114/142 packets cite landed neighbours |
 | Alien ecology branch | `AE-000…349` | PR #170 (open) + plan merged in #168 | **pending** — cloud agent still building into the PR | no bank tasks may duplicate it; machine/ecology rows WAITING on its reconciliation |
 | Native queue | `PQ-*` | `design/program/roadmap/` | drained (2026-09-27) | legacy dispatch retained; `--next` now points here and at the catalog |
 
@@ -70,9 +70,10 @@ Arbitration order (the "funnest and best" rule, in priority):
 
 ## 5. Pending integration duties (standing)
 
-1. **Fable bank lands** → run its own audit, then this crosswalk gains an FB column: dedupe
-   FB↔(SF, NXB, SFQ), record dispositions, renumber its board rows past the current max, append its
-   inference lines to the catalog.
+1. **Fable bank — DONE 2026-09-29** (landed as §1C section J rows 228–262 + 141 catalog lines; audit
+   re-run PASS by the landing agent). Its overlap posture: no restatements of SF/NXB/SFQ (audited),
+   with 114 explicit neighbour citations; no adjudication rows were needed at landing beyond the
+   bank's own citations.
 2. **PR #170 merges** → flip §1C I row 224/227 WAITING to OPEN; re-run the SFQ alien-layer
    outcome-mapping against the landed AE code; absorb the alien brainstorm packet the owner said is
    coming (same treatment as this file's §2).

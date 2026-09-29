@@ -198,6 +198,7 @@ export const mining = {
   // ---- main per-tick update -------------------------------------------------
   update(dt, state) {
     resetMiningDiagnostics(this._diag);
+    this._flushParkedOre();
     const player = state.entities.get(state.playerId);
     const firing = !!player && player.alive && !player.flags.docked
       && state.mode === 'flight' && state.input.fireGroup === 2;
@@ -599,9 +600,17 @@ export const mining = {
     const rock = targetId != null ? this.state.entities.get(targetId) : null;
     const pos = rock && rock.pos ? { x: rock.pos.x, z: rock.pos.z } : (player.pos ? { x: player.pos.x, z: player.pos.z } : null);
     const id = commodityId || 'cmdty_silicate';
-    this.bus.emit('mining:yield', { commodityId: id, qty: bonusU, pos, minerId: player.id, ventBonus: true });
     const accepted = this._giveCargo(id, bonusU, player.id);
-    if (accepted <= 0) this.bus.emit('cargo:full', { commodityId: id });
+    const rejected = Math.max(0, bonusU - accepted);
+    let spilled = 0;
+    if (rejected > 0 && rock) spilled = this._spawnPickup(rock, id, rejected, null, { tight: true });
+    const parked = rejected - spilled;
+    if (parked > 0) this._parkUnreleasedOre(rock && rock.data, id, parked, rock, true);
+    this.bus.emit('mining:yield', {
+      commodityId: id, qty: bonusU, acceptedAmount: accepted, pos, minerId: player.id, ventBonus: true,
+    });
+    // addCargo already emits cargo:full when the hold takes less than asked. A second emit
+    // here counted one partial vent as two prospector failures.
     this.bus.emit('mining:ventBonus', {
       minerId: player.id,
       asteroidId: targetId,
@@ -876,54 +885,167 @@ export const mining = {
       if (!id) continue;
       buckets.set(id, (buckets.get(id) || 0) + 1);
     }
+    const rockData = asteroidData || (ast && ast.data) || null;
     for (const [commodityId, qty] of buckets) {
-      this.bus.emit('mining:yield', { commodityId, qty, pos: { x: ast.pos.x, z: ast.pos.z }, minerId: miner ? miner.id : null });
-      const richQty = richLotSource && asteroidData && asteroidData._richBonusPending > 0
-        ? Math.min(qty, asteroidData._richBonusPending)
+      const richQty = richLotSource && rockData && rockData._richBonusPending > 0
+        ? Math.min(qty, rockData._richBonusPending)
         : 0;
+      let acceptedIntoCargo = null;
       if (direct) {
         // Direct-feed still has to honor the hold cap. Overflow becomes magnet pickups — the
         // same spill the rich-bonus path already used — so a full hold cannot vanish extracted ore.
+        // A failed spawn is not destruction: the units stay parked on this rock.
         const ordinaryQty = qty - richQty;
+        let acceptedOrdinary = 0;
         if (ordinaryQty > 0) {
-          const acceptedOrdinary = this._giveCargo(commodityId, ordinaryQty, miner.id);
+          acceptedOrdinary = this._giveCargo(commodityId, ordinaryQty, miner.id);
           const rejectedOrdinary = Math.max(0, ordinaryQty - acceptedOrdinary);
-          if (rejectedOrdinary > 0) this._spawnPickup(ast, commodityId, rejectedOrdinary, null, { tight: depleted });
+          if (rejectedOrdinary > 0) {
+            const spilled = this._spawnPickup(ast, commodityId, rejectedOrdinary, null, { tight: depleted });
+            if (spilled < rejectedOrdinary) {
+              this._parkUnreleasedOre(rockData, commodityId, rejectedOrdinary - spilled, ast, true);
+            }
+          }
         }
         let materializedRich = 0;
+        let acceptedRich = 0;
         if (richQty > 0) {
-          const acceptedRich = this._giveCargo(commodityId, richQty, miner.id, { ...richLotSource, richQty });
+          acceptedRich = this._giveCargo(commodityId, richQty, miner.id, { ...richLotSource, richQty });
           materializedRich += acceptedRich;
           const rejectedRich = Math.max(0, richQty - acceptedRich);
           if (rejectedRich > 0) {
-            materializedRich += this._spawnPickup(
+            const spilledRich = this._spawnPickup(
               ast,
               commodityId,
               rejectedRich,
               { ...richLotSource, richQty: rejectedRich },
               { tight: depleted },
             );
+            materializedRich += spilledRich;
+            if (spilledRich < rejectedRich) {
+              const parkedRich = rejectedRich - spilledRich;
+              this._parkUnreleasedOre(rockData, commodityId, parkedRich, ast, true);
+              materializedRich += parkedRich;
+            }
           }
         }
-        if (asteroidData && materializedRich > 0) {
-          asteroidData._richBonusPending = Math.max(0, asteroidData._richBonusPending - materializedRich);
+        acceptedIntoCargo = acceptedOrdinary + acceptedRich;
+        if (rockData && materializedRich > 0) {
+          rockData._richBonusPending = Math.max(0, rockData._richBonusPending - materializedRich);
         }
       } else {
         // The working barge collects these same loose bodies. Keep the source on the pickup so
         // it cannot conjure a second hold from a completed job timer or steal the player's cut.
         const npcMiningSource = miner?.data?.minerShiftRockId === ast.id
           ? { minerWorldRecordId: miner.data.worldRecordId, fieldId: ast.data.fieldId } : null;
-        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty, null, { tight: depleted, npcMiningSource });
+        if (qty > richQty) {
+          const ordinary = qty - richQty;
+          const spilledOrdinary = this._spawnPickup(ast, commodityId, ordinary, null, { tight: depleted, npcMiningSource });
+          if (spilledOrdinary < ordinary) {
+            this._parkUnreleasedOre(rockData, commodityId, ordinary - spilledOrdinary, ast, false);
+          }
+        }
         if (richQty > 0) {
           const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty }, { tight: depleted, npcMiningSource });
-          if (asteroidData && spawnedRich > 0) asteroidData._richBonusPending -= spawnedRich;
+          const parkedRich = Math.max(0, richQty - spawnedRich);
+          if (parkedRich > 0) this._parkUnreleasedOre(rockData, commodityId, parkedRich, ast, false);
+          if (rockData && (spawnedRich > 0 || parkedRich > 0)) rockData._richBonusPending -= spawnedRich + parkedRich;
         }
       }
+      const yieldPayload = {
+        commodityId,
+        qty,
+        pos: { x: ast.pos.x, z: ast.pos.z },
+        minerId: miner ? miner.id : null,
+      };
+      if (acceptedIntoCargo != null) yieldPayload.acceptedAmount = acceptedIntoCargo;
+      this.bus.emit('mining:yield', yieldPayload);
     }
-    if (asteroidData && asteroidData._richBonusPending <= 0) {
-      asteroidData._richBonusPending = 0;
-      asteroidData._richLotSource = null;
+    if (rockData && rockData._richBonusPending <= 0) {
+      rockData._richBonusPending = 0;
+      rockData._richLotSource = null;
     }
+  },
+
+  // Units that could not enter the hold and could not become a pickup stay on the rock.
+  // They are not added to _oreCarry: that carry is released as a fresh roll on the next bite.
+  _parkUnreleasedOre(rockData, commodityId, qty, srcEnt, toCargo) {
+    const left = finiteWholePickupAmount(qty);
+    if (left <= 0) return 0;
+    const lot = { commodityId, qty: left, toCargo: !!toCargo };
+    if (rockData) {
+      if (!Array.isArray(rockData.parkedOre)) rockData.parkedOre = [];
+      rockData.parkedOre.push(lot);
+    }
+    if (!this._parkedAsteroids) this._parkedAsteroids = [];
+    const asteroidId = srcEnt && srcEnt.id;
+    if (asteroidId != null && !this._parkedAsteroids.includes(asteroidId)) {
+      this._parkedAsteroids.push(asteroidId);
+    } else if (asteroidId == null) {
+      if (!this._unreleasedOre) this._unreleasedOre = [];
+      this._unreleasedOre.push({
+        ...lot,
+        pos: srcEnt && srcEnt.pos ? { x: srcEnt.pos.x, z: srcEnt.pos.z } : null,
+      });
+    }
+    if (this._parkedRetryAt == null) {
+      this._parkedRetryAt = (this.state && this.state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
+    }
+    return left;
+  },
+
+  _flushParkedOre() {
+    if (!this.state) return;
+    const now = Number(this.state.simTime) || 0;
+    if (this._parkedRetryAt != null && now < this._parkedRetryAt) return;
+    const ids = this._parkedAsteroids || [];
+    const loose = this._unreleasedOre || [];
+    if (!ids.length && !loose.length) return;
+    const stillIds = [];
+    for (const id of ids) {
+      const ast = this.state.entities && this.state.entities.get && this.state.entities.get(id);
+      const lots = ast && ast.data && ast.data.parkedOre;
+      if (!ast || !Array.isArray(lots) || !lots.length) continue;
+      const next = this._deliverParkedLots(ast, lots);
+      ast.data.parkedOre = next;
+      if (next.length) stillIds.push(id);
+    }
+    this._parkedAsteroids = stillIds;
+    this._unreleasedOre = this._deliverParkedLots(null, loose);
+    if (this._parkedAsteroids.length || this._unreleasedOre.length) {
+      this._parkedRetryAt = now + PICKUP_ACCEPTANCE_RETRY_S;
+    } else {
+      this._parkedRetryAt = null;
+    }
+  },
+
+  _deliverParkedLots(ast, lots) {
+    const next = [];
+    for (const lot of lots) {
+      if (!lot || !(lot.qty > 0)) continue;
+      let left = finiteWholePickupAmount(lot.qty);
+      if (lot.toCargo) {
+        const accepted = this._giveCargo(lot.commodityId, left, this.state.playerId);
+        left -= accepted;
+        if (accepted > 0) {
+          const pos = ast && ast.pos ? { x: ast.pos.x, z: ast.pos.z } : (lot.pos || null);
+          this.bus.emit('mining:yield', {
+            commodityId: lot.commodityId,
+            qty: 0,
+            acceptedAmount: accepted,
+            pos,
+            minerId: this.state.playerId,
+            parkedFlush: true,
+          });
+        }
+      }
+      if (left > 0 && ast) {
+        const spilled = this._spawnPickup(ast, lot.commodityId, left, null, { tight: true });
+        left -= spilled;
+      }
+      if (left > 0) next.push({ ...lot, qty: left });
+    }
+    return next;
   },
 
   // weighted, tier-filtered ore pick using the deterministic sim RNG
@@ -1862,17 +1984,25 @@ export const mining = {
     const hit = Math.abs((Number(progress) || 0) - 0.5) <= half;
     core.resolved = true;
     let qty = 0;
+    let accepted = 0;
     if (hit) {
       qty = Math.max(3, Math.min(8, Math.round(core.multiplier || 3)));
-      this._giveCargo(core.commodityId, qty, this.state.playerId);
+      accepted = this._giveCargo(core.commodityId, qty, this.state.playerId);
       const rock = this.state.entities && this.state.entities.get && this.state.entities.get(core.asteroidId);
+      const rejected = Math.max(0, qty - accepted);
+      let spilled = 0;
+      if (rejected > 0 && rock) spilled = this._spawnPickup(rock, core.commodityId, rejected, null, { tight: true });
+      const parked = rejected - spilled;
+      if (parked > 0) this._parkUnreleasedOre(rock && rock.data, core.commodityId, parked, rock, true);
       const pos = rock && rock.pos
         ? { x: rock.pos.x, z: rock.pos.z }
         : null;
       this.bus.emit('mining:yield', {
-        commodityId: core.commodityId, qty, pos, minerId: this.state.playerId, richCore: true,
+        commodityId: core.commodityId, qty, acceptedAmount: accepted, pos, minerId: this.state.playerId, richCore: true,
       });
-      this.bus.emit('mining:richCoreCompleted', { asteroidId: core.asteroidId, commodityId: core.commodityId, qty, multiplier: qty });
+      this.bus.emit('mining:richCoreCompleted', {
+        asteroidId: core.asteroidId, commodityId: core.commodityId, qty, acceptedAmount: accepted, multiplier: qty,
+      });
     } else {
       this.bus.emit('mining:richCoreFizzle', { asteroidId: core.asteroidId, commodityId: core.commodityId });
       this.bus.emit('audio:cue', { id: 'mining_core_fizzle' });
@@ -2019,6 +2149,9 @@ export const mining = {
     const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 40;
     const free = cap - (cargo.usedVolume || 0);
     const accepted = Math.max(0, Math.min(qty, Math.floor(free / vol)));
+    // The cargo writer emits this when it is mounted. The stub path has to say the same thing
+    // once, including a hold that takes nothing.
+    if (accepted < qty && this.bus) this.bus.emit('cargo:full', { commodityId });
     if (accepted <= 0) return 0;
     cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
     cargo.usedVolume = (cargo.usedVolume || 0) + accepted * vol;

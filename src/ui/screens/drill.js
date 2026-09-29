@@ -16,6 +16,20 @@ import { formatBindingCode, resolveActionCodes } from '../../systems/input.js';
 const { COLS, ROWS, TILE, SCAN_RADIUS, SCAN_COOLDOWN_S, SCAN_ACTIVE_S } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
+/** A full hold leaves the unpaid units in the vein. The screen must not call that waste. */
+export const DRILL_CARGO_FULL_BANNER =
+  'CARGO HOLDS FULL — the ore you could not take is still in that vein. Retract the rig to offload.';
+
+export function drillCargoFullActivity(name) {
+  const ore = name || 'That';
+  return `${ore} vein held — cargo full, ore still in the vein`;
+}
+
+export function drillCargoFullAnnouncement(name) {
+  const ore = name || 'That';
+  return `Cargo holds full. ${ore} ore is still in that vein.`;
+}
+
 function bindingCodes(state, action) {
   return resolveActionCodes(state, action);
 }
@@ -1719,11 +1733,10 @@ export const drillScreen = {
         speed: 8, kind: 'floater', text: 'CARGO FULL', vy0: -18,
       });
       cargoFullFlash.t = motionReduce ? 0.4 : 1.0;
-      showStatusBanner('cargo',
-        'CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.');
-      pushActivity(`${name} vein mined — cargo full, ore wasted`, 'bad');
+      showStatusBanner('cargo', DRILL_CARGO_FULL_BANNER);
+      pushActivity(drillCargoFullActivity(name), 'bad');
       canvasDirty = true;
-      announce(`Cargo holds full. ${name} ore could not be stored.`);
+      announce(drillCargoFullAnnouncement(name));
       updateHud();
     }));
 
@@ -2532,8 +2545,7 @@ export const drillScreen = {
         cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU}u free`);
       setClassName(hudEls.cargo, 'cargoCn', cargoFull ? 'bad' : 'v');
       if (cargoFull) {
-        showStatusBanner('cargo',
-          'CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.');
+        showStatusBanner('cargo', DRILL_CARGO_FULL_BANNER);
       } else if (statusBannerKind === 'cargo') {
         statusBanner.hidden = true;
         statusBannerKind = null;

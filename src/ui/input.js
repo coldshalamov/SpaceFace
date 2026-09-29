@@ -227,7 +227,13 @@ export function createUiInput(ctx, screenManager) {
 
     // If a shared confirm dialog is open (UX-2), let it own ALL keys — its own handler traps
     // Esc/Enter/Tab. Bail here so the modal screen underneath doesn't also react to the keystroke.
-    if (isConfirmOpen()) { ev.preventDefault(); return; }
+    // The dialog owns this key. Stopping it here keeps a cancel from also reaching a
+    // station or flight listener that is registered further along the same event.
+    if (isConfirmOpen()) {
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      ev.preventDefault();
+      return;
+    }
 
     // --- if a modal is open, route to its handler, ESC = back ---
     if (modalOpen) {

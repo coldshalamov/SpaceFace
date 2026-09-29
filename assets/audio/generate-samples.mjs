@@ -591,6 +591,100 @@ const SAMPLES = [
   { id: 'hopper_thock', family: 'mining', tier: 1, dur: 0.3,
     modals: [{ base: 226, count: 4, stretch: 1.9, decay: 0.12, amp: 0.7 }],
     noise: [{ f0: 1150, decay: 0.04, amp: 0.4, q: 3.0 }] },
+
+  // ---- sector arrival identities (WF-13) ----
+  // One arrival voice per live sector, each rooted on that sector's own bed tone
+  // (src/audio/themeMatrix.js SECTOR_BEDS hzA/hzB) so the stinger melts into the bed that is
+  // already playing when it lands. Palette class carries the manner:
+  //   core    — the door opens: a rising root→fifth, warm, civil (Helios, Tethys)
+  //   belt    — the works acknowledge you: struck metal settling onto the root (Ceres, Vesta, Charon)
+  //   fringe  — someone far away nods: a thin fourth down, dry, short (Pallas, Io, Sker Haven)
+  //   anomaly — the place is not right: a detuned pair swelling under a long tail (Veil, Ashfall)
+  { id: 'arrival_helios_prime', family: 'arrival', tier: 1, dur: 0.9,
+    tone: [{ f0: 82.4, f1: 123.6, decay: 0.55, amp: 0.5, sweepDur: 0.24, attack: 0.012 },
+           { f0: 164.8, decay: 0.5, amp: 0.16, attack: 0.22 }],
+    noise: [{ f0: 1480, decay: 0.2, amp: 0.1, q: 2.2, attack: 0.08 }],
+    echo: { delay: 0.07, gain: 0.24, mix: 0.24 } },
+  { id: 'arrival_tethys_junction', family: 'arrival', tier: 1, dur: 0.85,
+    tone: [{ f0: 110, f1: 165, decay: 0.5, amp: 0.5, sweepDur: 0.2, attack: 0.01 },
+           { f0: 220, decay: 0.4, amp: 0.14, attack: 0.18 }],
+    noise: [{ f0: 1840, decay: 0.15, amp: 0.09, q: 3.0, attack: 0.05 }],
+    echo: { delay: 0.06, gain: 0.22, mix: 0.22 } },
+  { id: 'arrival_ceres_belt', family: 'arrival', tier: 1, dur: 0.8, drive: 2.4,
+    modals: [{ base: 146, count: 5, ratios: [1, 1.5, 2.26, 3.03, 4.1], decay: 0.32, amp: 0.5 }],
+    tone: [{ f0: 146, f1: 73, decay: 0.3, amp: 0.6, sweepDur: 0.12 }],
+    noise: [{ f0: 720, decay: 0.12, amp: 0.4, q: 1.2 }] },
+  { id: 'arrival_vesta_forge', family: 'arrival', tier: 1, dur: 0.9, drive: 2.8,
+    modals: [{ base: 110, count: 6, ratios: [1, 1.43, 2.1, 2.85, 3.9, 5.2], decay: 0.42, amp: 0.5 }],
+    tone: [{ f0: 110, f1: 55, decay: 0.42, amp: 0.65, sweepDur: 0.16 }],
+    noise: [{ f0: 540, decay: 0.16, amp: 0.45, q: 1.0 }] },
+  { id: 'arrival_charon_expanse', family: 'arrival', tier: 1, dur: 1.0,
+    tone: [{ f0: 73.5, f1: 49, decay: 0.7, amp: 0.55, sweepDur: 0.3, attack: 0.02 },
+           { f0: 36.8, f1: 24.5, decay: 0.85, amp: 0.3, sweepDur: 0.4 }],
+    echo: { delay: 0.11, gain: 0.3, mix: 0.34 } },
+  { id: 'arrival_pallas_drift', family: 'arrival', tier: 1, dur: 0.7,
+    tone: [{ f0: 98, f1: 73.5, decay: 0.42, amp: 0.45, sweepDur: 0.26, attack: 0.03 }],
+    noise: [{ f0: 1240, decay: 0.2, amp: 0.11, q: 4.0, attack: 0.05 }] },
+  { id: 'arrival_io_reach', family: 'arrival', tier: 1, dur: 0.7, drive: 1.8,
+    tone: [{ f0: 65, f1: 48.8, decay: 0.4, amp: 0.5, sweepDur: 0.28, square: true, attack: 0.02 }],
+    noise: [{ f0: 680, decay: 0.18, amp: 0.2, q: 2.4 }] },
+  { id: 'arrival_sker_haven', family: 'arrival', tier: 1, dur: 0.7,
+    tone: [{ f0: 72, f1: 54, decay: 0.38, amp: 0.45, sweepDur: 0.2, square: true, trem: 0.15, tremHz: 7 }],
+    noise: [{ f0: 1450, decay: 0.1, amp: 0.24, q: 3.4 }] },
+  { id: 'arrival_veil_nebula', family: 'arrival', tier: 1, dur: 1.4,
+    tone: [{ f0: 61.8, f1: 63.4, decay: 1.0, amp: 0.45, sweepDur: 1.1, attack: 0.3 },
+           { f0: 123.6, f1: 126.8, decay: 1.0, amp: 0.24, sweepDur: 1.1, attack: 0.4 }],
+    echo: { delay: 0.19, gain: 0.4, mix: 0.45 } },
+  { id: 'arrival_ashfall_reach', family: 'arrival', tier: 1, dur: 1.5, drive: 1.6,
+    tone: [{ f0: 44, f1: 46.2, decay: 1.1, amp: 0.5, sweepDur: 1.2, attack: 0.35, square: true, trem: 0.2, tremHz: 1.3 },
+           { f0: 88, f1: 92.4, decay: 1.0, amp: 0.2, sweepDur: 1.1, attack: 0.45 }],
+    echo: { delay: 0.23, gain: 0.38, mix: 0.5 } },
+
+  // Frontier sectors: same class grammar, each rooted on the sector's own RUNTIME bed root —
+  // resolveSectorBed (src/audio/themeMatrix.js) derives an unknown sector's bed tone from a
+  // deterministic FNV hash of the sector id; this helper mirrors that derivation bit-for-bit so
+  // the arrival sample and the bed the player then hears share a root without any hand-copied
+  // magic numbers. The test (test/wf13-sector-arrival-identity.test.mjs) asserts the match.
+  ...['sector_nyx_march', 'sector_hyperion_cut', 'sector_kepler_scar', 'sector_orcus_shadow',
+    'sector_rhea_cinder', 'sector_haumea_rift', 'sector_eris_margin', 'sector_phoebe_echo',
+    'sector_nereid_shoal', 'sector_proteus_well', 'sector_triton_wake', 'sector_eunomia_gulf',
+    'sector_sedna_dark', 'sector_dione_lane'].map((id) => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193) >>> 0;
+    const root = 48 + (h % 80);
+    const bit = (h >>> 3) & 1;
+    const CLASS = {
+      sector_nyx_march: 'fringe', sector_hyperion_cut: 'belt', sector_kepler_scar: 'fringe',
+      sector_orcus_shadow: 'anomaly', sector_rhea_cinder: 'belt', sector_haumea_rift: 'fringe',
+      sector_eris_margin: 'fringe', sector_phoebe_echo: 'anomaly', sector_nereid_shoal: 'fringe',
+      sector_proteus_well: 'fringe', sector_triton_wake: 'anomaly', sector_eunomia_gulf: 'fringe',
+      sector_sedna_dark: 'anomaly', sector_dione_lane: 'core',
+    }[id];
+    const spec = { id: `arrival_${id.slice('sector_'.length)}`, family: 'arrival', tier: 1 };
+    if (CLASS === 'fringe') {
+      spec.dur = 0.7;
+      spec.tone = [{ f0: root, f1: root * 0.75, decay: 0.42, amp: 0.45, sweepDur: 0.26, attack: 0.03 }];
+      spec.noise = [{ f0: 1050 + bit * 320, decay: 0.18, amp: 0.11, q: 3.6, attack: 0.05 }];
+    } else if (CLASS === 'belt') {
+      spec.dur = 0.8;
+      spec.drive = 2.4;
+      spec.modals = [{ base: root * 2, count: 5, ratios: [1, 1.5, 2.26, 3.03, 4.1], decay: 0.34, amp: 0.5 }];
+      spec.tone = [{ f0: root * 2, f1: root, decay: 0.32, amp: 0.6, sweepDur: 0.14 }];
+      spec.noise = [{ f0: root * 9, decay: 0.12, amp: 0.4, q: 1.2 }];
+    } else if (CLASS === 'anomaly') {
+      spec.dur = 1.4;
+      spec.tone = [{ f0: root, f1: root * 1.03, decay: 1.0, amp: 0.45, sweepDur: 1.1, attack: 0.3 },
+                   { f0: root * 2, f1: root * 2.05, decay: 1.0, amp: 0.22, sweepDur: 1.1, attack: 0.4 }];
+      spec.echo = { delay: 0.19, gain: 0.4, mix: 0.45 };
+    } else { // core
+      spec.dur = 0.85;
+      spec.tone = [{ f0: root, f1: root * 1.5, decay: 0.5, amp: 0.5, sweepDur: 0.2, attack: 0.012 },
+                   { f0: root * 2, decay: 0.4, amp: 0.15, attack: 0.2 }];
+      spec.noise = [{ f0: 1600, decay: 0.16, amp: 0.09, q: 2.6, attack: 0.05 }];
+      spec.echo = { delay: 0.06, gain: 0.22, mix: 0.22 };
+    }
+    return spec;
+  }),
 ];
 
 // ---------------------------------------------------------------------------
