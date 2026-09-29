@@ -11,6 +11,7 @@ import {
 } from '../ai/contracts.js';
 import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
+import { mountFollowsAimAngle } from '../ai/fireDiscipline.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import { isDynamicPhysicsBodyEntity, measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
@@ -950,9 +951,29 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
     combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
     factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
+    // SF-050: the committed-corridor telegraph must forecast with the speed the battery actually
+    // shoots — a doctrine committed at a nominal bolt speed would release a volley visibly off
+    // the line the pilot was shown on railgun-fast mounts.
+    aimProjectileSpeed: bestAimProjectileSpeed(entity.data && entity.data.weapons),
     ramAuthorized,
     ...bands,
   });
+}
+
+/**
+ * The fastest projectile speed among mounts whose barrels follow the ship's aim angle
+ * (fireDiscipline.mountFollowsAimAngle). This is the speed the doctrine corridor must forecast
+ * with — turret/homing/deploy mounts solve their own directions and never fly a committed line.
+ * Null when no aim-following mount carries a usable speed; the doctrine falls back to a nominal.
+ */
+function bestAimProjectileSpeed(weapons) {
+  let best = 0;
+  for (const w of weapons || []) {
+    if (!mountFollowsAimAngle(w)) continue;
+    const s = w && w.projSpeed;
+    if (Number.isFinite(s) && s > best) best = s;
+  }
+  return best > 0 ? best : null;
 }
 
 function explicitRamAuthorization(entity, ai, activity, bands) {

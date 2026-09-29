@@ -7,6 +7,7 @@ import {
 } from './sectorAnchors.js';
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 import { applyClaimableBodySites } from './claimableBodies.js';
+import { KETTLE_LINE_POIS } from './kettleLine.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
 // Per ARCHITECTURE §0.8:
@@ -169,6 +170,10 @@ const CORE_SECTORS = [
         anchor: CERES_WRECK_CATHEDRAL_LOCAL_POS,
         runtimeOwner: 'asteroidSites',
       },
+      // The Kettle Line drift trail (src/data/kettleLine.js): three authored convoy pieces
+      // strung along a drift line off the Helios-gate approach. Plain POI rows; the scan tells
+      // and the payoff pod live in that module and its owners.
+      ...KETTLE_LINE_POIS,
     ],
   },
   {

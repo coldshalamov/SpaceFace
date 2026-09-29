@@ -29,6 +29,7 @@ import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
+import { KETTLE_LINE } from '../data/kettleLine.js';
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
@@ -2725,6 +2726,7 @@ export const world = {
       }
     }
     this._spawnHeliosRopeCache(sector, active);
+    this._spawnKettleLinePayoff(sector, active);
   },
 
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
@@ -2794,6 +2796,66 @@ export const world = {
     pod.flags = Object.assign({}, pod.flags, { persistent: false });
     this._stampHomeSector(pod, sector.id);
     active.heliosRopeCacheId = pod.id;
+  },
+
+  // The Kettle Line payoff (src/data/kettleLine.js): the convoy crew's pay strongbox, still
+  // clamped to the drive stern. Sealed until the stern's scan tell is investigated — then it
+  // is an ordinary ropeable, splittable payload pod (the Candle Fleet rope-cache treatment)
+  // at the stern's side. No new state bag: the existing per-POI discovery record owns the
+  // seal, and the residency bag owns the spawn slot, exactly like the rope cache above.
+  _spawnKettleLinePayoff(sector, active) {
+    const trail = KETTLE_LINE;
+    if (!trail || !sector || trail.sectorId !== sector.id || !active) return;
+    // Data-only harnesses drive _spawnWorldOneOffs without a world bag; a sealed site
+    // simply has nothing to spawn there.
+    if (!this.state || !this.state.world || !this.state.world.discovery) return;
+    const disc = this._discoveryFor(sector.id);
+    const stern = disc.pois && disc.pois[trail.terminalPoiId];
+    if (!stern || !stern.investigated) return;
+    const priorId = active.kettleLinePayoffId;
+    const prior = priorId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(priorId)
+      : null;
+    if (prior) return;
+    // The stern marker's live position in this sector; authored position is the fallback.
+    const row = (active.pois || []).find((poi) => poi && poi.poiId === trail.terminalPoiId);
+    const local = trail.payoff.offset;
+    const pos = row && row.pos
+      ? { x: row.pos.x + local.x, z: row.pos.z + local.z }
+      : null;
+    if (!pos) return;
+    const pod = spawnJettisonedCargoPod(this.state, {
+      commodityId: trail.payoff.commodityId,
+      amount: trail.payoff.amount,
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: trail.payoff.radius,
+      ownerId: trail.terminalPoiId,
+      originId: trail.terminalPoiId,
+      factionId: trail.payoff.factionId,
+    }, this.helpers);
+    if (!pod) return;
+    pod.data.placeId = trail.payoff.placeId;
+    pod.data.name = trail.payoff.name;
+    pod.data.oneOffId = trail.payoff.id;
+    pod.data.kettleLinePayoff = true;
+    pod.data.anchored = true;
+    pod.data.packagedPropFile = `places/${trail.payoff.placeId}.glb`;
+    pod.data.packagedPropSlot = 'place';
+    pod.flags = Object.assign({}, pod.flags, { persistent: false });
+    this._stampHomeSector(pod, sector.id);
+    active.kettleLinePayoffId = pod.id;
+  },
+
+  _onKettleLineSignalInvestigated(payload) {
+    if (!payload || payload.sectorId !== KETTLE_LINE.sectorId) return false;
+    if (payload.poiId !== KETTLE_LINE.terminalPoiId) return false;
+    const worldBag = this.state && this.state.world;
+    const active = worldBag && worldBag.activeSector;
+    const sector = worldBag && worldBag.sectors && worldBag.sectors[KETTLE_LINE.sectorId];
+    if (!active || !sector || worldBag.currentSectorId !== KETTLE_LINE.sectorId) return false;
+    this._spawnKettleLinePayoff(sector, active);
+    return true;
   },
 
   _trackOneOffSpin(active, entityId, spin) {
@@ -5318,6 +5380,7 @@ export const world = {
     }
     this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onKettleLineSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
     return true;
   },

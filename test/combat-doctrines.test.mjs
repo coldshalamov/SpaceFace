@@ -454,7 +454,9 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.phase, 'charge_cue');
   assert.equal(result.telegraph.durationTicks, 30);
-  assert.equal(result.faceTarget, true, 'the charge cue must use its telegraph time to align fixed guns');
+  assert.equal(result.faceTarget, false, 'a committed corridor owns the nose once the cue starts');
+  assert(Number.isFinite(result.faceAngle) && result.faceAngle === result.aimCommit.bearing,
+    'the cue must publish the committed corridor bearing the guns are committed to');
   result = runtime.update({
     tick: 74, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]), directive,
@@ -466,7 +468,11 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.phase, 'fire_window');
   assert.equal(result.fireWindow, true);
-  assert.equal(result.faceTarget, true, 'the ranged fire window must keep the target-facing contract');
+  assert.equal(result.faceTarget, false, 'the fire window holds the corridor, not the live contact');
+  assert.equal(result.faceAngle, result.aimCommit.bearing,
+    'the window keeps the corridor it was announced with');
+  assert(result.aimCommit && result.aimCommit.capRad > 0,
+    'the window advertises the bounded-correction budget of the committed shot');
 
   const aimedSelection = applyCombatDoctrineToSelection({
     actionId: 'action_burst',
@@ -489,8 +495,8 @@ for (const [label, selfOverrides, contactOverrides] of [
     behavior: { maneuver: aimedSelection.maneuver },
     directive: baseDirective(),
   });
-  assert(Math.abs(aimedRequest.targetHeading - Math.PI / 2) < 1e-9,
-    'ranged HOLD translation must decouple from yaw and face the live target');
+  assert(Math.abs(aimedRequest.targetHeading - result.aimCommit.bearing) < 1e-9,
+    'ranged HOLD translation must decouple from yaw while the nose rides the committed corridor');
   assert(aimedRequest.forceLocal.forward > 0 && Math.abs(aimedRequest.forceLocal.right) < 1e-9,
     'target-facing yaw must preserve translation toward the authored formation slot');
   const ordinaryHold = new ManeuverPlanner({ seed: 211 }).plan({
@@ -570,6 +576,134 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.phase, 'fire_window');
   assert.equal(result.fireWindow, true);
+}
+
+// SF-050: the ranged shot is a committed corridor, not a tracking solution — a timed lateral
+// change during the wind-up leaves the corridor stale, and the window releases on the line the
+// pilot was shown, never re-solving onto the dodge.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 919 });
+  const approach = () => perception([shipContact(1, { x: 620, vz: 60, mobilityBand: 'low', threat: 0.95 })]);
+  let result = runtime.update({
+    tick: 0, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: approach(), directive,
+  });
+  result = runtime.update({
+    tick: 45, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: approach(), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  const corridor = result.aimCommit.bearing;
+  assert(Number.isFinite(corridor), 'the cue commits a forecast corridor bearing');
+  // The corridor is the forecast intercept line, not the raw bearing: a closing mover at 60 WU/s
+  // projects ~109 WU downrange over a nominal bolt flight, so the corridor leads the nose line.
+  const rawBearing = Math.atan2(0, 620);
+  assert(Math.abs(corridor - rawBearing) > 0.05,
+    'the corridor must lead the target, not point at its current position');
+  // A hard lateral reversal mid-cue: the corridor must not re-track.
+  const dodged = () => perception([shipContact(1, { x: 600, z: 210, vz: -110, mobilityBand: 'low', threat: 0.95 })]);
+  result = runtime.update({
+    tick: 74, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: dodged(), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  assert.equal(result.aimCommit.bearing, corridor, 'a dodge during the wind-up leaves the corridor stale');
+  assert.equal(result.faceAngle, corridor, 'the nose rides the corridor through the dodge');
+  result = runtime.update({
+    tick: 75, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: dodged(), directive,
+  });
+  assert.equal(result.phase, 'fire_window');
+  assert.equal(result.aimCommit.bearing, corridor, 'the window releases on the announced corridor');
+  assert.equal(result.fireWindow, true);
+  // Release/cancellation: the post-shot dwell drops the corridor — a stale bearing must never
+  // leak into the next cycle.
+  result = runtime.update({
+    tick: 94, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: dodged(), directive,
+  });
+  assert.equal(result.phase, 'reset');
+  assert.equal(result.aimCommit, null, 'reset drops the committed corridor');
+  assert.equal(result.faceAngle, null, 'the nose returns to live facing after the corridor ends');
+  assert.equal(result.faceTarget, true, 'post-window tracking resumes');
+}
+
+// The corridor forecast must fly the speed the battery actually shoots: perception.self
+// carries aiPorts' aimProjectileSpeed hint, and a 700-speed railgun leads far less than the
+// 340 nominal — the telegraphed line and the released volley stay inside the correction band.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 919 });
+  const contact = shipContact(1, { x: 620, vz: 60, mobilityBand: 'low', threat: 0.95 });
+  const railgun = (values) => perception([contact], { aimProjectileSpeed: 700, ...values });
+  runtime.update({
+    tick: 0, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: railgun(), directive,
+  });
+  const result = runtime.update({
+    tick: 45, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: railgun(), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  const expectedLead = Math.atan2(60 * (620 / 700), 620);
+  assert(Math.abs(result.aimCommit.bearing - expectedLead) < 0.005,
+    `700-speed corridor ${result.aimCommit.bearing} must track the true lead ${expectedLead}`);
+  const nominalLead = Math.atan2(60 * (620 / 340), 620);
+  assert(Math.abs(nominalLead - result.aimCommit.bearing) > 0.04,
+    'a railgun corridor that ignored the battery speed would overlead by ~0.09 rad');
+}
+
+// SF-051: the brawler's commit is a mass-committed charge through a fixed forecast point, not a
+// sticky orbit — a sidestep leaves the run stale and the pass ends in an honest breakaway.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 424 });
+  const inbound = (targetValues, selfValues = {}) => perception(
+    [shipContact(1, { x: 400, z: 0, mobilityBand: 'low', threat: 0.9, ...targetValues })],
+    { vx: 90, ...selfValues },
+  );
+  let result = runtime.update({
+    tick: 0, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: inbound(), directive,
+  });
+  assert.equal(result.phase, 'engine_flare', 'inside the run-in band the heavy telegraphs immediately');
+  result = runtime.update({
+    tick: 30, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: inbound(), directive,
+  });
+  assert.equal(result.phase, 'commit');
+  assert.equal(result.maneuverKind, ManeuverKind.INTERCEPT,
+    'commit drives at a fixed point, not a live-tracking orbit');
+  assert.equal(result.faceTarget, false, 'the nose rides the charge line, not the dodged target');
+  const runPoint = result.flightPoint;
+  assert(runPoint && Number.isFinite(runPoint.x) && Number.isFinite(runPoint.z),
+    'commit publishes the committed run point');
+  assert(runPoint.x > 400 + 300,
+    'the run point drives through and past the forecast position so arrival never brakes the charge');
+  // A hard lateral dodge mid-commit: the run point is fixed world geometry and must not move.
+  const dodged = perception(
+    [shipContact(1, { x: 380, z: 220, vx: 40, vz: -60, mobilityBand: 'low', threat: 0.9 })],
+    { vx: 140 },
+  );
+  result = runtime.update({
+    tick: 60, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: dodged, directive,
+  });
+  assert.equal(result.phase, 'commit');
+  assert.deepEqual(result.flightPoint, runPoint, 'a dodged target cannot re-plan the committed run');
+  // The overshoot: the hull crosses the target's original line and keeps burning — once it is
+  // behind the contact the committed pass ends in the authored breakaway, not a snap-back.
+  result = runtime.update({
+    tick: 90, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: perception([shipContact(1, { x: 380, z: 60 })], { x: 260, vx: 150 }), directive,
+  });
+  assert.equal(result.phase, 'commit', 'still committed while driving through the pass');
+  result = runtime.update({
+    tick: 122, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: perception([shipContact(1, { x: 300, z: 60 })], { x: 520, vx: 150 }), directive,
+  });
+  assert.equal(result.phase, 'breakaway', 'a blown pass ends in the authored recovery, not a re-track');
+  assert.equal(result.outcome, 'brawler_commit_complete');
+  assert(result.flightPoint && result.flightPoint.x !== runPoint.x,
+    'breakaway replaces the charge point with a real egress point');
 }
 
 {
@@ -781,6 +915,9 @@ console.log('Combat doctrine unit checks OK');
 function perception(contactsValue, selfOverrides = {}) {
   return {
     self: {
+      // Extra self fields (e.g. aimProjectileSpeed) flow through the spread; the named fields
+      // below keep their constructed shape so activity/roe stay normalized.
+      ...selfOverrides,
       id: selfOverrides.id ?? 2,
       team: 1,
       pos: { x: selfOverrides.x ?? 0, z: selfOverrides.z ?? 0 },

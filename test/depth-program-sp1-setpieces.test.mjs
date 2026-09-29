@@ -38,6 +38,7 @@ const EXPECTED_ARCHETYPES = new Set([
   'hearing',
   'blockade_run',
   'investigation_chain',
+  'lung_run',
 ]);
 const STATION_TO_SECTOR = new Map();
 for (const sector of SECTORS) {
@@ -236,18 +237,18 @@ function walkRoute(api, state, definition, branchId, startEpoch = 4) {
   assert.fail(`${definition.id}/${branchId}: route did not resolve within the 3-4 stage contract`);
 }
 
-test('SP1 catalog has five authored archetypes, one branch point each, and ten valid 3-4 stage routes', () => {
+test('SP1 catalog has six authored archetypes, one branch point each, and twelve valid 3-4 stage routes', () => {
   const definitions = missionData.SET_PIECE_MISSIONS;
   assert.ok(Array.isArray(definitions), 'missions data exports SET_PIECE_MISSIONS');
-  assert.equal(definitions.length, 5);
+  assert.equal(definitions.length, 6);
   assert.deepEqual(new Set(definitions.map((entry) => entry.id)), EXPECTED_ARCHETYPES);
   assert.equal(typeof missionData.validateSetPieceMissionCatalog, 'function',
     'missions data exports validateSetPieceMissionCatalog()');
   const validation = missionData.validateSetPieceMissionCatalog();
   assert.equal(validation.ok, true, (validation.errors || []).join('\n'));
   assert.deepEqual(validation.errors || [], []);
-  assert.equal(validation.archetypes, 5);
-  assert.equal(validation.playableRoutes, 10);
+  assert.equal(validation.archetypes, 6);
+  assert.equal(validation.playableRoutes, 12);
 
   for (const definition of definitions) {
     assert.ok(definition.title && definition.title.length >= 8, `${definition.id}: authored title`);
