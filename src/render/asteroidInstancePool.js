@@ -74,6 +74,7 @@ export function createAsteroidInstancePool(scene, options = {}) {
       matrixUploads: 0,
       matrixReuses: 0,
       matrixEvaluations: 0,
+      shadowMatrixUploads: 0,
       variants: variantStats,
       keyed: [],
     },
@@ -430,6 +431,7 @@ export function syncAsteroidInstancePool(pool, options = {}) {
   stats.matrixUploads = 0;
   stats.matrixReuses = 0;
   stats.matrixEvaluations = 0;
+  stats.shadowMatrixUploads = 0;
 
   if (canReuseStaticSubmission) {
     stats.matrixReuses = stats.visibleBatches;
@@ -472,6 +474,7 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
 
   let submitted = 0;
   let matrixDirty = false;
+  let shadowDirty = false;
   if (bucket.dynamicBufferOwner && bucket.dynamicBufferOwner.invalid
     && !recoverRetiredBucket(pool, bucket, variantStats)) {
     // Out of rebuilds: the rocks still exist, so they are drawn one by one. Never nothing.
@@ -501,6 +504,9 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
       root.updateWorldMatrix(true, true);
     }
     leaf.updateWorldMatrix(false, false);
+    // With no live shadow ortho the upload cannot move a readable texel anyway, so records
+    // stay shadow-relevant whenever the shadow frustum was not tested.
+    let recordInShadow = true;
     if (viewFrustumReady || shadowFrustumReady) {
       const geometry = leaf.geometry;
       if (!geometry || !geometry.attributes || !geometry.attributes.position) continue;
@@ -512,6 +518,7 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
       const inView = viewFrustumReady && _viewFrustum.intersectsSphere(_worldSphere);
       const inShadow = shadowFrustumReady && _shadowFrustum.intersectsSphere(_worldSphere);
       if (!inView && !inShadow) continue;
+      recordInShadow = !shadowFrustumReady || inShadow;
     } else if (root.userData.asteroidInstanceViewCulled) {
       continue;
     }
@@ -526,6 +533,7 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
           markDynamicBufferItems(dynamicBufferOwner, 0, submitted);
           slotDirty = true;
           matrixDirty = true;
+          if (recordInShadow) shadowDirty = true;
         }
         matrixArray[offset + component] = value;
       }
@@ -543,6 +551,7 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
     if (!dynamicBufferOwner) bucket.mesh.instanceMatrix.needsUpdate = true;
     stats.matrixUploads++;
     variantStats.uploads++;
+    if (shadowDirty) stats.shadowMatrixUploads++;
   } else if (submitted > 0) {
     stats.matrixReuses++;
     variantStats.reuses++;
