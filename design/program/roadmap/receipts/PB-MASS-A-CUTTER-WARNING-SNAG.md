@@ -50,12 +50,20 @@
 
 ## Validation
 
-- `test/massline-sweep-commit-snag.test.mjs` (seed 30010, 5 tests): commit warns once at the bite
+- Review round (subagent): 1 CRITICAL caught and fixed — `_updateWorldMark` read an undeclared
+  `w2s`; a first-mark ReferenceError inside `update()` would have closed the sim runner. Also
+  landed: stale-mirror healing on save/sector/new-game (`_releaseSnagLatch` clears the mirror
+  even latch-less; handlers emit `ended`), sweepCommit mirror cleared before every early return,
+  simTime fallback for the re-arm latch, tick-finite guard on published reads, corrected the
+  `closestPointOnSegment` docstring.
+- `test/massline-sweep-commit-snag.test.mjs` (seed 30010, 7 tests): commit warns once at the bite
   point pre-contact and mirrors for the HUD; no commit when receding, slack, out of reach, or
   non-hostile; rearm fires a fresh warning after the cutter clears the window; reel-pinned load
-  snags once with the located foul + toast, clears on obstacle removal; line cut releases the
-  latch with `ended`; no snag without pull intent, without geometry, or while the load moves.
-- Adjacent battery: 201/201 across the massline/tether/monofilament/threat suite; 130 more across
+  snags once with the located foul + toast, clears on obstacle removal; line cut / sector exit /
+  game:new all release latch AND mirror (incl. save residue with no latch); no snag without pull
+  intent, without geometry, or while the load moves; the DOM paint test mounts the real HUD and
+  both marks show/hide/track.
+- Adjacent battery: 349/349 massline/tether/monofilament suite post-fixes; earlier 130 across
   presentation-admission/runner/cue-recipes/census + massline-cadence (59/59) — all green.
 - Determinism: all reads derive from this-tick rows and positions; no rng, no wall time.
 
