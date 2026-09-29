@@ -405,9 +405,11 @@ function assertFrameWhitelist(frame) {
   // `woundedFallbackSpent` is an intentional addition: the doctrine runtime rebuilds empty on
   // save:loaded, so the spent latch is mirrored onto serialized ai state and re-exposed here
   // for the doctrine's own read of it.
+  // `occupantGeneration` (NXI-049) is an intentional addition: aiPorts stamps the live occupant
+  // token so a squad never follows a ship that reused a dead leader's entity id.
   assertExactKeys(frame.self, [
     'activity', 'aimProjectileSpeed', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
-    'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'operationalMassBand', 'pos', 'radius',
+    'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'occupantGeneration', 'operationalMassBand', 'pos', 'radius',
     'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'vel',
     'woundedFallbackSpent',
   ], 'SensorFrame.self');
