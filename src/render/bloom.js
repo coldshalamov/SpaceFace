@@ -1040,6 +1040,15 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardWrapped = true;
 }
 
+// Mounts under a scene descendant (socket.add, mesh.add, parent.add) never touch the
+// scene.add hook — the known nested-mount helpers record the attached root here and the
+// guard drains it the same way the next presented pass.
+const pendingNestedMountedRoots = [];
+
+export function recordMountedRootForUnreadyScan(object) {
+  if (object && object.isObject3D === true) pendingNestedMountedRoots.push(object);
+}
+
 export function createUnreadyDrawableGuard(renderer) {
   installUnreadyDrawGuard(renderer);
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
@@ -1052,6 +1061,34 @@ export function createUnreadyDrawableGuard(renderer) {
   let unreadyProgramsPending = true;
   let unreadyProgramCount = -1;
   let unreadyProgramTail = null;
+  // Same length+tail trick as the program set, but for direct scene mounts: a never-compiled
+  // drawable mounted mid-flight (SelectionSigil-class non-admission mounts) leaves the program
+  // set untouched, so without this watch the steady-state early-return submits it and its
+  // program links inside the presented frame. A mount costs one traverse next frame; true
+  // steady state still returns before any walk.
+  let unreadySceneChildCount = -1;
+  let unreadySceneChildTail = null;
+  // Mount drain list: scene.add is wrapped once so presented-frame mounts enqueue their root
+  // here; the guard then traverses only the new subtrees (O(new) per mount frame) instead of
+  // the whole scene (O(nodes) per churn frame). The length+tail watch stays as the failsafe:
+  // a changed set with an empty drain means an add path bypassed the hook → full traverse once.
+  const unreadyMountedRoots = [];
+  let mountWatchScene = null;
+  function ensureSceneMountWatch(scene) {
+    if (!scene || typeof scene.add !== 'function' || mountWatchScene === scene) return;
+    mountWatchScene = scene;
+    unreadyMountedRoots.length = 0;
+    if (scene.__sfMountWatchWrapped === true) return;
+    const originalAdd = scene.add;
+    scene.add = function sfMountWatchAdd(...objects) {
+      for (let i = 0; i < objects.length; i++) {
+        const object = objects[i];
+        if (object && object.parent !== scene) unreadyMountedRoots.push(object);
+      }
+      return originalAdd.apply(scene, objects);
+    };
+    scene.__sfMountWatchWrapped = true;
+  }
   let admissionScene = null;
   let admissionPendingSubjects = null;
   let admissionGl = null;
@@ -1101,13 +1138,32 @@ export function createUnreadyDrawableGuard(renderer) {
       admissionGl = null;
       return;
     }
+    ensureSceneMountWatch(scene);
+    // Fold nested-mount records into the drain only when their ancestor chain reaches this
+    // scene — a mount recorded for another graph or detached before the pass stays out.
+    if (pendingNestedMountedRoots.length) {
+      for (const root of pendingNestedMountedRoots.splice(0, pendingNestedMountedRoots.length)) {
+        let top = root;
+        while (top && top.parent) top = top.parent;
+        if (top === scene) unreadyMountedRoots.push(root);
+      }
+    }
+    const sceneChildren = scene.children || [];
+    const sceneSetChanged = sceneChildren.length !== unreadySceneChildCount
+      || sceneChildren[sceneChildren.length - 1] !== unreadySceneChildTail;
+    const sceneMountChanged = unreadyMountedRoots.length > 0
+      || (sceneSetChanged && sceneChildren.length > unreadySceneChildCount);
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
     // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
+    // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
     if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
-      && programs[programs.length - 1] === unreadyProgramTail) return;
+      && programs[programs.length - 1] === unreadyProgramTail
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
     unreadyProgramsPending = false;
     unreadyProgramCount = programs.length;
     unreadyProgramTail = programs[programs.length - 1] || null;
+    unreadySceneChildCount = sceneChildren.length;
+    unreadySceneChildTail = sceneChildren[sceneChildren.length - 1] || null;
     for (let i = 0; i < programs.length; i++) {
       const program = programs[i];
       if (!program || typeof program.isReady !== 'function') continue;
@@ -1116,12 +1172,29 @@ export function createUnreadyDrawableGuard(renderer) {
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
     }
-    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
+    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
     unreadyCheckedMaterials.clear();
     unreadyHiddenMaterials.clear();
     admissionScene = scene;
     admissionPendingSubjects = pendingSubjects;
-    scene.traverse(hideOneUnreadySceneDrawable);
+    const drainRoots = unreadyMountedRoots.length > 0
+      ? unreadyMountedRoots.splice(0, unreadyMountedRoots.length) : null;
+    // Anything still queued was detached before this pass or covered by the full traverse —
+    // drop it so stale roots never accumulate.
+    unreadyMountedRoots.length = 0;
+    if (unreadyProgramsPending || (pendingSubjects && pendingSubjects.size > 0)
+        || (sceneSetChanged && drainRoots === null) || !drainRoots) {
+      // Program-level trigger, pending-subject trigger, or the uninstrumented-mutation
+      // failsafe: any existing drawable could hold the unready program — full traverse.
+      scene.traverse(hideOneUnreadySceneDrawable);
+    } else {
+      for (let i = 0; i < drainRoots.length; i++) {
+        if (drainRoots[i] && typeof drainRoots[i].traverse === 'function') {
+          drainRoots[i].traverse(hideOneUnreadySceneDrawable);
+        }
+      }
+    }
     admissionScene = null;
     admissionPendingSubjects = null;
     admissionGl = null;

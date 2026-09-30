@@ -490,9 +490,25 @@ export const MISSION_CONDITIONS = Object.freeze({
     fits() { return false; },
     match(payload, ctx) {
       if (!payload || !payload.playerInvolved) return false;
-      const ids = new Set((ctx && ctx.mission && ctx.mission.targetEntityIds) || []);
-      if (ctx && ctx.mission && ctx.mission._escorteeId != null) ids.add(ctx.mission._escorteeId);
-      if (!ids.size) {
+      const mission = ctx && ctx.mission;
+      // The target-id Set is rebuilt only when the mission's ids or escortee change — this
+      // match runs on every player-involved physics:impact, so a fresh Set per contact was
+      // steady churn in debris fights.
+      let ids = mission && mission._wreckWakesIds;
+      if (!mission) {
+        ids = null;
+      } else if (!ids
+          || mission._wreckWakesIdsSource !== mission.targetEntityIds
+          || mission._wreckWakesIdsLength !== (mission.targetEntityIds ? mission.targetEntityIds.length : 0)
+          || mission._wreckWakesIdsEscortee !== mission._escorteeId) {
+        ids = new Set(mission.targetEntityIds || []);
+        if (mission._escorteeId != null) ids.add(mission._escorteeId);
+        mission._wreckWakesIds = ids;
+        mission._wreckWakesIdsSource = mission.targetEntityIds;
+        mission._wreckWakesIdsLength = mission.targetEntityIds ? mission.targetEntityIds.length : 0;
+        mission._wreckWakesIdsEscortee = mission._escorteeId;
+      }
+      if (!ids || !ids.size) {
         return payload.aId != null || payload.bId != null;
       }
       return ids.has(payload.aId) || ids.has(payload.bId);

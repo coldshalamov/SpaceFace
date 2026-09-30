@@ -22,6 +22,7 @@ import {
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { grantAlienUnique } from '../data/alienEcology.js';
 import { insertDressingRow } from '../world/dressingTable.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
@@ -162,6 +163,11 @@ export function materializeMachineLayer(world, sector, active) {
 }
 
 // ── Per-tick (world.update) ───────────────────────────────────────────────────────────────
+// Borrowed scratches for the per-tick site pass — the sector cast changes only on index
+// bumps, and the local/global pairs are consumed inside each site iteration.
+const _machineSiteLocalPos = { x: 0, z: 0 };
+const _machineSiteGlobalPos = { x: 0, z: 0 };
+
 export function tickMachineLayer(world, dt) {
   const state = world && world.state;
   if (!state || !state.entityList || dt <= 0) return;
@@ -173,16 +179,30 @@ export function tickMachineLayer(world, dt) {
   const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
   const now = Number(state.simTime) || 0;
 
-  const machines = [];
-  for (const e of state.entityList) {
-    if (!e || e.alive === false || !e.data || !e.data.machine) continue;
-    if (e.homeSectorId !== sectorId) continue;
-    machines.push(e);
+  const machinesCache = ae._machineScanCache || (ae._machineScanCache = {
+    version: -1, sectorId: null, machines: [],
+  });
+  const machinesVersion = entityIndexVersion(state);
+  // A null version means the index is not ready — walk every tick rather than cache-stale.
+  if (machinesVersion == null
+      || machinesCache.version !== machinesVersion
+      || machinesCache.sectorId !== sectorId) {
+    machinesCache.version = machinesVersion == null ? -1 : machinesVersion;
+    machinesCache.sectorId = sectorId;
+    machinesCache.machines.length = 0;
+    for (const e of state.entityList) {
+      if (!e || e.alive === false || !e.data || !e.data.machine) continue;
+      if (e.homeSectorId !== sectorId) continue;
+      machinesCache.machines.push(e);
+    }
   }
+  const machines = machinesCache.machines;
 
   for (const site of sites) {
     const rec = machineSiteRec(state, site.siteId);
-    const g = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
+    _machineSiteLocalPos.x = site.center.x;
+    _machineSiteLocalPos.z = site.center.z;
+    const g = world._toGlobal(_machineSiteLocalPos, sectorId, _machineSiteGlobalPos);
 
     // First observation: entering the site's radius is the 'seen' beat — protocol becomes
     // 'observed' and story.verge.revealed flips (galaxy map learns the layer exists).

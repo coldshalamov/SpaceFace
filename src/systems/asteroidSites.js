@@ -89,6 +89,10 @@ function worldSiteFailureActorMatches(actorPolicy, entity, state) {
   return false;
 }
 
+// Borrowed per-event scratches — _onWorldSiteImpact consumes them before returning.
+const _siteImpactParticipants = [null, null];
+const _siteImpactMatched = { record: null, manifest: null, live: null, trigger: null };
+
 export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) {
   return {
     id,
@@ -576,9 +580,9 @@ export const asteroidSites = {
   },
 
   _onWorldSiteImpact(payload = {}) {
-    const a = this.state.entities && this.state.entities.get(payload.aId);
-    const b = this.state.entities && this.state.entities.get(payload.bId);
-    const participants = [a, b];
+    const participants = _siteImpactParticipants;
+    participants[0] = this.state.entities && this.state.entities.get(payload.aId);
+    participants[1] = this.state.entities && this.state.entities.get(payload.bId);
     let matched = null;
     for (let index = 0; index < participants.length && !matched; index += 1) {
       const componentEntity = participants[index];
@@ -592,12 +596,25 @@ export const asteroidSites = {
       const live = record && record.components && record.components[impactComponentId];
       const otherEntity = participants[index === 0 ? 1 : 0];
       if (!manifest || !live) continue;
-      const trigger = (manifest.failureTriggers || []).find((candidate) => candidate.event === 'physics:impact'
-        && candidate.componentId === impactComponentId
-        && candidate.from.includes(live.status)
-        && Number(payload.dp) >= candidate.minDp
-        && worldSiteFailureActorMatches(candidate.actorPolicy, otherEntity, this.state));
-      if (trigger) matched = { record, manifest, live, trigger };
+      const triggers = manifest.failureTriggers || [];
+      let trigger = null;
+      for (const candidate of triggers) {
+        if (candidate.event === 'physics:impact'
+          && candidate.componentId === impactComponentId
+          && candidate.from.includes(live.status)
+          && Number(payload.dp) >= candidate.minDp
+          && worldSiteFailureActorMatches(candidate.actorPolicy, otherEntity, this.state)) {
+          trigger = candidate;
+          break;
+        }
+      }
+      if (trigger) {
+        matched = _siteImpactMatched;
+        matched.record = record;
+        matched.manifest = manifest;
+        matched.live = live;
+        matched.trigger = trigger;
+      }
     }
     if (!matched) return null;
     const { record, manifest, live, trigger } = matched;
