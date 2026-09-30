@@ -323,8 +323,11 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
   chargeThrow: ['KeyY', 'Digit1'],       // classic: Q/E are strafe and T is the tech-tree UI key, so throw lives on Y; Digit1 is the hotbar seat
-  reelIn:  [],                 // classic: arrows are movement; reel via helm scheme only
-  reelOut: [],
+  // VERB-14: the winch needs keys every player has. BracketLeft/Right are free repo-wide
+  // (no flight verb, no UI shortcut, no help copy claims them) and sit as a natural in/out pair
+  // on any layout. Rebindable like every other flight verb; the hold-grammar line-control path stays.
+  reelIn:  ['BracketLeft'],
+  reelOut: ['BracketRight'],
   ...VERB_BINDINGS,
   // Mouse buttons (LMB=fire, RMB=group2/mine) are not remappable in this pass — they're ergonomic
   // constants. Keyboard equivalents (Space to fire) ARE remappable.
@@ -343,8 +346,8 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyQ', 'Digit1'],
-  reelIn:  [],
-  reelOut: [],
+  reelIn:  ['BracketLeft'],
+  reelOut: ['BracketRight'],
   ...VERB_BINDINGS,
 };
 
@@ -361,8 +364,8 @@ export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fi
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyY', 'Digit1'],             // Q/E are strafe here, so throw lives on Y (classic parity); Digit1 is the hotbar seat
-  reelIn:  [],
-  reelOut: [],
+  reelIn:  ['BracketLeft'],
+  reelOut: ['BracketRight'],
   ...VERB_BINDINGS,
 };
 
@@ -430,7 +433,7 @@ export const MOUSE_ACTION_LABELS = Object.freeze({ fire: 'LMB', mine: 'RMB' });
 /** Flight actions the default route teaches. Interface keys live in `src/ui/bindings.js`. */
 export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
-  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'deployMassSeed',
+  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut', 'deployMassSeed',
   'siteBeam', 'scanPulse', 'cruise', 'dropBomb', 'cycleBomb', 'chargeDetonate',
 ]);
 
@@ -462,6 +465,10 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (code === 'CapsLock') return 'Caps Lock';
   if (code === 'Backquote') return '`';
   if (code === 'Backslash' || code === 'IntlBackslash') return '\\';
+  if (code === 'BracketLeft') return '[';
+  if (code === 'BracketRight') return ']';
+  if (code === 'Comma') return ',';
+  if (code === 'Period') return '.';
   if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
   if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
   return code;
