@@ -38,6 +38,7 @@ import {
   parsePilotArgv,
   requiredMilestonesFor,
   resolveStopMilestone,
+  stationServiceClickBudgetMs,
   validateMilestoneOrder,
   validatePilotSources,
 } from '../scripts/lib/goldCorridorPublicPilot.mjs';
@@ -316,6 +317,20 @@ test('classification is never a bare failure — blocker round-trips through par
   assert.equal(parsed.message, 'dock prompt never shown');
   assert.equal(parseBlocker('some unrelated log line'), null);
   assert.equal(parseBlocker(null), null);
+});
+
+test('the station-service click waits the whole scaled step budget, never a fixed 10 s cap (D67)', () => {
+  // PQ-025 calibration ran the hunter route at --timeout-scale=2 and saw the "same stall at 2x":
+  // the step budget doubled to 120 s but the click was still capped at 10 s, so a Market that
+  // rendered in full inside the post-dock window was reported as a renderer hang.
+  assert.equal(stationServiceClickBudgetMs(60_000), 60_000);
+  assert.equal(stationServiceClickBudgetMs(120_000), 120_000);
+  assert.ok(stationServiceClickBudgetMs(120_000) > 10_000, 'a scaled budget must reach the click');
+  assert.equal(stationServiceClickBudgetMs(2500.7), 2500);
+  for (const junk of [NaN, Infinity, -1, 0, null, undefined, 'soon']) {
+    const fallback = stationServiceClickBudgetMs(junk);
+    assert.ok(Number.isFinite(fallback) && fallback > 10_000, `junk budget ${String(junk)} falls back to the service budget`);
+  }
 });
 
 test('formatBlocker keeps a stable field order and collapses multi-line detail', () => {
