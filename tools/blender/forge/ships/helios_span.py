@@ -19,6 +19,7 @@ COLORS = {
     'paint2.teal': '#16504f',  # one Helios teal box
     'stripe': '#4f6f86',
     'hazard': '#d99a2a',
+    'glow_cyan.helios': '#6ec0ff',  # freight blue-grey, lit: the cab trim ring and the spine runway lines
 }
 
 ROWS = (-4.7, 0.0, 4.7)        # container row centres (x)
@@ -43,6 +44,8 @@ def build():
     F.band(s, 'Cab', (12.9, 0, 0), (1, 0, 0), 1.3, 'glass', facing=(0.4, 0, 0.9), min_facing=0.3, inset=0.03,
            depth=-0.02)
     F.band(s, 'Cab', (9.4, 0, 0), (1, 0, 0), 0.6, 'stripe', inset=0.02, depth=0.02)
+    # Lit cab trim: a thin ring of lit freight blue on the ivory just aft of the cab's band.
+    F.band(s, 'Cab', (8.72, 0, 0), (1, 0, 0), 0.14, 'glow_cyan.helios', inset=0.01, depth=-0.02)
     F.panel(s, 'Cab', (10.6, 0.0), (1.6, 1.8), 'paint', inset=0.04, depth=0.035)
     F.windows(s, 'CabWin', 9.9, 12.4, 2.3, 0.1, 4, size=(0.45, 0.26), mirror=True)
     F.windows(s, 'CabWinHi', 10.0, 12.2, 2.14, 0.95, 3, size=(0.5, 0.3), mirror=True)
@@ -54,6 +57,10 @@ def build():
     ], material='paint', count=32)
     F.band(s, 'Spine', (0, 0, 0), (0, 1, 0), 0.4, 'stripe', facing=(0, 0, 1), min_facing=0.7, inset=0.02,
            depth=-0.02)
+    # Lit spine runway: two thin lit lines on the ivory shoulders either side of the spine stripe,
+    # the length of the beam, so the hauler reads as a lit runway between its box rows.
+    F.band(s, 'Spine', (0, 0.3, 0), (0, 1, 0), 0.12, 'glow_cyan.helios', facing=(0, 0, 1), min_facing=0.6,
+           inset=0.01, depth=-0.02, mirror=True)
 
     # Drive block aft: squarish ivory block, three bells.
     F.loft(s, 'Drive', [

@@ -59,6 +59,11 @@ def build():
         F.band(s, 'Hull', (5.2, 0, 0), (0.8, 0.6 * side, 0), 1.2, 'paint2', facing=(0, side, 0.0), min_facing=0.01)
         F.band(s, 'Hull', (4.0, 0, 0), (0.8, 0.6 * side, 0), 0.32, 'stripe', facing=(0, side, 0.0), min_facing=0.01)
     F.band(s, 'Hull', (0, 0, 0), (0, 1, 0), 0.36, 'paint2', facing=(0, 0, 1), min_facing=0.8)
+    # Lit chevron: a thin blue-white lit V on the white deck just aft of the gold edge, the same
+    # two slanted cuts, so the cutter's authority mark reads as a light before it reads as paint.
+    for side in (1, -1):
+        F.band(s, 'Hull', (3.45, 0, 0), (0.8, 0.6 * side, 0), 0.14, 'glow_cyan', facing=(0, side, 0.0),
+               min_facing=0.01, inset=0.01, depth=-0.02)
     # Waterline: a blue flank stripe with a gold pinstripe above it, the length of both flanks.
     for side in (1, -1):
         F.band(s, 'Hull', (0, 0, -0.38), (0, 0, 1), 0.46, 'paint2', facing=(0, side, 0), min_facing=0.45)
@@ -66,6 +71,8 @@ def build():
     # Blue drive section aft with a gold ring.
     F.band(s, 'Hull', (-9.2, 0, 0), (1, 0, 0), 1.2, 'paint2', inset=0.02, depth=0.03)
     F.band(s, 'Hull', (-8.4, 0, 0), (1, 0, 0), 0.22, 'stripe')
+    # Lit drive collar: a thin blue-white lit ring on the white just forward of the gold ring.
+    F.band(s, 'Hull', (-8.08, 0, 0), (1, 0, 0), 0.14, 'glow_cyan', inset=0.01, depth=-0.02)
     F.panel(s, 'Hull', (-6.4, 0.0), (2.6, 2.2), 'paint', inset=0.05, depth=0.04)
 
     # --- Bridge: a tall wheelhouse amidships, wraparound glass, blue roof.

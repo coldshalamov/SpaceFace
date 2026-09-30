@@ -121,6 +121,12 @@ shared images upload once (texture memory about 92 → 50 MB, `build_map.md` §2
 old backlog that are still older pipeline: the Asteroid Works board pieces (`place_works_*`) and the
 Wreck Cathedral. New work goes here as a numbered row before dispatch; §5 lists the bigger bets.
 
+**GFX-15 (owner, 2026-09-30): light graphics upgrades.** Every player hull now carries a lit identity
+trim (13 hulls in one sitting, zero frame cost). The same loop, in ROI order, for the 25 NPC hulls, the
+68 places, close-zoom hero detail and the sector moods is the goal prompt
+[`GRAPHICS_LIGHT_UPGRADES_GOAL.txt`](GRAPHICS_LIGHT_UPGRADES_GOAL.txt); the in-Blender design helpers
+are `tools/blender/forge/mcp_design_kit.py`.
+
 ## 5. Directions beyond the backlog (where the picture goes next)
 
 These are bigger bets, in rough value order. Each needs a short packet (outcome, done-when, files)

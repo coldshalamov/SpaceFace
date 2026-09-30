@@ -141,9 +141,9 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     dispatch('salvage:npcExtraction', payload.salvorId, payload, (c) => !jawBusy(c));
   };
   // A player-flown cutter gets the same jaw verbs through the shared mining events; cutComplete
-  // carries no miner id, so it resolves on the player entity only while a jaw is actually open.
+  // resolves on the cutting ship only while a jaw is actually open.
   const onCutComplete = (payload) => {
-    dispatch('salvage:cutComplete', PLAYER_ENTITY_ID, payload, (c) => controllerJawOpen(c));
+    dispatch('salvage:cutComplete', payload && payload.minerId, payload, (c) => controllerJawOpen(c));
   };
   const controllerJawOpen = (c) => c.clipActive?.('jawOpen') || c.clipActive?.('jawBite');
   const unsubs = [

@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "salvage_cutter_jaw",
  "sourceAssetId": "SF_WHOLESHIP_SALVAGE_CUTTER",
- "sourceGlbSha256": "a364dbb2bfd02ab796ddd96f53548186023ed9d6bf3bcb04143e357e20988b13",
+ "sourceGlbSha256": "cf1895d4b2efb5cf89af13c5d084eac56646de31506999ddd007ee9cac5b79c7",
  "fps": 60,
  "bindings": [
   {

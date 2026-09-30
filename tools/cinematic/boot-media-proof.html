@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="/"><title>SpaceFace boot media regression</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/styles/intro.css">
+<link rel="stylesheet" href="/styles/boot-instrument.css">
+<link rel="stylesheet" href="/styles/boot-visualizer.css">
+<style>
+:root{--bg:#050809;--ink:#e8e2d4;--ink-dim:#a4aaa9;--ink-mute:#8d999b}body{margin:0;background:var(--bg);color:var(--ink)}
+/* Test controls are behind the actual loading surface; no substitute loader. */
+#test-controls{position:fixed;inset:0;display:grid;place-content:center;font:16px system-ui;gap:16px}
+button{font:inherit;padding:12px 24px}.boot-wordmark{color:var(--ink)!important;text-indent:0!important;background:none!important;mask:none!important;-webkit-mask:none!important;width:auto!important;font-size:32px!important;line-height:1.2!important;aspect-ratio:auto!important}
+</style></head><body>
+<div id="test-controls"><button id="load">Continue fixture</button><button id="fail">Fail fixture</button></div>
+<div id="boot-overlay" aria-busy="true">
+<canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
+<video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline preload="none" data-boot-native="true" aria-hidden="true"></video>
+<div class="boot-scrim" aria-hidden="true"></div>
+<header class="boot-meta" aria-hidden="true"><span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span><span data-loading-clock>00:00:00.0</span></header>
+<div class="boot-lockup"><span class="boot-wordmark">SPACEFACE</span><span class="boot-label" data-loading-label>Building the opening scene</span><span class="boot-detail" data-loading-detail>Preparing the authored opening route</span>
+<div class="boot-progress-row" aria-hidden="true"><span class="boot-progress"><span data-loading-progress></span></span><span data-loading-pct>0%</span></div></div></div>
+<script type="module">
+import {getBootVisualizer} from '/src/ui/bootVisualizer.js';
+import {BOOT_MEDIA} from '/src/ui/bootMediaPlayback.js';
+import {createLoadingPresenter} from '/src/ui/loadingPresenter.js';
+import {mountBootRing} from '/src/ui/orrery/bootRing.js';
+import {createBus} from '/src/core/eventBus.js';
+const params=new URLSearchParams(location.search);
+if(params.has('quiet')) document.documentElement.classList.add('sf-reduce-flash');
+const sources=params.has('original')?{...BOOT_MEDIA,normal:BOOT_MEDIA.original,poster:'assets/cinematics/intro-visualizer.jpg'}:BOOT_MEDIA;
+const visual=getBootVisualizer(document,{sources,timeoutMs:2500});
+visual.start();
+const initial=await visual.ready;
+// Exercise the actual presenter/entry handoff with the same shared instance.
+const bus=createBus();
+const state={render:{renderer:{info:{render:{frame:10}}}}};
+const presenter=createLoadingPresenter({document,bus,state,hideDelayMs:30});
+const stage=(progress=.5)=>bus.emit('game:loadingProgress',{id:'authored-visuals',progress,ceiling:.78,label:'Building the opening scene',detail:'Preparing the authored opening route'});
+stage();
+window.__bootMediaProof={ready:true,initial,visual,presenter,bus,state,stage,ring:mountBootRing(document,document.querySelector('#boot-overlay')),
+  block(ms=5000){setTimeout(()=>{window.__blocked={start:performance.timeOrigin+performance.now()};const end=performance.now()+ms;while(performance.now()<end){};window.__blocked.end=performance.timeOrigin+performance.now();},300)},
+  hide(){presenter.hide({completed:false})},
+  fail(){bus.emit('game:startFailed',{})},
+  finish(){bus.emit('mode:changed',{mode:'flight'});setTimeout(()=>state.render.renderer.info.render.frame++,100)},
+};
+document.querySelector('#load').onclick=()=>stage(.25);
+document.querySelector('#fail').onclick=()=>window.__bootMediaProof.fail();
+if(params.has('live')) {
+ const {attachIntroSignalRemix}=await import('/src/ui/introSignalRemix.js');
+ const ctl=attachIntroSignalRemix(document.querySelector('video'));
+ if(!ctl) throw Error('Baseline live remix could not initialize');
+ ctl.resume();window.__bootMediaProof.baseline=ctl;
+}
+</script></body></html>

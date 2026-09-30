@@ -16,6 +16,7 @@ COLORS = {
     'paint2': '#1b837f',   # courier teal
     'stripe': '#1b837f',
     'hazard': '#c8901e',
+    'glow_cyan.helios': '#3ee8dc',  # courier teal, lit: the cab trim ring and the roof-spine edge lines
 }
 
 W, HT, HB, N = 1.62, 1.55, 1.25, 3.4   # bus cross-section
@@ -49,6 +50,12 @@ def build():
     # Teal cab ring behind the windshield and a teal tail ring.
     F.band(s, 'Body', (6.35, 0, 0), (1, 0, 0), 0.4, 'paint2', inset=0.02, depth=0.02)
     F.band(s, 'Body', (-7.85, 0, 0), (1, 0, 0), 0.5, 'paint2', inset=0.02, depth=0.02)
+    # Lit cab trim: a thin ring of lit courier teal on the ivory between the cab ring and the windshield.
+    F.band(s, 'Body', (6.75, 0, 0), (1, 0, 0), 0.14, 'glow_cyan.helios', inset=0.01, depth=-0.02)
+    # Lit roof-spine edges: two thin lit teal lines on the ivory roof hugging the teal spine plate,
+    # the length of the skylight strip (the top-down read).
+    F.band(s, 'Body', (0, 0.69, 0), (0, 1, 0), 0.1, 'glow_cyan.helios', facing=(0, 0, 1), min_facing=0.6,
+           inset=0.01, depth=-0.02, mirror=True, region=(('x', -6.2, 4.6),))
     # Raised roof plates fore and aft of the skylight spine.
     F.panel(s, 'Body', (5.3, 0.0), (1.4, 2.2), 'paint', inset=0.04, depth=0.03)
     F.panel(s, 'Body', (-6.85, 0.0), (1.3, 2.3), 'dark', inset=0.04, depth=-0.06)
