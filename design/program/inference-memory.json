@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-29",
+  "updated": "2026-09-30",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,32 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "vesta-named-hauler-contact",
-      "date": "2026-09-22",
-      "wf": "WF-01",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Vesta traffic includes named hauler Tann of the Slag Run (lane_tann_slag_carrier)",
-      "fingerprint": "verb=traffic,subject=hauler,sector=vesta,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "80086277e",
-      "verification": "focused_green"
-    },
-    {
-      "id": "shield-down-floater-removed",
-      "date": "2026-09-22",
-      "wf": "WF-13",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "combat:damage does not spawn SHIELD DOWN floater over combatants",
-      "fingerprint": "verb=combat,subject=floating-text,telemetry=shield,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "244bb1d40",
-      "verification": "focused_green"
-    },
     {
       "id": "tool-01-denied-latch-tick",
       "date": "2026-09-22",
@@ -1632,6 +1606,34 @@
       "integration": "live",
       "commit": "d1c8e10e7",
       "verification": "focused_green"
+    },
+    {
+      "id": "PIC-15",
+      "date": "2026-09-30",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Point-defence interceptions publish their true point and produce one designed spark plus one authored positional snap.",
+      "fingerprint": "verb=intercept,subject=hostile-projectile,sector=all,layer=presentation,domain=vfx-audio",
+      "references": [],
+      "integration": "live",
+      "commit": "3a68a46bb4aa00036916e25a1ec2dceae67bb25a",
+      "verification": "focused_green",
+      "evidence": "test/inference-pds-intercept-feedback.test.mjs"
+    },
+    {
+      "id": "VERB-15",
+      "date": "2026-09-30",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Gameplay exposes velocity vectoring On/Off and the profile preserves the chosen boolean while defaulting older profiles On.",
+      "fingerprint": "verb=configure,subject=flight-assist,sector=all,layer=settings,domain=ui-controls",
+      "references": [],
+      "integration": "live",
+      "commit": "5d4dcc440aef6a35692e71d0bbdebda7de60d2e9",
+      "verification": "focused_green",
+      "evidence": "test/inference-velocity-vectoring-setting.test.mjs"
     }
   ],
   "knownDefects": [

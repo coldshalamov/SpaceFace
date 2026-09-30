@@ -17,6 +17,7 @@ adjacent rack/Shipworks/economy tests (35 cases), and real Shipworks bench
 cancel/confirm/stale interactions at desktop and mobile. Bench-proven; adventure route
 not played. No new entities or per-frame scans.
 Packet: [NXB-009](./design/program/next-wave-2026-09-28/build/NXB-009.md).
+Landed in `1651c4211`.
 
 ### NXB-027 — one freight settlement (2026-09-30)
 
@@ -28,6 +29,7 @@ adjacent economy, convoy and station-growth checks (149 cases). Delivery boundar
 through live simulation owners; browser route not exercised. Receipt metadata grows with
 accepted transactions; no new entity scans.
 Packet: [NXB-027](./design/program/next-wave-2026-09-28/build/NXB-027.md).
+Landed in `e83b8059f`.
 
 ### NXB-033 — refinery interruption (2026-09-30)
 
@@ -37,6 +39,7 @@ material, partial progress, stores and upkeep survive interruption and reload. P
 claim-specializations and next-wave-nxi-130 owner checks. Player route exercised through
 live owner APIs; browser route not exercised. No new entities or per-frame universe scans.
 Packet: [NXB-033](./design/program/next-wave-2026-09-28/build/NXB-033.md).
+Landed in `d4c903857`.
 
 ### PQ-206.01 — swarm first-pass combat value (2026-09-20)
 
