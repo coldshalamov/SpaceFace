@@ -1647,6 +1647,19 @@
       "integration": "live",
       "commit": "b876631d7a11b05447f29d512dc8015d9aa7fc4a",
       "verification": "focused_green"
+    },
+    {
+      "id": "VERB-16",
+      "date": "2026-09-30",
+      "wf": "WF-14",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "rail model exposes cruiseChargeProgress 0->1 while charging and engaged state after; pressure log capped at 256",
+      "fingerprint": "verb=read,subject=cruise-charge,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "0f6cd1936b366e0098b1d0c4b7a59196161847c9",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
