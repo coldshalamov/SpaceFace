@@ -2477,6 +2477,70 @@ re-shoots the newest head, restarts on digest drift; wins → `scratch/budget-lo
 lands, copy `budgets.json` to main, commit, push immediately. Headed is a hard integrity gate —
 headless numbers are not evidence.
 
+#### Checkpoint 2 — cluster bisected, disk recovered (2026-09-29, late)
+
+**Environment — RESOLVED:** host disk hit 6.7 GB free (100%), which broke `sim-golden-diff`'s
+reference-tree tar export. Recovered to ~83 GB by removing 15 dead worktrees (46 GB under
+`.worktrees/` plus stale detached checkouts under `Documents/GitHub/` and `%TEMP%`). Dirty
+dead-worktree diffs salvaged to `scratch/salvage/*.patch` before removal (`skin-scope-fix`,
+`sf-clean-check`, `sf-head-verify`, `sf-d75-preperf`, `sf-sparse`). Preserved live worktrees:
+`budget-shoot` (race loop), `ci-repro`, `adjudicate-phys`, `dock-probe` — the last two had
+writes minutes old at checkpoint; do not touch.
+
+**Landed and pushed this checkpoint:**
+- `099214d4c` — probe teardown: bounded `browser.close()`/`server.close()` (10 s race) +
+  connection teardown + explicit exit in `probe-sector-arrival-admission.mjs` and the shared
+  `visualProbeCleanup` finalizer. A printed PASS can no longer hang into SIGKILL. Verified:
+  probe exits cleanly on PASS now.
+- `2b6ee9a4e` — B11 re-quote: `test/hitstun-curve.test.mjs` quotes the contract's
+  owner-ruling sentence verbatim (4/4 PASS).
+
+**Physics-drift cluster — bisected and adjudicated (do not re-bisect):**
+- `check-sg06-formation`: culprit isolated to Package D `1639c221e` (tunnelling/overlap
+  prevention). Separation 140.716 pre-package and identical through Package C `954a0ab8c`
+  (innocent) → 122.652 at Package D, stable through Package F. Qualitative contract intact:
+  no ram authorization, hull contact ~46 — **sanctioned drift, not a logic break**. The
+  physics lane's in-tree fix derives floor 80 from the hull+clearance contract with a
+  scatter sweep (86–141 across builds); that hunk is theirs and uncommitted — leave it.
+- `test/sg02-coincident-spawn`: a blind +2.5 ladder nudge placed pods on the wreck capsule's
+  spine axis → degenerate ~10⁶-unit Rapier manifold → 2.69-M-WU teleport. Root guard
+  `cc93d8461` (Sep 26) plus Package F's spine-aware ladder already fix the teleport;
+  remaining fails were stale expectations (+2.5 → +7.5, the first rung clearing the ±6.6
+  spine window) and a ghost test written before Package-D collision groups (pickups ghost
+  vs craft but intentionally pair vs debris/solids). The physics lane's dirty-tree version
+  supersedes — leave their hunk.
+- `check-47a-tactics` `surrender_evidence`: **BEHAVIORAL, not drift.** Instrumented with an
+  env-gated clause dump (`SF_PRED_DEBUG`, exists only in `ci-repro`, not committed): reel
+  fires, tether intact, no sling/cut — the failing clause is `actorDistance`.
+  `official_recovery_tug` approaches (500,-100 → 815,95) then stalls at 313 WU from the
+  spindle vs the required 180. The tug's `tether_control_raider` doctrine hold-short
+  equilibrium moved under the stiffer contacts. **Owned by a wave agent** — fix the tug's
+  approach behavior, never the predicate.
+- `sling_evidence` fails on the same `actorDistance` clause family — same root suspect.
+
+**Open items — each owned by a dispatched wave agent (fresh worktree writes at checkpoint):**
+- soak encounters `got 0` + `first layered sync should import fixed bodies once` (spawn path)
+- `check-pq146-stunt-proofs`: clothesline trajectory + two save-lineage fails
+- `check-shipworks-dock-composition`: pelican fallback hull clips dock interior at yaw 45/90
+  (14 raycast hits)
+- `check-phase0-slice-contract`: 4 vs 7 SG-08 cue rows
+- `check-k1`: `faction_fulfillment drive-disabled` refail
+- `check-station-tabs`: market tab pointer response absent
+- 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
+  hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,
+  `1639c221e`, `b7b499263`, `954a0ab8c`). Do NOT pin-update without that ruling.
+
+**Foreign in-flight in the main tree — do not sweep into commits:**
+- Forge-fleet rebuild: every `tools/blender/forge/ships/place_*.py` + `parts_manifest` +
+  place GLBs dirty (graphics/dock-probe lane).
+- `helios-trade-hub` render package has `dynamicGroups` — `check-sector-arrival-admission`
+  fails on THIS dirty tree (`station id 215` unpublished) but passes on the clean CI tree;
+  it is the graphics lane's uncommitted Packet C, not a regression.
+- `assets/incubator/wreck_aftermath_pack/` dirty — graphics lane.
+
+**Baseline treadmill:** race loop alive at attempt 11 (`82698b7d9`); digest drift from live
+lanes keeps killing attempts ~5 min in. Wins whenever a ~40-min quiet gap opens.
+
 ### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
 
 Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
