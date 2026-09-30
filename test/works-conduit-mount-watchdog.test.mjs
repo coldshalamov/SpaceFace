@@ -352,3 +352,92 @@ test('the renderer wires the watchdog events to an on-glass fault strip', () => 
   assert.match(prepareBody, /dressAuthoredConduitComponent\(prepared/u,
     'a freshly mounted run is dressed at mount time, never left at default emissive');
 });
+
+test('D36 — a worker beat drives the watchdog when both in-page schedulers starve', async () => {
+  // The §7 stall signature: rAF and setTimeout both dead for 60s+ while ordinary tasks
+  // (CDP evaluate) kept running. The worker heartbeat posts 'message' events — ordinary
+  // tasks — so the deadline still enforces through the same starvation that froze the
+  // page's own schedulers. Fake the DOM pieces Node lacks; the lifecycle's timer and
+  // frame drivers stay armed but are never fired here on purpose.
+  const events = [];
+  const listenerSets = [];
+  const terminated = [];
+  class FakeWorker {
+    constructor() {
+      this.listeners = new Set();
+      listenerSets.push(this.listeners);
+    }
+    addEventListener(type, fn) { if (type === 'message') this.listeners.add(fn); }
+    removeEventListener(type, fn) { if (type === 'message') this.listeners.delete(fn); }
+    beat() { for (const fn of this.listeners) fn({ data: 0 }); }
+    terminate() { terminated.push(this); }
+  }
+  const spawned = [];
+  const PriorWorker = globalThis.Worker;
+  globalThis.Worker = class extends FakeWorker { constructor(url) { super(url); spawned.push(this); } };
+  try {
+    let t = 0;
+    const clock = manualScheduler(); // armed but NEVER fired — the starved setTimeout queue
+    const lifecycle = createConduitMountLifecycle(baseOptions({
+      acquireTemplates: () => new Promise(() => {}), // starved acquisition
+      scheduleWatchdog: clock.schedule,
+      watchdogTimeoutMs: 1000,
+      watchdogMaxRetries: 2,
+      now: () => t,
+      onWatchdogEvent: (kind) => events.push(kind),
+    }));
+
+    void lifecycle.rebuild([{ assetId: 'power-straight' }]);
+    assert.equal(lifecycle.stats().phase, 'loading');
+    assert.equal(spawned.length, 1, 'arming the watchdog spawns the shared beat worker');
+
+    // Timers and frames stay dead for the whole budget; only worker beats arrive. Each
+    // retry re-arms the watchdog — the disarm/arm cycle swaps in a fresh worker, so always
+    // beat the CURRENT one (the same ObjectURL worker a browser would keep alive anyway).
+    const beat = () => spawned[spawned.length - 1].beat();
+    t = 1001;
+    beat();
+    assert.deepEqual(events, ['retry'], 'the first beat past the deadline fires the retry');
+    t = 2002;
+    beat();
+    assert.deepEqual(events, ['retry', 'retry']);
+    t = 3003;
+    beat();
+    assert.deepEqual(events, ['retry', 'retry', 'failed'],
+      'the worker driver alone exhausts the bounded budget and fails loudly');
+    assert.equal(lifecycle.stats().phase, 'failed');
+    assert.equal(terminated.length, spawned.length,
+      'every spawned worker is terminated once its watchdog disarms');
+  } finally {
+    globalThis.Worker = PriorWorker;
+  }
+});
+
+test('D36 — the worker driver disarms alongside the timer on a completed mount', async () => {
+  const spawned = [];
+  class FakeWorker {
+    constructor() { this.listeners = new Set(); spawned.push(this); }
+    addEventListener(type, fn) { if (type === 'message') this.listeners.add(fn); }
+    removeEventListener(type, fn) { if (type === 'message') this.listeners.delete(fn); }
+    terminate() { this.terminated = true; }
+  }
+  const PriorWorker = globalThis.Worker;
+  globalThis.Worker = FakeWorker;
+  try {
+    const deferreds = [];
+    const lifecycle = createConduitMountLifecycle(baseOptions({
+      acquireTemplates: () => new Promise((resolve) => deferreds.push(resolve)),
+      scheduleWatchdog: manualScheduler().schedule,
+      watchdogTimeoutMs: 1000,
+    }));
+    void lifecycle.rebuild([{ assetId: 'lane-end' }]);
+    assert.equal(spawned.length, 1);
+    deferreds.pop()({ ids: ['lane-end'], instantiate: (id) => ({ id }), release: () => true });
+    await flush();
+    assert.equal(lifecycle.stats().phase, 'authored');
+    assert.equal(spawned[0].terminated, true,
+      'a completed attempt releases the beat worker with its timer');
+  } finally {
+    globalThis.Worker = PriorWorker;
+  }
+});

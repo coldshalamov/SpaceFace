@@ -994,10 +994,6 @@ export const economy = {
       if (!p) return;
       this.applyStockPressure(p.stationId, p.commodityId, p.side, p.qty);
     });
-    bus.on('miningDrone:sellOre', (p) => {
-      if (!p) return;
-      this.applyStockPressure(p.stationId, p.commodityId || p.good, 'sell', p.qty);
-    });
     bus.on('economy:applyTradePressure', (p) => { // automation pressure: nudge stock without crediting
       if (!p) return; const side = (p.vol || 0) >= 0 ? 'sell' : 'buy';
       this.applyStockPressure(p.stationId, p.good || p.commodityId, side, Math.abs(p.vol || 0));

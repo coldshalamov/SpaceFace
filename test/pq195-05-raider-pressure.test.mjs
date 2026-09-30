@@ -145,6 +145,15 @@ test('(b) each raider is committed to an approach on the tug anchored at the loa
   const load = t.load();
   const player = state => state.entities.get(state.playerId);
 
+  // The tested beat is a raid on the assembly the tug is hauling: station the tug on the
+  // load's shoulder. Left at the sector entry point (~2.5k WU out), the raiders' correct
+  // convergence on the anchor never registers on a distance-to-tug metric — the reading
+  // then depends on which bearing the seeded spawn ring lands each hull on, not on
+  // whether the approach works.
+  const tug = player(t.state);
+  tug.pos.x = load.pos.x + 120;
+  tug.pos.z = load.pos.z;
+
   const raiders = t.raiders();
   assert.ok(raiders.length >= 1);
   for (const e of raiders) {

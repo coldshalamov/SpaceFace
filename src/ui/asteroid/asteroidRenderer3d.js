@@ -190,6 +190,44 @@ const defaultScheduleWatchdog = (fire, ms) => {
   return () => clearTimeout(id);
 };
 
+// Third watchdog driver, off-domain (D36). A host-contended page can starve BOTH in-page
+// schedulers at once — rAF frames and the setTimeout queue — for the full settle window,
+// which leaves any watchdog driven only by those two permanently armed but never run.
+// A dedicated Worker runs setInterval on its own thread and posts a beat; 'message' events
+// are ordinary main-thread tasks, the same queue CDP evaluate kept answering while the
+// page's own schedulers sat frozen (measured in the §7 stalls). If even posted tasks stop
+// running, nothing in-page can recover the mount — this covers exactly the survivable case.
+// One shared worker, subscriber-counted, terminated when no watchdog is armed. Absent under
+// Node (no DOM Worker) — tests keep the timer and frame drivers.
+const WATCHDOG_WORKER_BEAT_MS = 1000;
+const WATCHDOG_WORKER_SOURCE = `setInterval(() => postMessage(0), ${WATCHDOG_WORKER_BEAT_MS});`;
+let watchdogWorker = null;
+const watchdogWorkerListeners = new Set();
+const watchdogWorkerSupported = () => typeof Worker === 'function'
+  && typeof Blob === 'function'
+  && typeof URL === 'function'
+  && typeof URL.createObjectURL === 'function';
+const armWorkerDriver = (tick) => {
+  if (!watchdogWorkerSupported()) return null;
+  if (!watchdogWorker) {
+    const url = URL.createObjectURL(new Blob([WATCHDOG_WORKER_SOURCE], { type: 'text/javascript' }));
+    watchdogWorker = new Worker(url);
+    URL.revokeObjectURL(url);
+  }
+  watchdogWorker.addEventListener('message', tick);
+  watchdogWorkerListeners.add(tick);
+  return tick;
+};
+const disarmWorkerDriver = (tick) => {
+  if (!tick || !watchdogWorker) return;
+  watchdogWorker.removeEventListener('message', tick);
+  watchdogWorkerListeners.delete(tick);
+  if (watchdogWorkerListeners.size === 0) {
+    watchdogWorker.terminate();
+    watchdogWorker = null;
+  }
+};
+
 // Atomic authored-conduit transaction.  A generation acquires a deduplicated template set first,
 // prepares every cell off-scene, and only then mounts the complete set. A missing package fails
 // closed: accepted authored art is never silently co-rendered with the removed procedural bodies.
@@ -230,6 +268,7 @@ export function createConduitMountLifecycle({
   const disarmWatchdog = () => {
     if (!watchdog) return;
     watchdog.cancel();
+    if (watchdog.workerTick) disarmWorkerDriver(watchdog.workerTick);
     watchdog = null;
   };
   const disarmWatchdogFor = (attempt) => {
@@ -241,6 +280,7 @@ export function createConduitMountLifecycle({
       attempt,
       deadline: now() + watchdogTimeoutMs,
       cancel: scheduleWatchdog(() => fireWatchdog(attempt), watchdogTimeoutMs),
+      workerTick: armWorkerDriver(tick),
     };
   };
   // The frame-loop half of the watchdog. On a contended host the page's setTimeout queue itself

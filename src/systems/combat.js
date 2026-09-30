@@ -693,12 +693,17 @@ export const combat = {
       ? lethal.factionLawful
       : !!(d.ai && d.ai.lawful);
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
+    // lootShards owns the physical kill burst (chips + materials) for player-authored hostile
+    // kills. Granting bounty/loot here, spawning authored pickups, or emitting a second loot:drop
+    // would pay the same hull twice (AC-01: death does not grant; collection does).
+    const shardsOwnKillBurst = massline2Flag('lootShards') && authoredRewardEligible && targetHostileToPlayer;
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
       // bountyCr is the CAMPAIGN payout figure and drives the "+N CR" kill toast. A Survival
       // body pays no campaign credits, so publishing its archetype bounty here would promise the
-      // player money they never receive; the run chip is what they actually collect.
-      factionId: t.factionId, factionLawful, bountyCr: (missionOwns || runOwns) ? 0 : (d.bountyCr || 0),
+      // player money they never receive; the run chip is what they actually collect. A
+      // shard-owned hostile kill is the same case — the collectible chip carries the money.
+      factionId: t.factionId, factionLawful, bountyCr: (missionOwns || runOwns || shardsOwnKillBurst) ? 0 : (d.bountyCr || 0),
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
       targetHostileToPlayer,
       baseKind: d.baseKind || null,
@@ -725,10 +730,6 @@ export const combat = {
     // player-scoped by construction (player hit, player death, respawn) and correctly send none.
     bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
-    // lootShards owns the physical kill burst (chips + materials) for player-authored hostile
-    // kills. Granting bounty/loot here, spawning authored pickups, or emitting a second loot:drop
-    // would pay the same hull twice (AC-01: death does not grant; collection does).
-    const shardsOwnKillBurst = massline2Flag('lootShards') && authoredRewardEligible && targetHostileToPlayer;
     if (bounty > 0 && authoredRewardEligible && !shardsOwnKillBurst) {
       bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
     }

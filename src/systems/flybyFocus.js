@@ -311,14 +311,6 @@ export const flybyFocus = {
     resetOn('game:started', 'new-game');
     resetOn('dock:docked', 'docked');
     resetOn('player:death', 'death');
-    if (this.bus && typeof this.bus.on === 'function') {
-      this._unsubs.push(this.bus.on('flybyFocus:cancel', (payload) => {
-        const reason = payload && typeof payload.reason === 'string' && payload.reason
-          ? payload.reason
-          : 'cancelled';
-        this._finish(reason, false, true);
-      }));
-    }
   },
 
   /** External wake when a closing hostile is stamped without a fresh spawn index bump. */
@@ -403,8 +395,8 @@ export const flybyFocus = {
       return;
     }
 
-    // The cancel event existed; nothing on the live input path emitted it. Boost or fire is
-    // the player taking the stick back — release the 3s slow-mo lease without wiping cooldown.
+    // Boost or fire is the player taking the stick back — release the 3s slow-mo lease
+    // without wiping cooldown.
     if (focus.active && st.input && (st.input.boost || st.input.fire)) {
       this._finish('cancelled', false, true);
     }
