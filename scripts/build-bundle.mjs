@@ -77,9 +77,10 @@ async function build() {
   const screens = await screenEntries();
   // loadingTerminalArt is imported by an inline module script in index.html, so it needs
   // its own bundle entry — the HTML rewrite below repoints that import at the chunk.
-  const entryPoints = [join(SRC, 'main.js'), join(SRC, 'ui/loadingTerminalArt.js')];
+  const entryPoints = [join(SRC, 'main.js'), join(SRC, 'ui/loadingTerminalArt.js'),
+    join(SRC, 'ui/introSignalRemixBoot.js')];
 
-  console.log('[bundle] entry points:', entryPoints.length, '(main.js + loadingTerminalArt; ' + screens.length + ' screens via dynamic imports)');
+  console.log('[bundle] entry points:', entryPoints.length, '(main.js + loadingTerminalArt + optional intro optics; ' + screens.length + ' screens via dynamic imports)');
   await cleanOutputDir();
 
   const result = await esbuild.build({
@@ -240,14 +241,17 @@ async function buildBundledHtml() {
     // point the module script at the bundled output
     .replace('<script type="module" src="./src/main.js"></script>', '<script type="module" src="./main.js"></script>')
     // the inline module imports the boot terminal art from src/; repoint it at its chunk
-    .replace(/from\s+(['"])\.\/src\/ui\/loadingTerminalArt\.js\1/, "from $1./ui/loadingTerminalArt.js$1");
+    .replace(/from\s+(['"])\.\/src\/ui\/loadingTerminalArt\.js\1/, "from $1./ui/loadingTerminalArt.js$1")
+    // Optional optical entry is imported by the same inline script, not main.js.
+    .replace(/import\((['"])\.\/src\/ui\/introSignalRemixBoot\.js\1\)/, "import($1./ui/introSignalRemixBoot.js$1)");
   // A drifted index.html must fail the build here — a silently missed rewrite ships a
   // bundle whose script tag still points at the raw src/ tree and 404s at packaged boot.
   // Assert the rewrites actually landed (not just that no leftovers survive): if the
   // entry tag drifts so the pattern no longer matches, the replace no-ops and only
   // the presence check below can catch it.
   if (!html.includes('<script type="module" src="./main.js"></script>')
-    || !html.includes('./ui/loadingTerminalArt.js')) {
+    || !html.includes('./ui/loadingTerminalArt.js')
+    || !html.includes('./ui/introSignalRemixBoot.js')) {
     throw new Error('index.html rewrite produced no bundled entry reference; update buildBundledHtml');
   }
   if (/["'(]\s*\.\/src\//.test(html) || /from\s+['"]\.\/src\//.test(html)) {

@@ -7,7 +7,8 @@ on:
       - 'src/ui/introSignalRemixBoot.js'
       - 'src/ui/loadingSignalTableaux.js'
       - 'tools/cinematic/signal-remix*'
-      - 'test/intro-signal-remix.test.mjs'
+      - 'test/intro-signal-remix*.test.mjs'
+      - 'scripts/build-bundle.mjs'
       - 'assets/cinematics/intro-visualizer.*'
   workflow_dispatch:
 permissions:
@@ -29,7 +30,8 @@ jobs:
             /src/ui/loadingSignalTableaux.js
             /src/ui/loadingTerminalArt.js
             /tools/cinematic/signal-remix*
-            /test/intro-signal-remix.test.mjs
+            /test/intro-signal-remix*.test.mjs
+            /scripts/build-bundle.mjs
             /assets/cinematics/intro-visualizer.mp4
             /assets/cinematics/intro-visualizer.jpg
             /styles/intro.css
@@ -44,7 +46,7 @@ jobs:
           cp assets/cinematics/intro-visualizer.mp4 assets/cinematics/intro-visualizer.jpg .intro-review/assets/cinematics/
           git rev-parse HEAD > .intro-review/SOURCE_COMMIT.txt
       - name: Focused unit tests
-        run: node --test test/intro-signal-remix.test.mjs
+        run: node --test test/intro-signal-remix*.test.mjs
       - name: Browser review with the shipped H.264 movie
         run: |
           npm install --prefix "$RUNNER_TEMP/intro-tools" --no-save --ignore-scripts playwright@1.56.1
@@ -52,6 +54,7 @@ jobs:
           python3 tools/cinematic/signal-remix-server.py --port 8123 > /tmp/intro-server.log 2>&1 &
           INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
       - name: Exact-frame motion preview (offline, not a performance benchmark)
+        if: github.event_name == 'workflow_dispatch'
         run: INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-bake-preview.mjs --out .intro-review
       - uses: actions/upload-artifact@v4
         if: always()
