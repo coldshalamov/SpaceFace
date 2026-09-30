@@ -19,3 +19,4 @@ and shared low-level contracts.
   shared with measured skins. Bump `physicsBody.revision` to rebuild a mutated body spec.
 - Core changes are broad: run focused tests, sim comparison, and the relevant launch/perf floor.
 - Production calendar owners run at their authored phases on every fixed tick, including catch-up; `partitionUpdateSystems(..., { state, bus }).updateDt` supplies their elapsed simulation time. Table/near/glass keep fixed dt, keepalive is separate, and New Game/save restoration reset calendar baselines. Regressions: `test/sim-clock-catchup.test.mjs` and `test/calendar-elapsed-time.test.mjs`.
+- `periodicClock.js` bounds due work per invocation without discarding valid accumulated time. Imported impossible clocks are repaired separately from runtime-corruption rejection. Focused proof: `node --test test/numeric-update-liveness.test.mjs test/calendar-elapsed-time.test.mjs`; do not replace carried backlog with a blanket elapsed-time clamp.

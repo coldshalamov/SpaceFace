@@ -26,6 +26,7 @@
 // owner — it arms only across the telegraphed commit (field_spool -> anchor_hold) and dies on
 // the recovery, so every bite is preceded by a visible wind-up and a full re-approach.
 import { specialistPlanByEnemyId } from './specialistPlans.js';
+import { wrapAngle } from './contracts.js';
 
 const CUT_COOLDOWN_TICKS = 90;
 const DISRUPT_COOLDOWN_TICKS = 120;
@@ -119,10 +120,7 @@ function bearingAt(from, anchor) {
 }
 
 function angleDelta(a, b) {
-  let d = a - b;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
+  return wrapAngle(a - b);
 }
 
 /** SF-052 ledger: is another specialist's committed pass holding the instant? */

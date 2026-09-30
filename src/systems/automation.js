@@ -26,6 +26,7 @@ import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
 import { TECH_NODES } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { queryNearbyEntities, hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
@@ -1061,8 +1062,10 @@ export const automation = {
     a.accumulators = a.accumulators || {};
     a.accumulators.offscreenNetworkS = Math.max(0,
       (Number(a.accumulators.offscreenNetworkS) || 0) + dt);
-    while (a.accumulators.offscreenNetworkS + 1e-9 >= OFFSCREEN_NETWORK_INTERVAL_S) {
-      a.accumulators.offscreenNetworkS -= OFFSCREEN_NETWORK_INTERVAL_S;
+    const due = consumePeriodicClock(
+      a.accumulators.offscreenNetworkS, 0, OFFSCREEN_NETWORK_INTERVAL_S, { epsilon: 1e-9 });
+    a.accumulators.offscreenNetworkS = due.accumulator;
+    for (let i = 0; i < due.steps; i++) {
       this._settleOffscreenNetwork(OFFSCREEN_NETWORK_INTERVAL_S, a);
     }
   },
@@ -1071,7 +1074,12 @@ export const automation = {
     const a = this.state.automation;
     if (!a) return;
     a.accumulators = a.accumulators || {};
-    const pending = Math.max(0, Number(a.accumulators.offscreenNetworkS) || 0);
+    const rawPending = a.accumulators.offscreenNetworkS;
+    const pending = normalizePeriodicAccumulator(rawPending, OFFSCREEN_NETWORK_INTERVAL_S);
+    if (pending !== rawPending) {
+      console.warn('[automation] field accumulators.offscreenNetworkS was not a usable pending clock; repaired',
+        rawPending);
+    }
     if (pending > 1e-9) {
       this._settleOffscreenNetwork(pending, a, exitingSectorId || undefined);
     }
@@ -1593,16 +1601,14 @@ export const automation = {
 
     // periodic autosell (every 60s) — banks the surplus through the capped funnel.
     this._outpostSellAccum += dt;
-    while (this._outpostSellAccum >= OUTPOST_AUTOSELL_INTERVAL_S) {
-      this._outpostSellAccum -= OUTPOST_AUTOSELL_INTERVAL_S;
-      this._outpostAutosell(a);
-    }
+    const sellDue = consumePeriodicClock(this._outpostSellAccum, 0, OUTPOST_AUTOSELL_INTERVAL_S);
+    this._outpostSellAccum = sellDue.accumulator;
+    for (let i = 0; i < sellDue.steps; i++) this._outpostAutosell(a);
     // periodic raid roll (every 600s).
     this._outpostRaidAccum += dt;
-    while (this._outpostRaidAccum >= OUTPOST_RAID_INTERVAL_S) {
-      this._outpostRaidAccum -= OUTPOST_RAID_INTERVAL_S;
-      this._outpostRaids(a);
-    }
+    const raidDue = consumePeriodicClock(this._outpostRaidAccum, 0, OUTPOST_RAID_INTERVAL_S);
+    this._outpostRaidAccum = raidDue.accumulator;
+    for (let i = 0; i < raidDue.steps; i++) this._outpostRaids(a);
   },
 
   _outpostRatePerMin(o, def, outRate) {
@@ -2841,10 +2847,19 @@ export const automation = {
     }
     if (a.fleetCap == null) a.fleetCap = 0;
     a.balance = Object.assign({}, AUTO_BALANCE, a.balance || {});
-    a.accumulators = a.accumulators || { creditBuffer: 0, upkeepDebt: 0 };
+    a.accumulators = { ...(a.accumulators || { creditBuffer: 0, upkeepDebt: 0 }) };
     if (a.accumulators.upkeepDebt == null) a.accumulators.upkeepDebt = 0;
     if (a.accumulators.creditBuffer == null) a.accumulators.creditBuffer = 0;
     if (a.accumulators.offscreenNetworkS == null) a.accumulators.offscreenNetworkS = 0;
+    else {
+      const normalized = normalizePeriodicAccumulator(
+        a.accumulators.offscreenNetworkS, OFFSCREEN_NETWORK_INTERVAL_S);
+      if (normalized !== a.accumulators.offscreenNetworkS) {
+        console.warn('[automation] save field accumulators.offscreenNetworkS was not a usable pending clock; repaired',
+          a.accumulators.offscreenNetworkS);
+        a.accumulators.offscreenNetworkS = normalized;
+      }
+    }
     a.meta = a.meta || {};
     if (a.meta.lastTickTime == null) a.meta.lastTickTime = 0;
     if (a.meta.totalPassiveEarnedLifetime == null) a.meta.totalPassiveEarnedLifetime = 0;

@@ -233,7 +233,8 @@ export function finiteInt(value, fallback = 0) {
 }
 
 export function wrapAngle(angle) {
-  let value = angle;
+  let value = Number.isFinite(angle) ? angle : 0;
+  if (Math.abs(value) > Math.PI * 3) value %= Math.PI * 2;
   while (value > Math.PI) value -= Math.PI * 2;
   while (value < -Math.PI) value += Math.PI * 2;
   return value;

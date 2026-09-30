@@ -48,6 +48,7 @@ import {
 } from '../data/techVerbLadder.js';
 import { RECIPES } from '../data/mining.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
+import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
@@ -1062,10 +1063,9 @@ export const economy = {
     clock.accumulator += dt;
     // spontaneous event scheduler (game-wide Poisson-ish: ~1 per EVENT_INTERVAL_S)
     this._eventAccumulator += dt;
-    while (clock.accumulator >= ECON_TICK_S) {
-      clock.accumulator -= ECON_TICK_S;
-      this.econTick(ECON_TICK_S, state);
-    }
+    const econDue = consumePeriodicClock(clock.accumulator, 0, ECON_TICK_S);
+    clock.accumulator = econDue.accumulator;
+    for (let i = 0; i < econDue.steps; i++) this.econTick(ECON_TICK_S, state);
   },
 
   econTick(tickDt, state) {
@@ -1078,10 +1078,9 @@ export const economy = {
     this.ageEvents(state);
 
     // 2) maybe spawn a spontaneous event (rate-limited by elapsed real seconds)
-    while (this._eventAccumulator >= EVENT_INTERVAL_S) {
-      this._eventAccumulator -= EVENT_INTERVAL_S;
-      this.rollSpontaneousEvent(state);
-    }
+    const eventDue = consumePeriodicClock(this._eventAccumulator, 0, EVENT_INTERVAL_S);
+    this._eventAccumulator = eventDue.accumulator;
+    for (let i = 0; i < eventDue.steps; i++) this.rollSpontaneousEvent(state);
 
     // Authored regional production/consumption enters through the existing stock authority.
     // Recipe units are per simulated minute, so the identity pressure stays gentle and bounded.
@@ -3400,7 +3399,13 @@ export const economy = {
     econ.econEvents = Array.isArray(data.econEvents)
       ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean)
       : [];
-    econ.econClock = data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
+    econ.econClock = { ...(data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }) };
+    const rawEconAccum = econ.econClock.accumulator;
+    econ.econClock.accumulator = normalizePeriodicAccumulator(rawEconAccum, ECON_TICK_S);
+    if (rawEconAccum != null && econ.econClock.accumulator !== rawEconAccum) {
+      console.warn('[economy] save field econClock.accumulator was not a usable pending clock; repaired',
+        rawEconAccum);
+    }
     econ.marketIntel = data.marketIntel || {};
     if (Array.isArray(data.appliedSalvageIntakeReceipts)) {
       econ.appliedSalvageIntakeReceipts = data.appliedSalvageIntakeReceipts;
@@ -3416,7 +3421,12 @@ export const economy = {
       ? data.rngSeed >>> 0
       : hash32(this.state.meta && this.state.meta.seed, 'economy');
     this._nextEventId = data.nextEventId || 1;
-    this._eventAccumulator = Number.isFinite(data.eventAccumulator) ? data.eventAccumulator : 0;
+    const rawEventAccum = data.eventAccumulator;
+    this._eventAccumulator = normalizePeriodicAccumulator(rawEventAccum, EVENT_INTERVAL_S);
+    if (rawEventAccum != null && this._eventAccumulator !== rawEventAccum) {
+      console.warn('[economy] save field eventAccumulator was not a usable pending clock; repaired',
+        rawEventAccum);
+    }
     if (data.committedIntents && typeof data.committedIntents === 'object'
       && !Array.isArray(data.committedIntents) && Object.keys(data.committedIntents).length) {
       econ.committedIntents = cloneSaveTree(data.committedIntents);
