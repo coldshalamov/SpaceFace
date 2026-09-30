@@ -228,7 +228,10 @@ export async function buildRuntimeTableForRenderGlb(renderGlbPath, options = {})
 export async function sealMotionBankRef(pilot, metadata, { repoRoot } = {}) {
   const motionNodes = (metadata.nodes || [])
     .filter((node) => String(node.nodeName || '').startsWith('MOTION_'));
-  const bankPath = join(repoRoot, 'assets/ships/motions', `${pilot.key}.motion.json`);
+  // Motion banks are per-ship: LOD pilots of one hull share the base ship's bank (the same
+  // MOTION_ pivots and rig bindings exist in every LOD of the model).
+  const bankKey = pilot.key.replace(/-lod\d+$/, '');
+  const bankPath = join(repoRoot, 'assets/ships/motions', `${bankKey}.motion.json`);
   if (motionNodes.length === 0) return null;
   if (!existsSync(bankPath)) {
     throw new Error(

@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ca73c97d2976f75703e878b3bea4fa027105f2fddda13d38d5456ecb05dac41f",
+  "contentHash": "502a6fc3feb9c894ec8b37fde485dcfa3d6702ae175f426a3c22ceca328796c9",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-armor-port-armor.dynamic",
@@ -2658,6 +2658,205 @@
       ]
     },
     {
+      "id": "sf.render.kestrel-lod1.mesh.motion-kestrel-dish",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        2.8499999046325684,
+        0.8999999761581421,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_DISH",
+      "nodeName": "MOTION_KESTREL_DISH",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.kestrel-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        2.8499999046325684,
+        0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.motion-kestrel-dish-feed",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3599998950958252,
+        0.7300000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_DISH_FEED",
+      "nodeName": "MOTION_KESTREL_DISH_FEED",
+      "nodePath": [
+        0,
+        20,
+        0,
+        2
+      ],
+      "parentId": "sf.render.kestrel-lod1.mesh.motion-kestrel-dish-stem",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.559999942779541,
+        3.5799999237060547,
+        0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.motion-kestrel-dish-stem",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_DISH_STEM",
+      "nodeName": "MOTION_KESTREL_DISH_STEM",
+      "nodePath": [
+        0,
+        20,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod1.mesh.motion-kestrel-dish",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        2.8499999046325684,
+        0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.motion-kestrel-mining",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.100000381469727,
+        -1.0499999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_MINING",
+      "nodeName": "MOTION_KESTREL_MINING",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.kestrel-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.100000381469727,
+        -1.0499999523162842,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.kestrel-lod1.root",
       "localTransform": [
         1,
@@ -2708,7 +2907,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "378ed89bce6a89e3191587a52720321f52ebdf9d759af1caeceea17d6a9e2ef6"
+      "sha256": "05da15b932d0511bb1c2235bd0a8f04b59d1feda1f12d7e63e5760640143e6ef"
     },
     "sourceGlb": {
       "bytes": 552448,
@@ -2716,14 +2915,14 @@
       "uri": "kestrel_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 212794,
-      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
+      "bytes": 197727,
+      "sha256": "a35111d86d0da6fa269059a8307d405b956cba539e8a0e37d1cac8a5c7d93658",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 802768,
-    "sha256": "f9e019eb8dd14b69689f3fb90931d8c026c69939a6bbc7ccb61793983ee0a9d9",
+    "bytes": 803516,
+    "sha256": "4919fc6d2c8715ef8ad712e44bac6a6ae1a2d7a24fc5cfcfe336a41c0a11b230",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2809,6 +3008,13 @@
           "name": "MOTION_KESTREL_DISH",
           "spaceface": {
             "motionGroup": "kestrel_dish"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_DISH",
+            "recordIds": [
+              "sf.render.kestrel-lod1.mesh.motion-kestrel-dish"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
       },
@@ -2867,6 +3073,13 @@
           "name": "MOTION_KESTREL_DISH_STEM",
           "spaceface": {
             "motionGroup": "kestrel_dish_stem"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_DISH_STEM",
+            "recordIds": [
+              "sf.render.kestrel-lod1.mesh.motion-kestrel-dish-stem"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
       },
@@ -2925,6 +3138,13 @@
           "name": "MOTION_KESTREL_DISH_FEED",
           "spaceface": {
             "motionGroup": "kestrel_dish_feed"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_DISH_FEED",
+            "recordIds": [
+              "sf.render.kestrel-lod1.mesh.motion-kestrel-dish-feed"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
       },
@@ -2983,6 +3203,13 @@
           "name": "MOTION_KESTREL_MINING",
           "spaceface": {
             "motionGroup": "kestrel_mining"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_MINING",
+            "recordIds": [
+              "sf.render.kestrel-lod1.mesh.motion-kestrel-mining"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
       },
@@ -3582,6 +3809,12 @@
         "role": "mechanical"
       }
     ],
+    "motionBank": {
+      "bytes": 192075,
+      "rigId": "kestrel_dish",
+      "sha256": "8e40dc9c0a081c005b456737f98709e368bda94562e624c20d6b15cfbc8415b3",
+      "uri": "assets/ships/motions/kestrel-lod1.motion.json"
+    },
     "nodeCount": 40,
     "primitives": [
       {
@@ -4271,7 +4504,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
-  "runtimeHash": "07d8edf1d174b1e4de0350309a89cf825eacb08d90194fc1f0c0f26d19a602f8",
+  "runtimeHash": "3512c652be6526da50a11cac610248222101dd5a812378c2c2641462bac052cb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4314,6 +4547,10 @@
         "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-mining-beacon-amber",
         "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-mining-mechanicaldark",
         "sf.render.kestrel-lod1.mesh.lod1-warning",
+        "sf.render.kestrel-lod1.mesh.motion-kestrel-dish",
+        "sf.render.kestrel-lod1.mesh.motion-kestrel-dish-feed",
+        "sf.render.kestrel-lod1.mesh.motion-kestrel-dish-stem",
+        "sf.render.kestrel-lod1.mesh.motion-kestrel-mining",
         "sf.render.kestrel-lod1.root"
       ]
     }
