@@ -2,9 +2,37 @@
 # First wave: movement, matter, and a complete place
 
 Parent: [production-quality plan](PRODUCTION_QUALITY_COMPOUNDING.md).
-These are three finite assignments. Numbers identify sections, not new dispatcher IDs.
+These are four finite assignments. Assignment 0 was added after the deeper [source audit](PRODUCTION_QUALITY_SOURCE_AUDIT.md). Numbers identify sections, not new dispatcher IDs.
 Reconcile the cited existing owners once at pickup. If an equivalent result is already true,
 retain it and work only the residual. No human playtest is a prerequisite.
+
+## Assignment 0 — Expose the legal Swarm shelf
+
+**Owner:** existing [NXB-018](next-wave-2026-09-28/build/NXB-018.md), not a new task ID.
+**Verified cause:** the production Swarm draft caller requests 100 rows while existing legal
+loadouts have more eligible rows. The generated full catalog exists; the shared draft draw
+shuffles and truncates it. The source audit includes a reproducible 111/112-to-100 comparison.
+
+**Decided correction:** represent a full-catalog Swarm request explicitly in the existing offer
+generator/caller contract. Return the complete eligible set for that request after the same fitting,
+capacity and ownership checks. Do not replace 100 with another arbitrary larger number.
+Preserve the non-Swarm seeded three-card draft and its reroll semantics. Keep existing display
+categorization and all transaction writers; no new shop or rendering architecture.
+
+Trace `src/systems/survivalDraft.js` initial opening, `getOffers` live legality refresh,
+reroll snapshot and hull-switch refresh into `src/data/survivalDraft.js` and
+`src/data/swarmCatalog.js`. Both initial stock and refreshed legality must use the full set;
+repairing only one callsite would still mark an eligible item unavailable after a purchase.
+
+**Acceptance:** compare eligible IDs with offered IDs on the normal Swarm path for the two
+source-audit fixtures and a normal purchased hull switch, across seeds 47/4242/8008. All legal
+fittings remain reachable; illegal/full-capacity fits stay refused; bought items and intentional
+duplicates preserve current rules. Demonstrate purchase, refit and refresh without double charging.
+The arc still returns its requested limited draft. Use the nearest existing offer/transaction
+tests and one scoped UI path only where the changed presentation needs it.
+
+**Stop:** existing items are reliably available for legal builds. No new weapons, rebalance,
+extra currency or universal test harness. This is a compounding breadth repair, not a new asset.
 
 ## Assignment 1 — The throw reaches the world
 
@@ -29,8 +57,9 @@ Do not make a special scripted kill because the body crossed a zone.
 ### Implementation boundary
 
 Read `src/systems/hullBurst.js`, `src/data/hullBurst.js`,
-`src/core/physicsAuthority.js`, and the live collision/residency owner called by the production
-physics backend. Follow the actual impact consumer into existing damage/aftermath owners.
+`src/core/physicsAuthority.js`, `src/world/activityRuntime.js`,
+`src/world/activityClassification.js`, and `src/core/physics.js`'s sync into
+`src/core/sg02DynamicBodyOwner.js`. The source audit establishes this selected owner chain. Follow the actual impact consumer into existing damage/aftermath owners.
 The dated [handoff](../../docs/plans/2026-09-30-hull-burst-handoff.md) records fast victims outrunning
 collision coverage; first establish whether that still happens.
 
@@ -84,6 +113,11 @@ for combat and do not secretly steer the ship. Rebinding must continue to work.
 The first eligible surface is a fixed, convex asteroid collider with a reliable contact normal.
 Exclude ships, receiver/dock volumes, moving machinery, loose debris and concave seams in this
 first slice. Do not auto-latch to invisible rails. Keep ordinary collision forgiveness.
+
+First obtain a stable authoritative collider normal and continuous contact-episode identity.
+The inspected impact receipt exposes maximum-force direction and merged pair impulses; that is
+not an adequate substitute for a surface normal/episode contract. Projectile surface receipts
+are a different path. Extend the existing contact owner minimally rather than infer from meshes.
 
 Use relative contact velocity: tangential motion supplies the outgoing direction. Preserve a
 bounded part of existing speed; do not accelerate from rest, reverse along the tangent without
@@ -205,14 +239,15 @@ Tethys freight by observed benefit; it is not automatically another identical Sl
 
 > Continue the selected SpaceFace production-quality first wave. Read the current root and nearest
 > AGENTS, build map, NOW and the selected assignment in this file. Preserve existing workers.
-> Start with assignment 1 only, through the current hull-burst/physical-outcome owner; reuse any
-> already-completed outcome and fix its residual. Deliver the two specified interactions, not new
+> Start with assignment 0 only, through existing NXB-018 and the Swarm offer owners; reuse any
+> already-completed outcome and fix its residual. Deliver the complete legal shelf, not new
 > planning documents. Use existing fixed-seed scenarios and focused checks, scope any ordinary-route
 > run to the claim, and get an independent agent review. Preserve current input, physics authority,
 > single writers, deterministic sim and performance budgets. Update only existing canonical task
 > state that this result actually satisfies. Report changed gameplay, checks run and remaining
-> uncertainty. Stop when the named assignment is complete; do not silently launch assignments 2–3.
+> uncertainty. Stop when the named assignment is complete; do not silently launch the remaining assignments.
 
-To assign a later section, substitute its number and outcome explicitly. Assignment 2 can be
+To assign a later section, substitute its number and outcome explicitly. The intervening
+NXB-017 composition uses its corrected Swarm branch, not the authored arc's recipe path. Assignment 2 can be
 designed/implemented independently where files are disjoint; assignment 3 consumes only capabilities
 actually ready. Missing optional skates must not block ordinary Sluice-route improvement.
