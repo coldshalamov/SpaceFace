@@ -342,7 +342,7 @@ export function releaseAdmissionStandInFallback(boundary) {
   return true;
 }
 
-function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null) {
+function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null, proceduralFallback = null) {
   const root = new THREE.Group();
   root.name = `${entity && entity.data && entity.data.defId || 'ship'}_DirectAuthoredAdmission`;
   root.visible = false;
@@ -379,10 +379,23 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   }
   root.add(marker);
   root.userData.resolvingMarker = marker;
+  // A retry-exhausted non-required ship builds the sanctioned procedural body instead of
+  // keeping the octahedron forever; required ships stay authored-or-nothing (no thunk).
+  if (typeof proceduralFallback === 'function') {
+    root.userData.admissionProceduralFallback = proceduralFallback;
+  }
   root.userData.authoredResolvingMarker = true;
   root.userData.authoredAdmissionTemporaryDrawables = Math.max(1, marker.isMesh ? 1 : marker.children.length);
   root.userData.shipConstruction = 'authored-direct';
   root.userData.assetId = 'DIRECT_AUTHORED_ADMISSION';
+  // The pending ship draws the resolving marker at 1.7·radius in X (or the stand-in hull at
+  // ~0.86·radius half-extent) while entityPresenceRadius classifies it at ~radius — stamp the
+  // drawn envelope so glass/runway culling covers what the marker actually paints. The stamp
+  // dies with the substrate when the authored body swaps in.
+  {
+    const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
+    root.userData.visualBounds = { center: [0, 0, 0], size: [r * 3.4, r * 0.6, r * 1.7] };
+  }
   root.userData.renderContract = {
     assetBoundary: 'resident authored identity admission substrate',
     gracefulFallback: false,
@@ -732,7 +745,14 @@ export function installVisualOverrides(factory, options = {}) {
       let standInRecord = null;
       try { standInRecord = admissionStandInRecord(entity); }
       catch (error) { reportVisualWarning(options, '[visualOverrides] admission stand-in lookup failed', error); }
-      visual = directAuthoredAdmissionSubstrate(entity, standInRecord, admissionStandInRecord);
+      visual = directAuthoredAdmissionSubstrate(entity, standInRecord, admissionStandInRecord,
+        requiredWholeShip
+          ? null
+          : () => {
+            const fallback = fallbackBuild(entity);
+            configureTransparentSinglePassSurfaces(fallback);
+            return fallback;
+          });
     } else if (isWorldPlaceProp(entity)) {
       const geologyFallback = hasExplicitAuthoredGeologyPresentation(entity)
         ? fallbackBuild(entity)

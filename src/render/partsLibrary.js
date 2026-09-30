@@ -88,6 +88,7 @@ import {
   selectPlacePackageLayer,
 } from './flightReadySet.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
+import { ledgerAwarePos } from '../world/presentationSources.js';
 import { canonicalizeObjectSurfaceProgramKeys, canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
@@ -5051,11 +5052,14 @@ function armStalledHogWake(state) {
 }
 
 /**
- * Close the 'running' diagnostic of any job whose inner await has outlived the stall bound. The
- * job stays lifecycle 'in-flight' and keeps its serial slot accounting — its promise may still
- * resolve and publish — but quiet-window gates that read activeJobs must not wait on a dead
- * lane. finishUpgradeDiagnostic is idempotent, so the job's own settle path is a no-op whenever
- * it eventually unwinds.
+ * Close the 'running' diagnostic of any job whose inner await has outlived the stall bound,
+ * then end dead lanes: a job stalled past the glass bound while its owner sits on the readable
+ * glass — or past the non-ship bound anywhere — is abandoned (its decode/transcode wedged, a
+ * lane that can otherwise block for the session, ledger D48's 11-minute critical-hub). Aborting
+ * marks the boundary for readmission so the ordinary relevance poll re-requests it at its
+ * natural rung; url::slot decode dedupe makes the re-entry share whatever the wedged attempt
+ * already decoded, and a late settle of the abandoned promise is a bookkeeping no-op —
+ * the job is already out of byBoundary/byKey and its completion is settled.
  */
 function settleStalledUpgradeDiagnostics(state) {
   const now = monotonicNow();
@@ -5065,7 +5069,30 @@ function settleStalledUpgradeDiagnostics(state) {
       job.upgradeDiagnostic.status = 'stalled-slot-released';
     }
     finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
+    const bound = entityIsOnReadableGlass(job.entity)
+      ? AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS
+      : AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+    if (jobIsStalledInFlight(job, now, bound)) abortStalledUpgradeJob(state, job);
   }
+}
+
+function abortStalledUpgradeJob(state, job) {
+  if (!job || job.lifecycle !== 'in-flight') return false;
+  job.lifecycle = 'aborted-stalled';
+  job.abortedStalled = true;
+  // The promise's own finally skips the serial decrement once serialSlotReleased reads true —
+  // single accounting, even though the abandoned run settles whenever it unwinds.
+  job.serialSlotReleased = true;
+  state.inFlight = Math.max(0, state.inFlight - 1);
+  cleanupQueuedJob(state, job);
+  if (job.boundary && job.boundary.parent) {
+    markAuthoredBoundaryForReadmission(job.boundary, 'upgrade-stall-abort');
+  } else if (job.boundary && job.boundary.userData) {
+    job.boundary.userData.authoredAssetState = 'aborted-stalled';
+  }
+  settleUpgradeJob(job, 'aborted-stalled');
+  scheduleNextUpgradeFrame(state);
+  return true;
 }
 
 export function waitForOpeningGraphPublicationRelease() {
@@ -5306,7 +5333,7 @@ function entityIsOnAuthoredGlassBand(entity, live) {
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
   const glass = glassHalfExtents(zoom, fov, aspect, tilt);
-  const delta = tableLookAtDelta(live, player.pos, entity.pos, _glassDelta2);
+  const delta = tableLookAtDelta(live, player.pos, ledgerAwarePos(entity, live), _glassDelta2);
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
@@ -5331,7 +5358,7 @@ function entityIsOnReadableGlass(entity, state = undefined) {
   if (!player || !player.pos || !entity.pos) return false;
   const cam = authoredLiveTableCamera(live);
   const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
-  const delta = tableLookAtDelta(live, player.pos, entity.pos, _glassDelta);
+  const delta = tableLookAtDelta(live, player.pos, ledgerAwarePos(entity, live), _glassDelta);
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
@@ -5761,7 +5788,10 @@ function admitNextUpgradeJob(state) {
       diagnostic.error = error && error.message ? error.message : String(error);
     }
     releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
-    if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
+    if (job.abortedStalled === true) {
+      // A stall-aborted job's boundary already readmitted — the abandoned run's late verdict
+      // must not stomp the fresh 'awaiting-authored-admission' state its replacement rides on.
+    } else if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
       // The job's owner died under a kept boundary (save recook) — a terminal verdict would
       // strand the restored entity that rebinds to this mesh. Readmission status re-requests.
       markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
@@ -5773,8 +5803,8 @@ function admitNextUpgradeJob(state) {
     }
   })
     .finally(() => {
-      if (!serialSlotReleased) state.inFlight = Math.max(0, state.inFlight - 1);
-      job.lifecycle = 'settled';
+      if (!serialSlotReleased && job.serialSlotReleased !== true) state.inFlight = Math.max(0, state.inFlight - 1);
+      if (job.lifecycle === 'in-flight') job.lifecycle = 'settled';
       finishUpgradeDiagnostic(state, job, diagnostic);
       cleanupQueuedJob(state, job);
       settleUpgradeJob(job, diagnostic.status, result, failure);
@@ -7526,6 +7556,7 @@ function admitEntityPlan(renderer, options, library, plan) {
   return new Promise((resolve, reject) => {
     const entry = {
       deadline: options && (options.admissionDeadline === true || options.admissionVisible === true),
+      visible: options && options.admissionVisible === true,
       run: async () => {
         // Re-check only after earlier demand has committed its records. Checking before joining
         // the lane permits duplicate decodes; copying slot arrays outside the lane permits
@@ -7548,11 +7579,14 @@ function admitEntityPlan(renderer, options, library, plan) {
     };
     // The lane stays serial, but not every caller sits on the player's deadline: prefetch and
     // runway decodes are ambient warm-up while the admitted upgrade job is the presentation
-    // path itself. A deadline entry splices ahead of queued ambient entries — the running
-    // task and earlier deadline entries keep their order.
-    if (entry.deadline) {
+    // path itself. Urgent entries splice ahead of lower-ranked queued entries — visible
+    // outranks deadline, which outranks ambient — while the running task and earlier
+    // same-or-higher-ranked entries keep their order.
+    const rankOf = (queued) => (queued.visible === true ? 2 : (queued.deadline === true ? 1 : 0));
+    const entryRank = rankOf(entry);
+    if (entryRank > 0) {
       let index = lane.queued.length;
-      while (index > 0 && !lane.queued[index - 1].deadline) index--;
+      while (index > 0 && rankOf(lane.queued[index - 1]) < entryRank) index--;
       lane.queued.splice(index, 0, entry);
     } else {
       lane.queued.push(entry);

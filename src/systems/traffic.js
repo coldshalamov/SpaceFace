@@ -1406,6 +1406,16 @@ export const traffic = {
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
     });
+    this.bus.on('save:error', (p) => {
+      // A restore that dies mid-chunk never emits save:loaded — without this the epoch latch
+      // would starve every ambient top-up guard for the rest of the session. Only
+      // restore-lifecycle failures clear it: an unrelated write error arriving mid-restore
+      // must not reopen the ambient lanes while the envelope is still respawning.
+      const reason = p && p.reason;
+      if (reason !== 'load_failed' && reason !== 'visual_gate_failed'
+          && reason !== 'deferred_transition_failed') return;
+      if (this._restoreEpochPending === true) this._restoreEpochPending = false;
+    });
     this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still
       // form an authoritative boundary, so fail closed once without double-invalidating a real load.

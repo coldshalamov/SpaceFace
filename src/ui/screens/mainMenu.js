@@ -563,17 +563,23 @@ export const mainMenuScreen = {
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
     if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Crucible');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
-    if (sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending()) {
+    const syncPending = !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending());
+    const latest = latestSave(readSaveIndex(ctx));
+    // Continue reads this cache instead of re-scanning localStorage on the click frame —
+    // save:store-synced/save:completed re-render refreshes it, same horizon the summary shows.
+    this._latestSave = latest;
+    if (syncPending && !latest) {
+      // Local saves are already authoritative — only a player with NO local slot waits on the
+      // remote mirror, since that's the only thing that could still enable Continue. With a
+      // local save the verb renders immediately below instead of dead-blocking up to the
+      // shared store's 10s timeout behind 'Checking saves'.
       setDisabled(refs.bContinue, true, 'Checking saves');
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
       this._syncCurrent();
       return;
     }
-    const latest = latestSave(readSaveIndex(ctx));
-    // Continue reads this cache instead of re-scanning localStorage on the click frame —
-    // save:store-synced/save:completed re-render refreshes it, same horizon the summary shows.
-    this._latestSave = latest;
+    if (syncPending) this._syncCurrent();
     refs.saveSummary.classList.toggle('has-save', !!latest);
     if (latest) {
       const summary = saveSummaryText(latest.slot, latest.meta);

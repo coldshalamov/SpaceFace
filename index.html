@@ -36,7 +36,7 @@
       "three/addons/": "./vendor/addons/",
       "three.quarks": "./node_modules/three.quarks/dist/three.quarks.esm.js",
       "quarks.core": "./node_modules/quarks.core/dist/quarks.core.esm.js",
-      "three-mesh-bvh": "./node_modules/three-mesh-bvh/src/index.js",
+      "three-mesh-bvh": "./node_modules/three-mesh-bvh/build/index.module.js",
       "@elemaudio/web-renderer": "./node_modules/@elemaudio/web-renderer/dist/index.js",
       "@elemaudio/core": "./node_modules/@elemaudio/core/dist/index.js",
       "shallowequal": "./vendor/elemaudio-deps/shallowequal.mjs",
@@ -56,6 +56,12 @@
   <link rel="preload" as="style" href="./styles/hud.css" />
   <link rel="modulepreload" href="./vendor/three.module.js" />
   <link rel="modulepreload" href="./vendor/rapier3d-compat/rapier.mjs" />
+  <!-- The decode-path loader trio is discovered by dynamic import inside the first GLB/KTX2
+       decode — warming them at parse removes a serialized 3-hop module cascade from the
+       opening decode window. -->
+  <link rel="modulepreload" href="./vendor/addons/loaders/GLTFLoader.js" />
+  <link rel="modulepreload" href="./vendor/addons/loaders/KTX2Loader.js" />
+  <link rel="modulepreload" href="./vendor/addons/libs/meshopt_decoder.module.js" />
   <link rel="modulepreload" href="./src/main.js" />
 </head>
 <body>

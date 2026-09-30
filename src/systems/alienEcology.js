@@ -1058,11 +1058,15 @@ export function tickAlienEcology(world, dt) {
     }
 
     const predatorAlive = predatorsOn.some((f) => f.data.ecology.siteId === site.siteId);
+    // stealthMult is a pure function of state — fittings and simTime are invariant for the
+    // whole tick — so it is hoisted out of the per-fauna call (each call otherwise rebuilds
+    // the fitted-module-def array per fauna).
+    const stealthM = stealthMult(state);
     for (const e of fauna) {
       const eco = e.data.ecology;
       if (eco.siteId !== site.siteId) continue;
       tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, sectorId,
-        predatorAlive, weatherSlow);
+        predatorAlive, weatherSlow, stealthM, fauna);
     }
   }
 }
@@ -1096,7 +1100,7 @@ function exposureFilterMult(state) {
 }
 
 function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, sectorId,
-  predatorAlive = false, weatherSlow = false) {
+  predatorAlive = false, weatherSlow = false, stealthM = 1, siteFauna = null) {
   const state = world && world.state;
   const eco = e.data.ecology;
   const species = faunaSpeciesById(eco.speciesId);
@@ -1147,8 +1151,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
 
   const awake = rec.state === 'awake' || rec.state === 'bloom';
   // AE-123 (G11) — Quiet Mask: a damped hull presents a smaller signature; fauna notice
-  // you later and accrue stimulus slower.
-  const stealthM = stealthMult(state);
+  // you later and accrue stimulus slower. (stealthM arrives hoisted — one eval per tick.)
   const alertR = species.alertR * stealthM * (awake ? 1.35 : 1) * (coherent ? 1 : species.coherenceLoss.alertMult);
   const px = player && player.pos ? player.pos.x : null;
   const pz = player && player.pos ? player.pos.z : null;
@@ -1324,10 +1327,12 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
         let leader = eco.chainTo != null && state.entities.get(eco.chainTo);
         if (!leader || leader.alive === false
             || !leader.data || !leader.data.ecology || leader.data.ecology.speciesId !== species.id) {
-          // re-acquire the nearest same-species segment on this site
+          // re-acquire the nearest same-species segment on this site — the tick's
+          // sector-scoped fauna list carries every data.ecology entity in entityList
+          // order, so the rescan walks it instead of the full list.
           leader = null;
           let bestD = Infinity;
-          for (const f of state.entityList) {
+          for (const f of (siteFauna || state.entityList)) {
             if (!f || f === e || f.alive === false || !f.data || !f.data.ecology) continue;
             if (f.data.ecology.speciesId !== species.id || f.data.ecology.siteId !== site.siteId) continue;
             const d = dist2(e.pos.x, e.pos.z, f.pos.x, f.pos.z);

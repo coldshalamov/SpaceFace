@@ -21,6 +21,7 @@ import {
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { wrapAngle } from '../core/rng.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 
 const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
 const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
@@ -530,10 +531,30 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
   return { x: steerX / len, z: steerZ / len, avoiding };
 }
 
+// Obstacle candidacy is filtered in two stages: a version-latched candidate list drops the
+// projectile/fx/pickup churn once per index version (those types are spawn-fixed, so a member
+// can never become obstacle-relevant without a version bump), then the full predicate re-runs
+// per call over the survivors. Consumer reads the result synchronously, so a shared scratch
+// array is safe — mirrors flightV3's AUTOPILOT_OBSTACLE_SCRATCH pattern.
+const _autopilotObstacleCandidates = { version: null, source: null, list: [] };
+const _autopilotObstacleOut = [];
+
 function autopilotObstacles(state, player, target) {
-  const out = [];
+  const out = _autopilotObstacleOut;
+  out.length = 0;
+  const version = entityIndexVersion(state);
   const list = state && state.entityList ? state.entityList : [];
-  for (const e of list) {
+  const cache = _autopilotObstacleCandidates;
+  if (version == null || cache.version !== version || cache.source !== list) {
+    cache.version = version;
+    cache.source = list;
+    cache.list.length = 0;
+    for (const e of list) {
+      if (!e || !e.pos || e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+      cache.list.push(e);
+    }
+  }
+  for (const e of cache.list) {
     if (!e || e === player || e === target.entity || e.alive === false || !e.pos) continue;
     if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
     const radius = Number.isFinite(e.radius) ? e.radius : 0;
