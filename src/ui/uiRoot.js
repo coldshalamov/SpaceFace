@@ -138,7 +138,12 @@ const BOOT_SCREEN_EXPORTS = new Set([
 
 function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
-    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    // A hidden or occluded tab never fires rAF; without a timeout the deferred registration waves
+    // stall forever there, and a dock in that window soft-locks (station never mounts).
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, 250);
+      requestAnimationFrame(() => { clearTimeout(timer); resolve(); });
+    });
   }
   return Promise.resolve();
 }
@@ -1158,8 +1163,10 @@ export const ui = {
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.25, 0.9);
 
       setTimeout(() => {
-        // Phase 2: at peak darkness, do the screen swap
-        if (this.screenManager.top() !== 'station') this.screenManager.pushScreen('station');
+        // Phase 2: at peak darkness, do the screen swap. The station screen is a deferred-wave
+        // import — if it has not registered yet, wait for it instead of dropping the push (a
+        // dropped push while docked leaves the player staring at the fade with dead controls).
+        if (this.screenManager.top() !== 'station') this._pushScreenWhenRegistered('station', 200);
         else this.screenManager.syncVisibility();
 
         // Phase 3: fade back in
@@ -1225,7 +1232,7 @@ export const ui = {
       this.state.input.blocked = false;
       if (!this.state.ui) this.state.ui = {};
       this.state.ui.pendingDrillAsteroidId = payload.asteroidId;
-      this.screenManager.pushScreen('drill');
+      this._pushScreenWhenRegistered('drill', 200);
       setTimeout(() => hideDockFade('drill'), 50);
     });
 
@@ -1260,15 +1267,7 @@ export const ui = {
       if (this._survivalRunLive()) return;
       if (this._gameOverShown) return;
       this._gameOverShown = true;
-      const tryOpen = (attempts) => {
-        if (this._registeredScreens && this._registeredScreens.has('gameOver')) {
-          try { this.screenManager.pushScreen('gameOver'); } catch (e) { console.error('[ui] open gameOver', e); }
-          return;
-        }
-        if (attempts > 60) { console.warn('[ui] gameOver screen never registered'); return; }
-        setTimeout(() => tryOpen(attempts + 1), 50);
-      };
-      tryOpen(0);
+      this._pushScreenWhenRegistered('gameOver', 60);
     });
     // Reset the one-shot gate when a new game starts or a save loads (a loaded save is alive again).
     // CRUCIBLE (PQ-133 CRU-018): results open for BOTH endings — a death (run:ended) and a
@@ -1283,16 +1282,7 @@ export const ui = {
       if (payload && payload.outcome === 'aborted' && payload.stopReason !== 'wave_plan_failed') return;
       if (this._crucibleResultsShown) return;
       this._crucibleResultsShown = true;
-      const tryOpen = (attempts) => {
-        if (this._registeredScreens && this._registeredScreens.has('crucibleResults')) {
-          try { this.screenManager.pushScreen('crucibleResults'); }
-          catch (e) { console.error('[ui] open crucibleResults', e); }
-          return;
-        }
-        if (attempts > 60) { console.warn('[ui] crucibleResults screen never registered'); return; }
-        setTimeout(() => tryOpen(attempts + 1), 50);
-      };
-      tryOpen(0);
+      this._pushScreenWhenRegistered('crucibleResults', 60);
     });
     this.bus.on('run:started', () => { this._crucibleResultsShown = false; });
     this.bus.on('game:started', () => { this._crucibleResultsShown = false; });
@@ -1378,6 +1368,21 @@ export const ui = {
       }
     });
     return this._screenRegistrationPromise;
+  },
+
+  // Push a screen that may still be in a deferred registration wave: retry until it registers or
+  // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
+  // game-over) so an early lifecycle event never becomes a dead press.
+  _pushScreenWhenRegistered(id, maxAttempts = 60) {
+    const tryOpen = (attempts) => {
+      if (this._registeredScreens && this._registeredScreens.has(id)) {
+        try { this.screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
+        return;
+      }
+      if (attempts > maxAttempts) { console.warn(`[ui] ${id} screen never registered`); return; }
+      setTimeout(() => tryOpen(attempts + 1), 50);
+    };
+    tryOpen(0);
   },
 
   // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when

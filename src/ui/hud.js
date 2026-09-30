@@ -864,11 +864,13 @@ const DOCTRINE_TELL_BY_KIND = Object.freeze({
   engine_flare: 'FLYBY',
   attach_spool: 'TETHER',
   weapon_charge: 'CHARGE',
+  shield_lance: 'CHARGE',
 });
 const DOCTRINE_TELL_BY_ID = Object.freeze({
   interceptor_flyby: 'FLYBY',
   tether_control_raider: 'TETHER',
   ranged_disengager: 'CHARGE',
+  shield_breaker: 'CHARGE',
 });
 const DOCTRINE_TELL_HINT = Object.freeze({
   FLYBY: 'Break the beam',

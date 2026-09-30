@@ -853,6 +853,24 @@ function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
   queuedIds.add(entity.id);
 }
 
+// Producers stamp _noMesh for intentionally mesh-less entities, so a renderer build-failure
+// latch carries its own marker. A new world context (sector enter, save load) clears renderer
+// latches only — a live entity must not stay permanently invisible because three transient
+// failures landed earlier in the session.
+function clearRendererMeshLatches(state) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return;
+  for (const e of entities.values()) {
+    if (e && e._noMesh && e._noMeshByRenderer === true) {
+      e._noMesh = false;
+      e._noMeshByRenderer = false;
+      e._meshBuildFailures = 0;
+      e._meshBuildRetryAtSim = null;
+      e._meshBuildLastError = null;
+    }
+  }
+}
+
 const _enqueuePassShips = [];
 const _enqueuePassOthers = [];
 
@@ -6478,7 +6496,7 @@ export const render = {
         const entity = record.entity;
         const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
         boundary.position.set(local.x, 0, local.z);
-        boundary.rotation.y = -entity.rot;
+        boundary.rotation.y = -(entity.rot || 0);
         if (boundary.matrixAutoUpdate === false) boundary.updateMatrix();
         if (entity.type === 'ship' || entity.type === 'station') {
           attachContactShadow(boundary, entity);
@@ -6535,7 +6553,7 @@ export const render = {
           seatBoundary: ({ entity, boundary }) => {
             const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
             boundary.position.set(local.x, 0, local.z);
-            boundary.rotation.y = -entity.rot;
+            boundary.rotation.y = -(entity.rot || 0);
             if (boundary.matrixAutoUpdate === false) boundary.updateMatrix();
           },
           meshes: this._meshes,
@@ -10908,6 +10926,9 @@ export const render = {
     };
     onBus('sector:enter', ({ sectorId, sector, continuous } = {}) => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
+      // A sector is a new admission context: renderer-latched build failures retry here even
+      // when the GPU set is kept, so a transient outage cannot strand a live entity invisible.
+      clearRendererMeshLatches(state);
       if (this._sessionRecookKeepGpu === true) {
         // Same-sector F9: keep the cooked GPU set. Releasing prewarms and
         // rotating residency disposed programs the kept meshes still referenced
@@ -11247,6 +11268,7 @@ export const render = {
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, arrivalVisualProfile);
     });
     onBus('save:loaded', () => {
+      clearRendererMeshLatches(this.state);
       if (this._sessionRecookKeepGpu === true) {
         reattachResidentGpuMeshes(this);
         // Same as the sector:enter keep-GPU path: reattach only covers entities whose ids
@@ -13690,6 +13712,7 @@ export const render = {
         e._meshBuildFailures = failures;
         if (failures >= 3) {
           e._noMesh = true;
+          e._noMeshByRenderer = true;
           if (e._meshBuildLastError) {
             console.warn('[render] mesh build failed permanently', {
               id: e.id,
@@ -13728,7 +13751,7 @@ export const render = {
       }
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
-      m.rotation.y = -e.rot;
+      m.rotation.y = -(e.rot || 0);
       if (m.matrixAutoUpdate === false) m.updateMatrix();
       if (e.type === 'ship' || e.type === 'station') {
         attachContactShadow(m, e);
@@ -13839,7 +13862,7 @@ export const render = {
     if (!m) return;
     const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
     m.position.set(local.x, 0, local.z);
-    m.rotation.y = -e.rot;
+    m.rotation.y = -(e.rot || 0);
     if (m.matrixAutoUpdate === false) m.updateMatrix();
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;

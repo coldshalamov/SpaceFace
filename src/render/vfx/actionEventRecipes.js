@@ -50,7 +50,7 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
   if(name==='ai:telegraph'||name==='ai:flee'){
     const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false)return null;
-    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse'].includes(p.kind))return null;
+    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance'].includes(p.kind))return null;
     const aft=name==='ai:flee'||p.kind==='engine_flare';
     const a=(source.rot||0)+(aft?Math.PI:0),r=source.radius||6;
     return {...p,targetId:source.id,sourceId:source.id,

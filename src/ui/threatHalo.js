@@ -75,6 +75,7 @@ export function leftoverTelegraphKind(payload) {
   if (TELEGRAPH_KIND_SET.has(raw)) return raw;
   if (raw === 'mine') return 'wake_mines';
   if (raw === 'transverse_snare') return 'attach_spool';
+  if (raw === 'shield_lance') return 'weapon_charge';
   if (COMPAT_ATTACK_KINDS.has(raw)) return 'engine_flare';
   const doctrineId = String(payload.doctrineId || '');
   if (doctrineId === 'interceptor_flyby' || doctrineId === 'brawler_commit' || doctrineId === 'escort_screen'
@@ -82,7 +83,7 @@ export function leftoverTelegraphKind(payload) {
     return 'engine_flare';
   }
   if (doctrineId === 'tether_control_raider' || doctrineId === 'field_anchor_controller') return 'attach_spool';
-  if (doctrineId === 'ranged_disengager') return 'weapon_charge';
+  if (doctrineId === 'ranged_disengager' || doctrineId === 'shield_breaker') return 'weapon_charge';
   if (doctrineId === 'detonator_run') return 'detonator_fuse';
   return null;
 }
