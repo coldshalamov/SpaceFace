@@ -36,6 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import { revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
@@ -1491,6 +1492,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uUvOffset: { value: new THREE.Vector2(0, 0) },
     uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
     uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
+    // Shared objects: look.js writes the mood once and every composite reads it.
+    ...LOOK_POST_UNIFORMS,
   });
   // CAS needs GLSL3 (texelFetch, uvec4 bit-cast uniforms) — the only GLSL3 material in the chain.
   const casMat = new THREE.ShaderMaterial({
