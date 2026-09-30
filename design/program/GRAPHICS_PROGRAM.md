@@ -14,9 +14,9 @@ The build-map entry is `build_map.md` §13D, Wave GFX.
 | Stations | **Forge:** refinery, mining rig, fab yard, military bastion, research array, black-market warren, jump gate, trade hub and its three faction overlays (`var_station_trade_hub_{free,mts,scn}_overlay_v01`). |
 | Props | **Forge:** every place on the default route — cargo pod, lane beacon, nav buoy, mining drone, worklight tower, container rack, sensor mast, the Helios lane marks, dead hulk, debris, billboard, memorial array, the claim-outpost family, industry props, transponder gate, interdiction buoy, the Ceres and 47-A story props, the breakaway fork and SP-07, the rock places, the dock interiors, and the wreck/aftermath pack (derived from the Forge ore barge, Bastion and Massline liner by `tools/blender/forge/wreck_kit.py`). Still older: the Asteroid Works board pieces (`place_works_*`) and the Wreck Cathedral. |
 | Landmarks | **Forge (live):** the Candle Fleet, the Resonant Cathedral and the Skerris Throne, as new places drawn at landmark scale (`placeTargetRadius` 100/110/150), and the Quiessence ring (seventeen becalmed carriers: `place_quiessence_freighter_{a,b,c}`, variants of the Forge tanker, Span and ore barge). The Wreck Cathedral is an older pipeline. |
-| Runtime look | Forge materials (`spacefaceFinish: forge-v1`) skip the rescue layers (roughness noise, palette multiplies, pigment). The procedural PBR fallback no longer stamps fine-grain relief on manufactured surfaces. |
+| Runtime look | **The Look** ([`docs/visual-assets/LOOK.md`](../../docs/visual-assets/LOOK.md), 2026-09-30): glossy lacquer, neon lamps, a mood per sector, one owner for every look value (`src/data/lookMoods.js`). Forge materials (`spacefaceFinish: forge-v1`) skip the rescue layers (roughness noise, palette multiplies, pigment) and take the shared surface response and lamp gain. |
 | Interface art | HUD silhouettes are traced from the hulls (`tools/blender/forge/silhouettes.py`). Hero/side/top/holo/jig posters are rendered for all player hulls (`tools/art/render_hull_posters.mjs`). `src/ui/hullPosters.js` lists all 14. |
-| Size | Release wholeships 356 MB → 60 MB. Render packages 744 MB → 456 MB. One shared 1024 tile texture set instead of per-ship bakes. |
+| Size | Release wholeships 356 MB → 60 MB. Render packages 744 MB → 456 MB. One shared 1024 tile texture set instead of per-ship bakes (v2 plating, 2026-09-30: recessed seams, dog-eared plates, uniform albedo). |
 
 ## 2. The workflows
 
@@ -59,6 +59,9 @@ Stale interface art shows the player a ship that no longer exists.
 
 - `node scripts/fleet-look.mjs --fleet` makes a contact sheet of every live body at chase and close zoom.
   Look for the odd one out: a value, a finish or a density that does not match its neighbours.
+  Put `SF_GL=d3d11` in front to shoot on the real GPU (seconds a body). A kit change that touches
+  the shared textures or a finish needs every body re-exported: run the Blender `--live` exports
+  in parallel, then `publish.mjs <all ids> --skip-blender`.
 - `node scripts/flight-look.mjs --ship=ship_<id>` shows the real New Game flight.
 - `node scripts/ui-bench.mjs --shot=station-shipworks` shows the refit jig with socket marks.
 
@@ -94,7 +97,7 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
 ## 3. The rules that keep it consistent
 
 1. **One kit.** Every new or rebuilt body is made in Forge. A body from anywhere else is a defect until it is rebuilt.
-2. **The look bar is FORGE.md §"The look".** It covers plan silhouette first, three values, identity colour in bands, layered construction, light as design, no noise, nothing floating and one idea per body. Calibrate paint for the Helios key light (about 2.5× lift).
+2. **The look bar is FORGE.md §"The look".** It covers plan silhouette first, three values, identity colour in bands, layered construction, light as design, no noise, the lacquer finish, nothing floating and one idea per body. Judge paint in `fleet-look` under the Look, never in Blender.
 3. **Runtime adds nothing to a forge body.** No bolted kit parts, no palette multiply, no roughness noise. What you model is what the player sees.
 4. **Budgets:**
 

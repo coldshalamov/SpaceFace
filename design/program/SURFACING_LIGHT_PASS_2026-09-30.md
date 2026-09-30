@@ -34,6 +34,7 @@ Every cause was a deliberate choice of the earlier "gouache illustration" direct
    wide bloom halo.
 4. **Reflection environment** — deep-space env with warm/cool strip light and cyan rim lobe.
 5. **Forge plating v2** — new shared tile set; all 108 Forge bodies republished.
+   The Kestrel's dorsal livery line is lit (`glow_cyan`): the first per-hull neon trim.
 6. **Tools** — `look-bench.mjs` (moods x hulls, A/B patches, GPU cost), real-GPU captures
    (`SF_GL=d3d11`), `flight-look --act`, `fleet-look` fixed for places.
 7. **Interface art** — hull posters re-rendered with the Look restated for Cycles.
