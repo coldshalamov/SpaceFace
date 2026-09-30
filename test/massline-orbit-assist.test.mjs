@@ -243,8 +243,8 @@ test('the assist exists only for the explicit forward-plus-turn chord', () => {
 });
 
 test('the pilot carve chord (forward plus a small turn intent) still orbits at the exact rate', () => {
-  // Default pilot scheme blends only a 0.35 carve yaw into W+D, but the chord must still
-  // engage and request the same inverse-radius yaw as a full turn press.
+  // Any non-zero lateral chord requests the same inverse-radius yaw as a full turn.
+  // Pilot no longer emits a 0.35 blend under thrust; a partial chord must still engage.
   const full = orbitStep({ radius: 120, tangentialSpeed: 30, hostRot: Math.PI / 2, lateral: 1 });
   const carve = orbitStep({ radius: 120, tangentialSpeed: 30, hostRot: Math.PI / 2, lateral: 0.35 });
   assert.equal(carve.active, true);

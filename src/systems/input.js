@@ -4,11 +4,10 @@
 //
 //   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. The mouse never steers the nose: it aims
 //   weapons, picks targets and throws the Massline. W/↑ thrust, S/↓ brakes/reverses.
-//   A/D and ←/→ are CONTEXTUAL — one rule: while coasting they YAW the nose (line up a retro
-//   burn, whip the nose around mid-drift); while forward thrust is held they STRAFE, with a
-//   gentle coordinated carve (PILOT_CARVE_TURN) so W+D still banks into a curve instead of
-//   crab-sliding. S/↓ brake restores full yaw authority so you can spin hard without releasing
-//   thrust. Q/E strafe explicitly in every state (orbit-adjust during pursuit). LMB fire.
+//   A/D and ←/→ always YAW the nose, thrust held or not, so a turn is one clean arc. They must
+//   not become a strafe while W is held: that aimed the path about 45° off the hull, the nose
+//   stayed cocked out of the vapor trail for as long as the key was down, and it only evened
+//   out after the key came up. Q/E is the strafe in every state. LMB fire.
 //
 //   HELM ASSIST — the ship's NOSE FOLLOWS THE MOUSE CURSOR (rate-limited by the ship's
 //   own turn stats, so mass still reads). W thrusts, S/↓ brakes/reverses, A/D lateral strafe.
@@ -56,8 +55,6 @@ import { isHostileToPlayer } from './scanner.js';
 const HELM_SOFT_ANGLE = 0.55;
 const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
 const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
-const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while strafing under
-                               // forward thrust — the ship banks and carves instead of crab-sliding
 
 
 // ---- Travel Burn latch (atlas D5 / W1-5) ------------------------------------------------------
@@ -349,7 +346,7 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
 export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
   forward:  ['KeyW', 'ArrowUp'],
   reverse:  ['KeyS', 'ArrowDown'],
-  yawRight: ['KeyD', 'ArrowRight'],  // contextual: strafe (+carve) while forward thrust is held
+  yawRight: ['KeyD', 'ArrowRight'],  // yaw, including under thrust; Q/E is the strafe
   yawLeft:  ['KeyA', 'ArrowLeft'],
   strafeLeft:  ['KeyQ'],             // explicit strafe in every state (pursuit orbit-adjust)
   strafeRight: ['KeyE'],
@@ -378,7 +375,9 @@ function activeScheme(state) {
  * Pure Pilot keyboard projection after rebind resolution.
  *
  * The live input tick and deterministic public-control harness share this one semantic owner:
- * coasting A/D yaws, W+A/D strafes with a 0.35 carve, Q/E always strafes, and S is reverse/brake.
+ * A/D always yaws, Q/E always strafes, and S is reverse/brake. A/D must not strafe under
+ * thrust. Vectoring would then aim the path at nose + atan2(strafe, throttle), the hull would
+ * sit out of its trail while the key was held, and the lead bound would not see it.
  */
 export function projectPilotFlightControls({
   forward = false,
@@ -392,11 +391,10 @@ export function projectPilotFlightControls({
 } = {}, out = null) {
   const side = (yawRight ? 1 : 0) - (yawLeft ? 1 : 0);
   const explicit = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
-  const carving = forward && !brakeHeld;
   const projected = out && typeof out === 'object' ? out : {};
-  projected.moveX = carving ? Math.max(-1, Math.min(1, side + explicit)) : explicit;
+  projected.moveX = explicit;
   projected.moveZ = (forward ? 1 : 0) - (reverse ? 1 : 0);
-  projected.turnIntent = carving ? side * PILOT_CARVE_TURN : side;
+  projected.turnIntent = side;
   projected.lineOrbit = side;
   projected.boost = boost === true;
   projected.brake = reverse === true || brakeHeld === true;
@@ -1200,10 +1198,9 @@ export const input = {
     let kbdLineOrbit = 0;
     let pilotProjection = null;
     if (pilot) {
-      // PILOT: one rule. Coasting → side keys YAW the nose (line up retro burns, spin
-      // mid-drift). Forward thrust held → side keys STRAFE, blended with a gentle carve yaw
-      // so W+D banks into a curve. Brake restores coasting yaw so Digit0+A/D spins fast.
-      // Q/E strafe explicitly in every state.
+      // PILOT: A/D always yaws the nose, whether coasting, thrusting, or braking.
+      // Q/E is the only strafe. W+A/D must not strafe — that parked the hull off its trail
+      // for as long as the key was held.
       const pilotProjectionInput = this._pilotProjectionInput
         || (this._pilotProjectionInput = {});
       pilotProjectionInput.forward = up;

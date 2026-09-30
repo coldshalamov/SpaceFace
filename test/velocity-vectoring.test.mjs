@@ -20,6 +20,7 @@ import {
   stepPropulsion,
 } from '../src/core/flight/propulsionKernel.js';
 import { assertEarnedSpeed, measureEarnedSpeed } from '../scripts/lib/feelRegression.mjs';
+import { projectPilotFlightControls } from '../src/systems/input.js';
 
 const DT = 1 / 60;
 const TWITCH = 'Turn NOW when I twitch.';
@@ -392,4 +393,67 @@ test(`a sustained turn welds the nose to the path: the hull never parks off its 
   assert.equal(flip.telemetry.vectoring.leadBounded, false, 'inside the flip band the nose is free');
   assert.ok(Math.abs(flip.telemetry.targetYawRate - profile.maxYawRate) < 1e-9,
     'flip keeps the full yaw-rate command');
+  // Strafe offsets the force target. Telemetry still reports the hull against the trail,
+  // so a slide cannot read as aligned while the nose is cocked out of it.
+  const slid = step(profile, body({ vel: { x: half, z: 0 }, rot: 0.4 }),
+    { throttle: 1, strafe: 1, turn: 0, velocityVectoring: true });
+  assert.ok(Math.abs(slid.telemetry.vectoring.slipRad - 0.4) < 1e-9,
+    'slip is nose versus path, not the strafe-offset command');
+  assert.equal(slid.telemetry.vectoring.leadBounded, false, 'a zero turn is not given extra yaw');
+  assert.ok(Math.abs(slid.telemetry.targetYawRate) < 1e-9, 'helm-style strafe does not yaw the nose');
+});
+
+test('pilot W+A/D is a yaw turn: the nose does not park out of the trail, and reversing clears', () => {
+  const right = projectPilotFlightControls({ forward: true, yawRight: true });
+  const left = projectPilotFlightControls({ forward: true, yawLeft: true });
+  const explicit = projectPilotFlightControls({ forward: true, yawRight: true, strafeRight: true });
+  const coast = projectPilotFlightControls({ yawLeft: true });
+  assert.equal(right.moveZ, 1);
+  assert.equal(right.moveX, 0, 'W+D must not strafe');
+  assert.equal(right.turnIntent, 1, 'W+D is a full yaw');
+  assert.equal(left.moveX, 0);
+  assert.equal(left.turnIntent, -1);
+  assert.equal(explicit.moveX, 1, 'Q/E remains the strafe');
+  assert.equal(explicit.turnIntent, 1);
+  assert.equal(coast.moveX, 0);
+  assert.equal(coast.turnIntent, -1);
+
+  const profile = hitchPlayerProfile();
+  const deg = (r) => r * 180 / Math.PI;
+  const allowance = VECTORING_SLIP_LEAD_RAD + 0.08;
+  const b = cruiseBody(profile);
+  let held = 0;
+  simulate(profile, b, () => ({
+    throttle: right.moveZ,
+    strafe: right.moveX,
+    turn: right.turnIntent,
+    velocityVectoring: true,
+  }), 4 * 60, (i, bb) => {
+    if (i >= 90) held = wrap(bb.rot - headingOf(bb));
+    return false;
+  });
+  assert.ok(Math.abs(held) <= allowance,
+    `held W+D parks the nose ${deg(held).toFixed(1)} deg off the trail`);
+
+  let reversed = 0;
+  simulate(profile, b, () => ({
+    throttle: left.moveZ,
+    strafe: left.moveX,
+    turn: left.turnIntent,
+    velocityVectoring: true,
+  }), 4 * 60, (i, bb) => {
+    if (i >= 90) reversed = wrap(bb.rot - headingOf(bb));
+    return false;
+  });
+  assert.ok(Math.abs(reversed) <= allowance,
+    `after turning the other way the nose stays cocked at ${deg(reversed).toFixed(1)} deg`);
+  assert.ok(reversed * held < 0, 'the reverse settles on the other side of the trail, not the old cock');
+
+  let released = 0;
+  simulate(profile, b, () => ({ throttle: 1, strafe: 0, turn: 0, velocityVectoring: true }), 3 * 60, (i, bb) => {
+    if (i >= 60) released = wrap(bb.rot - headingOf(bb));
+    return false;
+  });
+  assert.ok(Math.abs(released) < 0.02,
+    `releasing the turn leaves the nose ${deg(released).toFixed(1)} deg off the trail`);
 });
