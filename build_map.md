@@ -2430,13 +2430,15 @@ What is in the working tree (verify, then commit by pathspec — foreign dirty f
 **Outcome:** the models visibly operate, take damage and break into useful physical mass; not another
 nav-blink, particle or camera-shake pass. The owner asked for 10–20 researched animation ideas,
 model-matched Grok reference movies, and agents iterating actual Blender animations against those
-movies. Three independent combat/world/pipeline brainstorms and a debate produced **15 tasks**.
+movies. Three independent combat/world/pipeline brainstorms and a debate produced 15 ideas;
+visual review selected **13 reference-backed animation tasks**, plus the shared foundation.
 
 Build contract, exact source/model locators, event/state wiring, rig/export/playback decisions and
 per-task failure cases: [ANIMATION_REFERENCE_PROGRAM.md](./design/program/ANIMATION_REFERENCE_PROGRAM.md).
 Lead-authored generation jobs: [ANIMATION_REFERENCE_JOBS.json](./design/program/ANIMATION_REFERENCE_JOBS.json).
 Curated movie/model-image provenance and reference-review state:
-[animation reference manifest](./assets/animation-references/manifest.json).
+[animation reference manifest](./assets/animation-references/manifest.json). Browse the movies in the
+[reference library](./assets/animation-references/index.html).
 A generated reference is **not** an implemented/accepted game animation. A task may use only its
 reviewed reference; rejected drafts and frame sheets stay local. No runtime animations were shipped
 by the reference-collection task.
@@ -2455,7 +2457,6 @@ and the two fab-yard rows serialize their shared model/builder/publish mutations
 | **ANI-01** | Scanner dish deploys, aims, pulses and parks | Kestrel dorsal sensor; the long roof spine stays rigid |
 | **ANI-02** | Mining head releases, advances, bites and stows | Kestrel chin cutter; the beam still joins its validated emitter |
 | **ANI-03** | Massline winch pays out, catches load, reels and releases | Yard tug winch/fairlead, then host-reviewed liner/player adapters; one real tether |
-| **ANI-04** | Heat vents open in a radiator wave and latch after cooling | Kestrel radiator combs/louvers; real vent state, not only glow |
 | **ANI-05** | Boost drive iris and linked actuators engage and lock | New compact iris inside Kestrel's existing bell; parent gimbal/core keep their own writers |
 | **ANI-06** | Repair pod opens and a linked service arm performs a weld pass | Kestrel green pod; actual repair miner/target, not proximity idle |
 | **ANI-07** | Struck armour hinges, peels and settles, with truthful tear-off | Kestrel armour hook first; replace instant damage pops, preserve root heading |
@@ -2463,15 +2464,19 @@ and the two fab-yard rows serialize their shared model/builder/publish mutations
 | **ANI-09** | Salvage-cutter hydraulic jaws bite, hold, shred and release | Existing paired jaws, rams and throat roller; verified salvor work phase |
 | **ANI-10** | Mining-drone cutter engages, grinds and coasts down | Existing orange drum/teeth/spike assembly; active drones and place views |
 | **ANI-11** | Worked cargo-pod bars unlock and doors breach open | Teal pod end frame plus real door leaves/interior; exactly one actual salvage spill |
-| **ANI-12** | Harbour jaws seat, lock and release on actual docking | Compact new central-collar clamps in the trade hub's existing mooring language; open throat remains clear |
 | **ANI-13** | Linked fabrication arm aligns, welds a seam and parks | Fab yard's existing shoulder/elbow/wrist; station-keyed manufacturing queue |
 | **ANI-14** | Heavy hull plate is hoisted, traversed, fitted and parked | Fab bridge crane 0, paired hoists and hanging plate; not the workshop jib |
 | **ANI-15** | Jump-gate emitters index, lock, energise and reset | Small existing emitter carriages; outer frame and flyable aperture stay fixed/open |
 
+**Retained, not dispatched:** ANI-04 radiator louvers and ANI-12 harbour clamps. Their generated
+references failed geometry review (growing replacement fins / floating off-style linkage). They have
+no approved movies; the program preserves those ideas for a future source-pose pass. The 13 rows
+above, not the rejected drafts, are the selected reference-backed build assignments.
+
 **Iteration law:** render the Blender candidate at **60 FPS**, compare against **every native reference
 frame** and full-size key poses in matched framing, and inspect the real 60°/144-WU shipping view.
 Do not invent high-FPS reference evidence by frame duplication or optical flow. When the author
-thinks it is ready, spawn an **independent read-only reviewer** with frozen video/model hashes,
+thinks it is ready, spawn an **independent read-only, vision-capable reviewer** with frozen video/model hashes,
 phase alignment, whole-model and mechanism views, and the lead-authored rubric in the program §5.
 It must score **at least 80/100**, satisfy the rubric's category floors, cite frame/time evidence and
 have no hard failure. Fix the concrete defects and repeat; move to the next animation only after

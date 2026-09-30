@@ -1,0 +1,136 @@
+{
+ "image": "assets/animation-references/accepted-overview.png",
+ "tileW": 320,
+ "tileH": 180,
+ "cols": 4,
+ "tiles": [
+  {
+   "index": 0,
+   "jobId": "ANI-01",
+   "title": "Scanner dish deploy, aim, pulse and park",
+   "image": "assets/animation-references/thumbs/ANI-01.png",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "index": 1,
+   "jobId": "ANI-02",
+   "title": "Starter mining head deploy and bite",
+   "image": "assets/animation-references/thumbs/ANI-02.png",
+   "x": 320,
+   "y": 0
+  },
+  {
+   "index": 2,
+   "jobId": "ANI-03",
+   "title": "Massline winch payout, catch, loaded reel and release",
+   "image": "assets/animation-references/thumbs/ANI-03.png",
+   "x": 640,
+   "y": 0
+  },
+  {
+   "index": 3,
+   "jobId": "ANI-05",
+   "title": "Boost drive iris and actuator lock",
+   "image": "assets/animation-references/thumbs/ANI-05.png",
+   "x": 960,
+   "y": 0
+  },
+  {
+   "index": 4,
+   "jobId": "ANI-06",
+   "title": "Repair pod hatch and service-arm weld",
+   "image": "assets/animation-references/thumbs/ANI-06.png",
+   "x": 0,
+   "y": 180
+  },
+  {
+   "index": 5,
+   "jobId": "ANI-07",
+   "title": "Directional armour hinge, peel and loose-plate settle",
+   "image": "assets/animation-references/thumbs/ANI-07.png",
+   "x": 320,
+   "y": 180
+  },
+  {
+   "index": 6,
+   "jobId": "ANI-08",
+   "title": "Wasp seam rupture and rigid debris handoff",
+   "image": "assets/animation-references/thumbs/ANI-08.png",
+   "x": 640,
+   "y": 180
+  },
+  {
+   "index": 7,
+   "jobId": "ANI-09",
+   "title": "Salvage-cutter hydraulic jaw bite and release",
+   "image": "assets/animation-references/thumbs/ANI-09.png",
+   "x": 960,
+   "y": 180
+  },
+  {
+   "index": 8,
+   "jobId": "ANI-10",
+   "title": "Mining-drone cutter engage, grind and coast-down",
+   "image": "assets/animation-references/thumbs/ANI-10.png",
+   "x": 0,
+   "y": 360
+  },
+  {
+   "index": 9,
+   "jobId": "ANI-11",
+   "title": "Cargo-pod lock bars, door breach and spill opening",
+   "image": "assets/animation-references/thumbs/ANI-11.png",
+   "x": 320,
+   "y": 360
+  },
+  {
+   "index": 10,
+   "jobId": "ANI-13",
+   "title": "Fab-yard two-link welding-arm seam pass",
+   "image": "assets/animation-references/thumbs/ANI-13.png",
+   "x": 640,
+   "y": 360
+  },
+  {
+   "index": 11,
+   "jobId": "ANI-14",
+   "title": "Fab-yard crane plate lift, traverse and fit",
+   "image": "assets/animation-references/thumbs/ANI-14.png",
+   "x": 960,
+   "y": 360
+  },
+  {
+   "index": 12,
+   "jobId": "ANI-15",
+   "title": "Jump-gate emitter index, lock and reset",
+   "image": "assets/animation-references/thumbs/ANI-15.png",
+   "x": 0,
+   "y": 540
+  },
+  {
+   "index": 13,
+   "jobId": null,
+   "title": null,
+   "image": null,
+   "x": 320,
+   "y": 540
+  },
+  {
+   "index": 14,
+   "jobId": null,
+   "title": null,
+   "image": null,
+   "x": 640,
+   "y": 540
+  },
+  {
+   "index": 15,
+   "jobId": null,
+   "title": null,
+   "image": null,
+   "x": 960,
+   "y": 540
+  }
+ ]
+}

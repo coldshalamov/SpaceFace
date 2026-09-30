@@ -1,0 +1,1663 @@
+{
+ "schemaVersion": 1,
+ "created": "2026-09-30T13:40:52.187Z",
+ "purpose": "SpaceFace animation reference pack — lead-reviewed Grok reference_to_video clips as Blender rigid-part motion targets. Design references only; not runtime animations.",
+ "generationDefaults": {
+  "tool": "reference_to_video",
+  "aspect_ratio": "16:9",
+  "duration": 6,
+  "resolution_name": "720p",
+  "pinFirstFrame": true,
+  "pinLastFrameForCycles": true
+ },
+ "selectedIds": [
+  "ANI-01",
+  "ANI-02",
+  "ANI-03",
+  "ANI-05",
+  "ANI-06",
+  "ANI-07",
+  "ANI-08",
+  "ANI-09",
+  "ANI-10",
+  "ANI-11",
+  "ANI-13",
+  "ANI-14",
+  "ANI-15"
+ ],
+ "retainedUnselectedIds": [
+  "ANI-04",
+  "ANI-12"
+ ],
+ "sourceVersionNotes": "During collection, commit a66c602b4 republished the same Forge bodies with v2 shared hull plating and look tuning. Captured source GLB hashes identify the original render inputs; the frozen PNG and movie hashes remain authoritative reference provenance. Use the current Forge source geometry/materials for animation builds and re-review identity if a structural model change occurs. Do not replace the captured hashes with newer asset bytes.",
+ "notes": {
+  "sourceParts": "sourceParts locators are prefix families, not new rig guarantees",
+  "scopeSource": "Mechanism close-ups are scoped animation references with actual whole-model image context. They do not certify a whole-asset animation or replace current Forge geometry and materials.",
+  "review": "accepted/scopes/notes/phaseLandmarks copied verbatim from lead-authored ANIMATION_REFERENCE_REVIEW.json (preserved at .devshots/animation-references/lead-review.json); timestamps = (frame-1)/24 at native CFR 24fps.",
+  "recovery": "The input/video receipts survived a local cleanup. Media was recovered byte-for-byte. The source-locator catalog and complete build/review program were restored and re-authored by the lead before publication."
+ },
+ "entries": [
+  {
+   "id": "ANI-01",
+   "title": "Scanner dish deploy, aim, pulse and park",
+   "model": "kestrel",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "releaseGlbSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+   "sourceParts": [
+    "DishPedestal",
+    "Dish",
+    "DishHorn",
+    "DishFeed",
+    "HOOK_SENSOR_DISH"
+   ],
+   "proposedGeometry": "A short rigid telescoping inner stem within the existing dish pedestal; original dish dimensions and host geometry remain authoritative.",
+   "pinLastFrame": true,
+   "prompt": "Use the exact spacecraft from the pinned frame and keep its entire teal pressure hull, long flat cyan-and-charcoal roof rail, both broad shoulder sponsons, green repair box and rear drum motionless. The only moving part is the small round silver scanning dish currently centred near 55 percent of frame width and 40 percent of frame height: rotate that disk gently side to side on its own short local pedestal, lift the disk straight upward by only one quarter of its own diameter on a short attached silver telescoping stem, hold briefly, and lower and park it at exactly its starting location. The long longitudinal roof rail remains flat on the hull throughout, with every seam and livery band retaining its original shape and position. Show one precise small rigid mechanism with a visible continuous attachment to the pedestal, fixed lighting and a completely locked camera; this is technical model-animation reference, not a transformation or a cinematic move.",
+   "inputImage": {
+    "path": "assets/animation-references/models/kestrel.png",
+    "sha256": "322417e2261b7ea73b98bc0d85455ab490629e93dbdbfb7bd5366f40fb321bc7",
+    "normalization": "exact byte copy of .devshots/animation-reference-pilot/kestrel16x9.png (crop=740:416:130:102 + scale=1280:720:flags=lanczos from kestrel-file_close.png, close view D=58 fov50 tilt60)",
+    "captureView": "close (fixed D=58, fov50, tilt60) -> 16:9 crop"
+   },
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f1de-939a-7d20-a603-ee2c91dfca9a",
+    "requestId": "fd4cae39-125c-482e-a3ed-df0cc164ecf2",
+    "grant": "--allow reference_to_video"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-01.mp4",
+    "sha256": "0144251f9c5846ab6e22267a5af51a9bef3de3e0e07627d42102b9268a2fd6a4",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 145,
+    "durationS": 6.041667,
+    "bytes": 759888,
+    "candidatePath": ".devshots/animation-reference-pilot/ANI-01-scan-dish-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": ".devshots/animation-reference-pilot/pilotframes-v2",
+    "sheets": [
+     ".devshots/animation-reference-pilot/ANI-01-v2-sheet-1.png",
+     ".devshots/animation-reference-pilot/ANI-01-v2-sheet-2.png",
+     ".devshots/animation-reference-pilot/ANI-01-v2-sheet-3.png",
+     ".devshots/animation-reference-pilot/ANI-01-v2-sheet-4.png",
+     ".devshots/animation-reference-pilot/ANI-01-v2-sheet-5.png",
+     ".devshots/animation-reference-pilot/ANI-01-v2-sheet-6.png"
+    ],
+    "keyframes": {
+     "first": ".devshots/animation-reference-pilot/ANI-01-v2-first.png",
+     "middle": ".devshots/animation-reference-pilot/ANI-01-v2-middle.png",
+     "final": ".devshots/animation-reference-pilot/ANI-01-v2-final.png"
+    },
+    "overview": null,
+    "thumb": "assets/animation-references/thumbs/ANI-01.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Attached scanner pedestal lift and dish aim/park; fixed host hull and roof rail.",
+    "notes": [
+     "V1 rejected for lifting the roof rail; v2 targets the actual small dish assembly.",
+     "Use the real Dish/DishPedestal dimensions and rigid geometry; the generated reflector/specular detail is not replacement mesh authority."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 25,
+      "phase": "deploy",
+      "t": 1
+     },
+     {
+      "frame": 61,
+      "phase": "aim",
+      "t": 2.5
+     },
+     {
+      "frame": 97,
+      "phase": "retract",
+      "t": 4
+     },
+     {
+      "frame": 132,
+      "phase": "park",
+      "t": 5.458333333333333
+     },
+     {
+      "frame": 145,
+      "phase": "final",
+      "t": 6
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": ".devshots/animation-reference-pilot/ANI-01-scan-dish-v1.mp4",
+     "generation": {
+      "sessionId": "01a0f1d6-ab85-7fa1-9044-7c8c03040659",
+      "requestId": "6660cd15-07ab-48da-8a65-68f53931ae2b"
+     },
+     "reason": "Wrong pivot/part: long roof rail lifts and bends instead of the scanner pedestal."
+    }
+   ]
+  },
+  {
+   "id": "ANI-02",
+   "title": "Starter mining head deploy and bite",
+   "model": "kestrel",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "releaseGlbSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+   "sourceParts": [
+    "MiningClamp",
+    "MiningCutter",
+    "SOCKET_Mining_Front"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "prompt": "Use the exact fixed bow/chin close-up in the opening frame; the context image identifies the same Kestrel and is not another shot to cut to. Only the small orange circular mining cutter below the nose moves: its attached dark guide makes one short straight extension toward the viewer by half the cutter's diameter, holds briefly, and withdraws into the original parked position. Keep the two upper gun barrels, nose armour and surrounding panels completely stationary and unchanged, and keep the cutter's round metal shape and size rigid throughout. Show a precise solid sliding mechanism with a fixed camera and steady lighting, not a new claw, a growing cannon or a tilting ship.",
+   "inputImage": {
+    "path": "assets/animation-references/models/kestrel-mining-detail.png",
+    "sha256": "9921684ad5f5ab1b9490988d110dfe01966a4848d887c06769117fda6927d524",
+    "captureView": "mechanism detail crop, whole host context conditioned via contextImages",
+    "recipe": "crop=400:225:600:500 + scale=1280:720:flags=lanczos from .devshots/animation-reference-rework/kestrel-bow_front.png (front view, camera heading -121.5)"
+   },
+   "contextImages": [
+    {
+     "path": "assets/animation-references/models/kestrel.png",
+     "sha256": "322417e2261b7ea73b98bc0d85455ab490629e93dbdbfb7bd5366f40fb321bc7"
+    }
+   ],
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f233-9dd9-78e3-8968-6e99d4849ee7",
+    "requestId": "538eec0d-7cd3-47ed-a02e-3a3f2f1b519d",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-02-v2.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-02-v2.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-02.mp4",
+    "sha256": "62ce38d1a3931d36c584c1d412b8ed6381baddff5a95ba34bfb0c41f5e14dbcf",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 97,
+    "durationS": 4.041667,
+    "bytes": 930220,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-02-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-02-v2",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-02-v2-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-02-v2-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-02-v2-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-02-v2-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-02-v2-sheet-5.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-02-v2-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-02-v2-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-02-v2-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-02-v2-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-02.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Focused actual bow/chin orange cutter carrier extension and stow, with guns and nose held fixed.",
+    "notes": [
+     "Reference is a mechanism close-up with whole-model context, not a whole-hull animation.",
+     "Keep the real source cutter diameter and bound its travel to the validated emitter/guide; the video is not permission to grow a new cannon or increase mining range."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 18,
+      "phase": "extension",
+      "t": 0.7083333333333334
+     },
+     {
+      "frame": 45,
+      "phase": "work-pose",
+      "t": 1.8333333333333333
+     },
+     {
+      "frame": 71,
+      "phase": "withdraw",
+      "t": 2.9166666666666665
+     },
+     {
+      "frame": 97,
+      "phase": "park",
+      "t": 4
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-02-v1.mp4",
+     "sha256": "ced2193e3e05e4a9f03e460e563d77da2a433e4bd507a527ae1b6346b62d7a28",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f202-4cdb-7df2-9b9c-641e24dc3232",
+      "requestId": "56de6447-953d-4347-91f5-57dad0fc7c6b",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-02.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-02-retry.jsonl"
+     },
+     "reason": null
+    }
+   ]
+  },
+  {
+   "id": "ANI-03",
+   "title": "Massline winch payout, catch, loaded reel and release",
+   "model": "yard_tug",
+   "builder": "tools/blender/forge/ships/yard_tug.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/yard_tug.glb",
+   "releaseGlbSha256": "bf357a1e0051c18364e44850ea690e632b28ad5fb95c9824a969777482b352c0",
+   "sourceParts": [
+    "WinchDrum",
+    "WinchCable",
+    "WinchFlange",
+    "WinchCheek",
+    "Fairlead",
+    "FairleadRoll",
+    "TowHook",
+    "SOCKET_Tether_Massline"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "prompt": "Preserve the exact yard tug in the pinned model render and lock the camera to its overhead three-quarter view. Its existing tow winch between the rear drive pods performs one visible Massline cycle: the fairlead aligns a little, the drum pays out a short taut cable through the existing rear guide, catches with one compact load reaction in the winch cheeks, then rotates steadily to take the cable back in. The rollers and attached tow hardware move as rigid mechanisms while the spacecraft body and drives remain still; finish with a distinct slack release and the hook returned to its original stowed position. Show cable tension and geared drum motion rather than a glowing rope floating through the hull, with the original palette and background unchanged.",
+   "inputImage": {
+    "path": "assets/animation-references/models/yard_tug.png",
+    "sha256": "1fa305cf02399ff80f24b57c2f0e98cb64cd6b96c7bcbad2452fb6b86f61371a",
+    "normalization": "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black from .devshots/animation-reference-models/yard_tug_place.png (place view, whole-model bounding-sphere framing, fov50)",
+    "captureView": "place (bounding-sphere whole-model framing, 60deg chase tilt, fov50)"
+   },
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f1f3-ce66-7e82-a91d-f6d16cf96664",
+    "requestId": "518de255-7622-4ade-b320-51d78be52281",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-03.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-03.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-03.mp4",
+    "sha256": "69f2f04a88da86b3c2c560ed5935d882e88244d7e8585b92880a8c7858ea89fa",
+    "version": 1,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 145,
+    "durationS": 6.041667,
+    "bytes": 670066,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-03-v1.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-03",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-03-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-03-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-03-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-03-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-03-sheet-5.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-03-sheet-6.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-03-sheet-7.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-03-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-03-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-03-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-03-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-03.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Yard-tug tow-hardware catch/reel/release and illustrative line payout, with recognizable fixed host.",
+    "notes": [
+     "The rope is the existing simulation/VFX tether, not a second Blender-animated rope.",
+     "Match the actual WinchDrum axis, wrap count and fairlead from the source; omit incidental non-winch deck-plate twitch from the generator."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 27,
+      "phase": "payout",
+      "t": 1.0833333333333333
+     },
+     {
+      "frame": 80,
+      "phase": "loaded-reel",
+      "t": 3.2916666666666665
+     },
+     {
+      "frame": 119,
+      "phase": "release",
+      "t": 4.916666666666667
+     },
+     {
+      "frame": 145,
+      "phase": "park",
+      "t": 6
+     }
+    ]
+   }
+  },
+  {
+   "id": "ANI-04",
+   "title": "Overheat louvers and radiator bloom",
+   "model": "kestrel",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "releaseGlbSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+   "sourceParts": [
+    "RadFin",
+    "RadSpine",
+    "HullVent"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "video": null,
+   "inputImage": {
+    "path": "assets/animation-references/models/kestrel.png",
+    "sha256": "322417e2261b7ea73b98bc0d85455ab490629e93dbdbfb7bd5366f40fb321bc7",
+    "normalization": "exact byte copy of .devshots/animation-reference-pilot/kestrel16x9.png (crop=740:416:130:102 + scale=1280:720:flags=lanczos from kestrel-file_close.png, close view D=58 fov50 tilt60)",
+    "captureView": "close (fixed D=58, fov50, tilt60) -> 16:9 crop"
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": null,
+     "sha256": null,
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f205-6985-79e1-83e8-2d55c6485c54",
+      "requestId": "fad3b11e-c78b-403e-9c0b-64485dcd43f1",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-04.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-04-retry.jsonl"
+     },
+     "reason": "generation failed — three identical transport errors: Failed to read video bytes: error decoding response body"
+    },
+    {
+     "version": 2,
+     "clip": ".devshots/animation-references/candidates/ANI-04-v2.mp4",
+     "sha256": null,
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f20f-c6a3-7950-800e-decd43706804",
+      "requestId": "74202935-d297-484d-ae4b-2d62e4ac74fe",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-04-dur4.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-04-dur4-retry.jsonl"
+     },
+     "reason": "Original nine short rectangular fins per bank become six tall triangular replacement wings."
+    },
+    {
+     "version": 3,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-04-v3.mp4",
+     "sha256": "a8b9ab345e07af33fb15ace28e35e8d20b867f23e51367232076a9bd1dc8c08b",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f242-2ffa-7511-8091-56f36ac6d148",
+      "requestId": "ee6cc585-47e9-4199-89e2-058f4efbd2cd",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-04-v3.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-04-v3.jsonl"
+     },
+     "reason": "Focused view still grows nine long replacement bars rather than rotating original short rigid slats; retained unselected idea, not an approved reference."
+    }
+   ],
+   "review": {
+    "status": "retained_unselected",
+    "disposition": "retained as unselected idea; not an approved reference",
+    "rejectionReasons": [
+     "v2: Original nine short rectangular fins per bank become six tall triangular replacement wings.",
+     "v3: Focused view still grows nine long replacement bars rather than rotating original short rigid slats; retained unselected idea, not an approved reference."
+    ]
+   }
+  },
+  {
+   "id": "ANI-05",
+   "title": "Boost drive iris and actuator lock",
+   "model": "kestrel",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "releaseGlbSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+   "sourceParts": [
+    "DriveBell",
+    "DriveCollar",
+    "DriveRing",
+    "DriveClamp",
+    "HOOK_DRIVE_CORE"
+   ],
+   "proposedGeometry": "A small rigid segmented iris/rotor inside the existing aft DriveBell opening; fixed nozzle diameter and unchanged pressure hull/drum at rest.",
+   "pinLastFrame": true,
+   "prompt": "Preserve the fixed rear-nozzle close-up in the opening frame; the other image identifies the same Kestrel host, not a camera angle to switch to. Inside the small round blue exhaust opening at the lower centre, six compact rigid metal iris petals slide a little outward under the existing inner rim, reveal the blue core during a brief powered hold, then slide back to their original hidden positions. The iris remains entirely inside the original exhaust circle: its diameter, the heavy surrounding collar, four clamps, shoulder panels and hull never grow, rotate or move. Show only this short precise ignition-and-lock mechanism with a completely stationary camera and background; do not add a giant fan on top of the ship.",
+   "inputImage": {
+    "path": "assets/animation-references/models/kestrel-drive-detail.png",
+    "sha256": "a7d26ed25605cd7cceb886b634738bc2668b5a41b38ce2091dfe3e998c8cf3f1",
+    "captureView": "mechanism detail crop, whole host context conditioned via contextImages",
+    "recipe": "crop=600:337:500:520 + scale=1280:720:flags=lanczos from .devshots/animation-reference-rework/kestrel-rear_inspect.png (inspect view, camera heading -130)"
+   },
+   "contextImages": [
+    {
+     "path": "assets/animation-references/models/kestrel.png",
+     "sha256": "322417e2261b7ea73b98bc0d85455ab490629e93dbdbfb7bd5366f40fb321bc7"
+    }
+   ],
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f233-e237-7d02-b0f5-ed5bcfa228e7",
+    "requestId": "a5cb6b54-adf6-4bee-bc98-24a4b8a3c0bf",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-05-v2.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-05-v2.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-05.mp4",
+    "sha256": "941d135bcb1b8424e22ea275ffa5a2cca9d165ac5f2d0eb54b195829765993bf",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 97,
+    "durationS": 4.041667,
+    "bytes": 799137,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-05-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-05-v2",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-05-v2-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-05-v2-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-05-v2-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-05-v2-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-05-v2-sheet-5.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-05-v2-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-05-v2-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-05-v2-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-05-v2-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-05.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Compact segmented drive-iris/rotor ignition cycle inside the actual aft blue exhaust circle.",
+    "notes": [
+     "Focused rear inspection view fixes the v1's wrong roof-mounted fan. The existing nozzle diameter and surrounding collar stay fixed.",
+     "Small inner segmented hardware is explicitly proposed geometry; choose a fixed documented petal count and rigid linkage, not incidental AI blade/detail drift.",
+     "Parent bell gimbal and core emissive pulse keep their current owners; only the new inner hardware belongs in the motion bank."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 18,
+      "phase": "ignition",
+      "t": 0.7083333333333334
+     },
+     {
+      "frame": 49,
+      "phase": "powered-pose",
+      "t": 2
+     },
+     {
+      "frame": 80,
+      "phase": "closing",
+      "t": 3.2916666666666665
+     },
+     {
+      "frame": 97,
+      "phase": "park",
+      "t": 4
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-05-v1.mp4",
+     "sha256": "8fe3cf2a6a38e451a7c506d513c32db761c6618101e2356c1c42c47776ebc84d",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f1f6-b9f2-7ac0-8c94-cf0caa45780a",
+      "requestId": "af3f6540-b771-4092-b82c-1d9741318db3",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-05.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-05.jsonl"
+     },
+     "reason": "Oversized iris/fan appears above the hull rather than inside the small original aft exhaust opening."
+    }
+   ]
+  },
+  {
+   "id": "ANI-06",
+   "title": "Repair pod hatch and service-arm weld",
+   "model": "kestrel",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "releaseGlbSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+   "sourceParts": [
+    "RepairPod",
+    "RepairPodBand",
+    "RepairPodHatch",
+    "HOOK_SECONDARY_POD",
+    "SOCKET_Utility_Dorsal"
+   ],
+   "proposedGeometry": "A compact two-joint service arm stowed inside the existing fixed green repair pod, with a small tool head.",
+   "pinLastFrame": true,
+   "prompt": "Keep the exact green repair-pod close-up and every surrounding hull panel still; the context image identifies its original location on the Kestrel shoulder. Only the small dark rectangular hatch on top of the green box, near 58 percent across and 55 percent down the frame, hinges up; a compact two-link metal service arm unfolds from that hatch, holds its small tool tip just outside the opening, then folds back inside and the hatch closes. The green box itself and its orange band remain fixed to the shoulder, and each short arm link stays rigid and joined at visible hinges; the deployed arm is no longer than the green pod. Show one calm deploy-and-stow cycle in the locked camera view, not a box flying off the ship or an arm emerging from the central roof rail.",
+   "inputImage": {
+    "path": "assets/animation-references/models/kestrel-repair-detail.png",
+    "sha256": "41d9619069cb2ad8d9e0130e54280bfecf1e1f8a4c57a4b858d45b59f7bd8565",
+    "captureView": "mechanism detail crop, whole host context conditioned via contextImages",
+    "recipe": "byte copy of .devshots/animation-reference-rework/kestrel-repair-detail.png (crop=480:270:420:310 + scale from kestrel.png)"
+   },
+   "contextImages": [
+    {
+     "path": "assets/animation-references/models/kestrel.png",
+     "sha256": "322417e2261b7ea73b98bc0d85455ab490629e93dbdbfb7bd5366f40fb321bc7"
+    }
+   ],
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f237-e87f-7dc1-b6ac-c52a0d6b906b",
+    "requestId": "d6a423c5-37ee-4ad7-8bcf-22f35bd1fe9d",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-06-v2.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-06-v2.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-06.mp4",
+    "sha256": "749aa37f88ae9633734c194b07a610ceca7738155d5bd65fc66768833bf072bc",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 97,
+    "durationS": 4.041667,
+    "bytes": 595341,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-06-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-06-v2",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-06-v2-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-06-v2-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-06-v2-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-06-v2-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-06-v2-sheet-5.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-06-v2-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-06-v2-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-06-v2-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-06-v2-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-06.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Fixed green repair-pod hatch with a compact attached two-link arm deploy/stow cycle.",
+    "notes": [
+     "The focused image now selects the actual pod hatch, not the central roof.",
+     "Arm and internal mount are proposed geometry; the green body and band remain fixed and source geometry is authoritative."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 27,
+      "phase": "hatch-arm-deploy",
+      "t": 1.0833333333333333
+     },
+     {
+      "frame": 49,
+      "phase": "service-pose",
+      "t": 2
+     },
+     {
+      "frame": 80,
+      "phase": "stow",
+      "t": 3.2916666666666665
+     },
+     {
+      "frame": 97,
+      "phase": "park",
+      "t": 4
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-06-v1.mp4",
+     "sha256": "0c0ce0ed076ecacfe575981a221de5e5a6d9bc697978ce5a0099be01ecb99fd5",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f1f7-a12b-74f1-9f3f-4236a171798f",
+      "requestId": "8b23c0ec-7fe0-491d-911e-e41e8994c960",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-06.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-06.jsonl"
+     },
+     "reason": "Box/arm emerges from the central roof rather than the fixed green repair pod hatch."
+    }
+   ]
+  },
+  {
+   "id": "ANI-07",
+   "title": "Directional armour hinge, peel and loose-plate settle",
+   "model": "kestrel",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "releaseGlbSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+   "sourceParts": [
+    "ShoulderCap",
+    "HOOK_ARMOR_PORT",
+    "Sponson",
+    "Brace"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": false,
+   "prompt": "Keep the exact shoulder close-up from the opening frame and all surrounding Kestrel panels stationary; the context image identifies the same host spacecraft. Only the existing flat dark blue-grey armour cap near 68 percent across and 68 percent down this view peels slightly upward about its original inner long attachment edge, rocks once under load, and settles partly raised with a narrow structural gap beneath it. It stays one thin rigid plate with its original four-sided outline, colour and thickness; the nearby orange band, radiator comb, main hull and green repair pod do not move or duplicate. Show a small believable hinge failure and weighted settle in the fixed camera, not a box emerging from the shoulder, a growing plate or a detached floating crate.",
+   "inputImage": {
+    "path": "assets/animation-references/models/kestrel-armour-detail.png",
+    "sha256": "33625a2dfa190275cf9e318b20e9e31b24f2e04f51da30c673a90c727ed40a29",
+    "captureView": "mechanism detail crop, whole host context conditioned via contextImages",
+    "recipe": "crop=200:112:440:395 + scale=1280:720:flags=lanczos from kestrel.png"
+   },
+   "contextImages": [
+    {
+     "path": "assets/animation-references/models/kestrel.png",
+     "sha256": "322417e2261b7ea73b98bc0d85455ab490629e93dbdbfb7bd5366f40fb321bc7"
+    }
+   ],
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f242-2fc4-7d73-8308-033a4444c37d",
+    "requestId": "fe70b03d-5b4e-4828-ba24-50508b268b7a",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-07-v2.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-07-v2.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-07.mp4",
+    "sha256": "9d2ccb4274367d28f864135e2419a14612bd9cf016622ee53f45b1113621dee7",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 97,
+    "durationS": 4.041667,
+    "bytes": 809687,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-07-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-07-v2",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-07-v2-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-07-v2-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-07-v2-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-07-v2-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-07-v2-sheet-5.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-07-v2-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-07-v2-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-07-v2-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-07-v2-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-07.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Single thin original port shoulder cap lifting about its attachment and settling into a small damaged gap.",
+    "notes": [
+     "Focused dark-panel view fixes the duplicated-box v1. Use the actual four-sided cap outline and thickness.",
+     "The generated visual gap is not a physics actor handoff: any detached part must still be a real once-spawned debris body."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "undamaged",
+      "t": 0
+     },
+     {
+      "frame": 18,
+      "phase": "lift",
+      "t": 0.7083333333333334
+     },
+     {
+      "frame": 49,
+      "phase": "loose-plate-pose",
+      "t": 2
+     },
+     {
+      "frame": 97,
+      "phase": "damaged-hold",
+      "t": 4
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-07-v1.mp4",
+     "sha256": "ef18c0d1479e56ed3ef7ef22b0b0b0d5d9f17cd62699f4bba1d9644bd0893833",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f1f7-d94b-7ee1-92b2-4683150e0a6f",
+      "requestId": "49b201cf-89fe-4640-8602-f138eb7c9306",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-07.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-07.jsonl"
+     },
+     "reason": "New box/repair-pod-like assembly lifts on the opposite shoulder rather than the thin original port armour cap."
+    }
+   ]
+  },
+  {
+   "id": "ANI-08",
+   "title": "Wasp seam rupture and rigid debris handoff",
+   "model": "wasp_production_v1",
+   "builder": "tools/blender/forge/ships/wasp.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+   "releaseGlbSha256": "a1f5238984a250372330650a692279e8d1d2ac9263cdf69d1a9139b1aa55f602",
+   "sourceParts": [
+    "Fuselage",
+    "Chine",
+    "WingRoot",
+    "Nacelle",
+    "TailFin",
+    "HOOK_SECONDARY_FIN",
+    "HOOK_ARMOR_FLAP"
+   ],
+   "proposedGeometry": "Wasp-specific substantial rupture fragments derived from its actual source; simulation owns actor trajectories and mass conservation.",
+   "pinLastFrame": false,
+   "prompt": "Use the exact Wasp spacecraft from the opening model render in a locked overhead three-quarter shot. A compact bright internal rupture splits its centre into a few substantial rigid pieces: the recognizable bow/canopy portion, rear drive portion and original side or tail plates separate along believable structural seams, retaining their original surfaces, proportions and livery as they drift apart slowly in zero gravity. Keep the breakup legible and weighted, with a short internal flash and sparse small chips rather than a smoke cloud or a replacement spaceship; the camera and background remain fixed and the original hull is clearly identifiable in the pieces. End with the separated pieces still in frame, showing the torn seams and attachments; this is an art reference for an immediate game-physics handoff, not permission to delay a kill or bake gameplay trajectories.",
+   "inputImage": {
+    "path": "assets/animation-references/models/wasp_production_v1.png",
+    "sha256": "3a19f7d33cb889091f4e9c4a224085f762b3636458f3be13d4a2b6c9c0c37f6c",
+    "normalization": "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black from .devshots/animation-reference-models/wasp_production_v1_place.png (place view, whole-model bounding-sphere framing, fov50)",
+    "captureView": "place (bounding-sphere whole-model framing, 60deg chase tilt, fov50)"
+   },
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f1f8-9ce0-76d1-b35b-5cfc2cdafa7a",
+    "requestId": "b7089a3a-5ffb-48de-bb3f-facf8386b4f3",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-08.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-08.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-08.mp4",
+    "sha256": "5eff0f85821662ad5690623f01c13df9666ceaac160225845c67b9404ee663f4",
+    "version": 1,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 145,
+    "durationS": 6.041667,
+    "bytes": 1792065,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-08-v1.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-08",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-08-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-08-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-08-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-08-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-08-sheet-5.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-08-sheet-6.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-08-sheet-7.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-08-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-08-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-08-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-08-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-08.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Readable Wasp-specific hull/wing/nacelle-cover rupture into substantial recognizable rigid pieces.",
+    "notes": [
+     "The movie illustrates fracture choreography and fragment identity, not an actor-motion clip to bake.",
+     "Retained central chassis is dead wreck mass, not a second live/intact Wasp; conserve mass and do not duplicate nacelles when authoring the fragment set.",
+     "The runtime owns all fragment separation, translation and spin from the immediate physical handoff."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "intact",
+      "t": 0
+     },
+     {
+      "frame": 14,
+      "phase": "rupture",
+      "t": 0.5416666666666666
+     },
+     {
+      "frame": 40,
+      "phase": "peel",
+      "t": 1.625
+     },
+     {
+      "frame": 80,
+      "phase": "separated-pieces",
+      "t": 3.2916666666666665
+     },
+     {
+      "frame": 145,
+      "phase": "wreck-hold",
+      "t": 6
+     }
+    ]
+   }
+  },
+  {
+   "id": "ANI-09",
+   "title": "Salvage-cutter hydraulic jaw bite and release",
+   "model": "salvage_cutter",
+   "builder": "tools/blender/forge/ships/salvage_cutter.py",
+   "releaseGlb": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
+   "releaseGlbSha256": "46ef26425fffb0de49a9b96cd620ed379f4557f834f8c07314101f2641aceb6d",
+   "sourceParts": [
+    "JawPivot",
+    "Jaw",
+    "Blade",
+    "CutterEdge",
+    "JawRam",
+    "JawRamRod",
+    "JawRamLug",
+    "Shredder"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "prompt": "The exact salvage cutter in the fixed opening view keeps its patched hull, offset cab, rear scrap cage, drives and overall scale perfectly stationary. Only the two large left-pointing jaws rotate outward by about twenty degrees on their existing shoulder hinge pins, hold briefly, then return to the original gape; the silver hydraulic rods slide within their existing cylinders while keeping both ends attached. The jaw plates retain their original lengths, thicknesses, blade shapes and hazard bands, and the scrap cage never opens or rises. Demonstrate one deliberate rigid scissor-jaw cycle with the same camera and lighting, not stretching jaws, zooming toward the model or changing the spacecraft.",
+   "inputImage": {
+    "path": "assets/animation-references/models/salvage-cutter-jaw-detail.png",
+    "sha256": "92b7a09e5dfe7f5fec15d05e076b8c040ff9b7729572681f49a2bb96331c145c",
+    "captureView": "mechanism detail crop, whole host context conditioned via contextImages",
+    "recipe": "byte copy of .devshots/animation-reference-rework/salvage-cutter-jaw-detail.png (crop=800:450:240:135 + scale from salvage_cutter.png)"
+   },
+   "contextImages": [
+    {
+     "path": "assets/animation-references/models/salvage_cutter.png",
+     "sha256": "5c1241dfc0483bd7fe210423284129d83f085f33a55ee7443b94140a4aef7886"
+    }
+   ],
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "requestId": null,
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-09-v2.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-09-v2.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-09.mp4",
+    "sha256": "0e84ac5962fb9e24ff01f1f6a1778cb7398e77a51826247685745300e4eca957",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 97,
+    "durationS": 4.041667,
+    "bytes": 474488,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-09-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-09-v2",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-09-v2-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-09-v2-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-09-v2-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-09-v2-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-09-v2-sheet-5.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-09-v2-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-09-v2-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-09-v2-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-09-v2-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-09.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Paired existing salvage jaws hinge while the patched hull, cab and scrap cage keep their shape and scale.",
+    "notes": [
+     "Tighter model input and context correct the v1's overall drift/cage movement.",
+     "Match original jaw lengths, blade outline and both hydraulic endpoints; no stretching or duplicate jaw parts."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 18,
+      "phase": "jaw-opening",
+      "t": 0.7083333333333334
+     },
+     {
+      "frame": 49,
+      "phase": "pressure-pose",
+      "t": 2
+     },
+     {
+      "frame": 80,
+      "phase": "release",
+      "t": 3.2916666666666665
+     },
+     {
+      "frame": 97,
+      "phase": "park",
+      "t": 4
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-09-v1.mp4",
+     "sha256": "97aee57badbdb8a4d7908f2b0b661aa69ed60cd4eeadf84c605bda6c97597bc2",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f1f8-ae23-7570-93fd-ef776d0d2d59",
+      "requestId": "6689a665-f2b7-4c68-9066-acfff6ffd582",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-09.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-09.jsonl"
+     },
+     "reason": "Jaw/hull proportions and apparent camera scale drift; rear cage also articulates outside the intended mechanism."
+    }
+   ]
+  },
+  {
+   "id": "ANI-10",
+   "title": "Mining-drone cutter engage, grind and coast-down",
+   "model": "place_mining_drone",
+   "builder": "tools/blender/forge/ships/place_mining_drone.py",
+   "releaseGlb": "assets/ships/release/parts/places/place_mining_drone.glb",
+   "releaseGlbSha256": "2b64b357621af5dd78681a095682cd41b3ac92cd3cf63ac887840b79f751c3cf",
+   "sourceParts": [
+    "Gearbox",
+    "Drum",
+    "DrumLip",
+    "CutFace",
+    "Tooth",
+    "Cutter",
+    "Spike",
+    "LampYoke"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "prompt": "Animate the exact orange four-pod mining drone from the supplied model render without moving its hull or camera. Its existing front toothed cutter drum rotates around the longitudinal gearbox axis: a clear spin-up is followed by a short controlled grinding cycle with three small pressure strokes along the guide, then the drum coasts down and returns to the original stopped pose. Keep the toothed ring, central spike, warning collar, work lamp and all four thruster pods in their original rigid forms and correct relative positions; the teeth turn with the drum, not independently through the body. Make the moving cutter geometry easy to follow in the overhead three-quarter view, with minimal sparks and the background fixed.",
+   "inputImage": {
+    "path": "assets/animation-references/models/place_mining_drone.png",
+    "sha256": "d082a5b62aee334fa34c4d42d5ed4a0064c5533e09c89b53867b255acd53d5d1",
+    "normalization": "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black from .devshots/animation-reference-models/place_mining_drone_place.png (place view, whole-model bounding-sphere framing, fov50)",
+    "captureView": "place (bounding-sphere whole-model framing, 60deg chase tilt, fov50)"
+   },
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f203-73f8-7d82-b7f7-5a59172c3461",
+    "requestId": "db41ed64-b342-4ec8-974f-6690cff25f57",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-10.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-10-retry.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-10.mp4",
+    "sha256": "07b4a215678066e645734d2efb05f4bf743107d6f746f1edefcb2a2e80ccad4c",
+    "version": 1,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 145,
+    "durationS": 6.041667,
+    "bytes": 888723,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-10-v1.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-10",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-10-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-10-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-10-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-10-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-10-sheet-5.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-10-sheet-6.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-10-sheet-7.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-10-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-10-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-10-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-10-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-10.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Rigid original mining-drone cutter/drum operation with unchanged body, pods and palette.",
+    "notes": [
+     "Keep all source teeth/spike parts in the same rotor and its real gearbox axis.",
+     "The subtle cutter read in the whole-model reference needs a clear shipping-camera working-state demonstration; it is not permission to deliver an imperceptible animation."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 27,
+      "phase": "engage",
+      "t": 1.0833333333333333
+     },
+     {
+      "frame": 66,
+      "phase": "grind",
+      "t": 2.7083333333333335
+     },
+     {
+      "frame": 119,
+      "phase": "coast-down",
+      "t": 4.916666666666667
+     },
+     {
+      "frame": 145,
+      "phase": "park",
+      "t": 6
+     }
+    ]
+   }
+  },
+  {
+   "id": "ANI-11",
+   "title": "Cargo-pod lock bars, door breach and spill opening",
+   "model": "place_cargo_pod_standard",
+   "builder": "tools/blender/forge/ships/place_cargo_pod_standard.py",
+   "releaseGlb": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
+   "releaseGlbSha256": "c350ab31ff72098ebbb2a04d8f3f720dc20cf04842538d0c62675849558dd62f",
+   "sourceParts": [
+    "Door",
+    "LockBar",
+    "EndRail",
+    "Post",
+    "Body",
+    "Lug",
+    "SOCKET_Clamp_Dorsal"
+   ],
+   "proposedGeometry": "Two outer hinged door leaves, two short inner fold-down retainer panels, and a shallow real interior; source ribs, frame and roof lug remain unchanged.",
+   "pinLastFrame": false,
+   "prompt": "Preserve the exact teal ribbed cargo pod from the opening frame, with its charcoal corner frame, warning bands and roof grapple lug, in a locked overhead three-quarter view. At the visible worked end, the existing lock bars turn a quarter turn and withdraw their bolts, then two rigid door leaves release from the central seam and swing outward on the end-frame hinges to expose a shallow dark cargo interior. The door hardware and bars remain attached and retain the original metal shapes and colours; all wall ribs, corner posts and the roof lug stay still. Show a brief resistant latch beat followed by a weighted opening and hold the final open pose with no camera move or flood of particles hiding the doors.",
+   "inputImage": {
+    "path": "assets/animation-references/models/place_cargo_pod_standard.png",
+    "sha256": "7c8512a882636675f4c9a332c8476b6a8671c39d32f4626d3f3ff930860f4188",
+    "normalization": "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black from .devshots/animation-reference-models/place_cargo_pod_standard_place.png (place view, whole-model bounding-sphere framing, fov50)",
+    "captureView": "place (bounding-sphere whole-model framing, 60deg chase tilt, fov50)"
+   },
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f1fa-b252-7df2-9e93-2b24bdc251f1",
+    "requestId": "29e3edc5-2056-4fe1-9a29-e39d27bb8496",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-11.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-11.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-11.mp4",
+    "sha256": "ae3bd8ba531c84e8a00f67f529835fc8c4578caaaa3822c4df6f989b24e59d3e",
+    "version": 1,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 145,
+    "durationS": 6.041667,
+    "bytes": 2306442,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-11-v1.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-11",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-11-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-11-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-11-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-11-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-11-sheet-5.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-11-sheet-6.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-11-sheet-7.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-11-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-11-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-11-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-11-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-11.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Cargo-pod lock release, paired outer door opening and short inner fold-down retainer release into an open hold.",
+    "notes": [
+     "This concept deliberately adds a real interior, two outer leaves and two inner retaining panels; the ribs, frame, warning bands and roof lug stay recognizable.",
+     "Do not claim four generated opening surfaces already exist in the source model.",
+     "A persistent opened shell must be a real empty physical successor/wreck, not an unmanipulable visual ghost; actual inventory spill stays exactly once."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "sealed",
+      "t": 0
+     },
+     {
+      "frame": 27,
+      "phase": "outer-door-release",
+      "t": 1.0833333333333333
+     },
+     {
+      "frame": 66,
+      "phase": "inner-retainer-release",
+      "t": 2.7083333333333335
+     },
+     {
+      "frame": 106,
+      "phase": "open",
+      "t": 4.375
+     },
+     {
+      "frame": 145,
+      "phase": "open-hold",
+      "t": 6
+     }
+    ]
+   }
+  },
+  {
+   "id": "ANI-12",
+   "title": "Trade-hub mooring jaws seat and release",
+   "model": "place_station_trade_hub",
+   "builder": "tools/blender/forge/ships/place_station_trade_hub.py",
+   "releaseGlb": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+   "releaseGlbSha256": "35ff1e32b28df0b01e650c3d4131424f08bb885112981e86587db4387bf9d75b",
+   "sourceParts": [
+    "Collar",
+    "Port",
+    "PortRing",
+    "LeadArms",
+    "MoorArm",
+    "MoorClamp"
+   ],
+   "proposedGeometry": "Two compact local collar jaw/linkage assemblies using the existing mooring-hardware family; retained unselected idea, not an approved reference.",
+   "pinLastFrame": true,
+   "video": null,
+   "inputImage": {
+    "path": "assets/animation-references/models/place_station_trade_hub.png",
+    "sha256": "08d32fc82cefc461a2a01071ee7c3f3cb30975b16b7685002a83dc4068ac93d6",
+    "normalization": "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black from .devshots/animation-reference-models/place_station_trade_hub_place.png (place view, whole-model bounding-sphere framing, fov50)",
+    "captureView": "place (bounding-sphere whole-model framing, 60deg chase tilt, fov50)"
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-12-v1.mp4",
+     "sha256": "1589e329117e71f15dba069e9ccd0f6db9c24dff472058d0d5a1231e22b95a6d",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f1fb-c602-76d2-be11-fe2e03134735",
+      "requestId": "cecb5d55-4659-48ac-9aab-0100e5ae7bdc",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-12.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-12.jsonl"
+     },
+     "reason": "No usable readable collar-jaw operation at the whole-station framing."
+    },
+    {
+     "version": 2,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-12-v2.mp4",
+     "sha256": "a7523e5b7fecdbb948e6dee45d5dae985d9706c2bbc44b89ef7a2025f9f5ef4d",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f23b-bff6-76e0-9d20-3519af9eb808",
+      "requestId": "ce24539d-d4e1-443c-a05e-317cecd90292",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-12-v2.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-12-v2.jsonl"
+     },
+     "reason": "Oversized detached black linkage looks like an off-style floating overlay, not small attached station collar jaws; retained unselected idea."
+    }
+   ],
+   "review": {
+    "status": "retained_unselected",
+    "disposition": "retained as unselected idea; not an approved reference",
+    "rejectionReasons": [
+     "v1: No usable readable collar-jaw operation at the whole-station framing.",
+     "v2: Oversized detached black linkage looks like an off-style floating overlay, not small attached station collar jaws; retained unselected idea."
+    ]
+   }
+  },
+  {
+   "id": "ANI-13",
+   "title": "Fab-yard two-link welding-arm seam pass",
+   "model": "place_station_fab",
+   "builder": "tools/blender/forge/ships/place_station_fab.py",
+   "releaseGlb": "assets/ships/release/parts/places/place_station_fab.glb",
+   "releaseGlbSha256": "ac316c76ee7b74aae58cbfeab9a75dec38f7276bf3bf7ced3a9cd93b5a4b43bd",
+   "sourceParts": [
+    "ArmBase",
+    "ArmA",
+    "ArmB",
+    "ArmJoint",
+    "ArmHead"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "prompt": "Preserve the exact blue-grey U-shaped orbital fabrication yard and its ivory half-plated hull from the supplied render, with the open lattice walls and orange bridge cranes unchanged. One existing two-link wall-mounted welding arm performs a single clear service pass: its shoulder and elbow unfold toward a nearby hull seam, the wrist aligns its compact tool head, the head traces a short straight seam with a concentrated cyan welding point, then the arm retracts and parks at its original wall mount. All arm links keep their rigid shapes and hinge connections, and the half-built hull, gantries, neighbouring arms and camera stay still. Make the linked joint motion and approach/working/release phases readable from the overhead three-quarter view; keep sparks sparse and the station architecture faithful.",
+   "inputImage": {
+    "path": "assets/animation-references/models/place_station_fab.png",
+    "sha256": "3d4ed729c41430d86ad32d8826f368edc2de30b1097c7b1d8984a74c7bb586c7",
+    "normalization": "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black from .devshots/animation-reference-models/place_station_fab_place.png (place view, whole-model bounding-sphere framing, fov50)",
+    "captureView": "place (bounding-sphere whole-model framing, 60deg chase tilt, fov50)"
+   },
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f1fc-529e-7450-8c5b-20744f8e3d8d",
+    "requestId": "9fd8ae1c-0a23-442f-8ca8-f0e3bbf883af",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-13.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-13.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-13.mp4",
+    "sha256": "d7497c963330776de7dd6794c9523cc75de4ed9c84fee5dec1de9d22cd7187fa",
+    "version": 1,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 145,
+    "durationS": 6.041667,
+    "bytes": 881911,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-13-v1.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-13",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-13-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-13-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-13-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-13-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-13-sheet-5.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-13-sheet-6.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-13-sheet-7.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-13-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-13-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-13-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-13-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-13.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Linked-joint fabrication welder approach, seam work and park on the unchanged yard architecture.",
+    "notes": [
+     "Use the actual source ArmBase/ArmA/ArmB/ArmJoint/ArmHead geometry and mounting, not a new unconnected white beam.",
+     "The high working pose in the video is a visual demonstration; the real tool endpoint must remain on its declared hull seam and avoid wall/cockpit penetration."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "park",
+      "t": 0
+     },
+     {
+      "frame": 27,
+      "phase": "reach",
+      "t": 1.0833333333333333
+     },
+     {
+      "frame": 66,
+      "phase": "seam-work",
+      "t": 2.7083333333333335
+     },
+     {
+      "frame": 106,
+      "phase": "return",
+      "t": 4.375
+     },
+     {
+      "frame": 145,
+      "phase": "park",
+      "t": 6
+     }
+    ]
+   }
+  },
+  {
+   "id": "ANI-14",
+   "title": "Fab-yard crane plate lift, traverse and fit",
+   "model": "place_station_fab",
+   "builder": "tools/blender/forge/ships/place_station_fab.py",
+   "releaseGlb": "assets/ships/release/parts/places/place_station_fab.glb",
+   "releaseGlbSha256": "ac316c76ee7b74aae58cbfeab9a75dec38f7276bf3bf7ced3a9cd93b5a4b43bd",
+   "sourceParts": [
+    "Crane0",
+    "CraneTrolley0",
+    "CraneCab0",
+    "CraneEnd0",
+    "Hoist0",
+    "HangingPlate"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "prompt": "Preserve the exact fixed fabrication-yard view, its U-shaped blue-grey walls, incomplete ivory hull and three orange bridge beams. On only the rightmost orange bridge over the exposed rear hull ribs, its small dark trolley slides a short distance along that beam, the same attached curved grey hull plate lowers a little on its two hoist lines toward the ribs, holds in alignment, then returns to the original suspension position. All three orange bridge beams stay at exactly their original height and shape, and the other two cranes, walls, workshop, hull and camera remain motionless. Show one clear short heavy-load trolley-and-hoist cycle with continuously attached cables, not raising the entire gantry or growing new crane masts.",
+   "inputImage": {
+    "path": "assets/animation-references/models/station-fab-crane-detail.png",
+    "sha256": "7f81895c060abf007b4b75743e5a70238dd8a2f9a1748d9c6d05f66fe68c56c8",
+    "captureView": "mechanism detail crop, whole host context conditioned via contextImages",
+    "recipe": "byte copy of .devshots/animation-reference-rework/station-fab-crane-detail.png (crop=800:450:240:135 + scale from place_station_fab.png)"
+   },
+   "contextImages": [
+    {
+     "path": "assets/animation-references/models/place_station_fab.png",
+     "sha256": "3d4ed729c41430d86ad32d8826f368edc2de30b1097c7b1d8984a74c7bb586c7"
+    }
+   ],
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "requestId": null,
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-14-v2.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-14-v2.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-14.mp4",
+    "sha256": "6a1990772f7ecaa3e07dc732e24c198cb9e0dff8f78759e1ca261260d4501430",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 97,
+    "durationS": 4.041667,
+    "bytes": 641993,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-14-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-14-v2",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-14-v2-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-14-v2-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-14-v2-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-14-v2-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-14-v2-sheet-5.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-14-v2-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-14-v2-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-14-v2-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-14-v2-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-14.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "One crane-0 trolley and connected hull-plate hoist stroke above the exposed stern ribs; fixed bridge beams.",
+    "notes": [
+     "The corrected view identifies the rightmost orange bridge in this camera and keeps the other cranes/architecture fixed.",
+     "Use actual paired Hoist0 links and HangingPlate; do not reproduce the rejected v1's growing gantry masts."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "rest",
+      "t": 0
+     },
+     {
+      "frame": 18,
+      "phase": "trolley-hoist",
+      "t": 0.7083333333333334
+     },
+     {
+      "frame": 49,
+      "phase": "fit-pose",
+      "t": 2
+     },
+     {
+      "frame": 80,
+      "phase": "return",
+      "t": 3.2916666666666665
+     },
+     {
+      "frame": 97,
+      "phase": "park",
+      "t": 4
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-14-v1.mp4",
+     "sha256": "07d553bc32a30c212f56796d83b5f3127c130cbfeee553ce5b9b68d00a86550d",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f1fd-13f0-72d2-90e0-9eef6b8cc265",
+      "requestId": "93511c72-07a1-4194-a323-9bb185a80711",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-14.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-14.jsonl"
+     },
+     "reason": "Raises multiple bridge/gantry structures rather than moving the specified trolley and suspended plate."
+    }
+   ]
+  },
+  {
+   "id": "ANI-15",
+   "title": "Jump-gate emitter index, lock and reset",
+   "model": "place_gate_jump_ring",
+   "builder": "tools/blender/forge/ships/place_gate_jump_ring.py",
+   "releaseGlb": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+   "releaseGlbSha256": "39d8ca0c6342ffb4e244c7d072d7a6d638e1c1da8cb1257383957fc54aae0f2f",
+   "sourceParts": [
+    "Emitter",
+    "EmitterBase",
+    "Coil",
+    "ApertureRim",
+    "Seg",
+    "SOCKET_Gate_Aperture"
+   ],
+   "proposedGeometry": null,
+   "pinLastFrame": true,
+   "prompt": "Keep the exact segmented ivory-and-cyan gate in the fixed opening view, including its original twelve-segment ring, square crown tower, side service platforms and dark open aperture; the additional full-model image is geometry context, not another camera shot. Only the small white emitter tips immediately inside the rim make a short radial indexing stroke of less than their own length, settle together into a brief energised hold, and return to their starting points. The outer ring, large armour segments, tower and platforms remain rigid and completely motionless, and the aperture remains dark and open throughout. Show subtle solid carriage motion on the existing hardware with steady restrained cyan lights; do not rotate, grow or replace the ring with a new spoked machine.",
+   "inputImage": {
+    "path": "assets/animation-references/models/gate-emitter-detail.png",
+    "sha256": "474b39325b320c991fdf26ac5e1fa099229f9fe83dab6669f1c4aa9d26a52275",
+    "captureView": "mechanism detail crop, whole host context conditioned via contextImages",
+    "recipe": "crop=768:432:400:244 + scale=1280:720:flags=lanczos from .devshots/animation-reference-rework/gate-face_place.png (root yaw 90)"
+   },
+   "contextImages": [
+    {
+     "path": "assets/animation-references/models/place_gate_jump_ring.png",
+     "sha256": "6cba607fb61416beecbf2559ca1ecb1b4105c6dd19bbbcc0fb94cae5e759076a"
+    }
+   ],
+   "generation": {
+    "tool": "reference_to_video",
+    "cli": "grok 1.0.45",
+    "model": "grok-4.7",
+    "sessionId": "01a0f23e-85f1-7d70-b271-af2f27bf62ed",
+    "requestId": "91a930f3-df96-44dc-b426-fd54dc4fc436",
+    "grant": "--allow reference_to_video",
+    "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-15-v2.txt",
+    "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-15-v2.jsonl"
+   },
+   "video": {
+    "path": "assets/animation-references/videos/ANI-15.mp4",
+    "sha256": "39006579ec6cd5512f82137a90ad2e0eb85efcc2e053250fb10959ca0e21e640",
+    "version": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "frames": 97,
+    "durationS": 4.041667,
+    "bytes": 699498,
+    "candidatePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-15-v2.mp4"
+   },
+   "artifacts": {
+    "framesDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\frames\\ANI-15-v2",
+    "sheets": [
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-15-v2-sheet-1.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-15-v2-sheet-2.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-15-v2-sheet-3.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-15-v2-sheet-4.png",
+     "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\sheets\\ANI-15-v2-sheet-5.png"
+    ],
+    "keyframes": {
+     "first": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-15-v2-first.png",
+     "middle": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-15-v2-middle.png",
+     "final": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\keyframes\\ANI-15-v2-final.png"
+    },
+    "overview": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\overviews\\ANI-15-v2-overview.png",
+    "thumb": "assets/animation-references/thumbs/ANI-15.png"
+   },
+   "review": {
+    "status": "accepted_reference",
+    "scope": "Small inner emitter indexing on the actual segmented ivory gate, with fixed tower/platforms and open aperture.",
+    "notes": [
+     "Actual source-root yaw 90 exposes the real gate; place-view camera heading did not. V1's unrelated eight-spoke replacement is rejected.",
+     "Keep the real source emitter count/lengths and aperture clearance; omit minor generated rod-detail drift."
+    ],
+    "phaseLandmarks": [
+     {
+      "frame": 1,
+      "phase": "idle",
+      "t": 0
+     },
+     {
+      "frame": 18,
+      "phase": "index",
+      "t": 0.7083333333333334
+     },
+     {
+      "frame": 49,
+      "phase": "locked",
+      "t": 2
+     },
+     {
+      "frame": 80,
+      "phase": "release",
+      "t": 3.2916666666666665
+     },
+     {
+      "frame": 97,
+      "phase": "idle",
+      "t": 4
+     }
+    ]
+   },
+   "rejectedHistory": [
+    {
+     "version": 1,
+     "clip": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\candidates\\ANI-15-v1.mp4",
+     "sha256": "2d93e7774ee6d577646464b6a2754f72ff8c33fa417d2e2558e44f15bca0986c",
+     "generation": {
+      "tool": "reference_to_video",
+      "cli": "grok 1.0.45",
+      "model": "grok-4.7",
+      "sessionId": "01a0f1fd-ec1a-7113-884c-b752af06ce39",
+      "requestId": "dc3cbff6-6797-4691-abb0-5a1fe32e3655",
+      "grant": "--allow reference_to_video",
+      "promptFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\requests\\ANI-15.txt",
+      "logFile": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\animation-references\\logs\\ANI-15.jsonl"
+     },
+     "reason": "Edge-on input was transformed into an unrelated eight-spoke mechanism, not the real twelve-segment gate."
+    }
+   ]
+  }
+ ]
+}

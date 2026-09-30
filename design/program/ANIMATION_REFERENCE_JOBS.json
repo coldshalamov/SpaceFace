@@ -1,0 +1,343 @@
+{
+ "schemaVersion": 1,
+ "purpose": "Lead-authored Grok reference_to_video jobs for Blender-authored rigid-part animation. Design references only; never runtime video replacements.",
+ "generationDefaults": {
+  "tool": "reference_to_video",
+  "aspect_ratio": "16:9",
+  "duration": 6,
+  "resolution_name": "720p",
+  "pinFirstFrame": true,
+  "pinLastFrameForCycles": true
+ },
+ "preserveDirection": "Use the supplied actual-model render as the exact opening frame. Keep the same model identity, hull proportions, palette, camera, lighting and stationary background. Articulate solid mechanical parts around attached pivots; do not substitute a different spacecraft or turn the shot into a flyby. Any explicitly proposed new mechanism is confined to the named existing equipment bay; the host model remains recognizable and rigid. This is a Blender animation reference, not footage to play in the game.",
+ "selectedIds": [
+  "ANI-01",
+  "ANI-02",
+  "ANI-03",
+  "ANI-05",
+  "ANI-06",
+  "ANI-07",
+  "ANI-08",
+  "ANI-09",
+  "ANI-10",
+  "ANI-11",
+  "ANI-13",
+  "ANI-14",
+  "ANI-15"
+ ],
+ "retainedUnselectedIds": [
+  "ANI-04",
+  "ANI-12"
+ ],
+ "jobs": [
+  {
+   "id": "ANI-01",
+   "title": "Scanner dish deploy, aim, pulse and park",
+   "model": "kestrel",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "sourceParts": [
+    "DishPedestal",
+    "Dish",
+    "DishHorn",
+    "DishFeed",
+    "HOOK_SENSOR_DISH"
+   ],
+   "proposedGeometry": "A short rigid telescoping inner stem within the existing dish pedestal; original dish dimensions and host geometry remain authoritative.",
+   "sourceImage": "assets/animation-references/models/kestrel.png",
+   "pinLastFrame": true,
+   "prompt": "Use the exact spacecraft from the pinned frame and keep its entire teal pressure hull, long flat cyan-and-charcoal roof rail, both broad shoulder sponsons, green repair box and rear drum motionless. The only moving part is the small round silver scanning dish currently centred near 55 percent of frame width and 40 percent of frame height: rotate that disk gently side to side on its own short local pedestal, lift the disk straight upward by only one quarter of its own diameter on a short attached silver telescoping stem, hold briefly, and lower and park it at exactly its starting location. The long longitudinal roof rail remains flat on the hull throughout, with every seam and livery band retaining its original shape and position. Show one precise small rigid mechanism with a visible continuous attachment to the pedestal, fixed lighting and a completely locked camera; this is technical model-animation reference, not a transformation or a cinematic move."
+  },
+  {
+   "id": "ANI-02",
+   "title": "Starter mining head deploy and bite",
+   "model": "kestrel",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "sourceParts": [
+    "MiningClamp",
+    "MiningCutter",
+    "SOCKET_Mining_Front"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/kestrel-mining-detail.png",
+   "contextImages": [
+    "assets/animation-references/models/kestrel.png"
+   ],
+   "duration": 4,
+   "pinLastFrame": true,
+   "prompt": "Use the exact fixed bow/chin close-up in the opening frame; the context image identifies the same Kestrel and is not another shot to cut to. Only the small orange circular mining cutter below the nose moves: its attached dark guide makes one short straight extension toward the viewer by half the cutter's diameter, holds briefly, and withdraws into the original parked position. Keep the two upper gun barrels, nose armour and surrounding panels completely stationary and unchanged, and keep the cutter's round metal shape and size rigid throughout. Show a precise solid sliding mechanism with a fixed camera and steady lighting, not a new claw, a growing cannon or a tilting ship."
+  },
+  {
+   "id": "ANI-03",
+   "title": "Massline winch payout, catch, loaded reel and release",
+   "model": "yard_tug",
+   "releaseGlb": "assets/ships/release/parts/wholeships/yard_tug.glb",
+   "builder": "tools/blender/forge/ships/yard_tug.py",
+   "sourceParts": [
+    "WinchDrum",
+    "WinchCable",
+    "WinchFlange",
+    "WinchCheek",
+    "Fairlead",
+    "FairleadRoll",
+    "TowHook",
+    "SOCKET_Tether_Massline"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/yard_tug.png",
+   "pinLastFrame": true,
+   "prompt": "Preserve the exact yard tug in the pinned model render and lock the camera to its overhead three-quarter view. Its existing tow winch between the rear drive pods performs one visible Massline cycle: the fairlead aligns a little, the drum pays out a short taut cable through the existing rear guide, catches with one compact load reaction in the winch cheeks, then rotates steadily to take the cable back in. The rollers and attached tow hardware move as rigid mechanisms while the spacecraft body and drives remain still; finish with a distinct slack release and the hook returned to its original stowed position. Show cable tension and geared drum motion rather than a glowing rope floating through the hull, with the original palette and background unchanged."
+  },
+  {
+   "id": "ANI-04",
+   "title": "Overheat louvers and radiator bloom",
+   "model": "kestrel",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "sourceParts": [
+    "RadFin",
+    "RadSpine",
+    "HullVent"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/kestrel.png",
+   "pinLastFrame": true,
+   "prompt": "Keep the exact teal Kestrel and the locked overhead three-quarter composition of the supplied frame. Its two existing radiator combs along the outer shoulder edges hinge their individual dark metal fins open in a short front-to-back wave, exposing narrow warm-lit gaps; the ship holds this distinct heat-dump silhouette briefly before the fins close in the reverse wave and settle. The shoulder sponsons themselves, pressure hull, canopy and drive drum stay perfectly rigid and stationary, and the fins remain attached to their original radiator spines. Make the geometry movement the main action, with only a restrained warm glow and tiny vent wisps that never obscure it; finish in the original parked pose."
+  },
+  {
+   "id": "ANI-05",
+   "title": "Boost drive iris and actuator lock",
+   "model": "kestrel",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "sourceParts": [
+    "DriveBell",
+    "DriveCollar",
+    "DriveRing",
+    "DriveClamp",
+    "HOOK_DRIVE_CORE"
+   ],
+   "proposedGeometry": "A small rigid segmented iris/rotor inside the existing aft DriveBell opening; fixed nozzle diameter and unchanged pressure hull/drum at rest.",
+   "sourceImage": "assets/animation-references/models/kestrel-drive-detail.png",
+   "contextImages": [
+    "assets/animation-references/models/kestrel.png"
+   ],
+   "duration": 4,
+   "pinLastFrame": true,
+   "prompt": "Preserve the fixed rear-nozzle close-up in the opening frame; the other image identifies the same Kestrel host, not a camera angle to switch to. Inside the small round blue exhaust opening at the lower centre, six compact rigid metal iris petals slide a little outward under the existing inner rim, reveal the blue core during a brief powered hold, then slide back to their original hidden positions. The iris remains entirely inside the original exhaust circle: its diameter, the heavy surrounding collar, four clamps, shoulder panels and hull never grow, rotate or move. Show only this short precise ignition-and-lock mechanism with a completely stationary camera and background; do not add a giant fan on top of the ship."
+  },
+  {
+   "id": "ANI-06",
+   "title": "Repair pod hatch and service-arm weld",
+   "model": "kestrel",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "sourceParts": [
+    "RepairPod",
+    "RepairPodBand",
+    "RepairPodHatch",
+    "HOOK_SECONDARY_POD",
+    "SOCKET_Utility_Dorsal"
+   ],
+   "proposedGeometry": "A compact two-joint service arm stowed inside the existing fixed green repair pod, with a small tool head.",
+   "sourceImage": "assets/animation-references/models/kestrel-repair-detail.png",
+   "contextImages": [
+    "assets/animation-references/models/kestrel.png"
+   ],
+   "duration": 4,
+   "pinLastFrame": true,
+   "prompt": "Keep the exact green repair-pod close-up and every surrounding hull panel still; the context image identifies its original location on the Kestrel shoulder. Only the small dark rectangular hatch on top of the green box, near 58 percent across and 55 percent down the frame, hinges up; a compact two-link metal service arm unfolds from that hatch, holds its small tool tip just outside the opening, then folds back inside and the hatch closes. The green box itself and its orange band remain fixed to the shoulder, and each short arm link stays rigid and joined at visible hinges; the deployed arm is no longer than the green pod. Show one calm deploy-and-stow cycle in the locked camera view, not a box flying off the ship or an arm emerging from the central roof rail."
+  },
+  {
+   "id": "ANI-07",
+   "title": "Directional armour hinge, peel and loose-plate settle",
+   "model": "kestrel",
+   "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+   "builder": "tools/blender/forge/ships/kestrel.py",
+   "sourceParts": [
+    "ShoulderCap",
+    "HOOK_ARMOR_PORT",
+    "Sponson",
+    "Brace"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/kestrel-armour-detail.png",
+   "contextImages": [
+    "assets/animation-references/models/kestrel.png"
+   ],
+   "duration": 4,
+   "pinLastFrame": false,
+   "prompt": "Keep the exact shoulder close-up from the opening frame and all surrounding Kestrel panels stationary; the context image identifies the same host spacecraft. Only the existing flat dark blue-grey armour cap near 68 percent across and 68 percent down this view peels slightly upward about its original inner long attachment edge, rocks once under load, and settles partly raised with a narrow structural gap beneath it. It stays one thin rigid plate with its original four-sided outline, colour and thickness; the nearby orange band, radiator comb, main hull and green repair pod do not move or duplicate. Show a small believable hinge failure and weighted settle in the fixed camera, not a box emerging from the shoulder, a growing plate or a detached floating crate."
+  },
+  {
+   "id": "ANI-08",
+   "title": "Wasp seam rupture and rigid debris handoff",
+   "model": "wasp_production_v1",
+   "releaseGlb": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+   "builder": "tools/blender/forge/ships/wasp.py",
+   "sourceParts": [
+    "Fuselage",
+    "Chine",
+    "WingRoot",
+    "Nacelle",
+    "TailFin",
+    "HOOK_SECONDARY_FIN",
+    "HOOK_ARMOR_FLAP"
+   ],
+   "proposedGeometry": "Wasp-specific substantial rupture fragments derived from its actual source; simulation owns actor trajectories and mass conservation.",
+   "sourceImage": "assets/animation-references/models/wasp_production_v1.png",
+   "pinLastFrame": false,
+   "prompt": "Use the exact Wasp spacecraft from the opening model render in a locked overhead three-quarter shot. A compact bright internal rupture splits its centre into a few substantial rigid pieces: the recognizable bow/canopy portion, rear drive portion and original side or tail plates separate along believable structural seams, retaining their original surfaces, proportions and livery as they drift apart slowly in zero gravity. Keep the breakup legible and weighted, with a short internal flash and sparse small chips rather than a smoke cloud or a replacement spaceship; the camera and background remain fixed and the original hull is clearly identifiable in the pieces. End with the separated pieces still in frame, showing the torn seams and attachments; this is an art reference for an immediate game-physics handoff, not permission to delay a kill or bake gameplay trajectories."
+  },
+  {
+   "id": "ANI-09",
+   "title": "Salvage-cutter hydraulic jaw bite and release",
+   "model": "salvage_cutter",
+   "releaseGlb": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
+   "builder": "tools/blender/forge/ships/salvage_cutter.py",
+   "sourceParts": [
+    "JawPivot",
+    "Jaw",
+    "Blade",
+    "CutterEdge",
+    "JawRam",
+    "JawRamRod",
+    "JawRamLug",
+    "Shredder"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/salvage-cutter-jaw-detail.png",
+   "contextImages": [
+    "assets/animation-references/models/salvage_cutter.png"
+   ],
+   "duration": 4,
+   "pinLastFrame": true,
+   "prompt": "The exact salvage cutter in the fixed opening view keeps its patched hull, offset cab, rear scrap cage, drives and overall scale perfectly stationary. Only the two large left-pointing jaws rotate outward by about twenty degrees on their existing shoulder hinge pins, hold briefly, then return to the original gape; the silver hydraulic rods slide within their existing cylinders while keeping both ends attached. The jaw plates retain their original lengths, thicknesses, blade shapes and hazard bands, and the scrap cage never opens or rises. Demonstrate one deliberate rigid scissor-jaw cycle with the same camera and lighting, not stretching jaws, zooming toward the model or changing the spacecraft."
+  },
+  {
+   "id": "ANI-10",
+   "title": "Mining-drone cutter engage, grind and coast-down",
+   "model": "place_mining_drone",
+   "releaseGlb": "assets/ships/release/parts/places/place_mining_drone.glb",
+   "builder": "tools/blender/forge/ships/place_mining_drone.py",
+   "sourceParts": [
+    "Gearbox",
+    "Drum",
+    "DrumLip",
+    "CutFace",
+    "Tooth",
+    "Cutter",
+    "Spike",
+    "LampYoke"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/place_mining_drone.png",
+   "pinLastFrame": true,
+   "prompt": "Animate the exact orange four-pod mining drone from the supplied model render without moving its hull or camera. Its existing front toothed cutter drum rotates around the longitudinal gearbox axis: a clear spin-up is followed by a short controlled grinding cycle with three small pressure strokes along the guide, then the drum coasts down and returns to the original stopped pose. Keep the toothed ring, central spike, warning collar, work lamp and all four thruster pods in their original rigid forms and correct relative positions; the teeth turn with the drum, not independently through the body. Make the moving cutter geometry easy to follow in the overhead three-quarter view, with minimal sparks and the background fixed."
+  },
+  {
+   "id": "ANI-11",
+   "title": "Cargo-pod lock bars, door breach and spill opening",
+   "model": "place_cargo_pod_standard",
+   "releaseGlb": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
+   "builder": "tools/blender/forge/ships/place_cargo_pod_standard.py",
+   "sourceParts": [
+    "Door",
+    "LockBar",
+    "EndRail",
+    "Post",
+    "Body",
+    "Lug",
+    "SOCKET_Clamp_Dorsal"
+   ],
+   "proposedGeometry": "Two outer hinged door leaves, two short inner fold-down retainer panels, and a shallow real interior; source ribs, frame and roof lug remain unchanged.",
+   "sourceImage": "assets/animation-references/models/place_cargo_pod_standard.png",
+   "pinLastFrame": false,
+   "prompt": "Preserve the exact teal ribbed cargo pod from the opening frame, with its charcoal corner frame, warning bands and roof grapple lug, in a locked overhead three-quarter view. At the visible worked end, the existing lock bars turn a quarter turn and withdraw their bolts, then two rigid door leaves release from the central seam and swing outward on the end-frame hinges to expose a shallow dark cargo interior. The door hardware and bars remain attached and retain the original metal shapes and colours; all wall ribs, corner posts and the roof lug stay still. Show a brief resistant latch beat followed by a weighted opening and hold the final open pose with no camera move or flood of particles hiding the doors."
+  },
+  {
+   "id": "ANI-12",
+   "title": "Trade-hub mooring jaws seat and release",
+   "model": "place_station_trade_hub",
+   "releaseGlb": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+   "builder": "tools/blender/forge/ships/place_station_trade_hub.py",
+   "sourceParts": [
+    "Collar",
+    "Port",
+    "PortRing",
+    "LeadArms",
+    "MoorArm",
+    "MoorClamp"
+   ],
+   "proposedGeometry": "Two compact local collar jaw/linkage assemblies using the existing mooring-hardware family; retained unselected idea, not an approved reference.",
+   "sourceImage": "assets/animation-references/models/place_station_trade_hub.png",
+   "pinLastFrame": true,
+   "prompt": "Keep the exact ivory-and-teal market-wheel trade hub in the pinned model render, including its broken ring harbour mouth, three enclosed spokes, central drum and parked courtyard ships. At the existing central docking collar by the open harbour approach, show two proposed compact graphite clamp jaws drawn from the station's existing mooring-hardware family: their short attached linkages pivot inward and the jaws slide to a clearly seated stop, hold briefly, then release and fold back beside the collar. The movement stays beside the docking collar and never becomes a door closing across the flight throat; the ring, piers and station body remain stationary and retain their precise structure and palette. Use a fixed overhead three-quarter camera and a clear two-beat seat-and-lock rhythm with restrained lights, keeping the articulated jaws visible rather than hiding them in bloom."
+  },
+  {
+   "id": "ANI-13",
+   "title": "Fab-yard two-link welding-arm seam pass",
+   "model": "place_station_fab",
+   "releaseGlb": "assets/ships/release/parts/places/place_station_fab.glb",
+   "builder": "tools/blender/forge/ships/place_station_fab.py",
+   "sourceParts": [
+    "ArmBase",
+    "ArmA",
+    "ArmB",
+    "ArmJoint",
+    "ArmHead"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/place_station_fab.png",
+   "pinLastFrame": true,
+   "prompt": "Preserve the exact blue-grey U-shaped orbital fabrication yard and its ivory half-plated hull from the supplied render, with the open lattice walls and orange bridge cranes unchanged. One existing two-link wall-mounted welding arm performs a single clear service pass: its shoulder and elbow unfold toward a nearby hull seam, the wrist aligns its compact tool head, the head traces a short straight seam with a concentrated cyan welding point, then the arm retracts and parks at its original wall mount. All arm links keep their rigid shapes and hinge connections, and the half-built hull, gantries, neighbouring arms and camera stay still. Make the linked joint motion and approach/working/release phases readable from the overhead three-quarter view; keep sparks sparse and the station architecture faithful."
+  },
+  {
+   "id": "ANI-14",
+   "title": "Fab-yard crane plate lift, traverse and fit",
+   "model": "place_station_fab",
+   "releaseGlb": "assets/ships/release/parts/places/place_station_fab.glb",
+   "builder": "tools/blender/forge/ships/place_station_fab.py",
+   "sourceParts": [
+    "Crane0",
+    "CraneTrolley0",
+    "CraneCab0",
+    "CraneEnd0",
+    "Hoist0",
+    "HangingPlate"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/station-fab-crane-detail.png",
+   "contextImages": [
+    "assets/animation-references/models/place_station_fab.png"
+   ],
+   "duration": 4,
+   "pinLastFrame": true,
+   "prompt": "Preserve the exact fixed fabrication-yard view, its U-shaped blue-grey walls, incomplete ivory hull and three orange bridge beams. On only the rightmost orange bridge over the exposed rear hull ribs, its small dark trolley slides a short distance along that beam, the same attached curved grey hull plate lowers a little on its two hoist lines toward the ribs, holds in alignment, then returns to the original suspension position. All three orange bridge beams stay at exactly their original height and shape, and the other two cranes, walls, workshop, hull and camera remain motionless. Show one clear short heavy-load trolley-and-hoist cycle with continuously attached cables, not raising the entire gantry or growing new crane masts."
+  },
+  {
+   "id": "ANI-15",
+   "title": "Jump-gate emitter index, lock and reset",
+   "model": "place_gate_jump_ring",
+   "releaseGlb": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+   "builder": "tools/blender/forge/ships/place_gate_jump_ring.py",
+   "sourceParts": [
+    "Emitter",
+    "EmitterBase",
+    "Coil",
+    "ApertureRim",
+    "Seg",
+    "SOCKET_Gate_Aperture"
+   ],
+   "proposedGeometry": null,
+   "sourceImage": "assets/animation-references/models/gate-emitter-detail.png",
+   "contextImages": [
+    "assets/animation-references/models/place_gate_jump_ring.png"
+   ],
+   "duration": 4,
+   "pinLastFrame": true,
+   "prompt": "Keep the exact segmented ivory-and-cyan gate in the fixed opening view, including its original twelve-segment ring, square crown tower, side service platforms and dark open aperture; the additional full-model image is geometry context, not another camera shot. Only the small white emitter tips immediately inside the rim make a short radial indexing stroke of less than their own length, settle together into a brief energised hold, and return to their starting points. The outer ring, large armour segments, tower and platforms remain rigid and completely motionless, and the aperture remains dark and open throughout. Show subtle solid carriage motion on the existing hardware with steady restrained cyan lights; do not rotate, grow or replace the ring with a new spoked machine."
+  }
+ ]
+}

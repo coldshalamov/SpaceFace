@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SpaceFace Animation References</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#0c0f12;color:#dfe7ea;font:15px/1.5 system-ui,sans-serif}
+header{padding:1.6rem 2rem 1rem;border-bottom:1px solid #24303a}
+h1{margin:0;font-size:1.5rem;letter-spacing:.04em;color:#9fe8d0}
+.sub{margin:.4rem 0 0;color:#8fa3ad;max-width:60rem}
+.links{margin:.5rem 0 0;font-size:.85rem}
+.links a{color:#7fc4ff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;padding:1.2rem 2rem 2rem;max-width:110rem}
+@media(max-width:900px){.grid{grid-template-columns:1fr;padding:1rem}}
+.card{background:#12181d;border:1px solid #24303a;border-radius:10px;padding:1rem}
+.card h2{margin:0 0 .6rem;font-size:1.05rem;color:#9fe8d0}
+.card h2 .t{color:#dfe7ea;font-weight:500}
+video{width:100%;display:block;background:#000;border-radius:6px}
+.ctx{width:100%;display:block;border-radius:6px;margin-top:.4rem}
+.scope{color:#b9c8cf;margin:.7rem 0}
+details{margin:.4rem 0;border-top:1px solid #1e2830;padding-top:.5rem}
+summary{cursor:pointer;color:#8fb8d8;font-size:.9rem}
+code{font-size:.8em;color:#a9c4d4;word-break:break-all}
+ul{margin:.3rem 0;padding-left:1.2rem}
+.lm li{color:#93a8b2;font-size:.88rem}
+.retained{max-width:70rem;margin:0 2rem 2rem;background:#12181d;border:1px solid #24303a;border-radius:10px;padding:1rem}
+.retained h2{margin:0 0 .5rem;font-size:1rem;color:#c9a96a}
+footer{padding:1rem 2rem 2rem;color:#5f707a;font-size:.8rem}
+</style></head><body>
+<header>
+<h1>SpaceFace Animation References</h1>
+<p class="sub">13 model-anchored motion briefs for Blender. These are reference movies, not animations currently in the game.</p>
+<p class="links"><a href="../../../build_map.md">build_map.md task wave</a> &middot; <a href="../../../design/program/ANIMATION_REFERENCE_PROGRAM.md">animation reference program</a> &middot; <a href="manifest.json">manifest.json</a> &middot; <a href="accepted-overview.png">accepted overview image</a></p>
+</header>
+<main class="grid">
+<article class="card" id="ANI-01">
+  <h2>ANI-01 <span class="t">Scanner dish deploy, aim, pulse and park</span></h2>
+  <video controls preload="metadata" poster="models/kestrel.png" src="videos/ANI-01.mp4"></video>
+  <p class="scope">Attached scanner pedestal lift and dish aim/park; fixed host hull and roof rail.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>V1 rejected for lifting the roof rail; v2 targets the actual small dish assembly.</li><li>Use the real Dish/DishPedestal dimensions and rigid geometry; the generated reflector/specular detail is not replacement mesh authority.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 25 — <b>deploy</b> (t=1.00s)</li><li>frame 61 — <b>aim</b> (t=2.50s)</li><li>frame 97 — <b>retract</b> (t=4.00s)</li><li>frame 132 — <b>park</b> (t=5.46s)</li><li>frame 145 — <b>final</b> (t=6.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> kestrel &middot; <b>Builder:</b> <code>tools/blender/forge/ships/kestrel.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/kestrel.glb</code><br><b>GLB SHA-256:</b> <code>51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db</code></p>
+   <p><b>Source parts (prefix families):</b> <code>DishPedestal</code> <code>Dish</code> <code>DishHorn</code> <code>DishFeed</code> <code>HOOK_SENSOR_DISH</code></p>
+   <p><b>Proposed geometry:</b> A short rigid telescoping inner stem within the existing dish pedestal; original dish dimensions and host geometry remain authoritative.</p>
+   <p><b>Pinned input:</b> <code>models/kestrel.png</code><br><b>Video SHA-256:</b> <code>0144251f9c5846ab6e22267a5af51a9bef3de3e0e07627d42102b9268a2fd6a4</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 145 frames</p>
+
+  </details>
+ </article>
+<article class="card" id="ANI-02">
+  <h2>ANI-02 <span class="t">Starter mining head deploy and bite</span></h2>
+  <video controls preload="metadata" poster="models/kestrel-mining-detail.png" src="videos/ANI-02.mp4"></video>
+  <p class="scope">Focused actual bow/chin orange cutter carrier extension and stow, with guns and nose held fixed.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>Reference is a mechanism close-up with whole-model context, not a whole-hull animation.</li><li>Keep the real source cutter diameter and bound its travel to the validated emitter/guide; the video is not permission to grow a new cannon or increase mining range.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 18 — <b>extension</b> (t=0.71s)</li><li>frame 45 — <b>work-pose</b> (t=1.83s)</li><li>frame 71 — <b>withdraw</b> (t=2.92s)</li><li>frame 97 — <b>park</b> (t=4.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> kestrel &middot; <b>Builder:</b> <code>tools/blender/forge/ships/kestrel.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/kestrel.glb</code><br><b>GLB SHA-256:</b> <code>51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db</code></p>
+   <p><b>Source parts (prefix families):</b> <code>MiningClamp</code> <code>MiningCutter</code> <code>SOCKET_Mining_Front</code></p>
+
+   <p><b>Pinned input:</b> <code>models/kestrel-mining-detail.png</code><br><b>Video SHA-256:</b> <code>62ce38d1a3931d36c584c1d412b8ed6381baddff5a95ba34bfb0c41f5e14dbcf</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 97 frames</p>
+   <p><b>Host context image:</b></p><img class="ctx" loading="lazy" src="models/kestrel.png" alt="whole-model context for ANI-02">
+  </details>
+ </article>
+<article class="card" id="ANI-03">
+  <h2>ANI-03 <span class="t">Massline winch payout, catch, loaded reel and release</span></h2>
+  <video controls preload="metadata" poster="models/yard_tug.png" src="videos/ANI-03.mp4"></video>
+  <p class="scope">Yard-tug tow-hardware catch/reel/release and illustrative line payout, with recognizable fixed host.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>The rope is the existing simulation/VFX tether, not a second Blender-animated rope.</li><li>Match the actual WinchDrum axis, wrap count and fairlead from the source; omit incidental non-winch deck-plate twitch from the generator.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 27 — <b>payout</b> (t=1.08s)</li><li>frame 80 — <b>loaded-reel</b> (t=3.29s)</li><li>frame 119 — <b>release</b> (t=4.92s)</li><li>frame 145 — <b>park</b> (t=6.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> yard_tug &middot; <b>Builder:</b> <code>tools/blender/forge/ships/yard_tug.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/yard_tug.glb</code><br><b>GLB SHA-256:</b> <code>bf357a1e0051c18364e44850ea690e632b28ad5fb95c9824a969777482b352c0</code></p>
+   <p><b>Source parts (prefix families):</b> <code>WinchDrum</code> <code>WinchCable</code> <code>WinchFlange</code> <code>WinchCheek</code> <code>Fairlead</code> <code>FairleadRoll</code> <code>TowHook</code> <code>SOCKET_Tether_Massline</code></p>
+
+   <p><b>Pinned input:</b> <code>models/yard_tug.png</code><br><b>Video SHA-256:</b> <code>69f2f04a88da86b3c2c560ed5935d882e88244d7e8585b92880a8c7858ea89fa</code> &middot; v1 &middot; 1280&times;720 @ 24fps &middot; 145 frames</p>
+
+  </details>
+ </article>
+<article class="card" id="ANI-05">
+  <h2>ANI-05 <span class="t">Boost drive iris and actuator lock</span></h2>
+  <video controls preload="metadata" poster="models/kestrel-drive-detail.png" src="videos/ANI-05.mp4"></video>
+  <p class="scope">Compact segmented drive-iris/rotor ignition cycle inside the actual aft blue exhaust circle.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>Focused rear inspection view fixes the v1's wrong roof-mounted fan. The existing nozzle diameter and surrounding collar stay fixed.</li><li>Small inner segmented hardware is explicitly proposed geometry; choose a fixed documented petal count and rigid linkage, not incidental AI blade/detail drift.</li><li>Parent bell gimbal and core emissive pulse keep their current owners; only the new inner hardware belongs in the motion bank.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 18 — <b>ignition</b> (t=0.71s)</li><li>frame 49 — <b>powered-pose</b> (t=2.00s)</li><li>frame 80 — <b>closing</b> (t=3.29s)</li><li>frame 97 — <b>park</b> (t=4.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> kestrel &middot; <b>Builder:</b> <code>tools/blender/forge/ships/kestrel.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/kestrel.glb</code><br><b>GLB SHA-256:</b> <code>51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db</code></p>
+   <p><b>Source parts (prefix families):</b> <code>DriveBell</code> <code>DriveCollar</code> <code>DriveRing</code> <code>DriveClamp</code> <code>HOOK_DRIVE_CORE</code></p>
+   <p><b>Proposed geometry:</b> A small rigid segmented iris/rotor inside the existing aft DriveBell opening; fixed nozzle diameter and unchanged pressure hull/drum at rest.</p>
+   <p><b>Pinned input:</b> <code>models/kestrel-drive-detail.png</code><br><b>Video SHA-256:</b> <code>941d135bcb1b8424e22ea275ffa5a2cca9d165ac5f2d0eb54b195829765993bf</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 97 frames</p>
+   <p><b>Host context image:</b></p><img class="ctx" loading="lazy" src="models/kestrel.png" alt="whole-model context for ANI-05">
+  </details>
+ </article>
+<article class="card" id="ANI-06">
+  <h2>ANI-06 <span class="t">Repair pod hatch and service-arm weld</span></h2>
+  <video controls preload="metadata" poster="models/kestrel-repair-detail.png" src="videos/ANI-06.mp4"></video>
+  <p class="scope">Fixed green repair-pod hatch with a compact attached two-link arm deploy/stow cycle.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>The focused image now selects the actual pod hatch, not the central roof.</li><li>Arm and internal mount are proposed geometry; the green body and band remain fixed and source geometry is authoritative.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 27 — <b>hatch-arm-deploy</b> (t=1.08s)</li><li>frame 49 — <b>service-pose</b> (t=2.00s)</li><li>frame 80 — <b>stow</b> (t=3.29s)</li><li>frame 97 — <b>park</b> (t=4.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> kestrel &middot; <b>Builder:</b> <code>tools/blender/forge/ships/kestrel.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/kestrel.glb</code><br><b>GLB SHA-256:</b> <code>51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db</code></p>
+   <p><b>Source parts (prefix families):</b> <code>RepairPod</code> <code>RepairPodBand</code> <code>RepairPodHatch</code> <code>HOOK_SECONDARY_POD</code> <code>SOCKET_Utility_Dorsal</code></p>
+   <p><b>Proposed geometry:</b> A compact two-joint service arm stowed inside the existing fixed green repair pod, with a small tool head.</p>
+   <p><b>Pinned input:</b> <code>models/kestrel-repair-detail.png</code><br><b>Video SHA-256:</b> <code>749aa37f88ae9633734c194b07a610ceca7738155d5bd65fc66768833bf072bc</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 97 frames</p>
+   <p><b>Host context image:</b></p><img class="ctx" loading="lazy" src="models/kestrel.png" alt="whole-model context for ANI-06">
+  </details>
+ </article>
+<article class="card" id="ANI-07">
+  <h2>ANI-07 <span class="t">Directional armour hinge, peel and loose-plate settle</span></h2>
+  <video controls preload="metadata" poster="models/kestrel-armour-detail.png" src="videos/ANI-07.mp4"></video>
+  <p class="scope">Single thin original port shoulder cap lifting about its attachment and settling into a small damaged gap.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>Focused dark-panel view fixes the duplicated-box v1. Use the actual four-sided cap outline and thickness.</li><li>The generated visual gap is not a physics actor handoff: any detached part must still be a real once-spawned debris body.</li></ul><ul class="lm"><li>frame 1 — <b>undamaged</b> (t=0.00s)</li><li>frame 18 — <b>lift</b> (t=0.71s)</li><li>frame 49 — <b>loose-plate-pose</b> (t=2.00s)</li><li>frame 97 — <b>damaged-hold</b> (t=4.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> kestrel &middot; <b>Builder:</b> <code>tools/blender/forge/ships/kestrel.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/kestrel.glb</code><br><b>GLB SHA-256:</b> <code>51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db</code></p>
+   <p><b>Source parts (prefix families):</b> <code>ShoulderCap</code> <code>HOOK_ARMOR_PORT</code> <code>Sponson</code> <code>Brace</code></p>
+
+   <p><b>Pinned input:</b> <code>models/kestrel-armour-detail.png</code><br><b>Video SHA-256:</b> <code>9d2ccb4274367d28f864135e2419a14612bd9cf016622ee53f45b1113621dee7</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 97 frames</p>
+   <p><b>Host context image:</b></p><img class="ctx" loading="lazy" src="models/kestrel.png" alt="whole-model context for ANI-07">
+  </details>
+ </article>
+<article class="card" id="ANI-08">
+  <h2>ANI-08 <span class="t">Wasp seam rupture and rigid debris handoff</span></h2>
+  <video controls preload="metadata" poster="models/wasp_production_v1.png" src="videos/ANI-08.mp4"></video>
+  <p class="scope">Readable Wasp-specific hull/wing/nacelle-cover rupture into substantial recognizable rigid pieces.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>The movie illustrates fracture choreography and fragment identity, not an actor-motion clip to bake.</li><li>Retained central chassis is dead wreck mass, not a second live/intact Wasp; conserve mass and do not duplicate nacelles when authoring the fragment set.</li><li>The runtime owns all fragment separation, translation and spin from the immediate physical handoff.</li></ul><ul class="lm"><li>frame 1 — <b>intact</b> (t=0.00s)</li><li>frame 14 — <b>rupture</b> (t=0.54s)</li><li>frame 40 — <b>peel</b> (t=1.63s)</li><li>frame 80 — <b>separated-pieces</b> (t=3.29s)</li><li>frame 145 — <b>wreck-hold</b> (t=6.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> wasp_production_v1 &middot; <b>Builder:</b> <code>tools/blender/forge/ships/wasp.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/wasp_production_v1.glb</code><br><b>GLB SHA-256:</b> <code>a1f5238984a250372330650a692279e8d1d2ac9263cdf69d1a9139b1aa55f602</code></p>
+   <p><b>Source parts (prefix families):</b> <code>Fuselage</code> <code>Chine</code> <code>WingRoot</code> <code>Nacelle</code> <code>TailFin</code> <code>HOOK_SECONDARY_FIN</code> <code>HOOK_ARMOR_FLAP</code></p>
+   <p><b>Proposed geometry:</b> Wasp-specific substantial rupture fragments derived from its actual source; simulation owns actor trajectories and mass conservation.</p>
+   <p><b>Pinned input:</b> <code>models/wasp_production_v1.png</code><br><b>Video SHA-256:</b> <code>5eff0f85821662ad5690623f01c13df9666ceaac160225845c67b9404ee663f4</code> &middot; v1 &middot; 1280&times;720 @ 24fps &middot; 145 frames</p>
+
+  </details>
+ </article>
+<article class="card" id="ANI-09">
+  <h2>ANI-09 <span class="t">Salvage-cutter hydraulic jaw bite and release</span></h2>
+  <video controls preload="metadata" poster="models/salvage-cutter-jaw-detail.png" src="videos/ANI-09.mp4"></video>
+  <p class="scope">Paired existing salvage jaws hinge while the patched hull, cab and scrap cage keep their shape and scale.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>Tighter model input and context correct the v1's overall drift/cage movement.</li><li>Match original jaw lengths, blade outline and both hydraulic endpoints; no stretching or duplicate jaw parts.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 18 — <b>jaw-opening</b> (t=0.71s)</li><li>frame 49 — <b>pressure-pose</b> (t=2.00s)</li><li>frame 80 — <b>release</b> (t=3.29s)</li><li>frame 97 — <b>park</b> (t=4.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> salvage_cutter &middot; <b>Builder:</b> <code>tools/blender/forge/ships/salvage_cutter.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/wholeships/salvage_cutter.glb</code><br><b>GLB SHA-256:</b> <code>46ef26425fffb0de49a9b96cd620ed379f4557f834f8c07314101f2641aceb6d</code></p>
+   <p><b>Source parts (prefix families):</b> <code>JawPivot</code> <code>Jaw</code> <code>Blade</code> <code>CutterEdge</code> <code>JawRam</code> <code>JawRamRod</code> <code>JawRamLug</code> <code>Shredder</code></p>
+
+   <p><b>Pinned input:</b> <code>models/salvage-cutter-jaw-detail.png</code><br><b>Video SHA-256:</b> <code>0e84ac5962fb9e24ff01f1f6a1778cb7398e77a51826247685745300e4eca957</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 97 frames</p>
+   <p><b>Host context image:</b></p><img class="ctx" loading="lazy" src="models/salvage_cutter.png" alt="whole-model context for ANI-09">
+  </details>
+ </article>
+<article class="card" id="ANI-10">
+  <h2>ANI-10 <span class="t">Mining-drone cutter engage, grind and coast-down</span></h2>
+  <video controls preload="metadata" poster="models/place_mining_drone.png" src="videos/ANI-10.mp4"></video>
+  <p class="scope">Rigid original mining-drone cutter/drum operation with unchanged body, pods and palette.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>Keep all source teeth/spike parts in the same rotor and its real gearbox axis.</li><li>The subtle cutter read in the whole-model reference needs a clear shipping-camera working-state demonstration; it is not permission to deliver an imperceptible animation.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 27 — <b>engage</b> (t=1.08s)</li><li>frame 66 — <b>grind</b> (t=2.71s)</li><li>frame 119 — <b>coast-down</b> (t=4.92s)</li><li>frame 145 — <b>park</b> (t=6.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> place_mining_drone &middot; <b>Builder:</b> <code>tools/blender/forge/ships/place_mining_drone.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/places/place_mining_drone.glb</code><br><b>GLB SHA-256:</b> <code>2b64b357621af5dd78681a095682cd41b3ac92cd3cf63ac887840b79f751c3cf</code></p>
+   <p><b>Source parts (prefix families):</b> <code>Gearbox</code> <code>Drum</code> <code>DrumLip</code> <code>CutFace</code> <code>Tooth</code> <code>Cutter</code> <code>Spike</code> <code>LampYoke</code></p>
+
+   <p><b>Pinned input:</b> <code>models/place_mining_drone.png</code><br><b>Video SHA-256:</b> <code>07b4a215678066e645734d2efb05f4bf743107d6f746f1edefcb2a2e80ccad4c</code> &middot; v1 &middot; 1280&times;720 @ 24fps &middot; 145 frames</p>
+
+  </details>
+ </article>
+<article class="card" id="ANI-11">
+  <h2>ANI-11 <span class="t">Cargo-pod lock bars, door breach and spill opening</span></h2>
+  <video controls preload="metadata" poster="models/place_cargo_pod_standard.png" src="videos/ANI-11.mp4"></video>
+  <p class="scope">Cargo-pod lock release, paired outer door opening and short inner fold-down retainer release into an open hold.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>This concept deliberately adds a real interior, two outer leaves and two inner retaining panels; the ribs, frame, warning bands and roof lug stay recognizable.</li><li>Do not claim four generated opening surfaces already exist in the source model.</li><li>A persistent opened shell must be a real empty physical successor/wreck, not an unmanipulable visual ghost; actual inventory spill stays exactly once.</li></ul><ul class="lm"><li>frame 1 — <b>sealed</b> (t=0.00s)</li><li>frame 27 — <b>outer-door-release</b> (t=1.08s)</li><li>frame 66 — <b>inner-retainer-release</b> (t=2.71s)</li><li>frame 106 — <b>open</b> (t=4.38s)</li><li>frame 145 — <b>open-hold</b> (t=6.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> place_cargo_pod_standard &middot; <b>Builder:</b> <code>tools/blender/forge/ships/place_cargo_pod_standard.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/places/place_cargo_pod_standard.glb</code><br><b>GLB SHA-256:</b> <code>c350ab31ff72098ebbb2a04d8f3f720dc20cf04842538d0c62675849558dd62f</code></p>
+   <p><b>Source parts (prefix families):</b> <code>Door</code> <code>LockBar</code> <code>EndRail</code> <code>Post</code> <code>Body</code> <code>Lug</code> <code>SOCKET_Clamp_Dorsal</code></p>
+   <p><b>Proposed geometry:</b> Two outer hinged door leaves, two short inner fold-down retainer panels, and a shallow real interior; source ribs, frame and roof lug remain unchanged.</p>
+   <p><b>Pinned input:</b> <code>models/place_cargo_pod_standard.png</code><br><b>Video SHA-256:</b> <code>ae3bd8ba531c84e8a00f67f529835fc8c4578caaaa3822c4df6f989b24e59d3e</code> &middot; v1 &middot; 1280&times;720 @ 24fps &middot; 145 frames</p>
+
+  </details>
+ </article>
+<article class="card" id="ANI-13">
+  <h2>ANI-13 <span class="t">Fab-yard two-link welding-arm seam pass</span></h2>
+  <video controls preload="metadata" poster="models/place_station_fab.png" src="videos/ANI-13.mp4"></video>
+  <p class="scope">Linked-joint fabrication welder approach, seam work and park on the unchanged yard architecture.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>Use the actual source ArmBase/ArmA/ArmB/ArmJoint/ArmHead geometry and mounting, not a new unconnected white beam.</li><li>The high working pose in the video is a visual demonstration; the real tool endpoint must remain on its declared hull seam and avoid wall/cockpit penetration.</li></ul><ul class="lm"><li>frame 1 — <b>park</b> (t=0.00s)</li><li>frame 27 — <b>reach</b> (t=1.08s)</li><li>frame 66 — <b>seam-work</b> (t=2.71s)</li><li>frame 106 — <b>return</b> (t=4.38s)</li><li>frame 145 — <b>park</b> (t=6.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> place_station_fab &middot; <b>Builder:</b> <code>tools/blender/forge/ships/place_station_fab.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/places/place_station_fab.glb</code><br><b>GLB SHA-256:</b> <code>ac316c76ee7b74aae58cbfeab9a75dec38f7276bf3bf7ced3a9cd93b5a4b43bd</code></p>
+   <p><b>Source parts (prefix families):</b> <code>ArmBase</code> <code>ArmA</code> <code>ArmB</code> <code>ArmJoint</code> <code>ArmHead</code></p>
+
+   <p><b>Pinned input:</b> <code>models/place_station_fab.png</code><br><b>Video SHA-256:</b> <code>d7497c963330776de7dd6794c9523cc75de4ed9c84fee5dec1de9d22cd7187fa</code> &middot; v1 &middot; 1280&times;720 @ 24fps &middot; 145 frames</p>
+
+  </details>
+ </article>
+<article class="card" id="ANI-14">
+  <h2>ANI-14 <span class="t">Fab-yard crane plate lift, traverse and fit</span></h2>
+  <video controls preload="metadata" poster="models/station-fab-crane-detail.png" src="videos/ANI-14.mp4"></video>
+  <p class="scope">One crane-0 trolley and connected hull-plate hoist stroke above the exposed stern ribs; fixed bridge beams.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>The corrected view identifies the rightmost orange bridge in this camera and keeps the other cranes/architecture fixed.</li><li>Use actual paired Hoist0 links and HangingPlate; do not reproduce the rejected v1's growing gantry masts.</li></ul><ul class="lm"><li>frame 1 — <b>rest</b> (t=0.00s)</li><li>frame 18 — <b>trolley-hoist</b> (t=0.71s)</li><li>frame 49 — <b>fit-pose</b> (t=2.00s)</li><li>frame 80 — <b>return</b> (t=3.29s)</li><li>frame 97 — <b>park</b> (t=4.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> place_station_fab &middot; <b>Builder:</b> <code>tools/blender/forge/ships/place_station_fab.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/places/place_station_fab.glb</code><br><b>GLB SHA-256:</b> <code>ac316c76ee7b74aae58cbfeab9a75dec38f7276bf3bf7ced3a9cd93b5a4b43bd</code></p>
+   <p><b>Source parts (prefix families):</b> <code>Crane0</code> <code>CraneTrolley0</code> <code>CraneCab0</code> <code>CraneEnd0</code> <code>Hoist0</code> <code>HangingPlate</code></p>
+
+   <p><b>Pinned input:</b> <code>models/station-fab-crane-detail.png</code><br><b>Video SHA-256:</b> <code>6a1990772f7ecaa3e07dc732e24c198cb9e0dff8f78759e1ca261260d4501430</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 97 frames</p>
+   <p><b>Host context image:</b></p><img class="ctx" loading="lazy" src="models/place_station_fab.png" alt="whole-model context for ANI-14">
+  </details>
+ </article>
+<article class="card" id="ANI-15">
+  <h2>ANI-15 <span class="t">Jump-gate emitter index, lock and reset</span></h2>
+  <video controls preload="metadata" poster="models/gate-emitter-detail.png" src="videos/ANI-15.mp4"></video>
+  <p class="scope">Small inner emitter indexing on the actual segmented ivory gate, with fixed tower/platforms and open aperture.</p>
+  <details><summary>Review notes &amp; phase landmarks</summary><ul><li>Actual source-root yaw 90 exposes the real gate; place-view camera heading did not. V1's unrelated eight-spoke replacement is rejected.</li><li>Keep the real source emitter count/lengths and aperture clearance; omit minor generated rod-detail drift.</li></ul><ul class="lm"><li>frame 1 — <b>idle</b> (t=0.00s)</li><li>frame 18 — <b>index</b> (t=0.71s)</li><li>frame 49 — <b>locked</b> (t=2.00s)</li><li>frame 80 — <b>release</b> (t=3.29s)</li><li>frame 97 — <b>idle</b> (t=4.00s)</li></ul></details>
+  <details><summary>Source &amp; build locators</summary>
+   <p><b>Model:</b> place_gate_jump_ring &middot; <b>Builder:</b> <code>tools/blender/forge/ships/place_gate_jump_ring.py</code></p>
+   <p><b>Release GLB:</b> <code>assets/ships/release/parts/places/place_gate_jump_ring.glb</code><br><b>GLB SHA-256:</b> <code>39d8ca0c6342ffb4e244c7d072d7a6d638e1c1da8cb1257383957fc54aae0f2f</code></p>
+   <p><b>Source parts (prefix families):</b> <code>Emitter</code> <code>EmitterBase</code> <code>Coil</code> <code>ApertureRim</code> <code>Seg</code> <code>SOCKET_Gate_Aperture</code></p>
+
+   <p><b>Pinned input:</b> <code>models/gate-emitter-detail.png</code><br><b>Video SHA-256:</b> <code>39006579ec6cd5512f82137a90ad2e0eb85efcc2e053250fb10959ca0e21e640</code> &middot; v2 &middot; 1280&times;720 @ 24fps &middot; 97 frames</p>
+   <p><b>Host context image:</b></p><img class="ctx" loading="lazy" src="models/place_gate_jump_ring.png" alt="whole-model context for ANI-15">
+  </details>
+ </article>
+</main>
+<section class="retained"><h2>Retained unselected ideas (rejected references, no clips shown)</h2><ul><li><b>ANI-04 — Overheat louvers and radiator bloom:</b> retained as unselected idea; not an approved reference<ul><li>v2: Original nine short rectangular fins per bank become six tall triangular replacement wings.</li><li>v3: Focused view still grows nine long replacement bars rather than rotating original short rigid slats; retained unselected idea, not an approved reference.</li></ul></li><li><b>ANI-12 — Trade-hub mooring jaws seat and release:</b> retained as unselected idea; not an approved reference<ul><li>v1: No usable readable collar-jaw operation at the whole-station framing.</li><li>v2: Oversized detached black linkage looks like an off-style floating overlay, not small attached station collar jaws; retained unselected idea.</li></ul></li></ul></section>
+<footer>All clips captured at native 24fps &middot; provenance in manifest.json &middot; source parts are prefix-family authoring locators, not rig guarantees.</footer>
+</body></html>
