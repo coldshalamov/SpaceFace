@@ -197,7 +197,7 @@ function wreckPhysicsBody(mass, radius) {
   };
 }
 
-function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label, markerId }) {
+function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label, markerId, victimVisual }) {
   return {
     type: 'wreck',
     pos: { x: note.pos.x + offset.x, z: note.pos.z + offset.z },
@@ -223,6 +223,9 @@ function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label,
       // marker/provenance onto the remainder only — this stamp must survive
       // it, so the stranded seam piece still names its marker.
       fractureOf: markerId != null ? markerId : null,
+      // ANI-08: the victim's visual identity lets the render pass draw the spawned pieces as
+      // authored fragments of the hull that died rather than generic aftermath debris.
+      fractureVisual: victimVisual && typeof victimVisual === 'object' ? { ...victimVisual } : null,
       proportions: WRECK_COLLIDER_PROPORTIONS,
       loot: [],
       salvagePool: salvagePool || { cmdty_scrap_metal: 1 },
@@ -264,6 +267,7 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     salvagePool: { cmdty_scrap_metal: 1 },
     label: seam.label || 'Hull Fragment',
     markerId,
+    victimVisual: options.victimVisual,
   }));
   const remEntity = helpers.spawnEntity(pieceSpec({
     note,
@@ -275,6 +279,7 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     salvagePool,
     label: 'Salvage Wreck',
     markerId,
+    victimVisual: options.victimVisual,
   }));
 
   const pieces = [seamEntity, remEntity].filter(Boolean);

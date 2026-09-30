@@ -2771,6 +2771,26 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "e2c48323126c26907651fa8a17ba3e94a06e31da440aac09b71cca7fe6d0e202",
     "sourceUrl": "assets/ships/release/parts/places/place_quiessence_freighter_c.glb"
+  },
+  {
+    "assetId": "sf.render.wasp-frag-bow",
+    "expectedContentHash": "fb76916e1f8eb3c0d9cd71d60d4e30f89a51b5c06acee267615fd211c71e2aa2",
+    "key": "wasp-frag-bow",
+    "metadataUrl": "assets/ships/release/render-packages/wasp-frag-bow/render-package.json",
+    "runtimeAssetId": "SF_WASP_FRAG_BOW",
+    "slot": "place",
+    "sourceSha256": "9d8192b0bb20b8f1d83994b9778eebcc2ef9a47999301bddfcf97c6c58056d9f",
+    "sourceUrl": "assets/ships/release/parts/places/place_wasp_frag_bow.glb"
+  },
+  {
+    "assetId": "sf.render.wasp-frag-aft",
+    "expectedContentHash": "01b0ff1af8750cb46e91ba998e1080675b16821e5ee6854bbe6dca63de654087",
+    "key": "wasp-frag-aft",
+    "metadataUrl": "assets/ships/release/render-packages/wasp-frag-aft/render-package.json",
+    "runtimeAssetId": "SF_WASP_FRAG_AFT",
+    "slot": "place",
+    "sourceSha256": "3631dfd1916a1dad409db0e23762cb8643dc9b112f445e15491c3180caf380a1",
+    "sourceUrl": "assets/ships/release/parts/places/place_wasp_frag_aft.glb"
   }
 ];
 

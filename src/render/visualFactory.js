@@ -54,6 +54,7 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import {
   admissionOwnerInactive,
   authoredAdmissionRetriableStatus,
@@ -3211,6 +3212,29 @@ function packagedPartUrl(relativeFile) {
   return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
 }
 
+// ANI-08: overkill-fractured hulls resolve authored fragment GLBs keyed by the victim's def —
+// the seam offcut is the bow shell, the remainder the aft mass — instead of the whole-ship
+// hulk or a generic aftermath piece. Fragment files carry a sealed motion bank, so the same
+// resolution also opts the entity into the node-graph attach path.
+const WRECK_FRAGMENT_FILES = Object.freeze({
+  ship_wasp: Object.freeze({
+    seam: 'places/place_wasp_frag_bow.glb',
+    remainder: 'places/place_wasp_frag_aft.glb',
+  }),
+});
+
+export function fractureFragmentFileForEntity(e) {
+  const data = e && e.data || {};
+  const piece = data.fracturePiece;
+  if (piece !== 'seam' && piece !== 'remainder') return null;
+  const defId = (data.fractureVisual && data.fractureVisual.defId)
+    || (data.hulkVisual && data.hulkVisual.defId)
+    || data.hulkOfDefId
+    || null;
+  const spec = defId && WRECK_FRAGMENT_FILES[defId];
+  return (spec && spec[piece]) || null;
+}
+
 // A kill wreck is the ship you killed, not generic debris (CV-SO): the marker carries the
 // same visual-identity fields the victim's own admission read, so this resolves through the
 // same wholeship selector — hostile-family, silhouette, and faction-kit files included.
@@ -3230,6 +3254,8 @@ function hulkPackagedFileForEntity(e) {
 }
 
 export function wreckPackagedFile(e) {
+  const fragmentFile = fractureFragmentFileForEntity(e);
+  if (fragmentFile) return fragmentFile;
   const hulkFile = hulkPackagedFileForEntity(e);
   if (hulkFile) return hulkFile;
   const identity = interactionProfileForEntity(e);
@@ -3710,8 +3736,10 @@ function attachPackagedBody(root, relativeFile, entity) {
   if (!root || !relativeFile) return root;
   const url = packagedPartUrl(relativeFile);
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
-  // a wreck that fell back to a generic aftermath piece must not be dead-stated.
-  const deadHulk = relativeFile === hulkPackagedFileForEntity(entity);
+  // a wreck that fell back to a generic aftermath piece must not be dead-stated. ANI-08
+  // fracture fragments are hull pieces of the same kill and deaden identically.
+  const deadHulk = relativeFile === hulkPackagedFileForEntity(entity)
+    || relativeFile === fractureFragmentFileForEntity(entity);
   // Same-envelope body: the packaged group is fitted to entity.radius, so the procedural
   // wreck stays drawn through admission (the geology-skin precedent — hiding it produced a
   // guaranteed pop-in window). The commit at publish re-hides; the flag exempts this boundary
@@ -3765,11 +3793,55 @@ function attachPackagedBody(root, relativeFile, entity) {
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       packaged.userData.packagedAuthoredBody = true;
-      instantiatePackagedPrimitives(record, packaged);
+      // Banked packages (fracture fragments) mount through the node graph so the MOTION_*
+      // pivots the motion bank drives actually exist in the scene — the flat-primitive path
+      // bakes every transform into world-space meshes and leaves the rig no nodes.
+      const motionControllers = [];
+      if (record.motionBank && record.renderPackage
+          && typeof record.renderPackage.createInstance === 'function') {
+        const instance = record.renderPackage.createInstance({
+          name: `RenderPackage_PackagedBody_${record.assetId || record.url}`,
+          residencyOwner: liveEntity,
+          residencyRole: 'live-boundary',
+        });
+        const packageRoot = instance && instance.root;
+        if (packageRoot && packageRoot.isObject3D) {
+          packageRoot.userData = {
+            ...(packageRoot.userData || {}),
+            spacefaceRenderPackageDirect: true,
+            spacefacePartUrl: record.url,
+          };
+          const tagsByName = new Map([
+            ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+            ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+          ]);
+          for (const node of instance.planNodes || []) {
+            const tags = tagsByName.get(node.name) || {};
+            node.visible = !tags.lod || tags.lod === 'lod0';
+          }
+          packaged.add(packageRoot);
+          packaged.userData.renderPackageInstance = instance;
+          const controller = bindInstanceMotion(packageRoot, record.motionBank);
+          if (controller) motionControllers.push(controller);
+        } else if (instance && typeof instance.dispose === 'function') {
+          instance.dispose();
+        }
+      }
+      if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
+      }
+      if (motionControllers.length) attachAuthoredMotionDriver(root, liveEntity, motionControllers);
+      // ANI-08: hull:fractured fires at spawn — long before this packaged body's async
+      // admission lands — so the controller registry was empty at dispatch. Re-fire the
+      // rupture here: the flap/mast kick starts as the fragment becomes visible.
+      if (motionControllers.length && entity && entity.data && entity.data.fracturePiece) {
+        const now = factoryPresentationNow();
+        for (const controller of motionControllers) {
+          controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, now);
+        }
       }
       if (deadHulk) {
         const emberMats = deadenPackagedHulk(packaged);

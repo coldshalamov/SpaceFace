@@ -4442,6 +4442,44 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 180,
       "contractNodeCount": 60
+    },
+    {
+      "id": "place_wasp_frag_bow",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_wasp_frag_bow.glb",
+      "release": "assets/ships/release/parts/places/place_wasp_frag_bow.glb",
+      "sourceSha256": "13dae338f75071ec45bf66b8820c64f257f6d25bc2dfa29be5a9599db2f09ed6",
+      "releaseSha256": "9d8192b0bb20b8f1d83994b9778eebcc2ef9a47999301bddfcf97c6c58056d9f",
+      "sourceBytes": 1191604,
+      "releaseBytes": 441960,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 111,
+      "contractNodeCount": 39,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_wasp_frag_aft",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_wasp_frag_aft.glb",
+      "release": "assets/ships/release/parts/places/place_wasp_frag_aft.glb",
+      "sourceSha256": "93ee1a2ba7a1d2dfc2ba002338da437913eb5e36122bfe9b0fad2cf8d9c78112",
+      "releaseSha256": "3631dfd1916a1dad409db0e23762cb8643dc9b112f445e15491c3180caf380a1",
+      "sourceBytes": 2954900,
+      "releaseBytes": 896400,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 127,
+      "contractNodeCount": 48,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

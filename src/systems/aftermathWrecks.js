@@ -328,7 +328,7 @@ function boundedVictimMass(mass) {
 // presentation metadata — none of it feeds a gameplay decision.
 const VICTIM_VISUAL_FIELDS = Object.freeze(['defId', 'lootTableId', 'silhouette', 'assetRef', 'trafficRole']);
 
-function victimVisualFor(data) {
+export function victimVisualFor(data) {
   const src = data && typeof data === 'object' ? data : {};
   const visual = {};
   let any = false;

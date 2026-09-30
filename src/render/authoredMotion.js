@@ -132,12 +132,22 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
+  // ANI-08: every spawned fracture piece is its own entity with its own controller set —
+  // the torn-edge clip fires per piece, not per victim.
+  const onHullFractured = (payload) => {
+    const pieceIds = payload && payload.pieceIds;
+    if (!Array.isArray(pieceIds)) return;
+    for (const pieceId of pieceIds) {
+      dispatch('wreck:rupture', pieceId, payload, () => true);
+    }
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
+    bus.on('hull:fractured', onHullFractured),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {
