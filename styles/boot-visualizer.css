@@ -18,9 +18,9 @@
   to { transform: translate3d(.7%, .3%, 0) scale(1.055); }
 }
 #boot-overlay.hidden .boot-video[data-boot-native] { animation-play-state: paused; }
-html.sf-reduce-motion #boot-overlay .boot-video[data-boot-native] { animation: none; transform: none; }
+html.sf-reduce-motion #boot-overlay[data-boot-visual-state] .boot-video[data-boot-native] { animation: none; transform: none; }
 @media (prefers-reduced-motion: reduce) {
-  #boot-overlay .boot-video[data-boot-native] { animation: none; transform: none; }
+  #boot-overlay[data-boot-visual-state] .boot-video[data-boot-native] { animation: none; transform: none; }
 }
 @media (forced-colors: active) {
   #boot-overlay .boot-video[data-boot-native] { opacity: .15; }
