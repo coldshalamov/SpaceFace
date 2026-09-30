@@ -2605,6 +2605,14 @@ removed with it — down to **2 worktrees**: main checkout + `.worktrees/consoli
 22 MB playwright storage stub (PID 34688) is kernel-stuck post-kill: 0 CPU, harmless, clears
 on reboot. To resume the treadmill: re-add a worktree and run `scratch/budget-loop.ps1`.
 
+**Launcher repaired (2026-09-29, late):** `SpaceFace-Desktop.bat` was failing at its `npm install`
+step — `node_modules` was an empty dir (the old junction target was gone) and the npm cache was
+corrupted during the disk-full episode (`stat _cacache` ENOENT). Fix: removed the empty dir,
+`npm cache clean --force`, `npm install` (643 packages), then `node node_modules/electron/install.js`
+for the deferred runtime binary — `electron.exe` 43.2.0 present, `node scripts/launch-electron.mjs`
+exits 0, real window titled "SpaceFace" confirmed open. One game process is left running for the
+owner to play; nothing else.
+
 ### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
 
 Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
