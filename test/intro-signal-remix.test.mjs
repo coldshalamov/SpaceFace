@@ -44,13 +44,14 @@ test('cover UVs preserve video proportions on ultrawide and portrait screens',()
   const portrait=signalCover(390,844,1920,1080);assert(portrait[0]<.27);assert.equal(portrait[1],1);
   assert(signalCover(0,0,0,0).every(Number.isFinite));
 });
-test('optional bootstrap is a caught dynamic import AFTER the original boot call',()=>{
-  // The launcher lives in bootEntry.js (raw + retail entry). Order is still load-bearing:
-  // the artwork bootstrap runs first; the optional optics import follows it and is caught.
+test('native media is ready before the game graph; live title optics remain optional afterwards',()=>{
   const src=readFileSync(new URL('../src/ui/bootEntry.js',import.meta.url),'utf8');
-  assert(src.includes("import('./introSignalRemixBoot.js')"));
-  assert(src.indexOf('bootstrapLoadingTerminal()')<src.indexOf("import('./introSignalRemixBoot.js')"));
+  const media=src.indexOf('await Promise.all([ring?.ready, artwork?.ready])');
+  const main=src.indexOf("await import('../main.js')");
+  const title=src.indexOf("import('./introSignalRemixBoot.js')");
+  assert(media>=0 && main>media && title>main);
   assert(src.includes('.catch(() => { /* Decoration cannot block boot. */ });'));
+  assert(!src.includes('bootstrapLoadingTerminal'));
 });
 test('headless/unsupported hosts keep the original movie untouched',()=>{
   assert.equal(attachIntroSignalRemix(null),null);assert.equal(installIntroSignalRemix({}),null);
@@ -61,7 +62,7 @@ test('headless/unsupported hosts keep the original movie untouched',()=>{
   assert.equal(video.playbackRate,1);assert.equal(errors.length,1);
 });
 
-function fixture({reduced=false,playing=true}={}) {
+function fixture({reduced=false,playing=true,native=false}={}) {
   const observers=[],idle=new Map();let id=0;
   class Element {
     constructor(id='') {this.id=id;this.nodeType=1;this.isConnected=true;this.hidden=false;this.style={};this.listeners=new Map();this.classes=new Set();this.classList={contains:x=>this.classes.has(x),add:x=>this.classes.add(x),remove:x=>this.classes.delete(x)};}
@@ -74,6 +75,7 @@ function fixture({reduced=false,playing=true}={}) {
   }
   const root=new Element('boot-overlay'),html=new Element('html'),video=new Element('boot-intro-video');
   video.parentNode=root;video.readyState=4;video.videoWidth=1920;video.playbackRate=1;video.paused=!playing;
+  video.native=native; video.hasAttribute=name=>name==='data-boot-native'&&video.native;
   let plays=0,pauses=0;
   video.play=()=>{plays++;video.paused=false;return Promise.resolve();};
   video.pause=()=>{pauses++;video.paused=true;video.emit('pause');};
@@ -124,4 +126,13 @@ test('detaching a splash/boot host releases its observers, deferred callbacks an
  const f=fixture();f.flush();f.video.isConnected=false;
  f.mutate(f.document.body,[{addedNodes:[],removedNodes:[f.root]}]);assert.equal(f.state.destroyed,true);assert.equal(f.ctl.inspect().length,0);
  f.ctl.destroy();f.ctl.destroy();assert(f.observers.every(o=>!o.active));assert.equal(f.idle.size,0);
+});
+test('native boot media cannot acquire an opaque live optical overlay',()=>{
+ const f=fixture({native:true});f.flush();f.ctl.refresh();
+ assert.equal(f.ctl.inspect().length,0);assert.equal(f.idle.size,0);
+ assert.equal(f.state.resumes,0);assert.equal(f.counts().pauses,0);f.ctl.destroy();
+});
+test('native ownership acquired before deferred init prevents the stale renderer from starting',()=>{
+ const f=fixture();assert.equal(f.idle.size,1);f.video.native=true;f.flush();
+ assert.equal(f.state.resumes,0);assert.equal(f.ctl.inspect().length,0);f.ctl.destroy();
 });
