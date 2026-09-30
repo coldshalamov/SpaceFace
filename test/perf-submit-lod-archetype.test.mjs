@@ -71,7 +71,12 @@ test('sector prewarm requests include spawnable hostile and traffic archetype hu
   assert.ok(hullUrls.some((url) => url.endsWith('wholeships/helios_span.glb')));
 });
 
-test('distant live ships demote to packaged simplified siblings; unpackaged bodies keep LOD0', () => {
+test('distant live ships prewarm the full body admission builds; no packaged sibling is ever decoded on the glass', () => {
+  // OWNER RULING 2026-09-29 (wholeShipLodPolicy.js WHOLE_SHIP_LOD_RUNTIME_DEMOTION = false): the
+  // game is top-down, nothing is far, and a second file admitted on screen was the "ship is a
+  // box and then it's a ship" swap. Admission always builds LOD0, so prewarm decodes LOD0 — a
+  // LOD2 prewarm for a far hull was a decode nobody drew, and the LOD0 decode then ran late
+  // inside the serial admission lane while the ship sat on the glass as a stand-in.
   const farPelican = {
     type: 'ship',
     id: 9,
@@ -89,16 +94,15 @@ test('distant live ships demote to packaged simplified siblings; unpackaged bodi
   });
   const pelicanHullUrls = pelicanRequests.filter((r) => r.slot === 'hull').map((r) => r.url);
   assert.ok(
-    pelicanHullUrls.some((url) => url.endsWith('wholeships/pelican_production_v1_lod2.glb')),
-    'a distant pelican requests its packaged simplified LOD2',
+    pelicanHullUrls.some((url) => url.endsWith('wholeships/pelican_production_v1.glb')),
+    'a distant pelican prewarms the full-detail LOD0 its admission will build',
   );
   assert.equal(
-    pelicanHullUrls.some((url) => url.endsWith('wholeships/pelican_production_v1.glb')),
+    pelicanHullUrls.some((url) => /_lod[12]\.glb$/.test(url)),
     false,
-    'the packaged demotion must not also pin the full-detail LOD0',
+    'no packaged LOD sibling is decoded for a live ship — the runtime file swap is off',
   );
 
-  // The same far ship demotes to its packaged simplified sibling when one exists.
   const farRanger = { ...farPelican, data: { defId: 'ship_ranger' } };
   const rangerRequests = authoredPrewarmRequestsForEntities([farRanger], {
     playerId: 1,
@@ -109,13 +113,13 @@ test('distant live ships demote to packaged simplified siblings; unpackaged bodi
   });
   const rangerHullUrls = rangerRequests.filter((r) => r.slot === 'hull').map((r) => r.url);
   assert.ok(
-    rangerHullUrls.some((url) => url.endsWith('wholeships/ranger_production_v1_lod2.glb')),
-    'a distant ranger requests its packaged simplified LOD2',
+    rangerHullUrls.some((url) => url.endsWith('wholeships/ranger_production_v1.glb')),
+    'a distant ranger prewarms the full-detail LOD0 its admission will build',
   );
   assert.equal(
-    rangerHullUrls.some((url) => url.endsWith('wholeships/ranger_production_v1.glb')),
+    rangerHullUrls.some((url) => /_lod[12]\.glb$/.test(url)),
     false,
-    'the packaged demotion must not also pin the full-detail LOD0',
+    'no packaged LOD sibling is decoded for a live ship — the runtime file swap is off',
   );
 
   // A ship without packaged LOD siblings keeps its packaged LOD0.

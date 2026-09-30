@@ -4,16 +4,32 @@
     {
       "name": "spaceface",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js", "8123"],
+      "runtimeArgs": [
+        "server.js",
+        "8123"
+      ],
       "port": 8123,
       "autoPort": false
     },
     {
       "name": "sf-verify",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js", "8161"],
+      "runtimeArgs": [
+        "server.js",
+        "8161"
+      ],
       "port": 8161,
       "autoPort": true
+    },
+    {
+      "name": "sf-observe",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.SPACEFACE_PLAYER_STORE_DIR='';process.env.SPACEFACE_USER_CONTENT_DIR='';process.env.PORT='8162';import('./server.js')"
+      ],
+      "port": 8162,
+      "autoPort": false
     }
   ]
 }

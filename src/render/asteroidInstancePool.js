@@ -43,6 +43,7 @@ export function createAsteroidInstancePool(scene, options = {}) {
       material: null,
       mesh: null,
       dynamicBufferOwner: null,
+      retiring: null,
       capacity: 0,
       records: [],
       entityIds: [],
@@ -96,6 +97,9 @@ export function collectAsteroidInstancePoolRoots(pool) {
     if (bucket && bucket.mesh && bucket.mesh.visible !== false && bucket.mesh.count > 0) {
       roots.push(bucket.mesh);
     }
+    // The outgoing batch bridging a growth is still a drawing pool root.
+    const retiring = bucket && bucket.retiring && bucket.retiring.mesh;
+    if (retiring && retiring.visible !== false && retiring.count > 0) roots.push(retiring);
   }
   return roots;
 }
@@ -116,6 +120,8 @@ function createKeyedBucket(key, geometry, material, castShadow, receiveShadow, l
     receiveShadow: receiveShadow !== false,
     mesh: null,
     dynamicBufferOwner: null,
+    // Outgoing batch kept drawing while a grown replacement clears the admission latch.
+    retiring: null,
     capacity: 0,
     records: [],
     entityIds: [],
@@ -453,14 +459,40 @@ export function syncAsteroidInstancePool(pool, options = {}) {
   stats.submitted = 0;
   stats.visibleBatches = 0;
 
+  let retiring = false;
   for (let variant = 0; variant < pool.variants.length; variant++) {
-    syncPoolBucket(pool, pool.variants[variant], stats.variants[variant], viewFrustumReady, shadowFrustumReady);
+    const bucket = pool.variants[variant];
+    syncPoolBucket(pool, bucket, stats.variants[variant], viewFrustumReady, shadowFrustumReady);
+    if (settleRetiringBucketMesh(pool, bucket)) retiring = true;
   }
   for (const bucket of pool.keyed.values()) {
     syncPoolBucket(pool, bucket, bucket.stats, viewFrustumReady, shadowFrustumReady);
+    if (settleRetiringBucketMesh(pool, bucket)) retiring = true;
   }
-  pool.dirty = false;
+  // A bucket bridging a growth stays off the static fast path so the settle check runs each
+  // sync; the outgoing batch is released the frame its replacement clears the admission latch.
+  pool.dirty = retiring;
   return stats;
+}
+
+// Longest an outgoing batch may bridge a pending replacement. The latch normally clears in a
+// few presents; this only bounds a replacement whose admission never settles.
+const RETIRING_BATCH_MAX_SYNCS = 300;
+
+/**
+ * Release a bucket's outgoing batch once its replacement is drawable (pipelinesPending cleared by
+ * the admission latch) or the bridge has run its course. Returns true while still bridging.
+ */
+function settleRetiringBucketMesh(pool, bucket) {
+  const retiring = bucket.retiring;
+  if (!retiring) return false;
+  const next = bucket.mesh;
+  const nextPending = !!(next && next.userData && next.userData.pipelinesPending === true);
+  retiring.frames += 1;
+  if (nextPending && retiring.frames < RETIRING_BATCH_MAX_SYNCS) return true;
+  bucket.retiring = null;
+  disposeOwnedInstanceMesh(retiring.mesh, retiring.owner, pool.scene);
+  return false;
 }
 
 function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrustumReady) {
@@ -620,6 +652,12 @@ export function clearAsteroidInstancePool(pool) {
       else bucket.mesh.count = 0;
       bucket.mesh.visible = false;
     }
+    // A cleared pool draws nothing: the bridging batch goes with its records.
+    if (bucket.retiring) {
+      const retiring = bucket.retiring;
+      bucket.retiring = null;
+      disposeOwnedInstanceMesh(retiring.mesh, retiring.owner, pool.scene);
+    }
   }
   pool.byEntity.clear();
   pool.byDetail.clear();
@@ -776,8 +814,33 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
     assetId: `asteroid-instance-pool-v${bucket.variant}`,
     producer: 'asteroid-instance-pool',
   });
+  // Only one retiring batch per bucket: a second growth while the first replacement is still
+  // pending releases the older batch now (its rocks are already covered by the pending one).
+  if (bucket.retiring) {
+    const stale = bucket.retiring;
+    bucket.retiring = null;
+    disposeOwnedInstanceMesh(stale.mesh, stale.owner, pool.scene);
+  }
   if (previous) {
-    disposeOwnedInstanceMesh(previous, previousOwner, pool.scene);
+    // OWNER 2026-09-29 ("asteroids on screen blip gone and come back"): growing a bucket used to
+    // dispose the drawing batch on the spot while its replacement sat hidden behind the
+    // pipeline-admission latch (count 0, then bloom's unready-drawable hide) for however many
+    // presents the compile → residency → touch chain took — every rock of that kind vanished
+    // together and came back. Keep the outgoing batch drawing its last committed matrices until
+    // the replacement clears the latch (settleRetiringBucketMesh, per sync), then release it.
+    // A rebuild after a retired buffer owner has nothing drawable to keep; a pool without the
+    // admission latch (tests, previews) shows the new batch immediately, so nothing to bridge.
+    const keepDrawing = !rebuild
+      && typeof pool.onMeshCreated === 'function'
+      && previous.visible === true
+      && (previous.count | 0) > 0
+      && previous.parent === pool.scene
+      && !(previousOwner && previousOwner.invalid);
+    if (keepDrawing) {
+      bucket.retiring = { mesh: previous, owner: previousOwner, frames: 0 };
+    } else {
+      disposeOwnedInstanceMesh(previous, previousOwner, pool.scene);
+    }
   }
   bucket.mesh = mesh;
   bucket.capacity = capacity;
