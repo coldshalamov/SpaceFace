@@ -7327,6 +7327,68 @@
       "note": "Fleet remaster production Leviathan. Live player flagship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
     },
     {
+      "id": "wholeship_saucer_production_v1",
+      "assetId": "SF_SAUCER_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/saucer_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/saucer_production_v1.glb",
+        "lod1": "wholeships/saucer_production_v1_lod1.glb",
+        "lod2": "wholeships/saucer_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_saucer",
+      "tris": 60570,
+      "bytes": 3488652,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front",
+        "SOCKET_Weapon_Port",
+        "SOCKET_Weapon_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -9.75,
+          -3.996148109436035,
+          -11.030622482299805
+        ],
+        "max": [
+          11.212514877319336,
+          3.5662574768066406,
+          11.030397415161133
+        ],
+        "dimensionsM": [
+          20.962514877319336,
+          7.562405586242676,
+          22.061019897460938
+        ]
+      },
+      "note": "Forge-v1 production build (tools/blender/forge/ships/saucer.py): inertialess exotic player hull — lenticular gunmetal disc, cyan rim light chain, ventral drive core."
+    },
+    {
       "id": "wholeship_massline_express_liner_v1",
       "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
       "category": "wholeships",

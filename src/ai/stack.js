@@ -189,6 +189,12 @@ export class TacticalAIStack {
             ? undefined
             : disabledNonlethalTarget && disabledNonlethalTarget.id,
         }) : null;
+        // Doctrine runtime records are rebuilt empty on load; the wounded-fallback latch is the
+        // one piece that cannot re-derive, so it is mirrored into serialized ai state.
+        if (combatDoctrine && member.data && member.data.ai) {
+          if (combatDoctrine.fallbackSpent === true) member.data.ai.woundedFallbackSpent = true;
+          else if (combatDoctrine.fallbackRearmed === true) member.data.ai.woundedFallbackSpent = false;
+        }
         const effectiveDirective = applyEnemyMindDirective(
           combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive, mind, freeze);
         const priorDecision = this.lastDecisionByEntity.get(member.id);

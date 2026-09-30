@@ -11,6 +11,7 @@ const PROFILES = Object.freeze({
   engine_resonator:   Object.freeze({ station: 0.42, halfSpan: 0.44, bell: 0.042, segments: 6, length: 0.77, width: 0.80, flow: 3.2, coherence: 0.42 }),
   engine_vector:      Object.freeze({ station: 0.43, halfSpan: 0.45, bell: 0.034, segments: 8, length: 0.81, width: 0.66, flow: 3.5, coherence: 0.55 }),
   engine_plasma_ring: Object.freeze({ station: 0.39, halfSpan: 0.45, bell: 0.046, segments: 14, length: 0.73, width: 0.85, flow: 2.4, coherence: 0.38 }),
+  engine_field_sprint: Object.freeze({ station: 0.44, halfSpan: 0.42, bell: 0.036, segments: 8, length: 0.86, width: 0.62, flow: 4.1, coherence: 0.5 }),
 });
 
 export function retroProfileFor(engineProfileId) {

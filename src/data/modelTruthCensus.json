@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 6,
-    "red": 190,
-    "rows": 196
+    "red": 191,
+    "rows": 197
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -46495,6 +46495,580 @@
         30.96,
         5.930211,
         13.168588
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.730935,
+          -0.214945,
+          -0.000113
+        ],
+        "max": [
+          11.212445,
+          3.566473,
+          11.030397
+        ],
+        "min": [
+          -9.750576,
+          -3.996363,
+          -11.030622
+        ],
+        "size": [
+          20.963021,
+          7.562836,
+          22.06102
+        ]
+      },
+      "bytes": 1142668,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:ship_saucer",
+        "kind": "proxy",
+        "outline": [
+          15.20033,
+          15.200635,
+          15.199494,
+          15.199532,
+          15.199901,
+          17.195067,
+          17.207182,
+          15.200049,
+          15.199706,
+          15.199701,
+          15.19887,
+          17.505325,
+          17.505325,
+          15.19913,
+          15.199552,
+          15.19947,
+          15.199723,
+          17.206935,
+          17.195067,
+          15.199228,
+          15.199597,
+          15.199269,
+          15.200515,
+          15.20052
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2.100639,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1.558936,
+      "family": "player-hull",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:ship_saucer",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 19,
+        "proportions": {
+          "halfWidth": 1,
+          "height": 0.35,
+          "length": 1
+        },
+        "sizes": null
+      },
+      "id": "ship_saucer",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {
+          "lod1": 0.003046,
+          "lod2": 0.027273
+        },
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": {
+        "halfWidth": 0.905045,
+        "height": 0.620525,
+        "length": 1.72
+      },
+      "meshHash": null,
+      "meshes": 16,
+      "nodes": 31,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.730935,
+        -0.214945,
+        -0.000113
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2.100639,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.782737,
+            "bz": -0.103049,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.729409,
+            "bz": -0.302131,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.62631,
+            "bz": -0.480585,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.480586,
+            "bz": -0.626312,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.302117,
+            "bz": -0.729374,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.116753,
+            "bz": -0.886825,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.116836,
+            "bz": -0.887457,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.302119,
+            "bz": -0.729381,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.480592,
+            "bz": -0.626319,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.626319,
+            "bz": -0.480592,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.729324,
+            "bz": -0.302096,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.903014,
+            "bz": -0.118884,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.903014,
+            "bz": 0.118884,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.729336,
+            "bz": 0.302101,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.626313,
+            "bz": 0.480587,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.480584,
+            "bz": 0.626309,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.302113,
+            "bz": 0.729365,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.116834,
+            "bz": 0.887444,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.116753,
+            "bz": 0.886825,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.302103,
+            "bz": 0.729341,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.480588,
+            "bz": 0.626315,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.626301,
+            "bz": 0.480578,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.729404,
+            "bz": 0.302129,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.023684
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.782747,
+            "bz": 0.103051,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.023684
+          }
+        ],
+        "silhouetteRadius": 17.505325,
+        "toleranceWu": 2.100639
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 331,
+        "inwardFaceFraction": 0.4205,
+        "silhouetteRadius": 17.505325,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            0,
+            0.5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            -1.9,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            0,
+            -3.1,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            10.712,
+            -0.366074,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            -4,
+            -0.1,
+            -8.3
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            -4,
+            -0.1,
+            8.3
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            0.8,
+            -1.9,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -8.7,
+            -0.35,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -7.2,
+            -0.35,
+            -4.5
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -7.2,
+            -0.35,
+            4.5
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            1.9,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            10.5,
+            -0.18,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Port",
+          "position": [
+            0.35,
+            0.1,
+            -10.1
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Starboard",
+          "position": [
+            0.35,
+            0.1,
+            10.1
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 60570,
+      "unmeasuredHitVolumes": [
+        "subsystem_transport_clamp"
+      ],
+      "url": "assets/ships/release/parts/wholeships/saucer_production_v1.glb",
+      "worldSize": [
+        32.68,
+        11.789974,
+        34.39171
       ]
     },
     {

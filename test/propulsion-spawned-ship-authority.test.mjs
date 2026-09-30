@@ -568,7 +568,7 @@ test('every hull has twice its original boost meter and a matching recharge cade
     ship_kestrel: 100, ship_pelican: 70, ship_wasp: 110, ship_mule: 130,
     ship_drifter: 110, ship_hornet: 130, ship_ironback: 60, ship_hawser: 80,
     ship_bastion: 100, ship_atlas: 160, ship_ranger: 140, ship_warden: 90,
-    ship_colossus: 80, ship_leviathan: 70,
+    ship_colossus: 80, ship_leviathan: 70, ship_saucer: 180,
   };
   assert.equal(SHIPS.length, Object.keys(priorMax).length);
   for (const hull of SHIPS) {

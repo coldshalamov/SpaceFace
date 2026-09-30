@@ -440,6 +440,71 @@ export const PLASMA_RING_RCS_RECIPE = buildRcsRecipe({
   liveSeams: { engineProfileId: 'engine_plasma_ring' },
 });
 
+// ── engine_field_sprint — inertialess sprint drive: longest, fastest stream ──
+
+export const FIELD_SPRINT_MAIN_PLUME_RECIPE = buildMainRecipe({
+  id: 'family_field_sprint_main_plume',
+  engineFamily: 'field_sprint',
+  displayName: 'Field-sprint main plume',
+  notes: 'The inertialess drive stretched to its sprint: longest baseLength and fastest flow in the registry, cyan-shifted toward the saucer rim light.',
+  geometry: { baseLength: 15.0, baseWidth: 2.7, segmentCount: 10, taper: 0.78, aspect: 'stream' },
+  layerColors: {
+    core: '#f0ffff',
+    inner: '#36d4ff',
+    sheath: '#1c78c8',
+    vapor: '#10304e',
+    distortion: '#a8ecff',
+  },
+  layerScales: {
+    core: { widthScale: 0.4, lengthScale: 0.42, intensity: 10.5, scrollSpeed: 4.2 },
+    inner: { widthScale: 0.78, lengthScale: 0.98, intensity: 5.4, scrollSpeed: 3.4 },
+    sheath: { widthScale: 1.5, lengthScale: 1.3, intensity: 2.6, scrollSpeed: 2.0 },
+    vapor: { widthScale: 1.95, lengthScale: 1.7, intensity: 0.85, opacity: 0.3 },
+  },
+  flowCharacter: { swirl: 0.85, fork: 0.42, noiseScale: 2.1, baseFlow: 4.4, anisotropy: 2.3 },
+  geometryCharacter: { taper: 0.78, mouthBreak: 0.3, axialFill: 0.85 },
+  timingCharacter: { driveRise: 15.0, driveFall: 6.0, boostRise: 14.0, boostFall: 5.0 },
+  layeringCharacter: {
+    coreDominance: 0.86,
+    boostLengthGain: { core: 0.44, inner: 0.82, sheath: 1.15, vapor: 1.35 },
+    boostWidthGain: { core: 0.14, inner: 0.3, sheath: 0.52, vapor: 0.68 },
+    boostStructuralDrive: 0.3,
+  },
+  throttle: {
+    idle: 0.06,
+    length: { at0: 0.28, at1: 1.3, exp: 0.8 },
+    width: { at0: 0.38, at1: 1.1, exp: 0.9 },
+    turbulence: { at0: 0.3, at1: 1.5, exp: 1.15 },
+    coreSheathBalance: { at0: 0.62, at1: 1.32, exp: 0.72 },
+    flowSpeed: { at0: 0.6, at1: 1.8, exp: 0.72 },
+  },
+  eventLight: { maxIntensity: 3.2, maxRange: 15, color: '#3ae0ff' },
+  continuum: {
+    idle: { driveFloor: 0.06, lengthMul: 0.52, flowMul: 0.58, coreBias: 0.14 },
+    cruise: { lengthMul: 1.18, widthMul: 0.86, turbulenceMul: 0.85, flowMul: 1.32 },
+    boost: { lengthMul: 1.6, widthMul: 1.1, turbulenceMul: 1.3, flowMul: 1.75 },
+  },
+  liveSeams: { engineProfileId: 'engine_field_sprint', shipIds: ['ship_saucer'] },
+});
+
+export const FIELD_SPRINT_RCS_RECIPE = buildRcsRecipe({
+  id: 'family_field_sprint_rcs_impulse',
+  engineFamily: 'field_sprint',
+  displayName: 'Field-sprint RCS impulse',
+  notes: 'Snapped cyan field-kick for the inertialess hull — instant attack, short fast envelope; still impulse_burst.',
+  geometry: { baseLength: 4.6, baseWidth: 1.75, taper: 0.64, aspect: 'jet' },
+  layerColors: { core: '#f0ffff', inner: '#4ae4ff', sheath: '#1c78c8', vapor: '#10304e' },
+  layerScales: {
+    core: { widthScale: 0.5, lengthScale: 0.6, intensity: 8.0 },
+    sheath: { widthScale: 1.05, lengthScale: 1.05, intensity: 1.5 },
+  },
+  flowCharacter: { swirl: 0.28, fork: 0.24, noiseScale: 1.3, baseFlow: 5.6, anisotropy: 3.0 },
+  geometryCharacter: { taper: 0.64, mouthBreak: 0.12, axialFill: 0.97, lateralKick: 0.5 },
+  timing: { attack: 0.014, sustain: 0.04, release: 0.13 },
+  timingCharacter: { driveRise: 34.0, driveFall: 19.0, oneShot: true },
+  liveSeams: { engineProfileId: 'engine_field_sprint' },
+});
+
 /** Canonical continuum for recipes that carry no embedded continuum (frozen kestrel). */
 export function continuumForRecipe(recipe) {
   if (recipe && recipe.continuum) return recipe.continuum;

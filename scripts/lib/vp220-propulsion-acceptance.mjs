@@ -37,6 +37,7 @@ export const REQUIRED_PROFILE_IDS = Object.freeze([
   'engine_resonator',
   'engine_vector',
   'engine_plasma_ring',
+  'engine_field_sprint',
 ]);
 
 /**
