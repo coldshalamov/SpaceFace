@@ -40,6 +40,8 @@ import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createHullSchematic } from '../orrery/hullSchematic.js';
 import { createSlotJig } from '../orrery/slotJig.js';
+import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
+import { createVisualArmory } from '../orrery/crucibleArmory.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 /**
@@ -665,11 +667,11 @@ export const crucibleDraftScreen = {
 
     // ORRERY §6 armory: the offers stand on a rail; the one under the pointer or focus is read out
     // beside it -- its words, where it goes on the ship, how it compares, what it leaves in the
-    // wallet. The reading is for the eye (aria-hidden): each offer's own button carries every word.
+    // wallet. The inspector and its explicit purchase/demo controls are fully accessible.
     this._reading = null;
     if (typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
       const reading = el('aside', 'orr-armory-reading');
-      reading.setAttribute('aria-hidden', 'true');
+      reading.setAttribute('aria-label', 'Equipment details');
       const parts = {
         verb: el('p', 'orr-armory-reading__verb', ''),
         name: el('h2', 'orr-armory-reading__name', ''),
@@ -687,7 +689,8 @@ export const crucibleDraftScreen = {
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
       cards.addEventListener('focusin', (event) => this._readFrom(event));
-      cards.addEventListener('pointerover', (event) => this._readFrom(event));
+      this._visualArmory = createVisualArmory({ root: rootEl, reading, parts,
+        onPurchase: () => this._purchaseSelected(this._ctx) });
       const railScale = el('div', 'orr-rail-scale');
       railScale.setAttribute('aria-hidden', 'true');
       const track = el('div', 'orr-rail-scale__track');
@@ -703,12 +706,15 @@ export const crucibleDraftScreen = {
       try {
         const railMq = matchMedia('(max-width: 1500px)');
         if (railMq && typeof railMq.addEventListener === 'function') {
-          railMq.addEventListener('change', () => this.refresh(this._ctx));
+          this._railMq = railMq;
+          this._onRailChange = () => this.refresh(this._ctx);
+          railMq.addEventListener('change', this._onRailChange);
         }
       } catch { /* full verbs on a box without media queries */ }
     }
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('resize', () => this._clipRailToWholeRows());
+      this._onRailResize = () => this._clipRailToWholeRows();
+      window.addEventListener('resize', this._onRailResize);
     }
     // Row heights settle with the display face: re-clip once it arrives, or the fold lands mid-row.
     if (typeof document !== 'undefined' && document.fonts && document.fonts.ready
@@ -810,12 +816,13 @@ export const crucibleDraftScreen = {
         this._requestReroll(ctx);
         return;
       }
-      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
         const here = all.indexOf(document.activeElement);
         if (here < 0 || all.length === 0) return;
         event.preventDefault();
-        const step = event.key === 'ArrowRight' ? 1 : -1;
-        const next = all[(here + step + all.length) % all.length];
+        const step = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1;
+        const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? all.length - 1 : (here + step + all.length) % all.length;
+        const next = all[nextIndex];
         if (next && typeof next.focus === 'function') next.focus();
       }
     });
@@ -837,6 +844,17 @@ export const crucibleDraftScreen = {
 
   onHide() {
     if (canAnimate()) cue('close');
+  },
+
+  dispose() {
+    this._reading?.jig?.dispose();
+    this._filterRow?.dispose?.();
+    if (this._pulseTimer) clearTimeout(this._pulseTimer);
+    this._railMq?.removeEventListener?.('change', this._onRailChange);
+    if (typeof window !== 'undefined' && this._onRailResize) window.removeEventListener?.('resize', this._onRailResize);
+    this._reading = null;
+    this._visualArmory = null;
+    this._ctx = null;
   },
 
   _requestReroll(ctx) {
@@ -870,6 +888,7 @@ export const crucibleDraftScreen = {
     const shop = context.state?.run?.ruleset === 'swarm';
     rootEl.classList.toggle('sf-crucible-armory', shop);
     this._title.textContent = shop ? 'Armory' : 'Rearm';
+    if (this._visualArmory) this._visualArmory.wallet(context.state?.run?.credits, shop);
     this._filters.hidden = !shop;
     this._refitBtn.hidden = !shop;
     if (this._search) this._search.hidden = !shop;
@@ -887,6 +906,7 @@ export const crucibleDraftScreen = {
       || (offer.defId || '').toLowerCase().includes(query);
     for (const button of this._filters.children) {
       const category = button.dataset.category;
+      if (!category) continue;
       button.setAttribute('aria-pressed', String(category === this._category));
       // How much stock each word holds: the armory scrolls, and the count is what says so.
       const count = category === 'All' ? offers.length : offers.filter((offer) => categoryFor(offer) === category).length;
@@ -901,7 +921,7 @@ export const crucibleDraftScreen = {
     }
 
     this._sub.textContent = offers.length
-      ? (shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+      ? (shop ? (wave === 0 ? 'Prepare for round 1. Inspect equipment, fit your ship, then launch.' : `Round ${wave} cleared. Repair, upgrade, or save for your next round.`)
         : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`;
 
@@ -941,6 +961,15 @@ export const crucibleDraftScreen = {
       cards.appendChild(card);
     }
 
+    if (shop && !visibleOffers.length && typeof document.createElementNS === 'function') {
+      const empty = el('div', 'orr-armory-empty', 'No equipment matches this search.');
+      const clear = el('button', 'orr-armory-clear', 'Clear filters'); clear.type = 'button';
+      clear.addEventListener('click', () => {
+        this._category = 'All'; this._query = ''; this._search.value = ''; this.refresh(context);
+        this._search.focus();
+      });
+      empty.appendChild(clear); cards.appendChild(empty);
+    }
     this._note.textContent = notice || lines.notice || '';
     this._offersById = new Map(visibleOffers.map((offer) => [offer.id, offer]));
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
@@ -974,12 +1003,12 @@ export const crucibleDraftScreen = {
       : '';
     // The keys a card cannot print on itself. Esc and R ride inside their own keys; the offer
     // numbers are on the cards.
-    const keys = offers.length && shop ? '1–3 buy · Tab browse' : '';
+    const keys = offers.length && shop ? '1–3 inspect · Tab browse' : '';
     this._hint.textContent = keys && this._wallet.textContent ? ` · ${keys}` : keys;
     if (shop && this._reading && offers.length) {
       this._hint.textContent = '';
       const cap = (t) => el('span', 'orr-armory-keycap', t);
-      this._hint.append(cap('1'), cap('2'), cap('3'), el('span', 'orr-armory-hintword', 'Buy'), cap('Tab'), el('span', 'orr-armory-hintword', 'Browse'));
+      this._hint.append(cap('1'), cap('2'), cap('3'), el('span', 'orr-armory-hintword', 'Inspect'), cap('Tab'), el('span', 'orr-armory-hintword', 'Browse'));
     }
     if (this._flash && this._flash.until > Date.now() && !notice) this._note.textContent = this._flash.text;
     this._clipRailToWholeRows();
@@ -990,7 +1019,8 @@ export const crucibleDraftScreen = {
     if (!restoreFocusedControl(rootEl, savedFocus)) {
       const active = typeof document !== 'undefined' ? document.activeElement : null;
       if (!active || !rootEl.contains || !rootEl.contains(active)) {
-        const target = cards.querySelector('button:not(:disabled)') || this._skip;
+        const target = [...cards.querySelectorAll('button:not(:disabled)')].find(card => card.dataset.offerId === this._reading?.offerId)
+          || cards.querySelector('button:not(:disabled)') || this._skip;
         if (target && typeof target.focus === 'function') {
           try { target.focus(); } catch { /* focus is best-effort */ }
         }
@@ -998,7 +1028,20 @@ export const crucibleDraftScreen = {
     }
   },
 
-  /** The offer under the pointer or holding focus becomes the reading. */
+  /** Validate against the owner's CURRENT shelf; never spend on a captured/stale offer. */
+  _purchaseSelected(ctx) {
+    const owner = draftOwner(ctx);
+    const offer = owner?.currentOffers?.().find(item => item.id === this._reading?.offerId);
+    if (!offer?.available || offer.purchased || ctx.state?.run?.phase !== 'draft') {
+      this.refresh(ctx); return;
+    }
+    ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
+    const notice = owner?.lastNotice?.();
+    if (!notice) this._flash = { text: `Purchased ${offer.name || offer.defId}.`, until: Date.now() + 5000 };
+    this.refresh(ctx);
+  },
+
+  /** Focus or an explicit click selects an offer. Pointer travel never changes a pending purchase. */
   _readFrom(event) {
     const card = event && event.target && event.target.closest ? event.target.closest('[data-offer-id]') : null;
     const offer = card && this._offersById ? this._offersById.get(card.dataset.offerId) : null;
@@ -1008,11 +1051,7 @@ export const crucibleDraftScreen = {
   _paintReading(context, offer) {
     const r = this._reading;
     if (!r || !offer) return;
-    // The key must carry every field the painted copy derives from — a free demo or a free
-    // hull switch moves none of offer.id/credits, and a stale 'Demo' button is the lie.
-    if (r.offerId === offer.id && r.credits === context.state?.run?.credits
-      && r.demoed === offer.demoed && r.purchased === offer.purchased
-      && r.available === offer.available) return;
+    // A refit or free hull change can leave both id and wallet unchanged. Re-read its fit.
     r.offerId = offer.id;
     r.credits = context.state?.run?.credits;
     r.demoed = offer.demoed;
@@ -1067,15 +1106,7 @@ export const crucibleDraftScreen = {
       if (gauge) parts.budget.appendChild(gauge);
     }
     r.el.classList.toggle('is-unavailable', !offer.available);
-    // the verb that spends, and its key -- or why it cannot
-    parts.buy.textContent = '';
-    if (offer.purchased) parts.buy.textContent = 'Fitted';
-    else if (offer.available) {
-      parts.buy.appendChild(el('span', 'orr-armory-reading__buy-word',
-        offer.price > 0 ? `Buy \u00b7 ${offer.price} cr` : `${offer.verb || 'Take'} — free`));
-      parts.buy.appendChild(el('span', 'orr-armory-keycap', 'Enter'));
-    } else parts.buy.textContent = offer.unavailableReason || '';
-    parts.buy.classList.toggle('is-off', !offer.available);
+    if (this._visualArmory) this._visualArmory.show(offer, lines, { credits: Number(context.state?.run?.credits) || 0, hullId, rows });
     // The demo word: a fitting the reading is on can fly one round for free — the showcase half
     // of the sandbox. Hulls and the service counter carry no hardpoint, so nothing to demo.
     parts.demo.textContent = '';
@@ -1096,11 +1127,12 @@ export const crucibleDraftScreen = {
       for (const card of this._cards.querySelectorAll('.sf-cru-card')) {
         const lit = card.dataset.offerId === offer.id;
         card.classList.toggle('is-lit', lit);
+        card.setAttribute('aria-pressed', String(lit));
         if (lit && typeof card.scrollIntoView === 'function' && this._cards.getBoundingClientRect) {
           const box = this._cards.getBoundingClientRect();
           const row = card.getBoundingClientRect();
           const clear = Math.min(84, box.height / 4);
-          if (row.top < box.top + clear || row.bottom > box.bottom - clear) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          if (row.top < box.top + clear || row.bottom > box.bottom - clear) card.scrollIntoView({ block: 'nearest', behavior: 'auto' });
         }
       }
     }
@@ -1177,6 +1209,9 @@ export const crucibleDraftScreen = {
   _buildCard(ctx, offer, keyNumber) {
     const lines = offerCardLines(offer, ctx.state);
     const card = el('button', 'sf-cru-card');
+    const visualShop = ctx.state?.run?.ruleset === 'swarm' && !!this._visualArmory;
+    const glyph = equipmentSvg(offer);
+    if (glyph) card.appendChild(glyph);
     card.type = 'button';
     card.dataset.offerId = offer.id;
     card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${lines.slot}`);
@@ -1187,7 +1222,7 @@ export const crucibleDraftScreen = {
     const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
     key.setAttribute('aria-hidden', 'true');
     head.appendChild(key);
-    head.appendChild(el('p', 'k-caps sf-cru-verb', railVerbDisplay(lines.verb, railCompact())));
+    head.appendChild(el('p', 'k-caps sf-cru-verb', visualShop ? (offer.category || lines.verb) : railVerbDisplay(lines.verb, railCompact())));
     card.appendChild(head);
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
     card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
@@ -1199,12 +1234,14 @@ export const crucibleDraftScreen = {
       if (offer.unavailableReason && !offer.purchased) {
         card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
       }
-      card.disabled = !offer.available;
+      // An unaffordable item is still inspectable; only its transaction key is disabled.
+      card.disabled = visualShop ? false : !offer.available;
       card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${offer.price} credits. ${offer.unavailableReason || lines.slot}`);
     }
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
     card.addEventListener('click', () => {
+      if (visualShop) { this._paintReading(ctx, this._offersById?.get(offer.id) || offer); return; }
       if (offer.available) this._flash = { text: `Bought ${lines.name}.`, until: Date.now() + 5000 };
       ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
       if (ctx.state?.run?.ruleset === 'swarm' && ctx.state.run.phase === 'draft') this.refresh(ctx);
