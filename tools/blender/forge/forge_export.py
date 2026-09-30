@@ -12,6 +12,7 @@ import json
 import math
 import os
 import struct
+import time
 
 import bmesh
 import bpy
@@ -147,16 +148,53 @@ def _lod_meshes(ship, level, prefix):
     objs = [o for o in ship.objects if not (level >= 2 and o.get('forge_detail', 0) >= 1)]
     objs = [o for o in objs if not (level >= 1 and o.get('forge_detail', 0) >= 2)]
     # Hooked parts (damage roles: HOOK_SECONDARY_*, HOOK_SENSOR_*, HOOK_ARMOR_*) stay separate
-    # meshes so the runtime can bind, shed or flicker them.
+    # meshes so the runtime can bind, shed or flicker them. Animated parts (s.anim) stay separate
+    # too — the spec in the node name is what infrastructureMotion parses.
     hooked = {}
+    animated = []
     for o in objs:
-        if o.get('forge_hook'):
+        if o.get('forge_anim'):
+            animated.append(o)
+        elif o.get('forge_hook'):
             hooked.setdefault(o['forge_hook'], []).append(o)
-    objs = [o for o in objs if not o.get('forge_hook')]
+    objs = [o for o in objs if not o.get('forge_hook') and not o.get('forge_anim')]
     named = []
     for hook, parts in hooked.items():
         named += _join_named(parts, level, f'{prefix}_{hook}')
+    named += _anim_meshes(animated, level, prefix)
     return named + _join_named(objs, level, prefix)
+
+
+def _safe_node_name(name):
+    """Node-name characters the package compiler strips anyway ('[', ']', '.', ':', '/') — drop them
+    up front so the exported ANIM_ token and the runtime parser see the same string."""
+    import re
+    return re.sub(r'[\].:/]', '', re.sub(r'\s+', '_', name))
+
+
+def _anim_meshes(objs, level, prefix):
+    """One node per animated part: LOD{n}_ANIM_<spec>_<part>, origin already seated at its pivot."""
+    out = []
+    for o in objs:
+        d = o.copy()
+        d.data = o.data.copy()
+        bpy.context.scene.collection.objects.link(d)
+        # decimate only parts with enough faces to survive the ratio — collapsing a 12-face
+        # lamp to 0.18 produces degenerate meshes the glTF exporter flags as invalid
+        if level > 0 and len(d.data.polygons) * LOD_RATIOS[level] >= 24:
+            _select_only([d])
+            mod = d.modifiers.new('ForgeLod', 'DECIMATE')
+            mod.decimate_type = 'COLLAPSE'
+            mod.ratio = LOD_RATIOS[level]
+            mod.use_collapse_triangulate = True
+            bpy.ops.object.modifier_apply(modifier='ForgeLod')
+        spec = d.get('forge_anim', 'spin_up_0p2')
+        d.name = f'{prefix}_ANIM_{spec}_{_safe_node_name(o.name)}'
+        d.data.name = d.name
+        for key in [k for k in d.keys() if k.startswith('forge_')]:
+            del d[key]
+        out.append(d)
+    return out
 
 
 def _join_named(objs, level, prefix):
@@ -358,6 +396,161 @@ def live_place_contract(file, parts_dir=None):
     return {'sockets': sockets, 'root': roots[0] if roots else None, 'meta': meta}
 
 
+# Per-body baked AO: a single-channel map on the 'Lightmap' UV set (glTF TEXCOORD_1), exported as
+# the occlusionTexture on every opaque forge material. Size keys off the body's largest extent so
+# recess/junction shadows stay crisp at both ship and station scale. LOD1/LOD2 share the body
+# materials, so they must carry a valid uv1 — they park every loop on a whitened corner texel of
+# the same map (unoccluded), which is the cheap LOD story: bake LOD0 only.
+AO_SIZES = ((12.0, 256), (60.0, 512), (140.0, 1024), (math.inf, 2048))
+
+
+def _ao_size_for(dims):
+    extent = max(dims) if dims else 0.0
+    for max_extent, size in AO_SIZES:
+        if extent <= max_extent:
+            return size
+    return 2048
+
+
+def _lightmap_uvs(objs, size):
+    """Add/replace the 'Lightmap' UV layer on every bake object and pack all of them into ONE
+    shared [0,1] space (multi-object edit mode makes pack_islands treat the selection as a
+    single packing problem — per-object smart_project would overlap islands and scramble the
+    bake). average_islands_scale first so every part shares the body's texel density."""
+    for o in objs:
+        me = o.data
+        while me.uv_layers.find('Lightmap') >= 0:
+            me.uv_layers.remove(me.uv_layers['Lightmap'])
+        lm = me.uv_layers.new(name='Lightmap')
+        me.uv_layers.active = lm
+        lm.active_render = True
+    _select_only(objs)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.average_islands_scale()
+    bpy.ops.uv.pack_islands(rotate=True, scale=True, margin_method='SCALED',
+                          margin=max(0.002, 6.0 / size), shape_method='CONCAVE')
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+
+def _park_lightmap_white(objs, size):
+    """LOD1/LOD2 reuse the body AO material: give them a valid 'Lightmap' set parked on the
+    whitened corner block of the shared map, i.e. occluded by nothing."""
+    px = 3.5 / size
+    for o in objs:
+        me = o.data
+        lm = me.uv_layers.get('Lightmap') or me.uv_layers.new(name='Lightmap')
+        for loop in me.loops:
+            lm.data[loop.index].uv = (px, px)
+
+
+def _gltf_occlusion_group():
+    name = 'glTF Material Output'
+    if name in bpy.data.node_groups:
+        return bpy.data.node_groups[name]
+    g = bpy.data.node_groups.new(name, 'ShaderNodeTree')
+    g.interface.new_socket('Occlusion', in_out='INPUT', socket_type='NodeSocketFloat')
+    g.interface.new_socket('Thickness', in_out='INPUT', socket_type='NodeSocketFloat')
+    return g
+
+
+def _wire_ao_to_material(mat, img):
+    """occlusionTexture on texCoord 1: UVMap('Lightmap') -> AO image -> .R -> glTF occlusion out."""
+    nt = mat.node_tree
+    for n in nt.nodes:
+        if n.type == 'GROUP' and n.node_tree and n.node_tree.name == 'glTF Material Output':
+            gnode = n
+            break
+    else:
+        gnode = nt.nodes.new('ShaderNodeGroup')
+        gnode.node_tree = _gltf_occlusion_group()
+    if 'ForgeAOMap' not in nt.nodes:
+        uv = nt.nodes.new('ShaderNodeUVMap')
+        uv.name = 'ForgeAOMapUV'
+        uv.uv_map = 'Lightmap'
+        tex = nt.nodes.new('ShaderNodeTexImage')
+        tex.name = 'ForgeAOMap'
+        sep = nt.nodes.new('ShaderNodeSeparateColor')
+        sep.name = 'ForgeAOMapSep'
+        nt.links.new(uv.outputs['UV'], tex.inputs['Vector'])
+        nt.links.new(tex.outputs['Color'], sep.inputs['Color'])
+    tex = nt.nodes['ForgeAOMap']
+    tex.image = img
+    tex.image.colorspace_settings.name = 'Non-Color'
+    nt.links.new(nt.nodes['ForgeAOMapSep'].outputs['Red'], gnode.inputs['Occlusion'])
+
+
+def bake_body_ao(ship, lod0_objs, samples=48):
+    """Pack a lightmap UV2 on the body's LOD0 join-family and bake Cycles AO into '<ship_id>_AO',
+    then wire it as the glTF occlusionTexture (texCoord 1) on the body's materials. The image
+    starts white so unbaked texels are unoccluded; after the bake an 8x8 block at the origin is
+    forced white for the LOD1/2 park point. Returns seconds spent.
+    """
+    t0 = time.time()
+    lod0_objs = [o for o in lod0_objs if o.type == 'MESH']
+    if not lod0_objs:
+        return 0.0
+    lo = Vector((math.inf,) * 3)
+    hi = Vector((-math.inf,) * 3)
+    for o in lod0_objs:
+        for c in o.bound_box:
+            w = o.matrix_world @ Vector(c)
+            lo.x, lo.y, lo.z = min(lo.x, w.x), min(lo.y, w.y), min(lo.z, w.z)
+            hi.x, hi.y, hi.z = max(hi.x, w.x), max(hi.y, w.y), max(hi.z, w.z)
+    dims = (hi.x - lo.x, hi.y - lo.y, hi.z - lo.z)
+    size = _ao_size_for(dims)
+    _lightmap_uvs(lod0_objs, size)
+    img = bpy.data.images.get(f'{ship.id}_AO')
+    if not img:
+        img = bpy.data.images.new(f'{ship.id}_AO', width=size, height=size, alpha=False)
+    else:
+        img.scale(size, size)
+    img.colorspace_settings.name = 'Non-Color'
+    img.generated_color = (1.0, 1.0, 1.0, 1.0)
+    mats = set()
+    for o in lod0_objs:
+        for slot in o.material_slots:
+            if slot.material:
+                mats.add(slot.material)
+    for mat in mats:
+        nt = mat.node_tree
+        node = nt.nodes.get('ForgeAOBake')
+        if not node:
+            node = nt.nodes.new('ShaderNodeTexImage')
+            node.name = 'ForgeAOBake'
+        node.image = img
+        node.select = True
+        nt.nodes.active = node
+    _select_only(lod0_objs)
+    bpy.context.view_layer.objects.active = lod0_objs[0]
+    scene = bpy.context.scene
+    prev = (scene.render.engine, scene.cycles.samples, scene.cycles.use_denoising,
+            scene.render.bake.margin)
+    scene.render.engine = 'CYCLES'
+    scene.cycles.samples = samples
+    scene.cycles.use_denoising = True
+    scene.render.bake.margin = max(4, size // 64)
+    bpy.ops.object.bake(type='AO', use_clear=False)
+    (scene.render.engine, scene.cycles.samples, scene.cycles.use_denoising,
+     scene.render.bake.margin) = prev
+    # Whiten an 8x8 origin block — the park point for LOD1/2 uv1.
+    px = list(img.pixels[:])
+    for y in range(8):
+        for x in range(8):
+            i = (y * size + x) * 4
+            px[i:i + 4] = [1.0, 1.0, 1.0, 1.0]
+    img.pixels[:] = px
+    img.pack()
+    for mat in mats:
+        node = mat.node_tree.nodes.get('ForgeAOBake')
+        if node:
+            node.select = False
+        if not mat.get('forgeFinish', '').startswith('glow') and mat.get('forgeFinish') != 'glass':
+            _wire_ao_to_material(mat, img)
+    return time.time() - t0
+
+
 def export_place(ship, spec, preview=False):
     # spec['parts_dir'] retargets a place-layout body at another parts/ subdir (e.g. 'pods') so a
     # Forge rebuild can replace a live file in place instead of moving its references.
@@ -391,6 +584,15 @@ def export_place(ship, spec, preview=False):
         e.parent = root
     if new_place:
         _add_sockets(ship, root)
+    if spec.get('ao', True):
+        lod0 = [m for m in meshes_all if m.name.startswith('LOD0_')]
+        if lod0:
+            ao_secs = bake_body_ao(ship, lod0, samples=spec.get('ao_samples', 48))
+            img = bpy.data.images.get(f'{ship.id}_AO')
+            if img:
+                _park_lightmap_white([m for m in meshes_all if not m.name.startswith('LOD0_')],
+                                     img.size[0])
+            print(f'[forge] {ship.id} AO bake {ao_secs:.1f}s')
     path = os.path.join(out_dir, f"{spec['file']}.glb")
     _export([root] + list(root.children), path)
     # Identity only: descriptive fields of the old body (triangle counts, material lists, texture
@@ -431,6 +633,14 @@ def export_ship(ship, spec, out_dir=None, preview=False):
             meshes = _lod_meshes(ship, level, prefix)
             for m in meshes:
                 m.parent = root
+            if spec.get('ao', True):
+                if level == 0:
+                    ao_secs = bake_body_ao(ship, meshes, samples=spec.get('ao_samples', 48))
+                    print(f'[forge] {ship.id} AO bake {ao_secs:.1f}s')
+                else:
+                    img = bpy.data.images.get(f'{ship.id}_AO')
+                    if img:
+                        _park_lightmap_white(meshes, img.size[0])
             coll = _collision_hull(ship, root, meshes)
             _add_sockets(ship, root)
             suffix = '' if level == 0 else f'_lod{level}'
@@ -451,6 +661,15 @@ def export_ship(ship, spec, out_dir=None, preview=False):
             for m in meshes:
                 m.parent = root
             all_meshes += meshes
+        if spec.get('ao', True):
+            lod0 = [m for m in all_meshes if m.name.startswith('LOD0_')]
+            if lod0:
+                ao_secs = bake_body_ao(ship, lod0, samples=spec.get('ao_samples', 48))
+                img = bpy.data.images.get(f'{ship.id}_AO')
+                if img:
+                    _park_lightmap_white([m for m in all_meshes if not m.name.startswith('LOD0_')],
+                                         img.size[0])
+                print(f'[forge] {ship.id} AO bake {ao_secs:.1f}s')
         _collision_hull(ship, root)
         _add_sockets(ship, root)
         path = os.path.join(out_dir, f"{spec['file']}.glb")
@@ -463,7 +682,9 @@ def export_ship(ship, spec, out_dir=None, preview=False):
 
 
 def fleet_spec(ship_id):
-    with open(os.path.join(HERE, 'fleet.json')) as f:
+    # UTF-8 explicitly: the Windows default (cp1252) corrupts authored
+    # characters like em-dashes in notes every time the spec is read.
+    with open(os.path.join(HERE, 'fleet.json'), encoding='utf-8') as f:
         return json.load(f)['ships'][ship_id]
 
 

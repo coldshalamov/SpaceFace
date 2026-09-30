@@ -28,6 +28,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the mass: displaced core with a quarried top face + satellite boulders ------------
     F.rock(s, 'Core', (0, 0, -0.6), 5.5, seed=11, subdiv=4, relief=0.34, terrace=0.0,

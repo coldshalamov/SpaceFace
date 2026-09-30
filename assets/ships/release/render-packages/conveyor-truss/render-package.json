@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Discharge_End",
       "nodePath": [
         0,
-        19
+        24
       ],
       "parentNodeId": "sf.render.conveyor-truss.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Feed_End",
       "nodePath": [
         0,
-        20
+        25
       ],
       "parentNodeId": "sf.render.conveyor-truss.root",
       "worldTransform": [
@@ -105,8 +105,54 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2c1f90102e4183b0dfcaddf52e9770971f5ae33ca7d8b9eb6fa3555047a2c7bd",
-  "dynamicGroups": [],
+  "contentHash": "7f0014c874e7ef3e698a72ee3b226b535f0aeb4599d7e659430cd50834e86eaf",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-blink-1p7-0p4-drivelamp.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod0-anim-blink-1p7-0p4-drivelamp"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-drivedrum.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-drivedrum"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-taildrum.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-taildrum"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-blink-1p7-0p4-drivelamp.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod1-anim-blink-1p7-0p4-drivelamp"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-drivedrum.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-drivedrum"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-taildrum.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-taildrum"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-blink-1p7-0p4-drivelamp.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod2-anim-blink-1p7-0p4-drivelamp"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-drivedrum.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-drivedrum"
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-taildrum.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-taildrum"
+    }
+  ],
   "geometry": [
     {
       "bounds": {
@@ -136,6 +182,81 @@
     {
       "bounds": {
         "max": [
+          11.725000381469727,
+          7.15750782037271,
+          2.4250003695487976
+        ],
+        "min": [
+          11.274999618530273,
+          6.84249217962729,
+          1.9749996066093445
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f6c91971cc1de6262d66df2d065dfdc5034227af1b5f3914e8831629065afb0",
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-blink-1p7-0p4-drivelamp.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod0-anim-blink-1p7-0p4-drivelamp",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.599911540029076,
+          6.483211906347654,
+          2.4000000953674316
+        ],
+        "min": [
+          10.400088459970924,
+          4.31678828438721,
+          -2.4000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5f50e264dabd59be7d9c859560ed44bcf0e29e21456f5dd581f77e744479b5e",
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-drivedrum.primitive.0",
+      "indexCount": 852,
+      "indexed": true,
+      "materialHash": "22789381de7174a3c7a0ac5b684a55ae25f204d27e28771436c0982319aa6869",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_side_1p8_DriveDrum",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-drivedrum",
+      "primitiveIndex": 0,
+      "vertexCount": 276
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.600009155552844,
+          5.099990653712294,
+          2
+        ],
+        "min": [
+          -12.399990844447156,
+          3.3000089648179793,
+          -2
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2da4a4c3eda3543b0b134fcf6c7d3c778158c61dd8a88d1e3d5e12ecf58e7fbd",
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-taildrum.primitive.0",
+      "indexCount": 756,
+      "indexed": true,
+      "materialHash": "22789381de7174a3c7a0ac5b684a55ae25f204d27e28771436c0982319aa6869",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_side_1p8_TailDrum",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-taildrum",
+      "primitiveIndex": 0,
+      "vertexCount": 248
+    },
+    {
+      "bounds": {
+        "max": [
           9.5,
           7.200672149658203,
           4.2000017166137695
@@ -147,11 +268,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b244a2bcfe0e3d3d788c7c6c25eb7b10cc94dcb57d7ad982fe3bf249f733b8c0",
+      "geometryHash": "123c073792da31ce657223c940a50a7e3283d40b51e2dfef44d6198a745b185f",
       "id": "sf.render.conveyor-truss.mesh.lod0-armor.primitive.0",
       "indexCount": 10740,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "5042a19986c70c58b8a8634ec83679f23e5c849bec6e6ae3f0f6fc7a6146c2ba",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-armor",
@@ -161,27 +282,27 @@
     {
       "bounds": {
         "max": [
-          11.725000381469727,
-          7.505396366119385,
-          2.4249401092529297
+          7.75,
+          7.505014419555664,
+          1.8504258394241333
         ],
         "min": [
           -7.75,
-          6.842103958129883,
-          1.5500599145889282
+          7.294985771179199,
+          1.5495742559432983
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87ccf519bb4c3c2f8580f3e70e8fb6b28938af641331359a2a0c3fbd520aa04b",
+      "geometryHash": "5e8b1f0383071bda83f4dcd759d987fd4b03b70327696f67535c46ddcdd0a355",
       "id": "sf.render.conveyor-truss.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 216,
+      "indexCount": 180,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 144
+      "vertexCount": 120
     },
     {
       "bounds": {
@@ -197,41 +318,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39afeb2d360ad4fedc2e148305fbb75c4c60b5dc1fa400bc2b34824d8d207ace",
+      "geometryHash": "9a8575544cb143c9e52680d2d29548edd712fb2df2b73a74f4168b4c37716b22",
       "id": "sf.render.conveyor-truss.mesh.lod0-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "138a799d05afbe1f328a84d39e5f28a8f539badc5ddbc626483f58ccf346dc30",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-hull",
       "primitiveIndex": 0,
       "vertexCount": 168
-    },
-    {
-      "bounds": {
-        "max": [
-          12.600000381469727,
-          6.483184337615967,
-          2.400280714035034
-        ],
-        "min": [
-          -12.399999618530273,
-          3.3001039028167725,
-          -2.400280714035034
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9dc2f456d4a0ab68b1dc025b7e759b55f17d75b5cd79786c363d65a8a43cd50c",
-      "id": "sf.render.conveyor-truss.mesh.lod0-mechanical.primitive.0",
-      "indexCount": 1608,
-      "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Mechanical",
-      "nodeId": "sf.render.conveyor-truss.mesh.lod0-mechanical",
-      "primitiveIndex": 0,
-      "vertexCount": 526
     },
     {
       "bounds": {
@@ -247,11 +343,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0fd44620262ea1ee3bbe35582ac204f4139b229d97dd035ec6bb347647f7b787",
+      "geometryHash": "a71079bea10a0ab0b35bb9860f97edab3fd67102296362ffe64b375177180b5b",
       "id": "sf.render.conveyor-truss.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "2b6880ae3abbd5974b18e82b4d7c6f26c0b856a781cbd33f3d348e218aded6aa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-mechanicaldark",
@@ -272,11 +368,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7fc188f8eb00e37f5de78124e71c29a0c414442434a9b34a7548811b959996ca",
+      "geometryHash": "6c2b69f4aa26b949d92327b67e95d8e309a9278e1c3ab90219b3945cf0297efc",
       "id": "sf.render.conveyor-truss.mesh.lod0-warning.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "034e3e2fe8780f297df02903d3d782d87e072de366658f89a87abb09daa38820",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-warning",
@@ -286,52 +382,127 @@
     {
       "bounds": {
         "max": [
-          9.5,
-          7.198721408843994,
-          4.197157382965088
+          11.725000381469727,
+          7.15750782037271,
+          2.4250003695487976
         ],
         "min": [
-          -13.800000190734863,
-          0.05306563526391983,
-          -4.197157382965088
+          11.274999618530273,
+          6.84249217962729,
+          1.9749996066093445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a23aaa767e49753e0148259ee1b4e2791d329aab74a2e79e7ee98be31be7021c",
-      "id": "sf.render.conveyor-truss.mesh.lod1-armor.primitive.0",
-      "indexCount": 4128,
+      "geometryHash": "b738e17cc8cd4c63ca1032b38a94557a569564d32b1bdd52af483e6be3b2a444",
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-blink-1p7-0p4-drivelamp.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Armor",
-      "nodeId": "sf.render.conveyor-truss.mesh.lod1-armor",
+      "meshName": "LOD1_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod1-anim-blink-1p7-0p4-drivelamp",
       "primitiveIndex": 0,
-      "vertexCount": 2001
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          11.725000381469727,
-          7.505396366119385,
-          2.4249401092529297
+          12.599090022578297,
+          6.4823065868836895,
+          2.3995001316070557
         ],
         "min": [
-          -7.75,
-          6.842103958129883,
-          1.5500599145889282
+          10.400909977421703,
+          4.317518843032692,
+          -2.3994715213775635
         ]
       },
       "drawMode": 4,
-      "geometryHash": "552f866866e8ad68d29971cb5ca6b3729175a59d69ed4856ba7b26e75320deb9",
+      "geometryHash": "a4d44954ba81ab7a29fea5abebf9a193074eddad6123c8597431f7f432b842ee",
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-drivedrum.primitive.0",
+      "indexCount": 336,
+      "indexed": true,
+      "materialHash": "22789381de7174a3c7a0ac5b684a55ae25f204d27e28771436c0982319aa6869",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_side_1p8_DriveDrum",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-drivedrum",
+      "primitiveIndex": 0,
+      "vertexCount": 102
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.600969721284534,
+          5.099030087980603,
+          1.9995759725570679
+        ],
+        "min": [
+          -12.399030278715466,
+          3.3009695305496707,
+          -1.9994093179702759
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "969281ffdbf06cb98d3cab15903dddac779050430e1be1c2ac370be805bd7d61",
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-taildrum.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "22789381de7174a3c7a0ac5b684a55ae25f204d27e28771436c0982319aa6869",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_side_1p8_TailDrum",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-taildrum",
+      "primitiveIndex": 0,
+      "vertexCount": 92
+    },
+    {
+      "bounds": {
+        "max": [
+          9.494819641113281,
+          7.1993489265441895,
+          4.196224212646484
+        ],
+        "min": [
+          -13.800000190734863,
+          0.05243819206953049,
+          -4.196224212646484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c3093d7b73a89618aa1a834865ae62c585d9d2576c4e041c00b283be03bad5b",
+      "id": "sf.render.conveyor-truss.mesh.lod1-armor.primitive.0",
+      "indexCount": 3984,
+      "indexed": true,
+      "materialHash": "5042a19986c70c58b8a8634ec83679f23e5c849bec6e6ae3f0f6fc7a6146c2ba",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1961
+    },
+    {
+      "bounds": {
+        "max": [
+          7.75,
+          7.505014419555664,
+          1.8504258394241333
+        ],
+        "min": [
+          -7.75,
+          7.294985771179199,
+          1.5495742559432983
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "629421ca2182febe73c61a29a6a8b625935ba4dffb7d7daffc785e4f36c3ac91",
       "id": "sf.render.conveyor-truss.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 216,
+      "indexCount": 180,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.conveyor-truss.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 144
+      "vertexCount": 120
     },
     {
       "bounds": {
@@ -347,11 +518,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "394a784e815543289c9ab4fc340dddbc85b26298b310920d5f4c12c36d8e7efc",
+      "geometryHash": "f11b0095cef86e1c568390d500b76f4912617b94886b0fd66cc283a5240b74c9",
       "id": "sf.render.conveyor-truss.mesh.lod1-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "138a799d05afbe1f328a84d39e5f28a8f539badc5ddbc626483f58ccf346dc30",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.conveyor-truss.mesh.lod1-hull",
@@ -361,52 +532,27 @@
     {
       "bounds": {
         "max": [
-          12.597213745117188,
-          6.481149673461914,
-          2.3981940746307373
-        ],
-        "min": [
-          -12.396941184997559,
-          3.3018643856048584,
-          -2.3981940746307373
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4cc7c7eb5b87b59c3031a523c1fbb8d25a85e916526571f897fcb4b210aedd16",
-      "id": "sf.render.conveyor-truss.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 384,
-      "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Mechanical",
-      "nodeId": "sf.render.conveyor-truss.mesh.lod1-mechanical",
-      "primitiveIndex": 0,
-      "vertexCount": 152
-    },
-    {
-      "bounds": {
-        "max": [
           9.49795150756836,
-          6.7470622062683105,
-          1.397925615310669
+          6.747251033782959,
+          1.397575855255127
         ],
         "min": [
-          -13,
-          0.5998967289924622,
-          -1.397925615310669
+          -12.99437141418457,
+          0.6043694019317627,
+          -1.397575855255127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66d82fcea7982e5861ef0abde30d9309f37f04c47aa93367002edc463cef9592",
+      "geometryHash": "596d9d1b6000fbaf59904fbb0b1ddda43b9f8056b97a156533fd5292c5fba4f1",
       "id": "sf.render.conveyor-truss.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 612,
+      "indexCount": 516,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "2b6880ae3abbd5974b18e82b4d7c6f26c0b856a781cbd33f3d348e218aded6aa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.conveyor-truss.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 245
+      "vertexCount": 225
     },
     {
       "bounds": {
@@ -422,16 +568,91 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eedf1423b38ff05e9de646aa9ec1fe558afcb9ed388f7a78a3cc08e393a1d205",
+      "geometryHash": "2046660b12262781a91a3c332a8ce28e37921dbe69ddeba669c9fc832e1c0d34",
       "id": "sf.render.conveyor-truss.mesh.lod1-warning.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "034e3e2fe8780f297df02903d3d782d87e072de366658f89a87abb09daa38820",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.conveyor-truss.mesh.lod1-warning",
       "primitiveIndex": 0,
       "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.725000381469727,
+          7.15750782037271,
+          2.4250003695487976
+        ],
+        "min": [
+          11.274999618530273,
+          6.84249217962729,
+          1.9749996066093445
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b738e17cc8cd4c63ca1032b38a94557a569564d32b1bdd52af483e6be3b2a444",
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-blink-1p7-0p4-drivelamp.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod2-anim-blink-1p7-0p4-drivelamp",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.596905987441792,
+          6.512046578223899,
+          2.3978171348571777
+        ],
+        "min": [
+          10.403181750595317,
+          4.320078608696267,
+          -2.3978171348571777
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "521315fbdf56fdc0dea9bebf526c37eb533e174a08e6c02fd5149dd366320d78",
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-drivedrum.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "22789381de7174a3c7a0ac5b684a55ae25f204d27e28771436c0982319aa6869",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_side_1p8_DriveDrum",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-drivedrum",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.603192084468702,
+          5.097295484897343,
+          1.9979735612869263
+        ],
+        "min": [
+          -12.396807915531298,
+          3.3027041336329312,
+          -1.9976352453231812
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f563a824050b342ecdfde611d68c65f2e41563ec13481e4cbe6e8489d5aa785a",
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-taildrum.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "22789381de7174a3c7a0ac5b684a55ae25f204d27e28771436c0982319aa6869",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_side_1p8_TailDrum",
+      "nodeId": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-taildrum",
+      "primitiveIndex": 0,
+      "vertexCount": 56
     },
     {
       "bounds": {
@@ -447,41 +668,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bcc758fa7a23ddcbdbdc4c5a76f6ba4dea0029f48cc8a1cd2c9d392d3a171434",
+      "geometryHash": "5f3c811b00f20322db648d6f11a41c886bc4eecac6e59d2fc9a523e9c703224d",
       "id": "sf.render.conveyor-truss.mesh.lod2-armor.primitive.0",
-      "indexCount": 1140,
+      "indexCount": 1086,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "5042a19986c70c58b8a8634ec83679f23e5c849bec6e6ae3f0f6fc7a6146c2ba",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.conveyor-truss.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 810
-    },
-    {
-      "bounds": {
-        "max": [
-          11.725000381469727,
-          7.15750789642334,
-          2.4250004291534424
-        ],
-        "min": [
-          11.274999618530273,
-          6.84249210357666,
-          1.9749996662139893
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c9fcf4d7828b323a0b339c06a6e3a5090fbadffdeb750c17d1ec9d3416ff4a00",
-      "id": "sf.render.conveyor-truss.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Beacon_Amber",
-      "nodeId": "sf.render.conveyor-truss.mesh.lod2-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 772
     },
     {
       "bounds": {
@@ -497,41 +693,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3a9c722c14af0d50d8cbff18eb56a18ef78989100cef1c5f34a5c08132ee4ed",
+      "geometryHash": "481f738a904aaff619244ac93917715187f66039089c80e305da53ade4acb6e2",
       "id": "sf.render.conveyor-truss.mesh.lod2-hull.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "138a799d05afbe1f328a84d39e5f28a8f539badc5ddbc626483f58ccf346dc30",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.conveyor-truss.mesh.lod2-hull",
       "primitiveIndex": 0,
       "vertexCount": 37
-    },
-    {
-      "bounds": {
-        "max": [
-          12.593734741210938,
-          6.479642868041992,
-          2.397911787033081
-        ],
-        "min": [
-          -12.396941184997559,
-          3.3038508892059326,
-          -2.397808790206909
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e463710eb8f72bcfcf58007334e4bb6f193ca01fba1945043998bc5d1e0d80ee",
-      "id": "sf.render.conveyor-truss.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 210,
-      "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Mechanical",
-      "nodeId": "sf.render.conveyor-truss.mesh.lod2-mechanical",
-      "primitiveIndex": 0,
-      "vertexCount": 94
     },
     {
       "bounds": {
@@ -547,11 +718,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d36a932510ce8e17c282468083720e19da9954a0ab0c20930fb97a99848189d",
+      "geometryHash": "93772a8627555a00266e352685ff7916812c2b0b506ba3bc0aa5e6ee75f9b20f",
       "id": "sf.render.conveyor-truss.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "2b6880ae3abbd5974b18e82b4d7c6f26c0b856a781cbd33f3d348e218aded6aa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.conveyor-truss.mesh.lod2-mechanicaldark",
@@ -572,11 +743,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eedf1423b38ff05e9de646aa9ec1fe558afcb9ed388f7a78a3cc08e393a1d205",
+      "geometryHash": "2046660b12262781a91a3c332a8ce28e37921dbe69ddeba669c9fc832e1c0d34",
       "id": "sf.render.conveyor-truss.mesh.lod2-warning.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "034e3e2fe8780f297df02903d3d782d87e072de366658f89a87abb09daa38820",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.conveyor-truss.mesh.lod2-warning",
@@ -589,40 +760,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
+      "hash": "034e3e2fe8780f297df02903d3d782d87e072de366658f89a87abb09daa38820",
+      "id": "material:034e3e2fe8780f297df02903",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -646,86 +785,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_conveyor_truss_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
-      "id": "material:7d49b2b274926ec08348a5fd",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "id": "material:d53e5ef9a99fb30a7a241f6f",
+      "hash": "138a799d05afbe1f328a84d39e5f28a8f539badc5ddbc626483f58ccf346dc30",
+      "id": "material:138a799d05afbe1f328a84d3",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -749,7 +817,110 @@
         },
         {
           "colorSpace": "linear",
+          "name": "place_conveyor_truss_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "22789381de7174a3c7a0ac5b684a55ae25f204d27e28771436c0982319aa6869",
+      "id": "material:22789381de7174a3c7a0ac5b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_conveyor_truss_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_conveyor_truss_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2b6880ae3abbd5974b18e82b4d7c6f26c0b856a781cbd33f3d348e218aded6aa",
+      "id": "material:2b6880ae3abbd5974b18e82b",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_conveyor_truss_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_conveyor_truss_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "5042a19986c70c58b8a8634ec83679f23e5c849bec6e6ae3f0f6fc7a6146c2ba",
+      "id": "material:5042a19986c70c58b8a8634e",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_conveyor_truss_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -807,6 +978,153 @@
       ]
     },
     {
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-blink-1p7-0p4-drivelamp",
+      "localTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        11.5,
+        7,
+        2.199999988079071,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodeName": "LOD0_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        11.5,
+        7,
+        2.199999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-drivedrum",
+      "localTransform": [
+        2.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        11.5,
+        5.400000095367432,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_side_1p8_DriveDrum",
+      "nodeName": "LOD0_ANIM_spin_side_1p8_DriveDrum",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        2.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        11.5,
+        5.400000095367432,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-taildrum",
+      "localTransform": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        -11.5,
+        4.199999809265137,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_side_1p8_TailDrum",
+      "nodeName": "LOD0_ANIM_spin_side_1p8_TailDrum",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        -11.5,
+        4.199999809265137,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.conveyor-truss.mesh.lod0-armor",
       "localTransform": [
         1,
@@ -831,7 +1149,7 @@
       "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        1
+        4
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -880,7 +1198,7 @@
       "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
-        2
+        5
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -929,56 +1247,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        3
-      ],
-      "parentId": "sf.render.conveyor-truss.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.conveyor-truss.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.conveyor-truss.mesh.lod0-mechanical",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Mechanical",
-      "nodeName": "LOD0_Mechanical",
-      "nodePath": [
-        0,
-        4
+        6
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1027,7 +1296,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        5
+        7
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1076,7 +1345,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        6
+        8
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1097,6 +1366,153 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-blink-1p7-0p4-drivelamp",
+      "localTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        11.5,
+        7,
+        2.199999988079071,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodeName": "LOD1_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        11.5,
+        7,
+        2.199999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-drivedrum",
+      "localTransform": [
+        2.3994858264923096,
+        0,
+        0,
+        0,
+        0,
+        2.3994858264923096,
+        0,
+        0,
+        0,
+        0,
+        2.3994858264923096,
+        0,
+        11.5,
+        5.399912714958191,
+        0.00001430511474609375,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_side_1p8_DriveDrum",
+      "nodeName": "LOD1_ANIM_spin_side_1p8_DriveDrum",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        2.3994858264923096,
+        0,
+        0,
+        0,
+        0,
+        2.3994858264923096,
+        0,
+        0,
+        0,
+        0,
+        2.3994858264923096,
+        0,
+        11.5,
+        5.399912714958191,
+        0.00001430511474609375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-taildrum",
+      "localTransform": [
+        1.9994926452636719,
+        0,
+        0,
+        0,
+        0,
+        1.9994926452636719,
+        0,
+        0,
+        0,
+        0,
+        1.9994926452636719,
+        0,
+        -11.5,
+        4.199999809265137,
+        0.0000833272933959961,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_side_1p8_TailDrum",
+      "nodeName": "LOD1_ANIM_spin_side_1p8_TailDrum",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        1.9994926452636719,
+        0,
+        0,
+        0,
+        0,
+        1.9994926452636719,
+        0,
+        0,
+        0,
+        0,
+        1.9994926452636719,
+        0,
+        -11.5,
+        4.199999809265137,
+        0.0000833272933959961,
         1
       ]
     },
@@ -1125,7 +1541,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        7
+        12
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1174,7 +1590,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        8
+        13
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1223,56 +1639,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        9
-      ],
-      "parentId": "sf.render.conveyor-truss.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.conveyor-truss.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.conveyor-truss.mesh.lod1-mechanical",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Mechanical",
-      "nodeName": "LOD1_Mechanical",
-      "nodePath": [
-        0,
-        10
+        14
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1321,7 +1688,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        11
+        15
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1370,7 +1737,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        12
+        16
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1391,6 +1758,153 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-blink-1p7-0p4-drivelamp",
+      "localTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        11.5,
+        7,
+        2.199999988079071,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodeName": "LOD2_ANIM_blink_1p7_0p4_DriveLamp",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        11.5,
+        7,
+        2.199999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-drivedrum",
+      "localTransform": [
+        2.3978171348571777,
+        0,
+        0,
+        0,
+        0,
+        2.3978171348571777,
+        0,
+        0,
+        0,
+        0,
+        2.3978171348571777,
+        0,
+        11.500043869018555,
+        5.416062593460083,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_side_1p8_DriveDrum",
+      "nodeName": "LOD2_ANIM_spin_side_1p8_DriveDrum",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        2.3978171348571777,
+        0,
+        0,
+        0,
+        0,
+        2.3978171348571777,
+        0,
+        0,
+        0,
+        0,
+        2.3978171348571777,
+        0,
+        11.500043869018555,
+        5.416062593460083,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-taildrum",
+      "localTransform": [
+        1.9978044033050537,
+        0,
+        0,
+        0,
+        0,
+        1.9978044033050537,
+        0,
+        0,
+        0,
+        0,
+        1.9978044033050537,
+        0,
+        -11.5,
+        4.199999809265137,
+        0.0001691579818725586,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_side_1p8_TailDrum",
+      "nodeName": "LOD2_ANIM_spin_side_1p8_TailDrum",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.conveyor-truss.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-truss.body",
+      "worldTransform": [
+        1.9978044033050537,
+        0,
+        0,
+        0,
+        0,
+        1.9978044033050537,
+        0,
+        0,
+        0,
+        0,
+        1.9978044033050537,
+        0,
+        -11.5,
+        4.199999809265137,
+        0.0001691579818725586,
         1
       ]
     },
@@ -1419,56 +1933,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        13
-      ],
-      "parentId": "sf.render.conveyor-truss.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.conveyor-truss.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.conveyor-truss.mesh.lod2-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Beacon_Amber",
-      "nodeName": "LOD2_Beacon_Amber",
-      "nodePath": [
-        0,
-        14
+        20
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1517,56 +1982,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        15
-      ],
-      "parentId": "sf.render.conveyor-truss.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.conveyor-truss.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.conveyor-truss.mesh.lod2-mechanical",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Mechanical",
-      "nodeName": "LOD2_Mechanical",
-      "nodePath": [
-        0,
-        16
+        21
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1615,7 +2031,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        17
+        22
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1664,7 +2080,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        18
+        23
       ],
       "parentId": "sf.render.conveyor-truss.root",
       "role": "immutable",
@@ -1739,34 +2155,34 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "d81f44a8db2d9323c657a6c79303fc57452aa8d07c9be0ec3364cf86ef373600"
+      "sha256": "f35d79dac81ac839c462ac66b6037af165d18418f5c0679c7b06401c7e26ad80"
     },
     "sourceGlb": {
-      "bytes": 455780,
-      "sha256": "9ddabf360ac590c08f7bb2b815ae58db4099f783afd69657669e522161ff71f9",
+      "bytes": 1008748,
+      "sha256": "ca30264110c7f0c52530306c13a679f8f110f4d961cdece2904f207e1f18ba55",
       "uri": "place_conveyor_truss.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 620916,
-    "sha256": "15d57b48da6e963976a2a12301733b812cecba579b61e3489368aca63954fc04",
+    "bytes": 1164204,
+    "sha256": "027a60d116c02ca41478457013a285240a3800e6c84595381a8530a5cc1d0e4b",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.27500009536743164,
-        3.7773620896041393,
+        3.777171116322279,
         0
       ],
       "max": [
         14.350000381469727,
-        7.505396366119385,
+        7.505014419555664,
         4.2000017166137695
       ],
       "min": [
@@ -1776,7 +2192,7 @@
       ],
       "size": [
         28.15000057220459,
-        7.456068553030491,
+        7.45568660646677,
         8.400003433227539
       ]
     },
@@ -1805,7 +2221,7 @@
           1
         ],
         "name": "SOCKET_Discharge_End",
-        "planIndex": 21,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1846,7 +2262,7 @@
           1
         ],
         "name": "SOCKET_Feed_End",
-        "planIndex": 22,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1870,8 +2286,8 @@
     ],
     "materialProfileRoles": {
       "hull": 7,
-      "mechanical": 6,
-      "signal": 3,
+      "mechanical": 9,
+      "signal": 5,
       "warning": 3
     },
     "materialProfiles": [
@@ -1883,47 +2299,47 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 8,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1938,41 +2354,147 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "warning"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 17,
+        "planIndex": 16,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 18,
+        "planIndex": 17,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
         "role": "warning"
       }
     ],
-    "nodeCount": 23,
+    "nodeCount": 28,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          11.5,
+          7,
+          2.199999988079071,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p7_0p4_DriveLamp",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          2.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          2.4000000953674316,
+          0,
+          11.5,
+          5.400000095367432,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_side_1p8_DriveDrum",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          -11.5,
+          4.199999809265137,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_side_1p8_TailDrum",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -1994,7 +2516,7 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2021,87 +2543,6 @@
           1
         ],
         "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Hull",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Mechanical",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_MechanicalDark",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2128,7 +2569,7 @@
           0,
           1
         ],
-        "name": "LOD0_Warning",
+        "name": "LOD0_Hull",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2155,11 +2596,11 @@
           0,
           1
         ],
-        "name": "LOD1_Armor",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 9,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2182,34 +2623,34 @@
           0,
           1
         ],
-        "name": "LOD1_Beacon_Amber",
+        "name": "LOD0_Warning",
         "planIndex": 10,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.22500038146972656,
           0,
           0,
           0,
           0,
-          1,
+          0.22500038146972656,
           0,
           0,
           0,
           0,
-          1,
+          0.22500038146972656,
           0,
-          0,
-          0,
-          0,
+          11.5,
+          7,
+          2.199999988079071,
           1
         ],
-        "name": "LOD1_Hull",
+        "name": "LOD1_ANIM_blink_1p7_0p4_DriveLamp",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -2219,24 +2660,24 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.3994858264923096,
           0,
           0,
           0,
           0,
-          1,
+          2.3994858264923096,
           0,
           0,
           0,
           0,
-          1,
+          2.3994858264923096,
           0,
-          0,
-          0,
-          0,
+          11.5,
+          5.399912714958191,
+          0.00001430511474609375,
           1
         ],
-        "name": "LOD1_Mechanical",
+        "name": "LOD1_ANIM_spin_side_1p8_DriveDrum",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -2246,24 +2687,24 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9994926452636719,
           0,
           0,
           0,
           0,
-          1,
+          1.9994926452636719,
           0,
           0,
           0,
           0,
-          1,
+          1.9994926452636719,
           0,
-          0,
-          0,
-          0,
+          -11.5,
+          4.199999809265137,
+          0.0000833272933959961,
           1
         ],
-        "name": "LOD1_MechanicalDark",
+        "name": "LOD1_ANIM_spin_side_1p8_TailDrum",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2290,7 +2731,7 @@
           0,
           1
         ],
-        "name": "LOD1_Warning",
+        "name": "LOD1_Armor",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -2317,8 +2758,170 @@
           0,
           1
         ],
-        "name": "LOD2_Armor",
+        "name": "LOD1_Beacon_Amber",
         "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          11.5,
+          7,
+          2.199999988079071,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p7_0p4_DriveLamp",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.3978171348571777,
+          0,
+          0,
+          0,
+          0,
+          2.3978171348571777,
+          0,
+          0,
+          0,
+          0,
+          2.3978171348571777,
+          0,
+          11.500043869018555,
+          5.416062593460083,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_side_1p8_DriveDrum",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9978044033050537,
+          0,
+          0,
+          0,
+          0,
+          1.9978044033050537,
+          0,
+          0,
+          0,
+          0,
+          1.9978044033050537,
+          0,
+          -11.5,
+          4.199999809265137,
+          0.0001691579818725586,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_side_1p8_TailDrum",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2344,8 +2947,8 @@
           0,
           1
         ],
-        "name": "LOD2_Beacon_Amber",
-        "planIndex": 16,
+        "name": "LOD2_Armor",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2372,34 +2975,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Mechanical",
-        "planIndex": 18,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2426,7 +3002,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 19,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2453,7 +3029,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 20,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2464,14 +3040,14 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_truss.glb"
   },
-  "runtimeHash": "d61b7f207a1f892cec507b453c8117d287ea526a7e66f578415379e17c45fd2a",
+  "runtimeHash": "41006dc8aec9ba8e4e29e204feb771c53b232230e9bc3466595b0a9ae0073f32",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           14.350000381469727,
-          7.505396366119385,
+          7.505014419555664,
           4.2000017166137695
         ],
         "min": [
@@ -2483,22 +3059,27 @@
       "id": "sf.render.conveyor-truss.body",
       "nodeIds": [
         "sf.render.conveyor-truss.mesh.collision-hull",
+        "sf.render.conveyor-truss.mesh.lod0-anim-blink-1p7-0p4-drivelamp",
+        "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-drivedrum",
+        "sf.render.conveyor-truss.mesh.lod0-anim-spin-side-1p8-taildrum",
         "sf.render.conveyor-truss.mesh.lod0-armor",
         "sf.render.conveyor-truss.mesh.lod0-beacon-amber",
         "sf.render.conveyor-truss.mesh.lod0-hull",
-        "sf.render.conveyor-truss.mesh.lod0-mechanical",
         "sf.render.conveyor-truss.mesh.lod0-mechanicaldark",
         "sf.render.conveyor-truss.mesh.lod0-warning",
+        "sf.render.conveyor-truss.mesh.lod1-anim-blink-1p7-0p4-drivelamp",
+        "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-drivedrum",
+        "sf.render.conveyor-truss.mesh.lod1-anim-spin-side-1p8-taildrum",
         "sf.render.conveyor-truss.mesh.lod1-armor",
         "sf.render.conveyor-truss.mesh.lod1-beacon-amber",
         "sf.render.conveyor-truss.mesh.lod1-hull",
-        "sf.render.conveyor-truss.mesh.lod1-mechanical",
         "sf.render.conveyor-truss.mesh.lod1-mechanicaldark",
         "sf.render.conveyor-truss.mesh.lod1-warning",
+        "sf.render.conveyor-truss.mesh.lod2-anim-blink-1p7-0p4-drivelamp",
+        "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-drivedrum",
+        "sf.render.conveyor-truss.mesh.lod2-anim-spin-side-1p8-taildrum",
         "sf.render.conveyor-truss.mesh.lod2-armor",
-        "sf.render.conveyor-truss.mesh.lod2-beacon-amber",
         "sf.render.conveyor-truss.mesh.lod2-hull",
-        "sf.render.conveyor-truss.mesh.lod2-mechanical",
         "sf.render.conveyor-truss.mesh.lod2-mechanicaldark",
         "sf.render.conveyor-truss.mesh.lod2-warning",
         "sf.render.conveyor-truss.root"

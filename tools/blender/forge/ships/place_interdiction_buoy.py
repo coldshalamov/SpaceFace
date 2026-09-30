@@ -32,6 +32,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- octagonal drum hull ------------------------------------------------------------------
     # Metal-navy drum: a dielectric cap face lifts to pale under the warm env no matter the
@@ -66,15 +67,20 @@ def build():
     s.detail = 1
     for i in range(4):
         a = math.radians(45 + i * 90)
-        F.box(s, f'EmitterSlit{i}', (math.cos(a) * 1.2, math.sin(a) * 1.2, 2.2),
-              (0.5, 0.14, 0.5), material='glow_cyan', rot_z=a, bevel=0.0)
+        pos = (math.cos(a) * 1.2, math.sin(a) * 1.2, 2.2)
+        F.box(s, f'EmitterSlit{i}', pos, (0.5, 0.14, 0.5), material='glow_cyan', rot_z=a, bevel=0.0)
+        s.anim(s.objects[-1:], f'chase:em:{i}:4:1p8', pos)
     s.detail = 0
+    n0 = len(s.objects)
     F.beacon(s, 'AuthorityStrobe', (0, 0, 2.42), 'glow_red', size=0.3)
+    s.anim([o for o in s.objects[n0:] if o.name == 'AuthorityStrobe_Dome'], 'blink:0p9:0p3',
+           (0, 0, 2.42))
     # corner nav dots on the drum flats
     for k in range(4):
         a = math.radians(k * 90)
-        F.light(s, f'NavDot{k}', (math.cos(a) * 3.05, math.sin(a) * 3.05, 0.4),
-                'glow_amber', size=0.2)
+        pos = (math.cos(a) * 3.05, math.sin(a) * 3.05, 0.4)
+        o = F.light(s, f'NavDot{k}', pos, 'glow_amber', size=0.2)
+        s.anim(o, f'chase:nav:{k}:4:2p6', pos)
     return s
 
 

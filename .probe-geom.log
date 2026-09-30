@@ -1,0 +1,67 @@
+LATCH 4.02s #241 target=38
+RELEASE 6.12s #367 {"targetId":38}
+#380 6.3s 1:-9248,7272 v6 | 131:-9173,7261 v45 | 443:-9296,7291 v0 | 447:-9634,6814 v0 | 444:-9300,7348 v52 aim->131
+#400 6.7s 1:-9226,7272 v124 | 131:-9188,7261 v44 | 443:-9297,7290 v0 | 447:-9634,6814 v0 | 444:-9287,7361 v56 aim->131
+DMG 6.80s #408 1->131 amt=44.62919999999999 w=collision hostile=false
+FLEE 6.80s #408 {"entityId":443,"reason":"civilian-violence"}
+#420 7.0s 1:-9178,7274 v166 | 131:-9187,7251 v36 | 443:-9296,7290 v3 | 447:-9634,6814 v0 | 444:-9272,7373 v72 aim->131
+FIRE 7.18s #431 w=wpn_concussion_cannon_m dir=-2.4407674907503285
+DMG 7.33s #440 1->131 amt=13.799999999999999 w=wpn_concussion_cannon_m hostile=false
+#440 7.3s 1:-9130,7274 v91 | 131:-9183,7246 v17 | 443:-9293,7291 v20 | 447:-9634,6814 v0 | 444:-9236,7384 v154 aim->131
+#460 7.7s 1:-9119,7274 v3 | 131:-9187,7241 v17 | 443:-9284,7295 v39 | 447:-9634,6814 v0 | 444:-9181,7414 v217 aim->131
+#480 8.0s 1:-9119,7274 v0 | 131:-9192,7240 v14 | 443:-9271,7305 v55 | 447:-9634,6814 v0 | 444:-9126,7469 v209 aim->131
+#500 8.3s 1:-9119,7274 v0 | 131:-9191,7252 v63 | 443:-9258,7321 v69 | 447:-9634,6814 v0 | 444:-9095,7481 v64 aim->131
+LATCH 8.43s #506 target=131
+WINDOW-OPEN 8.45s #507 target=null relV=70
+#520 8.7s 1:-9119,7274 v0 | 131:-9181,7273 v72 | 443:-9247,7343 v78 | 447:-9634,6814 v0 | 444:-9087,7462 v52 aim->447
+#540 9.0s 1:-9119,7274 v0 | 131:-9167,7293 v72 | 443:-9242,7369 v86 | 447:-9634,6814 v0 | 444:-9082,7445 v56 aim->447
+#560 9.4s 1:-9088,7265 v170 | 131:-9150,7310 v73 | 443:-9241,7400 v97 | 447:-9632,6813 v10 | 444:-9084,7424 v73 aim->447
+#580 9.7s 1:-9071,7250 v75 | 131:-9122,7317 v121 | 443:-9247,7434 v111 | 447:-9627,6810 v29 | 444:-9093,7398 v94 aim->443
+DMG 9.72s #583 1->131 amt=23.744023359364707 w=collision hostile=false
+WHIP 9.72s #583 mass=131 victim=38 relV=132.4 slung=false
+DMG 9.80s #588 1->131 amt=124.19999999999999 w=collision hostile=false
+DMG 10.00s #600 1->131 amt=3.08878782434414 w=collision hostile=false
+#600 10.0s 1:-9126,7292 v342 | 131:-9097,7314 v8 | 443:-9257,7472 v127 | 447:-9617,6801 v47 | 444:-9118,7367 v148 aim->443
+TUMBLE 10.23s #614 victim=444 attacker=131 src=rope_whip
+DMG 10.23s #614 1->444 amt=11.934870167723133 w=collision hostile=false
+DMG 10.23s #614 1->131 amt=49.64905989772824 w=collision hostile=false
+WHIP 10.23s #614 mass=131 victim=444 relV=276.8 slung=false
+WINDOW-OPEN 10.23s #614 target=443 relV=120
+RELEASE 10.23s #614 {"targetId":131}
+TUMBLE 10.23s #614 victim=131 attacker=1 src=rope_throw
+THROW 10.23s #614 {"releaseId":"massline:throw:614:131","payloadId":131,"aimTargetId":443,"aimSynthetic":false,"errorRad":-0.058530604949236675,"payloadSpeed":254.178218560392,"mode":"arm","tick":614,"time":10.233333333333421,"prediction":{"valid":true,"erro
+VALIDATED 10.25s #615 {"schema":"spaceface.masslineReleaseValidation.v1","releaseId":"massline:throw:614:131","kind":"throw","source":"massline","entityId":131,"releaseTick":614,"validatedTick":615,"prediction":{"valid":true,"errorRad":-0.058
+#620 10.4s 1:-9087,7346 v141 | 131:-9138,7355 v254 | 443:-9273,7515 v145 | 447:-9607,6786 v62 | 444:-9167,7344 v172 aim->443
+TUMBLE 10.42s #625 victim=444 attacker=9 src=collision
+KILLED 10.42s #625 {"id":444,"killerId":444,"type":"ship","pos":{"x":-9177.10888671875,"z":7340.450622558594},"factionId":"faction_dmc","factionLawful":true,"bountyCr":0,"lootTableId":null,"victimClass":"ship","targetHostileToPlayer":false,"presentation":{"ve
+#640 10.7s 1:-9047,7369 v157 | 131:-9182,7428 v254 | 443:-9293,7562 v158 | 447:-9599,6765 v73 | 444:dead aim->443
+#660 11.0s 1:-9027,7390 v21 | 131:-9226,7500 v254 | 443:-9316,7610 v165 | 447:-9597,6739 v81 | 444:dead aim->443
+#680 11.4s 1:-9026,7391 v0 | 131:-9270,7572 v254 | 443:-9340,7661 v167 | 447:-9600,6712 v84 | 444:-8986,7537 v1 aim->443
+#700 11.7s 1:-9026,7391 v0 | 131:-9315,7644 v254 | 443:-9364,7711 v169 | 447:-9610,6686 v87 | 444:-8984,7536 v8 aim->443
+#720 12.0s 1:-9026,7391 v0 | 131:-9359,7717 v254 | 443:-9389,7762 v169 | 447:-9627,6661 v92 | 444:-8981,7536 v9 aim->443
+TUMBLE 12.22s #733 victim=443 attacker=131 src=rope_whip
+INCIDENT 12.22s #733 {"id":"law:97a9e509","stationId":"station_ceres","factionId":"faction_dmc","attackerId":1,"victimId":443,"victimAnchor":null,"cause":"player_piracy","status":"distress","outcome":null,"responderIds":[],"startedAt":12.216666666666853,"dispat
+SPILL 12.22s #733 {"carrierId":443,"ownerId":443,"entityId":443,"manifestId":"fm_f204a352","cause":"combat_fire","commodityId":"cmdty_ore_iron","qty":4,"podCount":1,"podIds":[467],"t":12.21666666666
+DMG 12.22s #733 1->443 amt=3.736427574032413 w=collision hostile=false
+DMG 12.22s #733 1->131 amt=15.54353870797484 w=collision hostile=false
+HEAT 12.22s #733 {"value":0.042,"previousValue":0,"level":0,"tier":"none","escape":null,"zone":{"active":false,"center":{"x":0,"z":0},"radius":0,"level":0,"outsideS":0,"clearAfterS":0},"reason":"law incident (unlawful
+KILLED 12.22s #733 {"id":131,"killerId":1,"type":"ship","pos":{"x":-9385.490844726562,"z":7759.856750488281},"factionId":"faction_reach","factionLawful":false,"bountyCr":340,"lootTableId":"reaver_pirate","victimClass":"gunship","targetHostileToPlayer":false,"
+WHIP 12.22s #733 mass=131 victim=443 relV=86.6 slung=true
+HEAT 12.22s #733 {"value":0,"previousValue":0.042,"level":0,"tier":"none","escape":null,"zone":{"active":false,"center":{"x":0,"z":0},"radius":0,"level":0,"outsideS":0,"clearAfterS":0},"reason":"heat cleared","wanted"
+FLEE 12.22s #733 {"entityId":443,"reason":"civilian-violence"}
+#740 12.4s 1:-9026,7391 v0 | 131:dead | 443:-9414,7812 v170 | 447:-9650,6639 v98 | 444:-8979,7535 v9 aim->443
+#760 12.7s 1:-9026,7391 v0 | 131:dead | 443:-9439,7863 v170 | 447:-9678,6621 v99 | 444:-8976,7535 v9 aim->443
+#780 13.0s 1:-9026,7391 v0 | 131:dead | 443:-9464,7914 v170 | 447:-9708,6610 v95 | 444:-8973,7534 v9 aim->443
+#800 13.4s 1:-9026,7391 v0 | 131:dead | 443:-9489,7964 v170 | 447:-9738,6605 v88 | 444:-8970,7533 v9 aim->443
+#820 13.7s 1:-9023,7388 v0 | 131:dead | 443:-9514,8015 v170 | 447:-9766,6606 v82 | 444:-8967,7533 v9 aim->443
+#840 14.0s 1:-9000,7379 v0 | 131:dead | 443:-9539,8065 v170 | 447:-9792,6614 v77 | 444:-8965,7532 v9 aim->443
+#860 14.4s 1:-9000,7363 v0 | 131:dead | 443:-9565,8116 v170 | 447:-9813,6627 v75 | 444:-8962,7531 v9 aim->443
+#880 14.7s 1:-9020,7364 v0 | 131:dead | 443:-9590,8167 v170 | 447:-9830,6645 v79 | 444:-8959,7531 v9 aim->443
+#900 15.0s 1:-8998,7374 v0 | 131:dead | 443:-9615,8217 v170 | 447:-9845,6670 v93 | 444:-8956,7530 v9 aim->444
+#920 15.4s 1:-8998,7340 v0 | 131:dead | 443:-9640,8268 v170 | 447:-9860,6701 v113 | 444:-8953,7529 v9 aim->444
+#940 15.7s 1:-8994,7332 v0 | 131:dead | 443:-9665,8318 v168 | 447:-9878,6737 v132 | 444:-8951,7529 v9 aim->444
+#960 16.0s 1:-8982,7330 v0 | 131:dead | 443:-9690,8368 v165 | 447:-9902,6777 v149 | 444:-8948,7528 v9 aim->444
+#980 16.4s 1:-8953,7361 v0 | 131:dead | 443:-9714,8417 v161 | 447:-9931,6820 v159 | 444:-8945,7528 v9 aim->444
+#1000 16.7s 1:-8933,7360 v0 | 131:dead | 443:-9738,8464 v157 | 447:-9963,6863 v163 | 444:-8942,7527 v9 aim->444
+DISPATCH 16.77s #1006 {"id":"law:97a9e509","stationId":"station_ceres","factionId":"faction_dmc","attackerId":1,"victimId":443,"victimAnchor":{"x":-9385.490844726562,"z":7759.856750488281,"markerId":"aft_a6g3eh","wreckEntityId":469,"podEntityId":null,"valuable":
+FLEE 21.53s #1292 {"entityId":441,"reason":"civilian-violence"}

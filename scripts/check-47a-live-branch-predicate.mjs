@@ -22,6 +22,15 @@ const LIVE_CASES = [
     commands: [
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
     ],
+    // Package D (1639c221e, owner-validated hull-burst overhaul) changed the towed pair's
+    // passive end-state: the spindle now settles ~300 WU from the tug instead of drifting
+    // inside the authored 180 WU predicate bubble by accident. The tape now actively flies
+    // the handoff — a moderated burn toward the tug's hold point (full moveZ snaps the
+    // reeled tether), then a reduced hold — so the live-state contract still resolves.
+    inputs: [
+      { tick: 900, input: { moveZ: 0.7, moveX: -0.3, aimAngle: -0.3, boost: false, fire: false, fireGroup: null } },
+      { tick: 3600, input: { moveZ: 0.15, moveX: -0.05, aimAngle: 0, boost: false, fire: false, fireGroup: null } },
+    ],
     requiredActionId: 'action_reel',
     distanceTargetActorId: 'official_recovery_tug',
     forbiddenActionIds: ['action_sling', 'action_cut'],
@@ -34,6 +43,14 @@ const LIVE_CASES = [
     commands: [
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
       frameCommand(900, combatAction('action_sling', { attachment: 'latestOwned' })),
+    ],
+    // Same Package-D repair: aim the sling at the Kessler handoff beacon (~780,320), then
+    // fly a moderated tow so the trailing spindle sits inside the authored 160 WU bubble
+    // when resolution_branch opens; the tether stays intact (no cut, no break).
+    inputs: [
+      { tick: 860, input: { aimAngle: 0.4 } },
+      { tick: 1400, input: { moveZ: 0.8, moveX: 0.15, aimAngle: 0.55, boost: false, fire: false, fireGroup: null } },
+      { tick: 20000, input: { moveZ: 0, moveX: 0, aimAngle: 0, boost: false, fire: false, fireGroup: null } },
     ],
     requiredActionId: 'action_sling',
     distanceTargetActorId: 'kessler_handoff_beacon',
@@ -87,6 +104,10 @@ function writeLivePredicateTape(liveCase) {
   }
 
   for (const item of liveCase.commands) addCommand(byTick, item.tick, item.command);
+  for (const item of liveCase.inputs || []) {
+    const frame = frameAt(byTick, item.tick);
+    frame.input = { ...(frame.input || {}), ...item.input };
+  }
 
   const tape = {
     ...baseTape,

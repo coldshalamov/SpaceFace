@@ -47,6 +47,11 @@ def polar(r, a_deg, z=0.0):
 
 # --- local helpers --------------------------------------------------------------------------------
 
+def anim_parts(s, n0, prefix, spec, pivot):
+    """s.anim() for every object added since n0 whose name starts with prefix."""
+    s.anim([o for o in s.objects[n0:] if o.name.startswith(prefix)], spec, pivot)
+
+
 def cluster(s, name, items, material, bevel=0.0):
     """Many small boxes in one mesh (windows, lights, teeth): items = (center, size, rot_z)."""
     bm = bmesh.new()
@@ -256,7 +261,9 @@ def build_cradle_details(s):
     for g, x in enumerate(GANTRIES):
         for yy in (-14.0, -5.0, 5.0, 14.0):
             F.work_lamp(s, f'GLamp{g}{yy:+.0f}', (x + 1.9, yy, 21.2), aim=(0.5, 0.0, 1.0), size=1.1)
+        n0 = len(s.objects)
         F.beacon(s, f'GBeacon{g}', (x, RAIL_Y, 20.7 + 0.1), 'glow_amber', size=0.9, mirror=True)
+        anim_parts(s, n0, f'GBeacon{g}_Dome', f'blink:1p3:0p{4 + g}', (x, RAIL_Y, 20.8))
     for x in (-45.0, -28.0, -10.0):
         F.work_lamp(s, f'RLamp{x:+.0f}', (x, RAIL_Y - 1.0, RAIL_Z + 2.2), aim=(0.0, -0.6, 1.0), size=1.2, mirror=True)
     rail_lights = []
@@ -296,8 +303,8 @@ def build_cutter(s):
     for side in (1, -1):
         F.box(s, f'DrumArm{side}', ((DRUM_X - 8.2) / 2, side * 7.6, 0.0), (abs(DRUM_X + 8.2) + 0.6, 1.4, 3.4),
               material='paint2', bevel=0.1)
-    F.cylinder(s, 'Drum', (DRUM_X, -7.0, 0.0), (DRUM_X, 7.0, 0.0), 3.3, material='bare', segments=24, bevel=0.0,
-               cap_material='paint.graphite')
+    drum = F.cylinder(s, 'Drum', (DRUM_X, -7.0, 0.0), (DRUM_X, 7.0, 0.0), 3.3, material='bare', segments=24,
+                      bevel=0.0, cap_material='paint.graphite')
     for yb in (-3.5, 0.0, 3.5):
         F.band(s, 'Drum', (0, yb, 0), (0, 1, 0), 0.5, 'paint.graphite', inset=0.03, depth=0.12)
     teeth = []
@@ -306,7 +313,9 @@ def build_cutter(s):
         for j in range(6):
             y = -6.0 + j * 2.4 + (0.6 if i % 2 else 0.0)
             teeth.append(((DRUM_X + 3.5 * math.cos(a), y, 3.5 * math.sin(a)), (0.9, 0.5, 0.5), 0.0))
-    cluster(s, 'Teeth', teeth, 'dark')
+    teeth = cluster(s, 'Teeth', teeth, 'dark')
+    # the cutter drum rolls on its own axis, chewing the sawn face
+    s.anim([drum, teeth], 'spin:side:0p9', (DRUM_X, 0, 0.0))
     # spoil chute under the drum funnels the cut ore into the housing
     F.box(s, 'SpoilChute', ((DRUM_X - 8.2) / 2 + 0.3, 0, -4.9), (abs(DRUM_X + 8.2) + 1.2, 12.0, 2.6),
           material='paint.graphite', bevel=0.1, taper=1.18)
@@ -396,7 +405,9 @@ def build_mill(s):
     F.band(s, 'HabBridge', (8.5, -15.1, 0), (1, 0, 0), 1.1, 'glass', facing=(1, 0, 0.3), min_facing=0.3)
     F.box(s, 'HabNeck', (5.0, -10.4, 0.0), (5.0, 3.4, 4.6), material='paint.graphite', bevel=0.12)
     F.cylinder(s, 'DishMast', (-2.0, -16.0, 4.8), (-2.0, -16.0, 7.6), 0.4, material='gunmetal', segments=10, bevel=0.0)
+    n0 = len(s.objects)
     F.dish(s, 'Dish', (-2.0, -16.0, 7.6), 2.8, 0.9, axis=(0.3, -0.5, 1.0), material='gunmetal', face='paint')
+    s.anim(s.objects[n0:], 'sweep:up:0p7:0p4', (-2.0, -16.0, 7.6))
 
 
 def build_roofs(s):
@@ -429,7 +440,9 @@ def build_mill_details(s):
     for i in range(7):
         wins.append(((14.55, -4.5 + i * 1.5, 2.8), (0.12, 0.8, 0.5), 0.0))
     cluster(s, 'Windows', wins, 'glow_warm')
+    n0 = len(s.objects)
     F.beacon(s, 'HabBeacon', (5.0, -15.1, 7.4), 'glow_amber', size=0.6)
+    anim_parts(s, n0, 'HabBeacon_Dome', 'blink:1p5:0p2', (5.0, -15.1, 7.4))
     F.antenna(s, 'HabMast', (-3.5, -19.5, 5.0), 3.5)
     for side in (1, -1):
         F.light(s, f'CrusherTop{side}', (15.6, side * 6.9, 15.2), 'glow_red', size=0.45)
@@ -448,9 +461,13 @@ def build_dock(s):
                bevel=0.0)
     for k in range(8):
         a = math.radians(22.5 + 45 * k)
-        F.light(s, f'PortLight{k}', (42.7, 2.8 * math.cos(a), 2.4 + 2.8 * math.sin(a)),
-                'glow_green' if k % 2 else 'glow_amber', size=0.38)
+        pos = (42.7, 2.8 * math.cos(a), 2.4 + 2.8 * math.sin(a))
+        o = F.light(s, f'PortLight{k}', pos, 'glow_green' if k % 2 else 'glow_amber', size=0.38)
+        # berth ring lights run round the mouth one after another
+        s.anim(o, f'chase:port:{k}:8:2p4', pos)
+    n0 = len(s.objects)
     F.beacon(s, 'DockBeacon', (41.0, 0, 5.55), 'glow_amber', size=0.8)
+    anim_parts(s, n0, 'DockBeacon_Dome', 'blink:1p2:0p6', (41.0, 0, 5.55))
     # parked ore hauler (starboard): graphite hull, three ochre ore skips, bridge forward
     hy = -9.0
     F.box(s, 'Hauler', (33.5, hy, 1.2), (15.0, 4.6, 2.6), material='paint.graphite', bevel=0.15)
@@ -483,6 +500,7 @@ def build_dock_details(s):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     build_cradle(s)
     build_cutter(s)
     build_mill(s)

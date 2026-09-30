@@ -53,6 +53,11 @@ def hull_sec(x):
 
 # --- local helpers --------------------------------------------------------------------------------
 
+def anim_parts(s, n0, prefix, spec, pivot):
+    """s.anim() for every object added since n0 whose name starts with prefix."""
+    s.anim([o for o in s.objects[n0:] if o.name.startswith(prefix)], spec, pivot)
+
+
 def cluster(s, name, items, material, bevel=0.0):
     """Many small boxes in one mesh (windows, sparks, lights): items = (center, size, rot_z)."""
     bm = bmesh.new()
@@ -257,7 +262,9 @@ def build_workshop(s):
     F.plate(s, 'TowerRoof', [(30.0, 6.0), (23.5, 6.0), (22.5, 5.0), (22.5, -5.0), (23.5, -6.0), (30.0, -6.0)],
             z0=15.0, thickness=0.8, material='paint2', chamfer=0.2, bevel=0.05)
     F.cylinder(s, 'DishMast', (28.0, 3.5, 15.8), (28.0, 3.5, 18.0), 0.35, material='gunmetal', segments=10, bevel=0.0)
+    n0 = len(s.objects)
     F.dish(s, 'Dish', (28.0, 3.5, 18.0), 2.2, 0.7, axis=(0.4, 0.4, 1.0), material='gunmetal', face='paint')
+    s.anim(s.objects[n0:], 'sweep:up:0p7:0p4', (28.0, 3.5, 18.0))
     # player docking arm on the nose (+X): tube, collar, port
     truss(s, 'DockTruss', (34.0, 0, -4.0), (44.0, 0, -4.0), 3.0, 2.2, 4)
     F.cylinder(s, 'ArmTube', (35.0, 0, 0.5), (41.0, 0, 0.5), 2.0, material='paint', segments=24, bevel=0.0)
@@ -340,9 +347,13 @@ def build_workshop_details(s):
         for i in range(5):
             tube.append(((35.8 + i * 1.1, side * 1.95, 0.9), (0.55, 0.12, 0.4), 0.0))
     cluster(s, 'TubeWin', tube, 'glow_warm')
+    n0 = len(s.objects)
     F.beacon(s, 'TowerBeacon', (24.5, -3.5, 15.8), 'glow_amber', size=0.7)
+    anim_parts(s, n0, 'TowerBeacon_Dome', 'blink:1p4:0p7', (24.5, -3.5, 15.8))
     F.antenna(s, 'TowerMast', (29.5, -4.5, 15.8), 3.5)
+    n0 = len(s.objects)
     F.beacon(s, 'DockBeacon', (42.3, 0, 3.4), 'glow_amber', size=0.7)
+    anim_parts(s, n0, 'DockBeacon_Dome', 'blink:1p2:0p2', (42.3, 0, 3.4))
     F.light(s, 'NavPortFwd', (35.0, 21.6, 6.0), 'glow_red', size=0.7)
     F.light(s, 'NavStbdFwd', (35.0, -21.6, 6.0), 'glow_green', size=0.7)
     F.light(s, 'NavPortAft', (WALL_X0 - 1.8, WALL_Y, Z_TOP + 0.5), 'glow_red', size=0.8)
@@ -451,16 +462,21 @@ def build_arms(s):
 
 
 def build_sparks(s, heads):
-    sparks = []
-    for tip, side in heads:
+    # one weld cluster per arm head so each arc strobes on its own irregular rhythm
+    for k, (tip, side) in enumerate(heads):
+        sparks = []
         for j, (dx, dz) in enumerate(((0.0, 0.0), (0.5, 0.4), (-0.4, 0.5), (0.3, -0.5), (-0.6, -0.2))):
             sz = 0.8 if j == 0 else 0.35
             sparks.append(((tip.x + dx, tip.y - side * 0.95, tip.z + dz), (sz, sz, sz), 0.0))
+        o = cluster(s, f'Sparks{k}', sparks, 'glow_cyan')
+        s.anim(o, f'flicker:0p{5 + k % 4}:0p{k}', (tip.x, tip.y - side * 0.95, tip.z))
     # rib-joint welds along the unplated midships
+    ribs = []
     for i, x in enumerate((-17.0, -23.0, -29.0, -35.0)):
         for (y, z) in ((HULL_W * 0.55 * (1 if i % 2 else -1), HULL_HT - 0.4),):
-            sparks.append(((x, y, z + 0.3), (0.4, 0.4, 0.4), 0.0))
-    cluster(s, 'Sparks', sparks, 'glow_cyan')
+            ribs.append(((x, y, z + 0.3), (0.4, 0.4, 0.4), 0.0))
+    o = cluster(s, 'RibSparks', ribs, 'glow_cyan')
+    s.anim(o, 'flicker:0p9:0p6', (-26.0, 0, HULL_HT))
     # work lamps on the wall tops aimed into the dock
     for x in (-50.0, -31.0, -13.0, 6.0):
         for side in (1, -1):
@@ -486,7 +502,9 @@ def build_sparks(s, heads):
             win.append(((x, side * (WALL_Y + 2.6), 3.53), (1.2, 1.0, 0.1), 0.0))
     cluster(s, 'CorrWin', win, 'glow_warm')
     for c, x in enumerate(CRANES):
+        n0 = len(s.objects)
         F.beacon(s, f'CraneBeacon{c}', (x, 0.0, Z_TOP + 4.5), 'glow_amber', size=0.6)
+        anim_parts(s, n0, f'CraneBeacon{c}_Dome', f'blink:1p{3 + c}:0p{c}', (x, 0.0, Z_TOP + 4.5))
     # portholes and a few lit bays on the plated bow (the crew already living aboard)
     bw = []
     for side in (1, -1):
@@ -499,12 +517,15 @@ def build_sparks(s, heads):
         for i in range(6):
             bw.append(((-11.0 + i * 2.0, side * 3.62, HULL_HT + 0.6), (0.9, 0.12, 0.5), 0.0))
     cluster(s, 'BowWin', bw, 'glow_warm')
+    n0 = len(s.objects)
     F.beacon(s, 'HullBeacon', (-6.0, 0, HULL_HT + 2.3), 'glow_amber', size=0.6)
+    anim_parts(s, n0, 'HullBeacon_Dome', 'blink:1p6:0p3', (-6.0, 0, HULL_HT + 2.3))
 
 
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     build_walls(s)
     build_workshop(s)
     build_ship(s)

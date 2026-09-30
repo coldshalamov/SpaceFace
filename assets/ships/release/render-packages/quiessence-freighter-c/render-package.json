@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "09361ddad92cf30ad6a9e32c0f3197ffec273bfb3e21a29115ff42d61bdcba8f",
+  "contentHash": "0c8e18b958dbbecc390c28821fe2441811bf5ae3da8ba9a6988973660adc50a2",
   "dynamicGroups": [
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-hook-drive-core.dynamic",
@@ -193,16 +193,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3fd26d6f0b1d1d676597a74980d015ca48dbd34351f169736b0a8b339832bd68",
+      "geometryHash": "ef2cd17352116026e14497c5777f2742e69ffa5f954155a9e113bf5299731210",
       "id": "sf.render.quiessence-freighter-c.node.lod0-armor.primitive.0",
       "indexCount": 12726,
       "indexed": true,
-      "materialHash": "8439d6c29737bb04e9a17bd7045510f5d70fe5c3215eb8d93005ff5fa260e05f",
+      "materialHash": "3c76230722145c140a8c09063c442506b072f949e02b085c6178a1ac401acf28",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3646
+      "vertexCount": 3644
     },
     {
       "bounds": {
@@ -218,7 +218,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c3fbc46fee3704736ed1ce20538c7e29548ce000abcf96c9e0034a7446ae5c2",
+      "geometryHash": "38db397b0ebaf46dc5f8d1657cb1414367079c9f766f46ecc9b2d87c317fbfa4",
       "id": "sf.render.quiessence-freighter-c.node.lod0-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -243,11 +243,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb297a7da7f8b6ab7758a6f934f0fa894faaff6fe5ec4e3c31c83bb8d75a662d",
+      "geometryHash": "ecbbeaaf1c2ab94530c94f789f0527cc7b395dd0b5a212ada0089a548da0eec9",
       "id": "sf.render.quiessence-freighter-c.node.lod0-brushedmetal.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "babfa4fd652362eb2463073fb3d1a289849bfd5374a481dc2fb668aa32ca7df9",
+      "materialHash": "54968ce26fade1d2da7ca6e3d25a5d1463f2da1c58617ecb1858a5dde1d05ef0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-brushedmetal",
@@ -268,7 +268,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee337098baab7718e5e1e21c2a8b7546749d23c864fb7943225d8aa024e6920f",
+      "geometryHash": "04ced2677fc77f4f94df79592aea796d88e4303b712443dd5ee365f260aefa22",
       "id": "sf.render.quiessence-freighter-c.node.lod0-canopy.primitive.0",
       "indexCount": 2760,
       "indexed": true,
@@ -293,11 +293,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "479250fcf01846617de804c8bc080d3ab01c07698c818379e0d56fe1b9e89f6e",
+      "geometryHash": "87e18031d196f2413b48817b93dbbed1ad12e3484a26b5160a84a9ab0baa5199",
       "id": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore.primitive.0",
       "indexCount": 3180,
       "indexed": true,
-      "materialHash": "fedde3ba42c1b254f0ac33b047db8b16f746a919daa671e533a5c7d07b222eee",
+      "materialHash": "baf058c6c0244ae9c82c083b100aef7ab5339915df642fe06ba5944a6e3e8af1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Ceramic_ore",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore",
@@ -318,11 +318,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9eeea89be8641c148a3d94ef21c259718ebf8a83e2992979fdc849967a72d3e2",
+      "geometryHash": "d153a9d5cbe579bf0c9b27912f8ee513c1f553373bd0bd60a07d0052bee493ad",
       "id": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore2.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "3f085ac29b92c9a568713249e3c9e373f96ed2a5476efd1ab52f5f4152983478",
+      "materialHash": "85437b09ea6cb7949a61d65c19e850a4a9a9b154db0f90e03118ce51a71170dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Ceramic_ore2",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore2",
@@ -343,7 +343,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df76b47eb23c4ab6537bfdc55a1a1e99520fd5c248c5dfeff1b959fa136989f4",
+      "geometryHash": "00697222df1d4247e274b04ff2c4bd558cfe54dc6f785df926530fd12a7bc65f",
       "id": "sf.render.quiessence-freighter-c.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -368,7 +368,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0bfba7a9c9e829ddbcab9b70e5e10c6ed18acdc8c8de0de453ad25d2e29bef95",
+      "geometryHash": "1593d08841c40f9146feda16f3672eae6f202c3f25be808e8b86520dabc9e9c5",
       "id": "sf.render.quiessence-freighter-c.node.lod0-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -393,7 +393,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53acee398c59305a06554000b41dfe0c66746ad7c5ddf82d076cb50b9a026d97",
+      "geometryHash": "e9a5207647ff3409a6d2088a976f4f90d3062a1b769bbcefab78ec1f21db5cdc",
       "id": "sf.render.quiessence-freighter-c.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -418,16 +418,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6bfe8e390a78b0e9f15d59d769507a74a62d323b751a28416a88b595a46b134d",
+      "geometryHash": "69ff675a83e1f62838bc5cadd09b6d8ca8e7c5a12ec2b3495ae37971ee36bf61",
       "id": "sf.render.quiessence-freighter-c.node.lod0-hull.primitive.0",
       "indexCount": 20988,
       "indexed": true,
-      "materialHash": "cec43fd200f127fd94923c3059a75578d3772f52f053e13e15016ace5f84aea0",
+      "materialHash": "4de6d8346bce1981f01ca1f44c4fad363c763b1e31816caf7f7e638b4f380b79",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6664
+      "vertexCount": 6668
     },
     {
       "bounds": {
@@ -443,7 +443,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e1be61a3896e4ced98fb82725f89fd4056d20f1c69c213593dfe9d58918d900",
+      "geometryHash": "e7165b7caf3009a957677938f7ca85e32f3c42c0e36696bf0e2b4ec1b4e98faa",
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -468,7 +468,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d5b7753b4ed358d3940dc75f2bf59472bf2c395885aa2117fb620e783af2193",
+      "geometryHash": "20eff2e13af56120e8bad6be8e07d45fd0f5c2a5ce81e2559818a79d043a83f4",
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm-violet.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -493,7 +493,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "679dc3438e5db7debf94668ac271652f239b23d6b9c26767debd9100aa3df01b",
+      "geometryHash": "231ad4c73fa44cdb9d591128885a1a31bf7947d0048320a945b529aa990ce0aa",
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm.primitive.0",
       "indexCount": 2160,
       "indexed": true,
@@ -518,11 +518,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0c5c6391339dbb43ded32306746a322e75cafc4b6061da49b5cd024f147625b",
+      "geometryHash": "bd31fbd7c674686dd7b05afe9e7593cfdfbbb7a31c251de05155ae3790f7380c",
       "id": "sf.render.quiessence-freighter-c.node.lod0-livery.primitive.0",
       "indexCount": 7551,
       "indexed": true,
-      "materialHash": "5ae60eb268e05661bf1d70cd0b63871956e78915fa34d19c2ae71c7bf8446f8b",
+      "materialHash": "50aa7d63119f29388e38669582307bcccc45c5018b13491a0cbe25c025fcb756",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-livery",
@@ -543,11 +543,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da5c83293c01666022bcc5e45321aac599077b23e6c90f11ded625cd4de65d7e",
+      "geometryHash": "c07a27e2f389e2608d5b2c74178194b0ed63a5d3cc753970aa71205cf1305f3a",
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanical.primitive.0",
       "indexCount": 16809,
       "indexed": true,
-      "materialHash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
+      "materialHash": "7f69a7c0f109e9dff6d0c8ed91f56af196f889087e47caa20a61b2d5fb603666",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-mechanical",
@@ -568,11 +568,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e1c712304e75e6b1e6f367f16e213c803c334a65d3c2ef92ad470308b940b6c",
+      "geometryHash": "b369f4127ff7b5f3d651a51fff61552ac12f62ee216eb24042edcdfcb2627725",
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark-ore.primitive.0",
       "indexCount": 3792,
       "indexed": true,
-      "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
+      "materialHash": "0a7392cf6d5a5f10d35d69b2405337fb117b992fbad897ed9d1be548d7109079",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark_ore",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark-ore",
@@ -593,16 +593,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3224b52199052154f51df4e2ddf4ca570c2c820ffcdebefb3db0196f54e1138c",
+      "geometryHash": "cf2f092443c856ec1871ad392246603fe5b02de6be6865a83faaa52a0a091c8f",
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 12918,
       "indexed": true,
-      "materialHash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
+      "materialHash": "1569f43d4dd647ae4b9da5613591186be24a24bee4ec4330f7523d75eefedf71",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 4559
+      "vertexCount": 4558
     },
     {
       "bounds": {
@@ -618,16 +618,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ae0803ddd9b1de10a160035999baacbfea10eaebaf4b6d7dc0573053c7bfccf",
+      "geometryHash": "41fa3255fe5f738c75cc7934ef9273ab0d0e5b78a95af01e89d651d26ab2adaf",
       "id": "sf.render.quiessence-freighter-c.node.lod0-warning.primitive.0",
       "indexCount": 21582,
       "indexed": true,
-      "materialHash": "254fb21c291e5d10f4b42f3bdfc0a82b84bcb2812a35b925b772a80d3738727a",
+      "materialHash": "8c3ff42b85e838ee82131e5c2b7f1b447eb1480c85964e9bd7988c2886426a5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 6915
+      "vertexCount": 6998
     },
     {
       "bounds": {
@@ -643,11 +643,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8dc95da78a4a048921544ccb27de444455f1022743cc7d6ae79956b30361f8a1",
+      "geometryHash": "1a2d41037f2de17ad06811d50ec4f62c607e33be8402d2ac34004719a5d9de08",
       "id": "sf.render.quiessence-freighter-c.node.lod1-armor.primitive.0",
       "indexCount": 2448,
       "indexed": true,
-      "materialHash": "8439d6c29737bb04e9a17bd7045510f5d70fe5c3215eb8d93005ff5fa260e05f",
+      "materialHash": "3c76230722145c140a8c09063c442506b072f949e02b085c6178a1ac401acf28",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-armor",
@@ -668,7 +668,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1eff2a1e3955b41b3badd44f4826a01d1ec4274465c01d0c5551a9832bd1094b",
+      "geometryHash": "9ae3b6fb42e2b6520898d070585f4a1d2ee6b93b6fdd5e316d78f012018a9af7",
       "id": "sf.render.quiessence-freighter-c.node.lod1-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -693,11 +693,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30b01456e79f8a3ebd45ea0e4c369ba9ee416aadbbb20367a83bb7e687224f02",
+      "geometryHash": "7947a02751e6208c8564729690df5251abe1174a5d903d859c024f1f1f9c8930",
       "id": "sf.render.quiessence-freighter-c.node.lod1-brushedmetal.primitive.0",
       "indexCount": 552,
       "indexed": true,
-      "materialHash": "babfa4fd652362eb2463073fb3d1a289849bfd5374a481dc2fb668aa32ca7df9",
+      "materialHash": "54968ce26fade1d2da7ca6e3d25a5d1463f2da1c58617ecb1858a5dde1d05ef0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-brushedmetal",
@@ -718,7 +718,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ef1ab96a80843e2442c5584c1a2a85706e990506e595830c70703b8f4c92f4a",
+      "geometryHash": "944776422df8c063d9c694f395ac6f0b816828c096d413dd907362994cb5b3ad",
       "id": "sf.render.quiessence-freighter-c.node.lod1-canopy.primitive.0",
       "indexCount": 1188,
       "indexed": true,
@@ -743,11 +743,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "479250fcf01846617de804c8bc080d3ab01c07698c818379e0d56fe1b9e89f6e",
+      "geometryHash": "0ab89e29118c70757ad8fcb6df3e8c13a271c63497ab3914bd67cb21378398cd",
       "id": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore.primitive.0",
       "indexCount": 3180,
       "indexed": true,
-      "materialHash": "fedde3ba42c1b254f0ac33b047db8b16f746a919daa671e533a5c7d07b222eee",
+      "materialHash": "baf058c6c0244ae9c82c083b100aef7ab5339915df642fe06ba5944a6e3e8af1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Ceramic_ore",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore",
@@ -768,11 +768,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9eeea89be8641c148a3d94ef21c259718ebf8a83e2992979fdc849967a72d3e2",
+      "geometryHash": "bfc3765ec901797b93af46b27226373ce5da5ce849b2d0ffe74f6a795154c88d",
       "id": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore2.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "3f085ac29b92c9a568713249e3c9e373f96ed2a5476efd1ab52f5f4152983478",
+      "materialHash": "85437b09ea6cb7949a61d65c19e850a4a9a9b154db0f90e03118ce51a71170dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Ceramic_ore2",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore2",
@@ -793,7 +793,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df76b47eb23c4ab6537bfdc55a1a1e99520fd5c248c5dfeff1b959fa136989f4",
+      "geometryHash": "7f71fca3323ba31350693949d013816cf7f21ca94246af4c08bb523de485951e",
       "id": "sf.render.quiessence-freighter-c.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -818,7 +818,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2612b3b2811335f9b9b25bfd5053dc04fc95d5b206a0c06a16046ec8f28ea5a1",
+      "geometryHash": "719493b6a0c94c2cbb44425144ed39e540f05285acd87f5047c6b8afa4493ca8",
       "id": "sf.render.quiessence-freighter-c.node.lod1-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -843,7 +843,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d10102aef08305d5f21cf4baf6e521200a92493e22e588a8e0e42c76e565d54c",
+      "geometryHash": "eb557f2d815da2d0eaf60de96accc9c531f2e85ccdfe872e70e7fd60c30fb783",
       "id": "sf.render.quiessence-freighter-c.node.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -868,11 +868,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b3bd7dde1b9528eda1c632248b471f1742830ab2323ed69685e549d5a24b138",
+      "geometryHash": "3931c168af507f6b4017eb07980e3299fa429c75dc99945e00f7a8a466899feb",
       "id": "sf.render.quiessence-freighter-c.node.lod1-hull.primitive.0",
       "indexCount": 8358,
       "indexed": true,
-      "materialHash": "cec43fd200f127fd94923c3059a75578d3772f52f053e13e15016ace5f84aea0",
+      "materialHash": "4de6d8346bce1981f01ca1f44c4fad363c763b1e31816caf7f7e638b4f380b79",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-hull",
@@ -893,7 +893,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cad778838e46b02ec2eb6700b977341ec1fb8148f42de88cd995ceb33b4b349e",
+      "geometryHash": "bafea4885ed8b66d33cb37de85878b4a43184de649e3899210105317c43dad26",
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -918,7 +918,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "366e7f90b56b0bd480107e90be690f0b8fb3afd50da19165181535a5f473ae38",
+      "geometryHash": "7cf4595f67e2840a807782f0e78ba29bd51082066aac138ce404032f05c28c20",
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm-violet.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -943,7 +943,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40687899b59957bac000b2e15b3ce7138c9dae0d8e9f31feb4427e19f6da34ae",
+      "geometryHash": "f4861dbb46b06d31dae18b85c943e98c710672447a739ce7c838a4c528441508",
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm.primitive.0",
       "indexCount": 2160,
       "indexed": true,
@@ -968,16 +968,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37b5cf06d98bf48cec5db3bd35c40c09a51c5260bd5689605c3660fe3052feb1",
+      "geometryHash": "d2dae0940b16f67dc54f540fecb335a4a0cc87b7c58ff2f9300e63bf7acd3f9b",
       "id": "sf.render.quiessence-freighter-c.node.lod1-livery.primitive.0",
       "indexCount": 2829,
       "indexed": true,
-      "materialHash": "5ae60eb268e05661bf1d70cd0b63871956e78915fa34d19c2ae71c7bf8446f8b",
+      "materialHash": "50aa7d63119f29388e38669582307bcccc45c5018b13491a0cbe25c025fcb756",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 780
+      "vertexCount": 781
     },
     {
       "bounds": {
@@ -993,11 +993,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbd2906dbb3847370111a9341e4e5a86d4e148b9cb8b843f0fe6a438732e791f",
+      "geometryHash": "8ee10b1aea2d2273afc32ac275cd860ba5838373ae01e1d9ca0bddb8b341f276",
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanical.primitive.0",
       "indexCount": 8367,
       "indexed": true,
-      "materialHash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
+      "materialHash": "7f69a7c0f109e9dff6d0c8ed91f56af196f889087e47caa20a61b2d5fb603666",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-mechanical",
@@ -1018,11 +1018,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42169af5f28f0cfb76ad2d2f2d4dcfcf4293471ffefac97c57202a7ccc57253f",
+      "geometryHash": "a0da3319c05fe8b0ab4c561e0101347b2047487f6da4fc25fe7f5a281456958a",
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark-ore.primitive.0",
       "indexCount": 3012,
       "indexed": true,
-      "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
+      "materialHash": "0a7392cf6d5a5f10d35d69b2405337fb117b992fbad897ed9d1be548d7109079",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark_ore",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark-ore",
@@ -1043,16 +1043,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cb546fb9f6024505102880e6b9d365d47dc32ae450cc94aae2afb034acf4582",
+      "geometryHash": "14f87a9958b36f7851c67fd11da78a12aed5acc5eeef519cdd7704c28279ac59",
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 5238,
       "indexed": true,
-      "materialHash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
+      "materialHash": "1569f43d4dd647ae4b9da5613591186be24a24bee4ec4330f7523d75eefedf71",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2072
+      "vertexCount": 2070
     },
     {
       "bounds": {
@@ -1068,16 +1068,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7eca889da31f911dd3611d98373f5454c835353318ddc9982eecf12f77c2cc2",
+      "geometryHash": "7124f656780b8ce2a30a9b0416c800aa291105cdc6b8a5517467135f6176f643",
       "id": "sf.render.quiessence-freighter-c.node.lod1-warning.primitive.0",
       "indexCount": 3606,
       "indexed": true,
-      "materialHash": "254fb21c291e5d10f4b42f3bdfc0a82b84bcb2812a35b925b772a80d3738727a",
+      "materialHash": "8c3ff42b85e838ee82131e5c2b7f1b447eb1480c85964e9bd7988c2886426a5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 1367
+      "vertexCount": 1362
     },
     {
       "bounds": {
@@ -1093,16 +1093,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8544fde6dc04fca3d336617d81bcde23ea5f1680eb425493fee7c812d8da4a04",
+      "geometryHash": "9e9c0aea2782f61bc0ef7d9d7cb010fe5113dd94a753ddb907530128696ea7f1",
       "id": "sf.render.quiessence-freighter-c.node.lod2-armor.primitive.0",
       "indexCount": 1539,
       "indexed": true,
-      "materialHash": "8439d6c29737bb04e9a17bd7045510f5d70fe5c3215eb8d93005ff5fa260e05f",
+      "materialHash": "3c76230722145c140a8c09063c442506b072f949e02b085c6178a1ac401acf28",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 497
+      "vertexCount": 500
     },
     {
       "bounds": {
@@ -1118,7 +1118,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1eff2a1e3955b41b3badd44f4826a01d1ec4274465c01d0c5551a9832bd1094b",
+      "geometryHash": "9ae3b6fb42e2b6520898d070585f4a1d2ee6b93b6fdd5e316d78f012018a9af7",
       "id": "sf.render.quiessence-freighter-c.node.lod2-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1143,7 +1143,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "310a9841ea926ae1b38081c4c402dd15ed9b0abdd05792251c91b04e46281dc4",
+      "geometryHash": "94ba29ead2b573b1974652ffeda503df2745f2acf4941ae6c1b8ed7fd12f9a52",
       "id": "sf.render.quiessence-freighter-c.node.lod2-canopy.primitive.0",
       "indexCount": 441,
       "indexed": true,
@@ -1152,23 +1152,23 @@
       "meshName": "LOD2_CANOPY",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 141
+      "vertexCount": 143
     },
     {
       "bounds": {
         "max": [
           -22.254940032958984,
-          1.57121251598212,
-          2.521002668887377
+          1.5712125057375717,
+          2.521002786234021
         ],
         "min": [
           -22.254940032958984,
-          -1.5712123967728304,
-          -2.521002870053053
+          -1.5712124070173787,
+          -2.5210027527064085
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e14d94ed8e23ad3c6ff11a6fc23a2794e2b8edacb3df28752e67e5397f540fad",
+      "geometryHash": "e439c6c7ac672779e050c89a1e0aed5e155c718de90b0ffa2518d33919499f05",
       "id": "sf.render.quiessence-freighter-c.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 165,
       "indexed": true,
@@ -1193,7 +1193,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2612b3b2811335f9b9b25bfd5053dc04fc95d5b206a0c06a16046ec8f28ea5a1",
+      "geometryHash": "719493b6a0c94c2cbb44425144ed39e540f05285acd87f5047c6b8afa4493ca8",
       "id": "sf.render.quiessence-freighter-c.node.lod2-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1218,7 +1218,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d10102aef08305d5f21cf4baf6e521200a92493e22e588a8e0e42c76e565d54c",
+      "geometryHash": "eb557f2d815da2d0eaf60de96accc9c531f2e85ccdfe872e70e7fd60c30fb783",
       "id": "sf.render.quiessence-freighter-c.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1243,16 +1243,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f77f4db377841bc2e09aa2047030a68951ba5cf5b0f1249e6a8397f85730f27f",
+      "geometryHash": "6f4645c72f668ac99423fadfefb54564a1f41e3a1a16bbd603a9f8a49b4a7312",
       "id": "sf.render.quiessence-freighter-c.node.lod2-hull.primitive.0",
       "indexCount": 3693,
       "indexed": true,
-      "materialHash": "cec43fd200f127fd94923c3059a75578d3772f52f053e13e15016ace5f84aea0",
+      "materialHash": "4de6d8346bce1981f01ca1f44c4fad363c763b1e31816caf7f7e638b4f380b79",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1278
+      "vertexCount": 1282
     },
     {
       "bounds": {
@@ -1268,7 +1268,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "366e7f90b56b0bd480107e90be690f0b8fb3afd50da19165181535a5f473ae38",
+      "geometryHash": "7cf4595f67e2840a807782f0e78ba29bd51082066aac138ce404032f05c28c20",
       "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm-violet.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1293,7 +1293,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "690845bd03b126e08a804cdc5d3474dfb6204562fd9df55e5b63303daa2a1e6a",
+      "geometryHash": "c38735a5aacd5f8ca25f28272c6434b8aa2c5d21f5075dd15433bdf64ec658ae",
       "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -1318,16 +1318,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57ebef3bcebdf0f61c20713bbcb7b608b7f3d762da72de5b4266cfdf7f0d9daa",
+      "geometryHash": "b5977f3d978ec4193b0738c24d1a3b0946e9719e480f26f67aea03450fb0a2ee",
       "id": "sf.render.quiessence-freighter-c.node.lod2-livery.primitive.0",
       "indexCount": 1542,
       "indexed": true,
-      "materialHash": "5ae60eb268e05661bf1d70cd0b63871956e78915fa34d19c2ae71c7bf8446f8b",
+      "materialHash": "50aa7d63119f29388e38669582307bcccc45c5018b13491a0cbe25c025fcb756",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 488
+      "vertexCount": 489
     },
     {
       "bounds": {
@@ -1343,11 +1343,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c9056795c73bc90c3a16bc4d600cbcb46091c2eed7a1690fd4143e840a64999f",
+      "geometryHash": "30b7a7bcb787d6240ece5d1add3a8b5befc8bdf3b764b24983742ddc0459a28b",
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanical.primitive.0",
       "indexCount": 2178,
       "indexed": true,
-      "materialHash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
+      "materialHash": "7f69a7c0f109e9dff6d0c8ed91f56af196f889087e47caa20a61b2d5fb603666",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-mechanical",
@@ -1368,11 +1368,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9754c20283cbcbde218d08af9b7554b3a1dba25457d275ccb03d0fae95b97be",
+      "geometryHash": "4950dd6de42cc6cf292892b82a3e8efb4923d8992ef09a4e91558f69ca6f3c67",
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark-ore.primitive.0",
       "indexCount": 1584,
       "indexed": true,
-      "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
+      "materialHash": "0a7392cf6d5a5f10d35d69b2405337fb117b992fbad897ed9d1be548d7109079",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark_ore",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark-ore",
@@ -1393,11 +1393,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82d35d64ca7ff835a7ca490189d358c7082134a44309813a4e270bc920e0d95b",
+      "geometryHash": "02fce84fc3986999f3f8d3c5d0bc2a89fde46d724173531515959de2c4664065",
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
+      "materialHash": "1569f43d4dd647ae4b9da5613591186be24a24bee4ec4330f7523d75eefedf71",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark",
@@ -1418,16 +1418,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8fbee49d82a4e79436c430413aaa3619191dbad48322a7dd328e9ed0b58d239b",
+      "geometryHash": "e95fc257e803f678b09a175e7b317f12fb5a8e331cd0352fd3ee0ed84c87c1af",
       "id": "sf.render.quiessence-freighter-c.node.lod2-warning.primitive.0",
       "indexCount": 2478,
       "indexed": true,
-      "materialHash": "254fb21c291e5d10f4b42f3bdfc0a82b84bcb2812a35b925b772a80d3738727a",
+      "materialHash": "8c3ff42b85e838ee82131e5c2b7f1b447eb1480c85964e9bd7988c2886426a5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.quiessence-freighter-c.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 980
+      "vertexCount": 979
     }
   ],
   "hlods": [],
@@ -1435,32 +1435,64 @@
   "lods": [],
   "materials": [
     {
-      "hash": "254fb21c291e5d10f4b42f3bdfc0a82b84bcb2812a35b925b772a80d3738727a",
-      "id": "material:254fb21c291e5d10f4b42f3b",
-      "name": "Material_Warning",
+      "hash": "0a7392cf6d5a5f10d35d69b2405337fb117b992fbad897ed9d1be548d7109079",
+      "id": "material:0a7392cf6d5a5f10d35d69b2",
+      "name": "Material_MechanicalDark_ore",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1569f43d4dd647ae4b9da5613591186be24a24bee4ec4330f7523d75eefedf71",
+      "id": "material:1569f43d4dd647ae4b9da561",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1474,125 +1506,8 @@
       "textures": []
     },
     {
-      "hash": "3f085ac29b92c9a568713249e3c9e373f96ed2a5476efd1ab52f5f4152983478",
-      "id": "material:3f085ac29b92c9a568713249",
-      "name": "Material_Ceramic_ore2",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
-      "id": "material:4bf741c764cfb34e33789f63",
-      "name": "Material_MechanicalDark_ore",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "4fb8787d395dc1c019153597af33a146b838de64bd9bf09ae59d05ba6b644bc3",
-      "id": "material:4fb8787d395dc1c019153597",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "56e9924d65173def35b3b5a66f3a66c0f1592996521d2ff45b17a38791d5acf2",
-      "id": "material:56e9924d65173def35b3b5a6",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "5ae60eb268e05661bf1d70cd0b63871956e78915fa34d19c2ae71c7bf8446f8b",
-      "id": "material:5ae60eb268e05661bf1d70cd",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "76ca948b0422759f6338cd386cefefd1622764832c25c7c6783a9da8eaffad1a",
-      "id": "material:76ca948b0422759f6338cd38",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "8439d6c29737bb04e9a17bd7045510f5d70fe5c3215eb8d93005ff5fa260e05f",
-      "id": "material:8439d6c29737bb04e9a17bd7",
+      "hash": "3c76230722145c140a8c09063c442506b072f949e02b085c6178a1ac401acf28",
+      "id": "material:3c76230722145c140a8c0906",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1616,93 +1531,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_quiessence_freighter_c_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "id": "material:85add90c89b799ae69ad3e2f",
-      "name": "Material_Emissive_Cyan",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "a2366308aa291a7afe8d7c33f49c66401dc1e446987217e55d202fa8708154ba",
-      "id": "material:a2366308aa291a7afe8d7c33",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
-      "id": "material:b5dd1fb6432c35825cf6dcb4",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "babfa4fd652362eb2463073fb3d1a289849bfd5374a481dc2fb668aa32ca7df9",
-      "id": "material:babfa4fd652362eb2463073f",
-      "name": "Material_BrushedMetal",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "cec43fd200f127fd94923c3059a75578d3772f52f053e13e15016ace5f84aea0",
-      "id": "material:cec43fd200f127fd94923c30",
+      "hash": "4de6d8346bce1981f01ca1f44c4fad363c763b1e31816caf7f7e638b4f380b79",
+      "id": "material:4de6d8346bce1981f01ca1f4",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1726,7 +1563,234 @@
         },
         {
           "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4fb8787d395dc1c019153597af33a146b838de64bd9bf09ae59d05ba6b644bc3",
+      "id": "material:4fb8787d395dc1c019153597",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "50aa7d63119f29388e38669582307bcccc45c5018b13491a0cbe25c025fcb756",
+      "id": "material:50aa7d63119f29388e386695",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "54968ce26fade1d2da7ca6e3d25a5d1463f2da1c58617ecb1858a5dde1d05ef0",
+      "id": "material:54968ce26fade1d2da7ca6e3",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "56e9924d65173def35b3b5a66f3a66c0f1592996521d2ff45b17a38791d5acf2",
+      "id": "material:56e9924d65173def35b3b5a6",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "76ca948b0422759f6338cd386cefefd1622764832c25c7c6783a9da8eaffad1a",
+      "id": "material:76ca948b0422759f6338cd38",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7f69a7c0f109e9dff6d0c8ed91f56af196f889087e47caa20a61b2d5fb603666",
+      "id": "material:7f69a7c0f109e9dff6d0c8ed",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85437b09ea6cb7949a61d65c19e850a4a9a9b154db0f90e03118ce51a71170dd",
+      "id": "material:85437b09ea6cb7949a61d65c",
+      "name": "Material_Ceramic_ore2",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "8c3ff42b85e838ee82131e5c2b7f1b447eb1480c85964e9bd7988c2886426a5e",
+      "id": "material:8c3ff42b85e838ee82131e5c",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a2366308aa291a7afe8d7c33f49c66401dc1e446987217e55d202fa8708154ba",
+      "id": "material:a2366308aa291a7afe8d7c33",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "baf058c6c0244ae9c82c083b100aef7ab5339915df642fe06ba5944a6e3e8af1",
+      "id": "material:baf058c6c0244ae9c82c083b",
+      "name": "Material_Ceramic_ore",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_quiessence_freighter_c_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1745,70 +1809,6 @@
       "name": "Material_Thruster",
       "pipelineKey": "opaque:front",
       "textures": []
-    },
-    {
-      "hash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
-      "id": "material:f6a38d598edfd5eef51f179e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "fedde3ba42c1b254f0ac33b047db8b16f746a919daa671e533a5c7d07b222eee",
-      "id": "material:fedde3ba42c1b254f0ac33b0",
-      "name": "Material_Ceramic_ore",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     }
   ],
   "nodes": [
@@ -3788,8 +3788,8 @@
         2.521002769470215,
         0,
         -22.254940032958984,
-        5.960464477539063e-8,
-        -1.0058283805847168e-7,
+        4.936009645462036e-8,
+        1.6763806343078613e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3816,8 +3816,8 @@
         2.521002769470215,
         0,
         -22.254940032958984,
-        5.960464477539063e-8,
-        -1.0058283805847168e-7,
+        4.936009645462036e-8,
+        1.6763806343078613e-8,
         1
       ]
     },
@@ -4463,19 +4463,19 @@
       "sha256": "af6142b1635f9610a2d22d10105d8ca2ef79c2ce8acdba44668722a249406af1"
     },
     "sourceGlb": {
-      "bytes": 1171704,
-      "sha256": "ed118412422351e9b5fa10fab3d2392eb49d39c8743ca2dd37dd95f4f9095f52",
+      "bytes": 1737280,
+      "sha256": "e70c81f42de71ac9eaf337acf122de9217b98843e2cab268a7c647423c5f1ffa",
       "uri": "place_quiessence_freighter_c.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2364252,
-    "sha256": "b6320781a33670c849744ad44efee95494bb22c3c12cb5b836980743a35eafd4",
+    "bytes": 2929052,
+    "sha256": "cc5a6d0f1e2fd82822f50a622793f87d277bb2fd3c594c86970e76623912f5c8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5991,8 +5991,8 @@
           2.521002769470215,
           0,
           -22.254940032958984,
-          5.960464477539063e-8,
-          -1.0058283805847168e-7,
+          4.936009645462036e-8,
+          1.6763806343078613e-8,
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
@@ -6014,8 +6014,8 @@
             2.521002769470215,
             0,
             -22.254940032958984,
-            5.960464477539063e-8,
-            -1.0058283805847168e-7,
+            4.936009645462036e-8,
+            1.6763806343078613e-8,
             1
           ],
           "lod": "lod2"
@@ -6298,7 +6298,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_quiessence_freighter_c.glb"
   },
-  "runtimeHash": "c0e641580cd55d50c2033d2292dd88631b4e0fd384eeff9b1e11855e9c5c1ee3",
+  "runtimeHash": "583ae81668b713fe7e17b39360f0858041789582c4356565fefe7fde29a011e3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

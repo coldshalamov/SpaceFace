@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        39
+        66
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        40
+        67
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        41
+        68
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        42
+        69
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -197,8 +197,53 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1b2c14cd1e5ef7e2e174371b642eacee95bdcf47fdfed4b1b6b05712b7c103f4",
+  "contentHash": "14fcbf1b1139456503a2f20633fa0fcd38706c6c7602da283dc741916081c42f",
   "dynamicGroups": [
+    {
+      "id": "sf.render.military.node.lod0-anim-blink-1p3-0p6-beacon-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-blink-1p3-0p6-beacon-dome"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-blink-1p8-0p2-masttip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-blink-1p8-0p2-masttip"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-blink-2p2-0p9-keeltip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-blink-2p2-0p9-keeltip"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-spin-up-0p7-radarbar.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-spin-up-0p7-radarbar"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-spin-up-0p7-radarface.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-spin-up-0p7-radarface"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-feed.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-feed"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-lens.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-lens"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-rim.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-rim"
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol"
+    },
     {
       "id": "sf.render.military.node.lod0-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
@@ -210,6 +255,51 @@
       "nodeId": "sf.render.military.node.lod0-hook-nav-starboard"
     },
     {
+      "id": "sf.render.military.node.lod1-anim-blink-1p3-0p6-beacon-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-blink-1p3-0p6-beacon-dome"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-blink-1p8-0p2-masttip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-blink-1p8-0p2-masttip"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-blink-2p2-0p9-keeltip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-blink-2p2-0p9-keeltip"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-spin-up-0p7-radarbar.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-spin-up-0p7-radarbar"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-spin-up-0p7-radarface.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-spin-up-0p7-radarface"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-feed.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-feed"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-lens.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-lens"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-rim.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-rim"
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol"
+    },
+    {
       "id": "sf.render.military.node.lod1-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.military.node.lod1-hook-nav-port"
@@ -218,6 +308,51 @@
       "id": "sf.render.military.node.lod1-hook-nav-starboard.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.military.node.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-blink-1p3-0p6-beacon-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-blink-1p3-0p6-beacon-dome"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-blink-1p8-0p2-masttip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-blink-1p8-0p2-masttip"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-blink-2p2-0p9-keeltip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-blink-2p2-0p9-keeltip"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-spin-up-0p7-radarbar.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-spin-up-0p7-radarbar"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-spin-up-0p7-radarface.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-spin-up-0p7-radarface"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-feed.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-feed"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-lens.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-lens"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-rim.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-rim"
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol"
     },
     {
       "id": "sf.render.military.node.lod2-hook-nav-port.dynamic",
@@ -245,7 +380,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9dd8db9fd300b09a24251d1a467da22382519cd558a26c4f9cf2bf5e389c6d4e",
+      "geometryHash": "3556c5d6c2ab602933993ddde74419cce6d41ea9994972654dd5f85eb6b4a971",
       "id": "sf.render.military.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -259,52 +394,302 @@
     {
       "bounds": {
         "max": [
+          -6.189999997615814,
+          36.54998748852793,
+          0.3100000023841858
+        ],
+        "min": [
+          -6.810000002384186,
+          36.26501113818105,
+          -0.3100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa03b327dcc70ac703cb27b42e1ba70d5f0bb29f1a5a95b268a3cc6abbe8bef5",
+      "id": "sf.render.military.node.lod0-anim-blink-1p3-0p6-beacon-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodeId": "sf.render.military.node.lod0-anim-blink-1p3-0p6-beacon-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.274999618530273,
+          39.15750782037271,
+          0.22500038146972656
+        ],
+        "min": [
+          -16.725000381469727,
+          38.84249217962729,
+          -0.22500038146972656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "667b09c0afb75fd2f1af156775e0561b808e180fca8cf063829816ab387fd286",
+      "id": "sf.render.military.node.lod0-anim-blink-1p8-0p2-masttip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p8_0p2_MastTip",
+      "nodeId": "sf.render.military.node.lod0-anim-blink-1p8-0p2-masttip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.799999997019768,
+          -39.85999328384165,
+          0.20000000298023224
+        ],
+        "min": [
+          -10.200000002980232,
+          -40.14000671615835,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a9416879e4256fc92b49e60b6c3aa1a7695bca2b21188533e0b56be35d1a6397",
+      "id": "sf.render.military.node.lod0-anim-blink-2p2-0p9-keeltip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_2p2_0p9_KeelTip",
+      "nodeId": "sf.render.military.node.lod0-anim-blink-2p2-0p9-keeltip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.250053407391583,
+          38.64992446671233,
+          3.5
+        ],
+        "min": [
+          -16.749946592608417,
+          37.950074007408766,
+          -3.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e9f975a0fae37052a82492172ac41eb70b8ef252673de715fc511033047792f",
+      "id": "sf.render.military.node.lod0-anim-spin-up-0p7-radarbar.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "1b5d30c28cad58f34b79bfa1a0a54e824315c4c6e7bb38f06e98915039cd470a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_up_0p7_RadarBar",
+      "nodeId": "sf.render.military.node.lod0-anim-spin-up-0p7-radarbar",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.189920269966738,
+          38.52500610707804,
+          3.200000047683716
+        ],
+        "min": [
+          -16.250078356742247,
+          38.07499236704305,
+          -3.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98af9c58394aa799cf58f0ee38fb4a8b738c063c5cecaaf9129b09bbddcc24cf",
+      "id": "sf.render.military.node.lod0-anim-spin-up-0p7-radarface.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_up_0p7_RadarFace",
+      "nodeId": "sf.render.military.node.lod0-anim-spin-up-0p7-radarface",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.254668963804242,
+          33.075408935546875,
+          -2.974746896400077
+        ],
+        "min": [
+          -19.177808987245562,
+          31.697343826293945,
+          -3.590327785835641
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6da64cf97423f9b9bc2314c12b4734c67f516dc711e1a243e70e7f2c7d229873",
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-feed.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-feed",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.19391369819641,
+          33.11794272948218,
+          -3.4404518604278564
+        ],
+        "min": [
+          -18.397913694381714,
+          32.97513588379907,
+          -3.644451856613159
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "805b93fb390c80aab79bfe06ee1eb2173f59a007b32f63a74e688ac5fbda66bd",
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.346088617473452,
+          33.16341669734398,
+          -1.481286883354187
+        ],
+        "min": [
+          -20.447822362751157,
+          31.0063297015818,
+          -4.882368087768555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5808ced1d68ea9e208b2c685f6ea1bbe5db273483fec9fdc46db8c20b7708bf4",
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-rim.primitive.0",
+      "indexCount": 1920,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-rim",
+      "primitiveIndex": 0,
+      "vertexCount": 500
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.43061565585935,
+          33.08277601415297,
+          -1.5622649192810059
+        ],
+        "min": [
+          -20.36329532436526,
+          31.087126398492558,
+          -4.801389694213867
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3971f4c2546f9f5d6b49331b0a50f03d54fc6a0ad24e42cf7ccbcd317f128dd0",
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol.primitive.0",
+      "indexCount": 1056,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol",
+      "primitiveIndex": 0,
+      "vertexCount": 223
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.43061565585935,
+          33.11935172040393,
+          -1.5622649192810059
+        ],
+        "min": [
+          -20.36329532436526,
+          31.087126398492558,
+          -4.801389694213867
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d49184e8b1381c5a4e2d78366ca3c92323775c523912defbe8855b3fe3aead3",
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol.primitive.1",
+      "indexCount": 1248,
+      "indexed": true,
+      "materialHash": "2db4b5e887e65fef7ef2f055264b9a6bef0144f7edbf8e666a3c66c4a23c500d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeId": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol",
+      "primitiveIndex": 1,
+      "vertexCount": 295
+    },
+    {
+      "bounds": {
+        "max": [
           36,
-          38.651039123535156,
+          33.59995651245117,
           16.665925979614258
         ],
         "min": [
           -39.798797607421875,
-          -35.001041412353516,
+          -34.99995803833008,
           -16.665925979614258
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe63913be63adf9216d87b15a70b400dc9e2890ef619c566eeb80ff675432d04",
+      "geometryHash": "a6c5ddcad0b6f5877c0dbbe567cdc1ff61da4087ef454ce9dd1ce41af8e0dd69",
       "id": "sf.render.military.node.lod0-armor.primitive.0",
-      "indexCount": 57705,
+      "indexCount": 57135,
       "indexed": true,
-      "materialHash": "32ce813bdbdfbef2ef4eed412b81f0fe3218f61268d4b3bfeb4b32ea31cfd5c7",
+      "materialHash": "1b5d30c28cad58f34b79bfa1a0a54e824315c4c6e7bb38f06e98915039cd470a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.military.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 17603
+      "vertexCount": 17435
     },
     {
       "bounds": {
         "max": [
           34.400001525878906,
-          36.54920196533203,
-          5.499152183532715
+          -3.4602203369140625,
+          5.500235557556152
         ],
         "min": [
-          -6.809999942779541,
-          -3.579204559326172,
-          -5.499152183532715
+          17.799999237060547,
+          -3.579779624938965,
+          -5.500235557556152
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ae63064a1228031e31bd44f9aa464efa98d056d4c8076e57cd0f7148ca05e7c",
+      "geometryHash": "37365e4c66724e0a87011f293386f79ba7ce30e8d1f3fffb64ac02987b7c4515",
       "id": "sf.render.military.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 1188,
+      "indexCount": 720,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.military.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 608
+      "vertexCount": 480
     },
     {
       "bounds": {
@@ -320,41 +705,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6eab1c4a25f8e9e349c861f634ace24678e69a57e2dae8b4b8d23939edc3d153",
+      "geometryHash": "eeeed4608eb79c78671c5419f20cf9b7f63a2b678e24743380fa1f37709dc503",
       "id": "sf.render.military.node.lod0-canopy.primitive.0",
-      "indexCount": 1362,
+      "indexCount": 1368,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_CANOPY",
       "nodeId": "sf.render.military.node.lod0-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 436
+      "vertexCount": 437
     },
     {
       "bounds": {
         "max": [
-          23.29850906050521,
-          39.157501220703125,
-          18.300891780931853
+          23.299999237060547,
+          37.12284486376018,
+          18.30146808521237
         ],
         "min": [
-          -37.248509823444664,
-          -40.13999938964844,
-          -19.250892543871306
+          -37.25,
+          -0.20834458254546817,
+          -19.251468848151823
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f0c0f7550df25b058068434944aa630eb2be185d5d8a2fc819bf0b74ccfe116",
+      "geometryHash": "3c5b5fcd9aa0fb27a0ea28d026aa5a51b201bf1869f46ffc1e367a63a8f951e2",
       "id": "sf.render.military.node.lod0-hook-nav-port.primitive.0",
-      "indexCount": 1044,
+      "indexCount": 972,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.military.node.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 696
+      "vertexCount": 648
     },
     {
       "bounds": {
@@ -370,7 +755,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8269f32d208edaa34f8c2fe2beac904473082b00efe199c257258f232308b5e",
+      "geometryHash": "a526661c668baca9449fb73d5c5b73108e07a25a78a3c02407a25b3b5ae90990",
       "id": "sf.render.military.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -395,11 +780,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05c6af1ffd3a58697095db7164303af4af421f1a7eb28381eaea70b05edb7751",
+      "geometryHash": "fde25196e71cab3b2d0abcaa290fc90b1c6950c73d12b89eccffbb02eb5cc38a",
       "id": "sf.render.military.node.lod0-hull-pale.primitive.0",
       "indexCount": 4152,
       "indexed": true,
-      "materialHash": "49bf6b636a58ebb066c6206aebe01dd65c1d5e3fb381cc53ac77e6c2bb46fafa",
+      "materialHash": "1c98cc0ab8ad74b02dc4a11e8f3bb8f8c6a72c15d7e26f066aa5ab69e38dac1b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_pale",
       "nodeId": "sf.render.military.node.lod0-hull-pale",
@@ -420,41 +805,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7cc8527de61b933bc463f16f8a71aa5304d744bc6556df9ec59fdcb83bf0fc61",
+      "geometryHash": "ef3bac8cbded106aedcae2204a957597457ff19e9e787c519708011281a0ea39",
       "id": "sf.render.military.node.lod0-hull.primitive.0",
       "indexCount": 22995,
       "indexed": true,
-      "materialHash": "55e638f6804ed2939a338ee9a254bba562c3011e3fca77d81de042428e1a5b58",
+      "materialHash": "22ddf4e95d6d41606920b27c7d8eb43a4000075bc2951f702bedbee0cb833c76",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.military.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6927
+      "vertexCount": 6932
     },
     {
       "bounds": {
         "max": [
-          26.600378036499023,
-          38.52499771118164,
-          4.151481628417969
+          26.599822998046875,
+          34.68775177001953,
+          4.147987365722656
         ],
         "min": [
-          -29.096378326416016,
+          -29.095823287963867,
           -36.547630310058594,
-          -4.151481628417969
+          -4.147987365722656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c28896fad57e86d23e2ca998ebd9b77ffbb673d85f6d47cc0c1df0cdcb4e5d23",
+      "geometryHash": "bfd778d1125ea93c272e95ecf16c176c0a09b22590f9baf211555d0d8d12c3b4",
       "id": "sf.render.military.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 1008,
+      "indexCount": 936,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan",
       "nodeId": "sf.render.military.node.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 672
+      "vertexCount": 624
     },
     {
       "bounds": {
@@ -470,16 +855,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3abe9423aa36c1d68d7643af68430572d9d27daa81443800ca38c9767c01a662",
+      "geometryHash": "3578d4cda85c033b4574fccf7cb6d5155e72d13cc1e509b867b25fa07cdf6f8a",
       "id": "sf.render.military.node.lod0-lights-warm.primitive.0",
-      "indexCount": 13884,
+      "indexCount": 14772,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.military.node.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 9010
+      "vertexCount": 9321
     },
     {
       "bounds": {
@@ -495,11 +880,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4c6db1dbc5fc41a0753b93e709a0e3866bc57febd925ea7ae70891ea92da3af",
+      "geometryHash": "f3037309a92eadbabe0fcf86ba0a054c3206cd2a2484359aa5511ea8f9564577",
       "id": "sf.render.military.node.lod0-livery.primitive.0",
       "indexCount": 4188,
       "indexed": true,
-      "materialHash": "34bcac294a71e0d73b63539777c35cf82831eeeddca3a26618feb1e9a7d768e4",
+      "materialHash": "10b68f5cc236f705d2395bb2142e5d478298dff7f6e9615e62ade8a19da5f1d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.military.node.lod0-livery",
@@ -520,41 +905,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d63418183d9d87e6217bed9cddb9f3efb5149e007b63dafc061f88dde8bfba89",
+      "geometryHash": "b2e9d2f04ba828f607fbba085a6e7a129bee6e4c7bc0a547cd3654b00fea1fc7",
       "id": "sf.render.military.node.lod0-mechanical.primitive.0",
-      "indexCount": 33780,
+      "indexCount": 30720,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.military.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 12331
+      "vertexCount": 11568
     },
     {
       "bounds": {
         "max": [
           32.94900131225586,
-          33.121368408203125,
+          32.77521896362305,
           21.292741775512695
         ],
         "min": [
           -36.79999923706055,
-          -35.972015380859375,
+          -35.96907043457031,
           -21.292741775512695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42699013916211c10c49fb426f8958a1d6c341ffbe3e3edc69bf7d46f7fafa0c",
+      "geometryHash": "e8437814d254a194d70472854082cc4907ac901092bbd29cf0b0079468bbc4db",
       "id": "sf.render.military.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 9792,
+      "indexCount": 8952,
       "indexed": true,
-      "materialHash": "ba0283ec04b23f1ecefe520f1ad2d6be4ed8caebb26698f858f5e310d47f7017",
+      "materialHash": "2db4b5e887e65fef7ef2f055264b9a6bef0144f7edbf8e666a3c66c4a23c500d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.military.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3617
+      "vertexCount": 3476
     },
     {
       "bounds": {
@@ -570,11 +955,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8f66916bffb32ccf86b0d0e161d5e0c08aebbaec86a5558d3d0dc51766b282c",
+      "geometryHash": "3bfdda439bc5fdcab7a59707293e96e7644390a3a8434acbb8c771e8ad3d355b",
       "id": "sf.render.military.node.lod0-warning.primitive.0",
       "indexCount": 1182,
       "indexed": true,
-      "materialHash": "9d2cb52aedd6f7952845a38b03c5e21d851ddad63c7f30c49d67ef11448e6383",
+      "materialHash": "53f8975ed498e52c114febebf4cb864db6f92f44f71436132d582c01a80a2eb1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.military.node.lod0-warning",
@@ -584,68 +969,318 @@
     {
       "bounds": {
         "max": [
-          35.99624252319336,
-          38.64413070678711,
-          16.665491104125977
+          -6.189570754766464,
+          36.54998774609128,
+          0.3102409741469916
         ],
         "min": [
-          -39.79352951049805,
-          -34.98992919921875,
-          -16.67164421081543
+          -6.810455024242401,
+          36.266045036105716,
+          -0.31041591377940736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eec4328a574e416fdf9a0ffa0b73f4dbd1d69404e5857aa5c1e565bea7b1b334",
-      "id": "sf.render.military.node.lod1-armor.primitive.0",
-      "indexCount": 12822,
+      "geometryHash": "ab57469ec56b07926a0d31341b821d700243c9efe3e9cab29a101ad84cecf3c5",
+      "id": "sf.render.military.node.lod1-anim-blink-1p3-0p6-beacon-dome.primitive.0",
+      "indexCount": 186,
       "indexed": true,
-      "materialHash": "32ce813bdbdfbef2ef4eed412b81f0fe3218f61268d4b3bfeb4b32ea31cfd5c7",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodeId": "sf.render.military.node.lod1-anim-blink-1p3-0p6-beacon-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 65
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.274999618530273,
+          39.15750782037271,
+          0.22500038146972656
+        ],
+        "min": [
+          -16.725000381469727,
+          38.84249217962729,
+          -0.22500038146972656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a33250b50bf534465af9c9559a2fbacc3daedd3cc05c249c372058bc578e599",
+      "id": "sf.render.military.node.lod1-anim-blink-1p8-0p2-masttip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p8_0p2_MastTip",
+      "nodeId": "sf.render.military.node.lod1-anim-blink-1p8-0p2-masttip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.799999997019768,
+          -39.85999328384165,
+          0.20000000298023224
+        ],
+        "min": [
+          -10.200000002980232,
+          -40.14000671615835,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a378992682fc53539489b50fdb7b3e9e505ae1e64af35b490041d0ee93434521",
+      "id": "sf.render.military.node.lod1-anim-blink-2p2-0p9-keeltip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_2p2_0p9_KeelTip",
+      "nodeId": "sf.render.military.node.lod1-anim-blink-2p2-0p9-keeltip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.25278170374303,
+          38.64712959087215,
+          3.497669219970703
+        ],
+        "min": [
+          -16.74721829625697,
+          37.95286888324895,
+          -3.497669219970703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0783866f0de3631c129c4797b61b97d73ccef2f1d0b9cf4bd9ddcd1765c3411c",
+      "id": "sf.render.military.node.lod1-anim-spin-up-0p7-radarbar.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "1b5d30c28cad58f34b79bfa1a0a54e824315c4c6e7bb38f06e98915039cd470a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_up_0p7_RadarBar",
+      "nodeId": "sf.render.military.node.lod1-anim-spin-up-0p7-radarbar",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.189920269966738,
+          38.52500610707804,
+          3.200000047683716
+        ],
+        "min": [
+          -16.250078356742247,
+          38.07499236704305,
+          -3.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ab0c0267e3db5d6095f506784dabb623269f8e2c841d9dc4fe9f426bad9859c",
+      "id": "sf.render.military.node.lod1-anim-spin-up-0p7-radarface.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_up_0p7_RadarFace",
+      "nodeId": "sf.render.military.node.lod1-anim-spin-up-0p7-radarface",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.254668963804242,
+          33.075408935546875,
+          -2.974746896400077
+        ],
+        "min": [
+          -19.177808987245562,
+          31.697343826293945,
+          -3.590327785835641
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48bc93e7ab898067ba50b80fd9e6c0685cdbc87cf4567475240e49b588163f79",
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-feed.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-feed",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.19391369819641,
+          33.11794272948218,
+          -3.4404518604278564
+        ],
+        "min": [
+          -18.397913694381714,
+          32.97513588379907,
+          -3.644451856613159
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "846634dee1beae0a2bcee6b1aedf2972d3d7e97049c7d00203c95e501240f724",
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.34089181830617,
+          33.15338197440272,
+          -1.475068211555481
+        ],
+        "min": [
+          -20.449032803275863,
+          31.017682283219045,
+          -4.873168230056763
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ea061206a69d3c2101ce97196f3de0ffdbee39d1da19891177bb0de214738196",
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-rim.primitive.0",
+      "indexCount": 768,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-rim",
+      "primitiveIndex": 0,
+      "vertexCount": 263
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.439709713243857,
+          33.0904662789586,
+          -1.5622649192810059
+        ],
+        "min": [
+          -20.367975254332713,
+          31.08997489973686,
+          -4.806355834007263
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "135cc983c141f8f62fabfbb588ad665bb47471e8f49cd62a1d9a6e4de5148358",
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol.primitive.0",
+      "indexCount": 393,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.435155491555044,
+          33.11937568620064,
+          -1.5622649192810059
+        ],
+        "min": [
+          -20.367975254332713,
+          31.08997489973686,
+          -4.806355834007263
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "35a6cec4f095777747d2ee60414baa7a1b7404fdb8e4a6d2e782c080efc2581b",
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol.primitive.1",
+      "indexCount": 525,
+      "indexed": true,
+      "materialHash": "2db4b5e887e65fef7ef2f055264b9a6bef0144f7edbf8e666a3c66c4a23c500d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeId": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol",
+      "primitiveIndex": 1,
+      "vertexCount": 148
+    },
+    {
+      "bounds": {
+        "max": [
+          35.996150970458984,
+          33.59291076660156,
+          16.66547203063965
+        ],
+        "min": [
+          -39.79352951049805,
+          -34.989498138427734,
+          -16.6716251373291
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9120c8bc094ef1873c4eddf126c8e9ba0d58f9e499697b2385e7539bc9cc159b",
+      "id": "sf.render.military.node.lod1-armor.primitive.0",
+      "indexCount": 12684,
+      "indexed": true,
+      "materialHash": "1b5d30c28cad58f34b79bfa1a0a54e824315c4c6e7bb38f06e98915039cd470a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.military.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 5053
+      "vertexCount": 4994
     },
     {
       "bounds": {
         "max": [
           34.400001525878906,
-          36.54623794555664,
-          5.499457359313965
+          -3.4602203369140625,
+          5.500235557556152
         ],
         "min": [
-          -6.812285423278809,
-          -3.5793607234954834,
-          -5.499457359313965
+          17.799999237060547,
+          -3.579779624938965,
+          -5.500235557556152
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12c2a14e8c57ff4f0eb9c7da426483a73035511636a92a57e57d155da8e13aeb",
+      "geometryHash": "14eaa6b95d28222fcd551075bbf8e2d4b93debc11d133c7429f4164729e10c31",
       "id": "sf.render.military.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 828,
+      "indexCount": 720,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.military.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 525
+      "vertexCount": 480
     },
     {
       "bounds": {
         "max": [
-          0.4948428273200989,
+          0.4964876174926758,
           33.59374237060547,
           9.143523216247559
         ],
         "min": [
-          -4.155749320983887,
+          -4.156337261199951,
           17.47433090209961,
           -9.143523216247559
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b0ecc203a43154f4400bf829a3fc97c9139f1cc7cc0a60592432169c64774cf",
+      "geometryHash": "9a94edea7e3b5ee360d8a3fcc643c749d34cbb7709eceedf1ab7e2fecb7f73db",
       "id": "sf.render.military.node.lod1-canopy.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -654,32 +1289,32 @@
       "meshName": "LOD1_CANOPY",
       "nodeId": "sf.render.military.node.lod1-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 62
+      "vertexCount": 60
     },
     {
       "bounds": {
         "max": [
-          23.29850906050521,
-          39.157501220703125,
-          18.300891780931853
+          23.299999237060547,
+          37.12284486376018,
+          18.30146808521237
         ],
         "min": [
-          -37.248509823444664,
-          -40.13999938964844,
-          -19.250892543871306
+          -37.25,
+          -0.20834458254546817,
+          -19.251468848151823
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dacc66b2bb1e9c791db7a3e356b78c50ec5d65715a31d6389aca3f89b5cea0ab",
+      "geometryHash": "bd2e18c8dd69ab17e9b1498fd717f16243626139ba02a7d1310e72e94f51b9e2",
       "id": "sf.render.military.node.lod1-hook-nav-port.primitive.0",
-      "indexCount": 1044,
+      "indexCount": 972,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_NAV_PORT",
       "nodeId": "sf.render.military.node.lod1-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 696
+      "vertexCount": 648
     },
     {
       "bounds": {
@@ -695,7 +1330,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a19495c14a0117d32420514cdedb58a2b81967cb238c69b7cc6d86090771828",
+      "geometryHash": "40abdbddae012c881bc1e2f4c56ed34925536957e1a5347dcc5a9b2708957a88",
       "id": "sf.render.military.node.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -709,22 +1344,22 @@
     {
       "bounds": {
         "max": [
-          35.99214172363281,
-          30.99260902404785,
-          17.89072608947754
+          35.99215316772461,
+          30.992610931396484,
+          17.890727996826172
         ],
         "min": [
           -37.594173431396484,
-          -7.198526382446289,
-          -17.890724182128906
+          -7.1985297203063965,
+          -17.89072608947754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de3f96e004a5e8c6286366c2092034ea29cf56fa461781dbe84f8afd09d805d8",
+      "geometryHash": "f15384f6d68e3f6b6b6e4bf9411c244018edcdd1254388a01a57bea2601f1da9",
       "id": "sf.render.military.node.lod1-hull-pale.primitive.0",
       "indexCount": 378,
       "indexed": true,
-      "materialHash": "49bf6b636a58ebb066c6206aebe01dd65c1d5e3fb381cc53ac77e6c2bb46fafa",
+      "materialHash": "1c98cc0ab8ad74b02dc4a11e8f3bb8f8c6a72c15d7e26f066aa5ab69e38dac1b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_pale",
       "nodeId": "sf.render.military.node.lod1-hull-pale",
@@ -745,41 +1380,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43ec2ddccd40a71af93010e7fdb69dbca1bb213af0825d069ee8c5d64deec659",
+      "geometryHash": "7f04d491dfc475f4aeb6b5b9b10a6429b3df033d39d267d2f1bff6573217532a",
       "id": "sf.render.military.node.lod1-hull.primitive.0",
-      "indexCount": 2691,
+      "indexCount": 2685,
       "indexed": true,
-      "materialHash": "55e638f6804ed2939a338ee9a254bba562c3011e3fca77d81de042428e1a5b58",
+      "materialHash": "22ddf4e95d6d41606920b27c7d8eb43a4000075bc2951f702bedbee0cb833c76",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.military.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1109
+      "vertexCount": 1105
     },
     {
       "bounds": {
         "max": [
-          26.600378036499023,
-          38.52499771118164,
-          4.151481628417969
+          26.599822998046875,
+          34.68775177001953,
+          4.147987365722656
         ],
         "min": [
-          -29.096378326416016,
+          -29.095823287963867,
           -36.547630310058594,
-          -4.151481628417969
+          -4.147987365722656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f66e7ed5908a039ffae5f5f6abe85bace87cc9de75e1782a26727e60955ce52",
+      "geometryHash": "f4b2de4849370251388bf529358202c4548fac91c3ee7dd25ca5d14eb5654ef8",
       "id": "sf.render.military.node.lod1-lights-cyan.primitive.0",
-      "indexCount": 1008,
+      "indexCount": 936,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan",
       "nodeId": "sf.render.military.node.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 672
+      "vertexCount": 624
     },
     {
       "bounds": {
@@ -795,16 +1430,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa6e23c255f80f08e4abe1591ccdbfc4c1594894d832efe01ab591af013c2ce9",
+      "geometryHash": "4ca595b5896d537d36e92f264a218444213353d82c5d49eb43e4bbb091513c7f",
       "id": "sf.render.military.node.lod1-lights-warm.primitive.0",
-      "indexCount": 13212,
+      "indexCount": 14370,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.military.node.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 8808
+      "vertexCount": 9195
     },
     {
       "bounds": {
@@ -820,11 +1455,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "339b966544ca240e713ab8698fa7a0b967a391d695c1c26d31772b6fc936a620",
+      "geometryHash": "76fb22a287583477a10343f5bd27cdea2a3c4cc49d8e5327d3d5647b7d0501c4",
       "id": "sf.render.military.node.lod1-livery.primitive.0",
       "indexCount": 3918,
       "indexed": true,
-      "materialHash": "34bcac294a71e0d73b63539777c35cf82831eeeddca3a26618feb1e9a7d768e4",
+      "materialHash": "10b68f5cc236f705d2395bb2142e5d478298dff7f6e9615e62ade8a19da5f1d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.military.node.lod1-livery",
@@ -845,41 +1480,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d0d3c49496d294270704f9b498de7bac34ac5cddd566032bc7c8c090c358c8d",
+      "geometryHash": "70bc5873c9aecb30f64400141ecfa4648c60440d298ebe33f9e0b2785610c7e3",
       "id": "sf.render.military.node.lod1-mechanical.primitive.0",
-      "indexCount": 16368,
+      "indexCount": 14583,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.military.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 7338
+      "vertexCount": 6817
     },
     {
       "bounds": {
         "max": [
           32.94900131225586,
-          33.11838150024414,
+          32.77804946899414,
           21.292741775512695
         ],
         "min": [
           -36.79999923706055,
-          -35.96648406982422,
+          -35.96623992919922,
           -21.292741775512695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91c48f6c01844b2aabb83643c8b289204d11a096fd51c7bc6cbb47f2c9e602a4",
+      "geometryHash": "58ff99406018cc6c3af1932aed3b89417e3275aab6fe4df7161eb4b5c6209b3c",
       "id": "sf.render.military.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 7200,
+      "indexCount": 6549,
       "indexed": true,
-      "materialHash": "ba0283ec04b23f1ecefe520f1ad2d6be4ed8caebb26698f858f5e310d47f7017",
+      "materialHash": "2db4b5e887e65fef7ef2f055264b9a6bef0144f7edbf8e666a3c66c4a23c500d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.military.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3052
+      "vertexCount": 2892
     },
     {
       "bounds": {
@@ -895,11 +1530,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d3b47307b45ec9429903b33337d11193c57e9c2d357997fb2b590ac7244d3df0",
+      "geometryHash": "ff63fad205c77d8e28356096c9b30d5eaa3b63ff60cabadfb58ce10b485262b0",
       "id": "sf.render.military.node.lod1-warning.primitive.0",
       "indexCount": 1155,
       "indexed": true,
-      "materialHash": "9d2cb52aedd6f7952845a38b03c5e21d851ddad63c7f30c49d67ef11448e6383",
+      "materialHash": "53f8975ed498e52c114febebf4cb864db6f92f44f71436132d582c01a80a2eb1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.military.node.lod1-warning",
@@ -909,68 +1544,318 @@
     {
       "bounds": {
         "max": [
-          35.99624252319336,
-          38.632266998291016,
-          16.652278900146484
+          -6.189999997615814,
+          36.54998748852793,
+          0.3100000023841858
         ],
         "min": [
-          -39.76150894165039,
-          -34.933692932128906,
-          -16.652278900146484
+          -6.810000002384186,
+          36.26501113818105,
+          -0.3100000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8389eebd2556d5fcc920e5d64fc4c326f4bde8e513cdc58af0394a7a7e9e768",
-      "id": "sf.render.military.node.lod2-armor.primitive.0",
-      "indexCount": 4599,
+      "geometryHash": "25df47e7517a5664699c4a219b2edd083af5d42e108d784d9cb6283179fa12e6",
+      "id": "sf.render.military.node.lod2-anim-blink-1p3-0p6-beacon-dome.primitive.0",
+      "indexCount": 468,
       "indexed": true,
-      "materialHash": "32ce813bdbdfbef2ef4eed412b81f0fe3218f61268d4b3bfeb4b32ea31cfd5c7",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodeId": "sf.render.military.node.lod2-anim-blink-1p3-0p6-beacon-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.274999618530273,
+          39.15750782037271,
+          0.22500038146972656
+        ],
+        "min": [
+          -16.725000381469727,
+          38.84249217962729,
+          -0.22500038146972656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a33250b50bf534465af9c9559a2fbacc3daedd3cc05c249c372058bc578e599",
+      "id": "sf.render.military.node.lod2-anim-blink-1p8-0p2-masttip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p8_0p2_MastTip",
+      "nodeId": "sf.render.military.node.lod2-anim-blink-1p8-0p2-masttip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.799999997019768,
+          -39.85999328384165,
+          0.20000000298023224
+        ],
+        "min": [
+          -10.200000002980232,
+          -40.14000671615835,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a378992682fc53539489b50fdb7b3e9e505ae1e64af35b490041d0ee93434521",
+      "id": "sf.render.military.node.lod2-anim-blink-2p2-0p9-keeltip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_2p2_0p9_KeelTip",
+      "nodeId": "sf.render.military.node.lod2-anim-blink-2p2-0p9-keeltip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.250053407391583,
+          38.64992446671233,
+          3.5
+        ],
+        "min": [
+          -16.749946592608417,
+          37.950074007408766,
+          -3.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb7157ae28ac24bc1ea99991c0cc3603de7613e062f1c9bfdf98cb8b0c08bc53",
+      "id": "sf.render.military.node.lod2-anim-spin-up-0p7-radarbar.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "1b5d30c28cad58f34b79bfa1a0a54e824315c4c6e7bb38f06e98915039cd470a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_up_0p7_RadarBar",
+      "nodeId": "sf.render.military.node.lod2-anim-spin-up-0p7-radarbar",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.189920269966738,
+          38.52500610707804,
+          3.200000047683716
+        ],
+        "min": [
+          -16.250078356742247,
+          38.07499236704305,
+          -3.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ab0c0267e3db5d6095f506784dabb623269f8e2c841d9dc4fe9f426bad9859c",
+      "id": "sf.render.military.node.lod2-anim-spin-up-0p7-radarface.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_up_0p7_RadarFace",
+      "nodeId": "sf.render.military.node.lod2-anim-spin-up-0p7-radarface",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.254668963804242,
+          33.075408935546875,
+          -2.974746896400077
+        ],
+        "min": [
+          -19.177808987245562,
+          31.697343826293945,
+          -3.590327785835641
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48bc93e7ab898067ba50b80fd9e6c0685cdbc87cf4567475240e49b588163f79",
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-feed.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-feed",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.19391369819641,
+          33.11794272948218,
+          -3.4404518604278564
+        ],
+        "min": [
+          -18.397913694381714,
+          32.97513588379907,
+          -3.644451856613159
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "846634dee1beae0a2bcee6b1aedf2972d3d7e97049c7d00203c95e501240f724",
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.340984517018832,
+          33.15198547702071,
+          -1.470680594444275
+        ],
+        "min": [
+          -20.455626315195524,
+          30.99781369108918,
+          -4.876342415809631
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef59ec441f9d952c7a69ae0dd68a67f503a0997cc6227a9d102375151ee6fd19",
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-rim.primitive.0",
+      "indexCount": 342,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-rim",
+      "primitiveIndex": 0,
+      "vertexCount": 167
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.41190112889346,
+          33.090592956145144,
+          -1.5562111139297485
+        ],
+        "min": [
+          -20.363041269177828,
+          31.071124542053994,
+          -4.818804621696472
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b1c54c5cc92839104f0c1c593cafe71003016eca8c3a341d4633e977761313a4",
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol.primitive.0",
+      "indexCount": 174,
+      "indexed": true,
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol",
+      "primitiveIndex": 0,
+      "vertexCount": 51
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.41190112889346,
+          33.125243138972465,
+          -1.5562111139297485
+        ],
+        "min": [
+          -20.363041269177828,
+          31.071124542053994,
+          -4.818804621696472
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "74e2cd93266f55d191877ced0053881d2fe7b7c0159cd407bc67539bc3393bf3",
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol.primitive.1",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "2db4b5e887e65fef7ef2f055264b9a6bef0144f7edbf8e666a3c66c4a23c500d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeId": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol",
+      "primitiveIndex": 1,
+      "vertexCount": 82
+    },
+    {
+      "bounds": {
+        "max": [
+          35.996150970458984,
+          33.5922737121582,
+          16.652257919311523
+        ],
+        "min": [
+          -39.76150894165039,
+          -34.93341827392578,
+          -16.652257919311523
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d3ff89267ded5aa763226e58780f8e92b27e233cf46ae8e41a0008a09116339",
+      "id": "sf.render.military.node.lod2-armor.primitive.0",
+      "indexCount": 4563,
+      "indexed": true,
+      "materialHash": "1b5d30c28cad58f34b79bfa1a0a54e824315c4c6e7bb38f06e98915039cd470a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.military.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2496
+      "vertexCount": 2473
     },
     {
       "bounds": {
         "max": [
           34.400001525878906,
-          36.56039047241211,
-          5.499457836151123
+          -3.4997355937957764,
+          5.500235557556152
         ],
         "min": [
-          -6.812287330627441,
-          -3.5400593280792236,
-          -5.499457836151123
+          17.799999237060547,
+          -3.540264368057251,
+          -5.500235557556152
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54a09ca4b046f12dde432deb4de35586e92e4994790237a1854df5d494000471",
+      "geometryHash": "f678fb3b89578b7c2712ce06c401995698a16dec3407f01cbc0e0fd8352ae3dc",
       "id": "sf.render.military.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 294,
+      "indexCount": 240,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.military.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 190
+      "vertexCount": 160
     },
     {
       "bounds": {
         "max": [
-          0.49537789821624756,
-          33.59413528442383,
-          3.3967831134796143
+          0.4963566064834595,
+          33.59389114379883,
+          2.895301103591919
         ],
         "min": [
-          -1.1100107431411743,
-          31.005903244018555,
-          -3.396059036254883
+          -1.1099326610565186,
+          31.006738662719727,
+          -3.3967831134796143
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e13ed0d7e4c3ede8a8a8f5d627a1d2285205574427e6b88d79d49160cf42a60",
+      "geometryHash": "4329b9847ac088f37ed3ef46401c87e14ab536eb6ff15b388250d6d5984944f6",
       "id": "sf.render.military.node.lod2-canopy.primitive.0",
       "indexCount": 18,
       "indexed": true,
@@ -979,32 +1864,32 @@
       "meshName": "LOD2_CANOPY",
       "nodeId": "sf.render.military.node.lod2-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 14
+      "vertexCount": 12
     },
     {
       "bounds": {
         "max": [
-          23.301551832585083,
-          39.157501220703125,
-          18.29812985448546
+          23.299999237060547,
+          31.423639136259084,
+          18.30146808521237
         ],
         "min": [
-          -37.25155259552454,
-          -40.04666519165039,
-          -19.248130617424913
+          -37.25,
+          -0.2086398926420241,
+          -19.251468848151823
         ]
       },
       "drawMode": 4,
-      "geometryHash": "030d7a9bfae49153032e850fdc9327994012841735bb6952973ceb14ac28c2f5",
+      "geometryHash": "039704e222ae29a8271365ae31301f794cba2128f2fd211df5fc6b26b60325f7",
       "id": "sf.render.military.node.lod2-hook-nav-port.primitive.0",
-      "indexCount": 876,
+      "indexCount": 828,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_NAV_PORT",
       "nodeId": "sf.render.military.node.lod2-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 584
+      "vertexCount": 552
     },
     {
       "bounds": {
@@ -1020,7 +1905,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02fa092bc0e545996c468939c30b255f1bdd09573cb751ba6cf977d5286fb8eb",
+      "geometryHash": "e768bcad1592dab8da7cf0282adc0142acb3d7178052b2cf0fba9ffa2136e252",
       "id": "sf.render.military.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -1034,22 +1919,22 @@
     {
       "bounds": {
         "max": [
-          35.99214172363281,
-          30.993972778320312,
-          17.89072608947754
+          35.99215316772461,
+          30.993974685668945,
+          17.890727996826172
         ],
         "min": [
           -37.594173431396484,
-          -7.197161674499512,
-          -17.890724182128906
+          -7.197165489196777,
+          -17.89072608947754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f94c3fd8f88f0fbe0266803ba6aac8ccfdea6165ce702bfcdbadf29fb6f2be0b",
+      "geometryHash": "175fdd978ed624a574216e0f231892f4022a7dac75c93582db0b09ddd893dfdd",
       "id": "sf.render.military.node.lod2-hull-pale.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "49bf6b636a58ebb066c6206aebe01dd65c1d5e3fb381cc53ac77e6c2bb46fafa",
+      "materialHash": "1c98cc0ab8ad74b02dc4a11e8f3bb8f8c6a72c15d7e26f066aa5ab69e38dac1b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_pale",
       "nodeId": "sf.render.military.node.lod2-hull-pale",
@@ -1070,41 +1955,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f528a2a4d02ccb01fa6ce7390bac0f0219b15e0de9a1e6d37fa5a09afe8bc64",
+      "geometryHash": "f1bc77ed44f5a365c6e6c7f765af03c2998587cfcc0af3ab1c4489a17df1a97c",
       "id": "sf.render.military.node.lod2-hull.primitive.0",
       "indexCount": 2070,
       "indexed": true,
-      "materialHash": "55e638f6804ed2939a338ee9a254bba562c3011e3fca77d81de042428e1a5b58",
+      "materialHash": "22ddf4e95d6d41606920b27c7d8eb43a4000075bc2951f702bedbee0cb833c76",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.military.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 901
+      "vertexCount": 902
     },
     {
       "bounds": {
         "max": [
-          26.598539352416992,
-          38.525001525878906,
-          4.1491594314575195
+          26.600788116455078,
+          34.68775177001953,
+          4.149887561798096
         ],
         "min": [
-          -29.09453773498535,
+          -29.096786499023438,
           -36.50563049316406,
-          -4.1491594314575195
+          -4.149887561798096
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9dbc0857fa0b1b2c56c6ffc8aac847042cefd25b56ed6cc18d29d425bf082057",
+      "geometryHash": "094841aebc9af387fa9f10b9de7a6de1a8c585b475e0f361356ee78bc1fde0e9",
       "id": "sf.render.military.node.lod2-lights-cyan.primitive.0",
-      "indexCount": 342,
+      "indexCount": 318,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Cyan",
       "nodeId": "sf.render.military.node.lod2-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 230
+      "vertexCount": 214
     },
     {
       "bounds": {
@@ -1120,16 +2005,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1a1d181640e8cbdadbda07d19ae408cc3784fcbb5b17162a0f51ac40f1255ac",
+      "geometryHash": "913709078e835b39398f02b9967f0b351de070a716b4dfc9b105ec6d3d9fa526",
       "id": "sf.render.military.node.lod2-lights-warm.primitive.0",
-      "indexCount": 7935,
+      "indexCount": 7878,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.military.node.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 5523
+      "vertexCount": 5363
     },
     {
       "bounds": {
@@ -1145,11 +2030,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "202923b6e0078785513b62ab6e72ccf9787cc8c0467791cf66a33a7285d78914",
+      "geometryHash": "e923e231a5ce6025ad5d79728fdfa70a804fbf55fe008e68bd41110929f73def",
       "id": "sf.render.military.node.lod2-livery.primitive.0",
       "indexCount": 1398,
       "indexed": true,
-      "materialHash": "34bcac294a71e0d73b63539777c35cf82831eeeddca3a26618feb1e9a7d768e4",
+      "materialHash": "10b68f5cc236f705d2395bb2142e5d478298dff7f6e9615e62ade8a19da5f1d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.military.node.lod2-livery",
@@ -1170,41 +2055,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a724af1e29fa4f36484fd46d4f0f5ded3458e532a9d8bca688ddb6358bed235f",
+      "geometryHash": "157e57c3f01c1c3e2368f9c8f25cac630e3c29978bf2f8cbecd24061728bab59",
       "id": "sf.render.military.node.lod2-mechanical.primitive.0",
-      "indexCount": 5199,
+      "indexCount": 4800,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.military.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3189
+      "vertexCount": 2998
     },
     {
       "bounds": {
         "max": [
           32.94900131225586,
-          33.078121185302734,
+          32.77189636230469,
           21.29167938232422
         ],
         "min": [
           -36.202003479003906,
-          -35.9547004699707,
+          -35.95703125,
           -21.29167938232422
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7d05b9313877a54ca9505c2a15339a68f4517e9cc71848018301dbafdbca7a3",
+      "geometryHash": "6c7c7f8d37be12b37ead68dfd9fcd81effc29dd7992787334efc4287e20664ab",
       "id": "sf.render.military.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 2034,
+      "indexCount": 1899,
       "indexed": true,
-      "materialHash": "ba0283ec04b23f1ecefe520f1ad2d6be4ed8caebb26698f858f5e310d47f7017",
+      "materialHash": "2db4b5e887e65fef7ef2f055264b9a6bef0144f7edbf8e666a3c66c4a23c500d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.military.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1136
+      "vertexCount": 1095
     }
   ],
   "hlods": [],
@@ -1212,47 +2097,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
-      "id": "material:1ee807a3355d83d28693fa8c",
-      "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "32ce813bdbdfbef2ef4eed412b81f0fe3218f61268d4b3bfeb4b32ea31cfd5c7",
-      "id": "material:32ce813bdbdfbef2ef4eed41",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "34bcac294a71e0d73b63539777c35cf82831eeeddca3a26618feb1e9a7d768e4",
-      "id": "material:34bcac294a71e0d73b635397",
+      "hash": "10b68f5cc236f705d2395bb2142e5d478298dff7f6e9615e62ade8a19da5f1d7",
+      "id": "material:10b68f5cc236f705d2395bb2",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1276,22 +2122,47 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_station_military_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
+      "hash": "1b5d30c28cad58f34b79bfa1a0a54e824315c4c6e7bb38f06e98915039cd470a",
+      "id": "material:1b5d30c28cad58f34b79bfa1",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_station_military_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "49bf6b636a58ebb066c6206aebe01dd65c1d5e3fb381cc53ac77e6c2bb46fafa",
-      "id": "material:49bf6b636a58ebb066c6206a",
+      "hash": "1c98cc0ab8ad74b02dc4a11e8f3bb8f8c6a72c15d7e26f066aa5ab69e38dac1b",
+      "id": "material:1c98cc0ab8ad74b02dc4a11e",
       "name": "Material_Hull_pale",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1315,15 +2186,22 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_station_military_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "55e638f6804ed2939a338ee9a254bba562c3011e3fca77d81de042428e1a5b58",
-      "id": "material:55e638f6804ed2939a338ee9",
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "22ddf4e95d6d41606920b27c7d8eb43a4000075bc2951f702bedbee0cb833c76",
+      "id": "material:22ddf4e95d6d41606920b27c",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1347,100 +2225,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_station_military_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "id": "material:85add90c89b799ae69ad3e2f",
-      "name": "Material_Emissive_Cyan",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "9d2cb52aedd6f7952845a38b03c5e21d851ddad63c7f30c49d67ef11448e6383",
-      "id": "material:9d2cb52aedd6f7952845a38b",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "ba0283ec04b23f1ecefe520f1ad2d6be4ed8caebb26698f858f5e310d47f7017",
-      "id": "material:ba0283ec04b23f1ecefe520f",
+      "hash": "2db4b5e887e65fef7ef2f055264b9a6bef0144f7edbf8e666a3c66c4a23c500d",
+      "id": "material:2db4b5e887e65fef7ef2f055",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1464,11 +2257,103 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_station_military_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "53f8975ed498e52c114febebf4cb864db6f92f44f71436132d582c01a80a2eb1",
+      "id": "material:53f8975ed498e52c114febeb",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_station_military_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6b84eb97a55d98dbec178a2367d32bf9b4d32e649179fbfa77adeb9f1a67067d",
+      "id": "material:6b84eb97a55d98dbec178a23",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_station_military_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
@@ -1529,6 +2414,447 @@
       ]
     },
     {
+      "id": "sf.render.military.node.lod0-anim-blink-1p3-0p6-beacon-dome",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -6.5,
+        36.40749931335449,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodeName": "LOD0_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -6.5,
+        36.40749931335449,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-blink-1p8-0p2-masttip",
+      "localTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        -16.5,
+        39,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p8_0p2_MastTip",
+      "nodeName": "LOD0_ANIM_blink_1p8_0p2_MastTip",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        -16.5,
+        39,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-blink-2p2-0p9-keeltip",
+      "localTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        -10,
+        -40,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_2p2_0p9_KeelTip",
+      "nodeName": "LOD0_ANIM_blink_2p2_0p9_KeelTip",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        -10,
+        -40,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-spin-up-0p7-radarbar",
+      "localTransform": [
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_up_0p7_RadarBar",
+      "nodeName": "LOD0_ANIM_spin_up_0p7_RadarBar",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-spin-up-0p7-radarface",
+      "localTransform": [
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        -16.219999313354492,
+        38.29999923706055,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_up_0p7_RadarFace",
+      "nodeName": "LOD0_ANIM_spin_up_0p7_RadarFace",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        -16.219999313354492,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol",
+      "localTransform": [
+        1.6195623874664307,
+        0,
+        0,
+        0,
+        0,
+        1.6195623874664307,
+        0,
+        0,
+        0,
+        0,
+        1.6195623874664307,
+        0,
+        -18.896955490112305,
+        32.10323905944824,
+        -3.1818273067474365,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1.6195623874664307,
+        0,
+        0,
+        0,
+        0,
+        1.6195623874664307,
+        0,
+        0,
+        0,
+        0,
+        1.6195623874664307,
+        0,
+        -18.896955490112305,
+        32.10323905944824,
+        -3.1818273067474365,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-feed",
+      "localTransform": [
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        -18.716238975524902,
+        32.38637638092041,
+        -3.282537341117859,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodeName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        -18.716238975524902,
+        32.38637638092041,
+        -3.282537341117859,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-lens",
+      "localTransform": [
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        -18.295913696289062,
+        33.046539306640625,
+        -3.542451858520508,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodeName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        -18.295913696289062,
+        33.046539306640625,
+        -3.542451858520508,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-rim",
+      "localTransform": [
+        1.7005406022071838,
+        0,
+        0,
+        0,
+        0,
+        1.7005406022071838,
+        0,
+        0,
+        0,
+        0,
+        1.7005406022071838,
+        0,
+        -18.896955490112305,
+        32.08487319946289,
+        -3.181827485561371,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodeName": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1.7005406022071838,
+        0,
+        0,
+        0,
+        0,
+        1.7005406022071838,
+        0,
+        0,
+        0,
+        0,
+        1.7005406022071838,
+        0,
+        -18.896955490112305,
+        32.08487319946289,
+        -3.181827485561371,
+        1
+      ]
+    },
+    {
       "id": "sf.render.military.node.lod0-armor",
       "localTransform": [
         1,
@@ -1553,7 +2879,7 @@
       "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        1
+        10
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -1602,7 +2928,7 @@
       "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
-        2
+        11
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -1651,7 +2977,7 @@
       "nodeName": "LOD0_CANOPY",
       "nodePath": [
         0,
-        3
+        12
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -1678,20 +3004,20 @@
     {
       "id": "sf.render.military.node.lod0-hook-nav-port",
       "localTransform": [
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         -6.975000381469727,
-        -0.49124908447265625,
+        18.457250140607357,
         -0.47500038146972656,
         1
       ],
@@ -1700,26 +3026,26 @@
       "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        4
+        13
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         -6.975000381469727,
-        -0.49124908447265625,
+        18.457250140607357,
         -0.47500038146972656,
         1
       ]
@@ -1749,7 +3075,7 @@
       "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        5
+        14
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "dynamic",
@@ -1798,7 +3124,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        6
+        15
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -1847,7 +3173,7 @@
       "nodeName": "LOD0_Hull_pale",
       "nodePath": [
         0,
-        7
+        16
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -1896,7 +3222,7 @@
       "nodeName": "LOD0_Lights_Cyan",
       "nodePath": [
         0,
-        8
+        17
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -1945,7 +3271,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        9
+        18
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -1994,7 +3320,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        10
+        19
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2043,7 +3369,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        11
+        20
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2092,7 +3418,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        12
+        21
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2141,7 +3467,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        13
+        22
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2162,6 +3488,447 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-blink-1p3-0p6-beacon-dome",
+      "localTransform": [
+        0.31044213473796844,
+        0,
+        0,
+        0,
+        0,
+        0.31044213473796844,
+        0,
+        0,
+        0,
+        0,
+        0.31044213473796844,
+        0,
+        -6.500012889504433,
+        36.4080163910985,
+        -0.00008746981620788574,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodeName": "LOD1_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.31044213473796844,
+        0,
+        0,
+        0,
+        0,
+        0.31044213473796844,
+        0,
+        0,
+        0,
+        0,
+        0.31044213473796844,
+        0,
+        -6.500012889504433,
+        36.4080163910985,
+        -0.00008746981620788574,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-blink-1p8-0p2-masttip",
+      "localTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        -16.5,
+        39,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p8_0p2_MastTip",
+      "nodeName": "LOD1_ANIM_blink_1p8_0p2_MastTip",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        -16.5,
+        39,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-blink-2p2-0p9-keeltip",
+      "localTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        -10,
+        -40,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_2p2_0p9_KeelTip",
+      "nodeName": "LOD1_ANIM_blink_2p2_0p9_KeelTip",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        -10,
+        -40,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-spin-up-0p7-radarbar",
+      "localTransform": [
+        3.497669219970703,
+        0,
+        0,
+        0,
+        0,
+        3.497669219970703,
+        0,
+        0,
+        0,
+        0,
+        3.497669219970703,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_up_0p7_RadarBar",
+      "nodeName": "LOD1_ANIM_spin_up_0p7_RadarBar",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        3.497669219970703,
+        0,
+        0,
+        0,
+        0,
+        3.497669219970703,
+        0,
+        0,
+        0,
+        0,
+        3.497669219970703,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-spin-up-0p7-radarface",
+      "localTransform": [
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        -16.219999313354492,
+        38.29999923706055,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_up_0p7_RadarFace",
+      "nodeName": "LOD1_ANIM_spin_up_0p7_RadarFace",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        -16.219999313354492,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol",
+      "localTransform": [
+        1.6220454573631287,
+        0,
+        0,
+        0,
+        0,
+        1.6220454573631287,
+        0,
+        0,
+        0,
+        0,
+        1.6220454573631287,
+        0,
+        -18.901565372943878,
+        32.10467529296875,
+        -3.1843103766441345,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1.6220454573631287,
+        0,
+        0,
+        0,
+        0,
+        1.6220454573631287,
+        0,
+        0,
+        0,
+        0,
+        1.6220454573631287,
+        0,
+        -18.901565372943878,
+        32.10467529296875,
+        -3.1843103766441345,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-feed",
+      "localTransform": [
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        -18.716238975524902,
+        32.38637638092041,
+        -3.282537341117859,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodeName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        -18.716238975524902,
+        32.38637638092041,
+        -3.282537341117859,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-lens",
+      "localTransform": [
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        -18.295913696289062,
+        33.046539306640625,
+        -3.542451858520508,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodeName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        -18.295913696289062,
+        33.046539306640625,
+        -3.542451858520508,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-rim",
+      "localTransform": [
+        1.6990500092506409,
+        0,
+        0,
+        0,
+        0,
+        1.6990500092506409,
+        0,
+        0,
+        0,
+        0,
+        1.6990500092506409,
+        0,
+        -18.894962310791016,
+        32.08553212881088,
+        -3.174118220806122,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodeName": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1.6990500092506409,
+        0,
+        0,
+        0,
+        0,
+        1.6990500092506409,
+        0,
+        0,
+        0,
+        0,
+        1.6990500092506409,
+        0,
+        -18.894962310791016,
+        32.08553212881088,
+        -3.174118220806122,
         1
       ]
     },
@@ -2190,7 +3957,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        14
+        32
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2239,7 +4006,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        15
+        33
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2288,7 +4055,7 @@
       "nodeName": "LOD1_CANOPY",
       "nodePath": [
         0,
-        16
+        34
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2315,20 +4082,20 @@
     {
       "id": "sf.render.military.node.lod1-hook-nav-port",
       "localTransform": [
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         -6.975000381469727,
-        -0.49124908447265625,
+        18.457250140607357,
         -0.47500038146972656,
         1
       ],
@@ -2337,26 +4104,26 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        17
+        35
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.64875030517578,
+        30.274999618530273,
         0,
         -6.975000381469727,
-        -0.49124908447265625,
+        18.457250140607357,
         -0.47500038146972656,
         1
       ]
@@ -2386,7 +4153,7 @@
       "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        18
+        36
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "dynamic",
@@ -2435,7 +4202,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        19
+        37
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2484,7 +4251,7 @@
       "nodeName": "LOD1_Hull_pale",
       "nodePath": [
         0,
-        20
+        38
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2533,7 +4300,7 @@
       "nodeName": "LOD1_Lights_Cyan",
       "nodePath": [
         0,
-        21
+        39
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2582,7 +4349,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        22
+        40
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2631,7 +4398,7 @@
       "nodeName": "LOD1_Livery",
       "nodePath": [
         0,
-        23
+        41
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2680,7 +4447,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        24
+        42
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2729,7 +4496,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        25
+        43
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2778,7 +4545,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        26
+        44
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2799,6 +4566,447 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-blink-1p3-0p6-beacon-dome",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -6.5,
+        36.40749931335449,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodeName": "LOD2_ANIM_blink_1p3_0p6_Beacon_Dome",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -6.5,
+        36.40749931335449,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-blink-1p8-0p2-masttip",
+      "localTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        -16.5,
+        39,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p8_0p2_MastTip",
+      "nodeName": "LOD2_ANIM_blink_1p8_0p2_MastTip",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        0,
+        0,
+        0,
+        0.22500038146972656,
+        0,
+        -16.5,
+        39,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-blink-2p2-0p9-keeltip",
+      "localTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        -10,
+        -40,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_2p2_0p9_KeelTip",
+      "nodeName": "LOD2_ANIM_blink_2p2_0p9_KeelTip",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        -10,
+        -40,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-spin-up-0p7-radarbar",
+      "localTransform": [
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_up_0p7_RadarBar",
+      "nodeName": "LOD2_ANIM_spin_up_0p7_RadarBar",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-spin-up-0p7-radarface",
+      "localTransform": [
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        -16.219999313354492,
+        38.29999923706055,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_up_0p7_RadarFace",
+      "nodeName": "LOD2_ANIM_spin_up_0p7_RadarFace",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        0,
+        0,
+        0,
+        3.200000047683716,
+        0,
+        -16.219999313354492,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol",
+      "localTransform": [
+        1.6312967538833618,
+        0,
+        0,
+        0,
+        0,
+        1.6312967538833618,
+        0,
+        0,
+        0,
+        0,
+        1.6312967538833618,
+        0,
+        -18.887471199035645,
+        32.09818384051323,
+        -3.1875078678131104,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodeName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1.6312967538833618,
+        0,
+        0,
+        0,
+        0,
+        1.6312967538833618,
+        0,
+        0,
+        0,
+        0,
+        1.6312967538833618,
+        0,
+        -18.887471199035645,
+        32.09818384051323,
+        -3.1875078678131104,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-feed",
+      "localTransform": [
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        -18.716238975524902,
+        32.38637638092041,
+        -3.282537341117859,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodeName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        0,
+        0,
+        0,
+        0.6890325546264648,
+        0,
+        -18.716238975524902,
+        32.38637638092041,
+        -3.282537341117859,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-lens",
+      "localTransform": [
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        -18.295913696289062,
+        33.046539306640625,
+        -3.542451858520508,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodeName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.10199999809265137,
+        0,
+        -18.295913696289062,
+        33.046539306640625,
+        -3.542451858520508,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-rim",
+      "localTransform": [
+        1.7028309106826782,
+        0,
+        0,
+        0,
+        0,
+        1.7028309106826782,
+        0,
+        0,
+        0,
+        0,
+        1.7028309106826782,
+        0,
+        -18.898305416107178,
+        32.07489958405495,
+        -3.173511505126953,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodeName": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1.7028309106826782,
+        0,
+        0,
+        0,
+        0,
+        1.7028309106826782,
+        0,
+        0,
+        0,
+        0,
+        1.7028309106826782,
+        0,
+        -18.898305416107178,
+        32.07489958405495,
+        -3.173511505126953,
         1
       ]
     },
@@ -2827,7 +5035,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        27
+        54
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2876,7 +5084,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        28
+        55
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2925,7 +5133,7 @@
       "nodeName": "LOD2_CANOPY",
       "nodePath": [
         0,
-        29
+        56
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -2952,20 +5160,20 @@
     {
       "id": "sf.render.military.node.lod2-hook-nav-port",
       "localTransform": [
-        39.60208320617676,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.60208320617676,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.60208320617676,
+        30.274999618530273,
         0,
         -6.975000381469727,
-        -0.4445819854736328,
+        15.607499621808529,
         -0.47500038146972656,
         1
       ],
@@ -2974,26 +5182,26 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        30
+        57
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
-        39.60208320617676,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.60208320617676,
+        30.274999618530273,
         0,
         0,
         0,
         0,
-        39.60208320617676,
+        30.274999618530273,
         0,
         -6.975000381469727,
-        -0.4445819854736328,
+        15.607499621808529,
         -0.47500038146972656,
         1
       ]
@@ -3023,7 +5231,7 @@
       "nodeName": "LOD2_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        31
+        58
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "dynamic",
@@ -3072,7 +5280,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        32
+        59
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3121,7 +5329,7 @@
       "nodeName": "LOD2_Hull_pale",
       "nodePath": [
         0,
-        33
+        60
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3170,7 +5378,7 @@
       "nodeName": "LOD2_Lights_Cyan",
       "nodePath": [
         0,
-        34
+        61
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3219,7 +5427,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        35
+        62
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3268,7 +5476,7 @@
       "nodeName": "LOD2_Livery",
       "nodePath": [
         0,
-        36
+        63
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3317,7 +5525,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        37
+        64
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3366,7 +5574,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        38
+        65
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3463,7 +5671,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        39
+        66
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3512,7 +5720,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        40
+        67
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3561,7 +5769,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        41
+        68
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3610,7 +5818,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        42
+        69
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3637,44 +5845,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "2b7539cdd3b1bffbb7a4dd69ed972853b97029c12eac9d01d12624785c456012"
+      "sha256": "05760814f7eea9c7e553f75440c97303531d3d5e768ef29aa36d91e593285e9c"
     },
     "sourceGlb": {
-      "bytes": 1736064,
-      "sha256": "8a5869b8ab23522bb3ad2ded7f80c5c78098712704c7d5672b7bbb0f5be72b50",
+      "bytes": 2627624,
+      "sha256": "06025a25df3127c22754dcaf68ca082ab8fb763dbf1a7dbbc0015f5f14a3f46b",
       "uri": "place_station_military.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3170524,
-    "sha256": "455b82b90261c5ec6bde1e5e932a73d557feadb95a391c8ea02d4ea1481ba25f",
+    "bytes": 4063136,
+    "sha256": "a172c396db74edbb45eedbd49dc3628a089f0611f9869085a9858028feae2771",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -2.0500011444091797,
-        -0.49124908447265625,
+        -0.49124944789281955,
         0.0000457763671875
       ],
       "max": [
         36.001522064208984,
-        39.157501220703125,
+        39.15750782037271,
         21.293991088867188
       ],
       "min": [
         -40.101524353027344,
-        -40.13999938964844,
+        -40.14000671615835,
         -21.293899536132812
       ],
       "size": [
         76.10304641723633,
-        79.29750061035156,
+        79.29751453653105,
         42.587890625
       ]
     },
@@ -3703,7 +5911,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 41,
+        "planIndex": 74,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -3740,7 +5948,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 42,
+        "planIndex": 75,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3778,7 +5986,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 43,
+        "planIndex": 76,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3816,7 +6024,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 44,
+        "planIndex": 77,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3838,9 +6046,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "glass": 3,
-      "hull": 10,
-      "mechanical": 6,
-      "signal": 15,
+      "hull": 13,
+      "mechanical": 18,
+      "signal": 30,
       "warning": 2
     },
     "materialProfiles": [
@@ -3852,7 +6060,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3862,12 +6070,12 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3876,28 +6084,23 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3907,17 +6110,17 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -3927,92 +6130,87 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
         "role": "accent"
       },
       {
         "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 26,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 29,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
+        "planIndex": 27,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 31,
-        "role": "glass"
+        "planIndex": 28,
+        "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 32,
+        "planIndex": 29,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
         "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4022,26 +6220,456 @@
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 45,
+    "nodeCount": 78,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -6.5,
+          36.40749931335449,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p3_0p6_Beacon_Dome",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          -16.5,
+          39,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p8_0p2_MastTip",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          -10,
+          -40,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_2p2_0p9_KeelTip",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.5,
+          0,
+          0,
+          0,
+          0,
+          3.5,
+          0,
+          0,
+          0,
+          0,
+          3.5,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_up_0p7_RadarBar",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.200000047683716,
+          0,
+          0,
+          0,
+          0,
+          3.200000047683716,
+          0,
+          0,
+          0,
+          0,
+          3.200000047683716,
+          0,
+          -16.219999313354492,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_up_0p7_RadarFace",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6195623874664307,
+          0,
+          0,
+          0,
+          0,
+          1.6195623874664307,
+          0,
+          0,
+          0,
+          0,
+          1.6195623874664307,
+          0,
+          -18.896955490112305,
+          32.10323905944824,
+          -3.1818273067474365,
+          1
+        ],
+        "name": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6195623874664307,
+          0,
+          0,
+          0,
+          0,
+          1.6195623874664307,
+          0,
+          0,
+          0,
+          0,
+          1.6195623874664307,
+          0,
+          -18.896955490112305,
+          32.10323905944824,
+          -3.1818273067474365,
+          1
+        ],
+        "name": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_2",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6890325546264648,
+          0,
+          0,
+          0,
+          0,
+          0.6890325546264648,
+          0,
+          0,
+          0,
+          0,
+          0.6890325546264648,
+          0,
+          -18.716238975524902,
+          32.38637638092041,
+          -3.282537341117859,
+          1
+        ],
+        "name": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.10199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.10199999809265137,
+          0,
+          -18.295913696289062,
+          33.046539306640625,
+          -3.542451858520508,
+          1
+        ],
+        "name": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.7005406022071838,
+          0,
+          0,
+          0,
+          0,
+          1.7005406022071838,
+          0,
+          0,
+          0,
+          0,
+          1.7005406022071838,
+          0,
+          -18.896955490112305,
+          32.08487319946289,
+          -3.181827485561371,
+          1
+        ],
+        "name": "LOD0_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -4063,7 +6691,7 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4090,7 +6718,7 @@
           1
         ],
         "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4117,7 +6745,7 @@
           1
         ],
         "name": "LOD0_CANOPY",
-        "planIndex": 5,
+        "planIndex": 16,
         "tags": {
           "canopy": true,
           "lod": "lod0"
@@ -4126,25 +6754,25 @@
       {
         "canopy": false,
         "matrix": [
-          39.64875030517578,
+          30.274999618530273,
           0,
           0,
           0,
           0,
-          39.64875030517578,
+          30.274999618530273,
           0,
           0,
           0,
           0,
-          39.64875030517578,
+          30.274999618530273,
           0,
           -6.975000381469727,
-          -0.49124908447265625,
+          18.457250140607357,
           -0.47500038146972656,
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 6,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4172,7 +6800,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 7,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4200,7 +6828,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 8,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4227,7 +6855,7 @@
           1
         ],
         "name": "LOD0_Hull_pale",
-        "planIndex": 9,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4254,7 +6882,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan",
-        "planIndex": 10,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4281,7 +6909,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 11,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4308,7 +6936,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 12,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4335,7 +6963,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 13,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4362,7 +6990,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 14,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4389,10 +7017,280 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 15,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.31044213473796844,
+          0,
+          0,
+          0,
+          0,
+          0.31044213473796844,
+          0,
+          0,
+          0,
+          0,
+          0.31044213473796844,
+          0,
+          -6.500012889504433,
+          36.4080163910985,
+          -0.00008746981620788574,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p3_0p6_Beacon_Dome",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          -16.5,
+          39,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p8_0p2_MastTip",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          -10,
+          -40,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_2p2_0p9_KeelTip",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.497669219970703,
+          0,
+          0,
+          0,
+          0,
+          3.497669219970703,
+          0,
+          0,
+          0,
+          0,
+          3.497669219970703,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_up_0p7_RadarBar",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.200000047683716,
+          0,
+          0,
+          0,
+          0,
+          3.200000047683716,
+          0,
+          0,
+          0,
+          0,
+          3.200000047683716,
+          0,
+          -16.219999313354492,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_up_0p7_RadarFace",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6220454573631287,
+          0,
+          0,
+          0,
+          0,
+          1.6220454573631287,
+          0,
+          0,
+          0,
+          0,
+          1.6220454573631287,
+          0,
+          -18.901565372943878,
+          32.10467529296875,
+          -3.1843103766441345,
+          1
+        ],
+        "name": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_1",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6220454573631287,
+          0,
+          0,
+          0,
+          0,
+          1.6220454573631287,
+          0,
+          0,
+          0,
+          0,
+          1.6220454573631287,
+          0,
+          -18.901565372943878,
+          32.10467529296875,
+          -3.1843103766441345,
+          1
+        ],
+        "name": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_2",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6890325546264648,
+          0,
+          0,
+          0,
+          0,
+          0.6890325546264648,
+          0,
+          0,
+          0,
+          0,
+          0.6890325546264648,
+          0,
+          -18.716238975524902,
+          32.38637638092041,
+          -3.282537341117859,
+          1
+        ],
+        "name": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.10199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.10199999809265137,
+          0,
+          -18.295913696289062,
+          33.046539306640625,
+          -3.542451858520508,
+          1
+        ],
+        "name": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6990500092506409,
+          0,
+          0,
+          0,
+          0,
+          1.6990500092506409,
+          0,
+          0,
+          0,
+          0,
+          1.6990500092506409,
+          0,
+          -18.894962310791016,
+          32.08553212881088,
+          -3.174118220806122,
+          1
+        ],
+        "name": "LOD1_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
         }
       },
       {
@@ -4416,7 +7314,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 16,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4443,7 +7341,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 17,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4470,7 +7368,7 @@
           1
         ],
         "name": "LOD1_CANOPY",
-        "planIndex": 18,
+        "planIndex": 40,
         "tags": {
           "canopy": true,
           "lod": "lod1"
@@ -4479,25 +7377,25 @@
       {
         "canopy": false,
         "matrix": [
-          39.64875030517578,
+          30.274999618530273,
           0,
           0,
           0,
           0,
-          39.64875030517578,
+          30.274999618530273,
           0,
           0,
           0,
           0,
-          39.64875030517578,
+          30.274999618530273,
           0,
           -6.975000381469727,
-          -0.49124908447265625,
+          18.457250140607357,
           -0.47500038146972656,
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 19,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4525,7 +7423,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 20,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4553,7 +7451,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 21,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4580,7 +7478,7 @@
           1
         ],
         "name": "LOD1_Hull_pale",
-        "planIndex": 22,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4607,7 +7505,7 @@
           1
         ],
         "name": "LOD1_Lights_Cyan",
-        "planIndex": 23,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4634,7 +7532,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 24,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4661,7 +7559,7 @@
           1
         ],
         "name": "LOD1_Livery",
-        "planIndex": 25,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4688,7 +7586,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 26,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4715,7 +7613,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 27,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4742,10 +7640,280 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 28,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -6.5,
+          36.40749931335449,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p3_0p6_Beacon_Dome",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          0,
+          0,
+          0,
+          0.22500038146972656,
+          0,
+          -16.5,
+          39,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p8_0p2_MastTip",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          -10,
+          -40,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_2p2_0p9_KeelTip",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.5,
+          0,
+          0,
+          0,
+          0,
+          3.5,
+          0,
+          0,
+          0,
+          0,
+          3.5,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_up_0p7_RadarBar",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.200000047683716,
+          0,
+          0,
+          0,
+          0,
+          3.200000047683716,
+          0,
+          0,
+          0,
+          0,
+          3.200000047683716,
+          0,
+          -16.219999313354492,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_up_0p7_RadarFace",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6312967538833618,
+          0,
+          0,
+          0,
+          0,
+          1.6312967538833618,
+          0,
+          0,
+          0,
+          0,
+          1.6312967538833618,
+          0,
+          -18.887471199035645,
+          32.09818384051323,
+          -3.1875078678131104,
+          1
+        ],
+        "name": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_1",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6312967538833618,
+          0,
+          0,
+          0,
+          0,
+          1.6312967538833618,
+          0,
+          0,
+          0,
+          0,
+          1.6312967538833618,
+          0,
+          -18.887471199035645,
+          32.09818384051323,
+          -3.1875078678131104,
+          1
+        ],
+        "name": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_2",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6890325546264648,
+          0,
+          0,
+          0,
+          0,
+          0.6890325546264648,
+          0,
+          0,
+          0,
+          0,
+          0.6890325546264648,
+          0,
+          -18.716238975524902,
+          32.38637638092041,
+          -3.282537341117859,
+          1
+        ],
+        "name": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Feed",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.10199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.10199999809265137,
+          0,
+          -18.295913696289062,
+          33.046539306640625,
+          -3.542451858520508,
+          1
+        ],
+        "name": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Lens",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.7028309106826782,
+          0,
+          0,
+          0,
+          0,
+          1.7028309106826782,
+          0,
+          0,
+          0,
+          0,
+          1.7028309106826782,
+          0,
+          -18.898305416107178,
+          32.07489958405495,
+          -3.173511505126953,
+          1
+        ],
+        "name": "LOD2_ANIM_sweep_up_0p6_0p5_FireControl_Rim",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
         }
       },
       {
@@ -4769,7 +7937,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 29,
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4796,7 +7964,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 30,
+        "planIndex": 63,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4823,7 +7991,7 @@
           1
         ],
         "name": "LOD2_CANOPY",
-        "planIndex": 31,
+        "planIndex": 64,
         "tags": {
           "canopy": true,
           "lod": "lod2"
@@ -4832,25 +8000,25 @@
       {
         "canopy": false,
         "matrix": [
-          39.60208320617676,
+          30.274999618530273,
           0,
           0,
           0,
           0,
-          39.60208320617676,
+          30.274999618530273,
           0,
           0,
           0,
           0,
-          39.60208320617676,
+          30.274999618530273,
           0,
           -6.975000381469727,
-          -0.4445819854736328,
+          15.607499621808529,
           -0.47500038146972656,
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 32,
+        "planIndex": 65,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4878,7 +8046,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 33,
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4906,7 +8074,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 34,
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4933,7 +8101,7 @@
           1
         ],
         "name": "LOD2_Hull_pale",
-        "planIndex": 35,
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4960,7 +8128,7 @@
           1
         ],
         "name": "LOD2_Lights_Cyan",
-        "planIndex": 36,
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4987,7 +8155,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 37,
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5014,7 +8182,7 @@
           1
         ],
         "name": "LOD2_Livery",
-        "planIndex": 38,
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5041,7 +8209,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 39,
+        "planIndex": 72,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5068,7 +8236,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 40,
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5079,25 +8247,34 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_military.glb"
   },
-  "runtimeHash": "a58c05e568976f76780f8dbc73dde32cfb4b69cad6344568193f9ba743cc571f",
+  "runtimeHash": "fc2f7b08c6101491009d23cfcf58e1bbedcc041d335d96032784f7406400e6c2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           36.001522064208984,
-          39.157501220703125,
+          39.15750782037271,
           21.293991088867188
         ],
         "min": [
           -40.101524353027344,
-          -40.13999938964844,
+          -40.14000671615835,
           -21.293899536132812
         ]
       },
       "id": "sf.render.military.body",
       "nodeIds": [
         "sf.render.military.node.collision-hull",
+        "sf.render.military.node.lod0-anim-blink-1p3-0p6-beacon-dome",
+        "sf.render.military.node.lod0-anim-blink-1p8-0p2-masttip",
+        "sf.render.military.node.lod0-anim-blink-2p2-0p9-keeltip",
+        "sf.render.military.node.lod0-anim-spin-up-0p7-radarbar",
+        "sf.render.military.node.lod0-anim-spin-up-0p7-radarface",
+        "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol",
+        "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-feed",
+        "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-lens",
+        "sf.render.military.node.lod0-anim-sweep-up-0p6-0p5-firecontrol-rim",
         "sf.render.military.node.lod0-armor",
         "sf.render.military.node.lod0-beacon-amber",
         "sf.render.military.node.lod0-canopy",
@@ -5111,6 +8288,15 @@
         "sf.render.military.node.lod0-mechanical",
         "sf.render.military.node.lod0-mechanicaldark",
         "sf.render.military.node.lod0-warning",
+        "sf.render.military.node.lod1-anim-blink-1p3-0p6-beacon-dome",
+        "sf.render.military.node.lod1-anim-blink-1p8-0p2-masttip",
+        "sf.render.military.node.lod1-anim-blink-2p2-0p9-keeltip",
+        "sf.render.military.node.lod1-anim-spin-up-0p7-radarbar",
+        "sf.render.military.node.lod1-anim-spin-up-0p7-radarface",
+        "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol",
+        "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-feed",
+        "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-lens",
+        "sf.render.military.node.lod1-anim-sweep-up-0p6-0p5-firecontrol-rim",
         "sf.render.military.node.lod1-armor",
         "sf.render.military.node.lod1-beacon-amber",
         "sf.render.military.node.lod1-canopy",
@@ -5124,6 +8310,15 @@
         "sf.render.military.node.lod1-mechanical",
         "sf.render.military.node.lod1-mechanicaldark",
         "sf.render.military.node.lod1-warning",
+        "sf.render.military.node.lod2-anim-blink-1p3-0p6-beacon-dome",
+        "sf.render.military.node.lod2-anim-blink-1p8-0p2-masttip",
+        "sf.render.military.node.lod2-anim-blink-2p2-0p9-keeltip",
+        "sf.render.military.node.lod2-anim-spin-up-0p7-radarbar",
+        "sf.render.military.node.lod2-anim-spin-up-0p7-radarface",
+        "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol",
+        "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-feed",
+        "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-lens",
+        "sf.render.military.node.lod2-anim-sweep-up-0p6-0p5-firecontrol-rim",
         "sf.render.military.node.lod2-armor",
         "sf.render.military.node.lod2-beacon-amber",
         "sf.render.military.node.lod2-canopy",

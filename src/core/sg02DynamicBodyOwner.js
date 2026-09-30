@@ -785,6 +785,26 @@ export class Sg02DynamicBodyOwner {
     }
     this._stepContactReceipts = null;
 
+    if (process.env.SF_47A_PHYSDBG) {
+      const dbgTick = this._simTick;
+      const dbgFrom = Number(process.env.SF_47A_PHYSDBG_FROM || 0);
+      const dbgTo = Number(process.env.SF_47A_PHYSDBG_TO || dbgFrom + 20);
+      if (Number.isFinite(dbgTick) && dbgTick >= dbgFrom && dbgTick <= dbgTo) {
+        for (const rec of this.dynamicRecords) {
+          const aid = rec.entity && rec.entity.data && rec.entity.data.scenarioActorId;
+          if (aid !== 'player_kestrel' && aid !== 'evidence_spindle_47a') continue;
+          const v = rec.body.linvel();
+          const p = rec.body.translation();
+          const e = rec.expected || {};
+          process.stderr.write(`[physdbg] t=${dbgTick} ${aid} pos=(${p.x.toFixed(5)},${p.z.toFixed(5)}) vel=(${v.x.toFixed(5)},${v.z.toFixed(5)}) exp=(${finite(e.vx).toFixed(5)},${finite(e.vz).toFixed(5)}) eYaw=${finite(e.yaw).toFixed(5)} ctrl=(${finite(rec.controlForce.x).toFixed(3)},${finite(rec.controlForce.z).toFixed(3)}) receipts=${stepReceipts.length}\n`);
+        }
+        for (const att of this.attachments.values()) {
+          const s = att.springState || {};
+          process.stderr.write(`[physdbg] t=${dbgTick} att=${att.id} rest=${att.restLength.toFixed(4)} phase=${s.phase} stretch=${finite(s.lastStretch).toFixed(4)} tension=${finite(s.lastTension).toFixed(3)} relV=${finite(s.lastRelativeSpeed).toFixed(4)} slip=${!!s.reelSlip} rev=${att.reelRevision}\n`);
+        }
+      }
+    }
+
     if (journalFor()) for (const receipt of stepReceipts) {
       const a = this.records.get(receipt.aId), b = this.records.get(receipt.bId);
       if (a && b) {
@@ -2943,40 +2963,6 @@ export const FACTION_HULL_PROPORTIONS = Object.freeze({
   'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
 });
 
-export const CRAFT_COLLISION_PROPORTIONS = Object.freeze({
-  dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
-  hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
-  wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
-  kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
-  hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-  bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
-  ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
-  ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
-  warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
-  colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
-  leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-  ship_dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
-  ship_hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
-  ship_wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  ship_drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
-  ship_kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  ship_pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  ship_mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
-  ship_hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-  ship_bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
-  ship_ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
-  ship_ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
-  ship_warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
-  ship_colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
-  ship_leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-  'wasp:faction_free': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-});
-
 const CRAFT_PROPORTIONS_CACHE = new Map();
 for (const [sil, prop] of Object.entries(ENEMY_SILHOUETTE_PROPORTIONS)) {
   CRAFT_PROPORTIONS_CACHE.set(sil, prop);
@@ -2988,14 +2974,9 @@ for (const [role, prop] of Object.entries(TRAFFIC_ROLE_PROPORTIONS)) {
 for (const [key, prop] of Object.entries(FACTION_HULL_PROPORTIONS)) {
   CRAFT_PROPORTIONS_CACHE.set(key, prop);
 }
-for (const [key, prop] of Object.entries(CRAFT_COLLISION_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(key, prop);
-}
 for (const ship of SHIPS || []) {
   if (ship && ship.id && ship.visuals && ship.visuals.proportions) {
-    if (!CRAFT_PROPORTIONS_CACHE.has(ship.id)) {
-      CRAFT_PROPORTIONS_CACHE.set(ship.id, ship.visuals.proportions);
-    }
+    CRAFT_PROPORTIONS_CACHE.set(ship.id, ship.visuals.proportions);
   }
 }
 for (const enemy of ENEMY_TYPES || []) {

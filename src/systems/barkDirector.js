@@ -230,6 +230,52 @@ export function cargoSpillLedgerText(ownerName, reaction) {
   return `${ownerName || 'Unknown owner'} — ${verb} after the spill.`;
 }
 
+// Tethys Customs Gate incident corpus (INF WF-01). The gate cutter works the checkpoint cone and
+// the Quiet Runner runs it; traffic emits customs:gateIncident on the real state changes and this
+// observer speaks them in the gate's own voice — the same "CUSTOMS GATE:" line the law owner
+// already uses for the player's weir reads. Event corpus, not a BARK_SITUATION — same carve-out
+// as hull/stunt/cargo-spill recognition. A per-kind cooldown keeps the gate from chattering when
+// the transit queue is busy.
+export const GATE_INCIDENT_BARKS = Object.freeze({
+  hold: Object.freeze([
+    'CUSTOMS GATE: {subject}, heave to — manifest read.',
+    'CUSTOMS GATE: {subject}, hold for the beam.',
+    'CUSTOMS GATE: {subject}, cut thrust and wait.',
+  ]),
+  release: Object.freeze([
+    'CUSTOMS GATE: {subject} reads clean — transit logged.',
+    'CUSTOMS GATE: {subject} manifest reads true. Move along.',
+    'CUSTOMS GATE: {subject} logged. Next.',
+  ]),
+  bust: Object.freeze([
+    'CUSTOMS GATE: contraband read on {subject}. Logged.',
+    'CUSTOMS GATE: {subject} failed the read.',
+    'CUSTOMS GATE: {subject} is flagged. The audit keeps a copy.',
+  ]),
+  abort: Object.freeze([
+    'CUSTOMS GATE: read broken — subject left the cone.',
+    'CUSTOMS GATE: lost the subject mid-read.',
+  ]),
+  dump: Object.freeze([
+    'CUSTOMS GATE: {subject} dumped the consignment!',
+    'CUSTOMS GATE: {subject} is bolting — cargo in the cone.',
+    'CUSTOMS GATE: jettison on {subject}. Scoop teams stand by.',
+  ]),
+});
+
+export function gateIncidentBarkText(kind, subjectName, rng) {
+  const lines = GATE_INCIDENT_BARKS[kind];
+  if (!lines || !lines.length) return null;
+  let idx = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    idx = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
+  }
+  return lines[idx].replace(/\{subject\}/g, String(subjectName || 'traffic'));
+}
+
+/** Minimum seconds between two spoken gate lines of the same kind. */
+export const GATE_BARK_KIND_GAP_S = 8;
+
 export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
   const faction = (factionId && STUNT_BARKS[factionId]) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
   let idx = 0;
@@ -293,6 +339,7 @@ export const barkDirector = {
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
+    this._onGateIncident = (payload) => this._speakGateIncident(payload || {});
     this._onVictimKilled = (payload) => this._speakVictimDistress(payload || {});
     this._onBodyReleased = (payload) => { this.noteBarkWake(); this._trackBodyNearMiss(payload && payload.targetId, 'throw', this.state && this.state.playerId); };
     this._onBodyShoved = (payload) => {
@@ -323,6 +370,7 @@ export const barkDirector = {
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
       this.bus.on('entity:killed', this._onCargoKilled);
+      this.bus.on('customs:gateIncident', this._onGateIncident);
       this.bus.on('entity:killed', this._onVictimKilled);
       this.bus.on('law:dispatchStarted', this._onLawDispatchStarted);
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
@@ -1115,6 +1163,48 @@ export const barkDirector = {
     return receipt;
   },
 
+  // Tethys Customs Gate: speak the gate cast's real state changes (customs:gateIncident from
+  // traffic). Same voice seam as the cargo-spill corpus — helpers.voice arbitration first, a
+  // comms:log receipt always — with a short per-kind cooldown so a busy queue does not chatter.
+  _speakGateIncident(payload) {
+    const state = this.state;
+    if (!state || !payload || !GATE_INCIDENT_BARKS[payload.kind]) return null;
+    const own = this._gateBarkAt || (this._gateBarkAt = new Map());
+    const now = Number(state.simTime) || 0;
+    const last = own.get(payload.kind) || 0;
+    if (now - last < GATE_BARK_KIND_GAP_S) return null;
+    const text = gateIncidentBarkText(payload.kind, payload.subjectName, ((state.tick || 0) % 7) / 7);
+    if (!text) return null;
+    own.set(payload.kind, now);
+    const voice = this.helpers && this.helpers.voice;
+    let accepted = true;
+    if (voice && typeof voice.say === 'function') {
+      accepted = voice.say({
+        channel: 'bark',
+        text,
+        kind: 'gateIncident',
+        ttl: VOICE_TTL_S,
+        id: `gateIncident:${payload.kind}:${payload.subjectId != null ? payload.subjectId : 'gate'}:${now}`,
+        factionId: payload.factionId || 'faction_scn',
+      });
+    }
+    if (!accepted) return null;
+    const receipt = {
+      situation: 'gate-incident',
+      reason: 'customs:gateIncident',
+      text,
+      ledgerText: text,
+      factionId: payload.factionId || 'faction_scn',
+      t: now,
+      subjectId: payload.subjectId != null ? payload.subjectId : null,
+      subjectName: payload.subjectName || null,
+      kind: payload.kind,
+    };
+    this._emit('barkDirector:voice', receipt);
+    this._emit('comms:log', { from: 'CUSTOMS GATE', text, kind: 'law', gateKind: payload.kind });
+    return receipt;
+  },
+
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onEntitySpawnedBark) this.bus.off('entity:spawned', this._onEntitySpawnedBark);
@@ -1129,6 +1219,7 @@ export const barkDirector = {
       if (this._onStuntTrick) this.bus.off('story:stuntIncidentRecorded', this._onStuntTrick);
       if (this._onCargoSpilled) this.bus.off('freight:cargoSpilled', this._onCargoSpilled);
       if (this._onCargoJettisoned) this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
+      if (this._onGateIncident) this.bus.off('customs:gateIncident', this._onGateIncident);
       if (this._onCargoKilled) this.bus.off('entity:killed', this._onCargoKilled);
       if (this._onVictimKilled) this.bus.off('entity:killed', this._onVictimKilled);
       if (this._onLawDispatchStarted) this.bus.off('law:dispatchStarted', this._onLawDispatchStarted);

@@ -52,7 +52,7 @@ export const MODEL_SUBSTANCE_TABLE = Object.freeze({
   ship_medium: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
   ship_heavy: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
   drone: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'drone-fallback', note: null }),
-  rock: Object.freeze({ shape: 'ball', material: 'rock', dynamic: true, sensor: false, ghost: false, proportionsRef: null, note: 'rocks <= 90 WU radius are dynamic (Package E); landmark rocks and rocks > 90 WU are fixed' }),
+  rock: Object.freeze({ shape: 'ball', material: 'rock', dynamic: false, sensor: false, ghost: false, proportionsRef: null, note: null }),
   chunk: Object.freeze({ shape: 'ball', material: 'rock', dynamic: true, sensor: false, ghost: false, proportionsRef: null, note: 'isChunk asteroids promote to dynamic (defaultDynamic); mining stamps radius only, so the shape stays ball' }),
   wreck: Object.freeze({ shape: 'ball', material: 'debris', dynamic: true, sensor: false, ghost: false, proportionsRef: 'WRECK_COLLIDER_PROPORTIONS', note: 'bare default is the legacy ball collider (bit-identical); live spawn sites (hullFracture/aftermath/mining) stamp physicsBody:{shape:capsule}, which plus data.proportions is the capsule fit' }),
   pickup: Object.freeze({ shape: 'ball', material: 'sensor', dynamic: true, sensor: true, ghost: true, proportionsRef: null, note: 'CONTACT_MATERIALS.sensor.ghost is false; sg02 contactMaterialFor forces ghost:true for pickups (JS-overlap collection)' }),

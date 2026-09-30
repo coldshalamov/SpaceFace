@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e97272f016c5a21651e5587efb10120b9c6037df29191f0ba233e452809250ec",
+  "contentHash": "47b9345dd6b6246a3ac86d77e1b7281c7ed5761558f49090a5914dbb71bb640f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66198b2f7848a1850c68c1d53937fde663df99932698b8887ab9406381ba4521",
+      "geometryHash": "20c773969697892ec57730ff33726078ead4af732a69b20afab9970d886815e0",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -141,7 +141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54070db33e595ddfc44cb2827fc0c4308eadfa6a622946cfe69f41b6553a3a51",
+      "geometryHash": "68ab58fb6f65d03bbd4192e1e32f3da8ad07e7089bedcaf3748d19ad1eb4712b",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck-0-55-19.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a84c81739dedad855fa78720a1e8ec7b57ea164c78e0feddd784c0a476fa16c1",
+      "geometryHash": "9f660155c4f425a53a3084a0189917d4826496d873e308cb43ad6dcbdf541c5f",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a84732b44030d2ca7d9b9b2d2892193baa8ee51e37ba74acdcc4e6e4a3552944",
+      "geometryHash": "9fb028a81c88c67e9309c08a09825c5ffb7ef09aac68b6aad26355397f65cb9c",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.deck1-35-19.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -216,7 +216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "372d9d99f90a647db1c77001f10ca7bf82e5a56cffc41fd074461c47b37ebaa3",
+      "geometryHash": "23af2574acb81f26c1b71cc503a42c35f1344171a91102cf3b7cd4d3e43066ec",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar.primitive.0",
       "indexCount": 402,
       "indexed": true,
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f14bb054b96c6b749942bcd73214665ee407fe90dd7da73f7902128813f80bb6",
+      "geometryHash": "76c63b87797ba9c5eb5a3cbb94c5cf5b8d3fe6fd91975421ad2c18baa77cb765",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar.primitive.1",
       "indexCount": 486,
       "indexed": true,
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e29bbb15dddcc35c3295230975a034747d576f7a15b416c0f3c0614b12440995",
+      "geometryHash": "1148a1922601bfee3fa22444ce76431c6b369159ea2d5ecf8ed85ec69f065c50",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockcollar.primitive.2",
       "indexCount": 108,
       "indexed": true,
@@ -291,11 +291,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8270024ad19e02254bd62883601d3c607507c2c5ae110e7a84fecbf58c0e4cf",
+      "geometryHash": "f6039d1f1e064ac565d84003b3bf29e4f56eede047a3b3931f30c08cad509418",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockring.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
+      "materialHash": "335e894869a1e4dc3e73be38a8f826824bfd2e1f3889035b982bbf636a7db8e7",
       "materialPipelineKey": "opaque",
       "meshName": "DockRing",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.dockring",
@@ -316,7 +316,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bff8297da9afb823c21a5f5c41305ec3b0dd9be582987ea84397597dcf884993",
+      "geometryHash": "5ff4ffc320195213207fab1445573406837a023f43cbb8af40f1a03c2d623ac1",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.dockring.primitive.1",
       "indexCount": 48,
       "indexed": true,
@@ -341,11 +341,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79d67b203ce860d0d5314afe4f755aee504bc4692ed57651e6c802eb74902c9a",
+      "geometryHash": "a64096664a0306bcc562446f9ceb0357137b635412e2caa026fc607994eafb56",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.0",
       "indexCount": 4104,
       "indexed": true,
-      "materialHash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
+      "materialHash": "7a055dc7d624f0f43c39ed0ffc1e171b97050aed2ce5d3e8098f456d1cb804df",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
@@ -366,11 +366,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af285c2bce20c7d9760329b3919c0870ce5a71a896ef9b542ad59f3d89569b8b",
+      "geometryHash": "a81a09113fab85dfe53340a04d115c557cd6e1290c07f2e6ce2e5d7e13ecb077",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.1",
       "indexCount": 1716,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
@@ -391,11 +391,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44df5620ba5310446b61908cf8735b61fc10ce4ef42d48625e08a1a5a57867b9",
+      "geometryHash": "39129d7fec10bea64f44857ffb356e3bbf0266b87ba6f5c017dd2e9d8ec7e785",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.2",
       "indexCount": 5544,
       "indexed": true,
-      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialHash": "86eb38f63f4d37a7e3c9074152638134c14df8510a8a2579cdafdac18268711f",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
@@ -416,11 +416,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e981399a2e3bb785dc2d80f3f8f7205a235187dbf7f146e002ed5e69e7c9b098",
+      "geometryHash": "055e710eb76a2ce437447484ce274e0e4c1d4459ab90a3e98102013340e50d2a",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.3",
       "indexCount": 462,
       "indexed": true,
-      "materialHash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
+      "materialHash": "335e894869a1e4dc3e73be38a8f826824bfd2e1f3889035b982bbf636a7db8e7",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.drum",
@@ -441,7 +441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e889e0f6f763fad9fc4e1d064e360c3af5bbc13a3b1263490663f8cb07dd48a6",
+      "geometryHash": "ab4a12ef0fea0cedb9ab909a6f1c201d9963d027fcda1da829abcbbfac4c9098",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.drum.primitive.4",
       "indexCount": 690,
       "indexed": true,
@@ -466,11 +466,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "502c81a6a9a8f1f4db58e7550b303ca930fe249d077d287db4a93462ae8e4a39",
+      "geometryHash": "fdd7170069a66fc66f29f4f19529a900212daf81ccc6ac03ce0056af034f120d",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1.primitive.0",
       "indexCount": 330,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Gallery-3.1",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1",
@@ -491,7 +491,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8de37e837980f585acf0e9278e5521d5c0cc6962b1629776cc2cad61c5cce437",
+      "geometryHash": "2ac25e0a426436af46e69154610456b56745a7f959d2ca1c1e4234c66a86e3ae",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery-3-1.primitive.1",
       "indexCount": 90,
       "indexed": true,
@@ -516,11 +516,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af8202eca31e2e2f3419ce759b5f7516cf47eb8f1d6f5d0b79a204f44de4e5f0",
+      "geometryHash": "95e4b084066ca121e00b5a94f79e1bc5c4910f134531f3bbc161ad7a810b597a",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1.primitive.0",
       "indexCount": 330,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Gallery3.1",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1",
@@ -541,7 +541,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42258b353db17ac5386af646e9089b090d539066c96ad364e66681c3b72c08b7",
+      "geometryHash": "cf447eb39ec626173b80ffd9187ede189bab7697375bfff15cae45500fef78e7",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallery3-1.primitive.1",
       "indexCount": 90,
       "indexed": true,
@@ -566,7 +566,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "366cb6fe6af48471f3bc105582e2c53a16b93fa98175e706122f7bf58c202c1f",
+      "geometryHash": "5e37c7bab02ba5e0618719de97e4f919ee4878a1a941c306d7fe4eaea22b7702",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -591,7 +591,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33940a4ff7449a9d1c595c3aac78d01449218a6677e967742628fff435b04056",
+      "geometryHash": "6edf6fe6d718c8905fdd6b6535b50f2e7a4b68393994def019c4feaaa55d7a03",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass-3-1.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -616,7 +616,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96c7d1d6b187602e49201b0f0598b7428082e2879ebe5f2ac724f492cd2dd2b7",
+      "geometryHash": "da0f725c27983d71b987ce89619365f0c2c22d212879f47d0fce6653905a813f",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -641,7 +641,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f73a33482cdaa97d28f893fd7beb51e3ea87387ead6493ee6e2791d0b2f2f49d",
+      "geometryHash": "aff29c7f6df095709eb78bdfc976ae0e84ebdc9d0861db8b3611bd08eaeedd56",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryglass3-1.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -666,7 +666,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67b5d644245464d222d58f8b88a7d8ee8d02b66df5ef7e25cf840dfefcf954b4",
+      "geometryHash": "d98c04b75f471e97d747d115f760fd780c8f299f2f96c483b64f4ec9253c0922",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -691,7 +691,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "afe86b3ce7a629270612c388c916967d0e53ee53674233777fb26ccda79cf424",
+      "geometryHash": "b08a8628fec2d3ade44b49d0153b5f6208f4facb53a7ae24f3c2276d5180d673",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit-3-1-11.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -716,7 +716,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c084732a8cab4b5b3e938f251c8589202e43416a6b554d6fa66eb2b5b0f7db06",
+      "geometryHash": "f8b2ec4c649a72fece2076f4db955769c71dbaabada4fa3747ab63692862c73e",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -741,7 +741,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0f4fad833e21b27ef03f385d63000aa6a2a99f8a9f6f9c1dafe7911f415e531",
+      "geometryHash": "6c10423b1af045a3ceefc7a2e4647b64249abaff842e96543dcb805f08d12423",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.gallerylit3-1-11.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -766,11 +766,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5f7fd3284a7a45e259f7d6b4114b6a35a3e65e959d722e1790e46daf5772179",
+      "geometryHash": "e2c0a38ce8df07f1df8afa18582d4b458ae48d725083604ebf430cf2d56c72e5",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib-3-16.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialHash": "86eb38f63f4d37a7e3c9074152638134c14df8510a8a2579cdafdac18268711f",
       "materialPipelineKey": "opaque",
       "meshName": "GalleryRib-3.16",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib-3-16",
@@ -791,11 +791,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f0cad6869ed09b02d97888819aee5ce34288fb6352bb1beb857856f3c9e8c92",
+      "geometryHash": "7e204ef250f9c7a998c82528a683e5e7ad2bcd6d9e77780dece0696c2739827c",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib3-16.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialHash": "86eb38f63f4d37a7e3c9074152638134c14df8510a8a2579cdafdac18268711f",
       "materialPipelineKey": "opaque",
       "meshName": "GalleryRib3.16",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.galleryrib3-16",
@@ -816,11 +816,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e45c9dd03c49fec4933e7e5d19b7322549d9ce3f0edc883a8feb65d0d3ca63c",
+      "geometryHash": "cb77ed6922d235c6c6366458b82a64c0bdc0083a05b738a55f9097894cd424f4",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-0-55.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Mullion-0.55",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-0-55",
@@ -841,11 +841,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c51c33100c343c93a48b8fdfa5b5beebad007673c009b3f0db65a117d59f6ff2",
+      "geometryHash": "1af15d7d648a422d724c439a5e0c9c398a862ae049ceb54583910533596b0ed0",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-1-6.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Mullion-1.6",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion-1-6",
@@ -866,11 +866,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2448e0ee7fec533bdbf5e911e4c1f75555196c79e1e8bc421c64180a9ba231cd",
+      "geometryHash": "443479eb210511d0fe5c20e00e1be9f4bc10999661f3fe1e87dd485762fca3f1",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion0-55.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Mullion0.55",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion0-55",
@@ -891,11 +891,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92d2ffcaa3b9140adbd3bb3c5ab61e981249eed79979d9f45bb1453e9b21f2bc",
+      "geometryHash": "3be2444cd025f015ef228c648eff218289090c3508edb6d15ee23b2b09bce2fb",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.mullion1-6.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Mullion1.6",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.mullion1-6",
@@ -916,7 +916,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37d9d8a69d1337809ba392391c1176978d348eb17cd74b2c3933e5cb3f4c031a",
+      "geometryHash": "4cb91eaba6c7235fa6abdd7fab7cca98c6bd6d6831ca01cbcbbb4ff2b17ba587",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -941,7 +941,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce1bfd49b25bca5173457c35e5fd664d2b8becf76b6fb4d360ed602826733a7a",
+      "geometryHash": "4e5e0cf3ba181bdaa7779928a1ac41736354a83667ea65577ce37f86e101d57c",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -966,7 +966,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22fe3a47fe5efdb9dc9d1ff46be40f5854f8c65db7b28ca314dfbedf63223db3",
+      "geometryHash": "d080c3b6edc141e52d6dfa166f2b16eb8da3082bbc495b9846a9451c46172e25",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-13-0-10.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -991,7 +991,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b21155d467f60225a85cbd781cc98489956d659783a4d81418abeb81211fbbb",
+      "geometryHash": "a0a39240bf46bd22207b1bde8570ba72d1735b88b0abcb22ef30b48f06c7d3b2",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1016,7 +1016,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c290207bf9f451261b9b4e044ab90d538706bfa303a91e1a2c7a56452f10ffe",
+      "geometryHash": "3839a6c569b10bcc76ecaaa8d6cde15d50c1b6e032a34391e88607e028d15678",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n-0-130-10.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1041,7 +1041,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39ac58f2a79210e2782106c9fe5ba6a8a7dfe683d749444d50082db448a32b9a",
+      "geometryHash": "c2f5d21dc6647ab3e34547930ff5ed088da81855fc96075fe61fea5a90b9d5da",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1066,7 +1066,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a10c5bac6e76fb96e3395a221aa487e50b13579409815e04223ac123eee9ccc",
+      "geometryHash": "d0d91c2bffbb1440844d05d5a1790e8b47fae12dff5e052d55dd07cb142802cb",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-13-0-10.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1091,7 +1091,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87399ba9015f7da6ceaf31833624963a1eecf006995e2c403d7cb4cf76319159",
+      "geometryHash": "7dff21917b82f74c601247462c1963d2a423ad8aedf6038f36fa3c5b14880332",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1116,7 +1116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3f53282fe2c449d2844f5caf2070715603e85343481f65f6d22a3c82c355b16",
+      "geometryHash": "a3fc196003b541d906cf1428e2343d8599daa27d7c27cd5ddd61c6fddfaacdfc",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd-n0-130-10.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1141,7 +1141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19f7cd43141c1441960261baf275e589f6d724b0a9285d63f768488b2f6cd53c",
+      "geometryHash": "71f1c6d473c2ecfcf8201b2bdfdcf83aa10784c9f0a001c1be0444c13dd31cc9",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.rcsfwd.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1166,7 +1166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "666350b103873d841820323c364538539df385fd2074680e095a625078eda746",
+      "geometryHash": "51b0487a3122a5866466d5e26701c6c49b1d8367c80a8f1e2343b7dca9bc6eb6",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-10.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1191,7 +1191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a2f337c39653572169417d3ca74c2f3f2b2bd151695cf6d4a0d84714e9cd58d1",
+      "geometryHash": "78d990fd45f8ef6334e5bc8d2c099008a6700df62ad409177cff0e79a06667ff",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.skylights-11.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1216,11 +1216,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8775b4365947a693b7b2af6718850a650c05857761816fbece03f1ca0c8e8c61",
+      "geometryHash": "c3f8456417e1679d4042cd3d3e9343fa623cd36e5ace56207b5cc1dd9f31f4c1",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.spine.primitive.0",
       "indexCount": 696,
       "indexed": true,
-      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialHash": "86eb38f63f4d37a7e3c9074152638134c14df8510a8a2579cdafdac18268711f",
       "materialPipelineKey": "opaque",
       "meshName": "Spine",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.spine",
@@ -1241,7 +1241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d7cbf8bd536b024ac3fd02ae1e374d1a6bd3b948acdc4304bb134ce2adb819d",
+      "geometryHash": "2a790596916051c09d3474f92d31e2ea489faae337db198f0144d399244774cf",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.spine.primitive.1",
       "indexCount": 132,
       "indexed": true,
@@ -1266,11 +1266,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "773840c1b93bfffd703b4b3f532f7c26e6dac048f0fedc6ed8ea1b18a05bc03b",
+      "geometryHash": "19bbfe167e5f87d5b331d706e0786ee2c6de54c71b9be0bc5cd26d8f4efd7d89",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.spinesaddle5.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "SpineSaddle5",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.spinesaddle5",
@@ -1291,11 +1291,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ef99f306786a295cef1f84f896d402a18749c175646dab7f4f1bee954a8cead",
+      "geometryHash": "526655fff940747c7dcb728333a5d0c0db1633b93b53c25ac779097dc76c9ab7",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.0",
       "indexCount": 4446,
       "indexed": true,
-      "materialHash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
+      "materialHash": "7a055dc7d624f0f43c39ed0ffc1e171b97050aed2ce5d3e8098f456d1cb804df",
       "materialPipelineKey": "opaque",
       "meshName": "Wedge",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
@@ -1316,11 +1316,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85744c3cb28c57366601c0be72258b113aed4ba80d52fc7a100c3936baa3ce98",
+      "geometryHash": "905684437509c56d1f2ef3e45d624f27466e902fcb195831d7359773491310c4",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.1",
       "indexCount": 996,
       "indexed": true,
-      "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
+      "materialHash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
       "materialPipelineKey": "opaque",
       "meshName": "Wedge",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
@@ -1341,7 +1341,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0a41f719b9871deb728ea8774f5c1f3595840bca65735181eae7b055a56bb85",
+      "geometryHash": "44e0111c050f8f0b944810c1ba7f9e16d4eb8e6e65abbfbb1cb96e57ac1b2016",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.2",
       "indexCount": 2166,
       "indexed": true,
@@ -1366,11 +1366,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa1076e3e237c8c0b4e57eeafd6185bf93005ad11688090cbb82571a20b5f7cc",
+      "geometryHash": "a82858e41b4fe5f250d02826343f72f440ca606e987bbe4a241a004ad12271b2",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.3",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
+      "materialHash": "86eb38f63f4d37a7e3c9074152638134c14df8510a8a2579cdafdac18268711f",
       "materialPipelineKey": "opaque",
       "meshName": "Wedge",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
@@ -1391,11 +1391,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29126a44fa9f925cad4d252656593ffa1b84726f48fe329ca649fb944e2fab55",
+      "geometryHash": "33598996160dac5a19222d32c7afd3a78a69dd055eb81441d6657d53a08c773d",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.wedge.primitive.4",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
+      "materialHash": "335e894869a1e4dc3e73be38a8f826824bfd2e1f3889035b982bbf636a7db8e7",
       "materialPipelineKey": "opaque",
       "meshName": "Wedge",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.wedge",
@@ -1416,7 +1416,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d01a7fb8fed44bbeee38e8404de4209d281915ab191c122ce49e3caf94d1646",
+      "geometryHash": "a0d0f358326ccd9304d1ff07e4d14de07f094dbc47133fcb4bdbb755011293fe",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1441,7 +1441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0ecb30393229d26019d6f4e52b169dbe451ba297e68fbb34462ac23ec66f845",
+      "geometryHash": "5af02a69cd26c015a9eff89c6176325e500c4898438d3caf489298f3b7254981",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1466,7 +1466,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1baca0ad9bfd5bc80f3a533cffdd6c6fb70d6a854d6c75d067c01028c1efcee6",
+      "geometryHash": "19363c02f62e7b7f208be7b9e4114a9c209e5acd9b02200f8e8097051b73bc50",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1491,7 +1491,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf8054542a021a17f2b20b17bdb26d77478fd0f2a74fa69d0c8eefe2695feccc",
+      "geometryHash": "db8412f5cc8e1201b0ed63b17bf2fad120d7facf2b5ac4d35f1f29b318d5c389",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1516,7 +1516,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8290a8ac1ce89314fcccd18d1dc9a08bdbb156b863e5fdd2c0c9ad9d1b77bc3c",
+      "geometryHash": "2210691108a61a6de751a33172dc896a393eb92e8c98aae43745e22df1ea007e",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1541,7 +1541,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca97cffc5077df6d1bcd168f254cecd03b9fc9946a84d178255327cc767723da",
+      "geometryHash": "712be388d38828f363d2e7b606180d19e6ecbebb1c545ad7bf62f976200ba403",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1566,7 +1566,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59b8099ee40ad6bbb94b68c1ca975f14424b569854d6eb3c45d73f71c28308dc",
+      "geometryHash": "2e7ac11d6f6526028c5bc6bc74aeb4f791c49944125e32d0bba60069c304249a",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1591,7 +1591,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "534fbd487a522aac2df52ef148960f04d286c20d1267b8450855a0b0099a0dc1",
+      "geometryHash": "42887811b4cbd2467bb9bff9b227e83fd2d71eedf2056bbf2dffb82d78516062",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1616,7 +1616,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8aed7b35324ad09dd4a7754feae4e4cfec7ee1cd9cfc048498a5935070161dcc",
+      "geometryHash": "ee69c27720d4ff41259067cbe9ae8d04b48b865f480f95dec2f905d4d05a4fff",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1641,7 +1641,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "daf6fd313fcf367eecd2fbd160761a42de7a4d495323c28b1469d9c573f55477",
+      "geometryHash": "4b2795c66a9771f0c33a6627af8db3f8da7272990a0dcbcbfc6e72d99443731a",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1666,11 +1666,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6bca2fa257b13148b0d08ec26422a7e3d07f9b0a01adf443482c35a2a51aa4df",
+      "geometryHash": "f1f67ca3423fae2d83faeca8dee4e4f2c4895afae2855b0c2aa6aee0c1d810ba",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_t_tear1",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear1",
@@ -1691,11 +1691,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f6f3477d0d6244d88ccd28a67c6cf3620da4caa24395cb9c8f11b7d98a24468",
+      "geometryHash": "e9560cd441443273f3bfe6e532c18cd4e79884be9007b96ebb79eb9e62e01810",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_t_tear2",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear2",
@@ -1716,11 +1716,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e9d84e2430e5b8ff835a0451b855a286e1afd65adc4f1cebfb5abcee77d0cf6",
+      "geometryHash": "6430c1a980c4e80634f9c738fb8adab517ca06a68eea77f928c88670bd058d65",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3.primitive.0",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_t_tear3",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3",
@@ -1741,7 +1741,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98198ea65c2c06d9601a4639a41c64f2b9a44808ac7fa7634e7b22e6d886a54b",
+      "geometryHash": "6fdf5d4954e340b38737fefbf51664976c5392f61f53c6ea61419a8da20ed2d0",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear3.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1766,11 +1766,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9381901b30793ded91a297557f284bb64a3f1c62971bff147fa276c630f3f576",
+      "geometryHash": "c87a0a6fb67795013ea1ebe6031a517c02402e15fe0af35b51eb17ce52d54488",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4.primitive.0",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_t_tear4",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4",
@@ -1791,7 +1791,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d1c407f2f01c527c7ac2da7def682c8016e3507206d683c0897dfd22a291ed0",
+      "geometryHash": "b5ed2d6e5124ce06644bb5d05fad4427d14ffd62a0b4c2a63a9d38fdced24245",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear4.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1816,11 +1816,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a64b706a78b333550b1e5d5e32b3bb79ac28061c24fa8c6799c63243d94f67ec",
+      "geometryHash": "5aa9b555e2aded4ae4b5ce61a28fdea9c21675be24320857f7ad1a02238ae9f7",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_t_tear5",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear5",
@@ -1841,11 +1841,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "227db45e244641f3d03eca5ae6a9328e434323320ba7f083c770b3f84b1c57a4",
+      "geometryHash": "13668da626ebbbcbd6f701b8e7ad6674993f5be73adde8b2138118becfd2d23b",
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_t_tear6",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-t-tear6",
@@ -1858,41 +1858,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
-      "id": "material:26f0260af55f95f62389669d",
+      "hash": "335e894869a1e4dc3e73be38a8f826824bfd2e1f3889035b982bbf636a7db8e7",
+      "id": "material:335e894869a1e4dc3e73be38",
       "name": "Forge_massline_express_liner_hazard",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
-      "id": "material:436e825fb4214a10ba93e7b7",
-      "name": "Forge_massline_express_liner_paint",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -1936,6 +1904,70 @@
       "textures": []
     },
     {
+      "hash": "7a055dc7d624f0f43c39ed0ffc1e171b97050aed2ce5d3e8098f456d1cb804df",
+      "id": "material:7a055dc7d624f0f43c39ed0f",
+      "name": "Forge_massline_express_liner_paint",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "86eb38f63f4d37a7e3c9074152638134c14df8510a8a2579cdafdac18268711f",
+      "id": "material:86eb38f63f4d37a7e3c90741",
+      "name": "Forge_massline_express_liner_paint2",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "9298fcfc7c081d69e38949531d83cb8811ebc7cf1e286c15665e626113acbefb",
       "id": "material:9298fcfc7c081d69e3894953",
       "name": "Forge_massline_express_liner_gunmetal",
@@ -1968,38 +2000,6 @@
       ]
     },
     {
-      "hash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
-      "id": "material:987e4aefae13e344c4e3752c",
-      "name": "Forge_massline_express_liner_wk_torn",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "9dfd8e671ab9b95b1b24da2a5708eda6faf18a4159861c528db95f69254de385",
       "id": "material:9dfd8e671ab9b95b1b24da2a",
       "name": "Forge_massline_express_liner_wk_scorch_edge",
@@ -2026,38 +2026,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
-      "id": "material:a960ad704f56f0f9ba951b08",
-      "name": "Forge_massline_express_liner_paint2.frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -2160,9 +2128,41 @@
       ]
     },
     {
-      "hash": "e66d36dfe14331faea5f2c956e93c1e9f74b32d707dc15ed03911c87566fc360",
-      "id": "material:e66d36dfe14331faea5f2c95",
-      "name": "Forge_massline_express_liner_paint2",
+      "hash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
+      "id": "material:e0179ca362643e13222451a3",
+      "name": "Forge_massline_express_liner_wk_torn",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f61dd9036a2681a9a1d58c62e89da746a02faef0a48213c5eff18da021c12657",
+      "id": "material:f61dd9036a2681a9a1d58c62",
+      "name": "Forge_massline_express_liner_paint2.frame",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -4697,19 +4697,19 @@
       "sha256": "92394bb99860fc9278d3651f4306a4c82f4e30753dcdd3a1541584f6f7e30948"
     },
     "sourceGlb": {
-      "bytes": 338656,
-      "sha256": "1c45dd91f7e886f924b654f0bb69aba64e361a7a84595bec9023b6017e050b1f",
+      "bytes": 499584,
+      "sha256": "6dd24ebc9e6abd5d28d68b9e8ef4ed0fb58a5301d7a7e43235064148cf72449c",
       "uri": "place_aftermath_wreck_liner_bow.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 477936,
-    "sha256": "390fc205c7ed2083e255788a3683629d83e90672f71031ca3b74e204b87c13f4",
+    "bytes": 638756,
+    "sha256": "9963d5dca485f7f3d60763f01b0561a6c80901f618f8d02b90d9e24ba623a45e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7070,7 +7070,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_bow.glb"
   },
-  "runtimeHash": "d23213b7c6a634e0691994f436cfb5ebd02956c2f4f00faa9a3a4f06f20eaf41",
+  "runtimeHash": "ef9f720d62eba666e2cd5bcd52736f24374cc62a6975d65f1211253f4bc9cb23",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

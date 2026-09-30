@@ -297,6 +297,34 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'Empty hold. The darts collect what the cargo could not pay.',
     'Nothing to weigh. The bombs invoice the hull.',
   ]),
+  // the scissors — the belt pack that quotes the toll from ahead while the wake wing holds
+  // the exit. The demand never mentions the second blade; the spring does.
+  scissors_demand: Object.freeze([
+    'REACH: toll {amount} cr, hauler. The lane is ours today — cut thrust to pay.',
+    'REACH: {amount} in goods and you pass. Brake and be civil about it.',
+    'REACH: lane cut. {amount} cr or we scrape the hold right here.',
+    'REACH: pay the {amount}, keep your paint. Or keep both and lose the rest.',
+  ]),
+  scissors_spring: Object.freeze([
+    'Wake wing, close. The scissors shut.',
+    'Behind you, hauler. We never flank from ahead.',
+    'Both blades, burn. The pocket is closed.',
+  ]),
+  scissors_paid: Object.freeze([
+    'Paid clean. Wake wing, stand down — thread the stones, hauler.',
+    'Taken. The gap stays open for payers.',
+    'Good weight. Blades in — let them through.',
+  ]),
+  scissors_refused: Object.freeze([
+    'Bold. Wake wing — they are all yours.',
+    'Wrong lane to be brave in. Shut the pocket.',
+    'No tithe. Both blades, take the hull.',
+  ]),
+  scissors_run: Object.freeze([
+    'RUN? The wake was ours before you haggled. Burn them.',
+    'Straight ahead is the lane we took. Blades, shut it.',
+    'Run then. See how far the gap gets you.',
+  ]),
   // vael warden convoy — lawful freight under guardian screen
   warden_convoy_alert: Object.freeze([
     'TRAFFIC ALERT: Vael freighter under warden screen. Raiders want the hold; the screen wants the lane.',

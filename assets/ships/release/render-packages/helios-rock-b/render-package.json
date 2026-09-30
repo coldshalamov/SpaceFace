@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b2265ee01e24133a8d932929d2114e78c09b63d11d3a9744f0cb3184341e9966",
+  "contentHash": "8c86bbe45717f3580e5ad29a68bccc2aa7f84668875b73a08214c31ee749ee8b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -101,7 +101,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0645a9251d095c57c6a2729f39de4a3c6f644ef557fcdfa345b0d4229bf6fa38",
+      "geometryHash": "13c8e2de01d27173dea66ddc8cba886b9e9d2d2bffb3014d332661ff7a6a067d",
       "id": "sf.render.helios-rock-b.mesh.lod0-canopy.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -110,7 +110,7 @@
       "meshName": "LOD0_CANOPY",
       "nodeId": "sf.render.helios-rock-b.mesh.lod0-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 528
+      "vertexCount": 530
     },
     {
       "bounds": {
@@ -126,11 +126,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b0774a0887b19d2576ed2ca007d75710c1bb03a8c6f36c4e9b9fe87e8b79c73",
+      "geometryHash": "0244c9d7673b5288b1ef48475ec5ef1c9c8589a57cebcb341ab08c3e376dd19b",
       "id": "sf.render.helios-rock-b.mesh.lod0-ceramic-ice.primitive.0",
       "indexCount": 2400,
       "indexed": true,
-      "materialHash": "a5da3c499a693801e5a7c12d7e6f142502b3b44858ec83414a6905bd0c5b812b",
+      "materialHash": "1cf394f707c0a1aef84020f5f2e74e9cc5e6571a5446fd9b540145a684c6030b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Ceramic_ice",
       "nodeId": "sf.render.helios-rock-b.mesh.lod0-ceramic-ice",
@@ -151,16 +151,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed9cc47a74a94cda64bf3c6796c958a107e1ba9decaadddf5fa61ceffb9d05cf",
+      "geometryHash": "4ab92bacf02c7a1d729fd000608ec4f1cdfd13243c3c1e4c3c56078e97a6d62a",
       "id": "sf.render.helios-rock-b.mesh.lod0-stone-deep.primitive.0",
       "indexCount": 7680,
       "indexed": true,
-      "materialHash": "695f6346f735e89bb75ad10f9a64ea3742b5211a2121ad887c5e7dcd66bf08c8",
+      "materialHash": "436342599d68dd4e24b33c3c82db87e49cd26f6f6c9fc0dffe21853e3051c498",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_deep",
       "nodeId": "sf.render.helios-rock-b.mesh.lod0-stone-deep",
       "primitiveIndex": 0,
-      "vertexCount": 5434
+      "vertexCount": 5439
     },
     {
       "bounds": {
@@ -176,11 +176,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff90d823619260f7cb26e95b75cb8efa5ae84a5b2242da2f46826f27bcb55b28",
+      "geometryHash": "546fa226d1ab16f083025af76e9ae967d9606c12db2792c5a0e410461b5724f5",
       "id": "sf.render.helios-rock-b.mesh.lod0-stone-strata.primitive.0",
       "indexCount": 1875,
       "indexed": true,
-      "materialHash": "55cf9986a1ceca437ce6241ed2fde1cb2b9403e3efa1a29127dd953f1969edb7",
+      "materialHash": "0435ecfd3f2dde8636984042019cbaeda36a5cb25bace85358dc9fc9f429bab6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_strata",
       "nodeId": "sf.render.helios-rock-b.mesh.lod0-stone-strata",
@@ -201,16 +201,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8aa285e0ec9979cfb785a8efaf47b6d8014f3f70148afcfd4eed328f58f34b7b",
+      "geometryHash": "50bdcc70334f665dd93a01d0925dd827e590b0ca737f23d2133695d891f25e6b",
       "id": "sf.render.helios-rock-b.mesh.lod0-stone.primitive.0",
       "indexCount": 7827,
       "indexed": true,
-      "materialHash": "c6b5de6377f0b096ba59dff26fc8f0b5f7540e244fa263ed7a6e99ffb80a15e4",
+      "materialHash": "a3f7372310701e16c634736abe2a33deb1c63f02ded5ddc49bdd287ff8401684",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone",
       "nodeId": "sf.render.helios-rock-b.mesh.lod0-stone",
       "primitiveIndex": 0,
-      "vertexCount": 5308
+      "vertexCount": 5314
     },
     {
       "bounds": {
@@ -226,7 +226,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5aa378be17d9088f3d65a7ee88f210dd55ccb0ebbd29563c5c248ae148f43fb",
+      "geometryHash": "5a528037b4d31d6c145f6d412bdcc8e7d79d107ee945d6f4fea0c4e2e6731089",
       "id": "sf.render.helios-rock-b.mesh.lod1-canopy.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -240,22 +240,22 @@
     {
       "bounds": {
         "max": [
-          1.8950022459030151,
-          4.427206039428711,
-          0.8018893003463745
+          1.8951746225357056,
+          4.427209854125977,
+          0.8015806674957275
         ],
         "min": [
           -1.7953904867172241,
-          4.274486541748047,
-          -1.6963648796081543
+          4.274482727050781,
+          -1.696339726448059
         ]
       },
       "drawMode": 4,
-      "geometryHash": "290d745349670c119b682bbd91e5817f5be06fc080a38d4c78aa9b64cac6e038",
+      "geometryHash": "a3565844d626cdebb9e57f54aacf01da9b72f388dd625b1ae945f442f47a1535",
       "id": "sf.render.helios-rock-b.mesh.lod1-ceramic-ice.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "a5da3c499a693801e5a7c12d7e6f142502b3b44858ec83414a6905bd0c5b812b",
+      "materialHash": "1cf394f707c0a1aef84020f5f2e74e9cc5e6571a5446fd9b540145a684c6030b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Ceramic_ice",
       "nodeId": "sf.render.helios-rock-b.mesh.lod1-ceramic-ice",
@@ -276,16 +276,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2091a93c2063a19773d50eb5719492ffec9772b16b9d7491a9ad6b64e2a74fa1",
+      "geometryHash": "6751b97a30a3e1b85a6530b264abb590ab164fa6bfbf73ddc1e3402e081c5ba5",
       "id": "sf.render.helios-rock-b.mesh.lod1-stone-deep.primitive.0",
       "indexCount": 3390,
       "indexed": true,
-      "materialHash": "695f6346f735e89bb75ad10f9a64ea3742b5211a2121ad887c5e7dcd66bf08c8",
+      "materialHash": "436342599d68dd4e24b33c3c82db87e49cd26f6f6c9fc0dffe21853e3051c498",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_deep",
       "nodeId": "sf.render.helios-rock-b.mesh.lod1-stone-deep",
       "primitiveIndex": 0,
-      "vertexCount": 2434
+      "vertexCount": 2436
     },
     {
       "bounds": {
@@ -301,16 +301,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b44c714cf4c314bfe981faebfbe6980e4a90fa5e3c99433b9fdba667d1e512db",
+      "geometryHash": "9f64273f649530bf32b95785c12b0e5a6f52222e64b6c26163170b0931075ba4",
       "id": "sf.render.helios-rock-b.mesh.lod1-stone-strata.primitive.0",
       "indexCount": 795,
       "indexed": true,
-      "materialHash": "55cf9986a1ceca437ce6241ed2fde1cb2b9403e3efa1a29127dd953f1969edb7",
+      "materialHash": "0435ecfd3f2dde8636984042019cbaeda36a5cb25bace85358dc9fc9f429bab6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_strata",
       "nodeId": "sf.render.helios-rock-b.mesh.lod1-stone-strata",
       "primitiveIndex": 0,
-      "vertexCount": 568
+      "vertexCount": 572
     },
     {
       "bounds": {
@@ -326,11 +326,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0123ecddb7be8b81dfd2ab531b6582ec0e763026b30f950c95374d4aa1915b19",
+      "geometryHash": "655386e78a97e5e5d832422f7919204880fe19c1803d5e75c51c842a36aa8fe4",
       "id": "sf.render.helios-rock-b.mesh.lod1-stone.primitive.0",
       "indexCount": 4185,
       "indexed": true,
-      "materialHash": "c6b5de6377f0b096ba59dff26fc8f0b5f7540e244fa263ed7a6e99ffb80a15e4",
+      "materialHash": "a3f7372310701e16c634736abe2a33deb1c63f02ded5ddc49bdd287ff8401684",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone",
       "nodeId": "sf.render.helios-rock-b.mesh.lod1-stone",
@@ -351,7 +351,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "393e47a0f7ded05c4cd7d95f69da027f691a308d2d76ad1c1ed0816c03a1be85",
+      "geometryHash": "03f984f34a9566d235c9bcf655445bb45bb1a3a11aeae7146cd333e93b7b52ca",
       "id": "sf.render.helios-rock-b.mesh.lod2-canopy.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -365,22 +365,22 @@
     {
       "bounds": {
         "max": [
-          1.9005134105682373,
-          4.412042617797852,
-          0.8018540740013123
+          1.9004651308059692,
+          4.412001609802246,
+          0.8036112189292908
         ],
         "min": [
           -1.7997840642929077,
-          4.274270534515381,
-          -1.6963295936584473
+          4.274683952331543,
+          -1.696346640586853
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ec71b508a48c64358a58faffbaa0531b30b7f9800a4fccd117fde1d7c8d515c",
+      "geometryHash": "6adb233d0457fca0ee5397a1c8dfce1d8db9f2860a744d9640f6c81999473f0e",
       "id": "sf.render.helios-rock-b.mesh.lod2-ceramic-ice.primitive.0",
       "indexCount": 66,
       "indexed": true,
-      "materialHash": "a5da3c499a693801e5a7c12d7e6f142502b3b44858ec83414a6905bd0c5b812b",
+      "materialHash": "1cf394f707c0a1aef84020f5f2e74e9cc5e6571a5446fd9b540145a684c6030b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Ceramic_ice",
       "nodeId": "sf.render.helios-rock-b.mesh.lod2-ceramic-ice",
@@ -401,11 +401,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfb90a1d70e307ba461c3a04ea22f8072c040715fc1a4b7a20fd55a305f0e3fc",
+      "geometryHash": "f76c7836f331ab6ecb42f7d0f2b0b2f3ebdf6ad08e01eddb5cc27393971119ae",
       "id": "sf.render.helios-rock-b.mesh.lod2-stone-deep.primitive.0",
       "indexCount": 1416,
       "indexed": true,
-      "materialHash": "695f6346f735e89bb75ad10f9a64ea3742b5211a2121ad887c5e7dcd66bf08c8",
+      "materialHash": "436342599d68dd4e24b33c3c82db87e49cd26f6f6c9fc0dffe21853e3051c498",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_deep",
       "nodeId": "sf.render.helios-rock-b.mesh.lod2-stone-deep",
@@ -426,11 +426,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19516dfaa6a1dcc81464d595c9e498a176d4230bb4609259fb992be1ca6df467",
+      "geometryHash": "900bdfe67b08524c74b13905e3379932eff260e6cc4e1a50eb310b6a369deb8a",
       "id": "sf.render.helios-rock-b.mesh.lod2-stone-strata.primitive.0",
       "indexCount": 399,
       "indexed": true,
-      "materialHash": "55cf9986a1ceca437ce6241ed2fde1cb2b9403e3efa1a29127dd953f1969edb7",
+      "materialHash": "0435ecfd3f2dde8636984042019cbaeda36a5cb25bace85358dc9fc9f429bab6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_strata",
       "nodeId": "sf.render.helios-rock-b.mesh.lod2-stone-strata",
@@ -451,16 +451,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85118925a0d56b7800c81760d7ad261804d0b5edf3827666118ef1f5e9a911cc",
+      "geometryHash": "5b9767fb736924593539b331d35b42e27a25bcd6cd2ce908b92779f507302b84",
       "id": "sf.render.helios-rock-b.mesh.lod2-stone.primitive.0",
       "indexCount": 1941,
       "indexed": true,
-      "materialHash": "c6b5de6377f0b096ba59dff26fc8f0b5f7540e244fa263ed7a6e99ffb80a15e4",
+      "materialHash": "a3f7372310701e16c634736abe2a33deb1c63f02ded5ddc49bdd287ff8401684",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone",
       "nodeId": "sf.render.helios-rock-b.mesh.lod2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 1418
+      "vertexCount": 1416
     }
   ],
   "hlods": [],
@@ -468,22 +468,22 @@
   "lods": [],
   "materials": [
     {
-      "hash": "55cf9986a1ceca437ce6241ed2fde1cb2b9403e3efa1a29127dd953f1969edb7",
-      "id": "material:55cf9986a1ceca437ce6241e",
+      "hash": "0435ecfd3f2dde8636984042019cbaeda36a5cb25bace85358dc9fc9f429bab6",
+      "id": "material:0435ecfd3f2dde8636984042",
       "name": "Material_Stone_strata",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_rock_b_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "695f6346f735e89bb75ad10f9a64ea3742b5211a2121ad887c5e7dcd66bf08c8",
-      "id": "material:695f6346f735e89bb75ad10f",
-      "name": "Material_Stone_deep",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "a5da3c499a693801e5a7c12d7e6f142502b3b44858ec83414a6905bd0c5b812b",
-      "id": "material:a5da3c499a693801e5a7c12d",
+      "hash": "1cf394f707c0a1aef84020f5f2e74e9cc5e6571a5446fd9b540145a684c6030b",
+      "id": "material:1cf394f707c0a1aef84020f5",
       "name": "Material_Ceramic_ice",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -507,7 +507,35 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_asteroid_rock_b_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "436342599d68dd4e24b33c3c82db87e49cd26f6f6c9fc0dffe21853e3051c498",
+      "id": "material:436342599d68dd4e24b33c3c",
+      "name": "Material_Stone_deep",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_rock_b_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a3f7372310701e16c634736abe2a33deb1c63f02ded5ddc49bdd287ff8401684",
+      "id": "material:a3f7372310701e16c634736a",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_rock_b_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -518,13 +546,6 @@
       "id": "material:b1ddfdd124545bc8db8c89db",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "c6b5de6377f0b096ba59dff26fc8f0b5f7540e244fa263ed7a6e99ffb80a15e4",
-      "id": "material:c6b5de6377f0b096ba59dff2",
-      "name": "Material_Stone",
-      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1367,19 +1388,19 @@
       "sha256": "d2bfc679743c864a8e716dfe82cdc24718e1cc0a7b194b7703eea6238eed51e9"
     },
     "sourceGlb": {
-      "bytes": 472404,
-      "sha256": "bd112385ff8f3fa7cf86a6af38cede7f5aa5b95d42c4ee46fbaab549d2e3f1a5",
+      "bytes": 568728,
+      "sha256": "c659120c4c5c5d186ef83f979828b3d2982430c724883976ba5de221e8a84ff5",
       "uri": "place_asteroid_rock_b.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 900232,
-    "sha256": "fc0c344a5a2531d539c4d8cd3da3b8e254c42838bba97231c8484b363aad7e2c",
+    "bytes": 1010524,
+    "sha256": "b0f9b3b0696c51d23efe347635878e289d083a451571a7b984cda4b704acae62",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1967,7 +1988,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_rock_b.glb"
   },
-  "runtimeHash": "a6b4d98341dc0ebdc2f59540d949a1216388c34ac44318a45576ace5b2ff1f7d",
+  "runtimeHash": "5812a62dd12ebfb548fefbf4ed84dae89128ed638b82103c93e96edcb94910d4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

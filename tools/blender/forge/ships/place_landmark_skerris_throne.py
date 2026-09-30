@@ -643,6 +643,7 @@ def build_details(s, windows, lights):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     s.socket_names = ['SOCKET_Structure_Core', 'SOCKET_Camera_Focus']
     s.socket('SOCKET_Structure_Core', (0.0, 0.0, 6.0))
     s.socket('SOCKET_Camera_Focus', (4.0, 0.0, 22.0))

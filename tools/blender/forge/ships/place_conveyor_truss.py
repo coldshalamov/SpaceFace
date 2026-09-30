@@ -20,17 +20,23 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- drive house (+X) and tail house (-X) ---------------------------------------------------
     F.box(s, 'DriveHouse', (11.5, 0, 4.2), (5.5, 4.6, 5.0), material='paint', bevel=0.25,
           taper=0.9)
     F.box(s, 'DriveBand', (11.5, 0, 5.6), (5.7, 4.8, 0.7), material='hazard', bevel=0.0)
+    n0 = len(s.objects)
     F.cylinder(s, 'DriveDrum', (11.5, -2.4, 5.4), (11.5, 2.4, 5.4), 1.1, material='gunmetal',
                segments=18)
-    F.light(s, 'DriveLamp', (11.5, -2.2, 7.0), 'glow_amber', size=0.45)
+    s.anim(s.objects[n0:], 'spin:side:1p8', (11.5, 0, 5.4))
+    lamp = F.light(s, 'DriveLamp', (11.5, -2.2, 7.0), 'glow_amber', size=0.45)
+    s.anim(lamp, 'blink:1p7:0p4', (11.5, -2.2, 7.0))
     F.box(s, 'TailHouse', (-11.5, 0, 3.4), (4.6, 4.0, 3.4), material='paint2', bevel=0.2)
+    n1 = len(s.objects)
     F.cylinder(s, 'TailDrum', (-11.5, -2.0, 4.2), (-11.5, 2.0, 4.2), 0.9,
                material='gunmetal', segments=16)
+    s.anim(s.objects[n1:], 'spin:side:1p8', (-11.5, 0, 4.2))
     F.box(s, 'FeedChute', (-11.5, 0, 1.6), (3.0, 2.6, 2.0), material='dark', bevel=0.1)
 
     # --- the span: lattice truss + enclosed belt gallery on top --------------------------------

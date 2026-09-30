@@ -1,0 +1,121 @@
+..t=1 phase=wait_raid pos=(0,0)
+..t=61 phase=wait_raid pos=(6,4)
+..t=121 phase=wait_raid pos=(-1,7)
+BEAT raid @127.1 {
+  n: 3,
+  ids: [
+    '369:ship_drifter m60',
+    '370:ship_wasp m16',
+    '371:ship_drifter m60'
+  ]
+}
+payload 370 hauler 368 raider dist 274
+  -> phase wait_raid => latch t=127.1
+BEAT latch @127.2 { payload: 370 }
+  -> phase latch => swing t=127.2
+  release dbg t=127.7 phase=capture tangency=1.00 vt=-61 taut=true
+  -> phase swing => release t=127.7
+  release dbg t=128.0 phase=capture tangency=0.98 vt=-76 taut=true
+  release dbg t=128.2 phase=loaded tangency=0.98 vt=-88 taut=true
+  release dbg t=128.5 phase=loaded tangency=0.95 vt=-99 taut=true
+  release dbg t=128.7 phase=loaded tangency=0.94 vt=-109 taut=true
+  release dbg t=129.0 phase=loaded tangency=0.93 vt=-117 taut=true
+  release dbg t=129.2 phase=loaded tangency=0.92 vt=-122 taut=true
+  release dbg t=129.5 phase=loaded tangency=0.92 vt=-125 taut=true
+  release dbg t=129.7 phase=loaded tangency=0.91 vt=-123 taut=true
+  release dbg t=130.0 phase=loaded tangency=0.90 vt=-119 taut=true
+  release dbg t=130.2 phase=loaded tangency=0.88 vt=-110 taut=true
+  release dbg t=130.5 phase=loaded tangency=0.86 vt=-97 taut=true
+  release dbg t=130.7 phase=loaded tangency=0.83 vt=-78 taut=false
+  release dbg t=131.0 phase=loaded tangency=0.76 vt=-55 taut=false
+  release dbg t=131.2 phase=loaded tangency=0.57 vt=-28 taut=false
+  release dbg t=131.5 phase=loaded tangency=0.27 vt=-7 taut=false
+  release dbg t=131.7 phase=loaded tangency=0.07 vt=1 taut=false
+  release dbg t=132.0 phase=loaded tangency=0.99 vt=22 taut=false
+  release dbg t=132.2 phase=loaded tangency=0.99 vt=23 taut=false
+  release dbg t=132.5 phase=loaded tangency=0.67 vt=27 taut=false
+  release dbg t=132.7 phase=loaded tangency=0.65 vt=37 taut=false
+  release dbg t=133.0 phase=loaded tangency=0.78 vt=43 taut=false
+  release dbg t=133.2 phase=loaded tangency=0.85 vt=44 taut=true
+  release dbg t=133.5 phase=loaded tangency=0.87 vt=43 taut=true
+  release dbg t=133.7 phase=loaded tangency=0.88 vt=41 taut=true
+  release dbg t=134.0 phase=loaded tangency=0.88 vt=37 taut=true
+  release dbg t=134.2 phase=loaded tangency=0.85 vt=31 taut=true
+  release dbg t=134.5 phase=loaded tangency=0.79 vt=23 taut=false
+  release dbg t=134.7 phase=slack tangency=0.92 vt=165 taut=false
+  release dbg t=135.0 phase=loaded tangency=1.00 vt=213 taut=true
+  TAUT THROW t=135.2 phase=loaded scan=369:ship@0.56s
+  swing end t=135.2: tether=slack active=false target=null strain=0.00 last=tether:broken@135.2 {"actorId":1,"targetId":370,"attachmentId":"att_000023","reason":"tether_cut","tension":55627.828658539496,"impulse":927.1304776423249,"cueId":"combat.attachment.broken"}
+  -> phase release => post_throw t=135.2
+release produced no kill
+  payload fate: alive pos=(3875,-4603) v=363 expected=369 flyMin=39@135.8
+    evt 134.92 combat:damage {"targetId":325,"attackerId":325,"amount":54.06719999999999,"rawTotal":54.06719999999999,"applied":44.335103999999994,"type":"kinetic","damageType":null,"emp":false,"channels":{"ki
+    evt 137.65 combat:damage {"targetId":340,"attackerId":340,"amount":116.36363636363636,"rawTotal":116.36363636363636,"applied":100.99778270509977,"type":"kinetic","damageType":null,"emp":false,"channels":{"
+    evt 146.15 combat:damage {"targetId":341,"attackerId":341,"amount":1.349119567588567,"rawTotal":1.349119567588567,"applied":1.1062780454226249,"type":"kinetic","damageType":null,"emp":false,"channels":{"ki
+  -> phase post_throw => latch t=149.3
+  latch dbg t=149.5 d=7187 denial=null acq=338:ready
+  latch dbg t=150.0 d=7477 denial=null acq=338:ready
+  latch dbg t=150.5 d=7645 denial=null acq=338:ready
+  latch dbg t=151.0 d=7779 denial=null acq=338:ready
+  latch dbg t=151.5 d=7887 denial=null acq=338:ready
+  latch dbg t=152.0 d=7889 denial=null acq=338:ready
+  latch dbg t=152.5 d=7809 denial=null acq=338:ready
+  latch dbg t=153.0 d=7718 denial=null acq=338:ready
+  latch dbg t=153.5 d=7627 denial=null acq=338:ready
+  latch dbg t=154.0 d=7538 denial=null acq=338:ready
+  latch dbg t=154.5 d=7450 denial=null acq=338:ready
+  latch dbg t=155.0 d=7364 denial=null acq=338:ready
+  latch dbg t=155.5 d=7283 denial=null acq=338:ready
+  latch dbg t=156.0 d=7342 denial=null acq=338:ready
+  latch dbg t=156.5 d=7283 denial=null acq=338:ready
+  latch dbg t=157.0 d=7202 denial=null acq=338:ready
+  latch dbg t=157.5 d=7120 denial=null acq=338:ready
+  latch dbg t=158.0 d=7041 denial=null acq=338:ready
+  latch dbg t=158.5 d=6962 denial=null acq=338:ready
+  latch dbg t=159.0 d=6886 denial=null acq=338:ready
+  latch dbg t=159.5 d=6812 denial=null acq=338:ready
+  latch dbg t=160.0 d=6774 denial=null acq=338:ready
+  latch dbg t=160.5 d=6827 denial=null acq=338:ready
+  latch dbg t=161.0 d=6929 denial=null acq=338:ready
+  latch dbg t=161.5 d=7046 denial=null acq=338:ready
+  latch dbg t=162.0 d=7152 denial=null acq=338:ready
+  latch dbg t=162.5 d=7246 denial=null acq=338:ready
+  latch dbg t=163.0 d=7329 denial=null acq=338:ready
+  latch dbg t=163.5 d=7302 denial=null acq=338:ready
+  latch dbg t=164.0 d=7227 denial=null acq=338:ready
+  latch dbg t=164.5 d=7291 denial=null acq=338:ready
+  latch dbg t=165.0 d=7336 denial=null acq=338:ready
+  latch dbg t=165.5 d=7293 denial=null acq=338:ready
+  latch dbg t=166.0 d=7212 denial=null acq=338:ready
+  latch dbg t=166.5 d=7126 denial=null acq=338:ready
+  latch dbg t=167.0 d=7040 denial=null acq=338:ready
+  latch dbg t=167.5 d=6954 denial=null acq=338:ready
+  latch dbg t=168.0 d=7011 denial=null acq=338:ready
+  latch dbg t=168.5 d=7087 denial=null acq=338:ready
+  latch dbg t=169.0 d=7180 denial=null acq=338:ready
+  latch dbg t=169.5 d=7285 denial=null acq=338:ready
+  latch dbg t=170.0 d=7276 denial=null acq=338:ready
+  latch dbg t=170.5 d=7190 denial=null acq=338:ready
+  latch dbg t=171.0 d=7096 denial=null acq=338:ready
+  latch dbg t=171.5 d=7001 denial=null acq=338:ready
+  latch dbg t=172.0 d=6932 denial=null acq=338:ready
+  latch dbg t=172.5 d=6964 denial=null acq=338:ready
+  latch dbg t=173.0 d=6883 denial=null acq=338:ready
+  latch dbg t=173.5 d=6941 denial=null acq=338:ready
+  latch dbg t=174.0 d=6889 denial=null acq=338:ready
+  latch dbg t=174.5 d=6799 denial=null acq=338:ready
+  latch dbg t=175.0 d=6706 denial=null acq=338:ready
+  latch dbg t=175.5 d=6717 denial=null acq=338:ready
+  latch dbg t=176.0 d=6765 denial=null acq=338:ready
+  latch dbg t=176.5 d=6814 denial=null acq=338:ready
+  latch dbg t=177.0 d=6751 denial=null acq=338:ready
+  latch dbg t=177.5 d=6666 denial=null acq=338:ready
+  latch dbg t=178.0 d=6726 denial=null acq=338:ready
+  latch dbg t=178.5 d=6663 denial=null acq=338:ready
+  latch dbg t=179.0 d=6575 denial=null acq=338:ready
+latch window missed
+
+=== beats ===
+127.1s  raid {"name":"raid","t":127.0833333333274,"n":3,"ids":["369:ship_drifter m60","370:ship_wasp m16","371:ship_drifter m60"]}
+127.2s  latch {"name":"latch","t":127.21666666666073,"payload":370}
+final phase: fail_latch ordered: false credits: 5000

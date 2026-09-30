@@ -35,8 +35,8 @@ import {
   tacticalRadarMetrics,
 } from './map/tacticalMapGrammar.js';
 import { installMapParityBridge } from './map/mapParityBridge.js';
-import { svg as orrSvg, circularText } from './orrery/svg.js';
-import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instruments.js';
+import { svg as orrSvg, arcD as orrArcD, circularText } from './orrery/svg.js';
+import { orbitRing, hand as orrHand } from './orrery/instruments.js';
 import { injectOrrery } from './orrery/tokens.js';
 
 const COMPACT_SIZE = 220;
@@ -330,11 +330,15 @@ function drawThreatRing(g, metrics, hostileCount, now, reducedMotion) {
   g.restore();
 }
 
+// T2: a waypoint name never carries its own distance — the footer printed live "OBJ 457 WU"
+// beside a stale "BEACON 419 WU" baked into the label. Strip the trailing distance (twin of
+// hudAdapter.stripStaleDistance, kept local so core radar never imports the ORRERY adapter);
+// the footer's live distance binding is the one number. Zero/frame: text already rewrites.
+const STALE_FOOTER_DISTANCE = /\s+\d[\d,]*(\.\d+)?\s*k?\s*WU\.?$/i;
 function waypointLabel(waypoint) {
-  return sanitizeMapLabel(
-    waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE'),
-    20,
-  );
+  const raw = waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE');
+  const clean = String(raw == null ? '' : raw).replace(STALE_FOOTER_DISTANCE, '').trim();
+  return sanitizeMapLabel(clean || raw, 20);
 }
 
 function drawWaypointDiamond(g, cue, now, reducedMotion) {
@@ -567,20 +571,37 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
     g.lineTo(center + radius, center + d);
     g.stroke();
   }
+  // T3: the live range rings land F3 — the outer ring holds 65% bone with a 4px 20%
+  // geometric twin (two static canvas strokes, never a blur filter over live flight). Inner
+  // rings sit at the preview's faint tone so the hierarchy reads: rim, rings, data.
   for (const fraction of [0.25, 0.5, 1]) {
+    if (fraction === 1) {
+      g.strokeStyle = 'rgba(232,226,212,0.20)';
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(center, center, radius, 0, Math.PI * 2);
+      g.stroke();
+    }
     g.strokeStyle = fraction === 1
-      ? 'rgba(232,226,212,0.16)'
-      : 'rgba(232,226,212,0.065)';
+      ? 'rgba(232,226,212,0.65)'
+      : 'rgba(232,226,212,0.14)';
     g.lineWidth = fraction === 1 ? 1.25 : 1;
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
   }
+  // T4: the crosshair stops at r20 — inside is the hull's own glass (brackets + hull), so the
+  // centre stack stops reading as one 12px knot. Static: the background canvas redraws only
+  // when the dial is (re)configured, never per frame.
   g.strokeStyle = 'rgba(232,226,212,0.08)';
   g.beginPath();
   g.moveTo(center, center - radius);
+  g.lineTo(center, center - 20);
+  g.moveTo(center, center + 20);
   g.lineTo(center, center + radius);
   g.moveTo(center - radius, center);
+  g.lineTo(center - 20, center);
+  g.moveTo(center + 20, center);
   g.lineTo(center + radius, center);
   g.stroke();
   g.restore();
@@ -599,7 +620,16 @@ function createRadarFrame(size, center, radius) {
     viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
     'aria-hidden': 'true',
   });
-  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'rest', width: 1, bloom: 4 }));
+  // T3: the frame rim is two explicit static strokes — a flat 20% bone twin under a 65%
+  // core. A tone-class twin would multiply (20% x 30% rest = 6%, invisible); flat values
+  // hold the §3.1 band. Static SVG attrs, zero/frame.
+  const rimD = orrArcD(center, center, radius + 0.5, 0, 360);
+  const rimTwin = orrSvg('path', { d: rimD, class: 'orr-core', 'stroke-width': 4, fill: 'none' });
+  rimTwin.style.stroke = 'rgb(232 226 212 / .20)';
+  const rimCore = orrSvg('path', { d: rimD, class: 'orr-core', 'stroke-width': 1, fill: 'none' });
+  rimCore.style.stroke = 'rgb(232 226 212 / .65)';
+  root.appendChild(rimTwin);
+  root.appendChild(rimCore);
   root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
   root.appendChild(orrSvg('path', {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,

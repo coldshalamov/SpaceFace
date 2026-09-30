@@ -74,6 +74,7 @@ def lamp_pod(s, name, x, lens):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- plinth: charcoal block with a hazard collar and foot pads --------------------------------
     F.box(s, 'Plinth', (0, 0, (Z_BASE + Z_PLINTH) / 2), (2.9, 2.9, Z_PLINTH - Z_BASE), material='paint2', bevel=0.06,
@@ -105,7 +106,10 @@ def build():
     F.box(s, 'Head', (0, 0, Z_TOP + 0.3), (2.1, 2.1, 0.6), material='paint', bevel=0.06)
     F.band(s, 'Head', (0, 0, Z_TOP + 0.3), (0, 0, 1), 0.22, 'stripe', inset=0.02, depth=-0.02)
     F.panel(s, 'Head', (-0.35, 0), (0.9, 1.5), 'paint2', inset=0.05, depth=-0.03)
+    n0 = len(s.objects)
     F.beacon(s, 'AviBeacon', (0.55, 0.0, Z_TOP + 0.6), finish='glow_red', size=0.34)
+    s.anim([o for o in s.objects[n0:] if o.name == 'AviBeacon_Dome'], 'blink:1p2:0p4',
+           (0.55, 0.0, Z_TOP + 0.6))
     s.detail = 2
     F.antenna(s, 'HeadAnt', (-0.75, 0.75, Z_TOP + 0.6), 0.3, tip='glow_red', mirror=True)
     F.vent(s, 'HeadVent', (-0.35, 0, Z_TOP + 0.58), (0.7, 1.2, 0.08), slats=4)
@@ -162,9 +166,11 @@ def build():
     F.box(s, 'JBox', (MH + 0.35, 0, ARM_Z1 + 0.35), (0.6, 0.8, 0.5), material='paint', bevel=0.04)
     F.panel(s, 'JBox', (MH + 0.35, 0), (0.4, 0.5), 'stripe', inset=0.03, depth=-0.02)
 
-    # --- signal lamps along the boom -------------------------------------------------------------
+    # --- signal lamps along the boom: a chase running out to the tip ------------------------------
     for i, x in enumerate((2.3, 3.9, 5.5)):
         lamp_pod(s, f'Pod{i}', x, 'glow_amber' if i % 2 == 0 else 'glow_cyan')
+        s.anim([o for o in s.objects if o.name == f'Pod{i}Top_Dome'],
+               f'chase:lane:{i}:4:3p0', (x, 0, ARM_Z1 + 0.1))
 
     # --- lane lamp head at the tip -----------------------------------------------------------------
     HX = ARM_X1 + 0.3
@@ -180,8 +186,15 @@ def build():
               material='glow_cyan', bevel=0.0)
     F.light(s, 'TipPort', (HX + 0.35, 0.82, ARM_Z1 + 0.25), 'glow_red', size=0.14)
     F.light(s, 'TipStbd', (HX + 0.35, -0.82, ARM_Z1 + 0.25), 'glow_green', size=0.14)
+    n0 = len(s.objects)
     F.beacon(s, 'TipBeacon', (HX - 0.1, 0, ARM_Z1 + 0.3), finish='glow_amber', size=0.42)
+    s.anim([o for o in s.objects[n0:] if o.name == 'TipBeacon_Dome'],
+           'chase:lane:3:4:3p0', (HX - 0.1, 0, ARM_Z1 + 0.3))
     F.box(s, 'LampUnder', (HX, 0, ARM_Z0 - 0.02), (0.7, 1.0, 0.05), material='glow_cyan', bevel=0.0)
+    # the tip lamp pulses — the lane lamp is the beacon's whole job
+    s.anim([o for o in s.objects if o.name.startswith('LampLens') or o.name.startswith('LampSide')
+            or o.name.startswith('LampUnder')],
+           'blink:2p4:0p6', (HX, 0, (ARM_Z0 + ARM_Z1) / 2))
     s.detail = 2
     F.vent(s, 'LampVent', (HX - 0.2, 0.45, ARM_Z1 + 0.3), (0.4, 0.4, 0.06), slats=3, axis='y')
     s.detail = 0

@@ -149,5 +149,18 @@ export default defineFlavorPack({
         ],
       }],
     },
+    {
+      // D17 — the deep-space find. The Tethys barkeep navigates by the things the transit gap
+      // actually has: the lane beacons, the dead stretch, and the deep-space transit readout.
+      id: 'rumor_long_chord', programSlot: 'D17', wreckId: 'wreck_long_chord',
+      sources: [{
+        id: 'tethys_chord_long_chord', sourceRef: 'bar.tethys_chord.long_chord', channelId: 'bar', nativeFormat: 'chord_barkeep_legend',
+        lines: [
+          { id: 'long_chord_toll', text: 'The Long Chord took a toll off every chord convoy and let them file her as weather.' },
+          { id: 'long_chord_dead_beacons', text: 'Fly the beacons until the line goes dead. That dead stretch is where she worked.' },
+          { id: 'long_chord_bearing', text: 'Hang south a thousand off the beacons and pulse the dark. Ask the transit readout to keep count.' },
+        ],
+      }],
+    },
   ],
 });

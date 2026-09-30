@@ -19,6 +19,7 @@ SHIP_ID = 'place_quiessence_freighter_c'
 
 
 def extra(s):
+    s.emit_scale = 4.0
     # Warm bunks: a lit row along each hull flank — the crew quarters under the deck edge.
     Q.bunk_windows(s, -12.0, 13.0, 14, y=3.8, z=0.55, tag='Flank', z_top=1.5)
     # one faint violet beacon on the mast head

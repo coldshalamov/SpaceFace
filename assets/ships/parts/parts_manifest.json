@@ -1859,7 +1859,7 @@
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
       "tris": 6604,
-      "bytes": 594044,
+      "bytes": 1044864,
       "textureSize": 128,
       "note": "Forge rebuild of the ash pin: a squat memorial cairn — ballast base, offering cage, hung tokens, name plate, one warm lamp.",
       "bounds": {
@@ -1894,7 +1894,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_graffiti.glb",
       "tris": 11176,
-      "bytes": 1346272,
+      "bytes": 2318412,
       "textureSize": 1024,
       "note": "Forge rebuild: graffiti rock — quarried face with modelled miners' paint bands, survey stakes, lamp.",
       "hooks": [],
@@ -1929,7 +1929,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
       "tris": 12072,
-      "bytes": 1269900,
+      "bytes": 1712576,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios metallic rock — faceted boulder cluster, quarried face, dark specular veins.",
       "hooks": [],
@@ -1962,7 +1962,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
       "tris": 11608,
-      "bytes": 1234432,
+      "bytes": 1474056,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios icy rock — faceted core with pale frost caps and ice veins.",
       "hooks": [],
@@ -1997,7 +1997,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
       "tris": 8802,
-      "bytes": 946996,
+      "bytes": 1142804,
       "textureSize": 1024,
       "note": "Forge rebuild: Helios crystalline rock — faceted core with a spiked crystal cluster, faint glow.",
       "hooks": [],
@@ -2030,7 +2030,7 @@
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
       "tris": 12138,
-      "bytes": 1248968,
+      "bytes": 1702996,
       "textureSize": 1024,
       "note": "Forge rebuild: seamed asteroid — banded mineral vein cut across the rock, faint warm seam.",
       "hooks": [],
@@ -2063,7 +2063,7 @@
       "priority": "P2",
       "file": "places/place_cargo_pod_standard.glb",
       "tris": 6964,
-      "bytes": 840932,
+      "bytes": 1302708,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2102,7 +2102,7 @@
       "priority": "P1",
       "file": "places/place_ceres_bait_wreck.glb",
       "tris": 9355,
-      "bytes": 840252,
+      "bytes": 2195724,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2160,7 +2160,7 @@
       "priority": "P1",
       "file": "places/place_ceres_grave_shard.glb",
       "tris": 5768,
-      "bytes": 586812,
+      "bytes": 1444988,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2168,7 +2168,7 @@
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
-      "note": "Forge rebuild: Cathedral grave shard â€” leaning torn plate with rib arches, tether mast.",
+      "note": "Forge rebuild: Cathedral grave shard — leaning torn plate with rib arches, tether mast.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2217,7 +2217,7 @@
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
       "tris": 4130,
-      "bytes": 460888,
+      "bytes": 895324,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -2278,7 +2278,7 @@
       },
       "mount": "origin",
       "tris": 16840,
-      "bytes": 2173724,
+      "bytes": 3388920,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2341,7 +2341,7 @@
       },
       "mount": "origin",
       "tris": 24528,
-      "bytes": 3090108,
+      "bytes": 4435068,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2386,7 +2386,7 @@
       "factionAccentVariants": {},
       "mount": "origin",
       "tris": 9811,
-      "bytes": 831528,
+      "bytes": 1581968,
       "hooks": [],
       "sockets": [],
       "bounds": {
@@ -2423,7 +2423,7 @@
       "factionAccentVariants": {},
       "mount": "origin",
       "tris": 11928,
-      "bytes": 1186212,
+      "bytes": 2235104,
       "hooks": [],
       "sockets": [],
       "bounds": {
@@ -2478,7 +2478,7 @@
       },
       "mount": "origin",
       "tris": 26124,
-      "bytes": 2932744,
+      "bytes": 4290980,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2493,7 +2493,7 @@
         "min": [
           -41.70516586303711,
           -41.705169677734375,
-          -14.610429763793945
+          -14.610583305358887
         ],
         "max": [
           56.5,
@@ -2503,7 +2503,7 @@
         "dimensionsM": [
           98.20516586303711,
           83.41033935546875,
-          23.138429641723633
+          23.138583183288574
         ]
       },
       "note": "Forge rebuild: claim ring with armoured defence casemate and gun slits.",
@@ -2541,7 +2541,7 @@
       },
       "mount": "origin",
       "tris": 30728,
-      "bytes": 3299104,
+      "bytes": 4672816,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2604,7 +2604,7 @@
       },
       "mount": "origin",
       "tris": 27256,
-      "bytes": 3179284,
+      "bytes": 4641908,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2619,7 +2619,7 @@
         "min": [
           -43.18389129638672,
           -45.20000076293945,
-          -14.600001335144043
+          -14.600000381469727
         ],
         "max": [
           56.5,
@@ -2629,7 +2629,7 @@
         "dimensionsM": [
           99.68389129638672,
           90.4000015258789,
-          23.119125366210938
+          23.11912441253662
         ]
       },
       "note": "Forge rebuild: claim ring with perimeter defence pylons and beam emitters.",
@@ -2667,7 +2667,7 @@
       },
       "mount": "origin",
       "tris": 22924,
-      "bytes": 2746928,
+      "bytes": 4153460,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2704,7 +2704,7 @@
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
       "tris": 9920,
-      "bytes": 783732,
+      "bytes": 1248676,
       "textureSize": 0,
       "tintable": {
         "hull": "Material_Hull",
@@ -2738,8 +2738,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_container_rack.glb",
-      "tris": 16120,
-      "bytes": 2247000,
+      "tris": 16984,
+      "bytes": 3140016,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2777,8 +2777,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_conveyor_barge.glb",
-      "tris": 12232,
-      "bytes": 983232,
+      "tris": 12532,
+      "bytes": 1831932,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2816,12 +2816,12 @@
           -8.300000190734863
         ],
         "max": [
-          72.30000305175781,
+          72.45000076293945,
           11.100000381469727,
           8.300000190734863
         ],
         "dimensionsM": [
-          73.30000305175781,
+          73.45000076293945,
           11.100000381469727,
           16.600000381469727
         ]
@@ -2833,7 +2833,7 @@
       "priority": "P2",
       "file": "places/place_conveyor_truss.glb",
       "tris": 4952,
-      "bytes": 710488,
+      "bytes": 1463748,
       "textureSize": 512,
       "note": "Forge rebuild: span-gauge bucket conveyor with drive house.",
       "hooks": [],
@@ -2872,7 +2872,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 15476,
-      "bytes": 1276252,
+      "bytes": 2173152,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2928,7 +2928,7 @@
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
       "tris": 7476,
-      "bytes": 667864,
+      "bytes": 1572704,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2984,7 +2984,7 @@
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
       "tris": 11128,
-      "bytes": 844472,
+      "bytes": 1498424,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
@@ -3039,7 +3039,7 @@
       "priority": "P0",
       "file": "places/place_dock_interior_grit.glb",
       "tris": 13784,
-      "bytes": 990936,
+      "bytes": 1672340,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
@@ -3094,7 +3094,7 @@
       "priority": "P0",
       "file": "places/place_dock_interior_military.glb",
       "tris": 13140,
-      "bytes": 949544,
+      "bytes": 1625992,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
@@ -3149,7 +3149,7 @@
       "priority": "P2",
       "file": "places/place_drill_platform.glb",
       "tris": 6388,
-      "bytes": 948380,
+      "bytes": 1745132,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -3171,12 +3171,12 @@
         ],
         "max": [
           8,
-          12.468260765075684,
+          12.460000038146973,
           8
         ],
         "dimensionsM": [
           16,
-          20.868260383605957,
+          20.859999656677246,
           16
         ]
       },
@@ -3188,7 +3188,7 @@
       "priority": "P2",
       "file": "places/place_extraction_mast.glb",
       "tris": 5572,
-      "bytes": 872724,
+      "bytes": 1785144,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3209,12 +3209,12 @@
         ],
         "max": [
           6,
-          13.368260383605957,
+          13.359999656677246,
           4.5
         ],
         "dimensionsM": [
           12,
-          13.583357378840446,
+          13.575096651911736,
           9
         ]
       },
@@ -3226,7 +3226,7 @@
       "priority": "P2",
       "file": "places/place_freight_platform.glb",
       "tris": 11516,
-      "bytes": 1249080,
+      "bytes": 2017252,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -3265,8 +3265,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
-      "tris": 49252,
-      "bytes": 5762992,
+      "tris": 49924,
+      "bytes": 7626280,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3328,7 +3328,7 @@
       "priority": "P2",
       "file": "places/place_improvised_dock.glb",
       "tris": 3064,
-      "bytes": 572092,
+      "bytes": 1324540,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3365,7 +3365,7 @@
       "priority": "P2",
       "file": "places/place_interdiction_buoy.glb",
       "tris": 3336,
-      "bytes": 532952,
+      "bytes": 992748,
       "textureSize": 512,
       "note": "Forge rebuild: Concord field buoy — octagonal drum, emitter cage, authority lights.",
       "hooks": [],
@@ -3375,7 +3375,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.2353427410125732,
+          -3.2371087074279785,
           -2.200000047683716,
           -3.23732328414917
         ],
@@ -3385,7 +3385,7 @@
           3.2375316619873047
         ],
         "dimensionsM": [
-          6.472666025161743,
+          6.474431991577148,
           5.032371282577515,
           6.474854946136475
         ]
@@ -3437,7 +3437,7 @@
       "priority": "P1",
       "file": "places/place_lane_beacon.glb",
       "tris": 14908,
-      "bytes": 1781324,
+      "bytes": 2686236,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3493,8 +3493,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_lane_pin.glb",
-      "tris": 9240,
-      "bytes": 743476,
+      "tris": 9366,
+      "bytes": 1224824,
       "textureSize": 0,
       "tintable": {
         "hull": "Material_Hull",
@@ -3505,18 +3505,18 @@
       "note": "Forge rebuild of the lane pin: a tall navigation mast on a tripod ballast foot, chevron light housing, vane rings, speed lamps.",
       "bounds": {
         "min": [
-          -4.822023868560791,
+          -4.821012496948242,
           -2.049999952316284,
           -5.300000190734863
         ],
         "max": [
-          4.822383403778076,
-          9.57619571685791,
+          4.821012496948242,
+          9.569999694824219,
           5.300000190734863
         ],
         "dimensionsM": [
-          9.644407272338867,
-          11.626195669174194,
+          9.642024993896484,
+          11.619999647140503,
           10.600000381469727
         ]
       },
@@ -3530,7 +3530,7 @@
       "priority": "P2",
       "file": "places/place_maintenance_gantry.glb",
       "tris": 8248,
-      "bytes": 978300,
+      "bytes": 1732480,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3568,7 +3568,7 @@
       "priority": "P1",
       "file": "places/place_memorial_array.glb",
       "tris": 16428,
-      "bytes": 1646160,
+      "bytes": 2612868,
       "textureSize": 256,
       "note": "Forge rebuild of the memorial array prop: a low spine carrying a row of vigil lamps and name plates with truss outriggers.",
       "hooks": [],
@@ -3605,8 +3605,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_landmark_skerris_throne.glb",
-      "tris": 69182,
-      "bytes": 7645384,
+      "tris": 70478,
+      "bytes": 12254996,
       "textureSize": 1024,
       "note": "The Skerris Throne (Sker Haven, Reach): fortress welded from captured hulls, skull prow, throne of freighters. Forge (tools/blender/forge/ships/place_landmark_skerris_throne.py).",
       "hooks": [],
@@ -3632,7 +3632,14 @@
           189.88338470458984
         ]
       },
-      "triangleMetric": "lod0"
+      "triangleMetric": "lod0",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
+      }
     },
     {
       "id": "place_landmark_resonant_cathedral",
@@ -3640,7 +3647,7 @@
       "priority": "P1",
       "file": "places/place_landmark_resonant_cathedral.glb",
       "tris": 62152,
-      "bytes": 7319756,
+      "bytes": 11534956,
       "textureSize": 1024,
       "note": "The Resonant Cathedral (Vesta Forge, Choir): foundry hall under a singing magenta arch between twin spires. Forge (tools/blender/forge/ships/place_landmark_resonant_cathedral.py).",
       "hooks": [],
@@ -3680,8 +3687,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_landmark_candle_fleet.glb",
-      "tris": 76342,
-      "bytes": 9196492,
+      "tris": 76558,
+      "bytes": 14079612,
       "textureSize": 1024,
       "note": "The Candle Fleet (Helios Prime memorial): 24 lit candle plinths round a dark 25th holding the recovered convoy bow. Forge (tools/blender/forge/ships/place_landmark_candle_fleet.py).",
       "hooks": [],
@@ -3721,8 +3728,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_mining_drone.glb",
-      "tris": 21618,
-      "bytes": 1446400,
+      "tris": 22196,
+      "bytes": 2124580,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3756,18 +3763,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.32026347517967224,
-          -0.2107013314962387,
+          -0.32004255056381226,
+          -0.21667718887329102,
           -1.2090013027191162
         ],
         "max": [
-          4.600203037261963,
+          4.60007905960083,
           1.4831327199935913,
           1.2090013027191162
         ],
         "dimensionsM": [
-          4.920466512441635,
-          1.69383405148983,
+          4.920121610164642,
+          1.6998099088668823,
           2.4180026054382324
         ]
       }
@@ -3778,7 +3785,7 @@
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
       "tris": 15108,
-      "bytes": 1577000,
+      "bytes": 2490704,
       "textureSize": 256,
       "note": "PQ-022 navigation-infrastructure material-truth V2 buoy repair — admitted candidate cbaed85c003e, promoted source edcfd2779a42; LOD0/1/2 1876/972/288 render tris across five semantic PBR groups. Billboard and memorial rows are accepted and untouched by this transaction. Browser/Electron route and performance remain separate gates.",
       "hooks": [],
@@ -3818,7 +3825,7 @@
       "priority": "P2",
       "file": "places/place_radiator_bank.glb",
       "tris": 9252,
-      "bytes": 1030180,
+      "bytes": 1809040,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3855,7 +3862,7 @@
       "priority": "P2",
       "file": "places/place_scrap_cage.glb",
       "tris": 4912,
-      "bytes": 703420,
+      "bytes": 1496336,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3892,7 +3899,7 @@
       "priority": "P2",
       "file": "places/place_sensor_mast.glb",
       "tris": 14084,
-      "bytes": 1490648,
+      "bytes": 2541668,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -3909,7 +3916,7 @@
         "min": [
           -1.3124871253967285,
           0,
-          -2.0850000381469727
+          -2.141313314437866
         ],
         "max": [
           3.716480255126953,
@@ -3919,7 +3926,7 @@
         "dimensionsM": [
           5.028967380523682,
           13.274499893188477,
-          4.170000076293945
+          4.226313352584839
         ]
       },
       "triangleMetric": "lod0"
@@ -3930,7 +3937,7 @@
       "priority": "P2",
       "file": "places/place_slurry_tank.glb",
       "tris": 10524,
-      "bytes": 1105088,
+      "bytes": 1614764,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3968,7 +3975,7 @@
       "file": "places/place_station_billboard.glb",
       "tris": 6024,
       "triangleMetric": "lod0",
-      "bytes": 950344,
+      "bytes": 1690632,
       "textureSize": 256,
       "note": "Forge rebuild of the station information billboard: a framed twin-face lit display on a truss mast with service platform, no text.",
       "hooks": [],
@@ -4005,8 +4012,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
-      "tris": 55980,
-      "bytes": 6760184,
+      "tris": 56628,
+      "bytes": 8667244,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4065,8 +4072,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_fab.glb",
-      "tris": 49896,
-      "bytes": 5637492,
+      "tris": 51624,
+      "bytes": 7447640,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4127,8 +4134,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 79861,
-      "bytes": 5544356,
+      "tris": 80930,
+      "bytes": 7247928,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4187,8 +4194,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_mining.glb",
-      "tris": 40140,
-      "bytes": 4590488,
+      "tris": 43596,
+      "bytes": 6482176,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4248,8 +4255,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
-      "tris": 59568,
-      "bytes": 6326616,
+      "tris": 60432,
+      "bytes": 8382204,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -4309,8 +4316,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_research.glb",
-      "tris": 66360,
-      "bytes": 6705568,
+      "tris": 67224,
+      "bytes": 8755568,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4348,7 +4355,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -54.503360748291016,
+          -54.64626216888428,
           -46.55664825439453,
           -37.599998474121094
         ],
@@ -4358,7 +4365,7 @@
           37.599998474121094
         ],
         "dimensionsM": [
-          101.10335922241211,
+          101.24626064300537,
           101.75598526000977,
           75.19999694824219
         ]
@@ -4370,9 +4377,9 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
-      "tris": 133207,
+      "tris": 133453,
       "budgetClass": "landmark",
-      "bytes": 10608212,
+      "bytes": 12898224,
       "textureSize": 1024,
       "note": "HELIOS-GOLDEN-PRODUCTION-V1 2026-07-19 — engineered STATION-GOLDEN-02 body; functional armor, hull, machinery, service, docking, radiator, window and marking roles; outward-face material lift; supported service-truss bays; 30 KTX2 PBR textures; deterministic Blender production scripts and promotion receipt. Runtime gameplay capture remains the final visual acceptance gate. | PRO Full Finish 2026-07-06 — Meridian gold trade hub foundation. | M4-HELIOS-HUB-ENV promoted 2026-07-11 through 2026-07-12.",
       "factionAccentVariants": {
@@ -4404,7 +4411,7 @@
         "min": [
           -63.70133972167969,
           -5.880000114440918,
-          -55.65086364746094
+          -55.64828109741211
         ],
         "max": [
           61.10000228881836,
@@ -4414,7 +4421,7 @@
         "dimensionsM": [
           124.80134201049805,
           54.75500011444092,
-          111.29914474487305
+          111.29656219482422
         ]
       },
       "tintable": {
@@ -4431,7 +4438,7 @@
       "priority": "P1",
       "file": "places/var_station_trade_hub_free_overlay_v01.glb",
       "tris": 20356,
-      "bytes": 1709156,
+      "bytes": 2962268,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4468,7 +4475,7 @@
       "priority": "P1",
       "file": "places/var_station_trade_hub_mts_overlay_v01.glb",
       "tris": 24532,
-      "bytes": 1914332,
+      "bytes": 4647688,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4505,7 +4512,7 @@
       "priority": "P1",
       "file": "places/var_station_trade_hub_scn_overlay_v01.glb",
       "tris": 39345,
-      "bytes": 3053372,
+      "bytes": 6914292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4541,7 +4548,7 @@
       "priority": "P2",
       "file": "places/place_tally_post.glb",
       "tris": 5512,
-      "bytes": 573720,
+      "bytes": 1000152,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -4577,7 +4584,7 @@
       "priority": "P2",
       "file": "places/place_transfer_arm.glb",
       "tris": 4704,
-      "bytes": 743680,
+      "bytes": 1665784,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -4599,12 +4606,12 @@
         ],
         "max": [
           17.642303466796875,
-          10.222228050231934,
+          10.215000629425049,
           2.297056198120117
         ],
         "dimensionsM": [
           23.19230365753174,
-          10.222228050231934,
+          10.215000629425049,
           4.594112396240234
         ]
       },
@@ -4616,13 +4623,13 @@
       "priority": "P2",
       "file": "places/place_transponder_gate.glb",
       "tris": 7380,
-      "bytes": 1006240,
+      "bytes": 1802956,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical"
       },
-      "note": "Forge rebuild: lane-reader gate â€” twin pylons, lit crossbar, lane-centre beacon.",
+      "note": "Forge rebuild: lane-reader gate — twin pylons, lit crossbar, lane-centre beacon.",
       "hooks": [],
       "sockets": [
         "SOCKET_Lane_Center"
@@ -4636,12 +4643,12 @@
         ],
         "max": [
           1.1299999952316284,
-          13.280162811279297,
+          13.274999618530273,
           11.300000190734863
         ],
         "dimensionsM": [
           2.259999990463257,
-          13.280162811279297,
+          13.274999618530273,
           22.600000381469727
         ]
       },
@@ -4653,7 +4660,7 @@
       "priority": "P2",
       "file": "places/place_whistle.glb",
       "tris": 5329,
-      "bytes": 545852,
+      "bytes": 994344,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -4689,7 +4696,7 @@
       "priority": "P2",
       "file": "places/place_worklight_tower.glb",
       "tris": 16156,
-      "bytes": 1854368,
+      "bytes": 3186384,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -5434,7 +5441,7 @@
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
       "tris": 7732,
-      "bytes": 597584,
+      "bytes": 1022400,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5487,7 +5494,7 @@
       "priority": "P1",
       "file": "pods/pod_47a_evidence_spindle.glb",
       "tris": 10608,
-      "bytes": 744168,
+      "bytes": 1186000,
       "textureSize": 256,
       "tintable": {
         "hull": "Material_Hull",
@@ -5539,7 +5546,7 @@
       "priority": "P1",
       "file": "places/place_47a_rescue_capsule.glb",
       "tris": 7740,
-      "bytes": 636472,
+      "bytes": 1089788,
       "textureSize": 256,
       "tintable": {
         "hull": "Material_Hull",
@@ -6143,7 +6150,7 @@
       "priority": "P2",
       "file": "wholeships/apron_shuttle.glb",
       "tris": 33304,
-      "bytes": 2040476,
+      "bytes": 2948088,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6196,7 +6203,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
       "tris": 36536,
-      "bytes": 2107540,
+      "bytes": 3057308,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6249,7 +6256,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_lode.glb",
       "tris": 31372,
-      "bytes": 1932852,
+      "bytes": 2860292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6301,7 +6308,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
       "tris": 36992,
-      "bytes": 2282732,
+      "bytes": 3263056,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6336,12 +6343,12 @@
           -3.105302095413208
         ],
         "max": [
-          9.64134693145752,
+          9.641345977783203,
           2.076219081878662,
           3.0450000762939453
         ],
         "dimensionsM": [
-          18.36199951171875,
+          18.361998558044434,
           2.901238799095154,
           6.150302171707153
         ]
@@ -6355,7 +6362,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
       "tris": 35760,
-      "bytes": 2211500,
+      "bytes": 3099908,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6387,7 +6394,7 @@
         "min": [
           -8.720653533935547,
           -0.675000011920929,
-          -3.2748405933380127
+          -3.2748544216156006
         ],
         "max": [
           10.599640846252441,
@@ -6397,7 +6404,7 @@
         "dimensionsM": [
           19.32029438018799,
           2.3794999718666077,
-          6.549681186676025
+          6.549695014953613
         ]
       },
       "note": "PQ-193.06 — Corsair Blade, live corsair_raider body. Foundry variant of the Ashline Rig with ram-lip, four blades, weapon collars, and lamps; donor PBR materials on the kit; pirate Rig slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_corsair_blade_v01.glb."
@@ -6416,7 +6423,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
       "tris": 37912,
-      "bytes": 2198404,
+      "bytes": 2824492,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6477,7 +6484,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
       "tris": 29012,
-      "bytes": 1736444,
+      "bytes": 2608936,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6537,7 +6544,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_colossus",
       "tris": 58136,
-      "bytes": 3525476,
+      "bytes": 4552408,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6590,7 +6597,7 @@
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
       "tris": 56374,
-      "bytes": 3279344,
+      "bytes": 4064020,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6643,7 +6650,7 @@
       "priority": "P1",
       "file": "wholeships/helios_cradle.glb",
       "tris": 64008,
-      "bytes": 3655004,
+      "bytes": 4818052,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6696,7 +6703,7 @@
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
       "tris": 21760,
-      "bytes": 1324968,
+      "bytes": 2225792,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6749,7 +6756,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span.glb",
       "tris": 50326,
-      "bytes": 2997636,
+      "bytes": 3990516,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6803,7 +6810,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_dmc.glb",
       "tris": 50326,
-      "bytes": 2997776,
+      "bytes": 3990660,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6857,7 +6864,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_mts.glb",
       "tris": 50326,
-      "bytes": 2997776,
+      "bytes": 3990660,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6911,7 +6918,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_reach.glb",
       "tris": 50326,
-      "bytes": 2997684,
+      "bytes": 3990576,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6972,7 +6979,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 12724,
-      "bytes": 853080,
+      "bytes": 1325092,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7025,7 +7032,7 @@
       "priority": "P2",
       "file": "wholeships/inspection_cutter.glb",
       "tris": 33880,
-      "bytes": 2011524,
+      "bytes": 3003868,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7086,7 +7093,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_ironback",
       "tris": 43642,
-      "bytes": 2423640,
+      "bytes": 3417464,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7143,7 +7150,7 @@
         "lod2": "wholeships/kestrel_lod2.glb"
       },
       "tris": 33460,
-      "bytes": 1906948,
+      "bytes": 2841300,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7193,7 +7200,7 @@
       "priority": "P0",
       "file": "wholeships/kestrel_lod1.glb",
       "tris": 13560,
-      "bytes": 931076,
+      "bytes": 1722260,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
@@ -7232,7 +7239,7 @@
       "priority": "P0",
       "file": "wholeships/kestrel_lod2.glb",
       "tris": 5192,
-      "bytes": 520184,
+      "bytes": 1251228,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
@@ -7279,7 +7286,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_leviathan",
       "tris": 51960,
-      "bytes": 3368012,
+      "bytes": 4631992,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7340,7 +7347,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
       "tris": 33160,
-      "bytes": 1944856,
+      "bytes": 2828432,
       "textureSize": 1024,
       "hooks": [
         "HOOK_DRIVE_CORE"
@@ -7403,7 +7410,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
       "tris": 23604,
-      "bytes": 1438224,
+      "bytes": 2256764,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7456,7 +7463,7 @@
       "priority": "P2",
       "file": "wholeships/ore_barge.glb",
       "tris": 55228,
-      "bytes": 3435064,
+      "bytes": 4550020,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7525,7 +7532,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_pelican",
       "tris": 25410,
-      "bytes": 1490384,
+      "bytes": 2347296,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7578,7 +7585,7 @@
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
       "tris": 36895,
-      "bytes": 2143284,
+      "bytes": 3194212,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7638,7 +7645,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
       "tris": 27532,
-      "bytes": 1609292,
+      "bytes": 2540896,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7690,7 +7697,7 @@
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
       "tris": 52748,
-      "bytes": 3061692,
+      "bytes": 4115100,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7743,7 +7750,7 @@
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
       "tris": 63359,
-      "bytes": 3605348,
+      "bytes": 4797636,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7777,12 +7784,12 @@
           -3.952970266342163
         ],
         "max": [
-          14.600010871887207,
+          14.600000381469727,
           3.902582883834839,
           3.952970266342163
         ],
         "dimensionsM": [
-          30.020516395568848,
+          30.020505905151367,
           5.482585191726685,
           7.905940532684326
         ]
@@ -7795,7 +7802,7 @@
       "priority": "P2",
       "file": "wholeships/salvage_cutter.glb",
       "tris": 35522,
-      "bytes": 2103892,
+      "bytes": 3087280,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7847,7 +7854,7 @@
       "priority": "P2",
       "file": "wholeships/scrap_sweeper.glb",
       "tris": 31888,
-      "bytes": 2001700,
+      "bytes": 2954808,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7900,7 +7907,7 @@
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
       "tris": 35374,
-      "bytes": 2085660,
+      "bytes": 3055816,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7953,7 +7960,7 @@
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
       "tris": 65248,
-      "bytes": 3718372,
+      "bytes": 4902412,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8014,7 +8021,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_warden",
       "tris": 45694,
-      "bytes": 2864924,
+      "bytes": 3805920,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8082,7 +8089,7 @@
       "status": "accepted",
       "wiringStatus": "live_player_wasp",
       "tris": 39784,
-      "bytes": 2137672,
+      "bytes": 3088004,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8135,7 +8142,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_free_militia.glb",
       "tris": 62316,
-      "bytes": 3312292,
+      "bytes": 4437396,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8188,7 +8195,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_mts_escort.glb",
       "tris": 62316,
-      "bytes": 3312240,
+      "bytes": 4437276,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8241,7 +8248,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_scn_patrol.glb",
       "tris": 62316,
-      "bytes": 3312240,
+      "bytes": 4435780,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8293,7 +8300,7 @@
       "priority": "P2",
       "file": "wholeships/yard_tug.glb",
       "tris": 64504,
-      "bytes": 3653492,
+      "bytes": 4825168,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8380,7 +8387,7 @@
       "priority": "P1",
       "file": "places/place_quiessence_freighter_a.glb",
       "tris": 65772,
-      "bytes": 3785136,
+      "bytes": 4973588,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8422,7 +8429,7 @@
       "priority": "P1",
       "file": "places/place_quiessence_freighter_b.glb",
       "tris": 50748,
-      "bytes": 3052224,
+      "bytes": 4066684,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8464,7 +8471,7 @@
       "priority": "P1",
       "file": "places/place_quiessence_freighter_c.glb",
       "tris": 55952,
-      "bytes": 3530344,
+      "bytes": 4643520,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

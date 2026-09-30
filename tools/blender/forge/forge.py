@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import math
 import os
+import zlib
 
 import bmesh
 import bpy
@@ -24,7 +25,9 @@ from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEXTURE_DIR = os.path.join(HERE, 'textures')
-TILE_METERS = 4.0
+# 2048 px panel tile covers TILE_METERS x TILE_METERS: same 256 px/m world-locked density, but the
+# pattern only repeats every 8 m so hulls and stations do not carry a visible 4 m checker.
+TILE_METERS = 8.0
 
 # ---------------------------------------------------------------------------------------------
 # Palette. One vocabulary for the fleet. Paint colours are linear-ish sRGB hex; factors are set on
@@ -98,7 +101,7 @@ def _image(name, colorspace):
     return img
 
 
-def make_material(key, finish, color_hex, ship_id):
+def make_material(key, finish, color_hex, ship_id, emit_scale=1.0):
     """Principled material wired so the glTF exporter emits baseColor/normal/ORM + factors."""
     spec = FINISHES[finish]
     mat = bpy.data.materials.new(f'Forge_{key}')
@@ -156,7 +159,7 @@ def make_material(key, finish, color_hex, ship_id):
     emit = spec.get('emit')
     if emit:
         bsdf.inputs['Emission Color'].default_value = (*rgb, 1.0)
-        bsdf.inputs['Emission Strength'].default_value = emit
+        bsdf.inputs['Emission Strength'].default_value = emit * emit_scale
         bsdf.inputs['Base Color'].default_value = tuple(c * 0.2 for c in rgb) + (1.0,)
     if finish == 'glass':
         bsdf.inputs['Specular IOR Level'].default_value = 0.8
@@ -557,17 +560,20 @@ class Ship:
         self._mats = {}
         self.sockets = {}
         self.hooks = {}
+        # place bodies raise every glow finish's emission by this factor so station windows and
+        # beacons read as light past the bloom threshold at station distances (ships keep 1.0)
+        self.emit_scale = 1.0
         # detail level stamped on parts added while set: 1 = omitted at LOD2, 2 = omitted at LOD1+
         self.detail = 0
 
     def mat(self, finish):
         if finish not in self._mats:
-            color = self.colors.get(finish)
+            base = finish.split('.')[0]
+            color = self.colors.get(finish, self.colors.get(base))
             if color is None:
                 raise KeyError(f'{self.id}: no colour for finish {finish}')
-            base = finish.split('.')[0]
             self._mats[finish] = make_material(f'{self.id}_{finish}', base if base in FINISHES else finish, color,
-                                               self.id)
+                                               self.id, emit_scale=self.emit_scale)
             self._mats[finish]['forgeKey'] = finish
         return self._mats[finish]
 
@@ -584,6 +590,33 @@ class Ship:
         """Keep these parts as their own mesh named LOD0_<hook>_... (damage/drive role binding)."""
         for o in objs:
             o['forge_hook'] = hook
+
+    def anim(self, objs, spec, pivot):
+        """Keep these parts as separate animated nodes (infrastructureMotion drives them).
+
+        spec: '<kind>:<args>' — 'spin:up:0.4' (rad/s about the up axis), 'sweep:up:0.6:0.8'
+        (amplitude rad, rate), 'blink:1.2:0.3' (period s, phase), 'flicker:0.5:0.3' (irregular
+        blink: period, phase), 'chase:<group>:<index>:<count>:<period>' (sequential dock lights).
+        Axis tokens: 'up' (+Z/three +Y), 'fore' (+X), 'side' (+Y).
+
+        pivot: (x, y, z) in Blender coords, or another object whose origin becomes the pivot. The
+        part's origin moves to the pivot so the runtime rotates/visibility-pulses the node about a
+        sensible axis. Every object in `objs` stays its own node; join them yourself when one spec
+        must drive several meshes.
+        """
+        if not isinstance(objs, (list, tuple)):
+            objs = [objs]
+        # 'spin:up:0.4' -> 'spin_up_0p4': node names keep no ':'/'.' (glTF sanitizer strips them)
+        enc = spec.replace('.', 'p').replace(':', '_')
+        if hasattr(pivot, 'matrix_world'):
+            pv = pivot.matrix_world.translation.copy()
+        else:
+            pv = Vector(pivot)
+        for o in objs:
+            o['forge_anim'] = enc
+            # world-space verts + identity transform: shift the mesh, seat the origin at the pivot
+            o.data.transform(Matrix.Translation(-pv))
+            o.location += pv
 
     def socket(self, name, pos, forward=(1, 0, 0)):
         self.sockets[name] = (tuple(pos), tuple(forward))
@@ -642,13 +675,23 @@ def finish_object(obj):
 
 
 def box_project_uvs(obj, scale=1.0):
-    """World-locked tri-planar UVs: 1 UV unit = TILE_METERS / scale metres on the dominant axis."""
+    """World-locked tri-planar UVs: 1 UV unit = TILE_METERS / scale metres on the dominant axis.
+
+    Each part also gets a deterministic 90-degree UV rotation plus a sub-tile offset from its name
+    hash, so the shared panel tile does not grid-align across neighbouring parts (mirrored twins
+    hash on the same base name so port and starboard match).
+    """
     me = obj.data
     if not me.uv_layers:
         me.uv_layers.new(name='UVMap')
     uv = me.uv_layers.active.data
     mw = obj.matrix_world
     k = scale / TILE_METERS
+    base_name = obj.name[:-2] if obj.name.endswith('_M') else obj.name
+    h = zlib.crc32(base_name.encode('utf-8')) & 0xFFFFFFFF
+    rot = h & 3
+    du = ((h >> 8) & 0xFF) / 256.0
+    dv = ((h >> 16) & 0xFF) / 256.0
     for poly in me.polygons:
         n = poly.normal
         ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
@@ -660,7 +703,14 @@ def box_project_uvs(obj, scale=1.0):
                 u, v = co.y * (-1 if n.x >= 0 else 1), co.z
             else:
                 u, v = co.x * (1 if n.y < 0 else -1), co.z
-            uv[li].uv = (u * k + 0.37, v * k + 0.19)
+            u, v = u * k + 0.37, v * k + 0.19
+            if rot == 1:
+                u, v = v, -u
+            elif rot == 2:
+                u, v = -u, -v
+            elif rot == 3:
+                u, v = -v, u
+            uv[li].uv = (u + du, v + dv)
 
 
 def _plane_key(mesh_name, n, d, eps=1e-4):

@@ -94,32 +94,19 @@ function createEngine(host) {
     }
     return lut;
   }
+  // ORRERY field: ONE palette across all five phases — bone ink contours on the void with
+  // an ice accent for data in motion. The phases still choreograph movement (flow, symmetry,
+  // discharge, collapse); they no longer each bring a rainbow. Structure (main/accent/bg per
+  // phase) is unchanged — every phase only draws from one well now.
+  const ORRERY_MAIN = buildLUT(['#05070a', '#0d1116', '#232a33', '#6b6f66', '#b7b4a6', '#ece6d8']);
+  const ORRERY_ACCENT = buildLUT(['#05070a', '#0a1a26', '#14405e', '#2a6a9a', '#5fa8d8', '#8fcbff']);
+  const ORRERY_BG = '#05070a';
   const PALETTES = [
-    { // 0 · GENESIS — deep teal condensation
-      main: buildLUT(['#020c0e', '#052226', '#0a4a4e', '#12827e', '#2cc4ae', '#b8fff0']),
-      accent: buildLUT(['#0a0714', '#241a3e', '#4b3a72', '#7d68ad', '#b3a3e0', '#efeaff']),
-      bg: '#030809',
-    },
-    { // 1 · CURRENTS — emerald flow
-      main: buildLUT(['#03100b', '#08321f', '#0f6b3c', '#1cae5c', '#54eca0', '#d6ffe4']),
-      accent: buildLUT(['#061019', '#123452', '#1f6a8e', '#39a8c4', '#7fe0ea', '#e0fbff']),
-      bg: '#040a08',
-    },
-    { // 2 · BLOOM — jewel symmetry
-      main: buildLUT(['#0d0616', '#2c1440', '#5c2a6e', '#a0489a', '#e08ac2', '#ffe9f6']),
-      accent: buildLUT(['#160d02', '#48300a', '#8a6a14', '#cfa51e', '#ffd873', '#fff7dc']),
-      bg: '#0a0510',
-    },
-    { // 3 · TEMPEST — fire against ice
-      main: buildLUT(['#120503', '#401505', '#8a3a0c', '#d97a1e', '#ffc35e', '#fff0d0']),
-      accent: buildLUT(['#040a18', '#123058', '#2a5f9a', '#4f9ad4', '#93d4f2', '#e4f6ff']),
-      bg: '#0c0503',
-    },
-    { // 4 · SINGULARITY — indigo collapse
-      main: buildLUT(['#050512', '#141244', '#2c2a7e', '#5a54b8', '#9a92e8', '#eae6ff']),
-      accent: buildLUT(['#0d0310', '#3a0f3e', '#78216e', '#b8489a', '#eb8cc8', '#ffe4f2']),
-      bg: '#050510',
-    },
+    { main: ORRERY_MAIN, accent: ORRERY_ACCENT, bg: ORRERY_BG }, // 0 · GENESIS
+    { main: ORRERY_MAIN, accent: ORRERY_ACCENT, bg: ORRERY_BG }, // 1 · CURRENTS
+    { main: ORRERY_MAIN, accent: ORRERY_ACCENT, bg: ORRERY_BG }, // 2 · BLOOM
+    { main: ORRERY_MAIN, accent: ORRERY_ACCENT, bg: ORRERY_BG }, // 3 · TEMPEST
+    { main: ORRERY_MAIN, accent: ORRERY_ACCENT, bg: ORRERY_BG }, // 4 · SINGULARITY
   ];
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -534,7 +521,7 @@ function createEngine(host) {
     if (!waveCtx) return;
     waveCtx.fillStyle = '#02070a';
     waveCtx.fillRect(0, 0, WW, WH);
-    waveCtx.strokeStyle = 'rgba(90,220,242,0.9)';
+    waveCtx.strokeStyle = 'rgba(143,203,255,0.9)';
     waveCtx.lineWidth = 1.2;
     waveCtx.beginPath();
     for (let i = 0; i < 64; i++) {
@@ -544,7 +531,7 @@ function createEngine(host) {
       if (i === 0) waveCtx.moveTo(x, y); else waveCtx.lineTo(x, y);
     }
     waveCtx.stroke();
-    waveCtx.fillStyle = 'rgba(90,220,242,0.25)';
+    waveCtx.fillStyle = 'rgba(143,203,255,0.25)';
     for (let i = 0; i < 16; i++) waveCtx.fillRect((i / 16) * WW, WH - 2, 1, 2);
   }
 
@@ -615,7 +602,7 @@ function createEngine(host) {
     }
     const bandY = ((T * 0.12) % 1) * H;
     if (!reduced && !tableau) {
-      ctx.fillStyle = 'rgba(80,160,145,0.018)';
+      ctx.fillStyle = 'rgba(236,230,216,0.018)';
       ctx.fillRect(0, bandY-1, W, 2);
     }
     if (vignette) ctx.drawImage(vignette, 0, 0, W, H);
@@ -1172,36 +1159,38 @@ function createEngineGL(host) {
   //   flowAmp:  uv displacement per frame from the curl field
   //   decay:    phosphor retention per frame; hue: rotation per frame
   //   period:   beat interval driving injection pulses
+  // ORRERY field: palA..D are identical across phases (bone ink + ice motion). Movement still
+  // differs per phase; hue no longer does. Matches the tableau-continuous override below.
   const PH = [
     { // 0 · GENESIS — dark water finding first light
       zoom: 1.0006, rot: 0.00018, flowAmp: 0.0042, flowScale: 0.34,
       drift: [0.045, 0.020], swirl: 0.0006, jitter: 0.0004,
-      symN: 6, symAmt: 0, decay: 0.9780, hue: 0.0026, period: 2.6, energy: 0.22, fog: 0.62,
-      palA: [0.085, 0.200, 0.185], palB: [0.085, 0.230, 0.205], palC: [1.0, 1.0, 1.0], palD: [0.38, 0.47, 0.42],
+      symN: 6, symAmt: 0, decay: 0.9780, hue: 0, period: 2.6, energy: 0.22, fog: 0.62,
+      palA: [0.08, 0.13, 0.15], palB: [0.05, 0.04, 0.035], palC: [1.0, 1.0, 1.0], palD: [0.02, 0.10, 0.22],
     },
     { // 1 · CURRENTS — long emerald streams
       zoom: 0.99915, rot: -0.00033, flowAmp: 0.0085, flowScale: 0.95,
       drift: [0.100, -0.030], swirl: 0.0012, jitter: 0.0009,
-      symN: 0, symAmt: 0, decay: 0.9650, hue: -0.0035, period: 1.7, energy: 0.38, fog: 0.42,
-      palA: [0.075, 0.190, 0.215], palB: [0.095, 0.235, 0.260], palC: [1.0, 1.0, 1.0], palD: [0.45, 0.35, 0.30],
+      symN: 0, symAmt: 0, decay: 0.9650, hue: 0, period: 1.7, energy: 0.38, fog: 0.42,
+      palA: [0.08, 0.13, 0.15], palB: [0.05, 0.04, 0.035], palC: [1.0, 1.0, 1.0], palD: [0.02, 0.10, 0.22],
     },
     { // 2 · BLOOM — kaleidoscope opens (symAmt is shaped in code)
       zoom: 1.0026, rot: 0.00062, flowAmp: 0.0050, flowScale: 1.65,
       drift: [0.060, 0.060], swirl: 0.0040, jitter: 0.0007,
-      symN: 6, symAmt: 1, decay: 0.9680, hue: 0.0042, period: 1.15, energy: 0.52, fog: 0.36,
-      palA: [0.240, 0.180, 0.270], palB: [0.200, 0.170, 0.230], palC: [1.0, 1.0, 0.9], palD: [0.10, 0.42, 0.70],
+      symN: 6, symAmt: 1, decay: 0.9680, hue: 0, period: 1.15, energy: 0.52, fog: 0.36,
+      palA: [0.08, 0.13, 0.15], palB: [0.05, 0.04, 0.035], palC: [1.0, 1.0, 1.0], palD: [0.02, 0.10, 0.22],
     },
     { // 3 · TEMPEST — the field tears
       zoom: 1.0058, rot: 0.00130, flowAmp: 0.0160, flowScale: 2.70,
       drift: [-0.160, 0.090], swirl: -0.0028, jitter: 0.0050,
-      symN: 0, symAmt: 0, decay: 0.9520, hue: -0.0060, period: 0.60, energy: 0.85, fog: 0.26,
-      palA: [0.220, 0.120, 0.105], palB: [0.220, 0.140, 0.150], palC: [1.2, 0.9, 0.8], palD: [0.02, 0.55, 0.25],
+      symN: 0, symAmt: 0, decay: 0.9520, hue: 0, period: 0.60, energy: 0.85, fog: 0.26,
+      palA: [0.08, 0.13, 0.15], palB: [0.05, 0.04, 0.035], palC: [1.0, 1.0, 1.0], palD: [0.02, 0.10, 0.22],
     },
     { // 4 · SINGULARITY — collapse (zoom accelerates in code), then rebirth
       zoom: 1.0030, rot: 0.00220, flowAmp: 0.0080, flowScale: 1.20,
       drift: [0.000, 0.000], swirl: 0.0200, jitter: 0.0016,
-      symN: 0, symAmt: 0, decay: 0.9710, hue: 0.0080, period: 0.90, energy: 0.62, fog: 0.34,
-      palA: [0.170, 0.155, 0.260], palB: [0.160, 0.145, 0.265], palC: [0.8, 1.0, 1.2], palD: [0.62, 0.58, 0.50],
+      symN: 0, symAmt: 0, decay: 0.9710, hue: 0, period: 0.90, energy: 0.62, fog: 0.34,
+      palA: [0.08, 0.13, 0.15], palB: [0.05, 0.04, 0.035], palC: [1.0, 1.0, 1.0], palD: [0.02, 0.10, 0.22],
     },
   ];
 
@@ -1493,7 +1482,7 @@ function createEngineGL(host) {
     if (!ctx2dWave) return;
     ctx2dWave.fillStyle = '#02070a';
     ctx2dWave.fillRect(0, 0, WW, WH);
-    ctx2dWave.strokeStyle = 'rgba(90,220,242,0.9)';
+    ctx2dWave.strokeStyle = 'rgba(143,203,255,0.9)';
     ctx2dWave.lineWidth = 1.2;
     ctx2dWave.beginPath();
     for (let i = 0; i < 64; i++) {
@@ -1503,7 +1492,7 @@ function createEngineGL(host) {
       if (i === 0) ctx2dWave.moveTo(x, y); else ctx2dWave.lineTo(x, y);
     }
     ctx2dWave.stroke();
-    ctx2dWave.fillStyle = 'rgba(90,220,242,0.25)';
+    ctx2dWave.fillStyle = 'rgba(143,203,255,0.25)';
     for (let i = 0; i < 16; i++) ctx2dWave.fillRect((i / 16) * WW, WH - 2, 1, 2);
   }
 

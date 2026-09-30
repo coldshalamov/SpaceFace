@@ -20,6 +20,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- pedestal + slew ring -------------------------------------------------------------------------
     F.box(s, 'Base', (-2.0, 0, 0.9), (5.0, 4.4, 1.8), material='paint2', bevel=0.15)
@@ -33,6 +34,8 @@ def build():
                segments=20)
 
     # --- turntable: cab + counterweight + machinery house -----------------------------------------------
+    # the whole superstructure slews on the ring — a working crane, not a statue
+    n0 = len(s.objects)
     F.box(s, 'Turntable', (-2.0, 0, 4.6), (4.6, 3.6, 0.8), material='paint2', bevel=0.06)
     F.box(s, 'Counterweight', (-4.4, 0, 5.6), (2.0, 3.0, 2.0), material='paint.aged',
           bevel=0.1)
@@ -68,7 +71,11 @@ def build():
                 0.3, material='gunmetal')
     F.work_lamp(s, 'WristLamp', (15.4, -0.9, 8.6), aim=(0.3, -0.2, -0.9), size=0.45,
                 lens='glow_amber')
+    n_tip = len(s.objects)
     F.beacon(s, 'BoomTip', (16.8, 0, 9.9), finish='glow_red', size=0.35)
+    s.anim(s.objects[n0:], 'sweep:up:0p45:0p12', (-2.0, 0, 4.6))
+    s.anim([o for o in s.objects[n_tip:] if o.name == 'BoomTip_Dome'], 'blink:1p6:0p4',
+           (16.8, 0, 9.9))
     return s
 
 

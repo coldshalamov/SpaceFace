@@ -379,6 +379,17 @@ export function injectHudCss() {
   .sf-lockdiamond[data-shape="bracket-cargo"] .sf-lockdiamond__inner {
     border-radius:50%; clip-path:none; animation:none; }
 
+  /* F4: diamond leaders — a 45° elbow plus a micro label (name + range) per lock diamond, placed
+     by the ORRERY label solver. Static strokes; the HUD re-seats endpoints on the slow clock. */
+  .sf-diamond-leaders { position:absolute; inset:0; z-index:12; pointer-events:none; overflow:hidden; }
+  .sf-diamond-leaders svg { position:absolute; inset:0; width:100%; height:100%; }
+  .sf-diamond-leader { fill:none; stroke-width:1; }
+  .sf-diamond-tag { position:absolute; display:flex; flex-direction:column; gap:2px; white-space:nowrap;
+    text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
+  .sf-diamond-tag__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:700;
+    font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--dp-phos, #dfeeff); }
+  .sf-diamond-tag__sub { font-size:12px; color:var(--dp-ink-dim, #b7b4a6); }
+
   /* G-LOC tunnel vision vignette — sleeps out of the compositor tree until the first
      fade-in; hud.js drives display block/none so opacity:0 never holds a live layer. */
   .sf-gloc-vignette { display:none; position:absolute; inset:0; pointer-events:none; z-index:9; opacity:0;

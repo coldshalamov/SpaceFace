@@ -52,8 +52,16 @@ const CSS = `
 .orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count {
   text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
 /* small type gets its own pool of shadow, sized to the words, not the block */
-.orr-cluster__keytag::before, .orr-cluster__speedfoot > .orr-label::before { content:""; position:absolute; inset:-9px -16px; z-index:-1; pointer-events:none;
+.orr-cluster__speedfoot > .orr-label::before { content:""; position:absolute; inset:-9px -16px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .7), rgb(3 4 7 / .5) 72%, transparent); }
+/* C3: crescent tag pools hug the words (-5/-7px), so they read as glow, not dark ellipses
+   on bright floor. Static gradient stops, zero/frame. */
+.orr-cluster__keytag::before { content:""; position:absolute; inset:-5px -7px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(3 4 7 / .5), rgb(3 4 7 / .34) 72%, transparent); }
+/* P1: dim-state tags hold the 4.5:1 floor on a deeper pool instead of a paler word */
+.orr-cluster__key.is-node .orr-cluster__keytag::before, .orr-cluster__key.is-locked .orr-cluster__keytag::before,
+.orr-cluster__key.is-empty .orr-cluster__keytag::before, .orr-cluster__key.is-cooldown .orr-cluster__keytag::before {
+  background:radial-gradient(closest-side, rgb(3 4 7 / .78), rgb(3 4 7 / .55) 72%, transparent); }
 .orr-cluster__speedfoot > .orr-label { position:relative; }
 .orr-cluster .orr-soft::before { content:""; position:absolute; inset:-18px -26px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .72), rgb(3 4 7 / .38) 55%, transparent); }
@@ -84,18 +92,29 @@ const CSS = `
 .orr-cluster__key svg { position:absolute; inset:0; width:48px; height:48px; overflow:visible; }
 .orr-cluster__icon { position:absolute; left:50%; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; background:currentColor;
   -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:.9; }
-.orr-cluster__key.is-node .orr-cluster__icon { width:14px; height:14px; margin:-7px 0 0 -7px; opacity:.66; }
-.orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
+/* P9: a group node is an open ring only — its tag names the band, so no mark competes with keys */
+.orr-cluster__key.is-node .orr-cluster__icon { display:none; }
+/* P3: a live verb's mark reads at full strength */
+.orr-cluster__key.is-ready .orr-cluster__icon, .orr-cluster__key.is-armed .orr-cluster__icon { width:22px; height:22px; margin:-11px 0 0 -11px; opacity:1; }
+.orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); }
 .orr-cluster__key.is-cooldown .orr-cluster__icon { opacity:.5; }
 .orr-cluster__key.is-locked .orr-cluster__icon, .orr-cluster__key.is-empty .orr-cluster__icon { opacity:.24; }
 /* labels hold a 10 px floor on screen whatever the cluster's scale */
 .orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(10px, calc(10px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; }
 .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:var(--dp-ink-dim, #b7b4a6); }
-.orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:6px; letter-spacing:.08em; }
+/* P8: the key digit is a numeral-face reading in phos; the name keeps the label face */
+.orr-cluster__keytag b { font-family:var(--dp-face-numeral); font-stretch:100%; font-weight:520; font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1)));
+  font-variant-numeric:tabular-nums; text-transform:none; color:var(--dp-phos, #dfeeff); margin-left:6px; letter-spacing:.02em; }
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); }
 .orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
-.orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
+/* C4: a collapsed band's digits stand off the name in an explicit 70% dim fill, so the
+   NAME leads by tone as well as position (opacity over phos-bright kept equalling the name). */
+.orr-cluster__key.is-node .orr-cluster__keytag b { margin-left:8px; opacity:1; color:rgb(184 181 168 / .7); }
+/* C1: dim words are bone at 85% over the deepened pool — the 4.5:1 floor is met by raising
+   the ink, not the pool (the pool is already near black). Cooldown joins locked/empty. */
+.orr-cluster__key.is-cooldown .orr-cluster__keytag, .orr-cluster__key.is-locked .orr-cluster__keytag,
+.orr-cluster__key.is-empty .orr-cluster__keytag { color:#e8e2d4; opacity:.85; }
 .orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
@@ -108,6 +127,12 @@ const CSS = `
 @keyframes orr-glyph-in { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:none; } }
 .orr-cluster.is-arriving .orr-cluster__fade, .orr-cluster.is-arriving .orr-cluster__key { animation:orr-rise 460ms var(--dp-ease-out) both; animation-delay:var(--orr-delay, 0ms); }
 html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__pulse { animation:none !important; }
+/* P10: below 1400px the wingman disc can swallow the crescent's tags — the whole crescent (rail,
+   Hand and keys together, so nothing detaches) steps 10px inboard and the halos shorten */
+@media (max-width:1400px) {
+  .orr-cluster__crescent, .orr-cluster__keys { transform:translateX(-10px); }
+  .orr-cluster__keytag::before { inset:-4px -6px; }
+}
 `;
 
 function injectStyle(doc = globalThis.document) {
@@ -241,7 +266,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   //   the face as a faint ice band from the reference tick to the arc's end, so the zone you
   //   can enter is visible before you enter it. Red stays threat-only; amber stays the Hand's.
   s.appendChild(svg('path', { d: arcD(P.x, P.y, R.speed, SPEED_FROM, SPEED_TO), class: 'orr-core orr-faint', 'stroke-width': 1 }));
-  const overZone = svg('path', { d: '', class: 'orr-core orr-ice', 'stroke-width': 2.4, opacity: '.14', 'stroke-linecap': 'butt' });
+  const overZone = svg('path', { d: '', class: 'orr-core orr-ice', 'stroke-width': 2.4, opacity: '.2', 'stroke-linecap': 'butt' });
   s.appendChild(overZone);
   const tickParts = [];
   for (let i = 0; i <= 20; i += 1) {
@@ -250,7 +275,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const [x1, y1] = at(R.speed + (i % 5 === 0 ? 9 : 5), a);
     tickParts.push(`M ${f1(x0)} ${f1(y0)} L ${f1(x1)} ${f1(y1)}`);
   }
-  s.appendChild(svg('path', { d: tickParts.join(' '), class: 'orr-core orr-rest', 'stroke-width': 1 }));
+  // R6: the ticks under the numeral read hi, not rest — the scale was missed entirely.
+  s.appendChild(svg('path', { d: tickParts.join(' '), class: 'orr-core orr-hi', 'stroke-width': 1 }));
   const speedArc = arcGauge({ cx: P.x, cy: P.y, r: R.speed, from: SPEED_FROM, to: SPEED_TO, width: 2.4, tone: 'phos', track: 'faint', ghost: false, head: false });
   s.appendChild(speedArc.el);
   // the needle: a gem riding the rail, bloom under a core, that changes metal with the phase
@@ -268,7 +294,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     cursorBloom.setAttribute('d', d);
     cursorCore.setAttribute('d', d);
   };
-  const refTick = svg('path', { d: '', class: 'orr-core orr-hi', 'stroke-width': 1.6 });
+  // R6: the REF tick is picked out — phos at 2.4px, the reading voice.
+  const refTick = svg('path', { d: '', class: 'orr-core orr-phos', 'stroke-width': 2.4 });
   s.appendChild(refTick);
   const boost = arcGauge({ cx: P.x, cy: P.y, r: R.boost, from: SPEED_FROM, to: SPEED_TO, width: 3, tone: 'phos', track: 'faint', ghost: false, head: false });
   s.appendChild(boost.el);
@@ -307,17 +334,25 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const armorRow = legendRow('armor', 'Armor');
 
   // ---- the ordnance crescent + the Hand --------------------------------------------------------------
-  const crescentTrack = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1 });
-  s.appendChild(crescentTrack);
+  // P10: rail, Hand and keys share one shift below 1400px, so the crescent's SVG half lives in one group
+  const crescentG = svg('g', { class: 'orr-cluster__crescent' });
+  // P6: the crescent's spine — one continuous 1px bone-30% path through the node centres
+  const crescentTrack = svg('path', { d: '', class: 'orr-core orr-rest', 'stroke-width': 1 });
+  crescentG.appendChild(crescentTrack);
   const hand = svg('g');
   const armGhost = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1, opacity: '.16' });
   const armLine = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.3 });
   const armBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 5 });
   const armPip = svg('circle', { r: 2.2, fill: 'var(--dp-hand, #f2b950)' });
+  // P5: the bead where the Hand meets the armed node — a 4px amber bead in an 8px 25% halo,
+  // seated with the arm's own endpoint writes so it rides the swing and rests with it
+  const armBeadHalo = svg('circle', { r: 4, fill: 'var(--dp-hand, #f2b950)', opacity: '0' });
+  const armBead = svg('circle', { r: 2, fill: 'var(--dp-hand, #f2b950)', opacity: '0' });
   const weightDot = svg('circle', { r: 2.6, fill: 'var(--dp-hand, #f2b950)', opacity: '.34' });
   const hub = svg('circle', { cx: P.x, cy: P.y, r: 3.6, fill: 'none', class: 'orr-core orr-hand', 'stroke-width': 1.3 });
-  hand.append(armGhost, armBloom, armLine, armPip, weightDot, hub);
-  s.appendChild(hand);
+  hand.append(armGhost, armBloom, armLine, armPip, armBeadHalo, armBead, weightDot, hub);
+  crescentG.appendChild(hand);
+  s.appendChild(crescentG);
   const handSpring = createSpring({ value: 40, preset: 'swing', onUpdate: (deg) => {
     const [a0x, a0y] = at(R.speed + 12, deg);
     const [a1x, a1y] = at(R.crescent - KEY_R - 5, deg);
@@ -332,12 +367,18 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     armBloom.setAttribute('d', d);
     armPip.setAttribute('cx', f1(a0x));
     armPip.setAttribute('cy', f1(a0y));
+    // the bead sits on the armed key's ring edge, bridging the arm tip to the node
+    const [b1x, b1y] = at(R.crescent - KEY_R, deg);
+    armBead.setAttribute('cx', f1(b1x));
+    armBead.setAttribute('cy', f1(b1y));
+    armBeadHalo.setAttribute('cx', f1(b1x));
+    armBeadHalo.setAttribute('cy', f1(b1y));
     // the counterweight is the far end of the ghost line: faint, on the inner edge of the orbit
     weightDot.setAttribute('cx', f1(g0x));
     weightDot.setAttribute('cy', f1(g0y));
   } });
 
-  const keyLayer = el('div');
+  const keyLayer = el('div', 'orr-cluster__keys');
   root.appendChild(keyLayer);
   const sockets = [];
   // A socket is a hoverable, focusable readout of one verb (not a button: the press is the key, a
@@ -354,9 +395,17 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const ks = svg('svg', { viewBox: '-24 -24 48 48', class: 'orr-svg' });
     const r0 = node ? NODE_R : KEY_R;
     ks.appendChild(svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1, fill: 'rgb(5 7 10 / .34)' }));
+    if (node) {
+      // C2: a group node's open ring carries the §3.1 twin too — flat 20% bone, static.
+      const twin = svg('circle', { r: r0, class: 'orr-core', 'stroke-width': 5, fill: 'none' });
+      twin.style.stroke = 'rgb(232 226 212 / .20)';
+      ks.appendChild(twin);
+    }
     const cd = svg('path', { d: arcD(0, 0, r0 + 3.5, 0, 360), class: 'orr-core orr-phos', 'stroke-width': node ? 1.6 : 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt', opacity: '.8' });
-    const armedB = svg('circle', { r: r0, class: 'orr-bloom orr-hand', 'stroke-width': 6, fill: 'none', opacity: 0 });
-    const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.5, fill: 'none', opacity: 0 });
+    // P2: a live verb's ring is a 2.5px core over a 5px 20% geometric bloom twin — amber while
+    // armed, bone-hi while ready; the tone is retinted on state change, never per frame
+    const armedB = svg('circle', { r: r0, class: 'orr-bloom orr-hand', 'stroke-width': 5, fill: 'none', opacity: 0 });
+    const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 2.5, fill: 'none', opacity: 0 });
     ks.append(cd, armedB, armed);
     k.appendChild(ks);
     const ic = el('span', 'orr-cluster__icon');
@@ -502,8 +551,15 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         if (sk.state !== state) {
           sk.state = state;
           sk.el.className = `orr-cluster__key is-${state}`;
-          sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
-          sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
+          const lit = state === 'armed' || state === 'ready';
+          sk.armed.setAttribute('class', `orr-core orr-${state === 'armed' ? 'hand' : 'hi'}`);
+          sk.armedB.setAttribute('class', `orr-bloom orr-${state === 'armed' ? 'hand' : 'hi'}`);
+          // C2: the twin is a TRUE 20% — flat amber while armed, flat bone while ready — set
+          // inline so no tone class can multiply it down to invisibility. Retinted on state
+          // change only, never per frame.
+          sk.armedB.style.stroke = state === 'armed' ? 'rgb(242 185 80 / .2)' : 'rgb(232 226 212 / .2)';
+          sk.armed.setAttribute('opacity', lit ? '1' : '0');
+          sk.armedB.setAttribute('opacity', lit ? '1' : '0');
         }
         sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
         const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
@@ -536,6 +592,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       armLine.setAttribute('opacity', handArmed ? '1' : '.58');
       armBloom.setAttribute('opacity', handArmed ? '.34' : '0');
       armPip.setAttribute('opacity', handArmed ? '1' : '.7');
+      armBead.setAttribute('opacity', handArmed ? '1' : '0');
+      armBeadHalo.setAttribute('opacity', handArmed ? '.25' : '0');
     }
     // tether
     const t = d.tether || null;

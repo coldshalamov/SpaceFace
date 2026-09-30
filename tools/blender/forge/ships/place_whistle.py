@@ -32,6 +32,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === tripod boot — three splayed legs on a sole ring =============================
     F.ring(s, 'BootSole', (0, 0, -0.3), 1.35, 0.3, axis=(0, 0, 1), material='paint2',

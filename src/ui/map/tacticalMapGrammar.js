@@ -332,10 +332,12 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
   g.restore();
 
   // Non-rotating centre brackets make self-location instantaneous while the hull turns.
+  // T4: the brackets ride 10px out (r25) so glyph, brackets and crosshair stop merging into
+  // one 12px knot at the scope centre. Static canvas paint, zero/frame.
   g.save();
   g.strokeStyle = 'rgba(232,226,212,0.78)';
   g.lineWidth = 1.25;
-  drawOpenCorners(g, x, y, 15, 4.5);
+  drawOpenCorners(g, x, y, 25, 4.5);
   if (label) {
     g.font = canvasFont(700, 12, 'data');
     g.textAlign = 'center';

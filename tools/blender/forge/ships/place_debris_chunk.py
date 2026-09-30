@@ -38,6 +38,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === the curved shell: a hull arc, plating still following the curve ==========
     # five faceted skin panels fanned around the X axis on a 6.5 m radius — a sheared

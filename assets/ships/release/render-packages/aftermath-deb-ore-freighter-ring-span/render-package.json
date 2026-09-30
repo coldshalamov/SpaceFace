@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ed53ae58acde4753d6ac3b63b16d019d9dc5909e8832d41cd80c1aa48d4de042",
+  "contentHash": "ffea1baf19a0365ea2ba48e77d013268addc8dd77df1349734bc37d705c09e1f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,11 +23,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a7e9fe55f456257199fde571c505e7b0691bc348c9bac1bdc2419b984ed2f0e",
+      "geometryHash": "f50eea45098cd30848618edf0aabc9fb80006b7c74bac0e6928325eef7c68c62",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "31310592ce7fc3599907d38ac71ef34746ed6ba665e7c4072d64a3b294334af3",
       "materialPipelineKey": "opaque",
       "meshName": "Coaming",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b82dc0aade7a75ddff18963ce2e0d4a242e30ebc24c9d15a866a1acc093de96",
+      "geometryHash": "34a3e3d2d6e594a0c876b936abe6f0f26ea18b5961183a003864fdfd05f30d00",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "706d7df4af4a96cef26bfd96083dc3fc1ab588d734811dde8adf52e0db9d7e27",
+      "geometryHash": "bb8c3b9b6760d0bf19b676079055bc28bdcb6be3bdb8c2e7b408e88ecb8676be",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c2d72a6b20ffcd85817df7178194bf74c09963119cd501543dee46f4b458fff",
+      "geometryHash": "6ae6a5ec92310760c0429b42af7f0f94f166bfaf66866791a9386b74bcd4f61e",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f647ac62caa232522d9ec967eaaf64d1bf972b4a965781498294574b8c4c9d4c",
+      "geometryHash": "a60148405aefc5ced87efda152cec0b21bdf135613c70dd1451ad0952bed24fe",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a76f79270384989617f95058188809af6f7d9af4fe70d72f11f0896af38069cb",
+      "geometryHash": "e87998546ab23b91b85354763cab541a1485ae273ed18580b9e407af585cca6d",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "252b7ffc0eb797ea0aa01f528243287bd1cc6f06f22d7e1b6b3e62ceede73465",
+      "geometryHash": "a4e304833e468084c6299bfd6da81f28a21505c010499fdf04f00abeb356e62b",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "36372698d69af5c8087250f0dde8a46e8c976bbb04168d95bde04b79e9a61bfd",
+      "geometryHash": "cc20ebfbe270ff9275634054a98634f40525993de890915aff17d4c0945af6a4",
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -247,8 +247,8 @@
       ]
     },
     {
-      "hash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
-      "id": "material:2420fbdf2e405d9bd20f8b92",
+      "hash": "31310592ce7fc3599907d38ac71ef34746ed6ba665e7c4072d64a3b294334af3",
+      "id": "material:31310592ce7fc3599907d38a",
       "name": "Forge_ore_barge_wk_torn",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -726,19 +726,19 @@
       "sha256": "809ae6e61b429fd8dacaa34b561bcc031d9aa17e59617f17ad6a500696a4392d"
     },
     "sourceGlb": {
-      "bytes": 129040,
-      "sha256": "f4cb0009c4c7bf2b21e58d96e16f6c0d2b91855ff5ac9dd640211334c8ad1c98",
+      "bytes": 290272,
+      "sha256": "2a7b623970b553b82a14b65e1b8fa31c317606bf849c5ccb6b50bb2e7e2fbc72",
       "uri": "place_aftermath_deb_ore_freighter_ring_span.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 133324,
-    "sha256": "b56d3c19455c2a07309a2c66275d8f44a8c102a3e1258970ca1832e8e8b20080",
+    "bytes": 294556,
+    "sha256": "ff9fcd150753297a6d0b3fe7e15a44ad8b4fb2426c45f8b06d14dd77b8317d2c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1035,7 +1035,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_ring_span.glb"
   },
-  "runtimeHash": "42d364ff7642772cd1374ad2b7de9db265ad5b9f483e41af6db5ea1c8163de20",
+  "runtimeHash": "9cb1c8df2dd1dd1849f3326a5a3f627e92dba275f242c51650327345016f2499",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

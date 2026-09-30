@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        37
+        49
       ],
       "parentNodeId": "sf.render.outpost-bastion.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        38
+        50
       ],
       "parentNodeId": "sf.render.outpost-bastion.root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Module_Defense",
       "nodePath": [
         0,
-        39
+        51
       ],
       "parentNodeId": "sf.render.outpost-bastion.root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Module_Depot",
       "nodePath": [
         0,
-        40
+        52
       ],
       "parentNodeId": "sf.render.outpost-bastion.root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_Module_Refinery",
       "nodePath": [
         0,
-        41
+        53
       ],
       "parentNodeId": "sf.render.outpost-bastion.root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_Module_Teleporter",
       "nodePath": [
         0,
-        42
+        54
       ],
       "parentNodeId": "sf.render.outpost-bastion.root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        43
+        55
       ],
       "parentNodeId": "sf.render.outpost-bastion.root",
       "worldTransform": [
@@ -335,8 +335,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "621ad4a5d1a6d4f9014f338a15b0f97beb68ee1a2e1462193bdf09f1e127eaec",
+  "contentHash": "33330b0ecc5c561e317c749ed61899827f6a29f68186ba909f0c79523e63e476",
   "dynamicGroups": [
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p4-0p0-warnbeacon0-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p4-0p0-warnbeacon0-dome"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p5-0p1-warnbeacon1-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p5-0p1-warnbeacon1-dome"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p0-0p2-barrellamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p0-0p2-barrellamp-1"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p2-0p0-barrellamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p2-0p0-barrellamp-1"
+    },
     {
       "id": "sf.render.outpost-bastion.mesh.lod0-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
@@ -348,6 +368,26 @@
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-hook-nav-starboard"
     },
     {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p4-0p0-warnbeacon0-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p4-0p0-warnbeacon0-dome"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p5-0p1-warnbeacon1-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p5-0p1-warnbeacon1-dome"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p0-0p2-barrellamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p0-0p2-barrellamp-1"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p2-0p0-barrellamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p2-0p0-barrellamp-1"
+    },
+    {
       "id": "sf.render.outpost-bastion.mesh.lod1-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-hook-nav-port"
@@ -356,6 +396,26 @@
       "id": "sf.render.outpost-bastion.mesh.lod1-hook-nav-starboard.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p4-0p0-warnbeacon0-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p4-0p0-warnbeacon0-dome"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p5-0p1-warnbeacon1-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p5-0p1-warnbeacon1-dome"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p0-0p2-barrellamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p0-0p2-barrellamp-1"
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p2-0p0-barrellamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p2-0p0-barrellamp-1"
     },
     {
       "id": "sf.render.outpost-bastion.mesh.lod2-hook-nav-port.dynamic",
@@ -374,16 +434,16 @@
         "max": [
           56.49846649169922,
           41.70515060424805,
-          8.527315139770508
+          8.527238845825195
         ],
         "min": [
           -41.70516586303711,
           -41.70515060424805,
-          -14.609745025634766
+          -14.609822273254395
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5ef63ec73a7793d5d9d2d01a494938b693b96c88fd96985a97b3f77c526c277",
+      "geometryHash": "ca8de391a0f4de0a542c040d5d8fd9df668c97252baadaebdb8115a33128f052",
       "id": "sf.render.outpost-bastion.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -393,6 +453,106 @@
       "nodeId": "sf.render.outpost-bastion.mesh.collision-hull",
       "primitiveIndex": 0,
       "vertexCount": 874
+    },
+    {
+      "bounds": {
+        "max": [
+          38.4887580871582,
+          17.90354498038014,
+          -0.058998480439186096
+        ],
+        "min": [
+          37.80675506591797,
+          17.591068667080798,
+          -0.7410015016794205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a5a8582c7c194aac07def14d833708e0d99c4b7e3efb72dba4291f8e96eae513",
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p4-0p0-warnbeacon0-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p4-0p0-warnbeacon0-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -37.80675506591797,
+          1.6864322007628316,
+          -0.058998480439186096
+        ],
+        "min": [
+          -38.4887580871582,
+          1.3739558874634867,
+          -0.7410015016794205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d84d3e0a4dea824589e9e45446b36c4ae53004a0d060779a523c750e40e32a59",
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p5-0p1-warnbeacon1-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p5-0p1-warnbeacon1-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.25,
+          27.10500510231447,
+          -11.450000286102295
+        ],
+        "min": [
+          -2.5500001907348633,
+          26.89499489768553,
+          -11.750000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1a8741cd2dc97928944862f232d24040d3e42601282df929f8e1cc548b29501",
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p0-0p2-barrellamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p0-0p2-barrellamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5500001907348633,
+          27.10500510231447,
+          -11.450000286102295
+        ],
+        "min": [
+          2.25,
+          26.89499489768553,
+          -11.750000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5c63602511106c5f9ba63d603682863df7c925d6cbce3a8f5244792af3d55d53",
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p2-0p0-barrellamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p2-0p0-barrellamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -408,11 +568,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7990fcefb5bedb260e8d651b24877005b4944767533200fd886496fec1a3b728",
+      "geometryHash": "0c55eb6e50434257d5a3bee9e1747934e1af2d15e32b8e812d5f93ff5beabe49",
       "id": "sf.render.outpost-bastion.mesh.lod0-armor.primitive.0",
       "indexCount": 37884,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "bc9d919600f7efb73f8eea122debc9e2f6f72f18ad8c2da46e4e7063ef02d0fe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-armor",
@@ -433,7 +593,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7ac976dace60d02463dbc471f17193e45e90865b998e185d5d2bb400f0436d2",
+      "geometryHash": "c5035fd1bdd8c2e34f50dd272d71d55a1211195a29e1893ecb8a6eb399a627b4",
       "id": "sf.render.outpost-bastion.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 828,
       "indexed": true,
@@ -447,27 +607,27 @@
     {
       "bounds": {
         "max": [
-          51.79999923706055,
-          40.14043007661845,
-          -0.05737505611948013
+          51.79895278554515,
+          40.13999938964844,
+          -2.299701345917521
         ],
         "min": [
-          -38.4887580871582,
-          -40.14043007661845,
-          -11.751624944238149
+          -19.758953777366436,
+          -40.13999938964844,
+          -11.462798224929037
         ]
       },
       "drawMode": 4,
-      "geometryHash": "012745355ccfa46ce1eff50b2f4998092874b6fbffa545b36fef532e6cc854c9",
+      "geometryHash": "eadf395903940fe9be483309e6f9e0cee9b13031095b493b9fdf5973d6b4863f",
       "id": "sf.render.outpost-bastion.mesh.lod0-hook-nav-port.primitive.0",
-      "indexCount": 1368,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 544
+      "vertexCount": 240
     },
     {
       "bounds": {
@@ -483,7 +643,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53fa1c1a50175658c154f535f1b52aa4664efad1e6297680a78e8198270cea70",
+      "geometryHash": "85543cb3558a610c4ba186b6db075f18d33b6db27cd03a0617d3079cb28718c7",
       "id": "sf.render.outpost-bastion.mesh.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -508,11 +668,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "add6555cf9e38f8cad5c6b06c315f21bf2fa77020a1bae5110daa3c7949746ad",
+      "geometryHash": "11377686d953fed2277ab6e87311072b0d2b52304b8d8050a4e341aff68c28a7",
       "id": "sf.render.outpost-bastion.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialHash": "173ac2a125a0a72d2ecd4e1cbf9c37eca4128a1dcdee44a38bf85d0e177aa49d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-hull-aged",
@@ -533,11 +693,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d081387dc6deb731c1ac3adc70720dbd22b567797486d95f31870ef3458e66a6",
+      "geometryHash": "7139a049f35e3348350105441143fd4e8a46d3d45228a2d089d48c24133d33f6",
       "id": "sf.render.outpost-bastion.mesh.lod0-hull-role.primitive.0",
       "indexCount": 1632,
       "indexed": true,
-      "materialHash": "ce98e12ccda2279f13e87f62fd4c45e5fcef2e2741788844240278390fa63959",
+      "materialHash": "88ebb228625028909d540196f6bd8841b30946cc580fe76b4cd6226bd5a0b970",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_role",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-hull-role",
@@ -558,11 +718,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b83759fa41a1a62fef2f1d3108dde9efab55eee1d0a556d4e5afde7a5e62169e",
+      "geometryHash": "445073c0b4fa9142e69f2438124d0ca8c597c08461745a200cad9128e228f9ad",
       "id": "sf.render.outpost-bastion.mesh.lod0-hull.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "3d4ecb303cbf6cdb1cfd8a97f5e75a9a758d78b69ae8d6902cdad26bc99cc7b8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-hull",
@@ -583,7 +743,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc35c46f708a39bf0dabaa63ec6da9cd50cd040f909e45c77b4aa87c2203fdb8",
+      "geometryHash": "90a07f1a605677a722dcfd927a3bf00ea2ba70377af4137c5b02a088d5d48b19",
       "id": "sf.render.outpost-bastion.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 7176,
       "indexed": true,
@@ -592,7 +752,7 @@
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 2584
+      "vertexCount": 2590
     },
     {
       "bounds": {
@@ -608,11 +768,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "216b8399457f5d25e8214b1ece3f363f194660ae2cc12ddd3eb6bc5a89bed0ab",
+      "geometryHash": "ece3c4419ff730105437816de2c568206f94064f11936f9d3bd7432688516ae6",
       "id": "sf.render.outpost-bastion.mesh.lod0-livery.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialHash": "03c6d2a1e3d1d6833242d83573259792ac7d7da6ba6e2f4aae56a2b1014aa839",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-livery",
@@ -633,11 +793,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f48bf6457ed4f19128d4e122398ae9d6986aad74953b90a48cc3b3a95f0099b3",
+      "geometryHash": "595098efb9b54b9bed514f21d1ae5aa6c7d3109443e627d683670c8932ab6655",
       "id": "sf.render.outpost-bastion.mesh.lod0-mechanical.primitive.0",
       "indexCount": 6852,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "c46061e496f3e80f51f57ed49b926649743371f494907c2b429dd56dec9128aa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-mechanical",
@@ -658,16 +818,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2906ec08c3d15bddd21c97c5ba42762bf2570a1eafbd137f6cec72f90fedf7e1",
+      "geometryHash": "1ad4618163d9e58f2ea855107b59801dcf9c70014e70037907f817d8ad7f6615",
       "id": "sf.render.outpost-bastion.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 15324,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "da0b47461cd79874c97a158d9324087fc26b4de790b0c9830ccb146061053cd4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 5159
+      "vertexCount": 5166
     },
     {
       "bounds": {
@@ -683,16 +843,116 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc7a7d6acd4daba85b800d02e00040750cf9169b0d687332dda1be1d22ef6f61",
+      "geometryHash": "164b9d50ff9ea112b64004f13cbfb848edb3500b291c7cbd13e01d8ed7a28e98",
       "id": "sf.render.outpost-bastion.mesh.lod0-warning.primitive.0",
       "indexCount": 4872,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "108d2ab0dc58feef57a0de71879c3b9cb69210b80dbc395e6c5bdfedaffd9a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-warning",
       "primitiveIndex": 0,
       "vertexCount": 1648
+    },
+    {
+      "bounds": {
+        "max": [
+          38.4891200363636,
+          17.90355371331669,
+          -0.05869141221046448
+        ],
+        "min": [
+          37.80633044242859,
+          17.592300679331053,
+          -0.7414810061454773
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4fd1cbf34e419d210a9cd76fcdc50f8c5c718c58b2697ad0a0feb92847f1543",
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p4-0p0-warnbeacon0-dome.primitive.0",
+      "indexCount": 186,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p4-0p0-warnbeacon0-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 65
+    },
+    {
+      "bounds": {
+        "max": [
+          -37.806398239565524,
+          1.6864430268832324,
+          -0.05869176983833313
+        ],
+        "min": [
+          -38.48910382704672,
+          1.375190291779411,
+          -0.7414807081222534
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed31d099862f7f0a7018665ea869a12f87b2846a3bb4bd5ba72f7e4bb1b062ed",
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p5-0p1-warnbeacon1-dome.primitive.0",
+      "indexCount": 186,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p5-0p1-warnbeacon1-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 65
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.25,
+          27.10500510231447,
+          -11.450000286102295
+        ],
+        "min": [
+          -2.5500001907348633,
+          26.89499489768553,
+          -11.750000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "225dd662ee4812aafc989b330eff0f33dffd4c1ab9079e5b0d687579765796fc",
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p0-0p2-barrellamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p0-0p2-barrellamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5500001907348633,
+          27.10500510231447,
+          -11.450000286102295
+        ],
+        "min": [
+          2.25,
+          26.89499489768553,
+          -11.750000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c31c452a9655910900c06be6b9a9ce90c53f38303b2d1343fd209bc8cc08b8d",
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p2-0p0-barrellamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p2-0p0-barrellamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -708,16 +968,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e321a685841b888ecab33ab1ee1be83c636b6c149a1735c5b63fad85ddb3746",
+      "geometryHash": "03f7471449c68855c2f7d16909e2f9e3425c36d7f928020e08d87a5af96e0fb0",
       "id": "sf.render.outpost-bastion.mesh.lod1-armor.primitive.0",
       "indexCount": 16248,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "bc9d919600f7efb73f8eea122debc9e2f6f72f18ad8c2da46e4e7063ef02d0fe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 7952
+      "vertexCount": 7923
     },
     {
       "bounds": {
@@ -733,7 +993,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4a3854218003facba118e800e4a7d545bfcadf93a6c2de73360d4b1d61545166",
+      "geometryHash": "dd082ce41b22857e0acd426adf519936cd60bab0d80a969f38a0ddabe21ba8c6",
       "id": "sf.render.outpost-bastion.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 492,
       "indexed": true,
@@ -747,27 +1007,27 @@
     {
       "bounds": {
         "max": [
-          51.79999923706055,
-          40.1405877982904,
-          -0.05719801821466053
+          51.79895278554515,
+          40.13999938964844,
+          -2.299701345917521
         ],
         "min": [
-          -38.489112854003906,
-          -40.1405877982904,
-          -11.751493855931802
+          -19.758953777366436,
+          -40.13999938964844,
+          -11.462798224929037
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e82370083351dd36af007bdb96994a79a4b1e3439382707a67abea58142466e0",
+      "geometryHash": "4e0ec1ad307d6dc778cffcf29177289c9b3e0879e5d17fd556aff97655a2d75c",
       "id": "sf.render.outpost-bastion.mesh.lod1-hook-nav-port.primitive.0",
-      "indexCount": 720,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_NAV_PORT",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 393
+      "vertexCount": 240
     },
     {
       "bounds": {
@@ -783,7 +1043,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "588b79a1ce2aabea7060ccda74f7470c7f31d217bcc384a579c406c0190dfbf9",
+      "geometryHash": "a28e7e4f02acba61e607ba676fee4f069f87c430f7e3ad70fc8828e794a4916d",
       "id": "sf.render.outpost-bastion.mesh.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -808,11 +1068,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44053a7cc4902ee709738e0e08c227babbd339e3d8dd7bbad91c7ca5dca3f2a0",
+      "geometryHash": "86c54064808806584487e23cbcacaf3feb7b628ad9e419fa64c4e8366591c904",
       "id": "sf.render.outpost-bastion.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 540,
       "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialHash": "173ac2a125a0a72d2ecd4e1cbf9c37eca4128a1dcdee44a38bf85d0e177aa49d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-hull-aged",
@@ -833,11 +1093,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1db82eb3e5d594b73c67fc34bba60260e95ed5f1f90bc6c5fe77d4101c1b8909",
+      "geometryHash": "1cf30cfcddddda03bdb4f97235ed7ee605f90cfd5f696bf7efb45daf08e28af5",
       "id": "sf.render.outpost-bastion.mesh.lod1-hull-role.primitive.0",
       "indexCount": 1404,
       "indexed": true,
-      "materialHash": "ce98e12ccda2279f13e87f62fd4c45e5fcef2e2741788844240278390fa63959",
+      "materialHash": "88ebb228625028909d540196f6bd8841b30946cc580fe76b4cd6226bd5a0b970",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_role",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-hull-role",
@@ -858,11 +1118,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c09a63bdf3192cfeeb2105890ac3fd85342f276b985c2ed7e936fec9ab7e003",
+      "geometryHash": "5f0e4a484fa25abcdbec466d89148a18489da8ae2d02feba70ceba4388f8182c",
       "id": "sf.render.outpost-bastion.mesh.lod1-hull.primitive.0",
       "indexCount": 990,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "3d4ecb303cbf6cdb1cfd8a97f5e75a9a758d78b69ae8d6902cdad26bc99cc7b8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-hull",
@@ -883,16 +1143,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8d2675b28deef0b8228d35fd661865cec010d2527f1078221edc817b94e279b",
+      "geometryHash": "e7d824c60bcc2bc269cebfd704a8c2e3827f7c86cd7762257c4bffd39c603bd9",
       "id": "sf.render.outpost-bastion.mesh.lod1-lights-warm.primitive.0",
-      "indexCount": 4314,
+      "indexCount": 4272,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 1743
+      "vertexCount": 1731
     },
     {
       "bounds": {
@@ -908,11 +1168,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90dad515e88460172de37eef902b7364623bcfe986d8673255bad93985333374",
+      "geometryHash": "30f0bd11341da2124d75eb5b9ef78719f238914dc8efbcb338bcbd05b8799e09",
       "id": "sf.render.outpost-bastion.mesh.lod1-livery.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialHash": "03c6d2a1e3d1d6833242d83573259792ac7d7da6ba6e2f4aae56a2b1014aa839",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-livery",
@@ -933,11 +1193,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54fd8e3a756b4c4d7b6d80ea388f9243964bede2388f6631e1b73dacb03bf0c9",
+      "geometryHash": "bb4ff8b96fa4d25ba6f41fd70e090455a590f74f2411633327ab2c02175d62f0",
       "id": "sf.render.outpost-bastion.mesh.lod1-mechanical.primitive.0",
       "indexCount": 1356,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "c46061e496f3e80f51f57ed49b926649743371f494907c2b429dd56dec9128aa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-mechanical",
@@ -958,16 +1218,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8963212f5240e9b7e94d1073afe457db78e70c5b44fe48e8a3397f219d4dbfd",
+      "geometryHash": "b3b56c87132d2d494259c47eb9c06b53e5cba63afc00515316c724b59aab0de1",
       "id": "sf.render.outpost-bastion.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 4452,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "da0b47461cd79874c97a158d9324087fc26b4de790b0c9830ccb146061053cd4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1877
+      "vertexCount": 1879
     },
     {
       "bounds": {
@@ -983,16 +1243,116 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b794f315fb2086edff99d662e73d97ab6de751de3266a063558ce2283af08569",
+      "geometryHash": "7ee929bfe0c69fea49b4f5fb97b35fc5add7d69230843e4bfdd3bee3fb14087e",
       "id": "sf.render.outpost-bastion.mesh.lod1-warning.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "108d2ab0dc58feef57a0de71879c3b9cb69210b80dbc395e6c5bdfedaffd9a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-warning",
       "primitiveIndex": 0,
       "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          38.4887580871582,
+          17.90354498038014,
+          -0.058998480439186096
+        ],
+        "min": [
+          37.80675506591797,
+          17.591068667080798,
+          -0.7410015016794205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "13e32a6750782aea33c08d7a92fea8298d7f3febba9033ba37322c8071756e32",
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p4-0p0-warnbeacon0-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p4-0p0-warnbeacon0-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -37.80675506591797,
+          1.6864322007628316,
+          -0.058998480439186096
+        ],
+        "min": [
+          -38.4887580871582,
+          1.3739558874634867,
+          -0.7410015016794205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a555037f4667edb7fe8049db5a8aaceb4bca833e664531544da1f14f086cbf3",
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p5-0p1-warnbeacon1-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p5-0p1-warnbeacon1-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.25,
+          27.10500510231447,
+          -11.450000286102295
+        ],
+        "min": [
+          -2.5500001907348633,
+          26.89499489768553,
+          -11.750000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "225dd662ee4812aafc989b330eff0f33dffd4c1ab9079e5b0d687579765796fc",
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p0-0p2-barrellamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p0-0p2-barrellamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5500001907348633,
+          27.10500510231447,
+          -11.450000286102295
+        ],
+        "min": [
+          2.25,
+          26.89499489768553,
+          -11.750000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c31c452a9655910900c06be6b9a9ce90c53f38303b2d1343fd209bc8cc08b8d",
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p2-0p0-barrellamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodeId": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p2-0p0-barrellamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -1008,11 +1368,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5bbe28aff5b31fb30be407b40bd01403f9a3b51ae0e5fb14b8275863e227ee3f",
+      "geometryHash": "4160bbc3dcd63a13e8d2e735764703cad51d763ea6a1fbde7f0020f2ce122194",
       "id": "sf.render.outpost-bastion.mesh.lod2-armor.primitive.0",
       "indexCount": 7584,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "bc9d919600f7efb73f8eea122debc9e2f6f72f18ad8c2da46e4e7063ef02d0fe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-armor",
@@ -1033,7 +1393,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29c2a29655556466d06f610ba4d81c2c2f0b42e4c07a521dc724228466798597",
+      "geometryHash": "2664f50b78d99d82eca18e92639917b25a8e31633ca85d61c2a61af2a28ebed5",
       "id": "sf.render.outpost-bastion.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -1047,27 +1407,27 @@
     {
       "bounds": {
         "max": [
-          51.79999923706055,
-          40.04774207904697,
-          -0.06460767911867116
+          51.79886615302167,
+          40.04666519165039,
+          -2.300577122735036
         ],
         "min": [
-          -38.49100875854492,
-          -40.04774207904697,
-          -11.748126887510262
+          -19.75886714484296,
+          -40.04666519165039,
+          -11.461922448111522
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9241f7f939c1984abce1e02ad60f0581081f457c12e1b9d2f0dc0cc580c53d14",
+      "geometryHash": "f9857ca9619c10dd478447d6dd2be5aa4ec0ca8d459c095e737a8d60280d3f49",
       "id": "sf.render.outpost-bastion.mesh.lod2-hook-nav-port.primitive.0",
-      "indexCount": 276,
+      "indexCount": 144,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_NAV_PORT",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -1083,7 +1443,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b49b5e8546a1e4fc5b3d3d0ac3a073d8d1fb3cfd08d0e48f28abfbbeca34b55f",
+      "geometryHash": "2a943e33ec458662d6903574d9584d0ec997461e5ca847f87f488b2662fc19c3",
       "id": "sf.render.outpost-bastion.mesh.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1108,11 +1468,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "934b9ea871203f4f507e9c588c683c717f25d46435e0366e3ff8776919e42442",
+      "geometryHash": "88f2d8c8ea3ac581ef2f200368f1b233e6a0cd01734142d456c9f6307619e37d",
       "id": "sf.render.outpost-bastion.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialHash": "173ac2a125a0a72d2ecd4e1cbf9c37eca4128a1dcdee44a38bf85d0e177aa49d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-hull-aged",
@@ -1133,16 +1493,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cb16db480c3dbfc9373933138e860c366f57896520084843e39c3f52e04244b7",
+      "geometryHash": "454aea57af007cd403f21d5eba93d6ba160751435ba147353c457ab8460bd4d8",
       "id": "sf.render.outpost-bastion.mesh.lod2-hull-role.primitive.0",
-      "indexCount": 684,
+      "indexCount": 678,
       "indexed": true,
-      "materialHash": "ce98e12ccda2279f13e87f62fd4c45e5fcef2e2741788844240278390fa63959",
+      "materialHash": "88ebb228625028909d540196f6bd8841b30946cc580fe76b4cd6226bd5a0b970",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_role",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-hull-role",
       "primitiveIndex": 0,
-      "vertexCount": 188
+      "vertexCount": 187
     },
     {
       "bounds": {
@@ -1158,11 +1518,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd5d15d2a73ff26d1bbe82f09ef477c68ef2f6b2a7ada162d0edcbec42981bf7",
+      "geometryHash": "3d41701a49ec8ea4e146ff33a6b991fae3eed598f00934ae8a6a9b3a4dc67692",
       "id": "sf.render.outpost-bastion.mesh.lod2-hull.primitive.0",
       "indexCount": 120,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "3d4ecb303cbf6cdb1cfd8a97f5e75a9a758d78b69ae8d6902cdad26bc99cc7b8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-hull",
@@ -1172,27 +1532,27 @@
     {
       "bounds": {
         "max": [
-          40.36716842651367,
-          40.35993576049805,
-          -2.14259934425354
+          40.368812561035156,
+          40.35770034790039,
+          -2.1425836086273193
         ],
         "min": [
-          -40.36716842651367,
-          -40.3744010925293,
-          -2.9113333225250244
+          -40.368812561035156,
+          -40.37992477416992,
+          -2.911349058151245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90cda7aa624c01a61e4171fa6435cfd7146d8c0bb0352a431cbd944060a417f7",
+      "geometryHash": "ef7b6c74f235ed3a4ac1cbce6e032a4f29921f5b405607dc17a394c891c511c8",
       "id": "sf.render.outpost-bastion.mesh.lod2-lights-warm.primitive.0",
-      "indexCount": 948,
+      "indexCount": 924,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 628
+      "vertexCount": 618
     },
     {
       "bounds": {
@@ -1208,11 +1568,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90dad515e88460172de37eef902b7364623bcfe986d8673255bad93985333374",
+      "geometryHash": "30f0bd11341da2124d75eb5b9ef78719f238914dc8efbcb338bcbd05b8799e09",
       "id": "sf.render.outpost-bastion.mesh.lod2-livery.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialHash": "03c6d2a1e3d1d6833242d83573259792ac7d7da6ba6e2f4aae56a2b1014aa839",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-livery",
@@ -1233,16 +1593,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba545fded25e3a299372b9a14136f9b29b1b44420f968ab168e452cff7b730f7",
+      "geometryHash": "4054e1e123ebf019a8395e6dd92b73716f4a7ca424bf25ca754077e325a1ba5e",
       "id": "sf.render.outpost-bastion.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 711,
+      "indexCount": 702,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "c46061e496f3e80f51f57ed49b926649743371f494907c2b429dd56dec9128aa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 373
+      "vertexCount": 370
     },
     {
       "bounds": {
@@ -1258,16 +1618,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b7b3dcc604229889bdda0a5f692588837fb7c753deb49306caa899dcd8e01b8",
+      "geometryHash": "dd21153cce548e59523fa14d57988bd00d70b022dd1790f02a5bb680a2b6267d",
       "id": "sf.render.outpost-bastion.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 2745,
+      "indexCount": 2736,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "da0b47461cd79874c97a158d9324087fc26b4de790b0c9830ccb146061053cd4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1409
+      "vertexCount": 1406
     },
     {
       "bounds": {
@@ -1283,11 +1643,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b794f315fb2086edff99d662e73d97ab6de751de3266a063558ce2283af08569",
+      "geometryHash": "7ee929bfe0c69fea49b4f5fb97b35fc5add7d69230843e4bfdd3bee3fb14087e",
       "id": "sf.render.outpost-bastion.mesh.lod2-warning.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "108d2ab0dc58feef57a0de71879c3b9cb69210b80dbc395e6c5bdfedaffd9a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-warning",
@@ -1300,157 +1660,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
-      "id": "material:7d49b2b274926ec08348a5fd",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
-      "id": "material:a4d87ca525c4a04848c63811",
+      "hash": "03c6d2a1e3d1d6833242d83573259792ac7d7da6ba6e2f4aae56a2b1014aa839",
+      "id": "material:03c6d2a1e3d1d6833242d835",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1474,16 +1685,16 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_claim_outpost_bastion_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "ce98e12ccda2279f13e87f62fd4c45e5fcef2e2741788844240278390fa63959",
-      "id": "material:ce98e12ccda2279f13e87f62",
-      "name": "Material_Hull_role",
+      "hash": "108d2ab0dc58feef57a0de71879c3b9cb69210b80dbc395e6c5bdfedaffd9a59",
+      "id": "material:108d2ab0dc58feef57a0de71",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1506,54 +1717,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_claim_outpost_bastion_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "id": "material:d53e5ef9a99fb30a7a241f6f",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
-      "id": "material:f2bfd6ad2d8243301a15508e",
+      "hash": "173ac2a125a0a72d2ecd4e1cbf9c37eca4128a1dcdee44a38bf85d0e177aa49d",
+      "id": "material:173ac2a125a0a72d2ecd4e1c",
       "name": "Material_Hull_aged",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1577,7 +1749,195 @@
         },
         {
           "colorSpace": "linear",
+          "name": "place_claim_outpost_bastion_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "3d4ecb303cbf6cdb1cfd8a97f5e75a9a758d78b69ae8d6902cdad26bc99cc7b8",
+      "id": "material:3d4ecb303cbf6cdb1cfd8a97",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_claim_outpost_bastion_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "88ebb228625028909d540196f6bd8841b30946cc580fe76b4cd6226bd5a0b970",
+      "id": "material:88ebb228625028909d540196",
+      "name": "Material_Hull_role",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_claim_outpost_bastion_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "bc9d919600f7efb73f8eea122debc9e2f6f72f18ad8c2da46e4e7063ef02d0fe",
+      "id": "material:bc9d919600f7efb73f8eea12",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_claim_outpost_bastion_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c46061e496f3e80f51f57ed49b926649743371f494907c2b429dd56dec9128aa",
+      "id": "material:c46061e496f3e80f51f57ed4",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_claim_outpost_bastion_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "da0b47461cd79874c97a158d9324087fc26b4de790b0c9830ccb146061053cd4",
+      "id": "material:da0b47461cd79874c97a158d",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_claim_outpost_bastion_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -1635,6 +1995,202 @@
       ]
     },
     {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p4-0p0-warnbeacon0-dome",
+      "localTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        38.147756576538086,
+        17.74730682373047,
+        -0.3999999910593033,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodeName": "LOD0_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        38.147756576538086,
+        17.74730682373047,
+        -0.3999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p5-0p1-warnbeacon1-dome",
+      "localTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        -38.147756576538086,
+        1.5301940441131592,
+        -0.3999999910593033,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodeName": "LOD0_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        -38.147756576538086,
+        1.5301940441131592,
+        -0.3999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p0-0p2-barrellamp-1",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodeName": "LOD0_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p2-0p0-barrellamp-1",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodeName": "LOD0_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ]
+    },
+    {
       "id": "sf.render.outpost-bastion.mesh.lod0-armor",
       "localTransform": [
         1,
@@ -1659,7 +2215,7 @@
       "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        1
+        5
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -1708,7 +2264,7 @@
       "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
-        2
+        6
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -1735,21 +2291,21 @@
     {
       "id": "sf.render.outpost-bastion.mesh.lod0-hook-nav-port",
       "localTransform": [
-        45.144378662109375,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.144378662109375,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.144378662109375,
+        40.13999938964844,
         0,
-        6.655620574951172,
+        16.019999504089355,
         0,
-        -5.904500000178814,
+        -6.881249785423279,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1757,27 +2313,27 @@
       "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        3
+        7
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.outpost-bastion.body",
       "worldTransform": [
-        45.144378662109375,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.144378662109375,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.144378662109375,
+        40.13999938964844,
         0,
-        6.655620574951172,
+        16.019999504089355,
         0,
-        -5.904500000178814,
+        -6.881249785423279,
         1
       ]
     },
@@ -1806,7 +2362,7 @@
       "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        4
+        8
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "dynamic",
@@ -1855,7 +2411,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        5
+        9
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -1904,7 +2460,7 @@
       "nodeName": "LOD0_Hull_aged",
       "nodePath": [
         0,
-        6
+        10
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -1953,7 +2509,7 @@
       "nodeName": "LOD0_Hull_role",
       "nodePath": [
         0,
-        7
+        11
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2002,7 +2558,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        8
+        12
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2051,7 +2607,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        9
+        13
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2100,7 +2656,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        10
+        14
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2149,7 +2705,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        11
+        15
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2198,7 +2754,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        12
+        16
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2219,6 +2775,202 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p4-0p0-warnbeacon0-dome",
+      "localTransform": [
+        0.3413947969675064,
+        0,
+        0,
+        0,
+        0,
+        0.3413947969675064,
+        0,
+        0,
+        0,
+        0,
+        0.3413947969675064,
+        0,
+        38.147725239396095,
+        17.74792719632387,
+        -0.4000862091779709,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodeName": "LOD1_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.3413947969675064,
+        0,
+        0,
+        0,
+        0,
+        0.3413947969675064,
+        0,
+        0,
+        0,
+        0,
+        0.3413947969675064,
+        0,
+        38.147725239396095,
+        17.74792719632387,
+        -0.4000862091779709,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p5-0p1-warnbeacon1-dome",
+      "localTransform": [
+        0.34139446914196014,
+        0,
+        0,
+        0,
+        0,
+        0.34139446914196014,
+        0,
+        0,
+        0,
+        0,
+        0.34139446914196014,
+        0,
+        -38.14775103330612,
+        1.5308166593313217,
+        -0.4000862389802933,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodeName": "LOD1_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.34139446914196014,
+        0,
+        0,
+        0,
+        0,
+        0.34139446914196014,
+        0,
+        0,
+        0,
+        0,
+        0.34139446914196014,
+        0,
+        -38.14775103330612,
+        1.5308166593313217,
+        -0.4000862389802933,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p0-0p2-barrellamp-1",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodeName": "LOD1_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p2-0p0-barrellamp-1",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodeName": "LOD1_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        2.4000000953674316,
+        27,
+        -11.600000381469727,
         1
       ]
     },
@@ -2247,7 +2999,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        13
+        21
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2296,7 +3048,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        14
+        22
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2323,21 +3075,21 @@
     {
       "id": "sf.render.outpost-bastion.mesh.lod1-hook-nav-port",
       "localTransform": [
-        45.14455604553223,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.14455604553223,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.14455604553223,
+        40.13999938964844,
         0,
-        6.65544319152832,
+        16.019999504089355,
         0,
-        -5.904345937073231,
+        -6.881249785423279,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2345,27 +3097,27 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        15
+        23
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.outpost-bastion.body",
       "worldTransform": [
-        45.14455604553223,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.14455604553223,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        45.14455604553223,
+        40.13999938964844,
         0,
-        6.65544319152832,
+        16.019999504089355,
         0,
-        -5.904345937073231,
+        -6.881249785423279,
         1
       ]
     },
@@ -2394,7 +3146,7 @@
       "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        16
+        24
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "dynamic",
@@ -2443,7 +3195,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        17
+        25
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2492,7 +3244,7 @@
       "nodeName": "LOD1_Hull_aged",
       "nodePath": [
         0,
-        18
+        26
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2541,7 +3293,7 @@
       "nodeName": "LOD1_Hull_role",
       "nodePath": [
         0,
-        19
+        27
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2590,7 +3342,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        20
+        28
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2639,7 +3391,7 @@
       "nodeName": "LOD1_Livery",
       "nodePath": [
         0,
-        21
+        29
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2688,7 +3440,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        22
+        30
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2737,7 +3489,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        23
+        31
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2786,7 +3538,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        24
+        32
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2807,6 +3559,202 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p4-0p0-warnbeacon0-dome",
+      "localTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        38.147756576538086,
+        17.74730682373047,
+        -0.3999999910593033,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodeName": "LOD2_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        38.147756576538086,
+        17.74730682373047,
+        -0.3999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p5-0p1-warnbeacon1-dome",
+      "localTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        -38.147756576538086,
+        1.5301940441131592,
+        -0.3999999910593033,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodeName": "LOD2_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        0,
+        0,
+        0,
+        0.3410015106201172,
+        0,
+        -38.147756576538086,
+        1.5301940441131592,
+        -0.3999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p0-0p2-barrellamp-1",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodeName": "LOD2_ANIM_blink_2p0_0p2_BarrelLamp-1",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p2-0p0-barrellamp-1",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        2.4000000953674316,
+        27,
+        -11.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodeName": "LOD2_ANIM_blink_2p2_0p0_BarrelLamp+1",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.outpost-bastion.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-bastion.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        2.4000000953674316,
+        27,
+        -11.600000381469727,
         1
       ]
     },
@@ -2835,7 +3783,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        25
+        37
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2884,7 +3832,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        26
+        38
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -2911,21 +3859,21 @@
     {
       "id": "sf.render.outpost-bastion.mesh.lod2-hook-nav-port",
       "localTransform": [
-        45.145503997802734,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        45.145503997802734,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        45.145503997802734,
+        40.04666519165039,
         0,
-        6.6544952392578125,
+        16.019999504089355,
         0,
-        -5.9063672833144665,
+        -6.881249785423279,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2933,27 +3881,27 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        27
+        39
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.outpost-bastion.body",
       "worldTransform": [
-        45.145503997802734,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        45.145503997802734,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        45.145503997802734,
+        40.04666519165039,
         0,
-        6.6544952392578125,
+        16.019999504089355,
         0,
-        -5.9063672833144665,
+        -6.881249785423279,
         1
       ]
     },
@@ -2982,7 +3930,7 @@
       "nodeName": "LOD2_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        28
+        40
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "dynamic",
@@ -3031,7 +3979,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        29
+        41
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3080,7 +4028,7 @@
       "nodeName": "LOD2_Hull_aged",
       "nodePath": [
         0,
-        30
+        42
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3129,7 +4077,7 @@
       "nodeName": "LOD2_Hull_role",
       "nodePath": [
         0,
-        31
+        43
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3178,7 +4126,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        32
+        44
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3227,7 +4175,7 @@
       "nodeName": "LOD2_Livery",
       "nodePath": [
         0,
-        33
+        45
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3276,7 +4224,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        34
+        46
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3325,7 +4273,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        35
+        47
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3374,7 +4322,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        36
+        48
       ],
       "parentId": "sf.render.outpost-bastion.root",
       "role": "immutable",
@@ -3449,22 +4397,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "ac3b5723f1ce5900dd6d7add9f5981aa5a5683df3ce14946d461e5f74d89e469"
+      "sha256": "ed876c2a875df4f0eb8d74664c2887934e3c134acbddf6bbb6499ca900c8e6c7"
     },
     "sourceGlb": {
-      "bytes": 1097312,
-      "sha256": "df1f18a4ee5f55019e2809949d335e2045d8ad6c8fb05e297b9f17c9fdf78bfc",
+      "bytes": 2069036,
+      "sha256": "074f47c3136ea702ddb489874f31fcbd453c54eb75d034605da3e611ecc84ab7",
       "uri": "place_claim_outpost_bastion.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1977576,
-    "sha256": "55a6738d8403ea254563c64789e4afcac9632e9405c7bab3d4f9cc157bd2086a",
+    "bytes": 2968440,
+    "sha256": "a6c3ac5486c91cb53747802ac988a1f31d125ed947f76eadfaaf58cc29d1636d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3472,22 +4420,22 @@
       "center": [
         7.397417068481445,
         0,
-        -3.041214942932129
+        -3.0412917137145996
       ],
       "max": [
         56.5,
         41.70515060424805,
-        8.527315139770508
+        8.527238845825195
       ],
       "min": [
         -41.70516586303711,
         -41.70515060424805,
-        -14.609745025634766
+        -14.609822273254395
       ],
       "size": [
         98.20516586303711,
         83.4103012084961,
-        23.137060165405273
+        23.13706111907959
       ]
     },
     "hidden": [
@@ -3515,7 +4463,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 39,
+        "planIndex": 51,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3552,7 +4500,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 40,
+        "planIndex": 52,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3589,7 +4537,7 @@
           1
         ],
         "name": "SOCKET_Module_Defense",
-        "planIndex": 41,
+        "planIndex": 53,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3626,7 +4574,7 @@
           1
         ],
         "name": "SOCKET_Module_Depot",
-        "planIndex": 42,
+        "planIndex": 54,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3663,7 +4611,7 @@
           1
         ],
         "name": "SOCKET_Module_Refinery",
-        "planIndex": 43,
+        "planIndex": 55,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3700,7 +4648,7 @@
           1
         ],
         "name": "SOCKET_Module_Teleporter",
-        "planIndex": 44,
+        "planIndex": 56,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3737,7 +4685,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 45,
+        "planIndex": 57,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3759,7 +4707,7 @@
       "accent": 3,
       "hull": 13,
       "mechanical": 6,
-      "signal": 12,
+      "signal": 24,
       "warning": 3
     },
     "materialProfiles": [
@@ -3771,7 +4719,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3796,12 +4744,12 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3811,57 +4759,57 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "signal"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3871,22 +4819,22 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3896,12 +4844,12 @@
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3911,46 +4859,214 @@
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 32,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 33,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 36,
+        "planIndex": 32,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
         "role": "warning"
       }
     ],
-    "nodeCount": 46,
+    "nodeCount": 58,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          38.147756576538086,
+          17.74730682373047,
+          -0.3999999910593033,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          -38.147756576538086,
+          1.5301940441131592,
+          -0.3999999910593033,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -2.4000000953674316,
+          27,
+          -11.600000381469727,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_2p0_0p2_BarrelLamp-1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          2.4000000953674316,
+          27,
+          -11.600000381469727,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_2p2_0p0_BarrelLamp+1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -3972,7 +5088,7 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3999,7 +5115,7 @@
           1
         ],
         "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4008,25 +5124,25 @@
       {
         "canopy": false,
         "matrix": [
-          45.144378662109375,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          45.144378662109375,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          45.144378662109375,
+          40.13999938964844,
           0,
-          6.655620574951172,
+          16.019999504089355,
           0,
-          -5.904500000178814,
+          -6.881249785423279,
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 5,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4054,7 +5170,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 6,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4082,114 +5198,6 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Hull_aged",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Hull_role",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Lights_Warm",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Livery",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -4216,7 +5224,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_Hull_aged",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -4243,7 +5251,7 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_Hull_role",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -4270,7 +5278,7 @@
           0,
           1
         ],
-        "name": "LOD0_Warning",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -4297,8 +5305,224 @@
           0,
           1
         ],
-        "name": "LOD1_Armor",
+        "name": "LOD0_Livery",
         "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3413947969675064,
+          0,
+          0,
+          0,
+          0,
+          0.3413947969675064,
+          0,
+          0,
+          0,
+          0,
+          0.3413947969675064,
+          0,
+          38.147725239396095,
+          17.74792719632387,
+          -0.4000862091779709,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.34139446914196014,
+          0,
+          0,
+          0,
+          0,
+          0.34139446914196014,
+          0,
+          0,
+          0,
+          0,
+          0.34139446914196014,
+          0,
+          -38.14775103330612,
+          1.5308166593313217,
+          -0.4000862389802933,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -2.4000000953674316,
+          27,
+          -11.600000381469727,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_2p0_0p2_BarrelLamp-1",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          2.4000000953674316,
+          27,
+          -11.600000381469727,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_2p2_0p0_BarrelLamp+1",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4325,7 +5549,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 16,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4334,25 +5558,25 @@
       {
         "canopy": false,
         "matrix": [
-          45.14455604553223,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          45.14455604553223,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          45.14455604553223,
+          40.13999938964844,
           0,
-          6.65544319152832,
+          16.019999504089355,
           0,
-          -5.904345937073231,
+          -6.881249785423279,
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 17,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4380,7 +5604,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 18,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4408,7 +5632,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 19,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4435,7 +5659,7 @@
           1
         ],
         "name": "LOD1_Hull_aged",
-        "planIndex": 20,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4462,7 +5686,7 @@
           1
         ],
         "name": "LOD1_Hull_role",
-        "planIndex": 21,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4489,7 +5713,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 22,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4516,7 +5740,7 @@
           1
         ],
         "name": "LOD1_Livery",
-        "planIndex": 23,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4543,7 +5767,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 24,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4570,7 +5794,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 25,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4597,10 +5821,118 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 26,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          38.147756576538086,
+          17.74730682373047,
+          -0.3999999910593033,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p4_0p0_WarnBeacon0_Dome",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          0,
+          0,
+          0,
+          0.3410015106201172,
+          0,
+          -38.147756576538086,
+          1.5301940441131592,
+          -0.3999999910593033,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p5_0p1_WarnBeacon1_Dome",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -2.4000000953674316,
+          27,
+          -11.600000381469727,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_2p0_0p2_BarrelLamp-1",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          2.4000000953674316,
+          27,
+          -11.600000381469727,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_2p2_0p0_BarrelLamp+1",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
         }
       },
       {
@@ -4624,7 +5956,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 27,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4651,7 +5983,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 28,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4660,25 +5992,25 @@
       {
         "canopy": false,
         "matrix": [
-          45.145503997802734,
+          40.04666519165039,
           0,
           0,
           0,
           0,
-          45.145503997802734,
+          40.04666519165039,
           0,
           0,
           0,
           0,
-          45.145503997802734,
+          40.04666519165039,
           0,
-          6.6544952392578125,
+          16.019999504089355,
           0,
-          -5.9063672833144665,
+          -6.881249785423279,
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 29,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4706,7 +6038,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 30,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4734,7 +6066,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 31,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4761,7 +6093,7 @@
           1
         ],
         "name": "LOD2_Hull_aged",
-        "planIndex": 32,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4788,7 +6120,7 @@
           1
         ],
         "name": "LOD2_Hull_role",
-        "planIndex": 33,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4815,7 +6147,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 34,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4842,7 +6174,7 @@
           1
         ],
         "name": "LOD2_Livery",
-        "planIndex": 35,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4869,7 +6201,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 36,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4896,7 +6228,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 37,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4923,7 +6255,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 38,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4934,7 +6266,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb"
   },
-  "runtimeHash": "5813f7362598e9b7b26e54c6f48f16aa294a109761a85565549e243effb417c5",
+  "runtimeHash": "e7a08d4fb58907ef39d70755140b8f8059198210a5250e3969cf6840fa378536",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4942,17 +6274,21 @@
         "max": [
           56.5,
           41.70515060424805,
-          8.527315139770508
+          8.527238845825195
         ],
         "min": [
           -41.70516586303711,
           -41.70515060424805,
-          -14.609745025634766
+          -14.609822273254395
         ]
       },
       "id": "sf.render.outpost-bastion.body",
       "nodeIds": [
         "sf.render.outpost-bastion.mesh.collision-hull",
+        "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p4-0p0-warnbeacon0-dome",
+        "sf.render.outpost-bastion.mesh.lod0-anim-blink-1p5-0p1-warnbeacon1-dome",
+        "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p0-0p2-barrellamp-1",
+        "sf.render.outpost-bastion.mesh.lod0-anim-blink-2p2-0p0-barrellamp-1",
         "sf.render.outpost-bastion.mesh.lod0-armor",
         "sf.render.outpost-bastion.mesh.lod0-beacon-amber",
         "sf.render.outpost-bastion.mesh.lod0-hook-nav-port",
@@ -4965,6 +6301,10 @@
         "sf.render.outpost-bastion.mesh.lod0-mechanical",
         "sf.render.outpost-bastion.mesh.lod0-mechanicaldark",
         "sf.render.outpost-bastion.mesh.lod0-warning",
+        "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p4-0p0-warnbeacon0-dome",
+        "sf.render.outpost-bastion.mesh.lod1-anim-blink-1p5-0p1-warnbeacon1-dome",
+        "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p0-0p2-barrellamp-1",
+        "sf.render.outpost-bastion.mesh.lod1-anim-blink-2p2-0p0-barrellamp-1",
         "sf.render.outpost-bastion.mesh.lod1-armor",
         "sf.render.outpost-bastion.mesh.lod1-beacon-amber",
         "sf.render.outpost-bastion.mesh.lod1-hook-nav-port",
@@ -4977,6 +6317,10 @@
         "sf.render.outpost-bastion.mesh.lod1-mechanical",
         "sf.render.outpost-bastion.mesh.lod1-mechanicaldark",
         "sf.render.outpost-bastion.mesh.lod1-warning",
+        "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p4-0p0-warnbeacon0-dome",
+        "sf.render.outpost-bastion.mesh.lod2-anim-blink-1p5-0p1-warnbeacon1-dome",
+        "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p0-0p2-barrellamp-1",
+        "sf.render.outpost-bastion.mesh.lod2-anim-blink-2p2-0p0-barrellamp-1",
         "sf.render.outpost-bastion.mesh.lod2-armor",
         "sf.render.outpost-bastion.mesh.lod2-beacon-amber",
         "sf.render.outpost-bastion.mesh.lod2-hook-nav-port",

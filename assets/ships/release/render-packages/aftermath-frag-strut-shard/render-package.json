@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "aadd1a06eb11e292f3a87aff601f698ba1095213d9503813a3480bb49c6a3632",
+  "contentHash": "18e0c8968c1e111a2031c58e629e68f5ea55e6755b4ae65cb0bde3ae179d83de",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0680266679cc5bb575201b8ce29f7f038d55bed4aff68b815e8fc1c954bd6333",
+      "geometryHash": "412da2e851552524b83b93204fea4add4dad64e67bb14572c5aac146580e5890",
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41c945364cff74afaa702c43be45e33a3b0886a4fac7b02068c718070399a7b3",
+      "geometryHash": "bfde0124399df3e511a23ecec903a03ebd3dd912db0712fb4590f76bc933e3b6",
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0d62b93a03fe0b357a8ddf57bb9941e100b5533640228e4d89fb5d5a57303f2",
+      "geometryHash": "d57d91484c8bfd9ba9eed56dcc57dbf7f7a564c95d25f79d20c42ac39af38646",
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac60276ccbf492e81a60c2b3cd2768693a06ff35e57cebd857a3836d9942f50d",
+      "geometryHash": "c3eb1902a31f13ee1b5b951361a3bf86bb912e33fd285a57cb14e21276f7aa1b",
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutmain.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3385f30891527e4fa9d75bb65187784757d23786728d1759e50f8f7e39b01c26",
+      "geometryHash": "d8bed72f3dac94afcdb1c11a1e477624ff6177d7eca55906afc164c413d5b8a9",
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutside.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -472,19 +472,19 @@
       "sha256": "1668e042822749e6660c1f12238206217bcffc4d7592cf6417507b4450fd1bd0"
     },
     "sourceGlb": {
-      "bytes": 45096,
-      "sha256": "8b54c143a4a80343614e274bfedef01c43b82cd32e81f8e8f702c2e0d0a90853",
+      "bytes": 44948,
+      "sha256": "943928f8c12594f63a4ab41ba7dc7b9f1e36bcdfeae437d99945e2b1661251d1",
       "uri": "place_aftermath_frag_strut_shard.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 47312,
-    "sha256": "77e9afa1331cc402b7d62583248f4e8ddc4d9235b3c6be31e9eeb44b379aa6a0",
+    "bytes": 47168,
+    "sha256": "5071f4fe2c63461eb0801cdcacb48be16fda522fe688d3544f16f4330180f427",
     "uri": "render.glb"
   },
   "runtime": {
@@ -685,7 +685,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb"
   },
-  "runtimeHash": "53807082d0ed2ebf4377028d199a170abeab8d51bd10bf54fe6884f75cf59dab",
+  "runtimeHash": "22eff59d4013e82a9e6f89d7e7e9e0da62f10cc21ae19166d3509188f1ffc3f5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

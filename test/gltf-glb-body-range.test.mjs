@@ -9,6 +9,7 @@ import { GLTFLoader as StockGLTFLoader } from 'three/examples/jsm/loaders/GLTFLo
 import { GLTFLoader as VendoredGLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../vendor/addons/libs/meshopt_decoder.module.js';
 import { registerEmbeddedKtx2Textures } from '../src/render/embeddedKtx2Textures.js';
+import { resetImageSourceDedupeForTests } from '../src/render/imageSourceDedupe.js';
 
 const sha = (u8) => createHash('sha256').update(u8).digest('hex');
 const bytesOf = (a) => new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
@@ -19,6 +20,9 @@ const readAb = (rel) => {
 
 async function parseCollect(Loader, ab) {
   await MeshoptDecoder.ready;
+  // GFX-10: an identical image already decoded this process is served from the shared-source
+  // registry without touching the transcoder — reset so each collect observes a real decode.
+  resetImageSourceDedupeForTests();
   const ktx = [];
   let binary = null;
   const loader = new Loader();

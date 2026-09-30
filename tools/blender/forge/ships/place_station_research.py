@@ -103,6 +103,7 @@ def sphere(s, name, center, r, material='paint', count=48, rings=18, zscale=1.0)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     trusses = []      # all truss members, one part
     struts = []       # heavier struts
 
@@ -270,8 +271,11 @@ def build():
     F.cylinder(s, 'SurveyMast', (-38.5, 0, 1.5), (-41.6, 0, 9.4), 1.2, material='paint2', segments=16)
     F.cylinder(s, 'SurveyHub', (-41.0, 0, 9.1), (-42.4, 0, 11.2), 2.4, 1.6, material='paint', segments=24,
                cap_material='dark')
+    n0 = len(s.objects)
     F.dish(s, 'Survey', (-42.0, 0.0, 10.0), 12.0, 3.4, axis=(-0.55, 0.0, 0.84), material='paint', face='paint2',
            segments=48)
+    # the big survey dish hunts in a slow yaw sweep on its hub
+    s.anim(s.objects[n0:], 'sweep:up:0p5:0p3', (-41.0, 0.0, 10.0))
     # port / starboard: paired dishes and sensor pods on T-bars
     for sy in (1, -1):
         F.box(s, f'TBar{sy}', (0.0, sy * 30.5, 0.0), (22.0, 2.4, 2.4), material='paint', bevel=0.25)
@@ -297,7 +301,9 @@ def build():
         F.band(s, f'LowPod{k}', (0, 0, -24.5), (0, 0, 1), 0.8, 'paint2', min_facing=-1.0)
         F.cylinder(s, f'LowPodMast{k}', (dx * 27.0, dy * 27.0, -27.5), (dx * 27.0, dy * 27.0, -34.0), 0.25,
                    material='gunmetal', segments=8)
-        F.light(s, f'LowPodTip{k}', (dx * 27.0, dy * 27.0, -34.0), 'glow_cyan', size=0.4)
+        pos = (dx * 27.0, dy * 27.0, -34.0)
+        o = F.light(s, f'LowPodTip{k}', pos, 'glow_cyan', size=0.4)
+        s.anim(o, f'blink:2p{2 + k}:0p{k}', pos)
         for i in range(6):
             aa = 2 * math.pi * (i + 0.5) / 6
             win.append(((dx * 27.0 + 3.2 * math.cos(aa), dy * 27.0 + 3.2 * math.sin(aa), -24.0), (0.2, 0.7, 0.4), aa))
@@ -321,7 +327,9 @@ def build():
         F.work_lamp(s, f'ArmLamp{k}', (dx * 23.0 + dy * 2.2, dy * 23.0 + dx * 2.2, 2.4), aim=(dx * 0.5, dy * 0.5, 0.8),
                     size=0.6)
     s.detail = 0
+    n0 = len(s.objects)
     F.beacon(s, 'Beacon', (-3.2, 0.0, 35.2), size=0.5)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('Beacon_Dome')], 'blink:1p4:0p3', (-3.2, 0.0, 35.2))
     return s
 
 

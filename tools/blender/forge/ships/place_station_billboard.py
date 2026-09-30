@@ -60,6 +60,7 @@ def _box(s, name, c, size, **kw):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the board: framed twin-face screen, raked back on the top pivot ----------
     _box(s, 'Board', (0, 0, 0.0), (13.4, 1.1, 8.4), material='paint', bevel=0.12)

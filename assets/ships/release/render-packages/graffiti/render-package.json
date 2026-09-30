@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d5ec3561df220837ef716a373115705afbdce12ac799063dd36d025fb886a865",
+  "contentHash": "8ec242d8de1fe3842bc91b222418efe2b1159723f9655291f5ce5d2206e11cfb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -101,7 +101,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47a68889231d03d55a66464c0ed2f600ee5d62dccdcf2a422534bc54a1dcf33e",
+      "geometryHash": "defa23baa498e01b8a5558745cdc783be8e68e5353f69ee27be9c44c86148698",
       "id": "sf.render.graffiti.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -126,11 +126,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "587945be0f8435aa8953d4f0da67245ab67319200227a5f4c903e8bf33c1d7f8",
+      "geometryHash": "b0d88681019d54d963e6f537e878fb7c5116d521c196e044a37e160eaa98843c",
       "id": "sf.render.graffiti.mesh.lod0-hull-tag1.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
+      "materialHash": "04994e39b21dddfec5fb390b59dbc9ea70dba246478752ffe40d726abf9445f7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_tag1",
       "nodeId": "sf.render.graffiti.mesh.lod0-hull-tag1",
@@ -151,11 +151,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56d5b25f10302baccba1a17cc19901178cce07bb537c1c73fa4396c07a8b8d6c",
+      "geometryHash": "23d61a638680c06ac4e8433b27c07c3cf6d962fc91ecda6b93c2ee647863c081",
       "id": "sf.render.graffiti.mesh.lod0-hull-tag2.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
+      "materialHash": "9ec8272644d3f58999385d485d0e49b68fb678fbe9a99c8220819e384f325174",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_tag2",
       "nodeId": "sf.render.graffiti.mesh.lod0-hull-tag2",
@@ -176,7 +176,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e6d8ed15aa211988c70f6891e6e893c098b92cd5398a62b59f96a6827db99cf",
+      "geometryHash": "d79cc544ba18b9da77f3c3e2fa82b1de3389e976773251e4b4306839c8a0f005",
       "id": "sf.render.graffiti.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -201,11 +201,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e60eb11ceeab328a3f6a55345f075272f53614cf1280b1593e5103b0a3ec026",
+      "geometryHash": "cacd5d37c0dc98b03af97169bf7c980991e047e88be9419aeb85c1bbf1358526",
       "id": "sf.render.graffiti.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2808,
       "indexed": true,
-      "materialHash": "c4e320516ec0b150cb89a0cedf17e091b3d069fcf1fbf6aa33a27202531ed55d",
+      "materialHash": "8057b1da393518de83dbfec1ffa677031cc9c2b7f81c15f8688a12072cea5409",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.graffiti.mesh.lod0-mechanical",
@@ -226,11 +226,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d196abcb8be69d4ef68494b335466c84fef763349893632374945332dfe729aa",
+      "geometryHash": "7c49693b995c156d4a94f6e95bbb9ea65cd6bae63a935cc71a2a4054af42019f",
       "id": "sf.render.graffiti.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "83fcaa6c1ed517e080f47b7f57559e0c5bf37cbef4b0ee087baf0596b5958208",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.graffiti.mesh.lod0-mechanicaldark",
@@ -251,16 +251,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7c1ff3f4a854b048b9b319aa322710304a4767013614479d9ca35ef1a8801da",
+      "geometryHash": "9a6dba28a58ba5fefb11dcd1d57be7cf1ca396dfb514bfe20239c513016c4e30",
       "id": "sf.render.graffiti.mesh.lod0-stone-deep.primitive.0",
       "indexCount": 7680,
       "indexed": true,
-      "materialHash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
+      "materialHash": "6f9a0fc3cc745a2e9789801b17c217071635da441e0b5073d456fb91969f3830",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_deep",
       "nodeId": "sf.render.graffiti.mesh.lod0-stone-deep",
       "primitiveIndex": 0,
-      "vertexCount": 5393
+      "vertexCount": 5396
     },
     {
       "bounds": {
@@ -276,11 +276,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b3edac231a524ad9de01f7f91840a6b703ef318ea629c9e2a17de24f58508a4",
+      "geometryHash": "caa300aed282449e59e3a13a7eafb931ed20916d454be92d1fc8fd8fc9de847e",
       "id": "sf.render.graffiti.mesh.lod0-stone-quarry.primitive.0",
       "indexCount": 177,
       "indexed": true,
-      "materialHash": "f4d0d9d159485b6772a0ebd8405be1f7e8b2466976ec81cfa8e1d76f5a91b73f",
+      "materialHash": "1e85a1e3103641e43b42c90c02552bc576389ac6119934ad92d0af6c8dee3fc4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_quarry",
       "nodeId": "sf.render.graffiti.mesh.lod0-stone-quarry",
@@ -301,11 +301,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70f0e8017cb4c38c7b042cf292f4c1746e007d89694cbd2ade8880c8dd44df16",
+      "geometryHash": "6694dd664fdc190556b31a32da29db82618aa2fdb38280492f6f3c18920611e7",
       "id": "sf.render.graffiti.mesh.lod0-stone-strata.primitive.0",
       "indexCount": 837,
       "indexed": true,
-      "materialHash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
+      "materialHash": "d3865cab52db63b6897115907bb7b23e81170b9c3879a6f17a8263da91ba362b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_strata",
       "nodeId": "sf.render.graffiti.mesh.lod0-stone-strata",
@@ -326,16 +326,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35f8293565d525a40057b48d92c1eb9cc2ab3a2d802778f1113083f30bf7f837",
+      "geometryHash": "8e51a3512dd2f2017e47bf87c99099b0dc7dc789bcaa4fea24667577a7ae76d6",
       "id": "sf.render.graffiti.mesh.lod0-stone.primitive.0",
       "indexCount": 7728,
       "indexed": true,
-      "materialHash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
+      "materialHash": "bcb0863dc57934b940319413a8f4d9760d7f4510e3e65cd746161c8913cbf935",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone",
       "nodeId": "sf.render.graffiti.mesh.lod0-stone",
       "primitiveIndex": 0,
-      "vertexCount": 5331
+      "vertexCount": 5332
     },
     {
       "bounds": {
@@ -351,11 +351,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "94e796e111d37cf7d229353678fdacfcedf692a0b9a1b3576c4cab66796da5e8",
+      "geometryHash": "ea93adb8a2acbe6388e52220f47030f35d91279fce16e221cb7902d0c24fddbb",
       "id": "sf.render.graffiti.mesh.lod0-warning.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "a0350a8f2ef654deae5845545ffb34e31a25ddb17eddf5fc4e0d3d63a3f5a537",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.graffiti.mesh.lod0-warning",
@@ -376,7 +376,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dcb41eb2aec923bdcbcc4c800c51b4bd07c63244559f197ba23ca888e2af8bf1",
+      "geometryHash": "a81032928ee72f5b533cb3d93b6fb5af795dce49363687fa7f297a8963cfbe9c",
       "id": "sf.render.graffiti.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -401,11 +401,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7dd452055f417de09edb3150d18001818ac9cb7c9d8f863a2c66418abd949d5",
+      "geometryHash": "263468ff394555df1ba68a9eff988577295b8980f5bfd8d80374fbaf18a03931",
       "id": "sf.render.graffiti.mesh.lod1-hull-tag1.primitive.0",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
+      "materialHash": "04994e39b21dddfec5fb390b59dbc9ea70dba246478752ffe40d726abf9445f7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_tag1",
       "nodeId": "sf.render.graffiti.mesh.lod1-hull-tag1",
@@ -426,11 +426,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bab91ccb706790fac5a01288f09f41c34f27d894354f881f60911fa444ae8a06",
+      "geometryHash": "5667de53672c56904ed08523b3fd407360ba8b395da8d528956601f096ab6fe3",
       "id": "sf.render.graffiti.mesh.lod1-hull-tag2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
+      "materialHash": "9ec8272644d3f58999385d485d0e49b68fb678fbe9a99c8220819e384f325174",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_tag2",
       "nodeId": "sf.render.graffiti.mesh.lod1-hull-tag2",
@@ -451,7 +451,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9693354f37acbedc033c678ceaa180643f6febc7482b0d89fa0e680375d7f859",
+      "geometryHash": "1e379fc2830f2d549dd5e09b4ef82650b63047f376314811678de0050ed670f3",
       "id": "sf.render.graffiti.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -476,11 +476,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5180d390ba5637e2de3a18735070d4377a3d87227d8d029ec502e8aeaa79ea22",
+      "geometryHash": "9a006cdd4d10e4aef8f98ee72e720aa4802fd988aa086f8729d9f07fa8d94529",
       "id": "sf.render.graffiti.mesh.lod1-mechanical.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "c4e320516ec0b150cb89a0cedf17e091b3d069fcf1fbf6aa33a27202531ed55d",
+      "materialHash": "8057b1da393518de83dbfec1ffa677031cc9c2b7f81c15f8688a12072cea5409",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.graffiti.mesh.lod1-mechanical",
@@ -501,11 +501,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fedfe3171ebefc65c50fb69727d3c50cd8e20bcaf8e449f885bf2ab365bf10a3",
+      "geometryHash": "a92de03afabfd42262f2a672b474b532583093e9e38a765de1fec7de70f30333",
       "id": "sf.render.graffiti.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 9,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "83fcaa6c1ed517e080f47b7f57559e0c5bf37cbef4b0ee087baf0596b5958208",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.graffiti.mesh.lod1-mechanicaldark",
@@ -526,11 +526,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86d01397f8d8c66ee405b843fcceb0f2c4d615f64d407327974e8ee3f051f86c",
+      "geometryHash": "3d42c6e4f6b07e34704c685b3c3a7249e2deb41d12704518eba5589ac8ed0aa2",
       "id": "sf.render.graffiti.mesh.lod1-stone-deep.primitive.0",
       "indexCount": 3330,
       "indexed": true,
-      "materialHash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
+      "materialHash": "6f9a0fc3cc745a2e9789801b17c217071635da441e0b5073d456fb91969f3830",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_deep",
       "nodeId": "sf.render.graffiti.mesh.lod1-stone-deep",
@@ -551,11 +551,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59c1b2fef33181ea14b95abee44a9e663b24c544f463766f8b4ca3176757d9ca",
+      "geometryHash": "aeb3305f4d7760c1ee827d1acb21095a402235d1f9f6083c9915720ffa5cdd0a",
       "id": "sf.render.graffiti.mesh.lod1-stone-quarry.primitive.0",
       "indexCount": 39,
       "indexed": true,
-      "materialHash": "f4d0d9d159485b6772a0ebd8405be1f7e8b2466976ec81cfa8e1d76f5a91b73f",
+      "materialHash": "1e85a1e3103641e43b42c90c02552bc576389ac6119934ad92d0af6c8dee3fc4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_quarry",
       "nodeId": "sf.render.graffiti.mesh.lod1-stone-quarry",
@@ -576,16 +576,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ebbb24ca9db5171fe2c02a16a91f8d79ada5ff3bb94831b9a1b08b4b9b9779b",
+      "geometryHash": "07597a8337dc7ef51c394ee64efcc676f80bce878004dcfc957a61b3ac1b4fd7",
       "id": "sf.render.graffiti.mesh.lod1-stone-strata.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
+      "materialHash": "d3865cab52db63b6897115907bb7b23e81170b9c3879a6f17a8263da91ba362b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_strata",
       "nodeId": "sf.render.graffiti.mesh.lod1-stone-strata",
       "primitiveIndex": 0,
-      "vertexCount": 202
+      "vertexCount": 201
     },
     {
       "bounds": {
@@ -601,16 +601,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c5a4747c894b9d96c91de180144e8e73d58eb0f9226fca8ac66570d3784e31f",
+      "geometryHash": "3c5ad57cd83b599d7ad0349f45d215509bf122e453970a622257e1f4f5b6ff03",
       "id": "sf.render.graffiti.mesh.lod1-stone.primitive.0",
       "indexCount": 4275,
       "indexed": true,
-      "materialHash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
+      "materialHash": "bcb0863dc57934b940319413a8f4d9760d7f4510e3e65cd746161c8913cbf935",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone",
       "nodeId": "sf.render.graffiti.mesh.lod1-stone",
       "primitiveIndex": 0,
-      "vertexCount": 3053
+      "vertexCount": 3051
     },
     {
       "bounds": {
@@ -626,11 +626,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "002af40541311c2493de8181bcaf4ccc27f10114d5c29a1daafde39a745a826e",
+      "geometryHash": "4d60679c53568afc2278a221a1d867d415c297eae7f4a089bbc5dfec7b113b31",
       "id": "sf.render.graffiti.mesh.lod1-warning.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "a0350a8f2ef654deae5845545ffb34e31a25ddb17eddf5fc4e0d3d63a3f5a537",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.graffiti.mesh.lod1-warning",
@@ -651,7 +651,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dcb41eb2aec923bdcbcc4c800c51b4bd07c63244559f197ba23ca888e2af8bf1",
+      "geometryHash": "a81032928ee72f5b533cb3d93b6fb5af795dce49363687fa7f297a8963cfbe9c",
       "id": "sf.render.graffiti.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -676,11 +676,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b747656995d635d2945f777606ca10bee39dd61223cbb787a0bb53ee7595704",
+      "geometryHash": "f979e58405004603bc620a660864ccd0ced5aa4f7068913017b8c0177167861c",
       "id": "sf.render.graffiti.mesh.lod2-hull-tag1.primitive.0",
       "indexCount": 15,
       "indexed": true,
-      "materialHash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
+      "materialHash": "04994e39b21dddfec5fb390b59dbc9ea70dba246478752ffe40d726abf9445f7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_tag1",
       "nodeId": "sf.render.graffiti.mesh.lod2-hull-tag1",
@@ -701,11 +701,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "060e9525353cde8e70f88c0dec46e9dfbb7d7b78c64d7137c3fafb4c232df00e",
+      "geometryHash": "9d4b6657191354257ea8b0f4907346da0709f630b81f26819686897b5491dad6",
       "id": "sf.render.graffiti.mesh.lod2-hull-tag2.primitive.0",
       "indexCount": 18,
       "indexed": true,
-      "materialHash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
+      "materialHash": "9ec8272644d3f58999385d485d0e49b68fb678fbe9a99c8220819e384f325174",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_tag2",
       "nodeId": "sf.render.graffiti.mesh.lod2-hull-tag2",
@@ -726,7 +726,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71e0cb8d159e98b2a1af8ed8b03202d378ccc23993571cdf1dba289e0e803737",
+      "geometryHash": "9b716a952235f79103a5c28447e1cc87335e332f650bd908e6d1d4f3e1eeb80a",
       "id": "sf.render.graffiti.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -751,11 +751,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25b28bad224c5b13a34a76730a59cd7a4c63e51c12e89fa413f052d7355eb046",
+      "geometryHash": "d1be1c1d3060f36e5d7228c5e662be6021b09ad012caec639f75aa9c4baae7c7",
       "id": "sf.render.graffiti.mesh.lod2-mechanical.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c4e320516ec0b150cb89a0cedf17e091b3d069fcf1fbf6aa33a27202531ed55d",
+      "materialHash": "8057b1da393518de83dbfec1ffa677031cc9c2b7f81c15f8688a12072cea5409",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.graffiti.mesh.lod2-mechanical",
@@ -776,11 +776,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08391be313f90cfc3585308ce719d1e30bac9990f86319d9a1bc161a950ff30b",
+      "geometryHash": "cd7ecfe76a793eb9dc00ff2fe6c5229ffebd7ff2c7f5a11d33b99e3b6d51d19e",
       "id": "sf.render.graffiti.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 6,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "83fcaa6c1ed517e080f47b7f57559e0c5bf37cbef4b0ee087baf0596b5958208",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.graffiti.mesh.lod2-mechanicaldark",
@@ -801,11 +801,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3b39adf676602a388cdbad097d317621bf0c9182990a4c568f78348bdf734b2",
+      "geometryHash": "db1d22ac03fa2223d1732409710f98fa03d494370206aa1f3febc30920ace075",
       "id": "sf.render.graffiti.mesh.lod2-stone-deep.primitive.0",
       "indexCount": 1410,
       "indexed": true,
-      "materialHash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
+      "materialHash": "6f9a0fc3cc745a2e9789801b17c217071635da441e0b5073d456fb91969f3830",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_deep",
       "nodeId": "sf.render.graffiti.mesh.lod2-stone-deep",
@@ -826,11 +826,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "070eceb5da852f0159af02b622453c1eb1a8ccc40b59b1cc583cc00fd94e75ea",
+      "geometryHash": "bc3dd755dde0eff20a58f64ec82bbb44cadc81c25c4c7463529e43d82366dae5",
       "id": "sf.render.graffiti.mesh.lod2-stone-quarry.primitive.0",
       "indexCount": 24,
       "indexed": true,
-      "materialHash": "f4d0d9d159485b6772a0ebd8405be1f7e8b2466976ec81cfa8e1d76f5a91b73f",
+      "materialHash": "1e85a1e3103641e43b42c90c02552bc576389ac6119934ad92d0af6c8dee3fc4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_quarry",
       "nodeId": "sf.render.graffiti.mesh.lod2-stone-quarry",
@@ -851,11 +851,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "581a5ce7d1f940d1dd5c83f9ef44f6c392a934dd50dd712f18fc45f65f591b28",
+      "geometryHash": "7a36dd18951915d78b626c0793150359071f37c3e68ea4f22ac42a1cc81752cd",
       "id": "sf.render.graffiti.mesh.lod2-stone-strata.primitive.0",
       "indexCount": 153,
       "indexed": true,
-      "materialHash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
+      "materialHash": "d3865cab52db63b6897115907bb7b23e81170b9c3879a6f17a8263da91ba362b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_strata",
       "nodeId": "sf.render.graffiti.mesh.lod2-stone-strata",
@@ -876,16 +876,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9bfa611613c10cf96d62759cd30cad07b7ee6a3d87d0242a90ada93eeb8fe436",
+      "geometryHash": "009066af5e17df717303f4ad0fdbf2087db64ccfd6c8c556ced50c36b91dd6c0",
       "id": "sf.render.graffiti.mesh.lod2-stone.primitive.0",
       "indexCount": 1935,
       "indexed": true,
-      "materialHash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
+      "materialHash": "bcb0863dc57934b940319413a8f4d9760d7f4510e3e65cd746161c8913cbf935",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone",
       "nodeId": "sf.render.graffiti.mesh.lod2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 1386
+      "vertexCount": 1387
     },
     {
       "bounds": {
@@ -901,11 +901,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "129be24d365c5a7ba5eda559b6509ad9b00c4af2bcf334e0061bcc19f0938525",
+      "geometryHash": "c88383e857eedc98948df2a10cc5388288e2d73b2d697d2809f242c61f8a8196",
       "id": "sf.render.graffiti.mesh.lod2-warning.primitive.0",
       "indexCount": 9,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "a0350a8f2ef654deae5845545ffb34e31a25ddb17eddf5fc4e0d3d63a3f5a537",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.graffiti.mesh.lod2-warning",
@@ -918,72 +918,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "4aeff76ee803f141524180baf788473ab78bcff37ae19cb8b8f3f9e7740418bc",
-      "id": "material:4aeff76ee803f141524180ba",
+      "hash": "04994e39b21dddfec5fb390b59dbc9ea70dba246478752ffe40d726abf9445f7",
+      "id": "material:04994e39b21dddfec5fb390b",
       "name": "Material_Hull_tag1",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1007,43 +943,43 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_asteroid_graffiti_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
-      "id": "material:5154df8ef8c6ca712f2e49cc",
+      "hash": "1e85a1e3103641e43b42c90c02552bc576389ac6119934ad92d0af6c8dee3fc4",
+      "id": "material:1e85a1e3103641e43b42c90c",
+      "name": "Material_Stone_quarry",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_graffiti_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6f9a0fc3cc745a2e9789801b17c217071635da441e0b5073d456fb91969f3830",
+      "id": "material:6f9a0fc3cc745a2e9789801b",
       "name": "Material_Stone_deep",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_graffiti_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
-      "id": "material:68a8a7db911eab1344eb544a",
-      "name": "Material_Stone",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
-      "id": "material:a0b66f6c51a8bd7702daefc0",
-      "name": "Material_Stone_strata",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "c4e320516ec0b150cb89a0cedf17e091b3d069fcf1fbf6aa33a27202531ed55d",
-      "id": "material:c4e320516ec0b150cb89a0ce",
+      "hash": "8057b1da393518de83dbfec1ffa677031cc9c2b7f81c15f8688a12072cea5409",
+      "id": "material:8057b1da393518de83dbfec1",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1055,7 +991,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_asteroid_graffiti_AO-forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1067,29 +1003,54 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_asteroid_graffiti_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "f4d0d9d159485b6772a0ebd8405be1f7e8b2466976ec81cfa8e1d76f5a91b73f",
-      "id": "material:f4d0d9d159485b6772a0ebd8",
-      "name": "Material_Stone_quarry",
+      "hash": "83fcaa6c1ed517e080f47b7f57559e0c5bf37cbef4b0ee087baf0596b5958208",
+      "id": "material:83fcaa6c1ed517e080f47b7f",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_graffiti_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_graffiti_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
-      "id": "material:fab3eefb927c4e588f15130e",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "fd34ceca3dc6a5188ab2f69b0ff2dc9b7faceb246791be19d10e7c8f31418215",
-      "id": "material:fd34ceca3dc6a5188ab2f69b",
+      "hash": "9ec8272644d3f58999385d485d0e49b68fb678fbe9a99c8220819e384f325174",
+      "id": "material:9ec8272644d3f58999385d48",
       "name": "Material_Hull_tag2",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1113,11 +1074,78 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_asteroid_graffiti_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "a0350a8f2ef654deae5845545ffb34e31a25ddb17eddf5fc4e0d3d63a3f5a537",
+      "id": "material:a0350a8f2ef654deae584554",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_graffiti_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bcb0863dc57934b940319413a8f4d9760d7f4510e3e65cd746161c8913cbf935",
+      "id": "material:bcb0863dc57934b940319413",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_graffiti_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d3865cab52db63b6897115907bb7b23e81170b9c3879a6f17a8263da91ba362b",
+      "id": "material:d3865cab52db63b689711590",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_graffiti_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "id": "material:fab3eefb927c4e588f15130e",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
     }
   ],
   "nodes": [
@@ -2841,19 +2869,19 @@
       "sha256": "e2bccb974effda14ce0163c11a94fb51d6d98afba337a71b6eb7255575fe1bae"
     },
     "sourceGlb": {
-      "bytes": 705188,
-      "sha256": "c07e3ae18ce6cedd08329dd7eaf0e5d57fe430dd38f7d5525e7585be52c77daa",
+      "bytes": 1337892,
+      "sha256": "b3888c923141182964d02508bf30755ac85a846c932c1d1693a84b3ed42cde05",
       "uri": "place_asteroid_graffiti.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1121336,
-    "sha256": "bc18b2764010054c0558f61edd5285700d24c3748a5ea9f624be3dd1c0286cf8",
+    "bytes": 1766348,
+    "sha256": "799dee9ca82bca510c155d4b052c94a30ca50767d9be2c5db8c7cc2aca4cd357",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4010,7 +4038,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_graffiti.glb"
   },
-  "runtimeHash": "03bc9c1d3455164d552c101c4fd5d567af22daa0f8796cc6936ce154fbbf9b59",
+  "runtimeHash": "68596318e95ff0abf4e36e66be76aa95f1282e9c606c260e8b8d415ee033c25e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

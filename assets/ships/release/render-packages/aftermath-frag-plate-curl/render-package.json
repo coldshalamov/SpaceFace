@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ddb4af987e815abed82198de48d09cc04580d6b37200017f5ae3fbf7ef050106",
+  "contentHash": "b9a1560fc566149530dda1d5fada6a60d6d6bdf74457524682b7a0916b700f50",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,11 +23,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad0f6f5f3f282d3fb4fb89c88523a704300164a62eb50239d34a94fd95f8eeb5",
+      "geometryHash": "c0e5d8b1d966b19bc4dafaee974fb8f4b70202108be3bf72aa3c558d6fd45dce",
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "31310592ce7fc3599907d38ac71ef34746ed6ba665e7c4072d64a3b294334af3",
       "materialPipelineKey": "opaque",
       "meshName": "curl0",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl0",
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50681d3f7ec113abb9ed5b24fc40019bff3a150861967a8e3abcfe87cf41df3a",
+      "geometryHash": "9e1736c9dad2a40eb5252d9c22c8d1cc61054bf25d87125754d74315a00e0592",
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -73,11 +73,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c86ac3a2537591486cce7f0f1dfc1ff4a940ed1d8ab466066392f2058e554e09",
+      "geometryHash": "65ef94da0f4132caca91a8eb4e7b2cfb21872ad0981d3703fccae62c9f841daa",
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "31310592ce7fc3599907d38ac71ef34746ed6ba665e7c4072d64a3b294334af3",
       "materialPipelineKey": "opaque",
       "meshName": "curl2",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl2",
@@ -90,8 +90,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
-      "id": "material:2420fbdf2e405d9bd20f8b92",
+      "hash": "31310592ce7fc3599907d38ac71ef34746ed6ba665e7c4072d64a3b294334af3",
+      "id": "material:31310592ce7fc3599907d38a",
       "name": "Forge_ore_barge_wk_torn",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -356,19 +356,19 @@
       "sha256": "81df6187adba6b6a3ebdb43a558cd0ba40a50b6e98c1702de1de69e0735268ff"
     },
     "sourceGlb": {
-      "bytes": 115636,
-      "sha256": "eb0d11f7fde6e3ba98de24a528fbc07d57d604503d4a53fe894f271654a9239d",
+      "bytes": 276828,
+      "sha256": "51603298597ac01b2036eba87c2ac17a887a6d529bdc9e71c12269b3e8547c8e",
       "uri": "place_aftermath_frag_plate_curl.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 117072,
-    "sha256": "c6fcd3916fa3ebdaea1f4db47beba6a5edf83df526ef6054f1a3a964968399d4",
+    "bytes": 278264,
+    "sha256": "84fdb44e97815c41d3c8e22e9be109283c5af8dc388c95f3ea95e893219dfc0d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -506,7 +506,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb"
   },
-  "runtimeHash": "2f864cbb994e079a010779da347bed387ace906781ff05b0e592e57b85a73176",
+  "runtimeHash": "9787b3f9fff3cbc8321b4a6e2727da63c739fed23dd235118f8400d193b9eb49",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

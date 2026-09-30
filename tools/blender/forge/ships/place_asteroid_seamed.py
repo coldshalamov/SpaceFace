@@ -30,6 +30,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the mass: one dominant displaced boulder + flanking lumps --------------------------
     F.rock(s, 'Core', (0, 0, 0), 10.5, seed=13, subdiv=4, relief=0.34, terrace=0.0,

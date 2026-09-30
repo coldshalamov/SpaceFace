@@ -49,7 +49,8 @@ import { objectiveText } from './screens/missionLog.js';
 import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
-import { mountOrreryCluster } from './orrery/hudAdapter.js';
+import { mountOrreryCluster, stripStaleDistance } from './orrery/hudAdapter.js';
+import { solveLabels } from './orrery/constellation.js';
 import { createForkInstrument } from './forkInstrument.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
@@ -476,9 +477,10 @@ export function resolveObjectiveEdgePlacement(width, height, player, target, mar
 }
 
 function mtObjectiveAction(action, wp) {
-  const verb = String(action || 'Open the Mission Log').trim();
+  const verb = stripStaleDistance(String(action || 'Open the Mission Log').trim());
   // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
-  const destination = String(wp && (wp.label || wp.mapLabel || wp.sectorName) || '').trim();
+  // F2: the destination never carries its own dead distance — the live reading sits one line below.
+  const destination = stripStaleDistance(String(wp && (wp.label || wp.mapLabel || wp.sectorName) || '').trim());
   if (!destination || /\b(to|at|near)\b/i.test(verb) || verb.toLowerCase().includes(destination.toLowerCase())) return verb;
   return `${verb} · ${destination}`;
 }
@@ -907,6 +909,21 @@ function rectsOverlap(a, b) {
 }
 
 /**
+ * One ORRERY leader elbow from a mark (sx, sy) to its label (tx, ty): a 45° segment plus one
+ * axis run, quantized to whole pixels so a settled leader writes its `d` once (F4, F7).
+ */
+export function elbowLeaderD(sx, sy, tx, ty) {
+  const dx = tx - sx;
+  const dy = ty - sy;
+  let ex = tx;
+  let ey = ty;
+  if (Math.abs(dx) > Math.abs(dy)) ex = sx + (dx === 0 ? 0 : Math.sign(dx) * Math.abs(dy));
+  else ey = sy + (dy === 0 ? 0 : Math.sign(dy) * Math.abs(dx));
+  const q = (n) => Math.round(n);
+  return `M ${q(sx)} ${q(sy)} L ${q(ex)} ${q(ey)} L ${q(tx)} ${q(ty)}`;
+}
+
+/**
  * Place one transient doctrine tell without covering the persistent objective/vitals/action/radar
  * anchors. `projected` is the authoritative worldToScreen result; the returned direction always
  * follows that original projection even when the chip yields to a reserved HUD rectangle.
@@ -954,6 +971,12 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
     y = centerY + dy * edgeDistance - stackOffset;
     y = Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, y));
   }
+  // T5: the FLYBY tell steps 14px down-left (10,10) off the lock diamond, then the reserved
+  // pass below clears anchors from the shifted seat — solver-routed, pool stays capped at 3.
+  x -= 10;
+  y += 10;
+  x = Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, x));
+  y = Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, y));
 
   const layout = resolveObjectiveHudLayout(w, h);
   const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]
@@ -1240,10 +1263,13 @@ function injectTravelTapeStyle() {
   /* --- the tape itself: a linear 0..headroom scale --- */
   /* margin-top reserves the caret-label lane: CAP / V-MAX sit between the head row and the
      tape instead of overprinting the state and spool text. */
-  .sf-vtape__track { position:relative; height:2px; margin-top:13px; overflow:visible; background:var(--k-bone-38); }
+  .sf-vtape__track { position:relative; height:3px; margin-top:13px; overflow:visible; background:var(--k-bone-38); }
   /* Surveyor's graticule — the same grid identity the chart uses (D4), not decoration. */
   .sf-vtape__grat { position:absolute; inset:0;
     display:none; }
+  /* F6: the gauge fill is 3px with a ghost delta holding the old level after a loss (§3.1) */
+  .sf-vtape__ghost { position:absolute; left:0; top:0; bottom:0; width:100%;
+    transform:scaleX(0); transform-origin:left center; background:rgb(232 226 212 / .45); }
   .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%;
     transform:scaleX(0); transform-origin:left center;
     background:var(--vt-teal);
@@ -1259,6 +1285,9 @@ function injectTravelTapeStyle() {
      left edge anchors right of it instead of sliding off the instrument. */
   .sf-vtape__cap--label-left .sf-vtape__caplabel { left:auto; right:calc(100% + 3px); transform:none; }
   .sf-vtape__cap--label-right .sf-vtape__caplabel { left:calc(100% + 3px); transform:none; }
+  /* F6: a disrupted cap is HELD, not earned — a dashed bone rule labelled HELD, never the amber CAP */
+  .sf-vtape__cap--held { width:0; background:none; border-left:2px dashed var(--k-bone-62); transform:none; }
+  .sf-vtape__cap--held .sf-vtape__caplabel { color:var(--k-bone-62); }
   /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
   .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
     border-left:1px dashed var(--vt-brass); }
@@ -1267,10 +1296,11 @@ function injectTravelTapeStyle() {
   /* --- approach row: the stopping arc (W1-9) --- */
   .sf-vtape__approach { display:none; flex-direction:column; gap:2px; margin-top:2px; }
   .sf-vtape--approach .sf-vtape__approach { display:flex; }
-  .sf-vtape__arc { position:relative; height:2px; background:var(--k-bone-38); }
+  .sf-vtape__arc { position:relative; height:3px; background:var(--k-bone-38); }
   /* Span from the ship to where it would actually come to rest. */
-  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0;
-    background:var(--vt-teal); transition:width .1s linear; }
+  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:100%;
+    transform:scaleX(0); transform-origin:left center;
+    background:var(--vt-teal); transition:transform .1s linear; }
   /* The arrival ring. When the stop span runs past it, you are going to overshoot — and that is
      allowed to happen (D9.8): the instrument reports, it never brakes for you. */
   .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
@@ -1300,7 +1330,7 @@ function injectTravelTapeStyle() {
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
   @media (prefers-reduced-motion: reduce) {
-    .sf-vtape, .sf-vtape__fill, .sf-vtape__cap, .sf-vtape__arcstop, .sf-vtape__arcring { transition:none; }
+    .sf-vtape, .sf-vtape__fill, .sf-vtape__ghost, .sf-vtape__cap, .sf-vtape__arcstop, .sf-vtape__arcring { transition:none; }
     .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
   }
   /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
@@ -1312,7 +1342,9 @@ function injectTravelTapeStyle() {
       color:CanvasText; }
     .sf-vtape__track, .sf-vtape__arc { border:1px solid CanvasText; background:Canvas; }
     .sf-vtape__fill, .sf-vtape__arcstop { background:Highlight; }
+    .sf-vtape__ghost { background:GrayText; }
     .sf-vtape__cap, .sf-vtape__vmax, .sf-vtape__arcring { border-color:CanvasText; background:CanvasText; }
+    .sf-vtape__cap--held { background:none; border-left:2px dashed CanvasText; }
     .sf-vtape__vmax { border-left:1px dashed CanvasText; background:none; }
     .sf-vtape__state, .sf-vtape__caplabel, .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake { color:CanvasText; }
   }
@@ -1650,8 +1682,9 @@ export function createHud(ctx, alerts) {
     '</div>' +
     '<div class="sf-vtape__track">' +
       '<div class="sf-vtape__grat"></div>' +
+      '<div class="sf-vtape__ghost" data-k="tghost"></div>' +
       '<div class="sf-vtape__fill" data-k="tfill"></div>' +
-      '<div class="sf-vtape__cap" data-k="tcap"><span class="sf-vtape__caplabel mono">CAP</span></div>' +
+      '<div class="sf-vtape__cap" data-k="tcap"><span class="sf-vtape__caplabel mono" data-k="tcaplabel">CAP</span></div>' +
       '<div class="sf-vtape__vmax" data-k="tvmax"><span class="sf-vtape__vmaxlabel mono" data-k="tvmaxtext">V-MAX</span></div>' +
     '</div>' +
     '<div class="sf-vtape__approach" data-k="tapproach">' +
@@ -1763,7 +1796,9 @@ export function createHud(ctx, alerts) {
     state: vtape.querySelector('[data-k=tstate]'),
     spool: vtape.querySelector('[data-k=tspool]'),
     fill: vtape.querySelector('[data-k=tfill]'),
+    ghost: vtape.querySelector('[data-k=tghost]'),
     cap: vtape.querySelector('[data-k=tcap]'),
+    capLabel: vtape.querySelector('[data-k=tcaplabel]'),
     vmax: vtape.querySelector('[data-k=tvmax]'),
     vmaxText: vtape.querySelector('[data-k=tvmaxtext]'),
     approach: vtape.querySelector('[data-k=tapproach]'),
@@ -1774,6 +1809,7 @@ export function createHud(ctx, alerts) {
   };
   let _vtapeAlpha = 0;      // smooth-damped reveal so it eases in rather than popping
   let _vtapeBrakeOn = false;
+  let _vtapeGhost = 0;        // F6: the ghost delta's held level, retired with the instrument
 
   const speedGaugeEl = center.querySelector('.sf-kit-gauge');
   const elSpeed = center.querySelector('[data-k=speed]');
@@ -2260,6 +2296,102 @@ export function createHud(ctx, alerts) {
   lockDiamond.className = 'sf-lockdiamond';
   lockDiamond.innerHTML = '<div class="sf-lockdiamond__inner"></div>';
   root.appendChild(lockDiamond);
+  // F4: lock diamonds get a 45° leader plus a micro label (name + range) placed by the ORRERY
+  // label solver, capped at 3 leaders. One shared SVG + tag pool; producers only write numbers
+  // per frame, flushDiamondLeaders paints on the slow clock.
+  const DIAMOND_LEADER_MAX = 3;
+  const diamondLeaderRoot = document.createElement('div');
+  diamondLeaderRoot.className = 'sf-diamond-leaders';
+  diamondLeaderRoot.setAttribute('aria-hidden', 'true');
+  root.appendChild(diamondLeaderRoot);
+  const diamondLeaderSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  diamondLeaderSvg.setAttribute('aria-hidden', 'true');
+  diamondLeaderRoot.appendChild(diamondLeaderSvg);
+  const diamondLeaderSlots = [];
+  for (let i = 0; i < DIAMOND_LEADER_MAX; i++) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('class', 'sf-diamond-leader');
+    path.style.display = 'none';
+    diamondLeaderSvg.appendChild(path);
+    const tag = document.createElement('div');
+    tag.className = 'sf-diamond-tag';
+    tag.style.display = 'none';
+    tag.innerHTML = '<span class="sf-diamond-tag__name"></span><span class="sf-diamond-tag__sub mono"></span>';
+    diamondLeaderRoot.appendChild(tag);
+    diamondLeaderSlots.push({
+      path, tag,
+      nameEl: tag.querySelector('.sf-diamond-tag__name'),
+      subEl: tag.querySelector('.sf-diamond-tag__sub'),
+      key: null,
+    });
+  }
+  // Producer scratch: the diamond and the objective marker publish their screen state here.
+  const diamondMark = { visible: false, x: 0, y: 0, name: '', sub: '', hostile: false, key: '' };
+  const objectiveMark = { visible: false, x: 0, y: 0, name: '', sub: '', hostile: false, key: '' };
+  function hideDiamondLeaders() {
+    for (const slot of diamondLeaderSlots) {
+      setDisplay(slot.path, false);
+      setDisplay(slot.tag, false);
+      slot.key = null;
+    }
+  }
+  function flushDiamondLeaders() {
+    const jobs = [];
+    if (diamondMark.visible) jobs.push({ id: 'diamond', ...diamondMark });
+    if (objectiveMark.visible) jobs.push({ id: 'objective', ...objectiveMark });
+    if (!jobs.length) { hideDiamondLeaders(); return; }
+    const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
+    const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
+    const items = jobs.slice(0, DIAMOND_LEADER_MAX).map((job) => ({
+      id: job.id,
+      star: { x: job.x, y: job.y, ox: job.x - w / 2, oy: job.y - h / 2 },
+      boxes: [{ w: Math.min(320, Math.max(90, job.name.length * 8 + 18)), h: 32, nameH: 14 }],
+      gap: 30,
+    }));
+    const discs = jobs.map((job) => ({ id: job.id, x: job.x, y: job.y, r: 22 }));
+    let solved = null;
+    try {
+      solved = solveLabels(items, { discs, bounds: { x: 8, y: 8, w: w - 16, h: h - 16 } });
+    } catch (_) { solved = null; }
+    if (!solved) { hideDiamondLeaders(); return; }
+    jobs.slice(0, DIAMOND_LEADER_MAX).forEach((job, i) => {
+      const slot = diamondLeaderSlots[i];
+      const place = solved[job.id];
+      if (!place || !place.rect) {
+        setDisplay(slot.path, false);
+        setDisplay(slot.tag, false);
+        slot.key = null;
+        return;
+      }
+      const rect = place.rect;
+      // Identity (name, voice) moves only on target change; the range still counts while closing.
+      if (slot.key !== job.key) {
+        slot.key = job.key;
+        setText(slot.nameEl, job.name);
+        setStyle(slot.path, 'stroke', job.hostile ? 'var(--k-red)' : 'rgb(232 226 212 / .75)');
+        setStyle(slot.nameEl, 'color', job.hostile ? 'var(--k-red)' : '');
+      }
+      setText(slot.subEl, job.sub);
+      // The leader leaves the diamond's edge toward the label and lands on the label's edge.
+      const tcx = Math.max(rect.x, Math.min(job.x, rect.x + rect.w));
+      const tcy = Math.max(rect.y, Math.min(job.y, rect.y + rect.h));
+      let ldx = tcx - job.x;
+      let ldy = tcy - job.y;
+      const ldist = Math.hypot(ldx, ldy) || 1;
+      ldx /= ldist;
+      ldy /= ldist;
+      setAttr(slot.path, 'd', elbowLeaderD(job.x + ldx * 18, job.y + ldy * 18, tcx, tcy));
+      setStyle(slot.tag, 'left', `${Math.round(rect.x)}px`);
+      setStyle(slot.tag, 'top', `${Math.round(rect.y)}px`);
+      setDisplay(slot.path, true);
+      setDisplay(slot.tag, true, 'flex');
+    });
+    for (let i = jobs.length; i < DIAMOND_LEADER_MAX; i++) {
+      setDisplay(diamondLeaderSlots[i].path, false);
+      setDisplay(diamondLeaderSlots[i].tag, false);
+      diamondLeaderSlots[i].key = null;
+    }
+  }
   // A selected target is projected five times per visible frame: once for the lock diamond, once
   // for the arc center, and once for each of the three arc radii. Keep one center pair and one edge
   // pair per mounted HUD so the renderer can fill them in place without changing call order or
@@ -2550,6 +2682,12 @@ export function createHud(ctx, alerts) {
       0% { filter:brightness(1.35); }
       100% { filter:brightness(1); }
     }
+    /* F7: one elbow leader per tell from the chip to its hostile — a static 1px stroke, endpoints
+       re-seated on the 10Hz slow clock, never per frame */
+    .sf-tell__leaders { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+    .sf-tell__leader { fill:none; stroke-width:1; }
+    /* T6: the leader's end dot — a filled pip on the hostile's projected position */
+    .sf-tell__dot { stroke:none; }
     html.sf-reduce-motion .sf-tell.is-pulse,
     html.sf-reduce-flash .sf-tell.is-pulse { animation:none !important; }
     @media (prefers-reduced-motion: reduce) {
@@ -2573,6 +2711,11 @@ export function createHud(ctx, alerts) {
     root.appendChild(el);
     return el;
   })();
+  // F7: the tell leaders share one SVG under the chips (user units are px — no viewBox).
+  const tellLeaderSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  tellLeaderSvg.setAttribute('class', 'sf-tell__leaders');
+  tellLeaderSvg.setAttribute('aria-hidden', 'true');
+  tellRoot.appendChild(tellLeaderSvg);
   const tellSlots = [];
   for (let i = 0; i < TELL_POOL_SIZE; i++) {
     const el = document.createElement('div');
@@ -2586,8 +2729,20 @@ export function createHud(ctx, alerts) {
       '<span class="sf-tell__hint"></span>' +
       '<span class="sf-tell__dir" aria-hidden="true">▸</span>';
     tellRoot.appendChild(el);
+    const leader = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    leader.setAttribute('class', 'sf-tell__leader');
+    leader.style.display = 'none';
+    tellLeaderSvg.appendChild(leader);
+    // T6: one end dot per leader, seated with the slow paint at the hostile's pip
+    const leaderDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    leaderDot.setAttribute('class', 'sf-tell__dot');
+    leaderDot.setAttribute('r', '2.5');
+    leaderDot.style.display = 'none';
+    tellLeaderSvg.appendChild(leaderDot);
     tellSlots.push({
       el,
+      leader,
+      leaderDot,
       iconEl: el.querySelector('.sf-tell__icon'),
       kindEl: el.querySelector('.sf-tell__kind'),
       hintEl: el.querySelector('.sf-tell__hint'),
@@ -2598,6 +2753,9 @@ export function createHud(ctx, alerts) {
       expiresAtTick: -1,
       age: Infinity,
       announced: '',
+      leaderOn: false,
+      leaderFrom: { x: 0, y: 0 },
+      leaderTo: { x: 0, y: 0 },
     });
   }
   // Per-frame doctrine-tell projection scratch + shared centered-transform options (never mutated).
@@ -2613,6 +2771,9 @@ export function createHud(ctx, alerts) {
     slot.expiresAtTick = -1;
     slot.age = Infinity;
     slot.announced = '';
+    slot.leaderOn = false;
+    setDisplay(slot.leader, false);
+    setDisplay(slot.leaderDot, false);
     slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
     slot.el.hidden = true;
     setText(slot.iconEl, '');
@@ -2654,6 +2815,10 @@ export function createHud(ctx, alerts) {
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
     slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
     slot.el.classList.add(`sf-tell--${tellId}`);
+    // F7: the leader wears the tell's own voice — red for a hostile commit, signal for a line
+    setStyle(slot.leader, 'stroke', tellId === 'TETHER' ? 'var(--k-signal)' : 'var(--k-red)');
+    // T6: the end dot wears the same voice, filled
+    setStyle(slot.leaderDot, 'fill', tellId === 'TETHER' ? 'var(--k-signal)' : 'var(--k-red)');
     setText(slot.iconEl, icon);
     setText(slot.kindEl, kindLabel);
     setText(slot.hintEl, hint);
@@ -2682,7 +2847,56 @@ export function createHud(ctx, alerts) {
 
   ctx.bus.on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
 
-  function updateDoctrineTells(frameDt) {
+  // T6: the drive band a tell leader must never cross — the travel tape's live box, read at
+  // most once per slow paint while a leader is up (one layout read at 10Hz, never per frame).
+  let _driveBoxCache = null;
+  let _driveBoxCacheAt = -Infinity;
+  function driveExclusionBox() {
+    if (!vt.root || !vt.root.classList || !vt.root.classList.contains('sf-vtape--on')) return null;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (_driveBoxCache && nowMs - _driveBoxCacheAt < 90) return _driveBoxCache;
+    if (typeof vt.root.getBoundingClientRect !== 'function') return null;
+    const b = vt.root.getBoundingClientRect();
+    if (!b || b.width <= 0 || b.height <= 0) return null;
+    _driveBoxCache = { x: b.x - 6, y: b.y - 6, w: b.width + 12, h: b.height + 12 };
+    _driveBoxCacheAt = nowMs;
+    return _driveBoxCache;
+  }
+
+  // T6: shorten a leader so it stops 4px clear of the exclusion rect instead of crossing drive
+  // text. Liang-Barsky parametric clip; returns the (possibly moved) end. Pure, no DOM.
+  const _clipScratch = { x: 0, y: 0 };
+  function clipLeaderEnd(from, to, rect) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    let t0 = 0;
+    let t1 = 1;
+    const edges = [
+      [-dx, from.x - rect.x],
+      [dx, rect.x + rect.w - from.x],
+      [-dy, from.y - rect.y],
+      [dy, rect.y + rect.h - from.y],
+    ];
+    for (let i = 0; i < 4; i++) {
+      const p = edges[i][0];
+      const q = edges[i][1];
+      if (p === 0) {
+        if (q < 0) return to;
+      } else {
+        const t = q / p;
+        if (p < 0) { if (t > t1) return to; if (t > t0) t0 = t; }
+        else { if (t < t0) return to; if (t < t1) t1 = t; }
+      }
+    }
+    if (t0 <= 0 || t0 >= 1) return to;
+    const back = 4 / (Math.hypot(dx, dy) || 1);
+    const t = Math.max(0, t0 - back);
+    _clipScratch.x = from.x + dx * t;
+    _clipScratch.y = from.y + dy * t;
+    return _clipScratch;
+  }
+
+  function updateDoctrineTells(frameDt, slow) {
     const w2s = helpers && helpers.worldToScreen;
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
     const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
@@ -2698,19 +2912,67 @@ export function createHud(ctx, alerts) {
         // The shared live-region announcement remains available, but a visual chip without an
         // authoritative projection would lie about direction and therefore stays hidden.
         setDisplay(slot.el, false);
+        slot.leaderOn = false;
         continue;
       }
       tellProjectionWorld.x = ent.pos.x;
       tellProjectionWorld.z = ent.pos.z;
       const proj = w2s(tellProjectionWorld, tellProjectionScreen);
       const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex);
-      if (!placement) { setDisplay(slot.el, false); continue; }
+      if (!placement) { setDisplay(slot.el, false); slot.leaderOn = false; continue; }
       setDisplay(slot.el, true, 'inline-flex');
       setClass(slot.el, 'is-offscreen', !placement.onScreen);
       setHudScreenTransform(slot.el, placement.x, placement.y, tellTransformCentered);
       if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
       setHidden(slot.el, false);
       setClass(slot.el, 'is-on', true);
+      // F7: the leader's endpoints are numbers every frame, paint on the slow clock only — and
+      // only while the chip and its hostile share the screen with room for a leader between them.
+      const ldx = proj.x - placement.x;
+      const ldy = proj.y - placement.y;
+      const ldist = Math.hypot(ldx, ldy);
+      if (placement.onScreen && proj.onScreen && ldist >= 80) {
+        const ux = ldx / ldist;
+        const uy = ldy / ldist;
+        slot.leaderOn = true;
+        slot.leaderFrom.x = placement.x + ux * 40;
+        slot.leaderFrom.y = placement.y + uy * 40;
+        slot.leaderTo.x = proj.x - ux * 14;
+        slot.leaderTo.y = proj.y - uy * 14;
+      } else {
+        slot.leaderOn = false;
+      }
+    }
+    if (slow) {
+      // T6: one drive-box read for the whole paint, only while a leader is up
+      let driveBox = null;
+      let driveBoxRead = false;
+      for (const slot of tellSlots) {
+        if (!slot.leaderOn) {
+          if (slot.age < Infinity) {
+            setDisplay(slot.leader, false);
+            setDisplay(slot.leaderDot, false);
+          }
+          continue;
+        }
+        if (!driveBoxRead) {
+          driveBoxRead = true;
+          driveBox = driveExclusionBox();
+        }
+        let tx = slot.leaderTo.x;
+        let ty = slot.leaderTo.y;
+        if (driveBox) {
+          const clipped = clipLeaderEnd(slot.leaderFrom, slot.leaderTo, driveBox);
+          tx = clipped.x;
+          ty = clipped.y;
+        }
+        setAttr(slot.leader, 'd', elbowLeaderD(slot.leaderFrom.x, slot.leaderFrom.y, tx, ty));
+        setDisplay(slot.leader, true);
+        // T6: the leader terminates at the hostile's pip with an end dot
+        setAttr(slot.leaderDot, 'cx', tx.toFixed(1));
+        setAttr(slot.leaderDot, 'cy', ty.toFixed(1));
+        setDisplay(slot.leaderDot, true);
+      }
     }
   }
 
@@ -3984,6 +4246,7 @@ export function createHud(ctx, alerts) {
       setClass(lockRing, 'locked', false);
       setClass(lockRing, 'sf-lockring--latch', false);
       setClass(lockDiamond, 'visible', false);
+      diamondMark.visible = false;
       setClass(leadPip, 'visible', false);
       setStyle(wpnHeatsWrap, 'display', 'none');
       updateGravityMarkOverlays(null);
@@ -4104,7 +4367,8 @@ export function createHud(ctx, alerts) {
         // Tint: red when missile-locked, cyan when just selected/tracking.
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
-        const shape = targetBracketShape(tgt, isHostileToPlayer(tgt, p ? p.team : 0, state));
+        const tgtHostile = isHostileToPlayer(tgt, p ? p.team : 0, state);
+        const shape = targetBracketShape(tgt, tgtHostile);
         setAttr(lockDiamond, 'data-shape', shape);
         const innerDiamond = lockDiamond._sfInner || (lockDiamond._sfInner = lockDiamond.firstElementChild);
         if (innerDiamond) {
@@ -4114,11 +4378,25 @@ export function createHud(ctx, alerts) {
             plain: spin ? 'rotate(45deg)' : 'none',
           });
         }
+        // F4: publish the diamond's screen state for the leader flush (numbers only, no DOM).
+        const td = tgt.data || {};
+        const tName = String(td.callsign || td.name || tgt.name || td.trafficRole || td.role || tgt.type || 'Contact');
+        diamondMark.visible = true;
+        diamondMark.x = proj.x;
+        diamondMark.y = proj.y;
+        diamondMark.name = tName;
+        diamondMark.sub = p && p.pos
+          ? `${Math.round(Math.hypot(tgtAnchor.x - p.pos.x, tgtAnchor.z - p.pos.z))} WU`
+          : '';
+        diamondMark.hostile = !!tgtHostile;
+        diamondMark.key = `${tid}|${tName}|${tgtHostile ? 'h' : 'f'}`;
       } else {
         setClass(lockDiamond, 'visible', false);
+        diamondMark.visible = false;
       }
     } else {
       setClass(lockDiamond, 'visible', false);
+      diamondMark.visible = false;
     }
 
     updateGravityMarkOverlays(p);
@@ -4852,6 +5130,8 @@ export function createHud(ctx, alerts) {
       setClass(vt.root, 'sf-vtape--brake', false);
       setClass(vt.root, 'sf-vtape--approach', false);
       _vtapeBrakeOn = false;
+      _vtapeGhost = 0;
+      setScaleX(vt.ghost, 0);
       return;
     }
 
@@ -4859,7 +5139,17 @@ export function createHud(ctx, alerts) {
 
     // --- tape: current speed against the per-family ceiling ---
     const scale = Math.max(1, ceiling * VTAPE_HEADROOM);
-    setScaleX(vt.fill, clamp01(speed / scale));
+    const fillFrac = clamp01(speed / scale);
+    setScaleX(vt.fill, fillFrac);
+    // F6: the ghost holds the old level after a loss so the drop reads as a bite, then eases down
+    // to the fill on the slow clock — scaleX only, like the fill.
+    // T7: while the cap is HELD (disrupted) the ghost freezes — the delta persists on the
+    // disrupted bar instead of easing away; it resumes easing once the hold clears.
+    if (slow) {
+      if (fillFrac >= _vtapeGhost) _vtapeGhost = fillFrac;
+      setScaleX(vt.ghost, _vtapeGhost);
+      _vtapeGhost = (drive && drive.disrupted) ? _vtapeGhost : Math.max(fillFrac, _vtapeGhost - 0.08);
+    }
     const capPct = clamp01((drive ? drive.cap : 0) / scale) * 100;
     const vmaxPct = clamp01(ceiling / scale) * 100;
     setStyle(vt.cap, 'left', capPct.toFixed(1) + '%');
@@ -4872,6 +5162,10 @@ export function createHud(ctx, alerts) {
 
     if (slow) {
       setText(vt.vmaxText, 'V-MAX ' + Math.round(ceiling));
+      // F6: a disrupted cap reads HELD on a dashed bone rule — never the earned amber CAP.
+      const capHeld = !!(drive && drive.disrupted);
+      setClass(vt.cap, 'sf-vtape__cap--held', capHeld);
+      setText(vt.capLabel, capHeld ? 'HELD' : 'CAP');
       // Every state prints its NAME — hue is never the only carrier (WCAG 1.4.1).
       setText(vt.state, driveState === 'off' ? 'DRIVE OFF' : 'DRIVE ' + driveState.toUpperCase());
       let note = '';
@@ -4897,7 +5191,7 @@ export function createHud(ctx, alerts) {
       // The arc reads as a span: how far the ship WILL travel before rest, against where the
       // arrival ring actually sits. When the stop span overruns the ring, you are overshooting.
       const span = Math.max(cue.distance, cue.stopDistance, 1) * 1.1;
-      setStyle(vt.arcStop, 'width', (clamp01(cue.stopDistance / span) * 100).toFixed(1) + '%');
+      setScaleX(vt.arcStop, clamp01(cue.stopDistance / span));
       setStyle(vt.arcRing, 'left', (clamp01(cue.distance / span) * 100).toFixed(1) + '%');
       setClass(vt.root, 'sf-vtape--overshoot', !!cue.overshoot);
       if (slow) {
@@ -4935,7 +5229,7 @@ export function createHud(ctx, alerts) {
       ? state.entities.get(state.playerId)
       : null;
     resolveReticle();
-    updateDoctrineTells(frameDt);
+    updateDoctrineTells(frameDt, slow);
 
     // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
     const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -5304,8 +5598,11 @@ export function createHud(ctx, alerts) {
 
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
+    // F4: diamond leaders re-solve on the slow clock from the producers' published numbers.
+    if (slow) flushDiamondLeaders();
     if (overlayTick || slow) updateFirstUseHint(p);
     if (slow) placeReceiptLane();
+    if (slow) retintThreatPills();
     if (slow) updateAdventureDecisionLine();
     if (slow) refreshLeftContextClasses();
 
@@ -5364,7 +5661,7 @@ export function createHud(ctx, alerts) {
         if (station) livePos = station.pos;
       }
       const pos = livePos || resolveWaypointPresentationPosition(state, nw);
-      wpLabel = nw.label || nw.reason || nw.sectorName || 'Waypoint';
+      wpLabel = stripStaleDistance(nw.label || nw.reason || nw.sectorName || 'Waypoint');
       navMeta = nw;
       if (pos) wp = pos;
     }
@@ -5377,6 +5674,7 @@ export function createHud(ctx, alerts) {
       setDisplay(elNavReadout, false);
       // Cross-sector guidance already lives in the dominant ACTIVE OBJECTIVE tracker.
       setClass(elNavReadout, 'sf-nav--lock', false);
+      objectiveMark.visible = false;
       return;
     }
     if (!wp || !p || !helpers.worldToScreen) {
@@ -5385,6 +5683,7 @@ export function createHud(ctx, alerts) {
       lastNavLabel = '';
       lastObjectiveMarkerText = '';
       lastObjectiveSig = null;
+      objectiveMark.visible = false;
       return;
     }
     objectiveProjectionWorld.x = wp.x;
@@ -5443,11 +5742,20 @@ export function createHud(ctx, alerts) {
       setDataEdge(arrow, x > w * 0.62 ? 'right' : (y < 62 ? 'top' : 'left'));
       setStyle(arrow, 'transform', `translate3d(${x}px,${y}px,0)`);
       setDisplay(arrow, true);
+      // F4: the onscreen goal diamond hides its plate (compact) — the leader carries its identity.
+      objectiveMark.visible = true;
+      objectiveMark.x = x;
+      objectiveMark.y = y;
+      objectiveMark.name = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
+      objectiveMark.sub = dist >= 1000 ? `${(dist / 1000).toFixed(1)}k WU` : `${Math.round(dist)} WU`;
+      objectiveMark.hostile = false;
+      objectiveMark.key = `obj|${objectiveMark.name}`;
       return;
     }
     const edgePlacement = resolveObjectiveEdgePlacement(w, h, p, wp, 34, objectiveEdgeRecord);
     if (!edgePlacement) {
       setDisplay(arrow, false);
+      objectiveMark.visible = false;
       return;
     }
     setClass(arrow, 'sf-objarrow--edge', true);
@@ -5478,6 +5786,8 @@ export function createHud(ctx, alerts) {
     setCssVar(arrow, '--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
     setDisplay(arrow, true);
     setStyle(arrow, 'transform', `translate3d(${edgeX}px,${edgeY}px,0)`);
+    // The edge chevron is a direction cue, not a diamond — no leader follows it off-screen.
+    objectiveMark.visible = false;
   }
 
   // Plate boxes for the objective edge arrow, read at most every 500 ms and only while the arrow
@@ -5503,6 +5813,21 @@ export function createHud(ctx, alerts) {
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
+  // F1: threat wears red, never amber. alerts.js owns the pills (their words, classes and timing
+  // stay its own); the HUD only tags threat pills — danger severity or the TAKING FIRE floor —
+  // and the ORRERY skin reddens the tagged lens. Cargo and mill warnings stay amber.
+  function retintThreatPills() {
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    if (!alertsEl) return;
+    const pills = alertsEl.children;
+    for (let i = 0; i < pills.length; i++) {
+      const pill = pills[i];
+      if (!pill || !pill.classList || !pill.classList.contains('sf-alert')) continue;
+      const threat = pill.classList.contains('sf-alert--danger')
+        || (pill.textContent || '').trim().toUpperCase() === 'TAKING FIRE';
+      setClass(pill, 'sf-alert--threat', threat);
+    }
+  }
   function placeReceiptLane() {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
     const laneRoot = toastsLaneEl;
@@ -5551,7 +5876,17 @@ export function createHud(ctx, alerts) {
     // The dock alert is created/removed by alerts.js — a query must run each slow tick, but
     // scoped to the small #alerts subtree instead of a document-wide selector match.
     const dock = alertsEl ? alertsEl.querySelector('.sf-alert--dock') : null;
-    if (dock) placeFlightBox(dock, boxes.dockPrompt);
+    if (dock) {
+      placeFlightBox(dock, boxes.dockPrompt);
+      // T1: with ORRERY on, the Lamp Key docks BELOW the tape cluster (top edge ≥150px) — the
+      // tape is the persistent hero and keeps its scale centre; the key is transient. The tape
+      // is fixed-px, so one constant clears it at every viewport; short screens clamp to fit.
+      if (orreryCluster) {
+        const keyTop = Math.max(0, Math.min(150, h - 60));
+        const top = parseFloat(dock.style.top) || 0;
+        if (top < keyTop) setStyle(dock, 'top', `${Math.round(keyTop)}px`);
+      }
+    }
   }
 
   function unplaceFlightBox(el) {
@@ -5670,6 +6005,27 @@ export function createHud(ctx, alerts) {
   }
 
   refreshLeftContextClasses();
+
+  // Wave 3 recall-A: mount-time prime. Mounted structures (diamond leaders, threat pills,
+  // the dock key seat, the travel ghost) only FILL on the slow tick — an instant capture shows
+  // pre-change pixels. Run one synchronous slow-equivalent pass here so the first painted frame
+  // is already filled; every path below keeps updating on its clock, and each write is
+  // change-guarded so the first real tick costs nothing twice. (The Cluster + ORRERY tape prime
+  // inside mountOrreryCluster — this file feeds the Cluster once per frame, no more.)
+  // Best-effort: a prime must never break a mount.
+  try {
+    const primePlayer = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    retintThreatPills();
+    placeReceiptLane();
+    if (primePlayer) {
+      updateObjectiveArrow(primePlayer, true);
+      updateTravelTape(primePlayer, 0, true);
+      updateDoctrineTells(0, true);
+      flushDiamondLeaders();
+    }
+  } catch (_) { /* the frame loop fills on its first tick */ }
 
   return {
     frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives, arrive,

@@ -59,6 +59,7 @@ def flood(s, name, pos, aim, r=0.3, lens='glow_warm'):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- base plate ------------------------------------------------------------------------------
     F.box(s, 'Plate', (0, 0, ZP / 2), (2.96, 2.96, ZP), material='paint2', bevel=0.04)
@@ -130,7 +131,9 @@ def build():
               bevel=0.0)
         F.box(s, f'RailY{sx}', (0, sx * (CH - 0.06), Z_MAST1 + 0.95), (CH * 2, 0.07, 0.07), material='paint',
               bevel=0.0)
-    # lamp rack: a central junction box with a cross of arms, two floods per face
+    # lamp rack: a central junction box with a cross of arms, two floods per face. The rack is a
+    # rotating head — the tower scans its floods across the work site on a slow turn.
+    n0 = len(s.objects)
     F.box(s, 'Junction', (0, 0, Z_MAST1 + 0.55), (0.9, 0.9, 0.7), material='paint', bevel=0.04)
     F.band(s, 'Junction', (0, 0, Z_MAST1 + 0.55), (0, 0, 1), 0.14, 'paint2')
     F.box(s, 'RackX', (0, 0, Z_MAST1 + 1.05), (CH * 2 - 0.1, 0.2, 0.16), material='paint2', bevel=0.02)
@@ -154,6 +157,11 @@ def build():
     s.detail = 2
     F.antenna(s, 'Whip', (0.3, 0.3, Z_MAST1 + 0.9), 0.6, tip='glow_red')
     s.detail = 0
+    # junction + racks + arms + floods + beacon mast spin as one head; the beacon dome also blinks
+    s.anim([o for o in s.objects[n0:] if o.name != 'Beacon_Dome'], 'spin:up:0p3',
+           (0, 0, Z_MAST1 + 0.9))
+    s.anim([o for o in s.objects[n0:] if o.name == 'Beacon_Dome'], 'blink:1p2:0p2',
+           (0, 0, Z_MAST1 + 1.75))
     return s
 
 

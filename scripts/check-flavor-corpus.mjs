@@ -67,7 +67,7 @@ function validateCorpus() {
   if (JSON.stringify(Object.keys(FLAVOR_PACKS)) !== JSON.stringify(expectedPacks)) {
     add('flavor.pack-order', 'FLAVOR_PACKS', `Expected ${expectedPacks.join(', ')}.`);
   }
-  if (FLAVOR_PACKS.wreck_rumors.entries.length !== 12) add('flavor.rumors', 'wreck_rumors', 'Expected D1-D12 rumor sets.');
+  if (FLAVOR_PACKS.wreck_rumors.entries.length !== 13) add('flavor.rumors', 'wreck_rumors', 'Expected D1-D12 plus the D17 deep-chord rumor sets.');
   if (FLAVOR_PACKS.ad_board.entries.length < 20) add('flavor.ads', 'ad_board', 'Expected at least 20 ads.');
   if (FLAVOR_PACKS.band.entries.length !== 8) add('flavor.band-channels', 'band', 'Expected eight Band channels.');
   const bandLineCount = FLAVOR_PACKS.band.entries.reduce((sum, channel) => sum + channel.lines.length, 0);

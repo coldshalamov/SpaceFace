@@ -170,7 +170,7 @@ test('the seven canonical channels subscribe to their shipped native carrier eve
 });
 
 test('every native rumor carrier records only its canonical primary source', () => {
-  assert.equal(UNIQUE_WRECKS.length, 16);
+  assert.equal(UNIQUE_WRECKS.length, 17);
   for (const def of UNIQUE_WRECKS) {
     const source = primarySource(def);
     const t = boot(def);
@@ -528,7 +528,7 @@ test('D10 remains a gentle no-combat teaching wreck through scan and long timer 
 });
 
 test('every wreck settles its named drops once and the durable receipt prevents post-load respawn', () => {
-  assert.equal(UNIQUE_WRECKS.length, 16);
+  assert.equal(UNIQUE_WRECKS.length, 17);
   for (const def of UNIQUE_WRECKS) {
     const t = boot(def, 48100 + Number(def.programSlot.slice(1)), { rewards: true });
     try {

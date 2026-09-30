@@ -363,7 +363,13 @@ function prepareScenarioGeometry({ factionId, state, helpers, player, actors }) 
     assert(setup.atlases.length > 0, 'Fulfillment route must include an existing Atlas EMP carrier');
     const administrativeTarget = actors.find((actor) => !setup.atlases.includes(actor));
     assert(administrativeTarget, 'Fulfillment route must include a non-Atlas ship for player provocation');
-    placeEntity(administrativeTarget, origin.x, origin.z + 220, -Math.PI / 2);
+    // Keep the provoked administrative target and the overflow screen clear of the Atlas
+    // EMP corridor. Under Packages A&B hull proportions (eb04352f0) the old +220/+320 lane
+    // let the provoked target drift back into the firing line: live EMP salvos either missed
+    // the player outright or struck the escort, so no canonical drive-disabled transition
+    // fired. With the corridor clear the Atlas lands its live EMP on the player's drive
+    // volume directly (drive_disabled -> boarding blackout).
+    placeEntity(administrativeTarget, origin.x - 600, origin.z + 620, -Math.PI / 2);
     setup.provokeTarget = administrativeTarget;
     let atlasIndex = 0;
     for (const atlas of setup.atlases) {
@@ -372,7 +378,7 @@ function prepareScenarioGeometry({ factionId, state, helpers, player, actors }) 
     }
     for (const actor of actors) {
       if (actor === administrativeTarget || setup.atlases.includes(actor)) continue;
-      placeEntity(actor, origin.x, origin.z + 320, -Math.PI / 2);
+      placeEntity(actor, origin.x - 600, origin.z + 700, -Math.PI / 2);
     }
   } else if (factionId === 'faction_pitborn') {
     placeEntity(player, origin.x, origin.z + 2400, 0);

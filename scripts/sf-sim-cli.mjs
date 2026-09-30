@@ -541,6 +541,16 @@ async function run47a({
     }
     update47aScenarioActorIntents(state, { counterTetherProbe });
     sim.step(SIM_DT);
+    if (process.env.SF_47A_WATCH && tick >= Number(process.env.SF_47A_WATCH_FROM || 0) && tick % Number(process.env.SF_47A_WATCH) === 0) {
+      const ents = {};
+      for (const e of state.entityList) {
+        const aid = e.data && e.data.scenarioActorId;
+        if (aid) ents[aid] = { x: +e.pos.x.toFixed(1), z: +e.pos.z.toFixed(1), vx: +(e.vel?.x || 0).toFixed(2), vz: +(e.vel?.z || 0).toFixed(2), alive: e.alive !== false };
+      }
+      const sp = ents.evidence_spindle_47a, tg = ents.official_recovery_tug, pl = ents.player_kestrel, bc = ents.kessler_handoff_beacon;
+      const d = (a, b) => a && b ? +Math.hypot(a.x - b.x, a.z - b.z).toFixed(1) : null;
+      process.stderr.write(`[watch] t=${tick} beat=${state.scenario?.active?.activeBeatId} d(spindle,tug)=${d(sp, tg)} d(spindle,beacon)=${d(sp, bc)} player=${JSON.stringify(pl)} spindle=${JSON.stringify(sp)} tug=${JSON.stringify(tg)}\n`);
+    }
     if (reloadAt != null && state.tick === reloadAt) {
       await reloadThroughSave(registry, state, metrics, reloadAt, {
         physicsBackend,

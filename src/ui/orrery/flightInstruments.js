@@ -90,8 +90,22 @@ export function createRadarOrrery({ shipId = 'ship_kestrel', rangeLabel = '4.0k 
   const scope = el('div', 'orr-radar__scope');
   scope.appendChild(el('span', 'orr-radar__sweep'));
   root.appendChild(scope);
+  // R2: a symmetric disc of the void under the rings, past the scope edge — the rim
+  // straddles the scope boundary, so an asymmetric backdrop (or the sweep's bright edge) lit
+  // its left and right halves differently (L23 vs L45). One uniform base unifies them.
+  // Static fill, zero/frame; the sweep still shows through at 45%.
+  s.appendChild(svg('circle', { cx: c, cy: c, r: 138, fill: 'rgb(5 7 10 / .55)' }));
   for (const r of [42, 84]) s.appendChild(ring({ cx: c, cy: c, r, tone: 'faint', width: 1, dash: '2 5' }));
-  s.appendChild(ring({ cx: c, cy: c, r: 126, tone: 'rest', width: 1, bloom: 4 }));
+  // R1: the outer ring is two explicit static strokes — a flat 20% bone twin (5px) under a
+  // 65% core. A tone-class twin multiplies (20% x 30% rest = 6%, invisible on pixels); flat
+  // values hold the §3.1 band. Never a blur filter over flight. Static SVG attrs, zero/frame.
+  const rimD = arcD(c, c, 126, 0, 360);
+  const rimTwin = svg('path', { d: rimD, class: 'orr-core', 'stroke-width': 5, fill: 'none' });
+  rimTwin.style.stroke = 'rgb(232 226 212 / .20)';
+  const rimCore = svg('path', { d: rimD, class: 'orr-core', 'stroke-width': 1, fill: 'none' });
+  rimCore.style.stroke = 'rgb(232 226 212 / .65)';
+  s.appendChild(rimTwin);
+  s.appendChild(rimCore);
   s.appendChild(svg('path', { d: `M ${c} ${c - 126} L ${c} ${c + 126} M ${c - 126} ${c} L ${c + 126} ${c}`, class: 'orr-core orr-faint', 'stroke-width': 1, 'stroke-dasharray': '1 6' }));
   const orbit = orbitRing({ cx: c, cy: c, r: 136, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false });
   s.appendChild(orbit.el);
@@ -284,7 +298,9 @@ export function createThreatChannel() {
   injectStyle();
   const root = el('div', 'orr-threat');
   const s = svg('svg', { class: 'orr-svg', viewBox: '0 0 220 220', 'aria-hidden': 'true' });
-  s.appendChild(svg('circle', { cx: 110, cy: 110, r: 82, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'none', 'stroke-dasharray': '1 5' }));
+  // R5: the track rides its own radius (r70) — it shared the arcs' r82, so track dashes past
+  // the arc ends read as one arc going dim along its length. Separated, the red arc reads whole.
+  s.appendChild(svg('circle', { cx: 110, cy: 110, r: 70, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'none', 'stroke-dasharray': '1 5' }));
   const arcs = svg('g');
   s.appendChild(arcs);
   root.appendChild(s);
@@ -296,9 +312,16 @@ export function createThreatChannel() {
       root.style.top = `${y}px`;
       arcs.textContent = '';
       for (const b of bearings) {
+        // R5: explicit flat strokes — a 22% red under-stroke beneath the full core — so the
+        // arc carries one weight along its whole length. Static attrs, zero/frame.
         const g = svg('g', { class: 'orr-threat__arc' });
-        g.appendChild(svg('path', { d: arcD(110, 110, 82, b - 9, b + 9), class: 'orr-bloom orr-threat', 'stroke-width': 9 }));
-        g.appendChild(svg('path', { d: arcD(110, 110, 82, b - 9, b + 9), class: 'orr-core orr-threat', 'stroke-width': 2.4 }));
+        const arcD82 = arcD(110, 110, 82, b - 9, b + 9);
+        const arcTwin = svg('path', { d: arcD82, class: 'orr-core', 'stroke-width': 9, fill: 'none' });
+        arcTwin.style.stroke = 'rgb(255 80 56 / .22)';
+        const arcCore = svg('path', { d: arcD82, class: 'orr-core', 'stroke-width': 2.4, fill: 'none' });
+        arcCore.style.stroke = 'rgb(255 80 56 / 1)';
+        g.appendChild(arcTwin);
+        g.appendChild(arcCore);
         const [tx, ty] = polar(110, 110, 93, b);
         g.appendChild(svg('path', { d: `M ${tx - 4} ${ty} L ${tx} ${ty - 6} L ${tx + 4} ${ty} Z`, fill: 'var(--dp-danger, #ff5038)', transform: `rotate(${b} ${tx} ${ty})` }));
         arcs.appendChild(g);
@@ -338,11 +361,17 @@ export function createSignalToasts() {
       const t = el('div', `orr-toast is-arriving${gain ? ' is-gain' : ''}`);
       t.style.setProperty('--orr-delay', `${delay}ms`);
       t.style.setProperty('--orr-life', `${life}s`);
+      // R3: the decay arc is a circle element (not an arc path) with an explicit track,
+      // and it steps at 4Hz — never a per-frame dash. Under reduced motion the animation is
+      // off and the full ring stands (the info stays).
       const ringSvg = svg('svg', { class: 'orr-svg', viewBox: '0 0 18 18', 'aria-hidden': 'true' });
-      ringSvg.append(
-        svg('circle', { cx: 9, cy: 9, r: 7, class: 'orr-core orr-faint', 'stroke-width': 1.2, fill: 'none' }),
-        svg('path', { d: arcD(9, 9, 7, 0, 360), class: 'orr-core orr-phos orr-toast__decay', 'stroke-width': 1.8, pathLength: 1, 'stroke-dasharray': '1 1' }),
-      );
+      const decayTrack = svg('circle', { cx: 9, cy: 9, r: 7, class: 'orr-core orr-faint', 'stroke-width': 1.2, fill: 'none' });
+      const decayArc = svg('circle', {
+        cx: 9, cy: 9, r: 7, class: 'orr-core orr-phos orr-toast__decay', 'stroke-width': 1.8,
+        fill: 'none', pathLength: 1, 'stroke-dasharray': '1 1', transform: 'rotate(-90 9 9)',
+      });
+      decayArc.style.animationTimingFunction = `steps(${Math.max(4, Math.round(life * 4))})`;
+      ringSvg.append(decayTrack, decayArc);
       const k = el('span', 'orr-label', kind);
       const body = el('div', 'orr-toast__text');
       body.innerHTML = html;

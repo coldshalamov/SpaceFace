@@ -36,6 +36,127 @@ function clamp(v, lo, hi) {
 // (transform-only — station materials are shared, so the pulse never touches emissive).
 export const DOCK_PULSE_RING_S = 1.2;
 
+// --- Authored ANIM_ motion -------------------------------------------------------------------
+// Forge bodies tag moving parts with s.anim(obj, spec, pivot); export names each animated node
+// LOD{n}_ANIM_<kind>_<args>_<part>, ':' encoded to '_' and '.' to 'p' so the spec survives the
+// node-name sanitizer. Specs:
+//   spin:<axis>:<rad/s>                     continuous rotation about a body axis
+//   sweep:<axis>:<amplitude>:<rate>         sinusoidal rotation, amplitude rad at rate rad/s
+//   blink:<period>:<phase>                  visibility strobe, seconds, ~22% duty
+//   flicker:<period>:<phase>                irregular visibility strobe (candle/arc), per-cycle hash
+//   chase:<group>:<index>:<count>:<period>  sequential dock lights, one slot lit at a time
+// Axes are Blender-body axes converted to three space: 'up' (Blender +Z) -> +Y, 'fore' (+X) -> +X,
+// 'side' (+Y) -> -Z (sign folded in).
+const ANIM_TOKEN = 'ANIM_';
+const ANIM_AXIS = { up: 'y', fore: 'x', side: 'z' };
+const ANIM_AXIS_SIGN = { up: 1, fore: 1, side: -1 };
+const ANIM_ARG_COUNT = { spin: 2, sweep: 3, blink: 2, flicker: 2, chase: 4 };
+const ANIM_BLINK_DUTY = 0.22;
+// Beyond this distance ANIM_ nodes are sub-pixel anyway; the lod2/farSpeck gate upstream handles
+// the close case, this bounds the deep-field sweep.
+const ANIM_MAX_DISTANCE = 4500;
+
+function animNum(token) {
+  const n = Number(String(token).replace('p', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function parseAnimNodeName(name) {
+  const i = String(name || '').indexOf(ANIM_TOKEN);
+  if (i < 0) return null;
+  const tokens = String(name).slice(i + ANIM_TOKEN.length).split('_');
+  const kind = tokens[0];
+  const argc = ANIM_ARG_COUNT[kind];
+  if (argc == null || tokens.length < 1 + argc) return null;
+  const a = tokens.slice(1, 1 + argc);
+  if (kind === 'spin' || kind === 'sweep') {
+    const axis = ANIM_AXIS[a[0]];
+    if (!axis) return null;
+    const spec = { kind, axis, sign: ANIM_AXIS_SIGN[a[0]] };
+    if (kind === 'spin') spec.rate = animNum(a[1]);
+    else { spec.amplitude = animNum(a[1]); spec.rate = animNum(a[2]); }
+    return spec;
+  }
+  if (kind === 'blink' || kind === 'flicker') {
+    return { kind, period: Math.max(0.05, animNum(a[0])), phase: animNum(a[1]) };
+  }
+  return {
+    kind,
+    group: a[0],
+    index: Math.max(0, animNum(a[1]) | 0),
+    count: Math.max(1, animNum(a[2]) | 0),
+    period: Math.max(0.05, animNum(a[3])),
+  };
+}
+
+function scanAuthoredAnimNodes(rec, mesh) {
+  rec.animScanned = true;
+  let list = null;
+  if (!mesh || typeof mesh.traverse !== 'function') {
+    rec.animNodes = null;
+    return;
+  }
+  mesh.traverse((node) => {
+    if (!node || !node.name) return;
+    const spec = parseAnimNodeName(node.name);
+    if (!spec) return;
+    if (!list) list = [];
+    list.push({
+      node,
+      spec,
+      baseX: node.rotation ? node.rotation.x : 0,
+      baseY: node.rotation ? node.rotation.y : 0,
+      baseZ: node.rotation ? node.rotation.z : 0,
+    });
+  });
+  rec.animNodes = list;
+}
+
+// Deterministic, zero-allocation per frame: spins/sweeps write node.rotation (then updateMatrix
+// when the package froze matrixAutoUpdate), blink/chase/flicker write node.visible only —
+// materials are never touched.
+function driveAuthoredAnimNodes(rec, entity, mesh, simTime, reducedMotion, playerEntity) {
+  if (!rec.animScanned) scanAuthoredAnimNodes(rec, mesh);
+  const nodes = rec.animNodes;
+  if (!nodes) return;
+  if (entity && entity.pos && playerEntity && playerEntity.pos) {
+    const dx = entity.pos.x - playerEntity.pos.x;
+    const dz = entity.pos.z - playerEntity.pos.z;
+    const reach = ANIM_MAX_DISTANCE + (Number(entity.radius) || 0) * 2;
+    if (dx * dx + dz * dz > reach * reach) return;
+  }
+  const t = simTime + rec.phase;
+  for (let i = 0; i < nodes.length; i++) {
+    const { node, spec, baseX, baseY, baseZ } = nodes[i];
+    const rot = node.rotation;
+    if (spec.kind === 'spin' || spec.kind === 'sweep') {
+      if (reducedMotion) continue; // frozen: authored rest pose stays
+      const base = spec.axis === 'x' ? baseX : spec.axis === 'y' ? baseY : baseZ;
+      rot[spec.axis] = spec.kind === 'spin'
+        ? base + spec.sign * spec.rate * t
+        : base + spec.sign * Math.sin(t * spec.rate) * spec.amplitude;
+      if (node.matrixAutoUpdate === false) node.updateMatrix();
+    } else if (spec.kind === 'blink') {
+      const u = ((t / spec.period + spec.phase) % 1 + 1) % 1;
+      node.visible = u < ANIM_BLINK_DUTY;
+    } else if (spec.kind === 'flicker') {
+      if (reducedMotion) continue; // a rapid irregular strobe is a motion flourish — freeze it
+      const x = t / spec.period + spec.phase;
+      const cycle = Math.floor(x);
+      const u = x - cycle;
+      // per-cycle hash without a string alloc: entity hash ^ golden-ratio-mixed cycle ^ slot
+      const h = (rec.hash ^ Math.imul(cycle, 0x9e3779b1) ^ Math.imul(i + 1, 0x85ebca6b)) >>> 0;
+      const offStart = ((h & 0xff) / 255) * 0.55;
+      const offLen = 0.1 + (((h >> 8) & 0xff) / 255) * 0.25;
+      node.visible = !(u >= offStart && u < offStart + offLen);
+    } else {
+      // chase: the lit slot marches 0..count-1 around the group, one period per lap
+      const u = ((t / spec.period + spec.index / spec.count) % 1 + 1) % 1;
+      node.visible = u < (1 / spec.count);
+    }
+  }
+}
+
 /**
  * Ring rate under a dock pulse. Outside the window (or for unknown kinds) the base rate passes
  * through untouched. Pure.
@@ -152,6 +273,8 @@ export function createInfrastructureMotionTracker() {
         hash: h,
         dishNodes: null,   // lazy [{ node, baseY }] — swept sensor hardware, scanned once
         dishScanned: false,
+        animNodes: null,   // lazy [{ node, spec, baseX/Y/Z }] — authored ANIM_ parts, scanned once
+        animScanned: false,
       };
       infrastructureStates.set(entityId, rec);
     }
@@ -219,9 +342,16 @@ export function createInfrastructureMotionTracker() {
         }
       }
     }
+    driveAuthoredAnimNodes(rec, entity, mesh, simTime, reducedMotion, playerEntity);
   }
 
-  function updateStationMotion(entity, mesh, simTime, frameDt, options = {}) {
+  function updateStationMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
+    // playerEntity is optional in older call sites (pre-ANIM_ dispatch signature).
+    if (playerEntity && typeof playerEntity === 'object' && !playerEntity.pos
+        && (playerEntity.motionReduce !== undefined || playerEntity.reducedMotion !== undefined)) {
+      options = playerEntity;
+      playerEntity = null;
+    }
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
@@ -309,6 +439,17 @@ export function createInfrastructureMotionTracker() {
       if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       rec.stationScaleDirty = scalePing !== 1;
     }
+    driveAuthoredAnimNodes(rec, entity, mesh, simTime, reducedMotion, playerEntity);
+  }
+
+  // Landmarks and props (typeName 'place') have no ring/dock machinery — only authored ANIM_
+  // parts (beacon blinks, dish sweeps, drill spins, sign rotations).
+  function updatePlaceMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
+    if (!entity || !mesh) return;
+    const rec = getState(entity.id);
+    const reducedMotion = options.motionReduce === true;
+    lastSimTime = simTime;
+    driveAuthoredAnimNodes(rec, entity, mesh, simTime, reducedMotion, playerEntity);
   }
 
   function updateWreckMotion(entity, mesh, simTime, frameDt, options = {}) {
@@ -369,6 +510,8 @@ export function createInfrastructureMotionTracker() {
     if (!rec) return;
     rec.dishNodes = null;
     rec.dishScanned = false;
+    rec.animNodes = null;
+    rec.animScanned = false;
   }
 
   // Ids recycle across save restore; a record keyed by a reused id can keep dish node
@@ -376,11 +519,17 @@ export function createInfrastructureMotionTracker() {
   function releaseMesh(mesh) {
     if (!mesh) return;
     for (const rec of infrastructureStates.values()) {
-      if (!rec.dishNodes) continue;
-      const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
-      if (hit) {
+      const dishHit = rec.dishNodes
+        && rec.dishNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
+      const animHit = rec.animNodes
+        && rec.animNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
+      if (dishHit) {
         rec.dishNodes = null;
         rec.dishScanned = false;
+      }
+      if (animHit) {
+        rec.animNodes = null;
+        rec.animScanned = false;
       }
     }
   }
@@ -399,6 +548,7 @@ export function createInfrastructureMotionTracker() {
     unbindEvents,
     updateGateMotion,
     updateStationMotion,
+    updatePlaceMotion,
     updateWreckMotion,
     prune,
     releaseEntityMesh,

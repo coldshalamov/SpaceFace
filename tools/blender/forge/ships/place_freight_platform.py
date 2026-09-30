@@ -19,6 +19,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- apron deck on stub columns --------------------------------------------------------------
     F.box(s, 'Apron', (0, 0, 4.4), (24.0, 12.0, 1.0), material='paint2', bevel=0.08)

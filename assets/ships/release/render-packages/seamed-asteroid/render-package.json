@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "90af66bf39f1f2ec5f02dcdcae699c300afa3534bbb49af377a4a5a47a19f23d",
+  "contentHash": "109bd49ad9b83a2222802abec88c8bb8d689677b91191bd0dc9f83ad455139ec",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -101,7 +101,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21c395bdac105ffe4e8d480214f030324741b41391da904b6e77267050075b94",
+      "geometryHash": "a94dbf8809cf782e78ad7260c8ec9fdc5af45b24b87c856ca0ff9057a59d6c74",
       "id": "sf.render.seamed-asteroid.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -126,16 +126,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f0ceec520eacbac77c123b25e41b3132f28cf5bbb556ca60b1278ff7d45416c",
+      "geometryHash": "bcd906a69f4d876d189d9ce0448cc8c15f707c589d4f6ad18d638e83e5cd00f8",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone-deep.primitive.0",
       "indexCount": 8697,
       "indexed": true,
-      "materialHash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
+      "materialHash": "f1f85e408c845b94cb1109bd05dc2b2c70dac4ad0c4b976108b51b1b514c1abe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_deep",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-stone-deep",
       "primitiveIndex": 0,
-      "vertexCount": 5979
+      "vertexCount": 5981
     },
     {
       "bounds": {
@@ -151,16 +151,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a47b82fd4e4439cf986d2112865e0ee07197e68ce374fa56de18bf4dc94a3c49",
+      "geometryHash": "0e0a008fc61d4ffab4235f01f360b1486b8030c7d6a1a2aebfb098b8291229c5",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone-strata.primitive.0",
       "indexCount": 1380,
       "indexed": true,
-      "materialHash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
+      "materialHash": "36f5fdaccf9d69d46893c0ba4dfa3d1c2a54f3467804a094ef4f18c254d60436",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_strata",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-stone-strata",
       "primitiveIndex": 0,
-      "vertexCount": 768
+      "vertexCount": 769
     },
     {
       "bounds": {
@@ -176,16 +176,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c01ce91439239c344d423a177da82a1ce8e665c643a324f320f35cdc9be72ff1",
+      "geometryHash": "4d2f7eb9063cea303e78e56c06d4c2f459cd11016d9c63f2c224015140bec4eb",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone-vein.primitive.0",
       "indexCount": 4458,
       "indexed": true,
-      "materialHash": "8e534df13d31830d4db33c24b615cfcd916f9604da7162f50e7fe35a3f675e74",
+      "materialHash": "36978aa9ab32b829e1f9eda5280f528907f422d076fdcfe48926a6439079628b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone_vein",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-stone-vein",
       "primitiveIndex": 0,
-      "vertexCount": 2375
+      "vertexCount": 2374
     },
     {
       "bounds": {
@@ -201,16 +201,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82c068c514db52dc7868c8d38a05de5e8b99bc4a969a870c4dc3f0b3a9742264",
+      "geometryHash": "aa7f06600050af9830051c47f372ee41af61a15b35a15570fbd0be05c9d465d7",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone.primitive.0",
       "indexCount": 7239,
       "indexed": true,
-      "materialHash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
+      "materialHash": "e1b2ccab7a1c61db1ac92e1480aa0384048f33755511427539f1c1e200fa4a4b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Stone",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-stone",
       "primitiveIndex": 0,
-      "vertexCount": 4988
+      "vertexCount": 4990
     },
     {
       "bounds": {
@@ -226,11 +226,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "75acb40fa3a03fd0fd37eb90e4b0fd78efb658525d694d686d80853d53f1a7e8",
+      "geometryHash": "7479ec5f11cb2147ec4d245a9b86718ea1f397ff1a55f3943a764924f3b49f6b",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone-deep.primitive.0",
       "indexCount": 3588,
       "indexed": true,
-      "materialHash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
+      "materialHash": "f1f85e408c845b94cb1109bd05dc2b2c70dac4ad0c4b976108b51b1b514c1abe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_deep",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-stone-deep",
@@ -251,16 +251,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eaa43fa3444f3fb8a39f2e0ef4b050471558fda9a9688b287f973083536a2b32",
+      "geometryHash": "ff99f0dccabce849537056212d9e5696fdb981368adebc240778a032138070ac",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone-strata.primitive.0",
       "indexCount": 354,
       "indexed": true,
-      "materialHash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
+      "materialHash": "36f5fdaccf9d69d46893c0ba4dfa3d1c2a54f3467804a094ef4f18c254d60436",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_strata",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-stone-strata",
       "primitiveIndex": 0,
-      "vertexCount": 254
+      "vertexCount": 252
     },
     {
       "bounds": {
@@ -276,16 +276,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "543ed5f8cecbaae75f8758ee4f1467079473658012567dead569a5b7c327bfae",
+      "geometryHash": "3288182523937fd0d4b1879953745214b6807ede97f15afbc9d165784b84bb8b",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone-vein.primitive.0",
       "indexCount": 1152,
       "indexed": true,
-      "materialHash": "8e534df13d31830d4db33c24b615cfcd916f9604da7162f50e7fe35a3f675e74",
+      "materialHash": "36978aa9ab32b829e1f9eda5280f528907f422d076fdcfe48926a6439079628b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone_vein",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-stone-vein",
       "primitiveIndex": 0,
-      "vertexCount": 667
+      "vertexCount": 669
     },
     {
       "bounds": {
@@ -301,16 +301,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39b0065c0b3c28cdb32c2721d9fc1f528bd1addc60b25db8bf679aa5eb2e39c8",
+      "geometryHash": "358a4bf1d39be855951cc5aa97288ab30105da29c98f62015d6dceb6ba2dabe5",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone.primitive.0",
       "indexCount": 3894,
       "indexed": true,
-      "materialHash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
+      "materialHash": "e1b2ccab7a1c61db1ac92e1480aa0384048f33755511427539f1c1e200fa4a4b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Stone",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-stone",
       "primitiveIndex": 0,
-      "vertexCount": 2778
+      "vertexCount": 2779
     },
     {
       "bounds": {
@@ -326,11 +326,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66353e61874a218250803296b2f7f485413a99197b2c618d32fd74e33c42c3eb",
+      "geometryHash": "7447a13a40c60cd965d526e9ffdf4f1438a771af1f1d085a7c3864ebd42e3f31",
       "id": "sf.render.seamed-asteroid.mesh.lod2-stone-deep.primitive.0",
       "indexCount": 1452,
       "indexed": true,
-      "materialHash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
+      "materialHash": "f1f85e408c845b94cb1109bd05dc2b2c70dac4ad0c4b976108b51b1b514c1abe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_deep",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-stone-deep",
@@ -351,11 +351,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b34f6d418288277465531f6867291aa87aca515a0e110023f9bbb3aa3055058",
+      "geometryHash": "bea62e2b9afcd96dde696c0bfe89c3d69c87e115ca1a24470aa36369b53b16c8",
       "id": "sf.render.seamed-asteroid.mesh.lod2-stone-strata.primitive.0",
       "indexCount": 198,
       "indexed": true,
-      "materialHash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
+      "materialHash": "36f5fdaccf9d69d46893c0ba4dfa3d1c2a54f3467804a094ef4f18c254d60436",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_strata",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-stone-strata",
@@ -376,16 +376,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd0991c44fe061ac113c7aaebe4970f696c312f8243db3a7715241dcf0dc42c2",
+      "geometryHash": "82b4bb9929ac1061eb3fc5e7944b79da20c744d347b3e0b46cabc62710eee929",
       "id": "sf.render.seamed-asteroid.mesh.lod2-stone-vein.primitive.0",
       "indexCount": 621,
       "indexed": true,
-      "materialHash": "8e534df13d31830d4db33c24b615cfcd916f9604da7162f50e7fe35a3f675e74",
+      "materialHash": "36978aa9ab32b829e1f9eda5280f528907f422d076fdcfe48926a6439079628b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone_vein",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-stone-vein",
       "primitiveIndex": 0,
-      "vertexCount": 397
+      "vertexCount": 398
     },
     {
       "bounds": {
@@ -401,22 +401,50 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e17422f8250e009e2f1dc9b8fab9e1ce89f5d9e60a20e1ebd997b2b9bbda74aa",
+      "geometryHash": "155b0df72d7ac85ec9aa7af59ec14925b45853131a1a2cbf2af8193e625c0f83",
       "id": "sf.render.seamed-asteroid.mesh.lod2-stone.primitive.0",
       "indexCount": 1773,
       "indexed": true,
-      "materialHash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
+      "materialHash": "e1b2ccab7a1c61db1ac92e1480aa0384048f33755511427539f1c1e200fa4a4b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Stone",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 1287
+      "vertexCount": 1290
     }
   ],
   "hlods": [],
   "kind": "place",
   "lods": [],
   "materials": [
+    {
+      "hash": "36978aa9ab32b829e1f9eda5280f528907f422d076fdcfe48926a6439079628b",
+      "id": "material:36978aa9ab32b829e1f9eda5",
+      "name": "Material_Stone_vein",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_seamed_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "36f5fdaccf9d69d46893c0ba4dfa3d1c2a54f3467804a094ef4f18c254d60436",
+      "id": "material:36f5fdaccf9d69d46893c0ba",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_seamed_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
     {
       "hash": "41dd01721887eec32b4b23cb23ab102e96a5cb511b3f96bff87afa82d96d3950",
       "id": "material:41dd01721887eec32b4b23cb",
@@ -425,32 +453,32 @@
       "textures": []
     },
     {
-      "hash": "5154df8ef8c6ca712f2e49ccf035771a87ab65bcaa4b34319dac5fcea53d9c27",
-      "id": "material:5154df8ef8c6ca712f2e49cc",
-      "name": "Material_Stone_deep",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "68a8a7db911eab1344eb544a687b86a1ceb9b9a50e32b19193801a46acd2d968",
-      "id": "material:68a8a7db911eab1344eb544a",
+      "hash": "e1b2ccab7a1c61db1ac92e1480aa0384048f33755511427539f1c1e200fa4a4b",
+      "id": "material:e1b2ccab7a1c61db1ac92e14",
       "name": "Material_Stone",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_seamed_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "8e534df13d31830d4db33c24b615cfcd916f9604da7162f50e7fe35a3f675e74",
-      "id": "material:8e534df13d31830d4db33c24",
-      "name": "Material_Stone_vein",
+      "hash": "f1f85e408c845b94cb1109bd05dc2b2c70dac4ad0c4b976108b51b1b514c1abe",
+      "id": "material:f1f85e408c845b94cb1109bd",
+      "name": "Material_Stone_deep",
       "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "a0b66f6c51a8bd7702daefc0fd0059ac967d21c028e101902ad52c60231767bd",
-      "id": "material:a0b66f6c51a8bd7702daefc0",
-      "name": "Material_Stone_strata",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "place_asteroid_seamed_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -1194,19 +1222,19 @@
       "sha256": "0334e54858a57021e1a22240dbea7907354ea34fc2f02b4a80fdb46b84cfba0c"
     },
     "sourceGlb": {
-      "bytes": 422872,
-      "sha256": "ae122dd05fdbd93ffad3e126755a865f45ae5bdc3ffb3fe59389c02c441942cc",
+      "bytes": 724424,
+      "sha256": "c0b2ac4b943c957b66769550555952b980d002b2db41f5e86559ea1bc3232c8d",
       "uri": "place_asteroid_seamed.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 878012,
-    "sha256": "3b474b282db09a9fd3d8ee9d4bc14cc2c3f454deb71ca5215e82fc2d6b380a6d",
+    "bytes": 1193984,
+    "sha256": "89625d7612937f0a65ee9a00d20b6f54f5aa3baf0218342a879ddce53c986edc",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1720,7 +1748,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_seamed.glb"
   },
-  "runtimeHash": "16d47a3d3de1fc1116045e5abfacce3e0e08fae6e5132381283e1ef27594ac79",
+  "runtimeHash": "3dbe8d2ded722e34f8149a6b7c418fbe9bc07f97c068c760dd8dfb5cae3b13c6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

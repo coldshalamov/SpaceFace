@@ -11,7 +11,7 @@ import {
 
 const STYLE_ID = 'sf-orrery-flightpreview-style';
 const CSS = `
-.orr-flightpreview { position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden; font-family:var(--dp-face-read, "Instrument Sans"); }
+.orr-flightpreview { position:absolute; inset:0; z-index:40; pointer-events:none; overflow:hidden; font-family:var(--dp-face-read, "Instrument Sans"); }
 .orr-flightpreview__place { position:absolute; left:40px; top:34px; }
 .orr-flightpreview__tape { position:absolute; left:50%; top:26px; transform:translateX(-50%); }
 .orr-flightpreview__toasts { position:absolute; right:32px; top:168px; }
@@ -87,6 +87,16 @@ export const orreryFlightScreen = {
     // what it does) and tears it down with the screen.
     this._why = mountWhyReveal();
     this._root = root;
+    // O5: the stage is absolute, so its root must be a stretched, positioned box in ANY host
+    // (bench .screen or game uiRoot) — otherwise a transformed ancestor re-collapses it to ~0x0.
+    this._rootPrev = root && root.style
+      ? { flex: root.style.flex, alignSelf: root.style.alignSelf, position: root.style.position }
+      : null;
+    if (root && root.style) {
+      root.style.flex = '1';
+      root.style.alignSelf = 'stretch';
+      root.style.position = 'relative';
+    }
     const stage = box('orr-flightpreview');
     root.appendChild(stage);
 
@@ -98,6 +108,10 @@ export const orreryFlightScreen = {
     const lock = createLockRing({ hostile: false });
     const threat = createThreatChannel();
 
+    // R4: the world-space threat ring mounts FIRST — below the HUD furniture layer — so a
+    // red arc can never paint over the radar rim. Static z-order, zero/frame. (Edge chevrons
+    // still append last via threat.edge: they ARE furniture.)
+    stage.appendChild(threat.el);
     const wrap = (cls, child) => { const b = box(cls); b.appendChild(child); stage.appendChild(b); return b; };
     wrap('orr-flightpreview__place', place.el);
     wrap('orr-flightpreview__tape', tape.el);
@@ -105,7 +119,6 @@ export const orreryFlightScreen = {
     wrap('orr-flightpreview__cluster', cluster.el);
     wrap('orr-flightpreview__radar', radar.el);
     stage.appendChild(lock.el);
-    stage.appendChild(threat.el);
 
     // --- the 47-A opening, seconds after undock ---------------------------------------------------
     place.set({ place: 'Helios Prime', zone: 'Sector · 47-A recovery site', credits: 14535 });
@@ -150,6 +163,12 @@ export const orreryFlightScreen = {
     for (const part of Object.values(this._parts || {})) part.dispose?.();
     this._why?.destroy?.();
     this._why = null;
+    if (this._root && this._root.style && this._rootPrev) {
+      this._root.style.flex = this._rootPrev.flex;
+      this._root.style.alignSelf = this._rootPrev.alignSelf;
+      this._root.style.position = this._rootPrev.position;
+    }
+    this._rootPrev = null;
     if (this._root) this._root.textContent = '';
   },
 };

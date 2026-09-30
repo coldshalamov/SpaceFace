@@ -63,6 +63,7 @@ def _tine(s, e):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the mouth frame at the origin: a wide sill + two horn posts --------------------------
     F.box(s, 'MouthSill', (0.5, 0.0, -7.5), (4.0, 68.0, 3.4), material='paint2', bevel=0.2)

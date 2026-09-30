@@ -20,6 +20,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- square deck with moon pool -----------------------------------------------------------
     # deck as four slabs around a central square hole
@@ -61,12 +62,18 @@ def build():
     F.truss(s, 'DerrickD', (1.8, -1.8, 4.4), (0.5, -0.5, 11.0), 0.9, 4, material='paint2',
             chord=0.28, web=0.16)
     F.box(s, 'Crown', (0, 0, 11.4), (2.0, 2.0, 1.0), material='hazard', bevel=0.06)
+    n_strobe = len(s.objects)
     F.beacon(s, 'CrownStrobe', (0, 0, 12.1), finish='glow_red', size=0.4)
+    s.anim([o for o in s.objects[n_strobe:] if o.name.startswith('CrownStrobe_Dome')],
+           'blink:1p1:0p3', (0, 0, 12.1))
     # drill string down through the moon pool
+    n0 = len(s.objects)
     F.cylinder(s, 'DrillString', (0, 0, 10.6), (0, 0, -6.5), 0.45, material='gunmetal',
                segments=12)
     F.cylinder(s, 'DrillBit', (0, 0, -6.5), (0, 0, -8.4), 0.9, 0.3, material='bare',
                segments=12)
+    # the drill string turns in the moon pool — the platform's working element
+    s.anim(s.objects[n0:], 'spin:up:1p2', (0, 0, 0.0))
 
     # --- power house + pipe rack + mud tanks ----------------------------------------------------
     F.box(s, 'PowerHouse', (-4.6, -4.8, 6.0), (4.4, 3.8, 3.0), material='paint', bevel=0.15,

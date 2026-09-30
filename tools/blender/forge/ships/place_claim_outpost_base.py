@@ -27,6 +27,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     K.build_platform(s, {'seed': 11})
 
     # Base station fit: the open pads STAY empty — hab + deck frame + dock arm is the whole
@@ -38,7 +39,9 @@ def build():
     # flag sheet at the mast tip (d ~ 11), thin in v so it reads as a pennant on the face
     K.plan_box(s, 'Pennant', u + 1.5, v, 10.9, 2.6, 0.18, 1.6, material='stripe',
                bevel=0.0)
-    F.light(s, 'PennantTip', K.P(u, v, 12.4), 'glow_amber', size=0.4)
+    pos = K.P(u, v, 12.4)
+    o = F.light(s, 'PennantTip', pos, 'glow_amber', size=0.4)
+    s.anim(o, 'blink:1p9:0p3', pos)
 
     return s
 

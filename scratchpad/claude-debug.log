@@ -1,0 +1,151 @@
+2026-09-29T03:11:21.436Z [DEBUG] MDM settings load completed in 6ms
+2026-09-29T03:11:21.507Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: C:\Program Files\ClaudeCode\managed-settings.json
+2026-09-29T03:11:21.513Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: C:\Users\93rob\Documents\GitHub\SpaceFace\.claude\settings.json
+2026-09-29T03:11:21.517Z [DEBUG] CA certs: Config fallback - globalEnv keys: , settingsEnv keys: CLAUDE_CODE_NO_FLICKER,CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
+2026-09-29T03:11:21.532Z [DEBUG] [init] configureGlobalMTLS starting
+2026-09-29T03:11:21.532Z [DEBUG] [init] configureGlobalMTLS complete
+2026-09-29T03:11:21.532Z [DEBUG] [init] configureGlobalAgents starting
+2026-09-29T03:11:21.532Z [DEBUG] CA certs: stores=bundled,system, extraCertsPath=undefined
+2026-09-29T03:11:21.533Z [DEBUG] CA certs: Loaded 121 bundled root certificates
+2026-09-29T03:11:21.557Z [DEBUG] CA certs: Dropped 6 expired certificate(s) from system store
+2026-09-29T03:11:21.557Z [DEBUG] CA certs: Loaded 102 system CA certificates
+2026-09-29T03:11:21.558Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-09-29T03:11:21.558Z [DEBUG] [init] configureGlobalAgents complete
+2026-09-29T03:11:21.559Z [DEBUG] Using bash path: "C:\Program Files\Git\bin\bash.exe"
+2026-09-29T03:11:21.565Z [DEBUG] Error log sink initialized
+2026-09-29T03:11:21.579Z [DEBUG] [Claude in Chrome] Disabled: OAuth token has no scope accepted by /api/oauth/validate (needs user:profile, user:office, or user:ccr_inference; env-var and setup-token sessions default to user:inference only)
+2026-09-29T03:11:21.586Z [DEBUG] Applying permission update: Adding 20 allow rule(s) to destination 'userSettings': ["Bash(claude mcp add --transport stdio playwright -- cmd /c npx -y @playwright/mcp@latest)","Bash(dir:*)","Bash(python process_images.py:*)","Bash(findstr:*)","Bash(python create_thumbnails.py:*)","Bash(if not exist \"design\" mkdir design)","Bash(if not exist \"architecture\" mkdir architecture)","Bash(npm init:*)","Bash(npm install:*)","Bash(npx playwright install chromium)","Bash(node analyze-landing-pages.js:*)","Bash(python -m http.server:*)","Bash(node -e:*)","Bash(npx tsc:*)","mcp__serena__search_for_pattern","mcp__serena__find_symbol","Bash(cat:*)","mcp__serena__read_memory","mcp__serena_shared__get_symbols_overview","Bash(find /c/Users/93rob/Documents/GitHub/TheRxSpot.com/TheRxSpot_Marketplace/src -name \"*.tsx\" -exec grep -l \"Sidebar.*Icon.*className\\\\|icon.*w-\\\\|icon.*h-\" {} \\\\;)"]
+2026-09-29T03:11:21.586Z [DEBUG] Applying permission update: Adding 5 allow rule(s) to destination 'localSettings': ["Bash(git merge *)","Bash(git rev-list *)","Bash(npm run *)","Bash(node design/incubator/microevent_library/build-microevent-bible.mjs)","Bash(git add *)"]
+2026-09-29T03:11:21.591Z [DEBUG] [ToolSearch:optimistic] mode=tst, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-09-29T03:11:21.819Z [DEBUG] [claudeai-mcp] Disabled: API-key auth precedence active
+2026-09-29T03:11:21.819Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-09-29T03:11:21.895Z [DEBUG] Loaded 3 installed plugins from C:\Users\93rob\.claude\plugins\installed_plugins.json
+2026-09-29T03:11:21.898Z [DEBUG] [plugins] skipping hidden skills-dir entry '.system': dot-prefixed dirs are never adopted as plugins
+2026-09-29T03:11:21.900Z [DEBUG] [STARTUP] Running setup()...
+2026-09-29T03:11:21.905Z [DEBUG] [win32-kernel32] bun:ffi loaded
+2026-09-29T03:11:21.917Z [DEBUG] Git remote URL: https://github.com/coldshalamov/SpaceFace.git
+2026-09-29T03:11:21.917Z [DEBUG] Parsed repository: github.com/coldshalamov/SpaceFace from URL: https://github.com/coldshalamov/SpaceFace.git
+2026-09-29T03:11:21.951Z [DEBUG] Loading skills from: managed=C:\Program Files\ClaudeCode\.claude\skills, user=C:\Users\93rob\.claude\skills, project=[C:\Users\93rob\Documents\GitHub\SpaceFace\.claude\skills]
+2026-09-29T03:11:21.963Z [DEBUG] Failed to stat directory C:\Program Files\ClaudeCode\.claude\agents: ENOENT: no such file or directory, stat 'C:\Program Files\ClaudeCode\.claude\agents'
+2026-09-29T03:11:21.964Z [DEBUG] Failed to stat directory C:\Users\93rob\.claude\agents: ENOENT: no such file or directory, stat 'C:\Users\93rob\.claude\agents'
+2026-09-29T03:11:21.967Z [DEBUG] Failed to stat directory C:\Program Files\ClaudeCode\.claude\commands: ENOENT: no such file or directory, stat 'C:\Program Files\ClaudeCode\.claude\commands'
+2026-09-29T03:11:21.991Z [INFO] [uds-messaging] Listening: \\.\pipe\LOCAL\cc-msg-193327f1ac40a503cfe40e26b93df2d9
+2026-09-29T03:11:21.991Z [INFO] [uds-messaging] Inject messages (auth line REQUIRED here; a pipe is not reachable via socat/AF_UNIX): node -e "const c=require('net').connect(process.argv[1],()=>{c.write(JSON.stringify({type:'auth',token:[REDACTED]})+'\n'+JSON.stringify({type:'user',message:{role:'user',content:'hello'}})+'\n');c.end()})" "\\.\pipe\LOCAL\cc-msg-193327f1ac40a503cfe40e26b93df2d9"
+2026-09-29T03:11:21.991Z [INFO] [uds-messaging] Connect when the data is ready (run the command first, then connect and write its output as ONE line, as in the node recipe above): a connection that sends no complete line within 30000 ms is closed
+2026-09-29T03:11:21.994Z [DEBUG] [TeammateModeSnapshot] Captured from config: tmux
+2026-09-29T03:11:21.996Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: C:\Program Files\ClaudeCode\managed-settings.json
+2026-09-29T03:11:22.001Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: C:\Users\93rob\Documents\GitHub\SpaceFace\.claude\settings.json
+2026-09-29T03:11:22.004Z [DEBUG] Error log sink initialized
+2026-09-29T03:11:22.022Z [DEBUG] Loaded 12 unique skills (12 unconditional, 0 conditional, managed: 0, user: 10, project: 1, additional: 0, legacy commands: 1)
+2026-09-29T03:11:22.047Z [DEBUG] [STARTUP] setup() completed in 147ms
+2026-09-29T03:11:22.049Z [DEBUG] Cleared mTLS configuration cache
+2026-09-29T03:11:22.049Z [DEBUG] Cleared proxy agent cache
+2026-09-29T03:11:22.049Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-09-29T03:11:22.079Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-09-29T03:11:22.169Z [DEBUG] Read hooks.json for plugin superpowers (enabled=true): C:\Users\93rob\.claude\skills\claude-superpowers\hooks\hooks.json
+2026-09-29T03:11:22.174Z [DEBUG] Loaded 1 skills-as-plugins
+2026-09-29T03:11:22.175Z [DEBUG] Found 3 plugins (2 enabled, 1 disabled)
+2026-09-29T03:11:22.178Z [DEBUG] getPluginSkills: Processing 2 enabled plugins
+2026-09-29T03:11:22.178Z [DEBUG] Checking plugin frontend-design: skillsPath=exists, skillsPaths=0 paths
+2026-09-29T03:11:22.178Z [DEBUG] Attempting to load skills from plugin frontend-design default skillsPath: C:\Users\93rob\.claude\plugins\cache\claude-plugins-official\frontend-design\unknown\skills
+2026-09-29T03:11:22.178Z [DEBUG] Checking plugin superpowers: skillsPath=exists, skillsPaths=0 paths
+2026-09-29T03:11:22.178Z [DEBUG] Attempting to load skills from plugin superpowers default skillsPath: C:\Users\93rob\.claude\skills\claude-superpowers\skills
+2026-09-29T03:11:22.179Z [DEBUG] Total plugin workflows loaded: 0
+2026-09-29T03:11:22.180Z [DEBUG] hooks modules not loaded: rollout flag (tengu_plugin_hooks_modules) is off, from the default (a cold GrowthBook cache, no payload yet)
+2026-09-29T03:11:22.180Z [DEBUG] Loading hooks from plugin: superpowers
+2026-09-29T03:11:22.181Z [DEBUG] sec-default@builtin not seated: hooks modules are off in this process
+2026-09-29T03:11:22.182Z [DEBUG] Registered 1 hooks from 2 plugins
+2026-09-29T03:11:22.189Z [DEBUG] Loaded 1 agents from plugin superpowers default directory
+2026-09-29T03:11:22.189Z [DEBUG] Total plugin agents loaded: 1
+2026-09-29T03:11:22.192Z [DEBUG] Loaded 3 commands from plugin superpowers default directory
+2026-09-29T03:11:22.192Z [DEBUG] Total plugin commands loaded: 3
+2026-09-29T03:11:22.198Z [DEBUG] Loaded 1 skills from plugin superpowers default directory
+2026-09-29T03:11:22.198Z [DEBUG] Loaded 1 skills from plugin frontend-design default directory
+2026-09-29T03:11:22.198Z [DEBUG] Total plugin skills loaded: 2 (0 duplicate/user-owned entries skipped)
+2026-09-29T03:11:22.201Z [DEBUG] getSkills returning: 12 skill dir commands, 2 plugin skills, 40 bundled skills, 0 builtin plugin skills
+2026-09-29T03:11:22.211Z [DEBUG] [STARTUP] Commands and agents loaded in 132ms
+2026-09-29T03:11:22.233Z [DEBUG] [AdvisorTool] Advisor model: fable
+2026-09-29T03:11:22.235Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-09-29T03:11:22.235Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-09-29T03:11:22.235Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-09-29T03:11:22.235Z [DEBUG] Starting background startup prefetches
+2026-09-29T03:11:22.235Z [DEBUG] [Bootstrap] Skipped: no usable OAuth, WIF, or API key
+2026-09-29T03:11:22.237Z [DEBUG] [STARTUP] MCP configs resolved in 365ms (awaited at +417ms)
+2026-09-29T03:11:22.244Z [DEBUG] Cleared mTLS configuration cache
+2026-09-29T03:11:22.244Z [DEBUG] Cleared proxy agent cache
+2026-09-29T03:11:22.245Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-09-29T03:11:22.249Z [DEBUG] All plugins already exist, skipping migration
+2026-09-29T03:11:22.252Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-29T03:11:22.253Z [DEBUG] [MCP] --mcp-config servers running fully async (nonblocking)
+2026-09-29T03:11:22.253Z [DEBUG] [MCP] claude.ai connectors running fully async (nonblocking)
+2026-09-29T03:11:22.253Z [DEBUG] Initialized versioned plugins system with 3 plugins
+2026-09-29T03:11:22.269Z [DEBUG] [auto-mode] verifyAutoModeGateAccess: enabledState=enabled disabledBySettings=false model=claude-fable-5-1 modelSupported=true disableFastModeBreakerFires=false carouselAvailable=true canEnterAuto=true
+2026-09-29T03:11:22.301Z [DEBUG] [servedCatalog] off (not_claude_ai_auth)
+2026-09-29T03:11:22.319Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-09-29T03:11:22.319Z [DEBUG] [3P telemetry] isTelemetryEnabled=false (CLAUDE_CODE_ENABLE_TELEMETRY=undefined)
+2026-09-29T03:11:22.346Z [DEBUG] [event-loop-stall] detector started (interval=200ms, threshold=500ms)
+2026-09-29T03:11:22.353Z [DEBUG] Programmatic settings change notification for flagSettings
+2026-09-29T03:11:22.354Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: C:\Program Files\ClaudeCode\managed-settings.json
+2026-09-29T03:11:22.363Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: C:\Users\93rob\Documents\GitHub\SpaceFace\.claude\settings.json
+2026-09-29T03:11:22.384Z [DEBUG] Total LSP servers loaded: 0
+2026-09-29T03:11:22.384Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-09-29T03:11:22.384Z [DEBUG] LSP manager initialized with 0 servers
+2026-09-29T03:11:22.385Z [DEBUG] LSP server manager initialized successfully
+2026-09-29T03:11:22.385Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-09-29T03:11:22.395Z [WARN] [3P telemetry] Event dropped (no event logger initialized): hook_registered
+2026-09-29T03:11:22.463Z [DEBUG] Plugin autoupdate: skipped (auto-updater disabled)
+2026-09-29T03:11:22.464Z [DEBUG] [sessionRegistry] sweep permitted (domain win32:userwor-fbk05fq)
+2026-09-29T03:11:22.475Z [DEBUG] Watching for changes in skill/command directories: C:\Users\93rob\.claude\skills, C:\Users\93rob\.claude\commands, C:\Users\93rob\Documents\GitHub\SpaceFace\.claude\skills...
+2026-09-29T03:11:22.541Z [DEBUG] Watching for changes in setting files C:\Users\93rob\.claude\settings.json, C:\Users\93rob\Documents\GitHub\SpaceFace\.claude\settings.json, C:\Users\93rob\Documents\GitHub\SpaceFace\.claude\settings.local.json...
+2026-09-29T03:11:22.608Z [DEBUG] Keeping C:\Users\93rob\.claude\plugins\cache\claude-plugins-official\frontend-design: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-29T03:11:22.656Z [DEBUG] Keeping C:\Users\93rob\.claude\plugins\cache\claude-plugins-official\rust-analyzer-lsp: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-29T03:11:22.697Z [DEBUG] Keeping C:\Users\93rob\.claude\plugins\cache\claude-plugins-official: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-29T03:11:22.794Z [DEBUG] Ripgrep first use test: PASSED (mode=embedded, path=C:\Users\93rob\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe)
+2026-09-29T03:11:23.064Z [DEBUG] [mcp-registry] Loaded 294 official MCP URLs (legacy)
+2026-09-29T03:11:23.832Z [DEBUG] Successfully parsed and validated hook JSON output
+2026-09-29T03:11:23.833Z [DEBUG] "Hook SessionStart:startup (SessionStart) success:\n{\n  \"hookSpecificOutput\": {\n    \"hookEventName\": \"SessionStart\",\n    \"additionalContext\": \"<EXTREMELY_IMPORTANT>\\nYou have superpowers.\\n\\n**Below is the full content of your 'superpowers:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\\n\\ncat: /c/Users/93rob/.claude/skills/claude-superpowers/skills/using-superpowers/SKILL.md: No such file or directory\\nError reading using-superpowers skill\\n\\n\\n</EXTREMELY_IMPORTANT>\"\n  }\n}"
+2026-09-29T03:11:23.834Z [DEBUG] Hook SessionStart ("${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" session-start.sh) provided additionalContext (380 chars)
+2026-09-29T03:11:23.847Z [DEBUG] [print.ts] MCP task sidecar restore skipped: tasks gate off after the flag settle
+2026-09-29T03:11:23.865Z [DEBUG] [ScheduledTasks] scheduler start() — enabled=false, hasTasks=false
+2026-09-29T03:11:23.867Z [DEBUG] session.start: raised (surface none, not interactive)
+2026-09-29T03:11:23.893Z [DEBUG] Failed to stat directory C:\Program Files\ClaudeCode\.claude\output-styles: ENOENT: no such file or directory, stat 'C:\Program Files\ClaudeCode\.claude\output-styles'
+2026-09-29T03:11:23.893Z [DEBUG] Failed to stat directory C:\Users\93rob\.claude\output-styles: ENOENT: no such file or directory, stat 'C:\Users\93rob\.claude\output-styles'
+2026-09-29T03:11:23.895Z [DEBUG] Total plugin output styles loaded: 0
+2026-09-29T03:11:23.900Z [DEBUG] act_dont_rederive_arm_active source=growthbook
+2026-09-29T03:11:23.904Z [DEBUG] installPluginsForHeadless: starting
+2026-09-29T03:11:23.924Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-09-29T03:11:23.925Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-09-29T03:11:23.925Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-09-29T03:11:23.926Z [DEBUG] Sending 29 skills via attachment (initial)
+2026-09-29T03:11:23.927Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-09-29T03:11:23.967Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-29T03:11:23.968Z [DEBUG] [session-notices] advertise=false mode=acceptEdits flag=true(disk) pollChannel=false remote=false remoteEnv=false nonInteractive=true
+2026-09-29T03:11:23.973Z [DEBUG] [engine] turn 1 start
+2026-09-29T03:11:23.984Z [DEBUG] autocompact: tokens=[REDACTED] level=ok effectiveWindow=980000
+2026-09-29T03:11:23.992Z [DEBUG] [AdvisorTool] Server-side tool enabled with claude-fable-5-1 as the advisor model
+2026-09-29T03:11:24.006Z [DEBUG] [AdvisorTool] Server-side tool enabled with claude-fable-5-1 as the advisor model
+2026-09-29T03:11:24.017Z [DEBUG] Dynamic tool loading: 0/14 deferred tools included
+2026-09-29T03:11:24.027Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.270.831; cc_entrypoint=sdk-cli; cch=00000; cc_prompt_id=3c938db3-89e1-4bda-8673-f9d93f83c3ad;
+2026-09-29T03:11:24.030Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-29T03:11:24.036Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-29T03:11:24.051Z [ERROR] API error (attempt 1/11): OAuth refresh token is no longer valid; run /login to re-authenticate
+2026-09-29T03:11:24.058Z [ERROR] Error in API request: OAuth refresh token is no longer valid; run /login to re-authenticate
+2026-09-29T03:11:24.061Z [ERROR] API auth_error: OAuth refresh token is no longer valid; run /login to re-authenticate
+2026-09-29T03:11:24.084Z [DEBUG] [engine] turn 1 end (turns=1 usage in=0 out=0 cost=$0.0000 api=0ms stop=stop_sequence resultLen=0)
+2026-09-29T03:11:24.084Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-29T03:11:24.106Z [DEBUG] [uds-messaging] Shutting down
+2026-09-29T03:11:24.117Z [DEBUG] LSP server manager shut down successfully
+2026-09-29T03:11:24.129Z [DEBUG] [Anthropic telemetry] BigQuery metrics export disabled by organization setting, skipping
+2026-09-29T03:11:24.129Z [ERROR] [Anthropic telemetry] Failed to check metrics opt-out status: Auth error: no credential usable for the metrics opt-out check
+2026-09-29T03:11:24.131Z [DEBUG] [Anthropic telemetry] BigQuery metrics exporter flush complete
+2026-09-29T03:11:24.131Z [DEBUG] [Anthropic telemetry] BigQuery metrics exporter flush complete
+2026-09-29T03:11:24.132Z [DEBUG] [Anthropic telemetry] BigQuery metrics exporter shutdown complete
+2026-09-29T03:11:24.187Z [WARN] Cache corrupted or missing for marketplace n8n, re-fetching from source: ENOENT: no such file or directory, open 'C:\Users\93rob\Documents\GitHub\n8n\.claude\plugins\n8n'
+2026-09-29T03:11:24.211Z [DEBUG] Reading marketplace from C:\Users\93rob\Documents\GitHub\n8n\.claude\plugins\n8n\.claude-plugin\marketplace.json
+2026-09-29T03:11:24.214Z [WARN] Failed to check for delisted plugins in "n8n": Failed to load marketplace "n8n" from source (directory): Marketplace file not found at C:\Users\93rob\Documents\GitHub\n8n\.claude\plugins\n8n\.claude-plugin\marketplace.json
+2026-09-29T03:11:24.775Z [DEBUG] Preserving file permissions: 100666
+2026-09-29T03:11:24.777Z [DEBUG] Writing to temp file: C:\Users\93rob\.claude.json.tmp.21204.4ef495d67ea8
+2026-09-29T03:11:24.782Z [DEBUG] Applied original permissions to temp file
+2026-09-29T03:11:24.785Z [DEBUG] Temp file written successfully, size: 98205 bytes
+2026-09-29T03:11:24.786Z [DEBUG] Renaming C:\Users\93rob\.claude.json.tmp.21204.4ef495d67ea8 to C:\Users\93rob\.claude.json
+2026-09-29T03:11:24.788Z [DEBUG] File C:\Users\93rob\.claude.json written atomically

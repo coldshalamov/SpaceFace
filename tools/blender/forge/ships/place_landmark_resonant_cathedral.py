@@ -541,6 +541,7 @@ def build_spire_details(s):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     s.socket_names = ['SOCKET_Structure_Core', 'SOCKET_Camera_Focus']
     s.socket('SOCKET_Structure_Core', (4.0, 0.0, 4.0))
     s.socket('SOCKET_Camera_Focus', (6.0, 0.0, 26.0))

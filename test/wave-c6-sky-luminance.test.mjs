@@ -20,7 +20,11 @@ test('six skies sit under the muzzle and the engine, and only Tethys is the gala
   const profiles = Object.values(SECTOR_VISUAL_PROFILES);
   const muzzle = STARTER_PULSE_MUZZLE_LIGHT_PEAK;
   const engine = engineCoreIntensity(KESTREL_MAIN_PLUME_RECIPE);
-  assert.equal(profiles.length, 6, 'Helios, core, belt, fringe, anomaly, Tethys');
+  // Ten rigs, six skies: the per-sector way-of-life profiles (ceres_belt, vesta_forge,
+  // pallas_drift, sker_haven) carry their own light rig and planet grammar but share the family's
+  // baked far-sky recipe — "a sky" is the structure recipe + painted plate, not a copy of the data.
+  const skies = new Set(profiles.map((profile) => `${profile.background?.structure?.recipeId}|${profile.background?.paintedSky?.plate || 'none'}|${profile.galaxyPlate === true}`));
+  assert.equal(skies.size, 6, 'Helios, core, belt, fringe, anomaly, Tethys');
   assert.ok(muzzle > 1 && engine > muzzle, 'the engine core outshines the starter muzzle');
   const galaxies = profiles.filter((profile) => profile.galaxyPlate === true);
   assert.deepEqual(galaxies.map((profile) => profile.id), ['tethys']);

@@ -20,6 +20,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- dumb barge hull: two pontoon sides + deck ------------------------------------------
     for e in (-1, 1):
@@ -70,7 +71,13 @@ def build():
     F.box(s, 'Head', (36.0, 0, 9.6), (4.4, 4.2, 3.0), material='paint', bevel=0.2,
           taper=0.8)
     F.box(s, 'HeadMouth', (37.9, 0, 8.8), (0.8, 3.0, 1.8), material='dark', bevel=0.05)
-    F.light(s, 'HeadLamp', (37.5, -1.6, 10.6), 'glow_amber', size=0.45)
+    # the discharge roller inside the head mouth turns the belt
+    n0 = len(s.objects)
+    F.cylinder(s, 'Roller', (37.9, -1.7, 8.6), (37.9, 1.7, 8.6), 0.55, material='gunmetal',
+               segments=14, bevel=0.0)
+    s.anim(s.objects[n0:], 'spin:side:2p1', (37.9, 0, 8.6))
+    lamp = F.light(s, 'HeadLamp', (37.5, -1.6, 10.6), 'glow_amber', size=0.45)
+    s.anim(lamp, 'blink:1p6:0p2', (37.5, -1.6, 10.6))
 
     # --- tug cab at -X -------------------------------------------------------------------------
     F.box(s, 'Cab', (-32.0, 4.0, 6.2), (5.0, 4.6, 3.6), material='paint', bevel=0.2,
@@ -81,7 +88,10 @@ def build():
               material='glow_warm', bevel=0.0)
     s.detail = 0
     F.box(s, 'CabRoof', (-32.0, 4.0, 8.2), (5.4, 5.0, 0.4), material='paint2', bevel=0.05)
+    n0 = len(s.objects)
     F.beacon(s, 'CabBeacon', (-32.0, 4.0, 8.7), finish='glow_amber', size=0.4)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('CabBeacon_Dome')], 'blink:1p4:0p1',
+           (-32.0, 4.0, 8.7))
 
     # running lights at the corners
     for i, (ex, ey) in enumerate(((-33.5, -7.0), (-33.5, 7.0), (33.5, -7.0), (33.5, 7.0))):

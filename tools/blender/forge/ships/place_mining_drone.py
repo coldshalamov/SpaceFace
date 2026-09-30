@@ -32,6 +32,7 @@ ZC = 0.45
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- body ------------------------------------------------------------------------------------
     F.loft(s, 'Body', [
@@ -61,6 +62,7 @@ def build():
     F.box(s, 'RadBase', (0.2, 0, ZC + 0.43), (0.62, 1.0, 0.04), material='dark', bevel=0.0)
 
     # --- cutter head -----------------------------------------------------------------------------
+    n0 = len(s.objects)
     F.cylinder(s, 'Gearbox', (2.95, 0, ZC), (3.4, 0, ZC), 0.44, 0.4, material='gunmetal', segments=24, bevel=0.02)
     F.ring(s, 'GearCollar', (3.35, 0, ZC), 0.42, 0.06, axis=(1, 0, 0), material='paint2', segments=24, sides=6)
     F.cylinder(s, 'Drum', (3.4, 0, ZC), (4.05, 0, ZC), 0.64, 0.62, material='paint2', segments=32, bevel=0.03)
@@ -77,6 +79,8 @@ def build():
         F.box(s, f'Cutter{k}', (4.2, 0.26 * math.cos(a), ZC + 0.26 * math.sin(a)), (0.1, 0.36, 0.1),
               material='bare', bevel=0.0, rot=(a + math.pi / 2, 0.0, 0.0))
     F.cylinder(s, 'Spike', (4.1, 0, ZC), (4.6, 0, ZC), 0.2, 0.03, material='bare', segments=16, bevel=0.0)
+    # the cutting head turns on the fore axis — the drone's whole job
+    s.anim(s.objects[n0:], 'spin:fore:2p0', (3.8, 0, ZC))
 
     # --- four thruster pods ------------------------------------------------------------------------
     for i, px in enumerate((0.25, 2.1)):
@@ -99,7 +103,10 @@ def build():
                bevel=0.0)
     F.cylinder(s, 'LampLens', (2.5, 0, ZC + 0.8), (2.55, 0, ZC + 0.815), 0.18, material='glow_amber', segments=16,
                bevel=0.0)
+    n0 = len(s.objects)
     F.beacon(s, 'Beacon', (0.75, 0, ZC + 0.45), finish='glow_amber', size=0.22)
+    s.anim([o for o in s.objects[n0:] if o.name == 'Beacon_Dome'], 'blink:1p3:0p5',
+           (0.75, 0, ZC + 0.45))
     s.detail = 2
     F.antenna(s, 'Ant', (-0.15, 0.4, ZC + 0.36), 0.42, tip='glow_red')
     F.rcs(s, 'Rcs', (-0.1, 0.62, ZC), size=0.2, mirror=True)

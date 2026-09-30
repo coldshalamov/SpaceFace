@@ -44,10 +44,11 @@ async function restored(saved){
   return w;
 }
 // The payload, pursuer and wingman are slow hull classes (governed combat speed 95): receipt
-// gates key to 0.5 x a struck hull's cruise, doubled by the ceiling restore, and this episode's
-// strikes close at 105.8 (bolas) and 57.6 (wingman amendment) — over the 47.5 slow-class gate,
-// under the 105 kestrel-pace one.
-const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-135,51,{hull:3,mass:10,combatSpeed:95})];
+// gates key to 0.5 x a struck hull's cruise, and this episode's strikes close at 112.1 (bolas)
+// and 72.7 (wingman amendment) — well over the 47.5 slow-class gate. Packages A&B hull
+// proportions (eb04352f0) softened the chain: the knocked pursuer's lane sits near z=43, so the
+// wingman rides at z=45 to take the hit squarely instead of the old z=51 graze that left it alive.
+const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-135,45,{hull:3,mass:10,combatSpeed:95})];
 const release=tick=>tick===31;
 
 test('a save between release and impact restores the pending root; the impact settles once with the saved identity',async()=>{

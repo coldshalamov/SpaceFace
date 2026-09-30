@@ -1,0 +1,47 @@
+
+> spaceface@0.1.0 check:all:smoke
+> node scripts/check-ci-report.mjs --smoke
+
+# SpaceFace check report
+
+- Started: 2026-09-28T13:30:50.724Z
+- Finished: 2026-09-28T13:44:01.054Z
+- Matrix: `smoke`
+- Commands: **28** — passed **24**, failed **4**
+- Result: **FAIL**
+
+## Failures
+
+| # | id | exit | command |
+| ---: | --- | ---: | --- |
+| 1 | `47a-live-cold-open` | 1 | `npm run check:47a:live-cold-open` |
+| 2 | `first-15-runtime` | 1 | `npm run check:first-15-runtime` |
+| 3 | `flight-clean` | 1 | `npm run check:flight:clean` |
+| 4 | `feel-scenarios` | 1 | `npm run check:feel:scenarios` |
+
+### `47a-live-cold-open`
+
+```
+(no output captured)
+```
+
+### `first-15-runtime`
+
+```
+(no output captured)
+```
+
+### `flight-clean`
+
+```
+(no output captured)
+```
+
+### `feel-scenarios`
+
+```
+(no output captured)
+```
+
+
+[check-ci-report] artifacts: scratch/check-ci-report/2026-09-28T13-30-50-724Z/  (report.json, report.md, per-command .log)

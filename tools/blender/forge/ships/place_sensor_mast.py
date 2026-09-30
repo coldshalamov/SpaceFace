@@ -41,6 +41,7 @@ def polar(r, a, z):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- tripod ------------------------------------------------------------------------------------
     angles = [0.0, 2 * math.pi / 3, 4 * math.pi / 3]
@@ -113,6 +114,8 @@ def build():
     # --- radar turntable and array -------------------------------------------------------------
     F.cylinder(s, 'TurntableBase', (0, 0, Z_RADAR - 0.45), (0, 0, Z_RADAR - 0.15), 0.34, 0.6, material='paint2',
                segments=28)
+    # everything above TurntableBase rides the turntable and sweeps with it
+    n_radar = len(s.objects)
     F.cylinder(s, 'Turntable', (0, 0, Z_RADAR - 0.15), (0, 0, Z_RADAR + 0.1), 0.62, 0.62, material='paint.graphite',
                segments=28)
     F.ring(s, 'TurnRing', (0, 0, Z_RADAR + 0.1), 0.6, 0.05, axis=(0, 0, 1), material='bare', segments=28, sides=6)
@@ -139,10 +142,14 @@ def build():
         F.light(s, f'ArrayTip{sy}', (0.1 - 0.12 * fz, sy * 2.02, ZA + 0.2), 'glow_red' if sy > 0 else 'glow_green',
                 size=0.13)
         strut(s, f'ArrayStay{sy}', (0, sy * 0.3, Z_RADAR + 0.5), (0.05, sy * 1.2, ZA - 0.35), 0.08)
+    s.anim(s.objects[n_radar:], 'spin:up:0p5', (0, 0, Z_RADAR + 0.4))
 
     # --- mast top ----------------------------------------------------------------------------------
     F.cylinder(s, 'TopCap', (0, 0, Z_MAST1), (0, 0, Z_MAST1 + 0.2), 0.34, 0.3, material='paint2', segments=20)
+    n0 = len(s.objects)
     F.beacon(s, 'Aviation', (0, 0, Z_MAST1 + 0.2), finish='glow_red', size=0.36)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('Aviation_Dome')], 'blink:1p6:0p3',
+           (0, 0, Z_MAST1 + 0.2))
     s.detail = 2
     for k in range(2):
         a = math.pi / 2 + k * math.pi

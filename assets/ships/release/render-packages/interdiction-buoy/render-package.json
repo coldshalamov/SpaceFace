@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Field_Emitter",
       "nodePath": [
         0,
-        24
+        39
       ],
       "parentNodeId": "sf.render.interdiction-buoy.root",
       "worldTransform": [
@@ -59,22 +59,122 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e40d054053dbee097de50a366893c3234ade1391ae502a49843acff80a6677cf",
+  "contentHash": "00e322e055bdd697a481a3344a08130db881e2ef080c86165bc6b034154a9cb1",
   "dynamicGroups": [
     {
-      "id": "sf.render.interdiction-buoy.mesh.lod0-hook-nav-port.dynamic",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-blink-0p9-0p3-authoritystrobe-dome.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-hook-nav-port"
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-blink-0p9-0p3-authoritystrobe-dome"
     },
     {
-      "id": "sf.render.interdiction-buoy.mesh.lod1-hook-nav-port.dynamic",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-0-4-1p8-emitterslit0.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-hook-nav-port"
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-0-4-1p8-emitterslit0"
     },
     {
-      "id": "sf.render.interdiction-buoy.mesh.lod2-hook-nav-port.dynamic",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-1-4-1p8-emitterslit1.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-hook-nav-port"
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-1-4-1p8-emitterslit1"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-2-4-1p8-emitterslit2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-2-4-1p8-emitterslit2"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-3-4-1p8-emitterslit3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-3-4-1p8-emitterslit3"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-0-4-2p6-navdot0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-0-4-2p6-navdot0"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-1-4-2p6-navdot1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-1-4-2p6-navdot1"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-2-4-2p6-navdot2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-2-4-2p6-navdot2"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-3-4-2p6-navdot3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-3-4-2p6-navdot3"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-blink-0p9-0p3-authoritystrobe-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-blink-0p9-0p3-authoritystrobe-dome"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-0-4-1p8-emitterslit0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-0-4-1p8-emitterslit0"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-1-4-1p8-emitterslit1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-1-4-1p8-emitterslit1"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-2-4-1p8-emitterslit2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-2-4-1p8-emitterslit2"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-3-4-1p8-emitterslit3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-3-4-1p8-emitterslit3"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-0-4-2p6-navdot0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-0-4-2p6-navdot0"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-1-4-2p6-navdot1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-1-4-2p6-navdot1"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-2-4-2p6-navdot2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-2-4-2p6-navdot2"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-3-4-2p6-navdot3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-3-4-2p6-navdot3"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-blink-0p9-0p3-authoritystrobe-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-blink-0p9-0p3-authoritystrobe-dome"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-0-4-2p6-navdot0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-0-4-2p6-navdot0"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-1-4-2p6-navdot1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-1-4-2p6-navdot1"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-2-4-2p6-navdot2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-2-4-2p6-navdot2"
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-3-4-2p6-navdot3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-3-4-2p6-navdot3"
     }
   ],
   "geometry": [
@@ -106,56 +206,6 @@
     {
       "bounds": {
         "max": [
-          1.9800000190734863,
-          2.830103874206543,
-          1.9800000190734863
-        ],
-        "min": [
-          -1.9800000190734863,
-          0.6989766359329224,
-          -1.9800000190734863
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fc0805051ce77f5046fdff9e8e5f8df352d7caf56b00ac9b3cecef334f38d6c4",
-      "id": "sf.render.interdiction-buoy.mesh.lod0-armor.primitive.0",
-      "indexCount": 912,
-      "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Armor",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-armor",
-      "primitiveIndex": 0,
-      "vertexCount": 312
-    },
-    {
-      "bounds": {
-        "max": [
-          3.1499998569488525,
-          0.4699850380420685,
-          3.1499998569488525
-        ],
-        "min": [
-          -3.1499998569488525,
-          0.3300149738788605,
-          -3.1499998569488525
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "78a7e782fe837650184b2dc0188ae3202f737b0da19e9e105f139fd8624749df",
-      "id": "sf.render.interdiction-buoy.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 144,
-      "indexed": true,
-      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
           0.1860000044107437,
           2.68999109543601,
           0.1860000044107437
@@ -167,41 +217,241 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09d0447465da08cdbb33369988853c63a488febef5f812795dcc3acff8ee60b9",
-      "id": "sf.render.interdiction-buoy.mesh.lod0-hook-nav-port.primitive.0",
+      "geometryHash": "7b487e7f48c0b632fcb2e7abb7f42a6d0b97f6f727051396dd45fa51fcd95f1f",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-blink-0p9-0p3-authoritystrobe-dome.primitive.0",
       "indexCount": 468,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_NAV_PORT",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-hook-nav-port",
+      "meshName": "LOD0_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-blink-0p9-0p3-authoritystrobe-dome",
       "primitiveIndex": 0,
       "vertexCount": 128
     },
     {
       "bounds": {
         "max": [
-          1.074802279472351,
-          2.449946403503418,
-          1.0748023986816406
+          1.0748152648809246,
+          2.450000047683716,
+          -0.6222409988043018
         ],
         "min": [
-          -1.0748023986816406,
-          1.9500536918640137,
-          -1.074802279472351
+          0.6222410286066242,
+          1.9500000476837158,
+          -1.0748152350786022
         ]
       },
       "drawMode": 4,
-      "geometryHash": "419e8df8586b8825f521e9fd930dca21d6404ea87f575356dec478fbfa1a3718",
-      "id": "sf.render.interdiction-buoy.mesh.lod0-lights-cyan.primitive.0",
-      "indexCount": 144,
+      "geometryHash": "47f71d14f12883d306052145fab77069522c660b633bad118e6b20de607863c4",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-0-4-1p8-emitterslit0.primitive.0",
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Cyan",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-lights-cyan",
+      "meshName": "LOD0_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-0-4-1p8-emitterslit0",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6222410584089466,
+          2.450000047683716,
+          -0.6222410286066242
+        ],
+        "min": [
+          -1.074815294683247,
+          1.9500000476837158,
+          -1.0748152648809246
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "10e68de14cef907ae4d0f6bc4df0730eb97301dba3ccb1fa5e56f9b268634b5e",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-1-4-1p8-emitterslit1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-1-4-1p8-emitterslit1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6222410584089466,
+          2.450000047683716,
+          1.0748152648809246
+        ],
+        "min": [
+          -1.074815294683247,
+          1.9500000476837158,
+          0.6222410286066242
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "24beab026d01b53976dee6a99a588ac75e112c70a4ba94f4b8e8a5f95d0b33fb",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-2-4-1p8-emitterslit2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-2-4-1p8-emitterslit2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0748152648809246,
+          2.450000047683716,
+          1.0748152648809246
+        ],
+        "min": [
+          0.6222410286066242,
+          1.9500000476837158,
+          0.6222410286066242
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf48337173a6353bb3976ed7a99babdd6ff7aa6baa05535cc48e17d42091f6a2",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-3-4-1p8-emitterslit3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-3-4-1p8-emitterslit3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1499999538064003,
+          0.47000336403963816,
+          0.10000000149011612
+        ],
+        "min": [
+          2.949999950826168,
+          0.3299966478812908,
+          -0.10000000149011612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b9f395988557c7d0b5e6f843cd476f3c05811bc22a67a268b5bb12442faf6f46",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-0-4-2p6-navdot0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-0-4-2p6-navdot0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10000000149011612,
+          0.47000336403963816,
+          -2.949999950826168
+        ],
+        "min": [
+          -0.10000000149011612,
+          0.3299966478812908,
+          -3.1499999538064003
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c81fa56e7a068ee07c8cf09c1449829fe2c58a1aa3ef7e38407b482a68982d6a",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-1-4-2p6-navdot1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-1-4-2p6-navdot1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.949999950826168,
+          0.47000336403963816,
+          0.10000000149011612
+        ],
+        "min": [
+          -3.1499999538064003,
+          0.3299966478812908,
+          -0.10000000149011612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e37c0c14f626628b6e18ad6ee66f1064d7f970c7e2dd20f17be67d519d6ab0c5",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-2-4-2p6-navdot2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-2-4-2p6-navdot2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10000000149011612,
+          0.47000336403963816,
+          3.1499999538064003
+        ],
+        "min": [
+          -0.10000000149011612,
+          0.3299966478812908,
+          2.949999950826168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db24a0233d26ee6224ac7cb3033cf5958db382087463b474da0ca1caa9072914",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-3-4-2p6-navdot3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-3-4-2p6-navdot3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9800000190734863,
+          2.830103874206543,
+          1.9800000190734863
+        ],
+        "min": [
+          -1.9800000190734863,
+          0.6989766359329224,
+          -1.9800000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c55d7e5395647119e4d583c10921e50d33a99a4a4c6078bc2d5d24fa5e164697",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-armor.primitive.0",
+      "indexCount": 912,
+      "indexed": true,
+      "materialHash": "3c21ef13354d886b4695aee000de9c4c155abee46361e95fbef78fe7c97279d9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 312
     },
     {
       "bounds": {
@@ -217,11 +467,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31944dedd0e39ffae8bf0f4ad96131dcda8663289fbfb1653e0f48850c847f22",
+      "geometryHash": "345c65e06f2cb1997fac44ae43e73376160a35ebba2f28892df75eeb01c91016",
       "id": "sf.render.interdiction-buoy.mesh.lod0-mechanical-navy.primitive.0",
       "indexCount": 1140,
       "indexed": true,
-      "materialHash": "e3863fe9b9867ade21dfbff3a460d344b3c83681d9110a2f363b7400f3a5eb72",
+      "materialHash": "a0d71734301e58a581491e6a8a04a4177df59fb68adf426eca8131f969132785",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical_navy",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod0-mechanical-navy",
@@ -242,11 +492,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31927be72fb130723d7b0324d52ed352ece116d31a9b2dc77bded9b8843c5a12",
+      "geometryHash": "8e33a51fdb8f294451b713a0663b7823cb952c25ddb172e7da3044aa30796131",
       "id": "sf.render.interdiction-buoy.mesh.lod0-mechanical.primitive.0",
       "indexCount": 4368,
       "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialHash": "e85c99460281d45c496b3d18bbb0554a03955e19a8b6cda61ae13eaebc0b65db",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod0-mechanical",
@@ -267,11 +517,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "112b0129a4d0b6fccf19bf5dcb4bad26e3e5f24c5ceda6f9d939a8eefee5e4bc",
+      "geometryHash": "809072a502c0551eb4e2f802de32fb790024db6e7267db8dc925cd5f6b957a59",
       "id": "sf.render.interdiction-buoy.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 1704,
       "indexed": true,
-      "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
+      "materialHash": "e02758fa04b3249dd76dccc80e9df628a1d7f0e0a73f4c96270cc30adade7f37",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod0-mechanicaldark",
@@ -292,16 +542,241 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79389ee247665231e74fac382f509d767c1886af9373a33c6294dc6f4ea8f9c7",
+      "geometryHash": "89327a90f6e0bb8e37c47ff6546778fc3666a93fb7d179fd39ed9f06b64bb7a6",
       "id": "sf.render.interdiction-buoy.mesh.lod0-warning.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "8db4cf3cd44f75016c34155cdb628be8f0269a99d3304a6ce57eca22468a7e64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod0-warning",
       "primitiveIndex": 0,
       "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          0.1862119883298874,
+          2.6899885798525323,
+          0.18598425737865662
+        ],
+        "min": [
+          -0.18625730276107788,
+          2.5156497170496475,
+          -0.18616675189979767
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dadc818ca65196bbdb5653fdb1d16933f2bc3e21b5b43e2c12169c51bfddcb50",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-blink-0p9-0p3-authoritystrobe-dome.primitive.0",
+      "indexCount": 186,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-blink-0p9-0p3-authoritystrobe-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0748152648809246,
+          2.450000047683716,
+          -0.6222409988043018
+        ],
+        "min": [
+          0.6222410286066242,
+          1.9500000476837158,
+          -1.0748152350786022
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c5f2826f6782f5fd60e69972b23bfcc3104b38d2efeeca4733e4fdfaba28c8f",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-0-4-1p8-emitterslit0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-0-4-1p8-emitterslit0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6222410584089466,
+          2.450000047683716,
+          -0.6222410286066242
+        ],
+        "min": [
+          -1.074815294683247,
+          1.9500000476837158,
+          -1.0748152648809246
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b7d88cce25cab6b485424860fa346f0707de3e2b13f92b6540bc1803ab97afd",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-1-4-1p8-emitterslit1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-1-4-1p8-emitterslit1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6222410584089466,
+          2.450000047683716,
+          1.0748152648809246
+        ],
+        "min": [
+          -1.074815294683247,
+          1.9500000476837158,
+          0.6222410286066242
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8db0d821adc28d5ec3949554eaae8864df7278112ac6a6dc68674789cbd90197",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-2-4-1p8-emitterslit2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-2-4-1p8-emitterslit2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0748152648809246,
+          2.450000047683716,
+          1.0748152648809246
+        ],
+        "min": [
+          0.6222410286066242,
+          1.9500000476837158,
+          0.6222410286066242
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c5a5e45b4a834d606fd1eddd2dee8f88403fc5aed5f263de32ec27b5be2dbe5",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-3-4-1p8-emitterslit3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-3-4-1p8-emitterslit3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1499999538064003,
+          0.47000336403963816,
+          0.10000000149011612
+        ],
+        "min": [
+          2.949999950826168,
+          0.3299966478812908,
+          -0.10000000149011612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "590525fc1c54a6a519a099f38b8aa64c93c75f1ac5b79cc3613ce98a5817f18e",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-0-4-2p6-navdot0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-0-4-2p6-navdot0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10000000149011612,
+          0.47000336403963816,
+          -2.949999950826168
+        ],
+        "min": [
+          -0.10000000149011612,
+          0.3299966478812908,
+          -3.1499999538064003
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bfcbff4bf2a47b67a84fb4a53568e3b3898e665550ea378e71e6084e5c754265",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-1-4-2p6-navdot1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-1-4-2p6-navdot1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.949999950826168,
+          0.47000336403963816,
+          0.10000000149011612
+        ],
+        "min": [
+          -3.1499999538064003,
+          0.3299966478812908,
+          -0.10000000149011612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "99d1a95b45f6662dadb4ccc4558bda9aea6825902d49786ff9b6f3bf4ee014b4",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-2-4-2p6-navdot2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-2-4-2p6-navdot2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10000000149011612,
+          0.47000336403963816,
+          3.1499999538064003
+        ],
+        "min": [
+          -0.10000000149011612,
+          0.3299966478812908,
+          2.949999950826168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9b2d17139a52e7733e658bf3b2f3ac02240d91b91db36c42e7215d4177312fe",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-3-4-2p6-navdot3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-3-4-2p6-navdot3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -317,91 +792,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58b07fcf00a49d48a0dd71542a2d7ea3b6126b56403fdd2f1a1a03f657c2a24b",
+      "geometryHash": "4746764ab35a30fd65fb9ebdc421b03fbac52c979c23008e065242b4351807b5",
       "id": "sf.render.interdiction-buoy.mesh.lod1-armor.primitive.0",
       "indexCount": 912,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "3c21ef13354d886b4695aee000de9c4c155abee46361e95fbef78fe7c97279d9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod1-armor",
       "primitiveIndex": 0,
       "vertexCount": 312
-    },
-    {
-      "bounds": {
-        "max": [
-          3.1499998569488525,
-          0.4699850380420685,
-          3.1499998569488525
-        ],
-        "min": [
-          -3.1499998569488525,
-          0.3300149738788605,
-          -3.1499998569488525
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "441189e2baa5aafdfa719aa4527e5ebbe6aeff5700f5bdc3b670bd8d523523fc",
-      "id": "sf.render.interdiction-buoy.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 144,
-      "indexed": true,
-      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Beacon_Amber",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          0.18726728856563568,
-          2.6899984711604072,
-          0.18596427729785048
-        ],
-        "min": [
-          -0.18625730276107788,
-          2.515758431534295,
-          -0.18614678672015272
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "73dcbd2ae630523904d4c9d09305dbc39a2f067f823f80afd1edd956fcf62b72",
-      "id": "sf.render.interdiction-buoy.mesh.lod1-hook-nav-port.primitive.0",
-      "indexCount": 156,
-      "indexed": true,
-      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HOOK_NAV_PORT",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-hook-nav-port",
-      "primitiveIndex": 0,
-      "vertexCount": 57
-    },
-    {
-      "bounds": {
-        "max": [
-          1.074802279472351,
-          2.449946403503418,
-          1.0748023986816406
-        ],
-        "min": [
-          -1.0748023986816406,
-          1.9500536918640137,
-          -1.074802279472351
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8e703a948b231ececdb409bc2b1bcb606ad0e2f448cd7bc4fbf32ff3a6c978b6",
-      "id": "sf.render.interdiction-buoy.mesh.lod1-lights-cyan.primitive.0",
-      "indexCount": 144,
-      "indexed": true,
-      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Lights_Cyan",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-lights-cyan",
-      "primitiveIndex": 0,
-      "vertexCount": 96
     },
     {
       "bounds": {
@@ -417,41 +817,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "290f93bfbee3df9bedf0706fe252f2226f340eaa487c59cc40b9fc971289f494",
+      "geometryHash": "968ee8cc7641e6e76909c9a1870da6caacdc2b03f2d8b1d06d1161eb9418ed7e",
       "id": "sf.render.interdiction-buoy.mesh.lod1-mechanical-navy.primitive.0",
-      "indexCount": 564,
+      "indexCount": 582,
       "indexed": true,
-      "materialHash": "e3863fe9b9867ade21dfbff3a460d344b3c83681d9110a2f363b7400f3a5eb72",
+      "materialHash": "a0d71734301e58a581491e6a8a04a4177df59fb68adf426eca8131f969132785",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical_navy",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod1-mechanical-navy",
       "primitiveIndex": 0,
-      "vertexCount": 180
+      "vertexCount": 186
     },
     {
       "bounds": {
         "max": [
-          3.237232208251953,
+          3.2371394634246826,
           2.5998876094818115,
           3.2375316619873047
         ],
         "min": [
-          -3.2352516651153564,
+          -3.236924886703491,
           -2.199887752532959,
           -3.23732328414917
         ]
       },
       "drawMode": 4,
-      "geometryHash": "205bb06e9b2a9e590e17a7b9b5e816ab489f277acdbf551be3d93f351423840f",
+      "geometryHash": "fdbeb3ded0f965de5eaabbf3b3a99e952964b39e9fedd03b2e24b9fd16b637ec",
       "id": "sf.render.interdiction-buoy.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 1362,
+      "indexCount": 1482,
       "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialHash": "e85c99460281d45c496b3d18bbb0554a03955e19a8b6cda61ae13eaebc0b65db",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 454
+      "vertexCount": 501
     },
     {
       "bounds": {
@@ -467,16 +867,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d033a0bfcedad95639568c55cac216e644413a4ee4da68d20929ddd1cbc98d64",
+      "geometryHash": "ae1578caa036176ea879f4b2447bd092e7eca37c6789b6249d25c78abbe00388",
       "id": "sf.render.interdiction-buoy.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
+      "materialHash": "e02758fa04b3249dd76dccc80e9df628a1d7f0e0a73f4c96270cc30adade7f37",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 194
+      "vertexCount": 196
     },
     {
       "bounds": {
@@ -492,16 +892,141 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23b45fde7afbbb07973c34a54548357f54983a96cb20764f4e39ef653811ceff",
+      "geometryHash": "0673efc03d8e0757b3bb7d32fcbb9888ff7577888dd90cc1eb2e2f8b2233b213",
       "id": "sf.render.interdiction-buoy.mesh.lod1-warning.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "8db4cf3cd44f75016c34155cdb628be8f0269a99d3304a6ce57eca22468a7e64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod1-warning",
       "primitiveIndex": 0,
       "vertexCount": 102
+    },
+    {
+      "bounds": {
+        "max": [
+          0.1860000044107437,
+          2.68999109543601,
+          0.1860000044107437
+        ],
+        "min": [
+          -0.1860000044107437,
+          2.515009066688624,
+          -0.1860000044107437
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e229b38be8bb922e7060dadc903c03fabe0ceb3300b7ea48f20deb9b84213eb6",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-blink-0p9-0p3-authoritystrobe-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-blink-0p9-0p3-authoritystrobe-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1499999538064003,
+          0.47000336403963816,
+          0.10000000149011612
+        ],
+        "min": [
+          2.949999950826168,
+          0.3299966478812908,
+          -0.10000000149011612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "590525fc1c54a6a519a099f38b8aa64c93c75f1ac5b79cc3613ce98a5817f18e",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-0-4-2p6-navdot0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-0-4-2p6-navdot0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10000000149011612,
+          0.47000336403963816,
+          -2.949999950826168
+        ],
+        "min": [
+          -0.10000000149011612,
+          0.3299966478812908,
+          -3.1499999538064003
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bfcbff4bf2a47b67a84fb4a53568e3b3898e665550ea378e71e6084e5c754265",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-1-4-2p6-navdot1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-1-4-2p6-navdot1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.949999950826168,
+          0.47000336403963816,
+          0.10000000149011612
+        ],
+        "min": [
+          -3.1499999538064003,
+          0.3299966478812908,
+          -0.10000000149011612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "99d1a95b45f6662dadb4ccc4558bda9aea6825902d49786ff9b6f3bf4ee014b4",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-2-4-2p6-navdot2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-2-4-2p6-navdot2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10000000149011612,
+          0.47000336403963816,
+          3.1499999538064003
+        ],
+        "min": [
+          -0.10000000149011612,
+          0.3299966478812908,
+          2.949999950826168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9b2d17139a52e7733e658bf3b2f3ac02240d91b91db36c42e7215d4177312fe",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-3-4-2p6-navdot3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-3-4-2p6-navdot3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -517,66 +1042,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b83d93fbbc982cd9a599f0dc8adf2819545765fb079a4cc10e970a947b0230c1",
+      "geometryHash": "0d7f99ee73585103bb94eb5befa568e7b190a391c3505acd58aabf9b016df159",
       "id": "sf.render.interdiction-buoy.mesh.lod2-armor.primitive.0",
-      "indexCount": 816,
+      "indexCount": 894,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "3c21ef13354d886b4695aee000de9c4c155abee46361e95fbef78fe7c97279d9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 296
-    },
-    {
-      "bounds": {
-        "max": [
-          3.1499998569488525,
-          0.4699850380420685,
-          3.1499998569488525
-        ],
-        "min": [
-          -3.1499998569488525,
-          0.3300149738788605,
-          -3.1499998569488525
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "441189e2baa5aafdfa719aa4527e5ebbe6aeff5700f5bdc3b670bd8d523523fc",
-      "id": "sf.render.interdiction-buoy.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 144,
-      "indexed": true,
-      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Beacon_Amber",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          0.18838653408570072,
-          2.6961852891665283,
-          0.18597424030303955
-        ],
-        "min": [
-          -0.18837310813946506,
-          2.515891613222998,
-          -0.1955357939004898
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "94cd69bb22490ea5b87b229d280ec2218a5918323a46d7c4da20f8afb0410a44",
-      "id": "sf.render.interdiction-buoy.mesh.lod2-hook-nav-port.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_HOOK_NAV_PORT",
-      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-hook-nav-port",
-      "primitiveIndex": 0,
-      "vertexCount": 32
+      "vertexCount": 309
     },
     {
       "bounds": {
@@ -592,11 +1067,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d4388355be1987b74419d9ec892ae547766d1b509b3fa176f4c003be30b0a03",
+      "geometryHash": "8acd3a3187d64fb92d15856f9fd5a998eb54fa5b9f06d1fe8f92e3777422b257",
       "id": "sf.render.interdiction-buoy.mesh.lod2-mechanical-navy.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "e3863fe9b9867ade21dfbff3a460d344b3c83681d9110a2f363b7400f3a5eb72",
+      "materialHash": "a0d71734301e58a581491e6a8a04a4177df59fb68adf426eca8131f969132785",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical_navy",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod2-mechanical-navy",
@@ -607,26 +1082,26 @@
       "bounds": {
         "max": [
           3.2323803901672363,
-          2.58646297454834,
+          2.5863773822784424,
           3.232489824295044
         ],
         "min": [
           -3.2323217391967773,
-          -2.177375555038452,
+          -2.1916661262512207,
           -3.2322123050689697
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68f17e55e5c3f8d798c92166f14f5d16b3925201e0cf5e9af2533d0c9435da70",
+      "geometryHash": "82a6298060ffa2078c137c6e3853df0924b80c543895c2e82e979c866a49adba",
       "id": "sf.render.interdiction-buoy.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 378,
+      "indexCount": 396,
       "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialHash": "e85c99460281d45c496b3d18bbb0554a03955e19a8b6cda61ae13eaebc0b65db",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 174
+      "vertexCount": 180
     },
     {
       "bounds": {
@@ -642,11 +1117,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31f3c6245d6bb57c30c9a15b53f29882c7910db1f5d72ecb3cb93fa5dc98219c",
+      "geometryHash": "32580643483f6c6b4e90669c4d1b27cb9a5635a188f0fbc836c44cf111f90b83",
       "id": "sf.render.interdiction-buoy.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 120,
       "indexed": true,
-      "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
+      "materialHash": "e02758fa04b3249dd76dccc80e9df628a1d7f0e0a73f4c96270cc30adade7f37",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod2-mechanicaldark",
@@ -667,11 +1142,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "076bd487c3263f39c54c08a7663349852fc571808f586bd8b0b41b21a8f57982",
+      "geometryHash": "1788538c1225990f1d07583bddd280b8ffdb3eb937b2548cb21479b93575c793",
       "id": "sf.render.interdiction-buoy.mesh.lod2-warning.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "8db4cf3cd44f75016c34155cdb628be8f0269a99d3304a6ce57eca22468a7e64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.interdiction-buoy.mesh.lod2-warning",
@@ -684,40 +1159,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
-      "id": "material:3a3b2f67d6688939e22c4df2",
+      "hash": "3c21ef13354d886b4695aee000de9c4c155abee46361e95fbef78fe7c97279d9",
+      "id": "material:3c21ef13354d886b4695aee0",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -741,39 +1184,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
-      "id": "material:486547a174710d4494bcbd4e",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_interdiction_buoy_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -787,47 +1198,40 @@
       "textures": []
     },
     {
-      "hash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
-      "id": "material:c73d1b5264f0a58926ed9d98",
-      "name": "Material_MechanicalDark",
+      "hash": "8db4cf3cd44f75016c34155cdb628be8f0269a99d3304a6ce57eca22468a7e64",
+      "id": "material:8db4cf3cd44f75016c34155c",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_interdiction_buoy_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
-      "id": "material:c8bc418ef6e934f23d9f4f7d",
-      "name": "Material_Emissive_Cyan",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "e3863fe9b9867ade21dfbff3a460d344b3c83681d9110a2f363b7400f3a5eb72",
-      "id": "material:e3863fe9b9867ade21dfbff3",
+      "hash": "a0d71734301e58a581491e6a8a04a4177df59fb68adf426eca8131f969132785",
+      "id": "material:a0d71734301e58a581491e6a",
       "name": "Material_Mechanical_navy",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -851,7 +1255,78 @@
         },
         {
           "colorSpace": "linear",
+          "name": "place_interdiction_buoy_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "id": "material:c8bc418ef6e934f23d9f4f7d",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e02758fa04b3249dd76dccc80e9df628a1d7f0e0a73f4c96270cc30adade7f37",
+      "id": "material:e02758fa04b3249dd76dccc8",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
           "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_interdiction_buoy_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e85c99460281d45c496b3d18bbb0554a03955e19a8b6cda61ae13eaebc0b65db",
+      "id": "material:e85c99460281d45c496b3d18",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_interdiction_buoy_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -916,105 +1391,7 @@
       ]
     },
     {
-      "id": "sf.render.interdiction-buoy.mesh.lod0-armor",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Armor",
-      "nodeName": "LOD0_Armor",
-      "nodePath": [
-        0,
-        1
-      ],
-      "parentId": "sf.render.interdiction-buoy.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.interdiction-buoy.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.interdiction-buoy.mesh.lod0-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
-      "nodePath": [
-        0,
-        2
-      ],
-      "parentId": "sf.render.interdiction-buoy.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.interdiction-buoy.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.interdiction-buoy.mesh.lod0-hook-nav-port",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-blink-0p9-0p3-authoritystrobe-dome",
       "localTransform": [
         0.1860000044107437,
         0,
@@ -1034,11 +1411,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
-      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "mergeBoundary": "LOD0_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodeName": "LOD0_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
       "nodePath": [
         0,
-        3
+        1
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "dynamic",
@@ -1063,7 +1440,399 @@
       ]
     },
     {
-      "id": "sf.render.interdiction-buoy.mesh.lod0-lights-cyan",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-0-4-1p8-emitterslit0",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        -0.848528116941452,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+      "nodeName": "LOD0_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        -0.848528116941452,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-1-4-1p8-emitterslit1",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        -0.8485281467437744,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+      "nodeName": "LOD0_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        -0.8485281467437744,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-2-4-1p8-emitterslit2",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+      "nodeName": "LOD0_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-3-4-1p8-emitterslit3",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+      "nodeName": "LOD0_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-0-4-2p6-navdot0",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodeName": "LOD0_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-1-4-2p6-navdot1",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        -3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodeName": "LOD0_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        -3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-2-4-2p6-navdot2",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        -3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodeName": "LOD0_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        -3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-3-4-2p6-navdot3",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodeName": "LOD0_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-armor",
       "localTransform": [
         1,
         0,
@@ -1083,11 +1852,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Cyan",
-      "nodeName": "LOD0_Lights_Cyan",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        4
+        10
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1136,7 +1905,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        5
+        11
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1185,7 +1954,7 @@
       "nodeName": "LOD0_Mechanical_navy",
       "nodePath": [
         0,
-        6
+        12
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1234,7 +2003,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        7
+        13
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1283,7 +2052,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        8
+        14
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1304,6 +2073,447 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-blink-0p9-0p3-authoritystrobe-dome",
+      "localTransform": [
+        0.18623464554548264,
+        0,
+        0,
+        0,
+        0,
+        0.18623464554548264,
+        0,
+        0,
+        0,
+        0,
+        0.18623464554548264,
+        0,
+        -0.00002265721559524536,
+        2.60281914845109,
+        -0.00009124726057052612,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodeName": "LOD1_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.18623464554548264,
+        0,
+        0,
+        0,
+        0,
+        0.18623464554548264,
+        0,
+        0,
+        0,
+        0,
+        0.18623464554548264,
+        0,
+        -0.00002265721559524536,
+        2.60281914845109,
+        -0.00009124726057052612,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-0-4-1p8-emitterslit0",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        -0.848528116941452,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+      "nodeName": "LOD1_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        -0.848528116941452,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-1-4-1p8-emitterslit1",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        -0.8485281467437744,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+      "nodeName": "LOD1_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        -0.8485281467437744,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-2-4-1p8-emitterslit2",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+      "nodeName": "LOD1_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.8485281765460968,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-3-4-1p8-emitterslit3",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+      "nodeName": "LOD1_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0.8485281467437744,
+        2.200000047683716,
+        0.8485281467437744,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-0-4-2p6-navdot0",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodeName": "LOD1_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-1-4-2p6-navdot1",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        -3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodeName": "LOD1_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        -3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-2-4-2p6-navdot2",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        -3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodeName": "LOD1_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        -3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-3-4-2p6-navdot3",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodeName": "LOD1_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        3.049999952316284,
         1
       ]
     },
@@ -1332,154 +2542,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        9
-      ],
-      "parentId": "sf.render.interdiction-buoy.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.interdiction-buoy.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.interdiction-buoy.mesh.lod1-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Beacon_Amber",
-      "nodeName": "LOD1_Beacon_Amber",
-      "nodePath": [
-        0,
-        10
-      ],
-      "parentId": "sf.render.interdiction-buoy.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.interdiction-buoy.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.interdiction-buoy.mesh.lod1-hook-nav-port",
-      "localTransform": [
-        0.18676229566335678,
-        0,
-        0,
-        0,
-        0,
-        0.18676229566335678,
-        0,
-        0,
-        0,
-        0,
-        0.18676229566335678,
-        0,
-        0.0005049929022789001,
-        2.602878451347351,
-        -0.00009125471115112305,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
-      "nodeName": "LOD1_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        11
-      ],
-      "parentId": "sf.render.interdiction-buoy.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.interdiction-buoy.body",
-      "worldTransform": [
-        0.18676229566335678,
-        0,
-        0,
-        0,
-        0,
-        0.18676229566335678,
-        0,
-        0,
-        0,
-        0,
-        0.18676229566335678,
-        0,
-        0.0005049929022789001,
-        2.602878451347351,
-        -0.00009125471115112305,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.interdiction-buoy.mesh.lod1-lights-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Lights_Cyan",
-      "nodeName": "LOD1_Lights_Cyan",
-      "nodePath": [
-        0,
-        12
+        24
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1528,7 +2591,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        13
+        25
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1577,7 +2640,7 @@
       "nodeName": "LOD1_Mechanical_navy",
       "nodePath": [
         0,
-        14
+        26
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1626,7 +2689,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        15
+        27
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1675,7 +2738,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        16
+        28
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1696,6 +2759,251 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-blink-0p9-0p3-authoritystrobe-dome",
+      "localTransform": [
+        0.1860000044107437,
+        0,
+        0,
+        0,
+        0,
+        0.1860000044107437,
+        0,
+        0,
+        0,
+        0,
+        0.1860000044107437,
+        0,
+        0,
+        2.602500081062317,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodeName": "LOD2_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.1860000044107437,
+        0,
+        0,
+        0,
+        0,
+        0.1860000044107437,
+        0,
+        0,
+        0,
+        0,
+        0.1860000044107437,
+        0,
+        0,
+        2.602500081062317,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-0-4-2p6-navdot0",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodeName": "LOD2_ANIM_chase_nav_0_4_2p6_NavDot0",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-1-4-2p6-navdot1",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        -3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodeName": "LOD2_ANIM_chase_nav_1_4_2p6_NavDot1",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        -3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-2-4-2p6-navdot2",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        -3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodeName": "LOD2_ANIM_chase_nav_2_4_2p6_NavDot2",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        -3.049999952316284,
+        0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-3-4-2p6-navdot3",
+      "localTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodeName": "LOD2_ANIM_chase_nav_3_4_2p6_NavDot3",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.10000000149011612,
+        0,
+        0,
+        0.4000000059604645,
+        3.049999952316284,
         1
       ]
     },
@@ -1724,7 +3032,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        17
+        34
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1745,104 +3053,6 @@
         0,
         0,
         0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.interdiction-buoy.mesh.lod2-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Beacon_Amber",
-      "nodeName": "LOD2_Beacon_Amber",
-      "nodePath": [
-        0,
-        18
-      ],
-      "parentId": "sf.render.interdiction-buoy.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.interdiction-buoy.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.interdiction-buoy.mesh.lod2-hook-nav-port",
-      "localTransform": [
-        0.19075501710176468,
-        0,
-        0,
-        0,
-        0,
-        0.19075501710176468,
-        0,
-        0,
-        0,
-        0,
-        0.19075501710176468,
-        0,
-        0.000006712973117828369,
-        2.606038451194763,
-        -0.004780776798725128,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
-      "nodeName": "LOD2_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        19
-      ],
-      "parentId": "sf.render.interdiction-buoy.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.interdiction-buoy.body",
-      "worldTransform": [
-        0.19075501710176468,
-        0,
-        0,
-        0,
-        0,
-        0.19075501710176468,
-        0,
-        0,
-        0,
-        0,
-        0.19075501710176468,
-        0,
-        0.000006712973117828369,
-        2.606038451194763,
-        -0.004780776798725128,
         1
       ]
     },
@@ -1871,7 +3081,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        20
+        35
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1920,7 +3130,7 @@
       "nodeName": "LOD2_Mechanical_navy",
       "nodePath": [
         0,
-        21
+        36
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -1969,7 +3179,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        22
+        37
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -2018,7 +3228,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        23
+        38
       ],
       "parentId": "sf.render.interdiction-buoy.root",
       "role": "immutable",
@@ -2093,43 +3303,43 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "fc72cc6cb8340405f3621788da4a36f2d998a52b1caa7d0380a4f9a97bb6b1b9"
+      "sha256": "ce830c10458fcf3aa238b737dfe32c7f9088b83c5d0ef2f263c63c118ecd9b20"
     },
     "sourceGlb": {
-      "bytes": 416700,
-      "sha256": "3119cc3a523f7a8c5ccd32c60285b06bc0273e93528e52c53f2c1f3574f105be",
+      "bytes": 649144,
+      "sha256": "622a4a1fb32a1790c886d4ae1ee47cdc504e3602ebe96a94352802f8163249eb",
       "uri": "place_interdiction_buoy.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 530136,
-    "sha256": "2d246752bdedd48fa3d16c8c4f8ef840f4a396366e5641dbfe28429961354958",
+    "bytes": 791884,
+    "sha256": "8978209ce217f1b1a653db571611997286c04c13986c484d13c08fe87b160a00",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.0009902715682983398,
+        0.00010728836059570312,
         0.31622135639190674,
         0.00010418891906738281
       ],
       "max": [
-        3.237232208251953,
+        3.2371394634246826,
         2.8324978351593018,
         3.2375316619873047
       ],
       "min": [
-        -3.2352516651153564,
+        -3.236924886703491,
         -2.2000551223754883,
         -3.23732328414917
       ],
       "size": [
-        6.47248387336731,
+        6.474064350128174,
         5.03255295753479,
         6.474854946136475
       ]
@@ -2159,7 +3369,7 @@
           1
         ],
         "name": "SOCKET_Field_Emitter",
-        "planIndex": 26,
+        "planIndex": 41,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2184,7 +3394,7 @@
     "materialProfileRoles": {
       "hull": 4,
       "mechanical": 9,
-      "signal": 8,
+      "signal": 23,
       "warning": 3
     },
     "materialProfiles": [
@@ -2196,7 +3406,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2216,42 +3426,42 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2261,22 +3471,22 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
         "role": "warning"
       },
       {
         "allowTextures": true,
+        "planIndex": 17,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2291,26 +3501,344 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
         "role": "warning"
       }
     ],
-    "nodeCount": 27,
+    "nodeCount": 42,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.1860000044107437,
+          0,
+          0,
+          0,
+          0,
+          0.1860000044107437,
+          0,
+          0,
+          0,
+          0,
+          0.1860000044107437,
+          0,
+          0,
+          2.602500081062317,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0.8485281467437744,
+          2.200000047683716,
+          -0.848528116941452,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          -0.8485281765460968,
+          2.200000047683716,
+          -0.8485281467437744,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          -0.8485281765460968,
+          2.200000047683716,
+          0.8485281467437744,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0.8485281467437744,
+          2.200000047683716,
+          0.8485281467437744,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          3.049999952316284,
+          0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_nav_0_4_2p6_NavDot0",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0.4000000059604645,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_nav_1_4_2p6_NavDot1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          -3.049999952316284,
+          0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_nav_2_4_2p6_NavDot2",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0.4000000059604645,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_nav_3_4_2p6_NavDot3",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -2332,89 +3860,7 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.1860000044107437,
-          0,
-          0,
-          0,
-          0,
-          0.1860000044107437,
-          0,
-          0,
-          0,
-          0,
-          0.1860000044107437,
-          0,
-          0,
-          2.602500081062317,
-          0,
-          1
-        ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Lights_Cyan",
-        "planIndex": 6,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2441,7 +3887,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 7,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2468,7 +3914,7 @@
           1
         ],
         "name": "LOD0_Mechanical_navy",
-        "planIndex": 8,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2495,7 +3941,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 9,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2522,10 +3968,253 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 10,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18623464554548264,
+          0,
+          0,
+          0,
+          0,
+          0.18623464554548264,
+          0,
+          0,
+          0,
+          0,
+          0.18623464554548264,
+          0,
+          -0.00002265721559524536,
+          2.60281914845109,
+          -0.00009124726057052612,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0.8485281467437744,
+          2.200000047683716,
+          -0.848528116941452,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_em_0_4_1p8_EmitterSlit0",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          -0.8485281765460968,
+          2.200000047683716,
+          -0.8485281467437744,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_em_1_4_1p8_EmitterSlit1",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          -0.8485281765460968,
+          2.200000047683716,
+          0.8485281467437744,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_em_2_4_1p8_EmitterSlit2",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0.8485281467437744,
+          2.200000047683716,
+          0.8485281467437744,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_em_3_4_1p8_EmitterSlit3",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          3.049999952316284,
+          0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_nav_0_4_2p6_NavDot0",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0.4000000059604645,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_nav_1_4_2p6_NavDot1",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          -3.049999952316284,
+          0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_nav_2_4_2p6_NavDot2",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0.4000000059604645,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_nav_3_4_2p6_NavDot3",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
         }
       },
       {
@@ -2549,89 +4238,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Beacon_Amber",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.18676229566335678,
-          0,
-          0,
-          0,
-          0,
-          0.18676229566335678,
-          0,
-          0,
-          0,
-          0,
-          0.18676229566335678,
-          0,
-          0.0005049929022789001,
-          2.602878451347351,
-          -0.00009125471115112305,
-          1
-        ],
-        "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Lights_Cyan",
-        "planIndex": 14,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2658,7 +4265,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 15,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2685,7 +4292,7 @@
           1
         ],
         "name": "LOD1_Mechanical_navy",
-        "planIndex": 16,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2712,7 +4319,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 17,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2739,10 +4346,145 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 18,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.1860000044107437,
+          0,
+          0,
+          0,
+          0,
+          0.1860000044107437,
+          0,
+          0,
+          0,
+          0,
+          0.1860000044107437,
+          0,
+          0,
+          2.602500081062317,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_0p9_0p3_AuthorityStrobe_Dome",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          3.049999952316284,
+          0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_nav_0_4_2p6_NavDot0",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0.4000000059604645,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_nav_1_4_2p6_NavDot1",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          -3.049999952316284,
+          0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_nav_2_4_2p6_NavDot2",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.10000000149011612,
+          0,
+          0,
+          0.4000000059604645,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_nav_3_4_2p6_NavDot3",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
         }
       },
       {
@@ -2766,64 +4508,9 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 19,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Beacon_Amber",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.19075501710176468,
-          0,
-          0,
-          0,
-          0,
-          0.19075501710176468,
-          0,
-          0,
-          0,
-          0,
-          0.19075501710176468,
-          0,
-          0.000006712973117828369,
-          2.606038451194763,
-          -0.004780776798725128,
-          1
-        ],
-        "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
           "lod": "lod2"
         }
       },
@@ -2848,7 +4535,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 22,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2875,7 +4562,7 @@
           1
         ],
         "name": "LOD2_Mechanical_navy",
-        "planIndex": 23,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2902,7 +4589,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 24,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2929,7 +4616,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 25,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2940,18 +4627,18 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_interdiction_buoy.glb"
   },
-  "runtimeHash": "7a0103d391507a3ba6ba26efc1833701949f89a49b0bf41e0a5f4ecd014fd7e4",
+  "runtimeHash": "04bdda89f8a88fe0ab5b62f2e2afbd39ba128f351388c905b3035236c55cefbb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.237232208251953,
+          3.2371394634246826,
           2.8324978351593018,
           3.2375316619873047
         ],
         "min": [
-          -3.2352516651153564,
+          -3.236924886703491,
           -2.2000551223754883,
           -3.23732328414917
         ]
@@ -2959,25 +4646,40 @@
       "id": "sf.render.interdiction-buoy.body",
       "nodeIds": [
         "sf.render.interdiction-buoy.mesh.collision-hull",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-blink-0p9-0p3-authoritystrobe-dome",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-0-4-1p8-emitterslit0",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-1-4-1p8-emitterslit1",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-2-4-1p8-emitterslit2",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-em-3-4-1p8-emitterslit3",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-0-4-2p6-navdot0",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-1-4-2p6-navdot1",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-2-4-2p6-navdot2",
+        "sf.render.interdiction-buoy.mesh.lod0-anim-chase-nav-3-4-2p6-navdot3",
         "sf.render.interdiction-buoy.mesh.lod0-armor",
-        "sf.render.interdiction-buoy.mesh.lod0-beacon-amber",
-        "sf.render.interdiction-buoy.mesh.lod0-hook-nav-port",
-        "sf.render.interdiction-buoy.mesh.lod0-lights-cyan",
         "sf.render.interdiction-buoy.mesh.lod0-mechanical",
         "sf.render.interdiction-buoy.mesh.lod0-mechanical-navy",
         "sf.render.interdiction-buoy.mesh.lod0-mechanicaldark",
         "sf.render.interdiction-buoy.mesh.lod0-warning",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-blink-0p9-0p3-authoritystrobe-dome",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-0-4-1p8-emitterslit0",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-1-4-1p8-emitterslit1",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-2-4-1p8-emitterslit2",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-em-3-4-1p8-emitterslit3",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-0-4-2p6-navdot0",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-1-4-2p6-navdot1",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-2-4-2p6-navdot2",
+        "sf.render.interdiction-buoy.mesh.lod1-anim-chase-nav-3-4-2p6-navdot3",
         "sf.render.interdiction-buoy.mesh.lod1-armor",
-        "sf.render.interdiction-buoy.mesh.lod1-beacon-amber",
-        "sf.render.interdiction-buoy.mesh.lod1-hook-nav-port",
-        "sf.render.interdiction-buoy.mesh.lod1-lights-cyan",
         "sf.render.interdiction-buoy.mesh.lod1-mechanical",
         "sf.render.interdiction-buoy.mesh.lod1-mechanical-navy",
         "sf.render.interdiction-buoy.mesh.lod1-mechanicaldark",
         "sf.render.interdiction-buoy.mesh.lod1-warning",
+        "sf.render.interdiction-buoy.mesh.lod2-anim-blink-0p9-0p3-authoritystrobe-dome",
+        "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-0-4-2p6-navdot0",
+        "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-1-4-2p6-navdot1",
+        "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-2-4-2p6-navdot2",
+        "sf.render.interdiction-buoy.mesh.lod2-anim-chase-nav-3-4-2p6-navdot3",
         "sf.render.interdiction-buoy.mesh.lod2-armor",
-        "sf.render.interdiction-buoy.mesh.lod2-beacon-amber",
-        "sf.render.interdiction-buoy.mesh.lod2-hook-nav-port",
         "sf.render.interdiction-buoy.mesh.lod2-mechanical",
         "sf.render.interdiction-buoy.mesh.lod2-mechanical-navy",
         "sf.render.interdiction-buoy.mesh.lod2-mechanicaldark",

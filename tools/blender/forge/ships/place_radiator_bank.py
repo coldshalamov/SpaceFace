@@ -19,6 +19,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- manifold skid frame ----------------------------------------------------------------------
     F.box(s, 'Skid', (0, 0, 0.7), (16.5, 1.6, 1.4), material='paint2', bevel=0.08)

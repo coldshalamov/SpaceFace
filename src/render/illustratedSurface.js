@@ -2,7 +2,7 @@
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
 import { Color, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v8';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v9';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -34,6 +34,18 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // rim highlight just inside the ink contour, defining physical 3D curvature against deep space.
   float sfGlance = pow(clamp(1.0 - sfFacing, 0.0, 1.0), 3.5) * (1.0 - clamp(roughnessFactor, 0.0, 1.0) * 0.48);
   vec3 sfEdgeSheen = mix(vec3(0.75, 0.85, 1.10), vec3(1.15, 1.05, 0.92), sfBodyLight) * (sfGlance * 0.22 * (0.35 + 0.65 * sfShaped));
+`;
+
+// Baked body AO shapes DIRECT light too — three's aomap_fragment only darkens indirect terms and
+// the sector key dominates. Injected at the outgoingLight line so `ambientOcclusion` (declared in
+// aomap_fragment) is in scope. sfAOStrength is a uniform so every forge body shares this ONE
+// program variant (0 = off for non-forge materials sharing the program).
+const AO_OUT_GLSL = /* glsl */`
+  #ifdef USE_AOMAP
+    float sfAOOut = mix(1.0, ambientOcclusion, sfAOStrength);
+  #else
+    float sfAOOut = 1.0;
+  #endif
 `;
 
 const THREE_DEFAULT_PROGRAM_KEY_PARTS = new Set([
@@ -150,6 +162,7 @@ export function installIllustratedSurface(material) {
     shader.uniforms.sfLayoutAccent = { value: new Color(layout?.accent || '#ffffff') };
     shader.uniforms.sfHullCenter = { value: new Vector3().fromArray(layout?.center || [0, 0, 0]) };
     shader.uniforms.sfHullSize = { value: new Vector3().fromArray(layout?.size || [1, 1, 1]) };
+    shader.uniforms.sfAOStrength = { value: Number(this.userData?.spacefaceForgeAOStrength) || 0 };
     if (shader.vertexShader) shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
@@ -162,6 +175,7 @@ export function installIllustratedSurface(material) {
         uniform vec3 sfLayoutAccent;
         uniform vec3 sfHullCenter;
         uniform vec3 sfHullSize;
+        uniform float sfAOStrength;
         varying vec3 vSfHullPosition;
       `)
       .replace('#include <color_fragment>', `#include <color_fragment>
@@ -203,7 +217,9 @@ export function installIllustratedSurface(material) {
       .replace(LIGHT_NEEDLE, LIGHT_NEEDLE + '\n' + ILLUSTRATED_SURFACE_GLSL)
       // Ink belongs to paint. Keeping the optical highlight outside it lets a polished edge
       // catch a thin bright accent over the dark contour instead of becoming dead black.
-      .replace(OUTPUT_NEEDLE, 'vec3 outgoingLight = (totalDiffuse * sfContour + sfEdgeSheen) + totalSpecular + totalEmissiveRadiance;');
+      // Baked AO dims diffuse + specular (the sheen included) but never authored emission.
+      .replace(OUTPUT_NEEDLE, AO_OUT_GLSL
+        + 'vec3 outgoingLight = ((totalDiffuse * sfContour + sfEdgeSheen) + totalSpecular) * sfAOOut + totalEmissiveRadiance;');
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   illustratedSurfaceShader[TAG] = ILLUSTRATED_SURFACE_KEY;

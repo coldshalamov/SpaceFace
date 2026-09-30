@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c2af139b56a599eacba9cc6ac66f56c6535ba85b0b03af35fda0c005b5d377ab",
+  "contentHash": "60d7ebfffe25216a5156ae43b7e0fed8a38caf8cf80be97bf74c6244594860b8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -122,7 +122,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c412d02016c33afc758fb3754e0943dcc7ea5b977bdbc91a130156860a814fdb",
+      "geometryHash": "6d6e40e16f061392078d8f96fbc0b1e704c7893f2883678833645faec56a8397",
       "id": "sf.render.skerris-throne.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -147,11 +147,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "653a5a68e23c3531f703b78b9e873067792c923d1ae3235129d39125e7aa92f4",
+      "geometryHash": "3ec870dfb9bb770451da1072488d188ab7fd4a15b82f33f4c011f799256072d7",
       "id": "sf.render.skerris-throne.node.lod0-armor.primitive.0",
       "indexCount": 38232,
       "indexed": true,
-      "materialHash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
+      "materialHash": "5bd1cab69a2a8f2e2e3d21be5fb527ad12fd073b5de88d6a99336abecada546b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.skerris-throne.node.lod0-armor",
@@ -172,16 +172,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0b5d210cffb8f957ca01d94a4ee4d4532b7fbd9d9e21145465f9c7145ea0174",
+      "geometryHash": "c05de2ec143f2f8fdcfadc2733940247b689d0622438c856c4703723f5ae536c",
       "id": "sf.render.skerris-throne.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 26508,
+      "indexCount": 29172,
       "indexed": true,
       "materialHash": "e440fea2fdfe012a79c5fccbc289f11d4603a07edb018d280f5177887669f18d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.skerris-throne.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 16191
+      "vertexCount": 17038
     },
     {
       "bounds": {
@@ -197,7 +197,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7dacd386885e66b78c34186751d101058ecc661482ca98f46f81e99e7935539",
+      "geometryHash": "134f7069f9332de46e1f386cb7cf92fdaba4eb275b3f810fc3e2ea020af2887c",
       "id": "sf.render.skerris-throne.node.lod0-canopy.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -222,16 +222,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43eb090ad12fb0383dbc03afb6f5040476019246bdce6ec6e417eb9be91e917a",
+      "geometryHash": "2f4ce9c409915b174fe7abe7bc7eff88ad65c3899ecd42b4970a58795409e941",
       "id": "sf.render.skerris-throne.node.lod0-hull-bone.primitive.0",
       "indexCount": 4086,
       "indexed": true,
-      "materialHash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
+      "materialHash": "bdfdf458757e639069637420dcc25a2266f4c8debf8a9daee5bce9779c2eaec0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_bone",
       "nodeId": "sf.render.skerris-throne.node.lod0-hull-bone",
       "primitiveIndex": 0,
-      "vertexCount": 1350
+      "vertexCount": 1352
     },
     {
       "bounds": {
@@ -247,11 +247,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f00861aec2f4cc633d994ec678b9abaf9cf91cf6729caa1f8b2e0ad7f33bd8d3",
+      "geometryHash": "86ff57a284afd5e8e9fb899701558687ef07c0562a6e6510ddc9e7718f83374c",
       "id": "sf.render.skerris-throne.node.lod0-hull-graphite.primitive.0",
       "indexCount": 46758,
       "indexed": true,
-      "materialHash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
+      "materialHash": "00a0e0ef7f883228c175392dd82f08c2bbc5bd4c1325caa7e60b53c88ac0b723",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_graphite",
       "nodeId": "sf.render.skerris-throne.node.lod0-hull-graphite",
@@ -272,11 +272,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c682a973bfdad426cbb75ef0be6321b970cbf8c34bb85c0030b12be48ee82097",
+      "geometryHash": "d3902c12b84d71b052b3ec13f159ba84f1d612a049156d1fe0da7a4666ff1645",
       "id": "sf.render.skerris-throne.node.lod0-hull-helios.primitive.0",
       "indexCount": 12714,
       "indexed": true,
-      "materialHash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
+      "materialHash": "1abc1b4e69a47d11f66b1a984b9d5a3c1c7fb9b08bff5f7fb706cf631b97b342",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_helios",
       "nodeId": "sf.render.skerris-throne.node.lod0-hull-helios",
@@ -297,11 +297,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25d6229882fc02710db247879a6d4139a9f4f06d651ce783527ce4fef1ad2b65",
+      "geometryHash": "f7d0bace90a7374b130e883a5b5c4c54e3ba8b6cf26c356cd98129148cd75e55",
       "id": "sf.render.skerris-throne.node.lod0-hull-navy.primitive.0",
       "indexCount": 7122,
       "indexed": true,
-      "materialHash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
+      "materialHash": "88f4d902a4ff0e8e311624b182925e30ca0860546e06b33bca13f34be95dafc5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_navy",
       "nodeId": "sf.render.skerris-throne.node.lod0-hull-navy",
@@ -322,11 +322,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82ba12795c4c380171f8754418c244e7a41254a1e9106818ea26f1e4d1f32d34",
+      "geometryHash": "1e2fc73344cbf72e48d62026e6d1993444e97b1684645592004ef8ec8668c279",
       "id": "sf.render.skerris-throne.node.lod0-hull-teal.primitive.0",
       "indexCount": 6882,
       "indexed": true,
-      "materialHash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
+      "materialHash": "a208dc82ae8c7079239881530459cb279a4b43a7de0869772f3bd341eadb98fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_teal",
       "nodeId": "sf.render.skerris-throne.node.lod0-hull-teal",
@@ -347,11 +347,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d87d00a9f287e6df36c882b9dee25bc7916d4fd191fb93133d920b2d5f5c529d",
+      "geometryHash": "4673c182011e42e6533c41c819879639c5ea9b3da72c12527dfa5633847c0e7c",
       "id": "sf.render.skerris-throne.node.lod0-hull-work.primitive.0",
       "indexCount": 7026,
       "indexed": true,
-      "materialHash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
+      "materialHash": "bbb2ee8ea41dd4048d350c3706f42e0725eeb3004e90487e9a59709862e89a37",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_work",
       "nodeId": "sf.render.skerris-throne.node.lod0-hull-work",
@@ -372,11 +372,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "613a0471ea9c26e48cc726e4adf90367feaca4ec714618a6b14326995288adbb",
+      "geometryHash": "e914c0e64058cd73aea2cf87182de5884713e40cda39980d251d6282e8336a59",
       "id": "sf.render.skerris-throne.node.lod0-hull.primitive.0",
       "indexCount": 14766,
       "indexed": true,
-      "materialHash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
+      "materialHash": "1ac51676b82a24bbe3fec7e693d38e5d1bd9fa312cd9b62d904b2fe0434c0d29",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.skerris-throne.node.lod0-hull",
@@ -397,7 +397,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc89bc6fa72ae2339791eabdcb9698a8fb01cae71078086a345b522e18246de2",
+      "geometryHash": "d07cacd176cd637fb2b0fe6171b636372416806b3e0fe9475bd1cc7b24eecf4a",
       "id": "sf.render.skerris-throne.node.lod0-lights-warm.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -422,11 +422,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff171836bb42404f4d1497ff176159cb53a15dfe1c2a86171a9bef80a02fc19b",
+      "geometryHash": "66daaaf07f683d2fe607a17e0af10a47c55f78a4862f2e2395514f8f0aa91fe8",
       "id": "sf.render.skerris-throne.node.lod0-livery.primitive.0",
       "indexCount": 6882,
       "indexed": true,
-      "materialHash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
+      "materialHash": "30eecd7760fc9655ef7c24a5df2503918d8a93d316242d34029aff43078e5c09",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.skerris-throne.node.lod0-livery",
@@ -447,11 +447,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e970550090f80f5f658aa3d3623a867aa63fc642cc54d8562d0e73f0f9ad6dfb",
+      "geometryHash": "9e105eeafbad3baf61c3d963311a184637e89e9bd25cd4031fb6bf33daaa8674",
       "id": "sf.render.skerris-throne.node.lod0-mechanical.primitive.0",
       "indexCount": 19806,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "2f5b064aa953b2aea1d9260815376d9a7c99dfe1a90fab55fd4d624850438af9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.skerris-throne.node.lod0-mechanical",
@@ -472,11 +472,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9709f14af278fd0d7fb82700aa8b9ae8faaa3485f066c181314db337392aa13",
+      "geometryHash": "9bc4d12b179bb92b01c6f9960e2e8ea01cd92075760e6ef8245c2f02153582aa",
       "id": "sf.render.skerris-throne.node.lod0-mechanicaldark-deck.primitive.0",
       "indexCount": 222,
       "indexed": true,
-      "materialHash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
+      "materialHash": "87e314c643550ad8ba054e9419eedb9fab62a4cad6abf3d587ee63662c9fdfea",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark_deck",
       "nodeId": "sf.render.skerris-throne.node.lod0-mechanicaldark-deck",
@@ -497,16 +497,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4256183182160d96d3e12bc2827bc01dfbb3347dc6ae3ca3b06e8b5fa485eb6f",
+      "geometryHash": "53889038884c535a59d1a5dff694721986cd2ff4a764d5d11bfdbf2427615502",
       "id": "sf.render.skerris-throne.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 13518,
+      "indexCount": 14742,
       "indexed": true,
-      "materialHash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
+      "materialHash": "944d87e9aaf04772678e0f5623dbdbb1976b8715f5ecc98ab85b389884e51cb6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.skerris-throne.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 4848
+      "vertexCount": 5259
     },
     {
       "bounds": {
@@ -522,11 +522,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0e92f23a7a9c0f991bc2e3374bacf8ce1365e7959e9b1a4aa372cb98f303f03",
+      "geometryHash": "abb34daf5a323c82c54d7b15b14537af53aa49493338c262d09fcf43ebebdb4c",
       "id": "sf.render.skerris-throne.node.lod0-warning.primitive.0",
       "indexCount": 2592,
       "indexed": true,
-      "materialHash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
+      "materialHash": "5ea0bcf4553a53bceb4afd777d4cb0c929dd15be213335558e503d9dc9c5b629",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.skerris-throne.node.lod0-warning",
@@ -547,16 +547,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09de1cbfbbdec75dec1b4e59684e8b1ac839bcab30b69f5527ab5eeadc38fb87",
+      "geometryHash": "9a07c771db48338ae55246165dbac0adc252edb1a125d918299bce113c744fbf",
       "id": "sf.render.skerris-throne.node.lod1-armor.primitive.0",
-      "indexCount": 14271,
+      "indexCount": 14286,
       "indexed": true,
-      "materialHash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
+      "materialHash": "5bd1cab69a2a8f2e2e3d21be5fb527ad12fd073b5de88d6a99336abecada546b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.skerris-throne.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 7784
+      "vertexCount": 7802
     },
     {
       "bounds": {
@@ -572,16 +572,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3a7058dc66735e20eeb4ff46a56c5236c6881cf7dd46d58629b0f308db4b5e5",
+      "geometryHash": "b1a7323586d24f4338ec5e59d9b78864988b19d5b1c5e871e6516b41d7e5e2ae",
       "id": "sf.render.skerris-throne.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 10725,
+      "indexCount": 11991,
       "indexed": true,
       "materialHash": "e440fea2fdfe012a79c5fccbc289f11d4603a07edb018d280f5177887669f18d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.skerris-throne.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 7057
+      "vertexCount": 7653
     },
     {
       "bounds": {
@@ -597,7 +597,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5ee33defa9cfbb8a525543cd939890456d3e9d666d6a87e02fc4619263015fc",
+      "geometryHash": "6a550773bea7e0ab6bf4a50a8b24c6a7be04e45f3b268d298ea87384e6b8a381",
       "id": "sf.render.skerris-throne.node.lod1-canopy.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -622,11 +622,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58cad8e24def73acc663ffe835f8ad433743350d1bec02473debfbd79d39a7d4",
+      "geometryHash": "b051747d49ec3fb74cee63b002dedeac69d3c4bc477b1ac73d6b98e8e5263485",
       "id": "sf.render.skerris-throne.node.lod1-hull-bone.primitive.0",
       "indexCount": 1389,
       "indexed": true,
-      "materialHash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
+      "materialHash": "bdfdf458757e639069637420dcc25a2266f4c8debf8a9daee5bce9779c2eaec0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_bone",
       "nodeId": "sf.render.skerris-throne.node.lod1-hull-bone",
@@ -647,11 +647,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a103d2494dfc43ed732bc25c6b619f182312ae375167b59b0fc05295d35598a3",
+      "geometryHash": "e33d5c9b3e430769617682d4f792ca41fd14e4c994032677a13f4ca30056c87b",
       "id": "sf.render.skerris-throne.node.lod1-hull-graphite.primitive.0",
-      "indexCount": 17349,
+      "indexCount": 17391,
       "indexed": true,
-      "materialHash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
+      "materialHash": "00a0e0ef7f883228c175392dd82f08c2bbc5bd4c1325caa7e60b53c88ac0b723",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_graphite",
       "nodeId": "sf.render.skerris-throne.node.lod1-hull-graphite",
@@ -672,16 +672,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ca5fae4fb158e44cd16c05af328903d39048d23a0caa02382d11aac726eb07f",
+      "geometryHash": "e37bf86871372f5ff911af091fd8eacd24389316c09b16fd3f609f18eeb0ba68",
       "id": "sf.render.skerris-throne.node.lod1-hull-helios.primitive.0",
-      "indexCount": 5349,
+      "indexCount": 5367,
       "indexed": true,
-      "materialHash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
+      "materialHash": "1abc1b4e69a47d11f66b1a984b9d5a3c1c7fb9b08bff5f7fb706cf631b97b342",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_helios",
       "nodeId": "sf.render.skerris-throne.node.lod1-hull-helios",
       "primitiveIndex": 0,
-      "vertexCount": 2148
+      "vertexCount": 2150
     },
     {
       "bounds": {
@@ -697,16 +697,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0716e85a0e0b87691b85d798f342d4f9ed1d93583287877520b23bf17bd80563",
+      "geometryHash": "309ecba36f29aac7a0f87be96420920b82c7f2da6a9d14f04f7f9d33d8f689cf",
       "id": "sf.render.skerris-throne.node.lod1-hull-navy.primitive.0",
-      "indexCount": 2790,
+      "indexCount": 2796,
       "indexed": true,
-      "materialHash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
+      "materialHash": "88f4d902a4ff0e8e311624b182925e30ca0860546e06b33bca13f34be95dafc5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_navy",
       "nodeId": "sf.render.skerris-throne.node.lod1-hull-navy",
       "primitiveIndex": 0,
-      "vertexCount": 1079
+      "vertexCount": 1081
     },
     {
       "bounds": {
@@ -722,16 +722,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6023bbb5ba54d4c5d80a4913e77f05ff7b0ace028674e7d71c9c4e42e547d15",
+      "geometryHash": "194d5fea4d6165e3a75bb3058b18396552552cb376428a600ac28a3bed21e815",
       "id": "sf.render.skerris-throne.node.lod1-hull-teal.primitive.0",
-      "indexCount": 2340,
+      "indexCount": 2343,
       "indexed": true,
-      "materialHash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
+      "materialHash": "a208dc82ae8c7079239881530459cb279a4b43a7de0869772f3bd341eadb98fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_teal",
       "nodeId": "sf.render.skerris-throne.node.lod1-hull-teal",
       "primitiveIndex": 0,
-      "vertexCount": 932
+      "vertexCount": 933
     },
     {
       "bounds": {
@@ -747,41 +747,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e67d32f17990e5592050612a09672c348f73d0375bbb94ca0c5acf394746679",
+      "geometryHash": "52c840abcb4ddb8e308a27b0bd928c679b89a2e2d69160b7863a0bd961bdbaa0",
       "id": "sf.render.skerris-throne.node.lod1-hull-work.primitive.0",
-      "indexCount": 2655,
+      "indexCount": 2661,
       "indexed": true,
-      "materialHash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
+      "materialHash": "bbb2ee8ea41dd4048d350c3706f42e0725eeb3004e90487e9a59709862e89a37",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_work",
       "nodeId": "sf.render.skerris-throne.node.lod1-hull-work",
       "primitiveIndex": 0,
-      "vertexCount": 1028
+      "vertexCount": 1030
     },
     {
       "bounds": {
         "max": [
           79.13813781738281,
           64.89888000488281,
-          82.00505065917969
+          82.00360870361328
         ],
         "min": [
           -117.10091400146484,
           -5.297290325164795,
-          -107.50244903564453
+          -107.50389099121094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ea4b32d658f9c1a5d75daa09e72774ab74ec507cf37ee2c25f84582f9dc4a3b",
+      "geometryHash": "22c0303f5b7ac2b21e964685326f9b64b9bda39ba208e21c1936c77d005569ce",
       "id": "sf.render.skerris-throne.node.lod1-hull.primitive.0",
-      "indexCount": 10314,
+      "indexCount": 10341,
       "indexed": true,
-      "materialHash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
+      "materialHash": "1ac51676b82a24bbe3fec7e693d38e5d1bd9fa312cd9b62d904b2fe0434c0d29",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.skerris-throne.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 4969
+      "vertexCount": 4982
     },
     {
       "bounds": {
@@ -797,7 +797,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40d4ca3483fccd4b031194d386c52228e525103cfadb44e34a756ae34244f8a7",
+      "geometryHash": "2e9f8f40e16b9e2900bdec5e83a53db8af4d46046ddf31e7c5a33d053592252f",
       "id": "sf.render.skerris-throne.node.lod1-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -822,16 +822,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16c9bdbd12e4e9dea316690e02274e6fb6d725aa606277ba7212e630659e86f9",
+      "geometryHash": "d6aa5c9a7a65e70135718e4b9b3f04365f7c0dd886181e975013dc6319cda81e",
       "id": "sf.render.skerris-throne.node.lod1-livery.primitive.0",
-      "indexCount": 3018,
+      "indexCount": 3036,
       "indexed": true,
-      "materialHash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
+      "materialHash": "30eecd7760fc9655ef7c24a5df2503918d8a93d316242d34029aff43078e5c09",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.skerris-throne.node.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1224
+      "vertexCount": 1232
     },
     {
       "bounds": {
@@ -847,16 +847,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be46f801595880acd8e40ea94816fb7131757b9255a9f8bdde26ec34881c1218",
+      "geometryHash": "cfb9d2f9e83f9e0107f1963bd39c18d0c2f0475ef68f21b1f777a8b612278149",
       "id": "sf.render.skerris-throne.node.lod1-mechanical.primitive.0",
-      "indexCount": 6069,
+      "indexCount": 6078,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "2f5b064aa953b2aea1d9260815376d9a7c99dfe1a90fab55fd4d624850438af9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.skerris-throne.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2699
+      "vertexCount": 2703
     },
     {
       "bounds": {
@@ -872,11 +872,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "762eb4a497ab38ddb9f9c2bef4dac409a9b147c00ed4c244d99305f0d60a92c3",
+      "geometryHash": "8d3b4650711956337a8a3a1eb2ec0af20792706caf2bfa563fccf328ceb99474",
       "id": "sf.render.skerris-throne.node.lod1-mechanicaldark-deck.primitive.0",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
+      "materialHash": "87e314c643550ad8ba054e9419eedb9fab62a4cad6abf3d587ee63662c9fdfea",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark_deck",
       "nodeId": "sf.render.skerris-throne.node.lod1-mechanicaldark-deck",
@@ -897,16 +897,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "909899c404200a86dd486bc78fa041ee7bf063d9ac06d0f84ef61718c6e0f526",
+      "geometryHash": "a6b4b467a58874e37d2621ad40499f3dcdbbe625d78136d36ff4ca83b09c0c93",
       "id": "sf.render.skerris-throne.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 5307,
+      "indexCount": 5427,
       "indexed": true,
-      "materialHash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
+      "materialHash": "944d87e9aaf04772678e0f5623dbdbb1976b8715f5ecc98ab85b389884e51cb6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.skerris-throne.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2198
+      "vertexCount": 2249
     },
     {
       "bounds": {
@@ -922,16 +922,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41ebed358dbf8d912314fc4911bb87aee4132d8fee9bf493de703fe9f6ee9899",
+      "geometryHash": "10b2642db1bd1ff4f0c0b802ef45ca89dcfc65afface7a830789350416c1f820",
       "id": "sf.render.skerris-throne.node.lod1-warning.primitive.0",
-      "indexCount": 1230,
+      "indexCount": 1254,
       "indexed": true,
-      "materialHash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
+      "materialHash": "5ea0bcf4553a53bceb4afd777d4cb0c929dd15be213335558e503d9dc9c5b629",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.skerris-throne.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 500
+      "vertexCount": 508
     },
     {
       "bounds": {
@@ -947,16 +947,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9efc1186ac666999e0f5eb8506932576dd5f5ed4802ec31e427b8e9d2abe7572",
+      "geometryHash": "68c75cc60d3faaa5251d1ca912dd43000e732e940253c4d72b2cb6dc2cdeb8dc",
       "id": "sf.render.skerris-throne.node.lod2-armor.primitive.0",
-      "indexCount": 7386,
+      "indexCount": 7392,
       "indexed": true,
-      "materialHash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
+      "materialHash": "5bd1cab69a2a8f2e2e3d21be5fb527ad12fd073b5de88d6a99336abecada546b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.skerris-throne.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 4479
+      "vertexCount": 4501
     },
     {
       "bounds": {
@@ -972,7 +972,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92670367d59148ff8832a959fd7642356c23156047e3000096dd0eec2e0d93aa",
+      "geometryHash": "07bdf7c372cb69581cf6eb4110dde1f25ed33bd5c7e299c95c859982a73471ea",
       "id": "sf.render.skerris-throne.node.lod2-beacon-amber.primitive.0",
       "indexCount": 612,
       "indexed": true,
@@ -997,7 +997,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f876b1189a465eb68060a7789d831b75ce1a97431b19c53d71b2f92d246de17",
+      "geometryHash": "78d14ed6185f813e79f58c8c7b27134e16ac89f918e76cb28bc40ad3577a3cf8",
       "id": "sf.render.skerris-throne.node.lod2-canopy.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -1022,11 +1022,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40dd5121c9592da48436acc6effd48dae0123dc9321f2a32c152cf50aa5b2f8a",
+      "geometryHash": "1e77cf1074a55472caf2e34d8757ad270579cda6e662f6938973fe90028f53e9",
       "id": "sf.render.skerris-throne.node.lod2-hull-bone.primitive.0",
       "indexCount": 732,
       "indexed": true,
-      "materialHash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
+      "materialHash": "bdfdf458757e639069637420dcc25a2266f4c8debf8a9daee5bce9779c2eaec0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_bone",
       "nodeId": "sf.render.skerris-throne.node.lod2-hull-bone",
@@ -1047,16 +1047,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5477a367f366520fa8586a0c8543eaafc306f0e05b533d5bdc21db814539a83d",
+      "geometryHash": "bf2d28c94a6f9cd316baea043e76164747f1f091ebad0f84b46587e03ae3b190",
       "id": "sf.render.skerris-throne.node.lod2-hull-graphite.primitive.0",
       "indexCount": 6933,
       "indexed": true,
-      "materialHash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
+      "materialHash": "00a0e0ef7f883228c175392dd82f08c2bbc5bd4c1325caa7e60b53c88ac0b723",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_graphite",
       "nodeId": "sf.render.skerris-throne.node.lod2-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 4065
+      "vertexCount": 4067
     },
     {
       "bounds": {
@@ -1072,16 +1072,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0cfa46c5b7e2b535407f1a3ae20d483ebbb072c806d5ce32c044d3883a20143f",
+      "geometryHash": "1096118bf44be11217285aa1d218daf7cc369f024366764d7c38d1bc211a55a1",
       "id": "sf.render.skerris-throne.node.lod2-hull-helios.primitive.0",
       "indexCount": 1788,
       "indexed": true,
-      "materialHash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
+      "materialHash": "1abc1b4e69a47d11f66b1a984b9d5a3c1c7fb9b08bff5f7fb706cf631b97b342",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_helios",
       "nodeId": "sf.render.skerris-throne.node.lod2-hull-helios",
       "primitiveIndex": 0,
-      "vertexCount": 857
+      "vertexCount": 860
     },
     {
       "bounds": {
@@ -1097,11 +1097,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60f26b9b8cb8c9657555ec8af0a51315d048a9a86d7065a110424f3311db3d24",
+      "geometryHash": "a90fb9bb6d3f651248254bcb24329b7c1956a398023d5440b66649b38c8c01fd",
       "id": "sf.render.skerris-throne.node.lod2-hull-navy.primitive.0",
       "indexCount": 1134,
       "indexed": true,
-      "materialHash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
+      "materialHash": "88f4d902a4ff0e8e311624b182925e30ca0860546e06b33bca13f34be95dafc5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_navy",
       "nodeId": "sf.render.skerris-throne.node.lod2-hull-navy",
@@ -1122,16 +1122,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb73fcabf06b0fe70086aa01c7f1aadc2c797c480d7bb90cd66aa42b7bdf17c5",
+      "geometryHash": "0c03a4f30452f9fc8aeac046c1fe26b729ac30e70008d6a386d89c838bec000b",
       "id": "sf.render.skerris-throne.node.lod2-hull-teal.primitive.0",
       "indexCount": 843,
       "indexed": true,
-      "materialHash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
+      "materialHash": "a208dc82ae8c7079239881530459cb279a4b43a7de0869772f3bd341eadb98fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_teal",
       "nodeId": "sf.render.skerris-throne.node.lod2-hull-teal",
       "primitiveIndex": 0,
-      "vertexCount": 433
+      "vertexCount": 436
     },
     {
       "bounds": {
@@ -1147,16 +1147,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa35300840a6fde4fa3ba0d4791c11492079fc49b30c4f0906065f653d987eb1",
+      "geometryHash": "0b13a7cbcabe2f30a0ca8c7865c1f20ad311879026e8f288b7ac99fd9d8a1683",
       "id": "sf.render.skerris-throne.node.lod2-hull-work.primitive.0",
       "indexCount": 963,
       "indexed": true,
-      "materialHash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
+      "materialHash": "bbb2ee8ea41dd4048d350c3706f42e0725eeb3004e90487e9a59709862e89a37",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_work",
       "nodeId": "sf.render.skerris-throne.node.lod2-hull-work",
       "primitiveIndex": 0,
-      "vertexCount": 471
+      "vertexCount": 479
     },
     {
       "bounds": {
@@ -1172,16 +1172,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5bfabcbf517871ef1caba1827da9742238558b40ca9bcdc3b5093d028735f725",
+      "geometryHash": "6a4eb987c0c42258660e3ad874029c696cce29675e589c9bcf04b0f1fe267051",
       "id": "sf.render.skerris-throne.node.lod2-hull.primitive.0",
-      "indexCount": 3363,
+      "indexCount": 3357,
       "indexed": true,
-      "materialHash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
+      "materialHash": "1ac51676b82a24bbe3fec7e693d38e5d1bd9fa312cd9b62d904b2fe0434c0d29",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.skerris-throne.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1921
+      "vertexCount": 1920
     },
     {
       "bounds": {
@@ -1197,7 +1197,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40d4ca3483fccd4b031194d386c52228e525103cfadb44e34a756ae34244f8a7",
+      "geometryHash": "2e9f8f40e16b9e2900bdec5e83a53db8af4d46046ddf31e7c5a33d053592252f",
       "id": "sf.render.skerris-throne.node.lod2-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1222,16 +1222,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e11abc0c48a9fe6267de2aa7bbd33d7b2750a0b4a74f92e5b13280dfc8f7589",
+      "geometryHash": "c124abead117f08f17b57af3c4671168fa77391f3a76d0a864d4064d5e192253",
       "id": "sf.render.skerris-throne.node.lod2-livery.primitive.0",
       "indexCount": 1047,
       "indexed": true,
-      "materialHash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
+      "materialHash": "30eecd7760fc9655ef7c24a5df2503918d8a93d316242d34029aff43078e5c09",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.skerris-throne.node.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 491
+      "vertexCount": 497
     },
     {
       "bounds": {
@@ -1247,11 +1247,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6e7e658bb12e854b7f7dbc8d707521f48fe6d22ba8cc3637608bd1358795039",
+      "geometryHash": "992b9f457f7741b389b1401ed53459cd91bff57733d4838273835325d9dc8d53",
       "id": "sf.render.skerris-throne.node.lod2-mechanical.primitive.0",
       "indexCount": 1746,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "2f5b064aa953b2aea1d9260815376d9a7c99dfe1a90fab55fd4d624850438af9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.skerris-throne.node.lod2-mechanical",
@@ -1272,11 +1272,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eda5ae2fa6fc94dae07a8d6a776bee285966b72746d7d253573430b6495a6ff4",
+      "geometryHash": "6d21a1a1e60565e2a52d28a448dd53628f30e98b90608943650f32b58c3eb32e",
       "id": "sf.render.skerris-throne.node.lod2-mechanicaldark-deck.primitive.0",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
+      "materialHash": "87e314c643550ad8ba054e9419eedb9fab62a4cad6abf3d587ee63662c9fdfea",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark_deck",
       "nodeId": "sf.render.skerris-throne.node.lod2-mechanicaldark-deck",
@@ -1297,16 +1297,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e59e1117c1d818fe26cf4a1c247467e264eb889267ee862f1814a5b91a23ceda",
+      "geometryHash": "9ee2b1b6b234029e48f15785210dfa132e7c3bc3226165dbe1e94c599bb4635c",
       "id": "sf.render.skerris-throne.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 2058,
       "indexed": true,
-      "materialHash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
+      "materialHash": "944d87e9aaf04772678e0f5623dbdbb1976b8715f5ecc98ab85b389884e51cb6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.skerris-throne.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 984
+      "vertexCount": 985
     },
     {
       "bounds": {
@@ -1322,16 +1322,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e219bec216fee83b571b0b1da6c756a8f424cf5661fc02e456fc6b94527ff78b",
+      "geometryHash": "6ad8664b79d962b3752b278a880680fcc823e58c164404187dead81d50f701c1",
       "id": "sf.render.skerris-throne.node.lod2-warning.primitive.0",
       "indexCount": 387,
       "indexed": true,
-      "materialHash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
+      "materialHash": "5ea0bcf4553a53bceb4afd777d4cb0c929dd15be213335558e503d9dc9c5b629",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.skerris-throne.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 177
+      "vertexCount": 187
     }
   ],
   "hlods": [],
@@ -1339,9 +1339,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
-      "id": "material:09ef07fe3867b6d6ce3e5d05",
-      "name": "Material_Hull_helios",
+      "hash": "00a0e0ef7f883228c175392dd82f08c2bbc5bd4c1325caa7e60b53c88ac0b723",
+      "id": "material:00a0e0ef7f883228c175392d",
+      "name": "Material_Hull_graphite",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1352,7 +1352,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1364,7 +1364,71 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1abc1b4e69a47d11f66b1a984b9d5a3c1c7fb9b08bff5f7fb706cf631b97b342",
+      "id": "material:1abc1b4e69a47d11f66b1a98",
+      "name": "Material_Hull_helios",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ac51676b82a24bbe3fec7e693d38e5d1bd9fa312cd9b62d904b2fe0434c0d29",
+      "id": "material:1ac51676b82a24bbe3fec7e6",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1378,168 +1442,8 @@
       "textures": []
     },
     {
-      "hash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
-      "id": "material:2160bb9541925b979551905f",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
-      "id": "material:31d454132aedf11ceb19d293",
-      "name": "Material_Hull_bone",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
-      "id": "material:43d8178f6d060a050c96fdd5",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
-      "id": "material:477919a404255dfc4c2b4d8a",
-      "name": "Material_MechanicalDark_deck",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
-      "id": "material:69db4b7e15ee0b5aaeed446a",
-      "name": "Material_Hull_graphite",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
+      "hash": "2f5b064aa953b2aea1d9260815376d9a7c99dfe1a90fab55fd4d624850438af9",
+      "id": "material:2f5b064aa953b2aea1d92608",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1563,15 +1467,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_landmark_skerris_throne_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
-      "id": "material:8be52376a17c8e344d857858",
+      "hash": "30eecd7760fc9655ef7c24a5df2503918d8a93d316242d34029aff43078e5c09",
+      "id": "material:30eecd7760fc9655ef7c24a5",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1583,7 +1487,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1595,16 +1499,16 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
-      "id": "material:9041debcff8d54679f362a48",
-      "name": "Material_Hull_work",
+      "hash": "5bd1cab69a2a8f2e2e3d21be5fb527ad12fd073b5de88d6a99336abecada546b",
+      "id": "material:5bd1cab69a2a8f2e2e3d21be",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1615,7 +1519,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1627,15 +1531,111 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
-      "id": "material:b4c5efd16f228e2b14ba4757",
+      "hash": "5ea0bcf4553a53bceb4afd777d4cb0c929dd15be213335558e503d9dc9c5b629",
+      "id": "material:5ea0bcf4553a53bceb4afd77",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "87e314c643550ad8ba054e9419eedb9fab62a4cad6abf3d587ee63662c9fdfea",
+      "id": "material:87e314c643550ad8ba054e94",
+      "name": "Material_MechanicalDark_deck",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "88f4d902a4ff0e8e311624b182925e30ca0860546e06b33bca13f34be95dafc5",
+      "id": "material:88f4d902a4ff0e8e311624b1",
+      "name": "Material_Hull_navy",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "944d87e9aaf04772678e0f5623dbdbb1976b8715f5ecc98ab85b389884e51cb6",
+      "id": "material:944d87e9aaf04772678e0f56",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1659,7 +1659,39 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_landmark_skerris_throne_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a208dc82ae8c7079239881530459cb279a4b43a7de0869772f3bd341eadb98fa",
+      "id": "material:a208dc82ae8c707923988153",
+      "name": "Material_Hull_teal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1673,9 +1705,9 @@
       "textures": []
     },
     {
-      "hash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
-      "id": "material:b96d7c55794ce3be57ee8c76",
-      "name": "Material_Hull_navy",
+      "hash": "bbb2ee8ea41dd4048d350c3706f42e0725eeb3004e90487e9a59709862e89a37",
+      "id": "material:bbb2ee8ea41dd4048d350c37",
+      "name": "Material_Hull_work",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1686,7 +1718,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1698,16 +1730,16 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
-      "id": "material:d2b281a7378d1b1137342c07",
-      "name": "Material_Hull",
+      "hash": "bdfdf458757e639069637420dcc25a2266f4c8debf8a9daee5bce9779c2eaec0",
+      "id": "material:bdfdf458757e639069637420",
+      "name": "Material_Hull_bone",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1718,7 +1750,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1730,7 +1762,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_landmark_skerris_throne_AO-forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1742,38 +1774,6 @@
       "name": "Material_Emissive_Amber",
       "pipelineKey": "opaque:front",
       "textures": []
-    },
-    {
-      "hash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
-      "id": "material:f00db1522cb0bafdf39c4105",
-      "name": "Material_Hull_teal",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     }
   ],
   "nodes": [
@@ -4330,19 +4330,19 @@
       "sha256": "33382f327c833253770e16e61f6d0d3e8c7e06279f7c07f28efb5cc6c9f8d6a3"
     },
     "sourceGlb": {
-      "bytes": 2411520,
-      "sha256": "d3c01ecc79c544aa77394d334d54537e2443a65c706ba7fb9add01fcf177ebdd",
+      "bytes": 6964848,
+      "sha256": "0a443823ee33a71947385a3442839715023a878ed4f4562dfa132fe2d0ed87e2",
       "uri": "place_landmark_skerris_throne.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4776260,
-    "sha256": "26653c78a3bf3d2b511f79291db699ed3ddcc6f2fd6d03cc71bf3c9fd9abc999",
+    "bytes": 9406860,
+    "sha256": "78045d030218ed6aafc8455f835da890a2e5d833fad158c520e4270ae98b6f00",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6036,7 +6036,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb"
   },
-  "runtimeHash": "babcb16979ffcb62f4987454ecb853912d87decb7af1a23dcc1beb85dc110c40",
+  "runtimeHash": "89f22c5dbc6e37240f26933bbaa55db77ab32e774b6c48549096716a5229bef1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

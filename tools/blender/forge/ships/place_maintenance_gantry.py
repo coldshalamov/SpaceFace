@@ -19,6 +19,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- portal frames: leg pairs + top crossbeam, repeated along Y ---------------------------------------
     for k in range(5):
@@ -55,8 +56,10 @@ def build():
     # --- travelling trolley + hoist under the crown ---------------------------------------------------------
     F.box(s, 'Trolley', (0, 1.0, 9.9), (3.6, 2.4, 0.9), material='paint2', bevel=0.08)
     for e in (-1, 1):
-        F.cylinder(s, f'TrolleyWheel{e:+d}', (e * 1.7, 0.2, 9.7), (e * 1.7, 1.8, 9.7),
+        o = F.cylinder(s, f'TrolleyWheel{e:+d}', (e * 1.7, 0.2, 9.7), (e * 1.7, 1.8, 9.7),
                    0.3, material='gunmetal', segments=10)
+        # wheels turn about their axle as the trolley works the rails
+        s.anim(o, 'spin:side:0p8', (e * 1.7, 1.0, 9.7))
     F.cylinder(s, 'HoistCable', (0, 1.0, 9.5), (0, 1.0, 6.4), 0.09, material='dark',
                segments=8)
     F.box(s, 'Hook', (0, 1.0, 6.1), (0.8, 0.8, 0.7), material='gunmetal', bevel=0.06)
@@ -69,9 +72,14 @@ def build():
 
     # --- berth guide lamps marking where the hull parks ------------------------------------------------------
     for k, y in enumerate((-6.0, 0.0, 6.0)):
-        F.light(s, f'BerthLamp{k}', (0, y, 1.2), 'glow_amber', size=0.35)
+        pos = (0, y, 1.2)
+        o = F.light(s, f'BerthLamp{k}', pos, 'glow_amber', size=0.35)
+        s.anim(o, f'chase:berth:{k}:3:2p8', pos)
     F.box(s, 'BerthPad', (0, 0, 0.15), (3.0, 16.0, 0.3), material='dark', bevel=0.0)
+    n0 = len(s.objects)
     F.beacon(s, 'GantryStrobe', (0, -9.0, 10.2), finish='glow_red', size=0.4)
+    s.anim([o for o in s.objects[n0:] if o.name == 'GantryStrobe_Dome'], 'blink:1p2:0p5',
+           (0, -9.0, 10.2))
     return s
 
 

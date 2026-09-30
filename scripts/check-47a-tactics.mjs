@@ -60,6 +60,18 @@ const tactics = [
     commands: [
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
     ],
+    // The live-state surrender predicate needs the spindle parked within 180 WU of the
+    // recovery tug's hold point (~815,95). Before the owner-validated hull-burst physics
+    // overhaul (Slices A/1..A/7 + Packages A..D, esp. 1639c221e Package D), passive drift
+    // coincidentally landed the towed pair inside that bubble; on the new solver the pair
+    // settles ~300 WU short. The tape now demonstrates the handoff on purpose: a moderated
+    // burn toward the tug (full throttle snaps the reeled tether, measured tension ~10310
+    // at moveZ=1), then a reduced hold so the trailing spindle sits inside the predicate
+    // bubble when resolution_branch opens at tick ~36001.
+    inputs: [
+      { tick: 900, input: { moveZ: 0.7, moveX: -0.3, aimAngle: -0.3, boost: false, fire: false, fireGroup: null } },
+      { tick: 3600, input: { moveZ: 0.15, moveX: -0.05, aimAngle: 0, boost: false, fire: false, fireGroup: null } },
+    ],
     assert(trace) {
       assert(trace.metrics.tetherReel >= 4, 'control specialist should prove controlled Massline tow');
       assert.equal(trace.metrics.tetherBroken, 0, 'control specialist should complete without cutting the Massline');
@@ -77,6 +89,14 @@ const tactics = [
     commands: [
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
       frameCommand(900, combatAction('action_sling', { attachment: 'latestOwned' })),
+    ],
+    // Same Package-D drift repair as control_specialist: the sling is aimed at the
+    // Kessler handoff beacon (~780,320) and the player then flies a moderated tow so the
+    // trailing spindle finishes inside the 160 WU predicate bubble at resolution_branch.
+    inputs: [
+      { tick: 860, input: { aimAngle: 0.4 } },
+      { tick: 1400, input: { moveZ: 0.8, moveX: 0.15, aimAngle: 0.55, boost: false, fire: false, fireGroup: null } },
+      { tick: 20000, input: { moveZ: 0, moveX: 0, aimAngle: 0, boost: false, fire: false, fireGroup: null } },
     ],
     assert(trace) {
       assert(trace.metrics.tetherReel >= 4, 'covert courier should keep positive Massline control before diversion');
@@ -169,6 +189,10 @@ function writeTacticTape(tactic) {
     const commands = Array.isArray(frame.commands) ? frame.commands.slice() : [];
     commands.push(item.command);
     frame.commands = commands;
+  }
+  for (const item of tactic.inputs || []) {
+    const frame = frameAt(byTick, item.tick);
+    frame.input = { ...(frame.input || {}), ...item.input };
   }
   if (!tactic.livePredicate) {
     frameAt(byTick, BRANCH_COMMAND_TICK).commands = [{

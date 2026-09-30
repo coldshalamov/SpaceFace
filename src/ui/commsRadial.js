@@ -25,6 +25,7 @@ import { dpIcon } from './deckplate/icons.js';
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
+import { portraitAssetForContact } from '../data/portraits.js';
 
 const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
 const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
@@ -47,6 +48,152 @@ const ACTION_ICON = Object.freeze({
 
 const KNOWN_ACTION_IDS = new Set(Object.keys(ACTION_ICON));
 const CLOSE_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+
+// ORRERY Wave 3 (audit C2-C9): the hail as an instrument, not a plate. styles/commsradial.css
+// is foreign to this unit, so the audit's restyle rides an override sheet injected from this
+// module (same pattern as wingmanRadial.js injectCss); it loads after the foreign sheet, so
+// equal specificity wins, and the root rule doubles the id to beat the foreign media query too.
+// Perf law: no backdrop-filter over live flight, static mask/gradient layers only, entrance and
+// decay animate transform/opacity exclusively, DOM writes only on value change.
+const COMMS_ORRERY_STYLE_ID = 'sf-commsfan-orrery-style';
+
+function injectCommsOrreryCss() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(COMMS_ORRERY_STYLE_ID)) return;
+  const s = document.createElement('style');
+  s.id = COMMS_ORRERY_STYLE_ID;
+  s.textContent = `
+  /* C4: dock the hail to the right toast rail (x>1560 at 1920), never bottom-center.
+     R6 (recall-B): +24px right (right 16→8, width 336→320) so the BEACON tag
+     clears the glass edge; the left edge still lands 1592 at 1920. */
+  #sf-commsfan.sf-commsfan {
+    left:auto; right:8px; bottom:auto; top:50%;
+    transform:translateY(-50%);
+    width:min(320px, 30vw);
+  }
+  /* C8 (dim half): the shared overlay dim — one static radial layer, opacity only.
+     The 0.985 world-scale half needs the world host and rides with HUD1. */
+  #sf-commsfan.sf-commsfan::before {
+    content:""; position:absolute; inset:-70px; z-index:-1; pointer-events:none;
+    background:radial-gradient(closest-side, rgb(5 7 10 / .55) 0%, rgb(5 7 10 / .28) 55%, transparent 72%);
+    opacity:0; transition:opacity .18s ease;
+  }
+  #sf-commsfan.sf-commsfan.is-open::before { opacity:1; }
+  /* C2: roundel + waveform on dissolved glass — no rect, no corners, no border, no
+     backdrop-filter. One static gradient-mask layer; the mask fades only the rim. */
+  #sf-commsfan .sf-commsfan__hub {
+    border:0; box-shadow:none; border-radius:0;
+    /* R5: class+freq pack left (auto auto, both left-set) so the mid-gap is
+       the 8px column gap, never the 136px 1fr slack. R7: the decay column
+       grows 18→26 so the RESPOND micro-label fits inside column+gaps. R9:
+       16px below the trace so the glass ends crisply. */
+    grid-template-columns:28px 26px auto auto; column-gap:8px;
+    padding:10px 12px 16px 10px;
+    background:radial-gradient(120% 130% at 50% 42%, rgb(8 11 16 / .78) 0%, rgb(8 11 16 / .55) 58%, rgb(8 11 16 / .28) 82%, transparent 100%);
+    -webkit-mask-image:radial-gradient(118% 128% at 50% 46%, #000 72%, transparent 99%);
+    mask-image:radial-gradient(118% 128% at 50% 46%, #000 72%, transparent 99%);
+  }
+  #sf-commsfan .sf-commsfan__hub:hover { filter:none; }
+  #sf-commsfan .sf-commsfan__hub:hover .sf-commsfan__pilot { color:var(--dp-lamp-hot, #ffd98c); }
+  /* C7: the 28px portrait roundel — produced img when the contact resolves one,
+     the faction/target glyph in the same ring otherwise. */
+  #sf-commsfan .sf-commsfan__crest {
+    grid-column:1; grid-row:1 / span 2; align-self:center;
+    width:28px; height:28px; border-radius:50%; overflow:hidden;
+    border:1px solid rgb(232 226 212 / .55);
+    background:rgb(8 11 16 / .6); color:var(--dp-ink, #e8e2d4);
+  }
+  #sf-commsfan .sf-commsfan__crest img { width:100%; height:100%; object-fit:cover; display:block; }
+  #sf-commsfan .sf-commsfan__crest svg { width:16px; height:16px; }
+  /* C9: the 18px decay ring beside the roundel — a conic head rotating on the
+     compositor (transform only). Duration is set once per offer; zero JS/frame. */
+  #sf-commsfan .sf-commsfan__decay {
+    grid-column:2; grid-row:1 / span 2; align-self:center; justify-self:center;
+    position:relative; width:18px; height:18px;
+  }
+  #sf-commsfan .sf-commsfan__decay::before {
+    content:""; position:absolute; inset:0; border-radius:50%;
+    border:1px solid rgb(232 226 212 / .28);
+  }
+  #sf-commsfan .sf-commsfan__decay i {
+    position:absolute; inset:0; border-radius:50%; display:block;
+    background:conic-gradient(from 0deg, var(--dp-ink, #e8e2d4) 0deg, transparent 92deg);
+    -webkit-mask:radial-gradient(closest-side, transparent 62%, #000 64%);
+    mask:radial-gradient(closest-side, transparent 62%, #000 64%);
+    animation:sfcf-decay linear 1;
+    transform-origin:50% 50%;
+  }
+  @keyframes sfcf-decay { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+  /* R7: the decay arc's job title — a 9px micro-label under the ring,
+     centered on the 26px decay column (its tails land in the 8px gaps). */
+  #sf-commsfan .sf-commsfan__decay::after {
+    content:"RESPOND"; position:absolute; top:calc(100% + 1px); left:50%;
+    transform:translateX(-50%); white-space:nowrap;
+    font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 700, "wdth" 68;
+    font-size:9px; letter-spacing:.08em; line-height:1; color:var(--dp-ink-dim, #b7b4a6);
+  }
+  /* C6: class + freq as one label-voice line ("HAULER · FREQ 3.90K"). */
+  #sf-commsfan .sf-commsfan__pilot { grid-column:3 / span 2; grid-row:1; }
+  #sf-commsfan .sf-commsfan__class { grid-column:3; grid-row:2; white-space:nowrap; }
+  #sf-commsfan .sf-commsfan__freq { grid-column:4; grid-row:2; white-space:nowrap; }
+  #sf-commsfan .sf-commsfan__freq::before { content:"· "; }
+  /* C3: the bare bone trace + peak dots — no grid box, no glow filter. */
+  #sf-commsfan .sf-commsfan__ribbon {
+    background:none; box-shadow:none; filter:none; border-radius:0;
+    padding:0; margin-top:2px; height:24px; color:var(--dp-ink, #e8e2d4);
+    overflow:visible;
+  }
+  #sf-commsfan .sf-commsfan__ribbon path { stroke-width:1.6; }
+  #sf-commsfan .sf-commsfan__peak { fill:var(--dp-ink, #e8e2d4); }
+  /* C5: the radial fan — keys ride the arc bow plus a fan rotation round a pivot
+     off the hub edge, and swing in staggered on transform/opacity only. */
+  #sf-commsfan .sf-commsfan__wedge {
+    transform:translateX(var(--bow, 0px)) rotate(var(--fan-rot, 0deg));
+    transform-origin:-72px 50%;
+  }
+  #sf-commsfan.is-open .sf-commsfan__wedge {
+    animation:sfcf-swing .38s cubic-bezier(.2,.9,.25,1.12) backwards;
+    animation-delay:calc(var(--i, 0) * 55ms);
+  }
+  @keyframes sfcf-swing {
+    from { transform:translateX(var(--bow, 0px)) rotate(calc(var(--fan-rot, 0deg) - 11deg)) translateY(9px); opacity:0; }
+    to { transform:translateX(var(--bow, 0px)) rotate(var(--fan-rot, 0deg)) translateY(0); opacity:1; }
+  }
+  /* R3 (recall-B): 22px bone-outline diamond chips (wingman W3 grammar) —
+     the digit rides a rotated square, never a bare box edge. */
+  #sf-commsfan .sf-commsfan__key {
+    order:9; flex:none; position:relative; z-index:0;
+    width:22px; height:22px; padding:0 0 1px;
+    display:inline-grid; place-items:center; box-sizing:border-box;
+    border:0; background:none;
+    font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 800, "wdth" 75;
+    font-size:12px; line-height:1; color:var(--dp-ink, #e8e2d4);
+  }
+  #sf-commsfan .sf-commsfan__key::before {
+    content:""; position:absolute; inset:2px; z-index:-1; transform:rotate(45deg);
+    border:1px solid rgb(232 226 212 / .75); background:rgb(8 10 14 / .55);
+  }
+  @media (prefers-reduced-motion:reduce) {
+    #sf-commsfan.is-open .sf-commsfan__wedge { animation:none; }
+    #sf-commsfan .sf-commsfan__decay i { animation:none; }
+    #sf-commsfan.sf-commsfan::before { transition:none; }
+  }
+  html.sf-reduce-motion #sf-commsfan.is-open .sf-commsfan__wedge { animation:none; }
+  html.sf-reduce-motion #sf-commsfan .sf-commsfan__decay i { animation:none; }
+  html.sf-reduce-motion #sf-commsfan.sf-commsfan::before { transition:none; }
+  @media (forced-colors:active) {
+    #sf-commsfan .sf-commsfan__hub { -webkit-mask-image:none; mask-image:none; background:Canvas; border:1px solid CanvasText; }
+    #sf-commsfan .sf-commsfan__crest { border-color:CanvasText; }
+    #sf-commsfan .sf-commsfan__ribbon { color:CanvasText; }
+    #sf-commsfan .sf-commsfan__peak { fill:CanvasText; }
+    #sf-commsfan .sf-commsfan__decay i { background:CanvasText; animation:none; }
+    #sf-commsfan .sf-commsfan__key { color:CanvasText; }
+    #sf-commsfan .sf-commsfan__key::before { border-color:CanvasText; background:Canvas; }
+    #sf-commsfan .sf-commsfan__decay::after { color:CanvasText; }
+  }
+  `;
+  document.head.appendChild(s);
+}
 
 function entityById(state, id) {
   if (!state || id == null) return null;
@@ -148,7 +295,7 @@ export function resolveHailVisual(state, payload, availability = null) {
   };
 }
 
-export function buildHailRibbonPath(seed, amplitude, density, width = 152, height = 24) {
+export function hailRibbonPoints(seed, amplitude, density, width = 152, height = 24) {
   const amp = clamp01(amplitude);
   const dense = clamp01(density);
   const random = seededRandom((seed >>> 0) ^ 0xa81d3f25);
@@ -164,12 +311,34 @@ export function buildHailRibbonPath(seed, amplitude, density, width = 152, heigh
     const y = baseline - (wave * peak + jitter);
     points.push([x, y]);
   }
+  return points;
+}
+
+export function buildHailRibbonPath(seed, amplitude, density, width = 152, height = 24) {
+  const points = hailRibbonPoints(seed, amplitude, density, width, height);
   let d = '';
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i];
     d += `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
   }
   return d;
+}
+
+// C3 peak dots: up to three local maxima of the trace, greedily spread so no two
+// dots crowd. Deterministic — same seed in, same dots out.
+export function hailRibbonPeakPoints(seed, amplitude, density, width = 152, height = 24, max = 3) {
+  const points = hailRibbonPoints(seed, amplitude, density, width, height);
+  const maxima = [];
+  for (let i = 1; i < points.length - 1; i++) {
+    if (points[i][1] <= points[i - 1][1] && points[i][1] <= points[i + 1][1]) maxima.push(points[i]);
+  }
+  maxima.sort((a, b) => a[1] - b[1]);
+  const picked = [];
+  for (const candidate of maxima) {
+    if (picked.length >= max) break;
+    if (picked.every((p) => Math.abs(p[0] - candidate[0]) >= 24)) picked.push(candidate);
+  }
+  return picked;
 }
 
 export function hailFrequencyText(amplitude, density) {
@@ -260,6 +429,9 @@ function layoutSelectorArc(host, buttons) {
     const y = i * (FAN_KEY_H + FAN_KEY_GAP) + FAN_KEY_H / 2;
     const s = half > 0 ? (y - half) / half : 0;
     buttons[i].style.setProperty('--bow', `${(bow * s * s).toFixed(1)}px`);
+    // C5: the radial fan — each key also rotates round a pivot off the hub edge, so the
+    // stack reads as a fan, not a list. Rest state only; the entrance animates from it.
+    buttons[i].style.setProperty('--fan-rot', `${(-s * 7).toFixed(1)}deg`);
   }
   // x = bow * s^2 over the whole track is exactly this quadratic curve; +11 = the lamp column.
   const rail = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -338,6 +510,7 @@ export function createCommsRadial(ctx) {
   const { state, bus } = ctx;
   const root = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
   if (!root) return { tick() {}, destroy() {} };
+  injectCommsOrreryCss();
 
   const fan = document.createElement('div');
   fan.id = 'sf-commsfan';
@@ -347,11 +520,15 @@ export function createCommsRadial(ctx) {
     <div class="sf-commsfan__fan" role="region" aria-label="Quick comms fan">
       <button type="button" class="sf-commsfan__hub" data-k="hub" aria-label="Open tactical hail deck">
         <span class="sf-commsfan__crest" data-k="crest"></span>
+        <span class="sf-commsfan__decay" data-k="decay" aria-hidden="true"><i data-k="decay-head"></i></span>
         <span class="sf-commsfan__pilot" data-k="pilot">NO CONTACT</span>
         <span class="sf-commsfan__class" data-k="classword">HOLD ALT</span>
         <span class="sf-commsfan__freq" data-k="freq"></span>
         <svg class="sf-commsfan__ribbon" viewBox="0 0 152 24" aria-hidden="true" focusable="false">
           <path data-k="ribbon"></path>
+          <circle class="sf-commsfan__peak" data-k="peak" r="1.6" cx="-8" cy="-8"></circle>
+          <circle class="sf-commsfan__peak" data-k="peak" r="1.6" cx="-8" cy="-8"></circle>
+          <circle class="sf-commsfan__peak" data-k="peak" r="1.6" cx="-8" cy="-8"></circle>
         </svg>
       </button>
       <div class="sf-commsfan__wedgehost" data-k="wedgehost"></div>
@@ -408,6 +585,8 @@ export function createCommsRadial(ctx) {
   const classEl = fan.querySelector('[data-k="classword"]');
   const wedgeHost = fan.querySelector('[data-k="wedgehost"]');
   const ribbonPath = fan.querySelector('[data-k="ribbon"]');
+  const decayHead = fan.querySelector('[data-k="decay-head"]');
+  const peakDots = typeof fan.querySelectorAll === 'function' ? [...fan.querySelectorAll('[data-k="peak"]')] : [];
   const freqHost = fan.querySelector('[data-k="freq"]');
   const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
 
@@ -434,6 +613,8 @@ export function createCommsRadial(ctx) {
   let activeOffer = null;
   let activePayload = null;
   let previousFreq = '';
+  let lastRoundelKey = '';
+  let lastDecayKey = null;
   let nextUiUpdateAt = 0;
   let wedgeButtons = [];
   let lastWedgeSig = '';
@@ -455,10 +636,37 @@ export function createCommsRadial(ctx) {
     responseLog.set(targetId, list);
   }
 
+  function paintRoundelGlyph(factionId) {
+    crestEl.innerHTML = factionId ? factionIcon(factionId, 22) : stationIcon('target', 22);
+  }
+
   function updateHubVisual(payload = activePayload) {
     const visual = resolveHailVisual(state, payload, currentAvailability);
     if (!visual) return;
-    crestEl.innerHTML = visual.factionId ? factionIcon(visual.factionId, 22) : stationIcon('target', 22);
+    // C7: the roundel mounts one static img when the contact resolves a produced
+    // portrait, else the faction/target glyph in the same ring. Rewritten only when
+    // the contact identity changes — never on the UI tick.
+    const roundelEntity = entityById(state, visual.targetId);
+    const roundelData = (roundelEntity && roundelEntity.data) || {};
+    const roundelKey = `${String(visual.targetId)}|${visual.factionId || ''}|${roundelData.canonicalKey || roundelData.contactKey || ''}`;
+    if (roundelKey !== lastRoundelKey) {
+      lastRoundelKey = roundelKey;
+      const portraitSrc = portraitAssetForContact({ canonicalKey: roundelData.canonicalKey || roundelData.contactKey || null });
+      if (portraitSrc && typeof document !== 'undefined') {
+        crestEl.innerHTML = '';
+        const img = document.createElement('img');
+        img.alt = `${visual.pilot} portrait`;
+        img.decoding = 'async';
+        img.src = portraitSrc;
+        img.addEventListener('error', () => {
+          lastRoundelKey = '';
+          paintRoundelGlyph(visual.factionId);
+        }, { once: true });
+        crestEl.appendChild(img);
+      } else {
+        paintRoundelGlyph(visual.factionId);
+      }
+    }
     pilotEl.textContent = visual.pilot;
     classEl.textContent = visual.classWord;
     const now = Number(state.simTime) || 0;
@@ -466,6 +674,27 @@ export function createCommsRadial(ctx) {
     const amplitude = payload ? clamp01((Number(payload.expiresAt) - now) / Math.max(1, ttl)) : 0.22;
     const d = buildHailRibbonPath(visual.seed, amplitude, visual.density);
     ribbonPath.setAttribute('d', d);
+    // C3: the peak dots ride the same slow-tick write as the trace — no new cadence.
+    const peaks = hailRibbonPeakPoints(visual.seed, amplitude, visual.density);
+    for (let i = 0; i < peakDots.length; i++) {
+      const dot = peakDots[i];
+      const p = peaks[i];
+      dot.setAttribute('cx', p ? p[0].toFixed(1) : '-8');
+      dot.setAttribute('cy', p ? p[1].toFixed(1) : '-8');
+    }
+    // C9: the decay ring's rotation duration is set once per response window; the
+    // compositor carries every frame after that — zero JS/frame, no dash math.
+    const decayKey = payload ? Number(payload.expiresAt) : 0;
+    if (decayKey !== lastDecayKey) {
+      lastDecayKey = decayKey;
+      if (decayHead) {
+        const remain = payload ? Math.max(0.5, Number(payload.expiresAt) - now) : ttl;
+        decayHead.style.animationDuration = `${remain.toFixed(2)}s`;
+        decayHead.style.animationName = 'none';
+        void decayHead.offsetWidth;
+        decayHead.style.animationName = '';
+      }
+    }
     const freq = hailFrequencyText(amplitude, visual.density);
     const dir = previousFreq && freq > previousFreq ? 'up' : previousFreq && freq < previousFreq ? 'down' : 'flat';
     freqMorph.set(freq, { dir });
@@ -501,11 +730,16 @@ export function createCommsRadial(ctx) {
       button.className = 'sf-commsfan__wedge';
       button.dataset.choice = action.id;
       button.dataset.why = why;
-      button.setAttribute('aria-label', `${action.label}${why ? `. ${why}` : ''}`);
+      // C5: every fan key carries its number — shown in the key chip, exposed to
+      // assistive tech, and live on the keyboard (1-9 choose while the fan is open).
+      button.setAttribute('aria-keyshortcuts', String(i + 1));
+      button.setAttribute('aria-label', `${action.label}, press ${i + 1}${why ? `. ${why}` : ''}`);
+      button.style.setProperty('--i', String(i));
       button.innerHTML = `
         ${wedgeIconSvg(action.id)}
         <span class="sf-commsfan__verb">${action.label}</span>
         ${why ? `<span class="sf-commsfan__why">${why}</span>` : ''}
+        <span class="sf-commsfan__key" aria-hidden="true">${i + 1}</span>
       `;
       if (reason) {
         button.classList.add('is-dim');
@@ -565,6 +799,10 @@ export function createCommsRadial(ctx) {
       (Number(state.simTime) || 0) + CONTACT_HAIL_REQUEST_TTL_S,
     );
     if (!probe || !Array.isArray(probe.actions) || probe.actions.length === 0) return null;
+    // R1 (Wave 3 recall-B): keep the validation probe as the fan's provisional
+    // display offer. openFan paints wedges from it on the open frame; the
+    // scanner's real offer replaces it synchronously in the live game.
+    availability.probeOffer = probe;
     return availability;
   }
 
@@ -575,7 +813,13 @@ export function createCommsRadial(ctx) {
     open = true;
     currentTargetId = availability.targetId;
     currentAvailability = availability;
-    activeOffer = null;
+    // R1 (Wave 3 recall-B): the fan used to paint wedges only from the
+    // scanner's contactHail:offer, which never fires where no scanner runs
+    // (bench stills) — so the hub showed and the fan never opened. Paint from
+    // the validation probe immediately; bus.emit is synchronous, so the live
+    // scanner's real offer overwrites this before a frame paints, and a
+    // scanner reject closes the fan through the clear/handoff handlers.
+    activeOffer = availability.probeOffer || null;
     activePayload = null;
     fan.hidden = false;
     fan.classList.add('is-open');
@@ -599,6 +843,8 @@ export function createCommsRadial(ctx) {
     open = false;
     activeOffer = null;
     lastWedgeSig = '';
+    lastRoundelKey = '';
+    lastDecayKey = null;
     fan.classList.remove('is-open');
     fan.hidden = true;
     wedgeHost.replaceChildren();
@@ -748,6 +994,17 @@ export function createCommsRadial(ctx) {
 
   function onKeyDown(event) {
     if (destroyed) return;
+    // C5: number keys choose the matching fan key while the fan holds the floor.
+    // Alt is allowed through — the fan only stays open while Alt is held.
+    if (open && !deckOpen && event.key >= '1' && event.key <= '9' && !event.ctrlKey && !event.metaKey) {
+      const el = wedgeButtons[Number(event.key) - 1];
+      if (el && !el.classList.contains('is-dim') && el.dataset.choice) {
+        event.preventDefault();
+        event.stopPropagation();
+        choose(el.dataset.choice, 'keyboard');
+        return;
+      }
+    }
     if (event.key === 'Alt') {
       if (altHeld) return;
       altHeld = true;

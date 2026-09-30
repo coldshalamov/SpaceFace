@@ -11,11 +11,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_apron_shuttle",
       "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
-      "releaseSha256": "2772f11aa88fa7158ef5e76b970ebbf4f7a8928a3b6eea58512900e6544265f6",
-      "releaseBytes": 802572,
+      "releaseSha256": "f26cb81473baaaa1d3e555d5f8e9cbe1206980aa7acd0f9bad18fae51c5e1d78",
+      "releaseBytes": 1344404,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/apron-shuttle",
       "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json",
@@ -29,14 +33,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_dart",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart.glb",
-      "releaseSha256": "ae7d725174f6817561adb3c0c25309a30ff3c6a25a5fdebffa13a1d26b63e29d",
-      "releaseBytes": 842044,
+      "releaseSha256": "2e6159b7a3dbbc4cf99d3a45ff4b141e65242c47e43f0b9241f842168a23186a",
+      "releaseBytes": 1418648,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-dart",
       "metadataUrl": "assets/ships/release/render-packages/ashline-dart/render-package.json",
@@ -50,14 +55,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_lode",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_lode.glb",
-      "releaseSha256": "36f209866cbbd4889f866b3b20a000703382a2bef3a7d337e54c2bb7e4d05f63",
-      "releaseBytes": 812492,
+      "releaseSha256": "70456aef6b705d23686d8f3a33d9f1155bea2d608462a2a579f840a689bbd8ae",
+      "releaseBytes": 1382832,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-lode",
       "metadataUrl": "assets/ships/release/render-packages/ashline-lode/render-package.json",
@@ -71,14 +77,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig.glb",
-      "releaseSha256": "752b5ab655a6447463158c9632c450398cb29a9bc363693a3d8af333395fdde6",
-      "releaseBytes": 910188,
+      "releaseSha256": "94a63d9ecacff203c4f49f837901c82eff7ff7c3cbea453a2784167342ebaa8e",
+      "releaseBytes": 1491028,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-rig",
       "metadataUrl": "assets/ships/release/render-packages/ashline-rig/render-package.json",
@@ -92,14 +99,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig_corsair_blade",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb",
-      "releaseSha256": "df5ff59e4c0a7abcf25bc7e5f1467972fd1d2da70198fa8366356513da2171a8",
-      "releaseBytes": 883992,
+      "releaseSha256": "b1c1c382e2fdbaa517263d64484afd4d1a5ea772a10e033602d2e5770dac7a06",
+      "releaseBytes": 1381236,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-rig-corsair-blade",
       "metadataUrl": "assets/ships/release/render-packages/ashline-rig-corsair-blade/render-package.json",
@@ -113,14 +121,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_blackmarket",
       "sourceUrl": "assets/ships/release/parts/places/place_station_blackmarket.glb",
-      "releaseSha256": "58a8bb67d87d28bfcde24c1ee1bb4a74dcabc081984534209538cfd859132c55",
-      "releaseBytes": 2086316,
+      "releaseSha256": "cd85c757a92005a97a21e1da67cf241ecfc83f615e8b23de0218c78b744f7419",
+      "releaseBytes": 2974672,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/blackmarket",
       "metadataUrl": "assets/ships/release/render-packages/blackmarket/render-package.json",
@@ -134,15 +143,16 @@
       "slot": "place",
       "releaseAssetId": "place_cargo_pod_standard",
       "sourceUrl": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
-      "releaseSha256": "c350ab31ff72098ebbb2a04d8f3f720dc20cf04842538d0c62675849558dd62f",
-      "releaseBytes": 483916,
+      "releaseSha256": "fdc17c4cc9ef99e0707cf5377ac158eb3f3e88ff1ddef35e6f75609ed0a98944",
+      "releaseBytes": 697776,
       "rootNode": "SF_PLACE_CARGO_POD_STANDARD_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/cargo-pod-standard",
       "metadataUrl": "assets/ships/release/render-packages/cargo-pod-standard/render-package.json"
@@ -155,15 +165,16 @@
       "slot": "place",
       "releaseAssetId": "place_ceres_bait_wreck",
       "sourceUrl": "assets/ships/release/parts/places/place_ceres_bait_wreck.glb",
-      "releaseSha256": "7ed825975d81a701a7dec54f20c81cff659be62db569acef8a67f03402e6201d",
-      "releaseBytes": 535340,
+      "releaseSha256": "701dc86d9d75cc2bd726ab7bc8f745be45b54de7c39e9a256b3147f1cc8c3033",
+      "releaseBytes": 1719968,
       "rootNode": "SF_PLACE_CERES_BAIT_WRECK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ceres-bait-wreck",
       "metadataUrl": "assets/ships/release/render-packages/ceres-bait-wreck/render-package.json"
@@ -176,15 +187,16 @@
       "slot": "place",
       "releaseAssetId": "place_ceres_grave_shard",
       "sourceUrl": "assets/ships/release/parts/places/place_ceres_grave_shard.glb",
-      "releaseSha256": "addbfad4e88c139b0b9e68b4696f6f8cef8a389c27124789551db92491400118",
-      "releaseBytes": 452916,
+      "releaseSha256": "b6e812f430b42e87291d6a3e7a016e35daf8742a3a3592ebebfc08a291a18e90",
+      "releaseBytes": 1107832,
       "rootNode": "SF_PLACE_CERES_GRAVE_SHARD_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ceres-grave-shard",
       "metadataUrl": "assets/ships/release/render-packages/ceres-grave-shard/render-package.json"
@@ -197,14 +209,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_refinery",
       "sourceUrl": "assets/ships/release/parts/places/place_station_refinery.glb",
-      "releaseSha256": "c41b627cb9c533713aa83a570b3e1435d10bb09c03f20c328a0a618cb522681c",
-      "releaseBytes": 2009992,
+      "releaseSha256": "89c54a4f7ccc21ade0194704b3a09892335146adc4ca23ac611e14c67b74fdfc",
+      "releaseBytes": 3060968,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ceres-refinery",
       "metadataUrl": "assets/ships/release/render-packages/ceres-refinery/render-package.json",
@@ -218,15 +231,16 @@
       "slot": "place",
       "releaseAssetId": "place_claim_outpost_base",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_base.glb",
-      "releaseSha256": "93fd47b45889bb2d80b0d666c24f191a6b364a7e9934b0cc5a41f26d8882ee60",
-      "releaseBytes": 884464,
+      "releaseSha256": "e2527517cae64553d62e9d8fa7db56c553d9cac5f5e9c36252c5e712ad120e86",
+      "releaseBytes": 1822896,
       "rootNode": "SF_PLACE_CLAIM_OUTPOST_BASE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/claim-outpost-base",
       "metadataUrl": "assets/ships/release/render-packages/claim-outpost-base/render-package.json"
@@ -239,15 +253,16 @@
       "slot": "place",
       "releaseAssetId": "place_claim_outpost_refinery",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
-      "releaseSha256": "4dd4e30ce5aaa95bcb641bbf89ad045051c16599612e2f0aeb27de5f3273e12c",
-      "releaseBytes": 1198268,
+      "releaseSha256": "1d11c00ed5e594decc7772b1840e46531557809cd655d41d402d4b43cef99764",
+      "releaseBytes": 2114232,
       "rootNode": "SF_PLACE_CLAIM_OUTPOST_REFINERY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/claim-outpost-refinery",
       "metadataUrl": "assets/ships/release/render-packages/claim-outpost-refinery/render-package.json"
@@ -260,15 +275,16 @@
       "slot": "place",
       "releaseAssetId": "place_claim_outpost_relay",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
-      "releaseSha256": "9f5a9dd7b03976140f8fc39f2a661f01140b5935ae6fb58b7a5fe1bb0604a4c4",
-      "releaseBytes": 1057700,
+      "releaseSha256": "aa501dcc09522157069d97015f51601b619048eabd534613091f44f584022896",
+      "releaseBytes": 2039228,
       "rootNode": "SF_PLACE_CLAIM_OUTPOST_RELAY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/claim-outpost-relay",
       "metadataUrl": "assets/ships/release/render-packages/claim-outpost-relay/render-package.json"
@@ -326,15 +342,16 @@
       "slot": "place",
       "releaseAssetId": "place_container_rack",
       "sourceUrl": "assets/ships/release/parts/places/place_container_rack.glb",
-      "releaseSha256": "0bd353b7064980a28b9822955108d93becac82a4ef9f2b7ce14cdb5c05f6cd3c",
-      "releaseBytes": 872696,
+      "releaseSha256": "f26edba8e0774ac931af0620a678a7b631dd16b1a557f464922853253b8c8659",
+      "releaseBytes": 1302444,
       "rootNode": "SF_PLACE_CONTAINER_RACK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/container-rack",
       "metadataUrl": "assets/ships/release/render-packages/container-rack/render-package.json"
@@ -347,15 +364,16 @@
       "slot": "place",
       "releaseAssetId": "place_conveyor_barge",
       "sourceUrl": "assets/ships/release/parts/places/place_conveyor_barge.glb",
-      "releaseSha256": "f6de65d7b09a37588252581622f195d9ae790605e6c093a2065e21f63951368a",
-      "releaseBytes": 539168,
+      "releaseSha256": "f76c85b1987e00306e5095c47612b28e960b10dbbc0ee8215aff169a8aa798d5",
+      "releaseBytes": 1145096,
       "rootNode": "SF_PLACE_CONVEYOR_BARGE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/conveyor-barge",
       "metadataUrl": "assets/ships/release/render-packages/conveyor-barge/render-package.json"
@@ -368,15 +386,16 @@
       "slot": "place",
       "releaseAssetId": "place_conveyor_truss",
       "sourceUrl": "assets/ships/release/parts/places/place_conveyor_truss.glb",
-      "releaseSha256": "9ddabf360ac590c08f7bb2b815ae58db4099f783afd69657669e522161ff71f9",
-      "releaseBytes": 455780,
+      "releaseSha256": "ca30264110c7f0c52530306c13a679f8f110f4d961cdece2904f207e1f18ba55",
+      "releaseBytes": 1008748,
       "rootNode": "SF_PLACE_CONVEYOR_TRUSS_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/conveyor-truss",
       "metadataUrl": "assets/ships/release/render-packages/conveyor-truss/render-package.json"
@@ -389,14 +408,15 @@
       "slot": "place",
       "releaseAssetId": "place_dead_hulk",
       "sourceUrl": "assets/ships/release/parts/places/place_dead_hulk.glb",
-      "releaseSha256": "ff5d7535d57c867ccaa9a3ac31db55aa5d13050b8413a93a4d50baf1dd33571a",
-      "releaseBytes": 482644,
+      "releaseSha256": "41a3a47d1c2608acf69e8e56a5f718721684bbefd37d1131cf6f42dc4c9438fb",
+      "releaseBytes": 1251408,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/dead-hulk",
       "metadataUrl": "assets/ships/release/render-packages/dead-hulk/render-package.json",
@@ -410,14 +430,15 @@
       "slot": "place",
       "releaseAssetId": "place_debris_chunk",
       "sourceUrl": "assets/ships/release/parts/places/place_debris_chunk.glb",
-      "releaseSha256": "916842ebfbf4e855cc9e5e255543b53e0ea1253aafc35e742d197ed4d5c829ea",
-      "releaseBytes": 294980,
+      "releaseSha256": "381c4f49df4c4080a92baea7a1f86e52e95790cf3268d5a2d438a76fc4291384",
+      "releaseBytes": 1146272,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/debris-chunk",
       "metadataUrl": "assets/ships/release/render-packages/debris-chunk/render-package.json",
@@ -431,14 +452,15 @@
       "slot": "place",
       "releaseAssetId": "place_dock_interior",
       "sourceUrl": "assets/ships/release/parts/places/place_dock_interior.glb",
-      "releaseSha256": "18ce2bbfacdf4ca704dcda222089d9a7e8d4ed29e0cf0771343f0db631b4bf72",
-      "releaseBytes": 297704,
+      "releaseSha256": "95cada4e283cd7714b1a596b22edaa0a51ebb7f3091f32341011ded8d3ab4600",
+      "releaseBytes": 923196,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/dock-interior",
       "metadataUrl": "assets/ships/release/render-packages/dock-interior/render-package.json",
@@ -452,15 +474,16 @@
       "slot": "place",
       "releaseAssetId": "place_dock_interior_grit",
       "sourceUrl": "assets/ships/release/parts/places/place_dock_interior_grit.glb",
-      "releaseSha256": "b8a54844b15795f7837947ec29ba55105b83bb7712472059286b256d75c174b5",
-      "releaseBytes": 509684,
+      "releaseSha256": "ba0739757c70b0905bb87ecc81f5511ee025d3bda210b9d9ed050543bb32de64",
+      "releaseBytes": 971076,
       "rootNode": "DockInterior_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/dock-interior-grit",
       "metadataUrl": "assets/ships/release/render-packages/dock-interior-grit/render-package.json"
@@ -473,15 +496,16 @@
       "slot": "place",
       "releaseAssetId": "place_dock_interior_military",
       "sourceUrl": "assets/ships/release/parts/places/place_dock_interior_military.glb",
-      "releaseSha256": "b42234faa177ae3f33936da55140c6353b58270091dd0b918a9c725bf6c48458",
-      "releaseBytes": 498268,
+      "releaseSha256": "0cb28a5383a34e8168bbcd645bbf72494cfe09e0e4a5b180eaa074d8c830dcfe",
+      "releaseBytes": 957868,
       "rootNode": "DockInterior_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/dock-interior-military",
       "metadataUrl": "assets/ships/release/render-packages/dock-interior-military/render-package.json"
@@ -494,15 +518,16 @@
       "slot": "place",
       "releaseAssetId": "place_drill_platform",
       "sourceUrl": "assets/ships/release/parts/places/place_drill_platform.glb",
-      "releaseSha256": "b4ce7c9525a68ef8c31313ed143dfc1029ba5cc51c2be62c51ba8230f54fa625",
-      "releaseBytes": 549228,
+      "releaseSha256": "22b131aad624a419d00a0a3984f69f15d6127758ca111f16480efd4386f7d255",
+      "releaseBytes": 1106424,
       "rootNode": "SF_PLACE_DRILL_PLATFORM_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/drill-platform",
       "metadataUrl": "assets/ships/release/render-packages/drill-platform/render-package.json"
@@ -605,15 +630,16 @@
       "slot": "place",
       "releaseAssetId": "place_extraction_mast",
       "sourceUrl": "assets/ships/release/parts/places/place_extraction_mast.glb",
-      "releaseSha256": "a612ee27d1f8088d27e5a0b1258cda949ae12c1383993320f536428bccfc877b",
-      "releaseBytes": 520404,
+      "releaseSha256": "7e222f126c1cb3bb6a9ea97b8b1f3535c6930487a6eaabcb6a7f74a721e9657b",
+      "releaseBytes": 1150232,
       "rootNode": "SF_PLACE_EXTRACTION_MAST_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/extraction-mast",
       "metadataUrl": "assets/ships/release/render-packages/extraction-mast/render-package.json"
@@ -626,14 +652,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_fab",
       "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb",
-      "releaseSha256": "ac316c76ee7b74aae58cbfeab9a75dec38f7276bf3bf7ced3a9cd93b5a4b43bd",
-      "releaseBytes": 1743128,
+      "releaseSha256": "f678753c17bb1297bbed8fffcb494f455c3ce64501faa9c2848111af7a71b65b",
+      "releaseBytes": 2623244,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/fab",
       "metadataUrl": "assets/ships/release/render-packages/fab/render-package.json",
@@ -722,15 +749,16 @@
       "slot": "place",
       "releaseAssetId": "place_freight_platform",
       "sourceUrl": "assets/ships/release/parts/places/place_freight_platform.glb",
-      "releaseSha256": "b60a3aef06081ddd4152310585cd5647a30228344a4b4e48c2801cca503a167c",
-      "releaseBytes": 613220,
+      "releaseSha256": "8a48603ef3d8cda04dd8a17d09d2b29f4a9ab6459b82ffe36cab2c787e32fef7",
+      "releaseBytes": 1100100,
       "rootNode": "SF_PLACE_FREIGHT_PLATFORM_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/freight-platform",
       "metadataUrl": "assets/ships/release/render-packages/freight-platform/render-package.json"
@@ -743,15 +771,16 @@
       "slot": "place",
       "releaseAssetId": "place_asteroid_graffiti",
       "sourceUrl": "assets/ships/release/parts/places/place_asteroid_graffiti.glb",
-      "releaseSha256": "c07e3ae18ce6cedd08329dd7eaf0e5d57fe430dd38f7d5525e7585be52c77daa",
-      "releaseBytes": 705188,
+      "releaseSha256": "b3888c923141182964d02508bf30755ac85a846c932c1d1693a84b3ed42cde05",
+      "releaseBytes": 1337892,
       "rootNode": "place_asteroid_graffiti",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/graffiti",
       "metadataUrl": "assets/ships/release/render-packages/graffiti/render-package.json"
@@ -869,11 +898,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_arclight",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_arclight.glb",
-      "releaseSha256": "150504c42ca7f45c5e58046d87c1adb69fb4bc94acfe1c99a94e4042a093eeb7",
-      "releaseBytes": 1147976,
+      "releaseSha256": "c132d1292cd74246ccbc2dc8b25cd165ef69710652d1b2d9414bd50c1a78990b",
+      "releaseBytes": 1361052,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-arclight",
       "metadataUrl": "assets/ships/release/render-packages/helios-arclight/render-package.json",
@@ -887,11 +920,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_cradle",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_cradle.glb",
-      "releaseSha256": "f5b3d635e5e347353f80b83f1ad12282ed8e19fbb8bed8e4995c48a4ce00a023",
-      "releaseBytes": 1247752,
+      "releaseSha256": "0efdaba0640f192704748d23e7f3696c2f57f3dcb53f56ab6631223005bb24c6",
+      "releaseBytes": 1822988,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-cradle",
       "metadataUrl": "assets/ships/release/render-packages/helios-cradle/render-package.json",
@@ -905,11 +942,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_lark",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_lark.glb",
-      "releaseSha256": "d07441a02b68b684271efa2247225852ee5187acd8eafa5a23c116bd3b475dd8",
-      "releaseBytes": 618480,
+      "releaseSha256": "8bf11888a1f3ef035d0ec3da08128611c70e99ad7412220bd7e75240c39ccf8b",
+      "releaseBytes": 1217748,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-lark",
       "metadataUrl": "assets/ships/release/render-packages/helios-lark/render-package.json",
@@ -923,15 +964,16 @@
       "slot": "place",
       "releaseAssetId": "place_asteroid_rock_a",
       "sourceUrl": "assets/ships/release/parts/places/place_asteroid_rock_a.glb",
-      "releaseSha256": "52a92b9c54ea67504fb4a01f038b72d6f332491d92f681f6d9b22b7b7c4118a9",
-      "releaseBytes": 422924,
+      "releaseSha256": "36aef9cfe65570f5e06f502fd677472b957ee91e36aae46f88cb9e23ca4bd099",
+      "releaseBytes": 710604,
       "rootNode": "SF_M4_HELIOS_ROCK_A_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-rock-a",
       "metadataUrl": "assets/ships/release/render-packages/helios-rock-a/render-package.json"
@@ -944,15 +986,16 @@
       "slot": "place",
       "releaseAssetId": "place_asteroid_rock_b",
       "sourceUrl": "assets/ships/release/parts/places/place_asteroid_rock_b.glb",
-      "releaseSha256": "bd112385ff8f3fa7cf86a6af38cede7f5aa5b95d42c4ee46fbaab549d2e3f1a5",
-      "releaseBytes": 472404,
+      "releaseSha256": "c659120c4c5c5d186ef83f979828b3d2982430c724883976ba5de221e8a84ff5",
+      "releaseBytes": 568728,
       "rootNode": "SF_M4_HELIOS_ROCK_B_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-rock-b",
       "metadataUrl": "assets/ships/release/render-packages/helios-rock-b/render-package.json"
@@ -965,15 +1008,16 @@
       "slot": "place",
       "releaseAssetId": "place_asteroid_rock_c",
       "sourceUrl": "assets/ships/release/parts/places/place_asteroid_rock_c.glb",
-      "releaseSha256": "10e71a6350a8c294139b14790d843ade78d45de7fc2b201fc311237ded15aa53",
-      "releaseBytes": 379652,
+      "releaseSha256": "3c21667948feea5b77ee87f6471dca705accf516ffa58f6198b65f8cb1908a37",
+      "releaseBytes": 472084,
       "rootNode": "SF_M4_HELIOS_ROCK_C_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-rock-c",
       "metadataUrl": "assets/ships/release/render-packages/helios-rock-c/render-package.json"
@@ -986,14 +1030,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span.glb",
-      "releaseSha256": "40fd8135d6a4a797c5b455e1e92538f9a29fb0d20a9b1e3871f06d6394957a64",
-      "releaseBytes": 1100972,
+      "releaseSha256": "0a659147906c9a8e08602677666736226391cf0d6ea5033431697c81f99bf6af",
+      "releaseBytes": 1613652,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-span",
       "metadataUrl": "assets/ships/release/render-packages/helios-span/render-package.json",
@@ -1007,10 +1052,12 @@
       "slot": "place",
       "releaseAssetId": "place_station_trade_hub",
       "sourceUrl": "assets/ships/release/parts/places/place_station_trade_hub.glb",
-      "releaseSha256": "35ff1e32b28df0b01e650c3d4131424f08bb885112981e86587db4387bf9d75b",
-      "releaseBytes": 3054836,
+      "releaseSha256": "788f2d547f82fc6c34fb551c8ad6e47c6ee717d7e7a36c93b9f53c0f24a937f3",
+      "releaseBytes": 3859660,
       "sceneRoot": true,
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "ANIM_"
+      ],
       "outputDir": "assets/ships/release/render-packages/helios-trade-hub",
       "metadataUrl": "assets/ships/release/render-packages/helios-trade-hub/render-package.json"
     },
@@ -1172,15 +1219,16 @@
       "slot": "place",
       "releaseAssetId": "place_improvised_dock",
       "sourceUrl": "assets/ships/release/parts/places/place_improvised_dock.glb",
-      "releaseSha256": "a8fe680192705d60977b120d1f2626cc641a2cc01eb0c2fd110470434162d0d3",
-      "releaseBytes": 429692,
+      "releaseSha256": "ab60069527b86ea62a3948d64ba939f96dd0d8eecb72b72ea870ef9387bd717e",
+      "releaseBytes": 1002556,
       "rootNode": "SF_PLACE_IMPROVISED_DOCK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/improvised-dock",
       "metadataUrl": "assets/ships/release/render-packages/improvised-dock/render-package.json"
@@ -1193,11 +1241,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_inspection_cutter",
       "sourceUrl": "assets/ships/release/parts/wholeships/inspection_cutter.glb",
-      "releaseSha256": "0d4cf3382a77c1ba60a9fbf3df870e0aa12f0d2b50e5d28af30b32a6d1cda434",
-      "releaseBytes": 806024,
+      "releaseSha256": "5a2d050306613440bc3e83bfd117bd9cf2cd1d6e6d8d08e8edfc6169f7e09382",
+      "releaseBytes": 1409840,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/inspection-cutter",
       "metadataUrl": "assets/ships/release/render-packages/inspection-cutter/render-package.json",
@@ -1211,15 +1263,16 @@
       "slot": "place",
       "releaseAssetId": "place_interdiction_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_interdiction_buoy.glb",
-      "releaseSha256": "3119cc3a523f7a8c5ccd32c60285b06bc0273e93528e52c53f2c1f3574f105be",
-      "releaseBytes": 416700,
+      "releaseSha256": "622a4a1fb32a1790c886d4ae1ee47cdc504e3602ebe96a94352802f8163249eb",
+      "releaseBytes": 649144,
       "rootNode": "SF_PLACE_INTERDICTION_BUOY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/interdiction-buoy",
       "metadataUrl": "assets/ships/release/render-packages/interdiction-buoy/render-package.json"
@@ -1232,14 +1285,15 @@
       "slot": "place",
       "releaseAssetId": "place_gate_jump_ring",
       "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
-      "releaseSha256": "39d8ca0c6342ffb4e244c7d072d7a6d638e1c1da8cb1257383957fc54aae0f2f",
-      "releaseBytes": 1855980,
+      "releaseSha256": "5be19b6bfeb43ec6497ebb574f2dc9f41e3a71abf691b5001b329aec253f455f",
+      "releaseBytes": 2727052,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/jump-ring",
       "metadataUrl": "assets/ships/release/render-packages/jump-ring/render-package.json",
@@ -1253,14 +1307,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb",
-      "releaseSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
-      "releaseBytes": 755692,
+      "releaseSha256": "c98b2908bf170f37e7cd52477ba71a6311d8ffc6f6d0641ec6bc99a0683054d9",
+      "releaseBytes": 1354644,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/kestrel",
       "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
@@ -1274,15 +1329,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
-      "releaseSha256": "2204d4618216d660d21b68ee73d679109765005561cfca576125a2e4586a1e0b",
-      "releaseBytes": 523696,
+      "releaseSha256": "ba7cfe2c1c0d4cea7134ead4f7775f9add0827e5989c5281a2de5e7ab2844be9",
+      "releaseBytes": 1049404,
       "rootNode": "KESTREL_V4_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/kestrel-lod1",
       "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json"
@@ -1295,15 +1351,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
-      "releaseSha256": "3086f728df9baab9e1dbe5057c114f7b0b06015514caf1d5087b96f813a3d938",
-      "releaseBytes": 408052,
+      "releaseSha256": "9733481289986ccd3919564357af31c799414e37b929b3659771be186c861ee3",
+      "releaseBytes": 933276,
       "rootNode": "KESTREL_V4_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/kestrel-lod2",
       "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json"
@@ -1316,14 +1373,15 @@
       "slot": "place",
       "releaseAssetId": "place_lane_beacon",
       "sourceUrl": "assets/ships/release/parts/places/place_lane_beacon.glb",
-      "releaseSha256": "8d2a398cc28a34e08298f5ac7e7fb7f29ee2ca7dc0aca05406a6188912609747",
-      "releaseBytes": 755312,
+      "releaseSha256": "7e89ced8a85ae548fd22379d3e316a989b4c33ca963f0ed6ad880371ba45ae28",
+      "releaseBytes": 1303552,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/lane-beacon",
       "metadataUrl": "assets/ships/release/render-packages/lane-beacon/render-package.json",
@@ -1337,14 +1395,15 @@
       "slot": "place",
       "releaseAssetId": "place_lane_pin",
       "sourceUrl": "assets/ships/release/parts/places/place_lane_pin.glb",
-      "releaseSha256": "e09194ed46ce54dc085017309560ffee8e85375c7a40c9d8dd2dc0361c64dd13",
-      "releaseBytes": 481680,
+      "releaseSha256": "6774e65c7a01281d783eb8bd279449f39cf90429f761896394ceceac99f85ff1",
+      "releaseBytes": 714112,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/lane-pin",
       "metadataUrl": "assets/ships/release/render-packages/lane-pin/render-package.json",
@@ -1358,15 +1417,16 @@
       "slot": "place",
       "releaseAssetId": "place_maintenance_gantry",
       "sourceUrl": "assets/ships/release/parts/places/place_maintenance_gantry.glb",
-      "releaseSha256": "de73a7eaf6445bcfc8c55e61b169539a9ac2eeedb1b8524d2ac77ccb06a4faff",
-      "releaseBytes": 528756,
+      "releaseSha256": "23aa521c361f4fee5575ddbb41abafcd9d19643636a8a281fc8dbf8baa2ed4b4",
+      "releaseBytes": 1040972,
       "rootNode": "SF_PLACE_MAINTENANCE_GANTRY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/maintenance-gantry",
       "metadataUrl": "assets/ships/release/render-packages/maintenance-gantry/render-package.json"
@@ -1379,14 +1439,15 @@
       "slot": "place",
       "releaseAssetId": "place_claim_mark",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_mark.glb",
-      "releaseSha256": "a544f64956bb3fd1ebfcd5d4246431f613d9c01eafbd621dd198f5ff17457bd4",
-      "releaseBytes": 383536,
+      "releaseSha256": "df58331d9722862acaf48ee90ae6fe5c59a4b6be566c44e340ed09e7b9d15601",
+      "releaseBytes": 614168,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/mark",
       "metadataUrl": "assets/ships/release/render-packages/mark/render-package.json",
@@ -1400,14 +1461,15 @@
       "slot": "place",
       "releaseAssetId": "place_memorial_array",
       "sourceUrl": "assets/ships/release/parts/places/place_memorial_array.glb",
-      "releaseSha256": "ad1ba39d031f034de1bed5de8063a4751c08668c2c88e0c2309b39ce8563937a",
-      "releaseBytes": 715704,
+      "releaseSha256": "1cc56356a278aa3a35b55d5be1df5582a26579cf64441f8ecc0b66bc5e2fc483",
+      "releaseBytes": 1338100,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/memorial-array",
       "metadataUrl": "assets/ships/release/render-packages/memorial-array/render-package.json",
@@ -1421,9 +1483,16 @@
       "slot": "place",
       "releaseAssetId": "place_landmark_skerris_throne",
       "sourceUrl": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb",
-      "releaseSha256": "d3c01ecc79c544aa77394d334d54537e2443a65c706ba7fb9add01fcf177ebdd",
-      "releaseBytes": 2411520,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "0a443823ee33a71947385a3442839715023a878ed4f4562dfa132fe2d0ed87e2",
+      "releaseBytes": 6964848,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
+      ],
       "outputDir": "assets/ships/release/render-packages/skerris-throne",
       "metadataUrl": "assets/ships/release/render-packages/skerris-throne/render-package.json",
       "sceneRoot": true
@@ -1436,9 +1505,16 @@
       "slot": "place",
       "releaseAssetId": "place_landmark_resonant_cathedral",
       "sourceUrl": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb",
-      "releaseSha256": "e1e0e468c9099a541c4172a3c7099c8d766953cbf4d3f8201f3817b5329cd23b",
-      "releaseBytes": 2185212,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "ecd4fa664e9ae57edee1c5f4c369489c4f1ce05dbea106ded3a146ee916333b9",
+      "releaseBytes": 6203052,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
+      ],
       "outputDir": "assets/ships/release/render-packages/resonant-cathedral",
       "metadataUrl": "assets/ships/release/render-packages/resonant-cathedral/render-package.json",
       "sceneRoot": true
@@ -1451,14 +1527,15 @@
       "slot": "place",
       "releaseAssetId": "place_landmark_candle_fleet",
       "sourceUrl": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb",
-      "releaseSha256": "d322d57dfc0b2e9c5f1a2649fc0743ad2d84eccb718cb462481f5cd75a9e2ffc",
-      "releaseBytes": 2766068,
+      "releaseSha256": "3cd0be3aeb6917a9255357a5c466aac521b96624ba26476176ed01aefa3b596d",
+      "releaseBytes": 7172948,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/candle-fleet",
       "metadataUrl": "assets/ships/release/render-packages/candle-fleet/render-package.json",
@@ -1472,14 +1549,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_military",
       "sourceUrl": "assets/ships/release/parts/places/place_station_military.glb",
-      "releaseSha256": "8a5869b8ab23522bb3ad2ded7f80c5c78098712704c7d5672b7bbb0f5be72b50",
-      "releaseBytes": 1736064,
+      "releaseSha256": "06025a25df3127c22754dcaf68ca082ab8fb763dbf1a7dbbc0015f5f14a3f46b",
+      "releaseBytes": 2627624,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/military",
       "metadataUrl": "assets/ships/release/render-packages/military/render-package.json",
@@ -1493,14 +1571,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_mining",
       "sourceUrl": "assets/ships/release/parts/places/place_station_mining.glb",
-      "releaseSha256": "69ccc61028d00af0b7c687f9b38e9fe04fcae6271e7e923d5237920f9dafc56b",
-      "releaseBytes": 1537704,
+      "releaseSha256": "cc990243c8743351d45eb28213b091c102386c219e044bb4de8a75eb0bcf941b",
+      "releaseBytes": 2617536,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/mining",
       "metadataUrl": "assets/ships/release/render-packages/mining/render-package.json",
@@ -1514,14 +1593,15 @@
       "slot": "place",
       "releaseAssetId": "place_mining_drone",
       "sourceUrl": "assets/ships/release/parts/places/place_mining_drone.glb",
-      "releaseSha256": "2b64b357621af5dd78681a095682cd41b3ac92cd3cf63ac887840b79f751c3cf",
-      "releaseBytes": 673748,
+      "releaseSha256": "8663c2c711ae11950f99448ce9520169e1411f64d51c73fa4f4735f9a85ef880",
+      "releaseBytes": 1014568,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/mining-drone",
       "metadataUrl": "assets/ships/release/render-packages/mining-drone/render-package.json",
@@ -1535,14 +1615,15 @@
       "slot": "place",
       "releaseAssetId": "place_nav_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_nav_buoy.glb",
-      "releaseSha256": "30b12dcf481fadd021de67a6447ecb5d2feccfda975c2620a864a9b21b62b984",
-      "releaseBytes": 708700,
+      "releaseSha256": "2663955268114aa6bebf1434e388cd0e817e5f0b1b51c982407b3cb0dfd518ee",
+      "releaseBytes": 1290908,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/nav-buoy",
       "metadataUrl": "assets/ships/release/render-packages/nav-buoy/render-package.json",
@@ -1556,11 +1637,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ore_barge",
       "sourceUrl": "assets/ships/release/parts/wholeships/ore_barge.glb",
-      "releaseSha256": "830ed2ed7586afb214ccccf1cc54712a15e6b70f1431a6023b08bf160a99795e",
-      "releaseBytes": 1146216,
+      "releaseSha256": "15311e84bb244d4e31a3d24a0b803f0d4985fa65a0ea04490f8a86cccff217b4",
+      "releaseBytes": 1719448,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ore-barge",
       "metadataUrl": "assets/ships/release/render-packages/ore-barge/render-package.json",
@@ -1574,15 +1659,16 @@
       "slot": "place",
       "releaseAssetId": "place_claim_outpost_bastion",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb",
-      "releaseSha256": "df1f18a4ee5f55019e2809949d335e2045d8ad6c8fb05e297b9f17c9fdf78bfc",
-      "releaseBytes": 1097312,
+      "releaseSha256": "074f47c3136ea702ddb489874f31fcbd453c54eb75d034605da3e611ecc84ab7",
+      "releaseBytes": 2069036,
       "rootNode": "SF_PLACE_CLAIM_OUTPOST_BASTION_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/outpost-bastion",
       "metadataUrl": "assets/ships/release/render-packages/outpost-bastion/render-package.json"
@@ -1595,14 +1681,15 @@
       "slot": "pod",
       "releaseAssetId": "pod_cargo_container",
       "sourceUrl": "assets/ships/release/parts/pods/pod_cargo_container.glb",
-      "releaseSha256": "7df6150b3e01810e8b57d61daa8fc2bdd03d291efd04284a6a4bd26372d33cf7",
-      "releaseBytes": 393716,
+      "releaseSha256": "36cbfadcfc918d8b5a5d7f776a7a3f0080ad99a74507795f0a4c5dc5645233a1",
+      "releaseBytes": 604428,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/pod-cargo-container",
       "metadataUrl": "assets/ships/release/render-packages/pod-cargo-container/render-package.json",
@@ -1646,11 +1733,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_prospector_skiff",
       "sourceUrl": "assets/ships/release/parts/wholeships/prospector_skiff.glb",
-      "releaseSha256": "81c353440ea6d7c941c67444d18f91df969d975441e48a14c9a4cd1d403894b7",
-      "releaseBytes": 861284,
+      "releaseSha256": "426d94ee1484c9fc9a72d4c14e6b0d45c181a4afd26d0b1f943ee73a89ef7613",
+      "releaseBytes": 1510864,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/prospector-skiff",
       "metadataUrl": "assets/ships/release/render-packages/prospector-skiff/render-package.json",
@@ -1664,15 +1755,16 @@
       "slot": "place",
       "releaseAssetId": "place_radiator_bank",
       "sourceUrl": "assets/ships/release/parts/places/place_radiator_bank.glb",
-      "releaseSha256": "2bc15be14ad57f1bcafbdd3c567d9ead64c974ea26e0e3707350e08da01d5258",
-      "releaseBytes": 543192,
+      "releaseSha256": "c4ddfa95d9e444dd4e483bd77be3018b8d253271f37038dd788a0543475102b3",
+      "releaseBytes": 1080008,
       "rootNode": "SF_PLACE_RADIATOR_BANK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/radiator-bank",
       "metadataUrl": "assets/ships/release/render-packages/radiator-bank/render-package.json"
@@ -1685,11 +1777,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_repair_tender",
       "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb",
-      "releaseSha256": "22d306eea599dbe643845c5d6c277e62d1275de50e19126728d1845bb243e259",
-      "releaseBytes": 1093768,
+      "releaseSha256": "19cdd7755ec557d4c1a9dde0b02308d947e0637f95523bef8b6087955cbbade9",
+      "releaseBytes": 1652292,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/repair-tender",
       "metadataUrl": "assets/ships/release/render-packages/repair-tender/render-package.json",
@@ -1703,11 +1799,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_rescue_lifter",
       "sourceUrl": "assets/ships/release/parts/wholeships/rescue_lifter.glb",
-      "releaseSha256": "614f57c312959fcbdfd42958f92c19b4535dd9653b25b85c7c68fa844ed04c2b",
-      "releaseBytes": 1248364,
+      "releaseSha256": "88aedfa8195569874b937842155c67457e894f3aa089c54a91a19494796b4081",
+      "releaseBytes": 1875880,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/rescue-lifter",
       "metadataUrl": "assets/ships/release/render-packages/rescue-lifter/render-package.json",
@@ -1721,14 +1821,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_research",
       "sourceUrl": "assets/ships/release/parts/places/place_station_research.glb",
-      "releaseSha256": "556eb0b0d63eb757bba4a0fe6aff58eb6786036023c4be8ac13c88e8033fa0d2",
-      "releaseBytes": 2147980,
+      "releaseSha256": "8536142fa83a3fcbe762c4e4d0b6c3b024394f97c38b10cd9010f2c23a5dcde6",
+      "releaseBytes": 3215152,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/research",
       "metadataUrl": "assets/ships/release/render-packages/research/render-package.json",
@@ -1742,11 +1843,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_salvage_cutter",
       "sourceUrl": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
-      "releaseSha256": "46ef26425fffb0de49a9b96cd620ed379f4557f834f8c07314101f2641aceb6d",
-      "releaseBytes": 872712,
+      "releaseSha256": "f2bc45a547e0d56932c1339c643a98c20082c107ab934e20f4af9fc46ca06ba1",
+      "releaseBytes": 1470100,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/salvage-cutter",
       "metadataUrl": "assets/ships/release/render-packages/salvage-cutter/render-package.json",
@@ -1760,15 +1865,16 @@
       "slot": "place",
       "releaseAssetId": "place_scrap_cage",
       "sourceUrl": "assets/ships/release/parts/places/place_scrap_cage.glb",
-      "releaseSha256": "6c223573895e8c56678305d9e6b54bddca80ef79e283bee359b991b18783696b",
-      "releaseBytes": 476052,
+      "releaseSha256": "8a080df176b476d3a2bfb2a1054443c12ad367c0b0ea5e2889e7e31e106c7819",
+      "releaseBytes": 1056232,
       "rootNode": "SF_PLACE_SCRAP_CAGE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/scrap-cage",
       "metadataUrl": "assets/ships/release/render-packages/scrap-cage/render-package.json"
@@ -1781,11 +1887,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_scrap_sweeper",
       "sourceUrl": "assets/ships/release/parts/wholeships/scrap_sweeper.glb",
-      "releaseSha256": "29a8139251ecae3a64ae2e4ee204ba4575314c8ce650ecbda913015c3a1e163e",
-      "releaseBytes": 849756,
+      "releaseSha256": "3d57ca1b4d9e389836bc5dcddf610020bee2a3df3733afc5d8f4288254018e98",
+      "releaseBytes": 1441968,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/scrap-sweeper",
       "metadataUrl": "assets/ships/release/render-packages/scrap-sweeper/render-package.json",
@@ -1799,15 +1909,16 @@
       "slot": "place",
       "releaseAssetId": "place_asteroid_seamed",
       "sourceUrl": "assets/ships/release/parts/places/place_asteroid_seamed.glb",
-      "releaseSha256": "ae122dd05fdbd93ffad3e126755a865f45ae5bdc3ffb3fe59389c02c441942cc",
-      "releaseBytes": 422872,
+      "releaseSha256": "c0b2ac4b943c957b66769550555952b980d002b2db41f5e86559ea1bc3232c8d",
+      "releaseBytes": 724424,
       "rootNode": "place_asteroid_seamed",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/seamed-asteroid",
       "metadataUrl": "assets/ships/release/render-packages/seamed-asteroid/render-package.json"
@@ -1820,15 +1931,16 @@
       "slot": "place",
       "releaseAssetId": "place_sensor_mast",
       "sourceUrl": "assets/ships/release/parts/places/place_sensor_mast.glb",
-      "releaseSha256": "54308140eba7fafbf8b939d55303a4612f25865dd127a4a7f116ca605aa3f768",
-      "releaseBytes": 686228,
+      "releaseSha256": "6a731c2fe4fc66704a2e64c863bb64d0f0734749f8e89a191a18cfe162087d69",
+      "releaseBytes": 1365492,
       "rootNode": "SF_PLACE_SENSOR_MAST_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/sensor-mast",
       "metadataUrl": "assets/ships/release/render-packages/sensor-mast/render-package.json"
@@ -1871,15 +1983,16 @@
       "slot": "place",
       "releaseAssetId": "place_slurry_tank",
       "sourceUrl": "assets/ships/release/parts/places/place_slurry_tank.glb",
-      "releaseSha256": "2156752662ddc99c010298e46ba976d332ae18c494d1351e786358750a48ce82",
-      "releaseBytes": 595284,
+      "releaseSha256": "6c81b20a7708dd290d4802a251cca1257d65e2bf0cad0a0c7f9a8235d15f35c6",
+      "releaseBytes": 830472,
       "rootNode": "SF_PLACE_SLURRY_TANK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/slurry-tank",
       "metadataUrl": "assets/ships/release/render-packages/slurry-tank/render-package.json"
@@ -1892,14 +2005,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_billboard",
       "sourceUrl": "assets/ships/release/parts/places/place_station_billboard.glb",
-      "releaseSha256": "2f5906a71fec333c9ea89904ab2d6c1c320c8f22ccf7c72e4562ab99cb7a4ef2",
-      "releaseBytes": 547308,
+      "releaseSha256": "cc538249d6d89cf1346d15778c55cc06431ffa7aaa485f24f2f5de9885d83507",
+      "releaseBytes": 1075268,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/station-billboard",
       "metadataUrl": "assets/ships/release/render-packages/station-billboard/render-package.json",
@@ -1913,11 +2027,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_survey_pin",
       "sourceUrl": "assets/ships/release/parts/wholeships/survey_pin.glb",
-      "releaseSha256": "6f37dbd4bcdcb9f32d7bacd7cec29d425de63405d4dc60eaec8c87a23fae6702",
-      "releaseBytes": 827932,
+      "releaseSha256": "35092c0c6bef29b6f92be27eed7168562b838df55488cf5d7044968ae4a14301",
+      "releaseBytes": 1405820,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/survey-pin",
       "metadataUrl": "assets/ships/release/render-packages/survey-pin/render-package.json",
@@ -1931,15 +2049,16 @@
       "slot": "place",
       "releaseAssetId": "place_transfer_arm",
       "sourceUrl": "assets/ships/release/parts/places/place_transfer_arm.glb",
-      "releaseSha256": "6a0d18be2cc3d237b306bdd5387c79c5f3af18f412f900f6b2ae7f6293758db7",
-      "releaseBytes": 488068,
+      "releaseSha256": "cdfac436dc0d9baf432cda00fa2359d6e056c3c1027cfb242b1d7189b5ec8ddd",
+      "releaseBytes": 1141728,
       "rootNode": "SF_PLACE_TRANSFER_ARM_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/transfer-arm",
       "metadataUrl": "assets/ships/release/render-packages/transfer-arm/render-package.json"
@@ -1952,15 +2071,16 @@
       "slot": "place",
       "releaseAssetId": "place_transponder_gate",
       "sourceUrl": "assets/ships/release/parts/places/place_transponder_gate.glb",
-      "releaseSha256": "d81f92cccf8b614af090d4e257dec4719ca8243540f91a0bf0ac88832a8beef1",
-      "releaseBytes": 547856,
+      "releaseSha256": "5cdc272d6c3b95f7c7461cd4f3def1f9e75af9e662be54392ac30e90de718f7c",
+      "releaseBytes": 1068264,
       "rootNode": "SF_PLACE_TRANSPONDER_GATE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/transponder-gate",
       "metadataUrl": "assets/ships/release/render-packages/transponder-gate/render-package.json"
@@ -1973,11 +2093,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_volatiles_tanker",
       "sourceUrl": "assets/ships/release/parts/wholeships/volatiles_tanker.glb",
-      "releaseSha256": "3c5295a06ad37faf5d4f3172f78c8da2bfb034670d7336ff6a67ab5bec1c4f32",
-      "releaseBytes": 1278972,
+      "releaseSha256": "4ee62eeac79d38be8d6c41fc4862023f9433e79eff86cb7b5b7f4e03b09f5605",
+      "releaseBytes": 1888572,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/volatiles-tanker",
       "metadataUrl": "assets/ships/release/render-packages/volatiles-tanker/render-package.json",
@@ -1991,14 +2115,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
-      "releaseSha256": "a1f5238984a250372330650a692279e8d1d2ac9263cdf69d1a9139b1aa55f602",
-      "releaseBytes": 765372,
+      "releaseSha256": "ee6bf450659e5e7482a59d80b94a669cc67b0653467db649a916c9af1aa844e0",
+      "releaseBytes": 1348300,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/wasp",
       "metadataUrl": "assets/ships/release/render-packages/wasp/render-package.json",
@@ -2102,14 +2227,15 @@
       "slot": "place",
       "releaseAssetId": "place_whistle",
       "sourceUrl": "assets/ships/release/parts/places/place_whistle.glb",
-      "releaseSha256": "8fadcb302e3c9b93b5109c324f4c81280695ee1f7ad0125f1eec1041c30e3e95",
-      "releaseBytes": 422408,
+      "releaseSha256": "1d5e70dbc51f6bd799face3e67f20b0cf842963b5b64cea99593c01305502c8b",
+      "releaseBytes": 653556,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/whistle",
       "metadataUrl": "assets/ships/release/render-packages/whistle/render-package.json",
@@ -2123,15 +2249,16 @@
       "slot": "place",
       "releaseAssetId": "place_worklight_tower",
       "sourceUrl": "assets/ships/release/parts/places/place_worklight_tower.glb",
-      "releaseSha256": "16862cb69907088e57d1c621fe3f0fb83861bdefd2b6fe10ddb86da0074561bb",
-      "releaseBytes": 773676,
+      "releaseSha256": "6b9d10c77158316af5a7964cbc452f2e7391fa3a05e10c7046cb4fa0b49826ab",
+      "releaseBytes": 1553696,
       "rootNode": "SF_PLACE_WORKLIGHT_TOWER_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/worklight-tower",
       "metadataUrl": "assets/ships/release/render-packages/worklight-tower/render-package.json"
@@ -2459,14 +2586,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_yard_tug",
       "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "releaseSha256": "bf357a1e0051c18364e44850ea690e632b28ad5fb95c9824a969777482b352c0",
-      "releaseBytes": 1269404,
+      "releaseSha256": "7b912255188a8840627a2c735362759d2b2cc412232429563f1cd3947239f533",
+      "releaseBytes": 1862700,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/yard-tug",
       "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",
@@ -2495,8 +2623,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_armor_slab",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab.glb",
-      "releaseSha256": "9fb62aa06b645434247671d729299bb22d0b1a0f10caf494ba30291311026e2e",
-      "releaseBytes": 104432,
+      "releaseSha256": "eeebe4f80691c3a4492227efbad408ac7cf75d8447645ce13eea741c59955b60",
+      "releaseBytes": 265680,
       "rootNode": "aft_armor_slab",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-armor-slab",
@@ -2525,8 +2653,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_cargo_module",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb",
-      "releaseSha256": "b6df77638d8943cb6b31ea2e316019d4c201dea95d0f20443f21ccacaca6d74f",
-      "releaseBytes": 311212,
+      "releaseSha256": "462362ca5ede95b3a65918fbb7b048709a2e4dd620b0f3368af822c423a70284",
+      "releaseBytes": 472944,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-cargo-module",
       "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-cargo-module/render-package.json",
@@ -2540,8 +2668,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_cockpit_section",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb",
-      "releaseSha256": "32f36c764537d0e52833e3d3328875086ab76d771d0b774ce38810cb0fc7478f",
-      "releaseBytes": 211860,
+      "releaseSha256": "cc5c023429025598f0198acefc3063d7ad040e04f874858aa51203102489ffa2",
+      "releaseBytes": 372560,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-cockpit-section",
       "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-cockpit-section/render-package.json",
@@ -2555,8 +2683,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_dock_collar",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_dock_collar.glb",
-      "releaseSha256": "e89eb53f1f0d9f8eba1f461add8ba31da65ff052e0936a87a50b7ae46b67f1c8",
-      "releaseBytes": 152964,
+      "releaseSha256": "c1a04f0ed7c8c49137c305816821a18aa38ea5da5832a53f0acd7236e61eabc1",
+      "releaseBytes": 313868,
       "rootNode": "aft_dock_collar",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-dock-collar",
@@ -2570,8 +2698,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_engine_section",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_engine_section.glb",
-      "releaseSha256": "dbcf64fa6791f972ff03495dc27b78f04236a688cc502cf8fb8c5f30137993ce",
-      "releaseBytes": 327388,
+      "releaseSha256": "41a860f87125ff70984d06fefed35233fa68540b17c3656485f5936df94452b6",
+      "releaseBytes": 488240,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-engine-section",
       "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-engine-section/render-package.json",
@@ -2585,8 +2713,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_pressure_tank",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb",
-      "releaseSha256": "20d80a092d4ab91fd89b7936a85cb1c836feeba3490ffbe071af24f911e84e07",
-      "releaseBytes": 151276,
+      "releaseSha256": "eddbcf125be12a65412df7e4f50b4747c420f83d65e7b3e9ac9d159289c4f3dc",
+      "releaseBytes": 312204,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-pressure-tank",
       "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-pressure-tank/render-package.json",
@@ -2600,8 +2728,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_radiator_panel",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_radiator_panel.glb",
-      "releaseSha256": "a214f283a72bcacdf59af0fd5fd8a8243fe2997f97489b11aef03f784744f3cd",
-      "releaseBytes": 159036,
+      "releaseSha256": "4defb8c03b99e8a9c1e3646262bd2d942f725221606cbc8a751d46de6065e843",
+      "releaseBytes": 320096,
       "rootNode": "aft_radiator_panel",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-radiator-panel",
@@ -2615,8 +2743,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_aft_weapon_spar",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb",
-      "releaseSha256": "8e6705900237ae20e026e0b879cf4f3469c5d36e101269d51549ebb5afe58023",
-      "releaseBytes": 210192,
+      "releaseSha256": "d24231bc42f34613ad7e0b72e80b7b4e7e49d0bd9cb46fe3538e4c59e89e20a7",
+      "releaseBytes": 370024,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-aft-weapon-spar",
       "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-weapon-spar/render-package.json",
@@ -2630,8 +2758,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_corvette_armor_belt",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_corvette_armor_belt.glb",
-      "releaseSha256": "b63a18212f54000d679e446d3be4a7ab04bdefa666843ac037dcdaa6033a9a11",
-      "releaseBytes": 220072,
+      "releaseSha256": "6602350a891df34c1d8dde6f4195e1659eb0a9337b53733263b5429fc276ce4e",
+      "releaseBytes": 382820,
       "rootNode": "deb_corvette_armor_belt",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-corvette-armor-belt",
@@ -2645,8 +2773,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_corvette_barbette_ring",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb",
-      "releaseSha256": "69d7ff4da08aca892e5df5d86a77239943393facbbd95ec4d3b612cf22acd89b",
-      "releaseBytes": 146876,
+      "releaseSha256": "ab9073db10407e36d344ec1bfbaa4a7a1e7a492498ece827a4c37ae5af1c1683",
+      "releaseBytes": 307996,
       "rootNode": "deb_corvette_barbette_ring",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-corvette-barbette-ring",
@@ -2660,8 +2788,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_liner_drive_pod",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_liner_drive_pod.glb",
-      "releaseSha256": "46ea8a5e8e9e87d0b05eb173420c83bc400adaf6b95ee9e58a7f511a8e4537c6",
-      "releaseBytes": 198032,
+      "releaseSha256": "339f2c7d7e9364e4e05fcd446afceb3f8579cf78210207712f4391f364a03140",
+      "releaseBytes": 358880,
       "rootNode": "deb_liner_drive_pod",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-liner-drive-pod",
@@ -2675,8 +2803,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_liner_hull_panel",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel.glb",
-      "releaseSha256": "9440b250ddb599805d7a372f93c6ed39a53f58a6208dc0fae10396da3fbcc38b",
-      "releaseBytes": 202808,
+      "releaseSha256": "de036214295b9d77e8ec3972b2620b227823c256c6b583c87fefdb70d2d59841",
+      "releaseBytes": 363628,
       "rootNode": "deb_liner_hull_panel",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel",
@@ -2705,8 +2833,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_ore_freighter_drive_bell",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_drive_bell.glb",
-      "releaseSha256": "e580df4d0c9392c2686fb22f9e231fbb6e1a1706897c4a999a9bca930475fc56",
-      "releaseBytes": 223884,
+      "releaseSha256": "b96f3b1e7dcefdd67fd8a2ef9a8613bfe39c55df549794f61969a023bb0719a4",
+      "releaseBytes": 384396,
       "rootNode": "deb_ore_freighter_drive_bell",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-drive-bell",
@@ -2720,8 +2848,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_ore_freighter_hopper_lid",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid.glb",
-      "releaseSha256": "a3e3c11ccc72c24050c6fe1a0a09901e22514d2980b1275d2d0c28f11d05e117",
-      "releaseBytes": 283888,
+      "releaseSha256": "2dfe852182be4805ac40ca759ea53d7cf12158bdb7a82ada4b05aeb5a22e5155",
+      "releaseBytes": 444248,
       "rootNode": "deb_ore_freighter_hopper_lid",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-hopper-lid",
@@ -2750,8 +2878,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_ore_freighter_ring_span",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_ring_span.glb",
-      "releaseSha256": "f4cb0009c4c7bf2b21e58d96e16f6c0d2b91855ff5ac9dd640211334c8ad1c98",
-      "releaseBytes": 129040,
+      "releaseSha256": "2a7b623970b553b82a14b65e1b8fa31c317606bf849c5ccb6b50bb2e7e2fbc72",
+      "releaseBytes": 290272,
       "rootNode": "deb_ore_freighter_ring_span",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-ring-span",
@@ -2765,8 +2893,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_cable_bundle",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb",
-      "releaseSha256": "e6b1572b1689e2d5b0ba20d71b4afb455c809770394a43df8f010c484ad2a87a",
-      "releaseBytes": 131520,
+      "releaseSha256": "3b7d08de54d8b624ad4c98bc5f806d0bb5ee7ece19d0185349496ad10f327640",
+      "releaseBytes": 292708,
       "rootNode": "frag_cable_bundle",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-cable-bundle",
@@ -2780,8 +2908,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_grating_sheet",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet.glb",
-      "releaseSha256": "ff1021c6b3f123c94c889aab68618466621b7228c47b6334713d2bf7ac4380d9",
-      "releaseBytes": 43616,
+      "releaseSha256": "22c5d1714d831a5480f1175dca93244584635f39c27211bd21953f08ee46b27f",
+      "releaseBytes": 43492,
       "rootNode": "frag_grating_sheet",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-grating-sheet",
@@ -2810,8 +2938,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_pipe_tangle",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb",
-      "releaseSha256": "037c88a355c8f3ee7890c9f3507fca70553fe48df3ec6d2d9223581b5b9a77f2",
-      "releaseBytes": 127904,
+      "releaseSha256": "62dece4c611cfeab04da21fdcfa0922aca8d6958f30f24b3f0548b2e8c4b7ccf",
+      "releaseBytes": 288936,
       "rootNode": "frag_pipe_tangle",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-pipe-tangle",
@@ -2825,8 +2953,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_plate_curl",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb",
-      "releaseSha256": "eb0d11f7fde6e3ba98de24a528fbc07d57d604503d4a53fe894f271654a9239d",
-      "releaseBytes": 115636,
+      "releaseSha256": "51603298597ac01b2036eba87c2ac17a887a6d529bdc9e71c12269b3e8547c8e",
+      "releaseBytes": 276828,
       "rootNode": "frag_plate_curl",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-plate-curl",
@@ -2840,8 +2968,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_rib_cluster",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_rib_cluster.glb",
-      "releaseSha256": "d14bc8cfeb75c5b61c65f775b45df0c9f70baf785c03c241412f0806b914262d",
-      "releaseBytes": 48844,
+      "releaseSha256": "d0c332769b15ee70f412b515fa83646fb5055c5a95f2b617dcc0fad12c70a31a",
+      "releaseBytes": 48772,
       "rootNode": "frag_rib_cluster",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-rib-cluster",
@@ -2855,8 +2983,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_strut_shard",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb",
-      "releaseSha256": "8b54c143a4a80343614e274bfedef01c43b82cd32e81f8e8f702c2e0d0a90853",
-      "releaseBytes": 45096,
+      "releaseSha256": "943928f8c12594f63a4ab41ba7dc7b9f1e36bcdfeae437d99945e2b1661251d1",
+      "releaseBytes": 44948,
       "rootNode": "frag_strut_shard",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-strut-shard",
@@ -2870,8 +2998,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_corvette_engine",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_engine.glb",
-      "releaseSha256": "bcebdda77b39ca7efb906aff42c5f8bf4bc23e315e5141714463b7bb1e59ec86",
-      "releaseBytes": 410372,
+      "releaseSha256": "82350a95e0b3bbe28d8b8046a3bf573ae518ec31753ef8d14cf1047b891eba20",
+      "releaseBytes": 570960,
       "rootNode": "wreck_corvette_engine",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-corvette-engine",
@@ -2885,8 +3013,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_corvette_forward",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward.glb",
-      "releaseSha256": "2220cab00f6026eccbaeb502fd4362bb85676c79d69834249ae9b76af674129e",
-      "releaseBytes": 478704,
+      "releaseSha256": "7bfe556932d475c0037e5a7ad5d1f6dc77c91c2f95c86843fbfb4480794bb3bc",
+      "releaseBytes": 637648,
       "rootNode": "wreck_corvette_forward",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-corvette-forward",
@@ -2900,8 +3028,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_corvette_forward__fresh",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward__fresh.glb",
-      "releaseSha256": "0ba097d56175af194fee8101c488cbacb2782f4f59d70b4d9531dd3a5e8ebf35",
-      "releaseBytes": 483796,
+      "releaseSha256": "1a007d4e377f105a0eb9d460b6048ecdded9dd7d18901fb694b16c9aff007403",
+      "releaseBytes": 641856,
       "rootNode": "wreck_corvette_forward",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-corvette-forward--fresh",
@@ -2915,8 +3043,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_corvette_forward__stripped_heavy",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward__stripped_heavy.glb",
-      "releaseSha256": "7338bbdd0e60a98384e8c19fad59a19bdf0f22e8837900779ed96b66ffb64620",
-      "releaseBytes": 449764,
+      "releaseSha256": "e94c960263be8422d3abbe3c4cc4cb3576f033599aec98cfeae70f93740cb21c",
+      "releaseBytes": 609376,
       "rootNode": "wreck_corvette_forward",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-corvette-forward--stripped-heavy",
@@ -2930,8 +3058,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_corvette_turret",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_turret.glb",
-      "releaseSha256": "a019bbdd23efba3733b6f574935804a6490dba1eb5d86798c4bc1b630c36db4a",
-      "releaseBytes": 201832,
+      "releaseSha256": "1e15679faf78ee0214438f9870ae3e82a09b6ca4addafbbf7995c10e3f0dfc36",
+      "releaseBytes": 361248,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-corvette-turret",
       "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-corvette-turret/render-package.json",
@@ -2945,8 +3073,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_liner_boatbay",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_liner_boatbay.glb",
-      "releaseSha256": "0a81a062d1ae8a313586a6420f1e199237d84817953d037cf9e3cf7edd117b2c",
-      "releaseBytes": 421312,
+      "releaseSha256": "1bf9993eb9351f58b862ad93113f316bbea804918c4c1e67313b8d89bfdfe5ed",
+      "releaseBytes": 582608,
       "rootNode": "wreck_liner_boatbay",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-liner-boatbay",
@@ -2975,8 +3103,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_liner_bow",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_liner_bow.glb",
-      "releaseSha256": "1c45dd91f7e886f924b654f0bb69aba64e361a7a84595bec9023b6017e050b1f",
-      "releaseBytes": 338656,
+      "releaseSha256": "6dd24ebc9e6abd5d28d68b9e8ef4ed0fb58a5301d7a7e43235064148cf72449c",
+      "releaseBytes": 499584,
       "rootNode": "wreck_liner_bow",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-liner-bow",
@@ -3005,8 +3133,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_liner_drum",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum.glb",
-      "releaseSha256": "a7cf5a24c6bf3e54f6968bcc36e49c39954173c982068e133fc8641e68585c84",
-      "releaseBytes": 349892,
+      "releaseSha256": "196106d47907a277da10e2a12dd498a9f15ce1b4c16050f49f0f437404b1d752",
+      "releaseBytes": 510672,
       "rootNode": "wreck_liner_drum",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-liner-drum",
@@ -3020,8 +3148,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_liner_drum__derelict",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb",
-      "releaseSha256": "a2d9e7971fa1d12cedebf8c5bbaaecfd06a49b854a9b0753221db8cd42dc842d",
-      "releaseBytes": 350132,
+      "releaseSha256": "7a70b711b2169c6dc64d4355ea2baa8b5261cf8f2b2be3d2556595f130fad4be",
+      "releaseBytes": 510916,
       "rootNode": "wreck_liner_drum",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-liner-drum--derelict",
@@ -3035,8 +3163,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_liner_drum__fresh",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__fresh.glb",
-      "releaseSha256": "7ed67f4f20c900010fb564765f26f31ae29f73137fbdce71711abf92eaf2ef57",
-      "releaseBytes": 353280,
+      "releaseSha256": "8faae0bb1a1903a93572c1a0010cd0664e704c39e2c141e59f888b3228384405",
+      "releaseBytes": 514220,
       "rootNode": "wreck_liner_drum",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-liner-drum--fresh",
@@ -3050,8 +3178,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_mining_barge_authored_down",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb",
-      "releaseSha256": "7443e1083f4b442e766452cdd2e8718cbd33e9e64b01be0aa5981eae3ad1d51c",
-      "releaseBytes": 816332,
+      "releaseSha256": "692e03c320753d45840a9a366a18e4db5b3bbb505a6d96784981bb078e0e80f1",
+      "releaseBytes": 975512,
       "sceneRoot": true,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-mining-barge-authored-down",
@@ -3065,8 +3193,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_ore_freighter_bow",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow.glb",
-      "releaseSha256": "e40c2fb1dd00906f295b9e889ccd9306c8c50743e6e8a9bb47c908066b947d58",
-      "releaseBytes": 612720,
+      "releaseSha256": "1154291428b13fcaa42b3def0bfb56474e3f2697e08dd3e20a86a11f0b9edfab",
+      "releaseBytes": 773508,
       "rootNode": "wreck_ore_freighter_bow",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow",
@@ -3080,8 +3208,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_ore_freighter_bow__derelict",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__derelict.glb",
-      "releaseSha256": "1e3f05a32d09ca359979dccc73e88663d8851b09f2c7a043e6bb58bc32dfabd5",
-      "releaseBytes": 613084,
+      "releaseSha256": "fab0bb9cd081fa7ebbd0ec23e4d701f2ea0b205ac992a8d188e72a70456dd6f5",
+      "releaseBytes": 773872,
       "rootNode": "wreck_ore_freighter_bow",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow--derelict",
@@ -3095,8 +3223,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_ore_freighter_bow__fresh",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__fresh.glb",
-      "releaseSha256": "1b830c88145b41b096ecdbcf993ae1e37ea43fd0c516cae8f5f2bf57f7bc7928",
-      "releaseBytes": 616904,
+      "releaseSha256": "86138b10b87caa9d18ab08fa909809a3f154bf4400ab6d6565346600e4850d49",
+      "releaseBytes": 777704,
       "rootNode": "wreck_ore_freighter_bow",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow--fresh",
@@ -3110,8 +3238,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_ore_freighter_bow__stripped",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__stripped.glb",
-      "releaseSha256": "c18d009c39c8059cbc4cf7b7a1ec2f393428dcfda8d8b689b0443d44403a72e0",
-      "releaseBytes": 764668,
+      "releaseSha256": "fb6f40e47ebbdbdb1a3d5f11366bd303bade476a36aa2a1372b7a8de1143dc11",
+      "releaseBytes": 925060,
       "rootNode": "wreck_ore_freighter_bow",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow--stripped",
@@ -3125,8 +3253,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_ore_freighter_hopper",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_hopper.glb",
-      "releaseSha256": "0b2ca75b8a5ad7c3d73c3da819475e4edd05abddead598bb17b826ae6da38ff1",
-      "releaseBytes": 362644,
+      "releaseSha256": "4fd96c41b169591f6b588849c6673fcd968058beb4bebc083d77a78528eaaa26",
+      "releaseBytes": 523740,
       "rootNode": "wreck_ore_freighter_hopper",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-hopper",
@@ -3155,8 +3283,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_wreck_ore_freighter_stern",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_stern.glb",
-      "releaseSha256": "dfc94a25b511aa66964e7eec0d77e02bbfe3ca5ab0ec8f4f5659e8d7f538d1d4",
-      "releaseBytes": 590244,
+      "releaseSha256": "32ff34e4ae2ba99d0292b0ba97d6460e4e0656639a34c5475093cf4e687b8315",
+      "releaseBytes": 751088,
       "rootNode": "wreck_ore_freighter_stern",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-stern",
@@ -3620,14 +3748,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
-      "releaseSha256": "df3304484b0af3085ead4414fba40bd54547ebbfe23cba87d6851f5300278038",
-      "releaseBytes": 721320,
+      "releaseSha256": "86541d16d20432c5519d24c15167567382e6bbc1e27a368d07aa43b51bd2c3f3",
+      "releaseBytes": 1340680,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/drifter-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1/render-package.json",
@@ -3641,15 +3770,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
-      "releaseSha256": "ffdb1c06b61effec194a0865ef87b7fbced40c5b9993aa122e9201c587116cfb",
-      "releaseBytes": 518608,
+      "releaseSha256": "571ee8a3323776bb2154773d858f353feb783847cbea59e802bc6c59cf311bfd",
+      "releaseBytes": 1066936,
       "rootNode": "DRIFTER_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/drifter-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod1/render-package.json"
@@ -3662,15 +3792,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
-      "releaseSha256": "8ca8e2612782aebc485dd6449080910cdeaf2875d3e24723cd61dc14bae3c3fd",
-      "releaseBytes": 427420,
+      "releaseSha256": "358e636ef38d60a390f6bf22d11955fbfad8cde6453e97cd2295e97e0d7dd5f9",
+      "releaseBytes": 976476,
       "rootNode": "DRIFTER_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/drifter-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod2/render-package.json"
@@ -3683,14 +3814,15 @@
       "slot": "place",
       "releaseAssetId": "place_cold_locker",
       "sourceUrl": "assets/ships/release/parts/places/place_cold_locker.glb",
-      "releaseSha256": "0787359ee9ec2a7046a8d2f1cc151e66a9b09700f28873a44aff2bcbc9810869",
-      "releaseBytes": 491132,
+      "releaseSha256": "bcb17055facbbd129307687003b5516f1a242ef6455df56bd1b8c283e2d497d0",
+      "releaseBytes": 718208,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/cold-locker",
       "metadataUrl": "assets/ships/release/render-packages/cold-locker/render-package.json",
@@ -3704,14 +3836,15 @@
       "slot": "place",
       "releaseAssetId": "place_ash_pin",
       "sourceUrl": "assets/ships/release/parts/places/place_ash_pin.glb",
-      "releaseSha256": "f20ee8d476bd0afd8de188594343133fea5d8c4ecc9a5780df95354645d997c1",
-      "releaseBytes": 425040,
+      "releaseSha256": "42102e69cc4cacc1993ae3fe6a567a356f746a0099f322f0e2b9b5d03d7807b5",
+      "releaseBytes": 663112,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ash-pin",
       "metadataUrl": "assets/ships/release/render-packages/ash-pin/render-package.json",
@@ -3725,14 +3858,15 @@
       "slot": "place",
       "releaseAssetId": "place_tally_post",
       "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb",
-      "releaseSha256": "7a3da3280b76de7a48172b413d179a204d325674e1d3cff517e25733ba1fe76a",
-      "releaseBytes": 428968,
+      "releaseSha256": "77406b8ae08ac1e548bdb1007f1359bab5dca322ac8dc95ec07fc4765b43bd65",
+      "releaseBytes": 644516,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/tally-post",
       "metadataUrl": "assets/ships/release/render-packages/tally-post/render-package.json",
@@ -3746,14 +3880,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_pelican_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/pelican_production_v1.glb",
-      "releaseSha256": "e961892aac4e8fd2f61cf8657169463aae25e9ca8baf728928fcdd2dcb9b8fb7",
-      "releaseBytes": 647208,
+      "releaseSha256": "8e9b767b71196464e891d59f12b3ea3eb81421c1360528f31d852f4961ddcda2",
+      "releaseBytes": 1212000,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/pelican-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1/render-package.json",
@@ -3767,14 +3902,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1.glb",
-      "releaseSha256": "31ca56945bc57baf408f725bcd528dca7ee37fdb0f1e1769fb654be0c0e90f06",
-      "releaseBytes": 834604,
+      "releaseSha256": "e095c59efbdc44d1a7cba25b080d343a2eb5a70ed415becd8faeb175ad06b49f",
+      "releaseBytes": 1048924,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/atlas-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1/render-package.json",
@@ -3788,14 +3924,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb",
-      "releaseSha256": "b51cbd1ba9582fb47f526830a6c63a4337e62dd9fabf730d351baea730e66883",
-      "releaseBytes": 717972,
+      "releaseSha256": "dc5529353aa19bedacd55288e2f3656eaf10a4b329016c41b6d49c5854524460",
+      "releaseBytes": 1274552,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/bastion-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1/render-package.json",
@@ -3809,14 +3946,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_colossus_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/colossus_production_v1.glb",
-      "releaseSha256": "38ea9d49d5fac669ee4034b411938ead6e184a1cdc41e5d9147b5243f41752e6",
-      "releaseBytes": 1127552,
+      "releaseSha256": "79048657a5aa6325faf1a42e12f8b623209ca484af9380ab5a4d12b117dba12f",
+      "releaseBytes": 1627360,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1/render-package.json",
@@ -3830,14 +3968,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-      "releaseSha256": "d57ccb9a6a3b4b7803cf6e544d51c90cd624ac9212bddfa378acc008b578d21f",
-      "releaseBytes": 479664,
+      "releaseSha256": "3dbda01259bc5a3bc5e4327d46c7b37019f229eb2a2013e71808c6d39c9ece40",
+      "releaseBytes": 716216,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/hornet-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1/render-package.json",
@@ -3851,14 +3990,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ironback_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
-      "releaseSha256": "7da97991c55ad22abbe11676a60b966bf220ad7c3e18ae08cfbb0356dc5b358e",
-      "releaseBytes": 885920,
+      "releaseSha256": "ff97bd68aed4c5b371338d21442bf7521923a7dde3f9c1a6e55180dace4222c3",
+      "releaseBytes": 1479536,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1/render-package.json",
@@ -3872,14 +4012,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_leviathan_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb",
-      "releaseSha256": "ced0e43ce95d9ddbbcc4d04e2572fbfe1f1f8b9b655edcc55c428fb225293942",
-      "releaseBytes": 1077388,
+      "releaseSha256": "2b8702eb12ee505c395c52f3cbfd9e502ac99b8b3b776eead0ada374eaf1960e",
+      "releaseBytes": 1898320,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1/render-package.json",
@@ -3893,14 +4034,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1.glb",
-      "releaseSha256": "6d184c0e43d005579ef26d149290af46b1971441a2eb8b348a16b4f62314c66b",
-      "releaseBytes": 632096,
+      "releaseSha256": "58c3378f46c22d6570de170a3a58ada8729c40cf8d22a1eeee5a17bc8c63aceb",
+      "releaseBytes": 1170832,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/mule-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/mule-production-v1/render-package.json",
@@ -3914,14 +4056,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
-      "releaseSha256": "69d6f56e061e617eb3fb3339193768ded1219b0b4a83bf5950763b319aaf8b07",
-      "releaseBytes": 669540,
+      "releaseSha256": "dc94ea1c68397c6b8e2a26b38a4d8606905fbd592576e7a618f702e0545c3457",
+      "releaseBytes": 1286340,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ranger-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1/render-package.json",
@@ -3935,14 +4078,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1.glb",
-      "releaseSha256": "53b28bfbc7b6336b4e7964191f65dbce3e0190554f5b6a283ba13a9273e98436",
-      "releaseBytes": 953196,
+      "releaseSha256": "6afebedefe8bbb6d4a2a681053a0f00f7c90e68558b2e1713fed7f1170c7298b",
+      "releaseBytes": 1444832,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/warden-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/warden-production-v1/render-package.json",
@@ -3956,14 +4100,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
-      "releaseSha256": "8131128de63bdef4424ccaa4cf53adc25bb90065f56ed96bb92f882156c33c51",
-      "releaseBytes": 754720,
+      "releaseSha256": "a79c0d947c9b15e6fded46bba68149b0f55e29acb1b13beea309a609c0c80012",
+      "releaseBytes": 1298780,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/massline-express-liner-v1",
       "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1/render-package.json",
@@ -3977,15 +4122,16 @@
       "slot": "place",
       "releaseAssetId": "var_station_trade_hub_free_overlay_v01",
       "sourceUrl": "assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb",
-      "releaseSha256": "6ddec10cb99b1296f70a09c715a7ca2135406a47a62cea479245d74f96432fe4",
-      "releaseBytes": 766376,
+      "releaseSha256": "b16661d666fc44df6053bf2b1944f41b971cae470dd056c985b6f60a6967744d",
+      "releaseBytes": 1821960,
       "rootNode": "SF_TRADE_HUB_FREE_OVERLAY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/var-station-trade-hub-free-overlay-v01",
       "metadataUrl": "assets/ships/release/render-packages/var-station-trade-hub-free-overlay-v01/render-package.json"
@@ -3998,15 +4144,16 @@
       "slot": "place",
       "releaseAssetId": "var_station_trade_hub_mts_overlay_v01",
       "sourceUrl": "assets/ships/release/parts/places/var_station_trade_hub_mts_overlay_v01.glb",
-      "releaseSha256": "7372f25c7a67aab2bce4ef5e774d0810ce69a206d471a361dee91d25bd2e82f1",
-      "releaseBytes": 770832,
+      "releaseSha256": "cf32e0f3ccaa536d8f382182064ef0a0f13c17989ea60da77348656fd3298db2",
+      "releaseBytes": 3955136,
       "rootNode": "SF_TRADE_HUB_MTS_OVERLAY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/var-station-trade-hub-mts-overlay-v01",
       "metadataUrl": "assets/ships/release/render-packages/var-station-trade-hub-mts-overlay-v01/render-package.json"
@@ -4019,14 +4166,15 @@
       "slot": "place",
       "releaseAssetId": "var_station_trade_hub_scn_overlay_v01",
       "sourceUrl": "assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb",
-      "releaseSha256": "35581582c1e3816c3736f7e629cec8762fb873a25c518d9905a80214d70a29ec",
-      "releaseBytes": 1065636,
+      "releaseSha256": "3a44afee0f024d4565b15d7459be85e9b4d19f200b3e2b7d5a97d08e58560b9a",
+      "releaseBytes": 5306552,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/var-station-trade-hub-scn-overlay-v01",
       "metadataUrl": "assets/ships/release/render-packages/var-station-trade-hub-scn-overlay-v01/render-package.json",
@@ -4040,14 +4188,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_dmc",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_dmc.glb",
-      "releaseSha256": "e82ab730003e44404c25be7a055b9d7100c8f2c8f7ba548a8d4823c4872a407a",
-      "releaseBytes": 1101064,
+      "releaseSha256": "e8450eee8fc38e9ad51893506b830ed2edf5c4306bf00227d7480b740a0976cb",
+      "releaseBytes": 1613792,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-span-dmc",
       "metadataUrl": "assets/ships/release/render-packages/helios-span-dmc/render-package.json",
@@ -4061,14 +4210,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_mts",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_mts.glb",
-      "releaseSha256": "467da36f34cf91ce087e76e641e15baef544afea47950d4c3bde14b271812466",
-      "releaseBytes": 1101064,
+      "releaseSha256": "25052555c39ee97d0f2fca623db1436e3b34af06788374f26c887e31c9ef4f56",
+      "releaseBytes": 1613796,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-span-mts",
       "metadataUrl": "assets/ships/release/render-packages/helios-span-mts/render-package.json",
@@ -4082,14 +4232,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_reach",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_reach.glb",
-      "releaseSha256": "91849a472fd5457d629491fc9a223e29f18e037ca2608aedc901393074e0230c",
-      "releaseBytes": 1101112,
+      "releaseSha256": "b70b8dc4694ef7f74fc27121d32a19e430ac2609ef660ec4ad5c2979aed79319",
+      "releaseBytes": 1613852,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-span-reach",
       "metadataUrl": "assets/ships/release/render-packages/helios-span-reach/render-package.json",
@@ -4103,14 +4254,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_free_militia",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_free_militia.glb",
-      "releaseSha256": "b91022dfdc49e681520b2a81509c76b7fd9a96ad9bfdd8a273dbfbe37b130e87",
-      "releaseBytes": 1102072,
+      "releaseSha256": "e7948d26c319631fad2f54f9796558055d01f218db36ebca57a8c6f359ce00a9",
+      "releaseBytes": 1697812,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/wasp-free-militia",
       "metadataUrl": "assets/ships/release/render-packages/wasp-free-militia/render-package.json",
@@ -4124,14 +4276,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_mts_escort",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_mts_escort.glb",
-      "releaseSha256": "9e3d9baa1591d1272a3ba4be9a5be4915885030281e7f56aadb94a856ea7a981",
-      "releaseBytes": 1102076,
+      "releaseSha256": "e3715a3b7416185db452f1a481358f09d10c93212c381ce6a8c59edc9c8e38d6",
+      "releaseBytes": 1697736,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/wasp-mts-escort",
       "metadataUrl": "assets/ships/release/render-packages/wasp-mts-escort/render-package.json",
@@ -4145,14 +4298,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_scn_patrol",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_scn_patrol.glb",
-      "releaseSha256": "9d2ccc4e080afbb9fef2ad20b28c6864632c10dff6972925ae961b4817e6906f",
-      "releaseBytes": 1102020,
+      "releaseSha256": "c4d6c05462db2e96b139055439a52eaccbad4967ba7031e4f940c9ed22cae2bc",
+      "releaseBytes": 1698900,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/wasp-scn-patrol",
       "metadataUrl": "assets/ships/release/render-packages/wasp-scn-patrol/render-package.json",
@@ -4166,14 +4320,15 @@
       "slot": "pod",
       "releaseAssetId": "pod_47a_evidence_spindle",
       "sourceUrl": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb",
-      "releaseSha256": "111bec055ca08a40b35fe0362d5b1f04d6076c9918a839f34bf4e15b53a9ec9e",
-      "releaseBytes": 433784,
+      "releaseSha256": "62337626a74c051181e080c633dd6bdf0f146e90c5ca6ed62aa7ef5780e18a75",
+      "releaseBytes": 648092,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/pod-47a-evidence-spindle",
       "metadataUrl": "assets/ships/release/render-packages/pod-47a-evidence-spindle/render-package.json",
@@ -4187,14 +4342,15 @@
       "slot": "place",
       "releaseAssetId": "place_47a_rescue_capsule",
       "sourceUrl": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb",
-      "releaseSha256": "0f1ccd757d19072a3752d1af5574bae7c93a6f29793c9c742c88246f71e49553",
-      "releaseBytes": 455384,
+      "releaseSha256": "ea14d33088fa7954d6cc4668f87636384b251f1cc2b52775b12e23518b0d49e7",
+      "releaseBytes": 685968,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/47a-rescue-capsule",
       "metadataUrl": "assets/ships/release/render-packages/47a-rescue-capsule/render-package.json",
@@ -4208,14 +4364,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb",
-      "releaseSha256": "dbc474366be9ae286b3604054cd8bb269672b62127d542f0e04a34543d2e7d72",
-      "releaseBytes": 534972,
+      "releaseSha256": "9f6bbf154f37837e9b5f842bd77b6255f466dd18c216598c791edd3c9c1f0350",
+      "releaseBytes": 1040736,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/wasp-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod1/render-package.json",
@@ -4229,14 +4386,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb",
-      "releaseSha256": "a7cbc7946b9071fcfb195f51d58aa36a5a5cb6a450cd3416ab2672cb006c618f",
-      "releaseBytes": 416820,
+      "releaseSha256": "8bec516de5c678f5c94efb1b0c0a24ff4e0ba776921250731e8450dd0f6d4955",
+      "releaseBytes": 921684,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/wasp-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod2/render-package.json",
@@ -4250,15 +4408,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
-      "releaseSha256": "d773a1d061debe5a22e8c5d6ad9561abb8d40613d55fca76ca32895df0317e83",
-      "releaseBytes": 392564,
+      "releaseSha256": "6c56ec89903ed8f8d3ac99a854f46153ac8dd95b6b7c6a24616019be8f58d488",
+      "releaseBytes": 598204,
       "rootNode": "HORNET_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/hornet-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod1/render-package.json"
@@ -4271,15 +4430,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-      "releaseSha256": "b875d5d851a043f4ef3eaaafb999b45eb64ae9326315bcd71647c0ae94132eed",
-      "releaseBytes": 339236,
+      "releaseSha256": "12f49a43cc1b0baf060a8d4c7fd947a6367b5a36cf2c0b9e544441f3b1834e94",
+      "releaseBytes": 543660,
       "rootNode": "HORNET_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/hornet-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod2/render-package.json"
@@ -4292,14 +4452,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb",
-      "releaseSha256": "4d4a1730b23b75e4f6b6a237d11e68fdb9f1257c5f5c5ac1b3c6ce1bada717aa",
-      "releaseBytes": 509484,
+      "releaseSha256": "9300fbdcce863ff723b4d01f794dfb5833cf7370bd2b5a97c111ca2a94f2da72",
+      "releaseBytes": 995320,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/bastion-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod1/render-package.json",
@@ -4313,14 +4474,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb",
-      "releaseSha256": "756d9d7367a24a9039769eee482ea675e509cc3669b5ba7ed7926c06567fd3d6",
-      "releaseBytes": 419184,
+      "releaseSha256": "da8c6d3fa1f1172e3ee1807caa508e5798063b676d2a7594f527a98e69b0a766",
+      "releaseBytes": 905248,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/bastion-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod2/render-package.json",
@@ -4334,14 +4496,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod1.glb",
-      "releaseSha256": "9d1249be494e36f819ff87866b78df582c8bab47e407fc776ee95750557b3831",
-      "releaseBytes": 668136,
+      "releaseSha256": "744cba6b2da2214ccaa89e52aebfcea99f223744a0bbda702a2ec3520c404132",
+      "releaseBytes": 1051224,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/warden-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/warden-production-v1-lod1/render-package.json",
@@ -4355,14 +4518,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod2.glb",
-      "releaseSha256": "fd7f5b2c08bec59b8350de13d2190732443340ae23938cb9e871392c32f4bcab",
-      "releaseBytes": 490688,
+      "releaseSha256": "ce9822309dfefb7583e38814f0ea0b08d7d05bc5bbca0117c9e75b5e108f1115",
+      "releaseBytes": 876628,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/warden-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/warden-production-v1-lod2/render-package.json",
@@ -4376,15 +4540,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
-      "releaseSha256": "ddef05d0638d5d99b3336e036d2703dc855a71ba390d53b11fed433ecf4b7992",
-      "releaseBytes": 529464,
+      "releaseSha256": "65cc5b937b0cab84a1a8d5cdfd452c430bc7df9a45569eb552ecda9936deb2a6",
+      "releaseBytes": 1003844,
       "sceneRoot": true,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/massline-express-liner-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod1/render-package.json"
@@ -4397,15 +4562,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
-      "releaseSha256": "715f3e14659f1b77d551d8f36d7ddc694c7e17f0afe29b16c0c5c6bdb7dc2b1e",
-      "releaseBytes": 413136,
+      "releaseSha256": "d1349e24e9618c6397c5f684d629a6f31a829f0f54e52097430a91e406211782",
+      "releaseBytes": 887900,
       "sceneRoot": true,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/massline-express-liner-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod2/render-package.json"
@@ -4418,14 +4584,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb",
-      "releaseSha256": "050a9acfc15e9e6a6ba6f193a96ec401fbfc9a2a79b25a9bed0590d19eba2087",
-      "releaseBytes": 476184,
+      "releaseSha256": "6a5d2e51b4df14a45c4e299095d6fb40a5c0d0aaa00bb72651330e9c7e8899f5",
+      "releaseBytes": 958500,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/mule-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/mule-production-v1-lod1/render-package.json",
@@ -4439,14 +4606,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb",
-      "releaseSha256": "65a803a2f427a8c5874442988874ac5cd0273a28e9b77b083d24389e06740191",
-      "releaseBytes": 395640,
+      "releaseSha256": "ce24b8a4106726e643cacfe2cde428c3e7521d1c9c37b4faa7eb5626b448f049",
+      "releaseBytes": 877236,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/mule-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/mule-production-v1-lod2/render-package.json",
@@ -4460,14 +4628,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb",
-      "releaseSha256": "41fc8093c5fee1ef6a9d2d38845ba1e782a59ae2ce3c06af65d5180843ce9a75",
-      "releaseBytes": 593192,
+      "releaseSha256": "9b66c7828f24b8f810f38511611ff820cd005bd9a24adbcf6556ba7b70875b2b",
+      "releaseBytes": 758400,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/atlas-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod1/render-package.json",
@@ -4481,14 +4650,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod2.glb",
-      "releaseSha256": "8e3d56595a651d05de85a4b2b1491fdbb4778b2b6d73622faeaea8346eb9aef4",
-      "releaseBytes": 468352,
+      "releaseSha256": "e6a4e85083056d06abc2814b64bedba365f9c031c3d6a64faa70eb9218b3a95e",
+      "releaseBytes": 634332,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/atlas-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod2/render-package.json",
@@ -4502,15 +4672,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb",
-      "releaseSha256": "036ea6fcaf796097265eeb461c73f4f652317091f3fb7a2470e55c28f4729275",
-      "releaseBytes": 482500,
+      "releaseSha256": "1aff31ebb5874eca200d709512385ac2b22a5fd0ed0691fac517a1ee8fb39e2f",
+      "releaseBytes": 1033876,
       "rootNode": "RANGER_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ranger-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod1/render-package.json"
@@ -4523,15 +4694,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb",
-      "releaseSha256": "d95692bf159c88e87d7179dfeb301e464256d1b1eff9caf3b945235ad1f46489",
-      "releaseBytes": 403172,
+      "releaseSha256": "89ee8dff9a121f8a4667a489b83e953766192f0102fea7d4be9367a39578ad76",
+      "releaseBytes": 954476,
       "rootNode": "RANGER_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ranger-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod2/render-package.json"
@@ -4544,15 +4716,16 @@
       "slot": "place",
       "releaseAssetId": "place_claim_outpost_catcher",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb",
-      "releaseSha256": "ea9d03cdb0fd667a568af307f245375bc6c9287f39f3ac9acc7d17cf6e9afdc2",
-      "releaseBytes": 1143036,
+      "releaseSha256": "69c463892a60debce0c976d9533d89ab972eb40837b9f15e46c1623445069603",
+      "releaseBytes": 2039200,
       "rootNode": "SF_PLACE_CLAIM_OUTPOST_CATCHER_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/outpost-catcher",
       "metadataUrl": "assets/ships/release/render-packages/outpost-catcher/render-package.json"
@@ -4565,15 +4738,16 @@
       "slot": "place",
       "releaseAssetId": "place_breakaway_sp07",
       "sourceUrl": "assets/ships/release/parts/places/place_breakaway_sp07.glb",
-      "releaseSha256": "283dd7eef29885b4b4f539e40e7c6042aca9fafdc763e120c1c5ae0ecd1b3869",
-      "releaseBytes": 525580,
+      "releaseSha256": "fc40b71945cb8b68b39cbe789c1c40b920ccb769d804a4fd5b1fb0d865dc4840",
+      "releaseBytes": 1051896,
       "rootNode": "SF_PLACE_BREAKAWAY_SP07_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/breakaway-sp07",
       "metadataUrl": "assets/ships/release/render-packages/breakaway-sp07/render-package.json"
@@ -4586,15 +4760,16 @@
       "slot": "place",
       "releaseAssetId": "place_breakaway_fork",
       "sourceUrl": "assets/ships/release/parts/places/place_breakaway_fork.glb",
-      "releaseSha256": "edd2a1351c0fcb3bd4f9ede07ad41cb33ca45ae259f13121c58f9c0353ee5438",
-      "releaseBytes": 596304,
+      "releaseSha256": "53b7031327d60e0ac5b5770eb324473ede1da77fb20f7c432c4585a3dd98ada7",
+      "releaseBytes": 1452560,
       "rootNode": "SF_PLACE_BREAKAWAY_FORK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/breakaway-fork",
       "metadataUrl": "assets/ships/release/render-packages/breakaway-fork/render-package.json"
@@ -4607,15 +4782,16 @@
       "slot": "place",
       "releaseAssetId": "place_claim_outpost_fence",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_fence.glb",
-      "releaseSha256": "0e6f231a270e4927d88cba4db37e4afd7a83204c43a675b6a475954bd5a75549",
-      "releaseBytes": 1170012,
+      "releaseSha256": "de32aaeb1dfb15974c7e7764dc2f66450cd1c7c844ac0e87eef024949ff7265d",
+      "releaseBytes": 2206580,
       "rootNode": "SF_PLACE_CLAIM_OUTPOST_FENCE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/outpost-fence",
       "metadataUrl": "assets/ships/release/render-packages/outpost-fence/render-package.json"
@@ -4649,12 +4825,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/pelican-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod1/render-package.json",
-      "releaseBytes": 475040,
-      "releaseSha256": "95f6d7315ae78e5a37928289408fcd1c9d6c8a6a42d4d7409d34753d9873e116"
+      "releaseBytes": 979472,
+      "releaseSha256": "b2f6a465b1108615f10661f5075604637187583c7fadab0720735b02088597ba"
     },
     {
       "key": "pelican-production-v1-lod2",
@@ -4670,12 +4847,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/pelican-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod2/render-package.json",
-      "releaseBytes": 389328,
-      "releaseSha256": "33546a430de14d89fbc41d9f3d3a5e0749fccc11086b56f2010fda8487f561cf"
+      "releaseBytes": 892544,
+      "releaseSha256": "639ec28718782f84cd2649863bb58703e8bd8b9585a3452bc7628fd8092957ac"
     },
     {
       "key": "colossus-production-v1-lod1",
@@ -4691,12 +4869,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod1/render-package.json",
-      "releaseBytes": 734528,
-      "releaseSha256": "666be4c846bdec627a2af44026856573e86ab571215156699365c8c09f313d97"
+      "releaseBytes": 1099180,
+      "releaseSha256": "e6406e6bed678b78c674fd6c9359accf65a8631da9427006f40a121c3c9900ec"
     },
     {
       "key": "colossus-production-v1-lod2",
@@ -4712,12 +4891,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod2/render-package.json",
-      "releaseBytes": 530968,
-      "releaseSha256": "607b063ccba63cf9e600d1a5e7448cfee300a169530b15872f75fc9ad73f0536"
+      "releaseBytes": 899220,
+      "releaseSha256": "18c1ab20bdd252c17623d254a3d8143ac3c2b923a3da7b8c7485804566681a15"
     },
     {
       "key": "ironback-production-v1-lod1",
@@ -4733,12 +4913,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json",
-      "releaseBytes": 584808,
-      "releaseSha256": "12b51387c4a63d377603fa7b0d172cd536f40a3c48d7189994d9d94d934547d1"
+      "releaseBytes": 1086924,
+      "releaseSha256": "07596122f360e40b47534acdee36c9f42b05c97126aa47c1404cefeded38f4ea"
     },
     {
       "key": "ironback-production-v1-lod2",
@@ -4754,12 +4935,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json",
-      "releaseBytes": 444292,
-      "releaseSha256": "3cdac3b6844850e0f282ec1ac356db85f9464b3c57bf11af89d4a79c9f68d012"
+      "releaseBytes": 946584,
+      "releaseSha256": "fe331774bcc031ee1458ea8b131f5bc087e0e6cff6f46ad105fcfce8c0488d02"
     },
     {
       "key": "leviathan-production-v1-lod1",
@@ -4775,12 +4957,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod1/render-package.json",
-      "releaseBytes": 745468,
-      "releaseSha256": "3ba95812a76c1f1466d3a82acd09eb8fb86fec24d888a0fda893b723f7291360"
+      "releaseBytes": 1424952,
+      "releaseSha256": "69c14bfdd65a7dbe8b21a76a2771e7982d482d6eed9ca8c08c8da3a4afc395cb"
     },
     {
       "key": "leviathan-production-v1-lod2",
@@ -4796,12 +4979,13 @@
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod2/render-package.json",
-      "releaseBytes": 540464,
-      "releaseSha256": "77f547fa2c312aece7253ca56aa62440c540acf5266594b701157c734c4e8375"
+      "releaseBytes": 1224212,
+      "releaseSha256": "1c326cc45453caf98a8df1542f38d9ca5189287221fcf04c730ad74aa753f90c"
     },
     {
       "key": "quiessence-freighter-a",
@@ -4811,14 +4995,15 @@
       "slot": "place",
       "releaseAssetId": "place_quiessence_freighter_a",
       "sourceUrl": "assets/ships/release/parts/places/place_quiessence_freighter_a.glb",
-      "releaseSha256": "416fdfbb7039c2a3b5199bf88464e2ecd28d4a8ca771a5fbbc36bd3a363b84d2",
-      "releaseBytes": 1296028,
+      "releaseSha256": "69e259c703b9299db7e306c324e523b409aa5d9120118a4db9574176cedd33db",
+      "releaseBytes": 1902116,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/quiessence-freighter-a",
       "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-a/render-package.json",
@@ -4832,14 +5017,15 @@
       "slot": "place",
       "releaseAssetId": "place_quiessence_freighter_b",
       "sourceUrl": "assets/ships/release/parts/places/place_quiessence_freighter_b.glb",
-      "releaseSha256": "0732226c5045471132ac6a5153b528a13b79d54f5c7fe8f96b62fec83134539a",
-      "releaseBytes": 1111836,
+      "releaseSha256": "132b5b414e8359da553dd25dd4ed27d539d3e889a676f0a15273efd0152d5b60",
+      "releaseBytes": 1636232,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/quiessence-freighter-b",
       "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-b/render-package.json",
@@ -4853,14 +5039,15 @@
       "slot": "place",
       "releaseAssetId": "place_quiessence_freighter_c",
       "sourceUrl": "assets/ships/release/parts/places/place_quiessence_freighter_c.glb",
-      "releaseSha256": "ed118412422351e9b5fa10fab3d2392eb49d39c8743ca2dd37dd95f4f9095f52",
-      "releaseBytes": 1171704,
+      "releaseSha256": "e70c81f42de71ac9eaf337acf122de9217b98843e2cab268a7c647423c5f1ffa",
+      "releaseBytes": 1737280,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
         "HOOK_SECONDARY",
         "HOOK_SENSOR",
-        "HOOK_ARMOR"
+        "HOOK_ARMOR",
+        "ANIM_"
       ],
       "outputDir": "assets/ships/release/render-packages/quiessence-freighter-c",
       "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-c/render-package.json",

@@ -285,7 +285,7 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
     const dynamic = !!mesh && (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
     const blend = !!mesh && /glass|canopy/i.test(nodeName);
     const parent = node.getParentNode();
-    const lane = pilot.flightStaticV3 === true && mesh
+    const lane = pilot.flightStaticV3 === true && mesh && !dynamic
       ? flightStaticLaneForNode(nodeName)
       : null;
     return {
@@ -366,8 +366,8 @@ function assertPilotManifest(manifest) {
       if (pilot.kind !== 'place' || pilot.sceneRoot !== true) {
         throw new Error(`${pilot.key}: flightStaticV3 currently requires a scene-root place package.`);
       }
-      if ((pilot.dynamicNameIncludes || []).length > 0) {
-        throw new Error(`${pilot.key}: flightStaticV3 cannot contain dynamic-name groups.`);
+      if ((pilot.dynamicNameIncludes || []).some((token) => token !== 'ANIM_')) {
+        throw new Error(`${pilot.key}: flightStaticV3 dynamic-name groups may only use the 'ANIM_' token.`);
       }
     }
     keys.add(pilot.key);
@@ -394,8 +394,8 @@ function assertFlightStaticManifest(manifest, pilotManifest) {
     if (pilot.kind !== 'place' || pilot.sceneRoot !== true) {
       throw new Error(`${key}: flightStaticV3 currently requires a scene-root place package.`);
     }
-    if ((pilot.dynamicNameIncludes || []).length > 0) {
-      throw new Error(`${key}: flightStaticV3 cannot contain dynamic-name groups.`);
+    if ((pilot.dynamicNameIncludes || []).some((token) => token !== 'ANIM_')) {
+      throw new Error(`${key}: flightStaticV3 dynamic-name groups may only use the 'ANIM_' token.`);
     }
     keys.add(key);
   }

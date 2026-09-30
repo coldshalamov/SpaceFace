@@ -6022,7 +6022,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // WHY-GLYPHS ARE LOCAL, AND ONLY WHERE THE BOARD DOES NOT ALREADY ANSWER. A plate reading
     // "a machine sits here" stacked on a visible machine, or "the rover is here" on the visible
     // rover, is clutter restating what the object under it already says — those two refusals get
-    // the coral bracket and nothing else. The plates carry the causes you CANNOT see: an unpaid
+    // the bone bracket and nothing else. The plates carry the causes you CANNOT see: an unpaid
     // cost, a rig too far away, a missing gas contact, a rule you have already spent.
     if (ghosting && ui.cursor) {
       const near = res.blocked
@@ -6152,7 +6152,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // ---------------------------------------------------------------- ghost
   function tintGhost(ghostRecord, canOk) {
     if (!ghostRecord?.materials) return;
-    const hex = canOk ? 0x7cd9a2 : 0xff6242;
+    const hex = canOk ? 0x7cd9a2 : 0xf2e8d5; // refused aim idles in bone (--aw-ink): red is threat-only
     for (const material of ghostRecord.materials) {
       material.color.setHex(hex);
       material.emissive.setHex(hex);
@@ -7624,7 +7624,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         g.canOk = !!ui.canOk;
         tintGhost(g, g.canOk);
       }
-      frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xff6242);   // --aw-mint / --aw-coral
+      frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xf2e8d5);   // --aw-mint / --aw-ink (bone: refused aim is not a threat)
       frameMat.opacity = 0.85;   // shared material: the build verdict must not leak into drive
       // Contact-ring preview: which of the eight neighbours would feed this machine. Brackets, not
       // a wash — a face that feeds gets a mint mark, a face already hollow gets a bone one.
@@ -7638,7 +7638,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           markSeat(cc, rr, tile && tile.type !== 'empty' ? 'contact' : 'hollow');
         }
       }
-      // The refused verdict is the hairline frame's coral, and that is ALL it is: a bracket in the
+      // The refused verdict is the hairline frame's bone, and that is ALL it is: a bracket in the
       // same cell doubles the ink and starts reading as a filled box again.
     } else {
       if (ghost) ghost.group.visible = false;

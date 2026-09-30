@@ -190,7 +190,9 @@ export class TacticalAIStack {
             : disabledNonlethalTarget && disabledNonlethalTarget.id,
         }) : null;
         const effectiveDirective = applyEnemyMindDirective(
-          combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive, mind, freeze);
+          combatDoctrine
+            ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine, doctrinePerception)
+            : directive, mind, freeze);
         const priorDecision = this.lastDecisionByEntity.get(member.id);
         if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers)
           && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)

@@ -25,6 +25,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # Stepped annulus decks; outer ring carries a coarser panel tile via uv_scale.
     F.annulus(s, 'DeckOuter', (0, 0), 9.0, 16.0, 0.0, 1.2, material='paint', side_material='dark',

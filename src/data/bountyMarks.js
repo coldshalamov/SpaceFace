@@ -255,3 +255,95 @@ export function rollBountyMark({ seed, offerId, sectorId, riskTier = 0, sectorDe
 export function bountyMarkHail(seed, missionId) {
   return MARK_HAIL_LINES[hash32(seed || 1, missionId || 'mark', 'bounty-mark-hail') % MARK_HAIL_LINES.length];
 }
+
+// ── patrol nests ─────────────────────────────────────────────────────────────────────────────
+// A patrol_clear writ used to be a number of ships standing in a ring around wherever the player
+// jumped in — the last board combat row with no place in it. The bounty writ had already learned
+// to name a person at a place; this extends the same discipline to the patrol board: the writ
+// names the raider TOLL POST holding a named place — a stripped hulk the pack anchors on, and
+// the mule they are robbing. Pure data, deterministic on (seed, offerId), zero rng draws, so
+// every other rolled offer field stays bit-identical and re-rolled boards agree.
+
+/** What the raiders call their post. Register: a working shakedown operation, proud of it. */
+export const PATROL_NEST_NAMES = Object.freeze([
+  'the Tin Toll',
+  'the Cleaver Yard',
+  'the Siphon',
+  'Red Wharf',
+  'the Cut Rate',
+  'the Long Lash',
+  'Rustgate',
+  'the Halfpenny Post',
+  'the Gantlet',
+  'Salt Yard',
+  'the Quiet Booth',
+  'the Iron Ledger',
+  'Broken Keel',
+  'the Snag',
+  'the Pricewatch',
+  'Ash Wharf',
+]);
+
+/** The post's one-shot approach line while it still holds — a toll-taker with a price list. */
+export const PATROL_NEST_HAIL_LINES = Object.freeze([
+  'Toll is posted on that hull. Pay the yard and pass.',
+  'Another board hull. Your rate just went up.',
+  'This is a working post. State your business or state your account.',
+  'You are inside post range. The toll clock is running.',
+  'Halt or pay. Those are the options out here.',
+  'The ledger has room for one more name. Pick which column.',
+  'Freight, salvage, or blood — the post takes payment in all three.',
+  'Everyone pays the post. Even the ones who argue first.',
+]);
+
+/** The anchor's line the moment the post breaks — the pack's nerve going with it. */
+export const PATROL_NEST_LOUD_LINES = Object.freeze([
+  'Post is blown — scatter and save your hulls!',
+  'The post is gone! Run, all of you, run!',
+  'Ledger is burning — every hull for itself!',
+  'They took the post. Get clear before the board reads it.',
+  'Break off, break off — the post is lost!',
+  'The yard is down. Scatter and regroup at the far seam!',
+]);
+
+/**
+ * Roll the toll post for a board-generated patrol_clear offer. Same hash discipline as
+ * rollBountyMark: deterministic on (seed, offerId), reuses the bounty place candidates (named
+ * POI > lurkable zone > gate, lawful protection already excluded) so the post holds a real
+ * named feature of the destination sector and never lawful ground.
+ *
+ * Returns { id, name, label, role: 'nest_anchor', archetype, factionId, anchorId?, zoneId?,
+ * anchorRadius?, anchorMinRadius?, placeName? } — callers spread it into offer.storyTarget
+ * (drop placeName; it lives in params.nestPlace). A sector with no named place still returns
+ * the post; the spawn path falls back to the hostile ring as before.
+ */
+export function rollPatrolNest({ seed, offerId, sectorId, sectorDef = null } = {}) {
+  if (!offerId || !sectorId) return null;
+  const h0 = hash32(seed || 1, offerId, 'patrol-nest');
+  const name = PATROL_NEST_NAMES[h0 % PATROL_NEST_NAMES.length];
+  const places = markPlaceCandidates(sectorId, sectorDef);
+  const place = places.length ? places[hash32(h0, 'place') % places.length] : null;
+  return {
+    id: `nest:${offerId}`,
+    name,
+    label: `${name.toUpperCase()} — TOLL POST`,
+    role: 'nest_anchor',
+    archetype: 'reaver_pirate',
+    factionId: 'faction_reach',
+    ...(place || {}),
+  };
+}
+
+/** The post's seeded approach line — one per mission, stable across save/load. */
+export function patrolNestHail(seed, missionId) {
+  return PATROL_NEST_HAIL_LINES[
+    hash32(seed || 1, missionId || 'nest', 'patrol-nest-hail') % PATROL_NEST_HAIL_LINES.length
+  ];
+}
+
+/** The post's seeded loud line — spoken the moment the first hull of the pack drops. */
+export function patrolNestLoudLine(seed, missionId) {
+  return PATROL_NEST_LOUD_LINES[
+    hash32(seed || 1, missionId || 'nest', 'patrol-nest-loud') % PATROL_NEST_LOUD_LINES.length
+  ];
+}

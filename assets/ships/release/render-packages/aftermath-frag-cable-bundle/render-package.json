@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "16467a7d0a53d2714ce15211e19b13a2d8531be59c3c0440fdc092f971e9a008",
+  "contentHash": "73e4be6b8d00b8c39b3ebe2188569f2b81dbbd3f4f89502b8baad36623377782",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,11 +23,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c1ab1f30484ab70765ec76f19e4f66d797c6e297d261aad851f4ed3cf6c5808",
+      "geometryHash": "15a7d6a8d387f63bae2858f880c400abe9ea167c489bdbf7f1ed51b02502fbc8",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab00.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab00",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab00",
@@ -48,11 +48,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f9a9249a7a04602dcd563e70e96f48e54be5beede25318c825eec23b61e2802",
+      "geometryHash": "7d5931fa3b88817d4cfbfff2a8b2d32a67dd7c207aed8c08f33c5f5e1af8ea89",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab01.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab01",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab01",
@@ -73,11 +73,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ade9922d74b7b91533b52f3ebd533f366f04a59e77fb2ef30b01933fbd89e8ae",
+      "geometryHash": "37d3671c83d1325d6e841515e751ebe9ca7937b294136a6b99d47b596256c68f",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab10.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab10",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab10",
@@ -98,11 +98,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19e38a5cc8a0481e6d48bd1bfd061f5d30ccb1492df85757fe8bc126ab3e93cf",
+      "geometryHash": "f5451c66011160328b5012a028711e4f814bc72c9809c700b86801d5c08b2db0",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab11.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab11",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab11",
@@ -123,11 +123,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41515c5f61b3555bafe0dedc5bb9f6ffef690cc141681cb3f2e0817c318634ef",
+      "geometryHash": "41f50e415621cbcb81079d2b049c4cbc1c30149701998d8d6166abeeff490d96",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab20.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab20",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab20",
@@ -148,11 +148,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "355d7187d6d7a331ce803bb17d4ad07590706e3f4faafce0070c7f72e199b13c",
+      "geometryHash": "62261ce36a802735f5ebfca513c0c8dc772962111019787fc21a386ef428ca57",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab21.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab21",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab21",
@@ -173,11 +173,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7c6934bd79a13f017cf4e561832a7fc74a830062d9b3498dd8de27684cf9e85",
+      "geometryHash": "3b8f6f7f7a1c07ca202c26af71d98ae87ddfdcf3786f345ee084dfe865e0becb",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab30.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab30",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab30",
@@ -198,11 +198,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "297a1e15d16afff82d62c0bce548fd26b826f439533adaa8e2774d51202fa84f",
+      "geometryHash": "73a82e33b0fba71716bc89fe78f509139e9efe88cfcf859342a9d3c31e65b827",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab31.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab31",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab31",
@@ -223,11 +223,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "100182abd7f9cca044c36d91e4fb8d6f3960dccfe9a5b587ded46a6209208961",
+      "geometryHash": "0f76f5955049f5055b03833d41882440c9fe8d56b6ca41ece33026b6dd9af4ff",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab40.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab40",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab40",
@@ -248,11 +248,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a06271be9745a28e85787002621029772a0a0bc413521eb94c11395e10c1937c",
+      "geometryHash": "1845d68ef513a84a5c23f8346eea06664525581ed2666011ea6accf8316f9727",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab41.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
       "materialPipelineKey": "opaque",
       "meshName": "cab41",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab41",
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "511b9d2e72e5572a1f455f57c42c5c28a91d6807975ddedc7281887de0b812be",
+      "geometryHash": "17fbc75233d8536f29421673b7d37a5f1522e190ae0fcbf1b0b775455d3c11f9",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cabcollar.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -322,8 +322,8 @@
       ]
     },
     {
-      "hash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
-      "id": "material:ee4e7dc63df018e0c222a18c",
+      "hash": "fcf9ea15e49afd8a362822c1a4d66065f12431a7cacdb0f8bdad493ec1c1d58d",
+      "id": "material:fcf9ea15e49afd8a362822c1",
       "name": "Forge_ore_barge_wk_cut",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -948,19 +948,19 @@
       "sha256": "639c6fb492716ed5260433caf4812c371717965dcae8e772bc5e66f8d302f68b"
     },
     "sourceGlb": {
-      "bytes": 131520,
-      "sha256": "e6b1572b1689e2d5b0ba20d71b4afb455c809770394a43df8f010c484ad2a87a",
+      "bytes": 292708,
+      "sha256": "3b7d08de54d8b624ad4c98bc5f806d0bb5ee7ece19d0185349496ad10f327640",
       "uri": "place_aftermath_frag_cable_bundle.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 136476,
-    "sha256": "08007b5921694c5ab89f1fee4a622e6b78b72ab0564ab5332bdb59af3ead2880",
+    "bytes": 297664,
+    "sha256": "8041c9aa060994759f5031fa5c1efdad104071e86e3d7aea4022a3655207689b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1353,7 +1353,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb"
   },
-  "runtimeHash": "f63216eddf8e2d0bb9486044e96d2a23edc19304ec4ef959cc575bdbdbeb0824",
+  "runtimeHash": "34e6d1af302a9d70ccc67ac3f27d44fe985f9dc1755a1200f342b20ade9100f4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

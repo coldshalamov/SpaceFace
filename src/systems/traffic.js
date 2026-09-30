@@ -58,6 +58,8 @@ import {
   FREIGHT_MARKET_KEYS_FALLBACK,
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { customsWeirForSector, pointInsideCustomsWeir } from '../world/customsWeir.js';
 import { FACTION_KITS } from '../data/factions.js';
 import { OCCUPATIONAL_JOB_KIND_BY_ROLE } from '../data/occupationalTrafficCraft.js';
 import {
@@ -509,6 +511,49 @@ const CERES_CALVED_SEAM_BONUS_U = 12;
 // overflow into the miner's hull merely to make the service call look dramatic.
 const CERES_TENDER_SERVICE_DRIVE_ARMOR_FLAT = 2;
 const CERES_TENDER_SERVICE_DRIVE_ION_MULTIPLIER = 1.1;
+
+// ── Tethys Customs Gate cast (INF WF-01) ─────────────────────────────────────────────
+// The gate's own way-of-life line is "everything transits; nothing transits unread" — but until
+// this cast existed, the weir read only the player. One authored cutter works the checkpoint
+// cone: it pulls crossing freight out of the flow, holds it for a manifest read, and logs or
+// clears it. One authored Quiet Runner carries a sealed contraband consignment across the same
+// cone because the goods have to pass the gate to reach the hub — and it dumps the consignment
+// and bolts rather than submit. Real custody throughout: the dump spills the runner's actual
+// manifest lines as standard pickups, so a player who scoops them carries contraband past the
+// same gate on their next crossing.
+const TETHYS_GATE_SECTOR_ID = 'sector_tethys_junction';
+const TETHYS_GATE_CUTTER_SLOT_ID = 'tethys_gate_cutter';
+const TETHYS_QUIET_RUNNER_SLOT_ID = 'tethys_quiet_runner';
+const TETHYS_GATE_INCIDENT_EVENT = 'customs:gateIncident';
+const TETHYS_GATE_DELIVERY_EVENT = 'traffic:quietDelivery';
+const TETHYS_GATE_CONSIGNMENT_SCHEMA = 'spaceface.quietConsignment.v1';
+const TETHYS_GATE_CUTTER_POST_ALONG_WU = 150;   // cutter station, out the cone mouth
+const TETHYS_GATE_CUTTER_POST_PERP_WU = 64;     // …offset off the centreline
+const TETHYS_GATE_HOLD_RANGE_WU = 40;           // alongside = close enough to read
+const TETHYS_GATE_CATCHUP_WU = 150;             // runner panics inside this cutter distance
+const TETHYS_GATE_INTERCEPT_RANGE_WU = 950;     // a flagged runner is met out here
+const TETHYS_GATE_READ_DWELL_S = 4;             // the hold has to be long enough to watch
+const TETHYS_GATE_SCAN_REARM_S = 10;            // breathing room between inspections
+const TETHYS_GATE_ABORT_MARGIN_WU = 420;        // target clear of the cone by this → abort
+const TETHYS_GATE_SCAN_POLL_TICKS = 20;         // target census cadence while on post
+const TETHYS_RUNNER_SPEED_WU_S = 62;            // it runs the gate, not moseys it
+const TETHYS_RUNNER_BOLT_SPEED_WU_S = 84;
+const TETHYS_RUNNER_BOLT_S = 22;
+const TETHYS_RUNNER_FLAG_S = 80;                // how long the gate remembers a dumper
+const TETHYS_RUNNER_RELOAD_S = 9;               // loading the next consignment in the shadow
+const TETHYS_RUNNER_SHADOW_ALONG_WU = -360;     // behind the cone: the quiet side of the Anvil
+const TETHYS_RUNNER_SHADOW_PERP_WU = 130;
+const TETHYS_RUNNER_HUB_ALONG_WU = 680;         // past the cone: the hub side of the checkpoint
+const TETHYS_RUNNER_HUB_PERP_WU = -90;
+const TETHYS_RUNNER_ARRIVE_WU = 52;
+const TETHYS_RUNNER_CONSIGNMENT_TTL_S = 240;    // dumped pods persist long enough to scoop
+const TETHYS_GATE_INSPECTABLE_ROLES = new Set(['hauler', 'courier', 'tanker', 'arclight', 'shuttle', 'smuggler']);
+// The gate reads the same law the economy scanner applies to the player: commodity legality.
+const TETHYS_GATE_CONTRABAND_POOL = Object.freeze(COMMODITIES
+  .filter((row) => row && row.id && row.legality && row.legality !== 'legal')
+  .map((row) => row.id));
+// The authored Tethys gate weir (static geometry from the customs-weir owner).
+const TETHYS_GATE_WEIR = customsWeirForSector(TETHYS_GATE_SECTOR_ID);
 // PQ-048.05 binds one real transferred ore lot to the existing Ceres hauler, combat, Massline,
 // freight, cargo, law, and tender owners. The compact record contains only stable actor/cargo
 // identities; numeric entity and pickup ids are rebound from durable annotations after Continue.
@@ -3818,6 +3863,9 @@ export const traffic = {
   _ensureNamedLaneContact(sectorId, sector, stations) {
     this._ensureState();
     const list = this.state.traffic.freighters || [];
+    // The Tethys gate cast stamps on every contact pass — including Tethys's, which is the Kess
+    // priority-courier service and early-returns below before the generic fixture block.
+    this._ensureTethysGateCast(sectorId, sector, stations, list);
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       const seed = (this.state.meta && this.state.meta.seed) || 1;
       const contact = pickNamedLaneContact(sectorId, seed);
@@ -3862,6 +3910,7 @@ export const traffic = {
     this._ensureHeliosTankerFixture(sectorId, sector, stations, list);
     this._ensureHeliosCustomsFixture(sectorId, sector, stations, list);
     this._ensureHeliosMemorialTourist(sectorId, sector, stations, list);
+    this._ensureTethysGateCast(sectorId, sector, stations, list);
     // Already have a live named contact? (The courier's dedicated fixture slot does not count.)
     for (const rec of list) {
       const e = this.state.entities && this.state.entities.get(rec.id);
@@ -4197,6 +4246,439 @@ export const traffic = {
       dockSeq: 0,
       manifest: null,
     });
+  },
+
+  // ── Tethys Customs Gate cast ────────────────────────────────────────────────────────────
+  // One authored cutter works the checkpoint cone; one authored Quiet Runner runs it. The gate
+  // reads the freight the weir already watches; the runner carries real contraband consignments
+  // and dumps them as standard pickups when the cutter closes. See the constant block above.
+
+  _tethysGateSlotRec(list, slotId) {
+    for (const rec of list || []) {
+      const entity = liveEntity(this.state, rec && rec.id);
+      if (entity && entity.alive !== false && entity.data
+        && entity.data.activityActorSlotId === slotId) return rec;
+    }
+    return null;
+  },
+
+  _tethysGateRecFor(id) {
+    const list = this.state.traffic && this.state.traffic.freighters;
+    if (!Array.isArray(list) || id == null) return null;
+    for (const rec of list) if (rec && rec.id === id) return rec;
+    return null;
+  },
+
+  _ensureTethysGateCast(sectorId, sector, stations, list) {
+    if (sectorId !== TETHYS_GATE_SECTOR_ID) return;
+    const weir = TETHYS_GATE_WEIR;
+    if (!weir || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    if (!this._tethysGateSlotRec(list, TETHYS_GATE_CUTTER_SLOT_ID)) {
+      this._spawnTethysGateCutter(sectorId, weir, list);
+    }
+    if (!this._tethysGateSlotRec(list, TETHYS_QUIET_RUNNER_SLOT_ID)) {
+      this._spawnTethysQuietRunner(sectorId, sector, weir, seed, list);
+    }
+  },
+
+  _spawnTethysGateCutter(sectorId, weir, list) {
+    const def = TRAFFIC_ROLES.customs;
+    if (!def) return;
+    const dirX = Math.cos(weir.heading), dirZ = Math.sin(weir.heading);
+    const post = {
+      x: weir.origin.x + dirX * TETHYS_GATE_CUTTER_POST_ALONG_WU - dirZ * TETHYS_GATE_CUTTER_POST_PERP_WU,
+      z: weir.origin.z + dirZ * TETHYS_GATE_CUTTER_POST_ALONG_WU + dirX * TETHYS_GATE_CUTTER_POST_PERP_WU,
+    };
+    const spec = makeShipEntitySpec(def.ship, {
+      team: def.team,
+      factionId: 'faction_scn',
+      pos: post,
+      ai: { archetype: def.archetype, passive: true, spawnContext: 'patrol', lawful: true },
+    });
+    const ent = this.helpers.spawnEntity(spec);
+    if (!ent) return;
+    this._stampTrafficDurableIdentity(ent, sectorId, 'customs', def, 4242);
+    ent.data.activityActorSlotId = TETHYS_GATE_CUTTER_SLOT_ID;
+    ent.data.ai = ent.data.ai || {};
+    ent.data.ai.lawful = true;
+    ent.data.ai.spawnContext = 'patrol';
+    ent.data.trafficLabel = 'Gate Cutter';
+    ent.data.scanLabel = 'INSPECTION CUTTER';
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    if (!this._active) this._active = [];
+    this._active.push(ent.id);
+    list.push({
+      id: ent.id,
+      role: 'customs',
+      gateCut: true,
+      targetId: null,
+      waitT: 0,
+      nextTradeT: 0,
+      orbitPhase: 0,
+      dockSeq: 0,
+      manifest: null,
+      postPos: post,
+      gate: { phase: 'post', targetId: null, readT: 0, rearmAt: 0, lastReadId: null },
+    });
+  },
+
+  _spawnTethysQuietRunner(sectorId, sector, weir, seed, list) {
+    const def = TRAFFIC_ROLES.smuggler;
+    if (!def) return;
+    const dirX = Math.cos(weir.heading), dirZ = Math.sin(weir.heading);
+    const shadow = {
+      x: weir.origin.x + dirX * TETHYS_RUNNER_SHADOW_ALONG_WU - dirZ * TETHYS_RUNNER_SHADOW_PERP_WU,
+      z: weir.origin.z + dirZ * TETHYS_RUNNER_SHADOW_ALONG_WU + dirX * TETHYS_RUNNER_SHADOW_PERP_WU,
+    };
+    const spec = makeShipEntitySpec(def.ship, {
+      team: def.team,
+      factionId: 'faction_quiet',
+      pos: shadow,
+      ai: { archetype: def.archetype, passive: true, spawnContext: 'convoy_civilian' },
+    });
+    const ent = this.helpers.spawnEntity(spec);
+    if (!ent) return;
+    this._stampTrafficDurableIdentity(ent, sectorId, 'smuggler', def, 4242);
+    ent.data.activityActorSlotId = TETHYS_QUIET_RUNNER_SLOT_ID;
+    ent.data.name = 'The Quiet Runner';
+    ent.data.callsign = 'HUSH-LINE';
+    ent.data.trafficLabel = 'Quiet Runner';
+    ent.data.scanLabel = 'SEALED CONSIGNMENT';
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    if (!this._active) this._active = [];
+    this._active.push(ent.id);
+    const rec = {
+      id: ent.id,
+      role: 'smuggler',
+      quietRun: true,
+      targetId: null,
+      waitT: 0,
+      nextTradeT: 0,
+      orbitPhase: 0,
+      dockSeq: 0,
+      manifest: null,
+      runLeg: 'in',
+      runSeq: 1,
+      reloadT: 0,
+      boltUntil: 0,
+      gateFlagUntil: 0,
+    };
+    const hubDirX = Math.cos(weir.heading), hubDirZ = Math.sin(weir.heading);
+    rec.hubPos = {
+      x: weir.origin.x + hubDirX * TETHYS_RUNNER_HUB_ALONG_WU - hubDirZ * TETHYS_RUNNER_HUB_PERP_WU,
+      z: weir.origin.z + hubDirZ * TETHYS_RUNNER_HUB_ALONG_WU + hubDirX * TETHYS_RUNNER_HUB_PERP_WU,
+    };
+    rec.shadowPos = shadow;
+    this._setTrafficManifest(ent, rec, this._buildQuietConsignment(rec.runSeq));
+    list.push(rec);
+  },
+
+  _buildQuietConsignment(seq) {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const pool = TETHYS_GATE_CONTRABAND_POOL;
+    const h = hash32(seed, 'quietConsignment', TETHYS_QUIET_RUNNER_SLOT_ID, seq) >>> 0;
+    const lines = [];
+    const lineCount = pool.length > 1 ? 1 + (h % 2) : Math.min(1, pool.length);
+    for (let i = 0; i < lineCount && pool.length; i++) {
+      const commodityId = pool[(h >>> (3 + i * 7)) % pool.length];
+      if (lines.some((line) => line.commodityId === commodityId)) continue;
+      lines.push({ commodityId, qty: 3 + ((h >>> (9 + i * 5)) % 4) });
+    }
+    let totalQty = 0;
+    for (const line of lines) totalQty += line.qty;
+    return {
+      schemaId: TETHYS_GATE_CONSIGNMENT_SCHEMA,
+      manifestId: stableManifestId(seed, TETHYS_QUIET_RUNNER_SLOT_ID, 'smuggler'),
+      freighterKey: TETHYS_QUIET_RUNNER_SLOT_ID,
+      role: 'smuggler',
+      lines,
+      totalQty,
+      lotSource: {
+        lotId: `${TETHYS_GATE_CONSIGNMENT_SCHEMA}:${seq}`,
+        provenanceId: TETHYS_QUIET_RUNNER_SLOT_ID,
+        sourceKind: 'quiet_cache_run',
+        recordId: TETHYS_QUIET_RUNNER_SLOT_ID,
+        sourceOwner: 'npc',
+      },
+    };
+  },
+
+  _emptyQuietManifest(rec) {
+    return {
+      schemaId: TETHYS_GATE_CONSIGNMENT_SCHEMA,
+      manifestId: rec && rec.manifest && rec.manifest.manifestId || null,
+      freighterKey: TETHYS_QUIET_RUNNER_SLOT_ID,
+      role: 'smuggler',
+      lines: [],
+      totalQty: 0,
+    };
+  },
+
+  _emitGateIncident(kind, cutter, subject) {
+    if (!this.bus) return;
+    const data = subject && subject.data || {};
+    this.bus.emit(TETHYS_GATE_INCIDENT_EVENT, {
+      kind,
+      factionId: 'faction_scn',
+      cutterId: cutter ? cutter.id : null,
+      subjectId: subject ? subject.id : null,
+      subjectName: data.callsign || data.name || data.trafficLabel || 'Traffic',
+    });
+  },
+
+  _gateFlagged(rec, entity, now) {
+    return ((rec && rec.gateFlagUntil) || 0) > now
+      || ((entity && entity.data && entity.data.gateFlagUntil) || 0) > now;
+  },
+
+  // Shared bounded steer for the gate cast: velocity-shaped pursuit with a brake-on-arrival,
+  // written through the same intent membrane every other traffic stepper uses. Never a pose snap.
+  _gateSteer(entity, target, speed, arriveR, opts = {}) {
+    if (!entity || !entity.pos || !target) return false;
+    const dx = target.x - entity.pos.x, dz = target.z - entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const close = distance <= arriveR;
+    const aim = Math.atan2(dz, dx);
+    const vel = entity.vel || { x: 0, z: 0 };
+    const propulsion = resolvePropulsionProfile(entity, this.state);
+    const fwdAccel = Math.max(1, propulsion.mainAccel || 30);
+    const vx = (opts.matchVx || 0) + dx / Math.max(1, distance) * speed - vel.x;
+    const vz = (opts.matchVz || 0) + dz / Math.max(1, distance) * speed - vel.z;
+    const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
+    const forward = vx * c + vz * s;
+    const side = -vx * s + vz * c;
+    const throttle = Math.max(-1, Math.min(1, forward / fwdAccel));
+    const strafe = Math.max(-1, Math.min(1, side / Math.max(1, fwdAccel * 0.6)));
+    setIntent(entity, strafe, close && !opts.holdAlongside ? 0 : throttle, !!opts.boost, false, null, aim);
+    if (entity.data && entity.data.intent) {
+      entity.data.intent.brake = close && !opts.holdAlongside ? true : undefined;
+    }
+    return close;
+  },
+
+  _stepTethysGateCutter(e, rec, stations, state, dt) {
+    const weir = TETHYS_GATE_WEIR;
+    if (!weir || !e || e.alive === false || !e.pos || !(dt > 0)) return;
+    const now = Number(state.simTime) || 0;
+    const gate = rec.gate || (rec.gate = { phase: 'post', targetId: null, readT: 0, rearmAt: 0, lastReadId: null });
+    if (!rec.postPos) {
+      const dirX = Math.cos(weir.heading), dirZ = Math.sin(weir.heading);
+      rec.postPos = {
+        x: weir.origin.x + dirX * TETHYS_GATE_CUTTER_POST_ALONG_WU - dirZ * TETHYS_GATE_CUTTER_POST_PERP_WU,
+        z: weir.origin.z + dirZ * TETHYS_GATE_CUTTER_POST_ALONG_WU + dirX * TETHYS_GATE_CUTTER_POST_PERP_WU,
+      };
+    }
+    let target = gate.targetId != null ? liveEntity(this.state, gate.targetId) : null;
+    if (target && (target.alive === false || target.id === state.playerId)) target = null;
+    if (target) {
+      const trec = this._tethysGateRecFor(gate.targetId);
+      if (!trec || trec.role === 'patrol' || trec.role === 'escort') target = null;
+    }
+    if (target && gate.phase !== 'post' && !this._gateFlagged(this._tethysGateRecFor(gate.targetId), target, now)) {
+      // An unflagged hull that cleared the cone by the abort margin is no longer gate business.
+      const cleared = Math.hypot(target.pos.x - weir.origin.x, target.pos.z - weir.origin.z)
+        > weir.range + TETHYS_GATE_ABORT_MARGIN_WU;
+      if (cleared) target = null;
+    }
+    if (!target) {
+      if (gate.phase === 'read' || gate.phase === 'intercept') {
+        this._emitGateIncident('abort', e, null);
+      }
+      gate.phase = 'post';
+      gate.targetId = null;
+      gate.readT = 0;
+    }
+    if (gate.phase === 'post') {
+      const onPost = this._gateSteer(e, rec.postPos, TRAFFIC_ROLES.customs.speed, 28);
+      const rearming = now < gate.rearmAt;
+      if (!onPost || rearming) return;
+      if ((state.tick % TETHYS_GATE_SCAN_POLL_TICKS) !== 0) return;
+      const picked = this._tethysGatePickTarget(e, rec, weir, state, now);
+      if (!picked) return;
+      gate.phase = 'intercept';
+      gate.targetId = picked.entity.id;
+      gate.readT = 0;
+      this._emitGateIncident('hold', e, picked.entity);
+      return;
+    }
+    const speed = TRAFFIC_ROLES.customs.speed;
+    if (gate.phase === 'intercept') {
+      const close = this._gateSteer(e, target.pos, speed, TETHYS_GATE_HOLD_RANGE_WU + (target.radius || 8) * 0.5);
+      if (close) {
+        gate.phase = 'read';
+        gate.readT = 0;
+      }
+      return;
+    }
+    // read: hold alongside for the beam. The hold point sits off the subject's quarter so the
+    // pair reads as a stop, not a overlap.
+    const tdx = target.pos.x - e.pos.x, tdz = target.pos.z - e.pos.z;
+    const tdist = Math.max(1, Math.hypot(tdx, tdz));
+    const hold = {
+      x: target.pos.x - (tdx / tdist) * (TETHYS_GATE_HOLD_RANGE_WU + (target.radius || 8)),
+      z: target.pos.z - (tdz / tdist) * (TETHYS_GATE_HOLD_RANGE_WU + (target.radius || 8)),
+    };
+    this._gateSteer(e, hold, Math.min(speed, Math.hypot(target.vel?.x || 0, target.vel?.z || 0) + 6),
+      14, { holdAlongside: true, matchVx: target.vel?.x || 0, matchVz: target.vel?.z || 0 });
+    gate.readT += dt;
+    if (gate.readT >= TETHYS_GATE_READ_DWELL_S) {
+      const manifest = target.data && target.data.cargoManifest;
+      const dirty = this._gateFlagged(this._tethysGateRecFor(gate.targetId), target, now)
+        || (manifest && Array.isArray(manifest.lines) && manifest.lines.some((line) => {
+          const def = line && COMMODITIES.find((row) => row && row.id === line.commodityId);
+          return !!(def && def.legality && def.legality !== 'legal');
+        }));
+      this._emitGateIncident(dirty ? 'bust' : 'release', e, target);
+      gate.phase = 'post';
+      gate.lastReadId = gate.targetId;
+      gate.targetId = null;
+      gate.readT = 0;
+      gate.rearmAt = now + TETHYS_GATE_SCAN_REARM_S;
+    }
+  },
+
+  _tethysGatePickTarget(cutter, rec, weir, state, now) {
+    const list = this.state.traffic && this.state.traffic.freighters;
+    if (!Array.isArray(list)) return null;
+    let best = null;
+    let bestFlagged = false;
+    let bestDist = Infinity;
+    for (const other of list) {
+      if (!other || other.id === rec.id || other.gateCut) continue;
+      if (!TETHYS_GATE_INSPECTABLE_ROLES.has(other.role)) continue;
+      const entity = liveEntity(this.state, other.id);
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (entity.id === state.playerId) continue;
+      const manifest = entity.data && entity.data.cargoManifest;
+      const flagged = this._gateFlagged(other, entity, now);
+      if (flagged) {
+        const dx = entity.pos.x - cutter.pos.x, dz = entity.pos.z - cutter.pos.z;
+        if (dx * dx + dz * dz > TETHYS_GATE_INTERCEPT_RANGE_WU * TETHYS_GATE_INTERCEPT_RANGE_WU) continue;
+      } else {
+        if (!(manifest && manifest.totalQty > 0)) continue; // an empty hull has nothing to read
+        if (!pointInsideCustomsWeir(weir, entity.pos)) continue;
+      }
+      const dx = entity.pos.x - cutter.pos.x, dz = entity.pos.z - cutter.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (flagged && !bestFlagged) { best = entity; bestFlagged = true; bestDist = d2; continue; }
+      if (bestFlagged && !flagged) continue;
+      if (d2 < bestDist) { best = entity; bestFlagged = flagged; bestDist = d2; }
+    }
+    return best ? { entity: best } : null;
+  },
+
+  _stepTethysQuietRunner(e, rec, stations, state, dt) {
+    const weir = TETHYS_GATE_WEIR;
+    if (!weir || !e || e.alive === false || !e.pos || !(dt > 0)) return;
+    const now = Number(state.simTime) || 0;
+    if (!rec.shadowPos || !rec.hubPos) {
+      const dirX = Math.cos(weir.heading), dirZ = Math.sin(weir.heading);
+      rec.shadowPos = rec.shadowPos || {
+        x: weir.origin.x + dirX * TETHYS_RUNNER_SHADOW_ALONG_WU - dirZ * TETHYS_RUNNER_SHADOW_PERP_WU,
+        z: weir.origin.z + dirZ * TETHYS_RUNNER_SHADOW_ALONG_WU + dirX * TETHYS_RUNNER_SHADOW_PERP_WU,
+      };
+      rec.hubPos = rec.hubPos || {
+        x: weir.origin.x + dirX * TETHYS_RUNNER_HUB_ALONG_WU - dirZ * TETHYS_RUNNER_HUB_PERP_WU,
+        z: weir.origin.z + dirZ * TETHYS_RUNNER_HUB_ALONG_WU + dirX * TETHYS_RUNNER_HUB_PERP_WU,
+      };
+    }
+    const cutter = rec.gateCutterId != null ? liveEntity(this.state, rec.gateCutterId) : null;
+    if (!cutter && this.state.traffic && Array.isArray(this.state.traffic.freighters)) {
+      const cutterRec = this._tethysGateSlotRec(this.state.traffic.freighters, TETHYS_GATE_CUTTER_SLOT_ID);
+      if (cutterRec) rec.gateCutterId = cutterRec.id;
+    }
+    if (rec.boltUntil > now) {
+      // Bolt: straight away from the gate post, gate be damned. The wasp cannot hold this.
+      const away = cutter && cutter.pos
+        ? { x: e.pos.x + (e.pos.x - cutter.pos.x), z: e.pos.z + (e.pos.z - cutter.pos.z) }
+        : rec.shadowPos;
+      this._gateSteer(e, away, TETHYS_RUNNER_BOLT_SPEED_WU_S, 10, { boost: true });
+      if (e.data) e.data.quietFleeing = true;
+      return;
+    }
+    if (e.data && e.data.quietFleeing) e.data.quietFleeing = false;
+    // Panic seam: the cutter has me in its intercept and is closing. The Quiet do not submit.
+    const cutterRec = cutter && this._tethysGateRecFor(cutter.id);
+    if (cutter && cutterRec && cutterRec.gate && cutterRec.gate.phase === 'intercept'
+      && cutterRec.gate.targetId === rec.id) {
+      const dx = cutter.pos.x - e.pos.x, dz = cutter.pos.z - e.pos.z;
+      if (dx * dx + dz * dz < TETHYS_GATE_CATCHUP_WU * TETHYS_GATE_CATCHUP_WU) {
+        const dumped = this._runnerDumpConsignment(e, rec, state);
+        rec.boltUntil = now + TETHYS_RUNNER_BOLT_S;
+        rec.gateFlagUntil = now + TETHYS_RUNNER_FLAG_S;
+        if (e.data) e.data.gateFlagUntil = rec.gateFlagUntil;
+        if (dumped) this._emitGateIncident('dump', cutter, e);
+        return;
+      }
+    }
+    // Ordinary legs: loaded inbound through the cone, empty outbound, reload in the shadow.
+    const mark = rec.runLeg === 'out' ? rec.shadowPos : rec.hubPos;
+    const arrived = this._gateSteer(e, mark, TETHYS_RUNNER_SPEED_WU_S, TETHYS_RUNNER_ARRIVE_WU);
+    if (!arrived) {
+      if (e.data) e.data.quietLoading = false;
+      return;
+    }
+    if (rec.runLeg === 'in') {
+      const manifest = rec.manifest || e.data.cargoManifest;
+      if (manifest && manifest.totalQty > 0) {
+        this._setTrafficManifest(e, rec, this._emptyQuietManifest(rec));
+        if (this.bus) {
+          this.bus.emit(TETHYS_GATE_DELIVERY_EVENT, {
+            runnerId: e.id, slotId: TETHYS_QUIET_RUNNER_SLOT_ID, runSeq: rec.runSeq | 0,
+          });
+        }
+      }
+      rec.runLeg = 'out';
+      return;
+    }
+    rec.reloadT = (rec.reloadT || 0) + dt;
+    if (e.data) e.data.quietLoading = true;
+    if (rec.reloadT >= TETHYS_RUNNER_RELOAD_S) {
+      rec.runSeq = (rec.runSeq | 0) + 1;
+      this._setTrafficManifest(e, rec, this._buildQuietConsignment(rec.runSeq));
+      rec.runLeg = 'in';
+      rec.reloadT = 0;
+      if (e.data) e.data.quietLoading = false;
+    }
+  },
+
+  _runnerDumpConsignment(e, rec, state) {
+    const manifest = rec.manifest || e.data.cargoManifest;
+    if (!manifest || !(manifest.totalQty > 0) || !Array.isArray(manifest.lines)) return false;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return false;
+    const now = Number(state.simTime) || 0;
+    for (let index = 0; index < manifest.lines.length; index++) {
+      const line = manifest.lines[index];
+      if (!line || !(line.qty > 0)) continue;
+      const angle = (hash32(rec.id, index, 'quiet-dump') % 6284) / 1000;
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: {
+          x: e.pos.x + Math.cos(angle) * ((e.radius || 8) + 8),
+          z: e.pos.z + Math.sin(angle) * ((e.radius || 8) + 8),
+        },
+        vel: { x: Math.cos(angle) * 6, z: Math.sin(angle) * 6 },
+        radius: 3.2,
+        mass: Math.max(20, line.qty * 10),
+        collides: true,
+        flags: { persistent: true },
+        data: {
+          kind: 'cargo',
+          commodityId: line.commodityId,
+          amount: line.qty,
+          despawnAt: now + TETHYS_RUNNER_CONSIGNMENT_TTL_S,
+          quietRunnerDump: {
+            slotId: TETHYS_QUIET_RUNNER_SLOT_ID,
+            manifestId: manifest.manifestId || null,
+            runSeq: rec.runSeq | 0,
+          },
+        },
+      });
+    }
+    this._setTrafficManifest(e, rec, this._emptyQuietManifest(rec));
+    rec.carrying = false;
+    return true;
   },
 
   /**
@@ -4677,6 +5159,12 @@ export const traffic = {
         const entity = activeTraffic[i];
         const slot = entity && entity.data && entity.data.activityActorSlotId;
         if (slot && CERES_ACTIVITY_CAST_BY_SLOT_ID.has(slot)) trafficUrgent.push(entity);
+        // The Tethys gate cast keeps working wherever the owner set has it: an inspection the
+        // player is watching must not stall because the sector's near-slice spent its tokens
+        // on mule freight. Still bounded: two authored hulls.
+        else if (slot === TETHYS_GATE_CUTTER_SLOT_ID || slot === TETHYS_QUIET_RUNNER_SLOT_ID) {
+          trafficUrgent.push(entity);
+        }
         else trafficRest.push(entity);
       }
       const trafficSlice = takeNearWorkSlice(state, 'traffic', trafficRest);
@@ -4755,6 +5243,11 @@ export const traffic = {
       if (role.flees) { this._stepFlee(e, rec, stations, state); this._syncTrafficRecordToData(e, rec); continue; }       // pirate/raider
       if (role.loiters || rec.role === 'tourist') { this._stepTourist(e, rec, stations, state, dt); this._syncTrafficRecordToData(e, rec); continue; } // tourist
       if (rec.role === 'rescue') { if (this._stepRescue(e, rec, stations, state, dt)) { this._syncTrafficRecordToData(e, rec); continue; } } // rescue craft responding to distress/survivor
+      // The Tethys gate cast owns its whole tick: the gate cutter works the checkpoint cone and
+      // the Quiet Runner runs it. Both are authored fixtures (rec.gateCut / rec.quietRun), so an
+      // ambient customs/smuggler hull elsewhere still rides its ordinary dispatch below.
+      if (rec.gateCut) { this._stepTethysGateCutter(e, rec, stations, state, dt); this._syncTrafficRecordToData(e, rec); continue; }
+      if (rec.quietRun) { this._stepTethysQuietRunner(e, rec, stations, state, dt); this._syncTrafficRecordToData(e, rec); continue; }
       // Miners/escorts/haulers keep last intent on skipped ticks. Hostiles still plan every tick.
       // _ambientPlanGate is the allocation-free mirror of shouldAmbientHaulerPlan (above).
       if (!this._ambientPlanGate(state.tick, e, trafficPlanOpts)) continue;

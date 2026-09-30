@@ -1,9 +1,10 @@
 """Forge shared surface set: tileable panel textures every forged hull shares.
 
-One 1024 px tile covers TILE_METERS x TILE_METERS of hull at a world-locked box projection, so every
-ship in the fleet carries the same texel density (256 px/m) and the same panel language. The maps
-carry *manufacture* (panel seams, fasteners, access plates, per-panel tone), never noise: broadband
-grain is what made the old fleet read as leather at the chase camera.
+One 2048 px super-tile covers TILE_METERS x TILE_METERS of hull at a world-locked box projection, so
+every ship in the fleet carries the same texel density (256 px/m) and the same panel language while
+the pattern repeats only every 8 m — no visible 4 m checker across a hull. The maps carry
+*manufacture* (panel seams, fasteners, access plates, per-panel tone), never noise: broadband grain
+is what made the old fleet read as leather at the chase camera.
 
 Outputs (PNG, linear except albedo):
   forge_panel_albedo.png   near-white multiplier; paint colour comes from the material factor
@@ -21,8 +22,8 @@ import zlib
 
 import numpy as np
 
-SIZE = 1024
-TILE_METERS = 4.0
+SIZE = 2048
+TILE_METERS = 8.0
 
 
 def _write_png(path, rgb):
@@ -71,8 +72,9 @@ def _panel_layout(rng, grid):
     """Merge a grid of cells into rectangular plates. Returns (id map at grid res, rect list)."""
     ids = -np.ones((grid, grid), dtype=int)
     rects = []
-    shapes = [(1, 1), (2, 1), (1, 2), (2, 2), (3, 1), (1, 3), (2, 3), (3, 2), (4, 2), (2, 4)]
-    weights = np.array([6, 5, 5, 4, 2, 2, 2, 2, 1, 1], dtype=float)
+    shapes = [(1, 1), (2, 1), (1, 2), (2, 2), (3, 1), (1, 3), (2, 3), (3, 2), (4, 2), (2, 4),
+              (4, 3), (3, 4), (5, 1), (1, 5), (6, 1), (1, 6)]
+    weights = np.array([6, 5, 5, 4, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 0.5, 0.5], dtype=float)
     weights /= weights.sum()
     for y in range(grid):
         for x in range(grid):
@@ -110,7 +112,7 @@ def _rect_mask(size, x0, y0, w, h, inset, radius):
 
 def generate_panel_set(out_dir, seed=7, size=SIZE):
     rng = np.random.default_rng(seed)
-    grid = 8  # 8 cells over 4 m -> 0.5 m module
+    grid = 16  # 16 cells over 8 m -> 0.5 m module, twice the non-repeating span of the old 4 m tile
     cell = size // grid
     ids, rects = _panel_layout(rng, grid)
     idmap = np.kron(ids, np.ones((cell, cell), dtype=int))
@@ -122,7 +124,7 @@ def generate_panel_set(out_dir, seed=7, size=SIZE):
     for k, (x, y, w, h) in enumerate(rects):
         mask = idmap == k
         height[mask] = rng.uniform(-0.05, 0.05)
-        tone[mask] = rng.uniform(-0.035, 0.035)
+        tone[mask] = rng.uniform(-0.045, 0.045)  # flat +/-4.5% per-panel value shift, no noise
         rough[mask] = rng.uniform(-0.05, 0.05)
     # Seams: wherever the plate id changes, a 3 px groove with a soft shoulder.
     edge = (idmap != np.roll(idmap, 1, 0)) | (idmap != np.roll(idmap, 1, 1))
@@ -167,10 +169,6 @@ def generate_panel_set(out_dir, seed=7, size=SIZE):
         groove = np.maximum(groove, line * 0.7)
         inner = (sd < -1.5).astype(np.float32)
         tone += inner * rng.uniform(-0.03, 0.03)
-    # Very broad, very gentle variation (a few cells per tile), never grain.
-    broad = _smooth_noise(rng, size, 4) - 0.5
-    tone += broad * 0.03
-    rough += broad * 0.05
 
     # Normal map (OpenGL convention: +Y up = green).
     strength = 5.0

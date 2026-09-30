@@ -270,6 +270,11 @@ def cradle(s, n, length, belly):
 
 # --- build ------------------------------------------------------------------------------------
 
+def anim_parts(s, n0, prefix, spec, pivot):
+    """s.anim() for every object added since n0 whose name starts with prefix."""
+    s.anim([o for o in s.objects[n0:] if o.name.startswith(prefix)], spec, pivot)
+
+
 def build_drum(s):
     # keel below the apron, the concourse drum, the upper hub and the harbour-master's crown
     F.cylinder(s, 'Keel', (CX, 0, -4.2), (CX, 0, APRON_Z0), 10.5, 13.5, material='paint.graphite', segments=44,
@@ -310,8 +315,11 @@ def build_drum(s):
     F.ring(s, 'MastRing', (CX, 0, 46.4), 0.8, 0.1, axis=(0, 0, 1), material='gunmetal', segments=12, sides=4)
     F.cylinder(s, 'DishMast', (CX - 8.5, 5.5, ROOF_Z1), (CX - 8.5, 5.5, 31.0), 0.4, material='gunmetal', segments=10,
                bevel=0.0)
+    n0 = len(s.objects)
     F.dish(s, 'Dish', (CX - 8.5, 5.5, 31.0), 2.6, 0.8, axis=(-0.5, 0.4, 1.0), material='gunmetal', face='paint',
            segments=20)
+    # the harbour dish hunts in a slow yaw sweep about its mast head
+    s.anim(s.objects[n0:], 'sweep:up:0p8:0p5', (CX - 8.5, 5.5, 31.0))
     F.sensor_dome(s, 'SensorA', (CX + 8.5, -6.0, ROOF_Z1), 1.4)
     # the drum stands on the apron: buttresses between the apron and the concourse
     for k in range(12):
@@ -340,8 +348,16 @@ def build_drum_details(s):
     cluster(s, 'TowerWin', tower, 'glow_warm')
     # a cyan market halo round the crown and cyan tech on the tower
     F.ring(s, 'Halo', (CX, 0, ROOF_Z1 + 0.1), 12.9, 0.16, axis=(0, 0, 1), material='glow_cyan', segments=52, sides=6)
-    F.light(s, 'MastTip', (CX, 0, 48.7), 'glow_red', size=0.5)
+    # slow traffic radar bar under the mast light: the hub's one rotating antenna
+    n0 = len(s.objects)
+    F.box(s, 'RadarBar', (CX, 0, 47.6), (2.4, 0.22, 0.16), material='gunmetal', bevel=0.0)
+    F.light(s, 'RadarTip', (CX + 1.2, 0, 47.6), 'glow_cyan', size=0.2)
+    s.anim(s.objects[n0:], 'spin:up:0p9', (CX, 0, 47.6))
+    tip = F.light(s, 'MastTip', (CX, 0, 48.7), 'glow_red', size=0.5)
+    s.anim(tip, 'blink:2p0:0p0', (CX, 0, 48.7))
+    n0 = len(s.objects)
     F.beacon(s, 'TowerBeacon', (CX + 4.6, 2.4, 31.8), 'glow_amber', size=0.7)
+    anim_parts(s, n0, 'TowerBeacon_Dome', 'blink:1p4:0p5', (CX + 4.6, 2.4, 31.8))
     for k in range(4):
         x, y, _ = polar(5.9, 45 + 90 * k)
         F.light(s, f'TowerCyan{k}', (x, y, 31.9), 'glow_cyan', size=0.35)
@@ -363,7 +379,8 @@ def build_drum_details(s):
         x, y, _ = polar(7.4, 7.5 + 15 * k)
         dl.append(((x, y, ROOF_Z1 + 0.05), (0.4, 0.4, 0.1), 0.0))
     cluster(s, 'CrownDeckLights', dl, 'glow_warm')
-    F.light(s, 'KeelBeacon', (CX, 0, -5.6), 'glow_amber', size=0.8)
+    keel = F.light(s, 'KeelBeacon', (CX, 0, -5.6), 'glow_amber', size=0.8)
+    s.anim(keel, 'blink:1p7:0p8', (CX, 0, -5.6))
 
 
 def build_apron(s):
@@ -756,8 +773,12 @@ def build_pier_details(s):
                 continue
             win.append(((x, side * 2.26, DOCK_Z + 0.6), (0.6, 0.12, 0.45), 0.0))
     cluster(s, 'PierWin', win, 'glow_warm')
-    run = [((x0 + 2.0 + i * 2.0, 0, DOCK_Z + 2.32), (0.4, 0.4, 0.12), 0.0) for i in range(int((x1 - x0 - 2) / 2.0))]
-    cluster(s, 'PierRunway', run, 'glow_green')
+    # dock-approach chase: one light per node so the runtime can march the lit slot out to the mouth
+    run_n = int((x1 - x0 - 2) / 2.0)
+    for i in range(run_n):
+        x = x0 + 2.0 + i * 2.0
+        o = F.box(s, f'PierRunway{i}', (x, 0, DOCK_Z + 2.32), (0.4, 0.4, 0.12), material='glow_green', bevel=0.0)
+        s.anim(o, f'chase:dock:{i}:{run_n}:3p6', (x, 0, DOCK_Z + 2.32))
     lead = []
     for k, x in enumerate((44.0, 48.5, 53.0, 57.5)):
         for y in (-6.5, 6.5):
@@ -769,7 +790,9 @@ def build_pier_details(s):
         a = math.radians(22.5 + 45 * k)
         F.light(s, f'PortLight{k}', (x1 + 3.4, 3.0 * math.cos(a), DOCK_Z + 3.0 * math.sin(a)),
                 'glow_green' if k % 2 else 'glow_amber', size=0.4)
+    n0 = len(s.objects)
     F.beacon(s, 'DockBeacon', (x1 + 1.6, 0, DOCK_Z + 3.55), 'glow_amber', size=0.9)
+    anim_parts(s, n0, 'DockBeacon_Dome', 'blink:1p2:0p2', (x1 + 1.6, 0, DOCK_Z + 3.55))
     # apron lane lights guiding from the pier root round the harbour floor
     lane = []
     for k in range(36):
@@ -838,7 +861,9 @@ def build_terminal_details(s):
     F.vent(s, 'TermVent1', (x0 + 10.0, -25.5, 26.6), (2.4, 3.2, 0.3), slats=5)
     F.light(s, 'TermNavP', (x0 - 0.3, hy - 0.5, 26.3), 'glow_red', size=0.8)
     F.light(s, 'TermNavS', (x0 - 0.3, -hy + 0.5, 26.3), 'glow_green', size=0.8)
+    n0 = len(s.objects)
     F.beacon(s, 'TermBeacon', (x0 + 9.0, 0, 26.5), 'glow_amber', size=0.8)
+    anim_parts(s, n0, 'TermBeacon_Dome', 'blink:1p5:0p4', (x0 + 9.0, 0, 26.5))
 
 
 MOORINGS = (45.0, 135.0, 225.0, 315.0)
@@ -887,14 +912,19 @@ def build_mooring_details(s):
             for e in (-1, 1):
                 p = Vector(polar(53.5 + i * 3.0, a, MOOR_Z + 1.9)) + tang * e * 1.55
                 lights.append((tuple(p), (0.35, 0.35, 0.2), 0.0))
+        n0 = len(s.objects)
         F.beacon(s, f'MoorBeacon{k}', tuple(Vector(polar(73.5, a, MOOR_Z + 2.7)) + tang * 1.8),
                  'glow_amber' if k % 2 == 0 else ('glow_red' if a < 180 else 'glow_green'), size=0.7)
+        anim_parts(s, n0, f'MoorBeacon{k}_Dome', f'blink:1p3:0p{2 + k}', tuple(Vector(polar(73.5, a, MOOR_Z + 2.7)) + tang * 1.8))
     cluster(s, 'MoorLights', lights, 'glow_amber')
 
 
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    # places light their own city: windows/beacons get 4x authored emission so a subpixel light at
+    # z330 still clears the bloom threshold (ships keep 1.0 — close zoom would clip otherwise)
+    s.emit_scale = 4.0
     build_drum(s)
     build_apron(s)
     build_ring(s)

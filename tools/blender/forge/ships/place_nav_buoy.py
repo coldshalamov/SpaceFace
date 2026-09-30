@@ -56,6 +56,7 @@ def polar(r, a, z):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- ballast bulb ------------------------------------------------------------------------------
     F.cylinder(s, 'BallastLow', (0, 0, Z0), (0, 0, Z0 + 0.7), 0.55, 1.05, material='paint2', segments=32, bevel=0.03)
@@ -75,8 +76,10 @@ def build():
                              (0.5, Z0 + 0.4)], 0.18, a, material='gunmetal')
         F.box(s, f'LegPad{k}', polar(1.25, a, Z0 + 0.08), (0.45, 0.45, 0.16), material='paint2', bevel=0.03,
               rot_z=a)
-    F.light(s, 'BallastLampG', polar(1.07, 0.0, Z0 + 1.9), 'glow_green', size=0.14)
-    F.light(s, 'BallastLampR', polar(1.07, math.pi, Z0 + 1.9), 'glow_red', size=0.14)
+    o = F.light(s, 'BallastLampG', polar(1.07, 0.0, Z0 + 1.9), 'glow_green', size=0.14)
+    s.anim(o, 'blink:2p6:0p0', polar(1.07, 0.0, Z0 + 1.9))
+    o = F.light(s, 'BallastLampR', polar(1.07, math.pi, Z0 + 1.9), 'glow_red', size=0.14)
+    s.anim(o, 'blink:2p6:1p3', polar(1.07, math.pi, Z0 + 1.9))
 
     # --- tapered spire -----------------------------------------------------------------------------
     F.cylinder(s, 'Spire', (0, 0, Z_SPIRE0), (0, 0, Z_SPIRE1), 0.5, 0.26, material='paint', segments=28, bevel=0.02)
@@ -139,7 +142,10 @@ def build():
         F.box(s, f'Spoke{k}', polar(0.3, a, Z_LAMP1 + 0.4), (0.6, 0.09, 0.09), material='gunmetal', bevel=0.0,
               rot_z=a)
     F.cylinder(s, 'BeaconPost', (0, 0, Z_LAMP1 + 0.3), (0, 0, Z_LAMP1 + 0.6), 0.14, material='gunmetal', segments=12)
+    n0 = len(s.objects)
     F.beacon(s, 'TopBeacon', (0, 0, Z_LAMP1 + 0.6), finish='glow_amber', size=0.36)
+    s.anim([o for o in s.objects[n0:] if o.name == 'TopBeacon_Dome'], 'blink:1p4:0p5',
+           (0, 0, Z_LAMP1 + 0.6))
     s.detail = 2
     F.antenna(s, 'Whip', polar(0.8, math.pi / 4, Z_LAMP1 + 0.28), 0.55, tip='glow_red')
     s.detail = 0

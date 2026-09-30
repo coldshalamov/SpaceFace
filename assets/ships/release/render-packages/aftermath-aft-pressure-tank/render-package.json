@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cfe2cdf671ace316d2a36460e9ba9b7ace325e0bb552814025cb44da94b46f28",
+  "contentHash": "fb3a63f52e1f33d5be4aa03b14885284ba50b446dc4d231729736bbf764279a2",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0265ebb86a4001ca3f784fa8ede85478740bb9287f20c7e41d902cf6c102aa1",
+      "geometryHash": "7c497c0ab46519a85ca69a409501443c099b0f24c3b55136bf42525ea7126849",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.0",
       "indexCount": 1704,
       "indexed": true,
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1486be76edfdef828f2933cbc2c293c2928aa221e155a7af03e400d0370b3bc",
+      "geometryHash": "4fe31809ed026c610b29ef478ee7cd451325a9d5dd570c09274db15d601760fb",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.1",
       "indexCount": 540,
       "indexed": true,
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aff8bf6045e9b48bf46249468200433509bb1bd4f2ce612f49f7edc40d28077d",
+      "geometryHash": "11906cb198bbf474834e87b9c7927b95bb17951ea0aaf4f76e96ea23630ba3c0",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankdome0.primitive.0",
       "indexCount": 1332,
       "indexed": true,
@@ -145,11 +145,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16af23573405e98ed95ecd427bdb1ffa92e537a28797777250f12d74a56370d9",
+      "geometryHash": "67e9e12294603ea4d06f19a4188ff5e6bdf4d51b54f7847db1145bb954bcd5d1",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear0",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear0",
@@ -170,11 +170,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d3d4c8ca55773ae24c61c8e6f00dca8621d8fffdc27badd1a591f9e4262297a0",
+      "geometryHash": "26b20c027092c85c1e92b0fb85db6ad1637a99f379e901cbae4a724444e37c07",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear1",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear1",
@@ -195,11 +195,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63c750f6ea7cb63e0b27753b22bd32c28d8c4c1472b9f45656b8d017927ad0a6",
+      "geometryHash": "5035b5b08e3fc0d10ce2356e1764bd151bdc01cd2a4403a913586cfc0708fd8c",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear2",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear2",
@@ -220,11 +220,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c7b113b6270e8d658fc57bf2336dc08beb7727367561d733823dc1ae710243e",
+      "geometryHash": "d62403b15675f990ddc8f62107138c01744ad61dce7053dddd1694fdbb8a6db2",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear3",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear3",
@@ -245,11 +245,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5d4430a8c0faadebd6ed412999e43179857b28411412ecb8c7a31407d848f58",
+      "geometryHash": "5f8e44cd3ad3bd13cf3702acea3d31618fcc78e74209e6aa059e53dfa4ea5865",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear4",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear4",
@@ -270,11 +270,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f360ae87a227c1875fecec8dc038055f8bdec9d30bc7f03d36ce2c16b9cc133",
+      "geometryHash": "072b0d475f625d853e8dccc898faa3e478afb133a8fe57b768c77dccd10267db",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear5",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear5",
@@ -295,11 +295,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2465f3127bc4cb8c6d4b132168e836515b9ed50714f5f36a1d3b1edf35f5da5",
+      "geometryHash": "c952e9ab2ada333a6bda8f9cc8fe7b6af777bef1ce7c2a59748c4d1563a3ef2c",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear6",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear6",
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f4c0b57433ea99dffa345b61c33a2079d82bdf40afa0ff111df16683125ec98",
+      "geometryHash": "cac57af2b9691cdf021a4f02217411ed46c06441769199c25fe5fe5fe7067597",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankvalve.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -401,38 +401,6 @@
       ]
     },
     {
-      "hash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
-      "id": "material:987e4aefae13e344c4e3752c",
-      "name": "Forge_massline_express_liner_wk_torn",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
       "id": "material:cdf5689d187192f2094a2dce",
       "name": "Forge_massline_express_liner_wk_scorch",
@@ -459,6 +427,38 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e0179ca362643e13222451a331f500d010e42540421ceee35f980abbcaf5c563",
+      "id": "material:e0179ca362643e13222451a3",
+      "name": "Forge_massline_express_liner_wk_torn",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1059,19 +1059,19 @@
       "sha256": "0b8e619e5f67dea6a723d40aa501d385ad45e85b25bd38d001321ebfb62213d0"
     },
     "sourceGlb": {
-      "bytes": 151276,
-      "sha256": "20d80a092d4ab91fd89b7936a85cb1c836feeba3490ffbe071af24f911e84e07",
+      "bytes": 312204,
+      "sha256": "eddbcf125be12a65412df7e4f50b4747c420f83d65e7b3e9ac9d159289c4f3dc",
       "uri": "place_aftermath_aft_pressure_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 171348,
-    "sha256": "cdb3512d2db7fca4b17bf91ff3eef2418548317defae1ee9e5324cb1059c5a23",
+    "bytes": 332244,
+    "sha256": "30a3efee0bfa0dbabff7306341b74b1d98275331e5f9d73cbe9c761cc4a49954",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1504,7 +1504,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
-  "runtimeHash": "ecd224492ebea7f14ac424e1640c7c2aac5ac6e2198bb5c9ac672dd7a0189468",
+  "runtimeHash": "62927620a1273b65c431fdda9bd201dc4b10f33e21691e8e48f8aac808c96e37",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

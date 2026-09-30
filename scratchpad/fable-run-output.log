@@ -1,0 +1,60 @@
+Done. The FABLE task bank is complete, audited with zero flags, and lives entirely under `design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/`. Nothing outside that folder was touched, nothing was committed, and no live queue file was edited.
+
+`★ Insight ─────────────────────────────────────`
+The last review pass caught a contradiction the audit could not see: fifteen packets were laned "THE RELEASE", which the lane doc parks outright. A dispatcher reading a parked lane on open work would park the packet. The fix was to lane each packet by the bar it serves and to make the audit refuse any lane outside the eight live ones, so the class cannot recur.
+`─────────────────────────────────────────────────`
+
+## Counts
+
+| Domain | Packets |
+|---|---|
+| 01 hand | 8 |
+| 02 massline | 7 |
+| 03 fight | 9 |
+| 04 crucible | 7 |
+| 05 world | 17 |
+| 06 law and factions | 7 |
+| 07 economy | 7 |
+| 08 industry | 7 |
+| 09 ship identity | 6 |
+| 10 story and missions | 10 |
+| 11 vfx and picture | 9 |
+| 12 ear | 8 |
+| 13 camera and replay | 4 |
+| 14 machine | 12 |
+| 15 professional | 20 |
+| 16 teach | 4 |
+| **Total** | **142** |
+
+| Inference group | Lines |
+|---|---|
+| PICTURE (continues at PIC-13) | 18 |
+| VERB (continues at VERB-14) | 17 |
+| WORLD (continues at WORLD-21) | 22 |
+| INSTRUMENT (continues at INST-17) | 18 |
+| FIGHT, ECON, STORY, LAW, MACH, PRO, TEACH (new) | 10, 7, 7, 9, 9, 15, 9 |
+| **Total** | **141** |
+
+Routing aids: 35 proposed board rows starting at 228, ten dispatch batches with derived shared-seam lists, an overlap map, a found-gaps record, and a self-audit. Every packet cites its landed neighbours where one exists (114 of 142), and none restates a task from the SF-300, next-wave, or finish-expansion banks.
+
+## The ten highest-leverage tasks
+
+1. **FB-070 Refusal has a voice and a shape.** All eight denial events the player can trigger reach no eye, ear, or pad today. One dispatcher gives every refusal a sound and a withdrawal motion.
+2. **FB-080 The verb cue table becomes a dispatcher.** About 120 authored combat cue rows are never played. Wiring the table lights up most of the fight's feedback at once.
+3. **FB-009 Massline receipts reach the picture.** Thirteen receipts from the signature verb are emitted into nothing. This is the cheapest way to make the rope feel like the game's centre.
+4. **FB-051 The world reports what you built.** Claims and automation emit fifteen events nobody hears. Passive income becomes visible cause and effect instead of a number ticking up.
+5. **FB-053 Research reads as a verb.** The tech ladder exists as data with no player-facing consequence chain. Research starts changing what you can do, and says so.
+6. **FB-016 Every archetype telegraphs.** Enemy families gain a readable tell before they act. This is the difference between a fight you read and a fight you survive.
+7. **FB-029 Sector flags shape the population.** Nineteen sectors share one traffic mix. Flags already authored per sector start choosing who flies there.
+8. **FB-026 Arc difficulty is composition, not health.** Later waves get harder by mixing roles, not by inflating bars. Cites the next-wave rule that forbids health-bar phases.
+9. **FB-039 The fine on dock is a choice.** Law consequences become decisions with a shape: pay, contest, or run. Fourteen dead law receipts feed into it.
+10. **FB-093 Save writes are bounded and compressed.** The single biggest machine risk found: unbounded save envelopes under quota pressure. Compression plus a cap protects every other packet's persistence.
+
+## The three weakest areas of the game
+
+1. **The signature verb is half-silent.** The Massline computes more than any other system and announces the least. Thirteen receipts, ten seed and snare edges, all eight refusals, and the salvage-rights economy reach no eye, ear, or pad.
+2. **The long game authors the world and never says so.** Claims summon convoys and patrols, traders move prices, worksites lose couriers, wars flip sectors, research changes what you can do. Thirty-plus events carry all of it into nothing.
+3. **The frontier is one sector wearing twenty-four names.** Nineteen identical traffic mixes, seventeen inherited physics rows, fourteen missing arrangements, one travel lane, six factions without a home, and four point-of-interest types that exist exactly once.
+
+Nothing is integrated into the live queue. The bank waits for a dispatcher to pick rows from `BOARD_ROWS.md` and batches from `FIRST_BATCHES.md`.
+EXIT:0

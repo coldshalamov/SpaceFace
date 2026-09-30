@@ -146,7 +146,10 @@ import { playerWreckMarker } from './aftermathWrecks.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
-import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
+import {
+  rollBountyMark, bountyMarkHail, rollPatrolNest, patrolNestHail, patrolNestLoudLine,
+  markArchetypePoolFor, MARK_HAIL_RANGE_WU,
+} from '../data/bountyMarks.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
@@ -433,6 +436,21 @@ const CONTRACT_CLAIM_CUT_PERIOD_S = 10;       // one manifest unit siphoned per 
 const CONTRACT_CLAIM_FLEE_RANGE_WU = 1500;    // a sprung hauler runs this far off the hull
 const CONTRACT_CLAIM_ORBIT_RAD_PER_S = 0.11;  // slow visible mill around the wreck
 const CONTRACT_CLAIM_SCAN_LABEL = 'DEAD HAULER — FILED CLAIM';
+
+// ── Patrol toll posts (WF-08) ──────────────────────────────────────────────────────
+// An ordinary board patrol_clear is a held place, not a number of ships in a ring: the
+// writ names a raider toll post at a real named feature of the destination sector (the
+// same place candidates the bounty writ uses), the pack anchors on a stripped hulk the
+// post is named for, and a robbed civilian mule sits on the post — the participant that
+// makes the scene a robbery instead of an ambush. First blood breaks the post: the
+// anchor's line scatters the fiction, the mule bolts for the nearest gate, and the
+// player chooses mid-fight whether the witness lives. Two honest ways in: brawl the pack
+// in the open, or make the hulk anvil — thrown mass, shoved hulls, tether slams all
+// answer to the same collision owners every other fight uses.
+const PATROL_NEST_RING_MIN_WU = 70;        // the pack rings its hulk, not the player
+const PATROL_NEST_RING_MAX_WU = 180;
+const PATROL_NEST_MULE_ESCAPE_WU = 500;    // the bolted mule is clear once this close to a gate
+const PATROL_NEST_MULE_REP_BONUS = 2;      // the witness lived; the board's standing reward says so
 
 // ── PQ-138.04 failure mutation ("failure should usually mutate the situation") ───────────────
 // A broken contract must not dead-end in a red toast: the situation the player is standing in
@@ -1384,8 +1402,12 @@ export const missions = {
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
       }
-      if (m.type === 'bounty_hunt' && m.storyTarget) {
+      if ((m.type === 'bounty_hunt' || m.type === 'patrol_clear') && m.storyTarget) {
         this._maybeMarkHail(m, state);
+      }
+      // Patrol toll post: the scene drive — first-blood break, the mule's bolt for the gate.
+      if (m.type === 'patrol_clear' && m.params && m.params.nestName) {
+        this._drivePatrolNest(m, state);
       }
       // WF-08: the contested salvage site is a live scene — the crew mills the hull, siphons
       // units while the player watches, and the claim lapses when nobody is left to hold it.
@@ -2569,6 +2591,18 @@ export const missions = {
     if (bountyMark) { params.markName = bountyMark.name; params.markPlace = bountyMark.placeName; }
     // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
     const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
+    // The patrol writ names a held place: a raider toll post with a stripped hulk and the mule
+    // they are robbing. Same hash discipline as the bounty mark — deterministic on
+    // (seed, offerId), zero rng draws, so every other rolled field stays bit-identical.
+    const patrolNest = typeId === 'patrol_clear'
+      ? rollPatrolNest({ seed: this.state.meta.seed, offerId, sectorId: destSectorId,
+          sectorDef: SECTOR_BY_ID.get(destSectorId) })
+      : null;
+    if (patrolNest) {
+      params.nestName = patrolNest.name;
+      params.nestPlace = patrolNest.placeName || null;
+    }
+    const { placeName: _nestPlace, ...nestStoryTarget } = patrolNest || {};
 
     // A1 "passengers are people": the board names the fare, not a seat count. Minted from
     // (world seed, offer id) — never an rng draw — so every other rolled field stays
@@ -2597,7 +2631,7 @@ export const missions = {
       expiresAtEpoch: epoch + 1,
       storyTag: null,
       // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
-      ...(bountyMark ? { storyTarget: markStoryTarget } : {}),
+      ...(bountyMark ? { storyTarget: markStoryTarget } : patrolNest ? { storyTarget: nestStoryTarget } : {}),
     };
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
@@ -2858,7 +2892,9 @@ export const missions = {
         ? `Eliminate ${p.markName}${p.markPlace ? ` — ${p.markPlace}` : ` near ${destName}`}`
         : `Eliminate a wanted target near ${destName}`;
       case 'escort': return `Escort a convoy to ${destName}`;
-      case 'patrol_clear': return `Clear ${p.clearCount} hostiles near ${destName}`;
+      case 'patrol_clear': return p.nestName
+        ? `Break ${p.nestName}${p.nestPlace ? ` — ${p.nestPlace}` : ''}`
+        : `Clear ${p.clearCount} hostiles near ${destName}`;
       case 'recon_scan': return `Scan ${p.scanTargets} site(s) near ${destName}`;
       case 'passenger_transport': return p.passenger
         ? `Take ${p.passenger.name} to ${destName}`
@@ -2909,7 +2945,9 @@ export const missions = {
         line = `Convoy into ${destName} on the final leg. Raiders work this lane — paid on arrivals.`;
         break;
       case 'patrol_clear':
-        line = `${p.clearCount} hostiles sitting on the lanes near ${destName}. Clear the lane.`;
+        line = p.nestName
+          ? `A stripped hulk, ${p.clearCount} hulls, and the mule they are robbing. Break the post up.`
+          : `${p.clearCount} hostiles sitting on the lanes near ${destName}. Clear the lane.`;
         break;
       case 'recon_scan':
         line = `${p.scanTargets} site(s) near ${destName} need a real reading, not a rumor.`;
@@ -4269,6 +4307,19 @@ export const missions = {
     }
     m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
     m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
+    // Toll post: the first pack hull to drop breaks the post — the anchor's line scatters,
+    // and the robbed mule uses the fight to bolt for the gate.
+    if (m.type === 'patrol_clear' && m.params && m.params.nestName) {
+      this._springPatrolNest(m, 'first_kill');
+      if (!m.params.muleBolted) {
+        const { mule } = this._patrolNestScene(m);
+        if (mule && mule.alive !== false) {
+          delete mule.data.ai; // convoy doctrine: this drive steers it via data.intent
+          mule.data.intent = { moveX: 0, moveZ: 0, boost: true, fire: false, fireGroup: null, aimAngle: 0 };
+          m.params.muleBolted = true;
+        }
+      }
+    }
     if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
     else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
   },
@@ -4347,6 +4398,34 @@ export const missions = {
         m.params = m.params || {};
         m.params.convoyLost = (m.params.convoyLost || 0) + 1;
         this.bus.emit('toast', { text: 'Convoy hauler down — the fee settles short at dock', kind: 'warn', ttl: 4 });
+      }
+    }
+    // Toll posts: a destroyed scene hull remembers its fate. The hulk going down is itself
+    // the moment the post breaks; a dead mule is the robbery nobody could stop. entity:destroyed
+    // is queued — ids recycle — so the payload's corpse ref is the identity, with the bare id
+    // accepted only when no corpse object rode along.
+    if (p.reason !== 'save_restore') {
+      const corpse = p.entity || (p.data ? p : null);
+      if (corpse && corpse.data && corpse.data.patrolNestOf) {
+        for (const m of this.state.missions.active || []) {
+          if (m.type !== 'patrol_clear' || String(m.id) !== String(corpse.data.patrolNestOf)) continue;
+          const params = m.params || (m.params = {});
+          if (corpse.data.patrolRole === 'toll_hulk') {
+            params.tollHulkGone = true;
+            this._springPatrolNest(m, 'hulk_destroyed');
+            if (!params.muleBolted) {
+              const scene = this._patrolNestScene(m);
+              if (scene.mule && scene.mule.alive !== false) {
+                delete scene.mule.data.ai;
+                scene.mule.data.intent = { moveX: 0, moveZ: 0, boost: true, fire: false, fireGroup: null, aimAngle: 0 };
+                params.muleBolted = true;
+              }
+            }
+          } else if (corpse.data.patrolRole === 'mule') {
+            params.muleFate = 'dead';
+            this.bus.emit('mission:updated', { missionId: m.id, muleFate: 'dead' });
+          }
+        }
       }
     }
     this._onPhysicalEntityDestroyed(p);
@@ -6462,6 +6541,15 @@ export const missions = {
       case 'escort':
         return 'Convoy arrived at ' + dest + ' intact. That is all the client wanted written down.';
       case 'patrol_clear':
+        if (p.nestName) {
+          if (p.muleEscaped) {
+            return `Toll post broken near ${dest}. The mule got out — its crew will talk, and the board pays for witnesses.`;
+          }
+          if (p.muleFate) {
+            return `Toll post broken near ${dest}. The mule didn't make it; whatever it carried is still on the floor of the fight.`;
+          }
+          return `Toll post broken near ${dest}. The hulk is still there to strip, if the mood takes you.`;
+        }
         return 'Lane report is clean. Hostile signatures cleared, trade traffic can pretend it was always safe.';
       case 'recon_scan':
         return 'Scan packet received. The map is now less wrong where it matters.';
@@ -6685,7 +6773,17 @@ export const missions = {
     // We size repMult so factions' applied rep ≈ the spec's risk-scaled BASE_REP value, plus the
     // featured day's small standing bonus when the accepted offer carried the mark.
     const featuredRep = m.featured ? Math.max(0, Math.floor(Number(m.featured.repBonus) || 0)) : 0;
-    const specRep = missionSpecRep(m) + featuredRep;
+    // Toll post: a robbed mule that lived through the fight is a witness for the board. A
+    // mule still running when the last pack hull drops counts as out — it survived the post's
+    // fall and was making the gate. The bonus rides the same rep channel as the settlement.
+    if (m.type === 'patrol_clear' && m.params && m.params.nestName && !m.params.muleFate
+      && !m.params.muleEscaped) {
+      const scene = this._patrolNestScene(m);
+      if (scene.mule && scene.mule.alive !== false) m.params.muleEscaped = true;
+    }
+    const nestMuleRep = m.type === 'patrol_clear' && m.params && m.params.nestName && m.params.muleEscaped
+      ? PATROL_NEST_MULE_REP_BONUS : 0;
+    const specRep = missionSpecRep(m) + featuredRep + nestMuleRep;
     const repMult = specRep / 15;
     const storyOutcome = m.params && m.params.investigationOutcome;
     const completedPayload = {
@@ -7454,8 +7552,13 @@ export const missions = {
    * career and legacy writs keep their own fiction.
    */
   _maybeMarkHail(m, state) {
-    if (!m || !m.storyTarget || m.storyTarget.role !== 'board_writ'
-      || !m.storyTarget.name || m._markHailed) return;
+    if (!m || !m.storyTarget || m._markHailed) return;
+    // Board writs speak the warrant register; a patrol toll post speaks the toll-taker
+    // register — until the post breaks, after which nobody is home to hail.
+    const nestAnchor = m.type === 'patrol_clear' && m.storyTarget.role === 'nest_anchor';
+    if (m.storyTarget.role !== 'board_writ' && !nestAnchor) return;
+    if (nestAnchor && m.params && m.params.nestLoud) return;
+    if (!m.storyTarget.name) return;
     const targetId = (m.targetEntityIds || [])[0];
     const mark = targetId != null && state.entities && state.entities.get(targetId);
     const player = state.entities && state.entities.get(state.playerId);
@@ -7464,7 +7567,8 @@ export const missions = {
     const dz = mark.pos.z - player.pos.z;
     if (dx * dx + dz * dz > MARK_HAIL_RANGE_WU * MARK_HAIL_RANGE_WU) return;
     m._markHailed = true;
-    const text = bountyMarkHail((state.meta && state.meta.seed) || 1, m.id);
+    const seed = (state.meta && state.meta.seed) || 1;
+    const text = nestAnchor ? patrolNestHail(seed, m.id) : bountyMarkHail(seed, m.id);
     const voice = this.helpers && this.helpers.voice;
     // A line the arbiter already voiced stays out of the live feed — `_viaVoice` logs it to the
     // backlog only, so the player never reads the same hail twice.
@@ -7534,7 +7638,10 @@ export const missions = {
       return;
     }
 
-    if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
+    if (m.type === 'patrol_clear' && m.params && m.params.nestName) {
+      // The toll post: hulk, ringed pack, robbed mule — all at the writ's named place.
+      this._spawnPatrolNest(m, nextRng, px, pz);
+    } else if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       // Spawn only the targets still owed (objectiveTarget - progress) so a mid-mission save/load or
       // partial clear doesn't re-spawn already-killed hostiles and leave an orphan.
       // Adopted rematerialized hosts count toward the remaining quota.
@@ -8468,6 +8575,297 @@ export const missions = {
     }
   },
 
+  // ===========================================================================================
+  // PATROL TOLL POSTS (WF-08) — the board's patrol_clear writ is a held place. The scene:
+  // a stripped hulk the post is named for, the pack ringed on it, and a robbed civilian mule.
+  // First blood (or the hulk going down) breaks the post: the anchor's line scatters, the
+  // mule bolts for the nearest gate, and the player chooses mid-fight whether the witness
+  // lives. The hulk is a tetherable salvage body — thrown mass and shoved hulls answer to
+  // the same collision owners as any other fight.
+  // ===========================================================================================
+
+  /** The post's scene hulls — lane life stamped patrolNestOf, never objective targets. */
+  _patrolNestScene(m) {
+    const out = { hulk: null, mule: null };
+    if (!m) return out;
+    forEachLivingWorldActor(this.state, (e) => {
+      if (!e || !e.data || String(e.data.patrolNestOf) !== String(m.id)) return;
+      if (e.data.patrolRole === 'toll_hulk') out.hulk = e;
+      else if (e.data.patrolRole === 'mule') out.mule = e;
+    });
+    return out;
+  },
+
+  /** Nearest gate of the destination sector, in global coords — where a bolted mule runs. */
+  _patrolNestGatePos(m) {
+    if (m._nestGatePos) return m._nestGatePos;
+    const anchors = SECTOR_ANCHORS[m.destSectorId];
+    const gates = (anchors && anchors.gates) || [];
+    const origin = (m.params && m.params.nestAnchorPos) || null;
+    let best = null;
+    let bestD = Infinity;
+    for (const gate of gates) {
+      if (!gate || !gate.pos) continue;
+      const global = sectorLocalToGlobalForSector({ x: gate.pos.x, z: gate.pos.z }, m.destSectorId);
+      const d = origin ? Math.hypot(global.x - origin.x, global.z - origin.z) : 0;
+      if (d < bestD) { bestD = d; best = global; }
+    }
+    m._nestGatePos = best; // runtime cache — stripped on serialize, re-derived after load
+    return best;
+  },
+
+  /**
+   * Materialize the post: hulk first (idempotent by its scene stamp), then the pack — slot 0
+   * is the named anchor the writ points at, the rest are its cutters, all ringed on the
+   * hulk inside the named place — then the mule. Re-entry tops up exactly what is still owed;
+   * a save mid-fight reloads with the post already loud.
+   */
+  _spawnPatrolNest(m, nextRng, px, pz) {
+    const helpers = this.helpers;
+    if (!helpers || !helpers.spawnEntity) return;
+    const params = m.params || (m.params = {});
+    m.targetEntityIds = (m.targetEntityIds || []).filter((id) => {
+      const e = this.state.entities.get(id);
+      return e && e.alive !== false;
+    });
+    const budget = helpers.spawnBudget;
+    const requester = `mission:${m.id}`;
+    const rng = nextRng();
+    const sector = SECTOR_BY_ID.get(m.destSectorId);
+    const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
+
+    // The post holds its named place, placed once — never re-rolled on re-entry. The
+    // hostile-ring fallback keeps an unresolvable writ from silently voiding the spawn.
+    const scene = this._patrolNestScene(m);
+    if (!params.nestAnchorPos) {
+      const placed = (m.storyTarget && missionStoryTargetSpawnPos(m, m.storyTarget, rng))
+        || missionHostileSpawnPos(this.state, { x: px, z: pz }, rng)
+        || { x: px + 1900, z: pz + 900 };
+      // Beside the place, never inside a body or someone else's running fight.
+      params.nestAnchorPos = patrolNestClearPos(this.state, { x: placed.x, z: placed.z }, 30, null, rng);
+    }
+    const anchorPos = params.nestAnchorPos;
+    let spawnedAny = false;
+
+    // The hulk: a dead hauler the post anchors on — tetherable salvage with a real pool,
+    // so thrown mass has an anvil and the aftermath stays stripable after the fight.
+    if (!params.tollHulkGone && !scene.hulk) {
+      const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+      if (grant <= 0) {
+        this._noteMissionSpawnDeferred(m, 1, 0);
+      } else {
+        let hulk = null;
+        try {
+          hulk = helpers.spawnEntity({
+            type: 'wreck',
+            team: 2,
+            pos: { x: anchorPos.x, z: anchorPos.z },
+            vel: { x: (rng() - 0.5) * 4, z: (rng() - 0.5) * 4 },
+            rot: rng() * Math.PI * 2,
+            radius: 22,
+            mass: 170,
+            hull: 160,
+            hullMax: 160,
+            collides: true,
+            collisionMask: MISSION_WRECK_COLLISION_MASK,
+            physicsBody: { shape: 'capsule' },
+            data: {
+              patrolNestOf: String(m.id),
+              patrolRole: 'toll_hulk',
+              proportions: WRECK_COLLIDER_PROPORTIONS,
+              scanLabel: `TOLL HULK — ${String(params.nestName || 'TOLL POST').toUpperCase()}`,
+              tetherable: true,
+              salvagePool: {
+                cmdty_scrap_metal: 2 + Math.floor(rng() * 3),
+                cmdty_salvage_electronics: Math.floor(rng() * 2),
+              },
+            },
+          });
+        } catch (error) {
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+          throw error;
+        }
+        if (hulk) {
+          if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(hulk.id, requester);
+          spawnedAny = true;
+        } else if (budget && typeof budget.releaseSome === 'function') {
+          budget.releaseSome(requester, 1);
+        }
+      }
+    }
+
+    // The pack: only the hulls still owed, ringed on the hulk — the post is a PLACE.
+    const remaining = Math.max(0, (m.objectiveTarget || 1) - (m.objectiveProgress || 0));
+    const adopted = (m.targetEntityIds || []).length;
+    const n = Math.max(0, remaining - adopted);
+    if (n > 0) {
+      const grant = budget && typeof budget.request === 'function' ? budget.request(n, requester) : n;
+      if (grant < n) this._noteMissionSpawnDeferred(m, n, grant);
+      const occupiedSlots = new Set((m.targetEntityIds || []).map((id) => (
+        missionTargetSlotOf(this.state.entities.get(id), m.id)
+      )).filter((slot) => slot != null));
+      const completedSlots = completedMissionTargetSlots(m);
+      const vacantSlots = [];
+      for (let slot = 0; vacantSlots.length < grant; slot++) {
+        if (!occupiedSlots.has(slot) && !completedSlots.has(slot)) vacantSlots.push(slot);
+      }
+      const riskTier = Math.max(0, Math.round(Number(m.riskTier) || 0));
+      const pool = markArchetypePoolFor(riskTier);
+      let packSpawned = 0;
+      for (let i = 0; i < grant; i++) {
+        const durableSlot = vacantSlots[i];
+        const slotRng = nextRng(durableSlot);
+        const angle = slotRng() * Math.PI * 2;
+        const radius = PATROL_NEST_RING_MIN_WU
+          + Math.sqrt(slotRng()) * (PATROL_NEST_RING_MAX_WU - PATROL_NEST_RING_MIN_WU);
+        const pos = {
+          x: anchorPos.x + Math.cos(angle) * radius,
+          z: anchorPos.z + Math.sin(angle) * radius,
+        };
+        // The writ's anchor takes slot 0 with the post's face; the rest are its cutters.
+        const typeId = durableSlot === 0
+          ? (m.storyTarget && m.storyTarget.archetype) || 'reaver_pirate'
+          : pool[Math.floor(slotRng() * pool.length)];
+        const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + slotRng() * 0.6));
+        const spec = makeEnemySpawnSpec(typeId, level, pos, { startedTick: this.state.tick });
+        spec.data = spec.data || {};
+        spec.data.missionTag = m.id;
+        let ent = null;
+        try {
+          ent = helpers.spawnEntity(spec);
+        } catch (error) {
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, grant - packSpawned);
+          throw error;
+        }
+        if (ent) {
+          if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+          this._stampMissionTargetIdentity(ent, m, durableSlot);
+          m.targetEntityIds.push(ent.id);
+          packSpawned++;
+        }
+      }
+      if (budget && typeof budget.releaseSome === 'function' && packSpawned < grant) {
+        budget.releaseSome(requester, grant - packSpawned);
+      }
+      if (packSpawned === n && this._missionBudgetDeferrals) {
+        this._missionBudgetDeferrals.delete(String(m.id));
+      }
+      if (packSpawned > 0) spawnedAny = true;
+    }
+
+    // The robbed mule: a live civilian hull the post is stripping — the participant that
+    // makes the scene a robbery. A save after the break reloads with it already running.
+    if (!params.muleFate && !params.muleEscaped && !this._patrolNestScene(m).mule) {
+      const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+      if (grant <= 0) {
+        this._noteMissionSpawnDeferred(m, 1, 0);
+      } else {
+        const pilot = promotedPilotIdentity(9, m.id);
+        // The mule parks beside the hulk; its own scene (hulk + pack) does not count as
+        // engagement airspace against it.
+        const ownScene = new Set([...(m.targetEntityIds || [])]);
+        const heldScene = this._patrolNestScene(m);
+        if (heldScene.hulk) ownScene.add(heldScene.hulk.id);
+        const mulePos = patrolNestClearPos(this.state, {
+          x: anchorPos.x + Math.cos(rng() * Math.PI * 2) * 55,
+          z: anchorPos.z + Math.sin(rng() * Math.PI * 2) * 55,
+        }, 16, ownScene, rng);
+        const spec = makeEnemySpawnSpec('mule_trader', Math.round((lvLo + lvHi) / 2), mulePos,
+          { startedTick: this.state.tick });
+        spec.team = 0;
+        spec.factionId = null;
+        spec.data = spec.data || {};
+        // Escort convoy doctrine: no data.ai — the AI system skips it, this drive steers it.
+        spec.data.patrolNestOf = String(m.id);
+        spec.data.patrolRole = 'mule';
+        spec.data.name = pilot.name;
+        spec.data.scanLabel = `${pilot.crew} — held mule`;
+        if (params.nestLoud) {
+          // Reloaded mid-flight: the post already broke, so it arrives already running.
+          delete spec.data.ai;
+          spec.data.intent = { moveX: 0, moveZ: 0, boost: true, fire: false, fireGroup: null, aimAngle: 0 };
+        } else {
+          spec.data.ai = spec.data.ai || {};
+          spec.data.ai.passive = true;
+        }
+        let mule = null;
+        try {
+          mule = helpers.spawnEntity(spec);
+        } catch (error) {
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+          throw error;
+        }
+        if (mule) {
+          if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(mule.id, requester);
+          spawnedAny = true;
+        } else if (budget && typeof budget.releaseSome === 'function') {
+          budget.releaseSome(requester, 1);
+        }
+      }
+    }
+    if (spawnedAny) this.bus.emit('mission:updated', { missionId: m.id });
+  },
+
+  /**
+   * The post breaks. First blood or a dead hulk: the anchor's line goes out, and the robbed
+   * mule uses the fight to run for the nearest gate. One shot per mission — nestLoud rides
+   * params, so a save mid-fight never replays the beat.
+   */
+  _springPatrolNest(m, trigger) {
+    const params = m.params || (m.params = {});
+    if (params.nestLoud) return;
+    params.nestLoud = true;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const text = patrolNestLoudLine(seed, m.id);
+    const anchorName = (m.storyTarget && m.storyTarget.name) || 'TOLL POST';
+    const voice = this.helpers && this.helpers.voice;
+    const said = !!(voice && typeof voice.say === 'function'
+      && voice.say({ channel: 'comms', text, kind: 'patrolNest', ttl: 4, id: `patrolNest:${m.id}` }));
+    this.bus.emit('comms:popup', { sender: anchorName, text, category: 'personal', ttl: 6, _viaVoice: said });
+    this.bus.emit('mission:updated', { missionId: m.id, nestLoud: true, trigger: trigger || null });
+  },
+
+  /**
+   * Per-tick scene drive: while a bolted mule lives, it runs for the gate; once it is clear
+   * it jumps out and the witness outcome latches. A dead mule latches from the destroy path.
+   */
+  _drivePatrolNest(m, state) {
+    const params = m.params || (m.params = {});
+    if (!params.nestLoud || !params.muleBolted || params.muleEscaped || params.muleFate) return;
+    const { mule } = this._patrolNestScene(m);
+    if (!mule || mule.alive === false) { params.muleFate = params.muleFate || 'lost'; return; }
+    const gate = this._patrolNestGatePos(m);
+    if (!gate) return;
+    const dx = gate.x - mule.pos.x;
+    const dz = gate.z - mule.pos.z;
+    const dist = Math.hypot(dx, dz) || 1e-4;
+    if (dist <= PATROL_NEST_MULE_ESCAPE_WU) {
+      params.muleEscaped = true;
+      mule.alive = false; // cleared the ring and jumped — the lane keeps its witness
+      const budget = this.helpers && this.helpers.spawnBudget;
+      if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(mule.id);
+      this.bus.emit('comms:popup', {
+        sender: mule.data && mule.data.name || 'held mule',
+        text: 'Through the ring — the post is dead behind me. Board hull, you did the work.',
+        category: 'personal',
+        ttl: 6,
+      });
+      this.bus.emit('mission:updated', { missionId: m.id, muleEscaped: true });
+      return;
+    }
+    const intent = mule.data.intent || (mule.data.intent = {
+      moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0,
+    });
+    const aim = Math.atan2(dz, dx);
+    intent.aimAngle = aim;
+    const off = Math.abs(wrapAngleLocal(aim - mule.rot));
+    intent.moveZ = off < 1.2 ? 1 : 0.35; // throttle down while still turning to face the line
+    intent.moveX = 0;
+    intent.fire = false;
+    intent.fireGroup = null;
+    intent.boost = off < 0.6;
+  },
+
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
     // Capital boss contracts hand the authored score back at the settlement boundary. The detach
@@ -8510,6 +8908,18 @@ export const missions = {
         e.data.contractClaimCrewOf = null;
         e.data.salvorClaimId = null;
         e.data.claimRole = null;
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      }
+      // WF-08 toll posts: the aftermath belongs to the lane, not the contract. The hulk
+      // stays a stripable dead hull, a mid-bolt mule holds again as ordinary traffic.
+      if (e.data.patrolNestOf === String(m.id)) {
+        const nestRole = e.data.patrolRole;
+        e.data.patrolNestOf = null;
+        e.data.patrolRole = null;
+        if (nestRole === 'mule' && (!e.data.ai || typeof e.data.ai !== 'object')) {
+          e.data.ai = { passive: true };
+        }
         const budget = this.helpers && this.helpers.spawnBudget;
         if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
       }
@@ -9252,7 +9662,7 @@ export const missions = {
     const m = this.state.missions;
     // Strip transient runtime fields (entity ids) from active missions.
     const active = (m.active || []).map((a) => {
-      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, ...rest } = a;
+      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _nestGatePos, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema
@@ -9564,6 +9974,51 @@ function missionHostileSpawnPos(state, origin, rng) {
     if (outsideMissionPortSafety(state, pos)) return pos;
   }
   return null;
+}
+
+/**
+ * A toll post holds its named place, but not INSIDE anything that can kill it in the first
+ * seconds: a POI proxy or rock occupying the anchor center would crush the hulk, and any live
+ * hull or station already running an engagement will shoot a team-2 post from the airspace it
+ * holds. Spiral out from the desired point on a fixed golden-angle lattice (pure arithmetic,
+ * never an rng draw) until the seat is clear of live colliding bodies, stations, and every
+ * ship hull that is not the post's own scene; the named place keeps the post within a few
+ * hundred WU of where the writ said. `ignore` excludes ids spawned for this same scene.
+ */
+function patrolNestClearPos(state, desired, radius, ignore = null, rng = null) {
+  const bodyClear = (p) => {
+    const list = state && state.entityList;
+    if (Array.isArray(list)) {
+      for (const other of list) {
+        if (!other || other.alive === false || !other.pos) continue;
+        if (ignore && ignore.has(other.id)) continue;
+        if (other.type === 'station' || other.type === 'gate') {
+          const pad = radius + (other.radius || 32) + 450;
+          if (distSq(p, other.pos) < pad * pad) return false;
+          continue;
+        }
+        if (other.collides === false) continue;
+        // A live ship hull will engage a team-2 post from well beyond collision range.
+        const pad = radius + (other.radius || 10) + (other.type === 'ship' ? 800 : 60);
+        if (distSq(p, other.pos) < pad * pad) return false;
+      }
+    }
+    const player = state.entities && state.entities.get(state.playerId);
+    if (player && player.alive !== false && player.pos) {
+      const pad = radius + (player.radius || 10) + 120;
+      if (distSq(p, player.pos) < pad * pad) return false;
+    }
+    return true;
+  };
+  if (bodyClear(desired)) return desired;
+  for (let attempt = 1; attempt <= 16; attempt++) {
+    const ang = attempt * 2.399963229728653; // golden angle — even coverage, no rng
+    const r = 300 + attempt * 260;
+    const candidate = { x: desired.x + Math.cos(ang) * r, z: desired.z + Math.sin(ang) * r };
+    if (bodyClear(candidate)) return candidate;
+  }
+  // Every spawn path's last resort: the shared port-safe hostile ring off the desired point.
+  return (rng && missionHostileSpawnPos(state, desired, rng)) || desired;
 }
 
 function missionTargetSlotOf(entity, missionId) {

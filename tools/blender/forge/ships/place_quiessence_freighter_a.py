@@ -19,6 +19,7 @@ SHIP_ID = 'place_quiessence_freighter_a'
 
 
 def extra(s):
+    s.emit_scale = 4.0
     # Warm bunks: the crew sleeps in the cage frames — a lit row along each top longeron.
     Q.bunk_windows(s, -9.0, 9.0, 10, y=2.8, z=2.92, tag='Cage', z_top=3.35)
     # one faint violet beacon over the cab roof

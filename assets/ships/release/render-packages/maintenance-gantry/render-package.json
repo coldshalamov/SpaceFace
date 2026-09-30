@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Berth",
       "nodePath": [
         0,
-        22
+        34
       ],
       "parentNodeId": "sf.render.maintenance-gantry.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Hook",
       "nodePath": [
         0,
-        23
+        35
       ],
       "parentNodeId": "sf.render.maintenance-gantry.root",
       "worldTransform": [
@@ -105,22 +105,97 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ab65c90d6c6541cf0f5ffa6cc9096800b54412674f8da9d4263d8fedcde3737e",
+  "contentHash": "4433b60ee291c2c619ab5de78c9c05ae571b1ae2e3de49255089bb858ebc0172",
   "dynamicGroups": [
     {
-      "id": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port.dynamic",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-blink-1p2-0p5-gantrystrobe-dome.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port"
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-blink-1p2-0p5-gantrystrobe-dome"
     },
     {
-      "id": "sf.render.maintenance-gantry.mesh.lod1-hook-nav-port.dynamic",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-0-3-2p8-berthlamp0.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-hook-nav-port"
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-0-3-2p8-berthlamp0"
     },
     {
-      "id": "sf.render.maintenance-gantry.mesh.lod2-hook-nav-port.dynamic",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-1-3-2p8-berthlamp1.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-hook-nav-port"
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-1-3-2p8-berthlamp1"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-2-3-2p8-berthlamp2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-2-3-2p8-berthlamp2"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1-2"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-blink-1p2-0p5-gantrystrobe-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-blink-1p2-0p5-gantrystrobe-dome"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-0-3-2p8-berthlamp0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-0-3-2p8-berthlamp0"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-1-3-2p8-berthlamp1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-1-3-2p8-berthlamp1"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-2-3-2p8-berthlamp2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-2-3-2p8-berthlamp2"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1-2"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-blink-1p2-0p5-gantrystrobe-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-blink-1p2-0p5-gantrystrobe-dome"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-0-3-2p8-berthlamp0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-0-3-2p8-berthlamp0"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-1-3-2p8-berthlamp1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-1-3-2p8-berthlamp1"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-2-3-2p8-berthlamp2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-2-3-2p8-berthlamp2"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1-2"
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1"
     }
   ],
   "geometry": [
@@ -152,56 +227,6 @@
     {
       "bounds": {
         "max": [
-          2.2995574474334717,
-          10.350188255310059,
-          9.699999809265137
-        ],
-        "min": [
-          -2.2995574474334717,
-          -0.00018854097288567573,
-          -9.699999809265137
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "37f2193bd1d2e832c19522c59ad4d99735f5c827aeb4e5b62c8b40f2bd8e1fa8",
-      "id": "sf.render.maintenance-gantry.mesh.lod0-armor.primitive.0",
-      "indexCount": 15792,
-      "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Armor",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-armor",
-      "primitiveIndex": 0,
-      "vertexCount": 4818
-    },
-    {
-      "bounds": {
-        "max": [
-          0.17488327622413635,
-          1.3221168518066406,
-          6.175000190734863
-        ],
-        "min": [
-          -0.17488327622413635,
-          1.077883243560791,
-          -6.175000190734863
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bf35c0e82dfb7568ede9299b19da4638c0047cca4871ae7aff6fe17aefbcf835",
-      "id": "sf.render.maintenance-gantry.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 72
-    },
-    {
-      "bounds": {
-        "max": [
           0.2480001449584961,
           10.55998983206222,
           9.248000144958496
@@ -213,16 +238,166 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8feca40d7ff8022ab68ff42568ea05a7997753aa979db4ae3ec839cb06e3f6bb",
-      "id": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port.primitive.0",
+      "geometryHash": "0720c51439677de102133f4a51e596d00cfa0cbe40e14b1c0641c6ba7cf648b2",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-blink-1p2-0p5-gantrystrobe-dome.primitive.0",
       "indexCount": 468,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_NAV_PORT",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port",
+      "meshName": "LOD0_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-blink-1p2-0p5-gantrystrobe-dome",
       "primitiveIndex": 0,
       "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17500019073486328,
+          1.3225060560175972,
+          6.175000190734863
+        ],
+        "min": [
+          -0.17500019073486328,
+          1.0774940393498345,
+          5.824999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ce4d40c7fd078a947cae95c22b8bd5252efffc57db13d2250bc1149f7f784540",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-0-3-2p8-berthlamp0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-0-3-2p8-berthlamp0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17499999701976776,
+          1.3225059204105274,
+          0.17499999701976776
+        ],
+        "min": [
+          -0.17499999701976776,
+          1.0774941749569042,
+          -0.17499999701976776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f1cdcd364690fa07316306c61459f3cc2ed3755357d449d672b5fe0c2712ed1",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-1-3-2p8-berthlamp1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-1-3-2p8-berthlamp1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17500019073486328,
+          1.3225060560175972,
+          -5.824999809265137
+        ],
+        "min": [
+          -0.17500019073486328,
+          1.0774940393498345,
+          -6.175000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88249071b1e8ffe4db22b4da315442ee70c98e94ac1a8c1c6d9c326fbe624e84",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-2-3-2p8-berthlamp2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-2-3-2p8-berthlamp2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.4030915346265722,
+          9.985286829470096,
+          -0.19999998807907104
+        ],
+        "min": [
+          -1.9969084713338923,
+          9.414712789060177,
+          -1.7999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bb19ff4709ec8e1bb74fcbe067fb8c595921ba5295131bb23b5ff90f8244b21",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1-2.primitive.0",
+      "indexCount": 1428,
+      "indexed": true,
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9969085160373758,
+          9.985286829470096,
+          -0.19999998807907104
+        ],
+        "min": [
+          1.4030915793300558,
+          9.414712789060177,
+          -1.7999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cfd0db2831fd0732e18f2d82a066279cf232896c9a3f8cad95a2551cc6981b8",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1.primitive.0",
+      "indexCount": 1428,
+      "indexed": true,
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2995574474334717,
+          10.350188255310059,
+          9.699999809265137
+        ],
+        "min": [
+          -2.2995574474334717,
+          -0.00018854097288567573,
+          -9.699999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b1934aa6622f8b7999aa20083e15f7373edf1048dee1a73d7035b9f5771b93e",
+      "id": "sf.render.maintenance-gantry.mesh.lod0-armor.primitive.0",
+      "indexCount": 15792,
+      "indexed": true,
+      "materialHash": "de118b59d049937dbc3943f6fe123853c2feedf3b0d3d701d5e89c3287cf724e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 4818
     },
     {
       "bounds": {
@@ -238,7 +413,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0058b3df01b52cddb14c7b3dfeb0ccb62b9aaf31f23ba86d7fdcbe02657ecd3",
+      "geometryHash": "81bcf359fade545ae9ca0ac1bb4a83474ecfb7213fa79b994b92ed9bddbb83bc",
       "id": "sf.render.maintenance-gantry.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -252,27 +427,27 @@
     {
       "bounds": {
         "max": [
-          1.9969357252120972,
-          10.339788436889648,
+          0.40028777718544006,
+          10.340277671813965,
           9.315874099731445
         ],
         "min": [
-          -1.9969357252120972,
-          5.750211715698242,
-          -1.7999999523162842
+          -0.40028777718544006,
+          5.749722480773926,
+          -1.399999976158142
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dfc9ab2286358fbd3e36f26b4bec30d3ba691cefd15a42e15c0fbc71830d90bd",
+      "geometryHash": "3a887230489f216b58ba8ae695d49e443f06db26be5dde5888778b30ca46a841",
       "id": "sf.render.maintenance-gantry.mesh.lod0-mechanical.primitive.0",
-      "indexCount": 4080,
+      "indexCount": 1224,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1224
+      "vertexCount": 392
     },
     {
       "bounds": {
@@ -288,11 +463,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03c1db722ca0b83e70b69fb77805d28672c4e20c4e42c9f8f63e2bd1e5461093",
+      "geometryHash": "bbf5eafd830ad540fecfb3a4f37dc21a2ffcaab1897395dd164de35b33c1c82d",
       "id": "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 3576,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "89a3943b9932e62644ff6fc91e6e44dadbb3b3aeb65e0e83ec6b4f18a66711dc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark",
@@ -313,11 +488,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d09e1cb18ff168a789e4ab548527d22f028ae0938504c0df8f61159def124df3",
+      "geometryHash": "31715b8309e3a9879e72223d7cd23f1134909a820a06e5fcc66c06e550e90d31",
       "id": "sf.render.maintenance-gantry.mesh.lod0-warning.primitive.0",
       "indexCount": 576,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "c7a6c485366b5e184a2da73b7aecf3b47828db03f32a874c2f54711c03ad5cf7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-warning",
@@ -327,77 +502,177 @@
     {
       "bounds": {
         "max": [
-          2.297733783721924,
-          10.349783897399902,
-          9.697300910949707
+          0.24832968413829803,
+          10.560009280468257,
+          9.248123943654031
         ],
         "min": [
-          -2.297734022140503,
-          0.0022876220755279064,
-          -9.697300910949707
+          -0.24846139550209045,
+          10.330754911278454,
+          8.751696735772162
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89dfd6b706ab7f636ae57e0325bba8c1a54b47c9a4c55e85b3ca72e418cad347",
-      "id": "sf.render.maintenance-gantry.mesh.lod1-armor.primitive.0",
-      "indexCount": 7080,
+      "geometryHash": "8316ef026fb8fbaf213c7348f14bd50c0f735b50f62d0916025866a44331ee5b",
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-blink-1p2-0p5-gantrystrobe-dome.primitive.0",
+      "indexCount": 186,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Armor",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-armor",
+      "meshName": "LOD1_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-blink-1p2-0p5-gantrystrobe-dome",
       "primitiveIndex": 0,
-      "vertexCount": 2673
+      "vertexCount": 65
     },
     {
       "bounds": {
         "max": [
-          0.17488327622413635,
-          1.3221168518066406,
+          0.17500019073486328,
+          1.3225060560175972,
           6.175000190734863
         ],
         "min": [
-          -0.17488327622413635,
-          1.077883243560791,
+          -0.17500019073486328,
+          1.0774940393498345,
+          5.824999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa92c5ea72113a967cc17e46012068b7eceb7aa24aaa75c355b85da05758471d",
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-0-3-2p8-berthlamp0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-0-3-2p8-berthlamp0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17499999701976776,
+          1.3225059204105274,
+          0.17499999701976776
+        ],
+        "min": [
+          -0.17499999701976776,
+          1.0774941749569042,
+          -0.17499999701976776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d27f25aec507c6ee1bfe6569e57a3b23c7af7c9d1d49bf3b5e9754e6f40f7bc8",
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-1-3-2p8-berthlamp1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-1-3-2p8-berthlamp1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17500019073486328,
+          1.3225060560175972,
+          -5.824999809265137
+        ],
+        "min": [
+          -0.17500019073486328,
+          1.0774940393498345,
           -6.175000190734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edb7d5ccf286f5a4546ff01395fdb8efbe3d1e79b170be0f018330b1dd6e2c0b",
-      "id": "sf.render.maintenance-gantry.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 108,
+      "geometryHash": "97591d1bb6750b3a2982002c217956e127654432f708bf915a3dce95356fcf1a",
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-2-3-2p8-berthlamp2.primitive.0",
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Beacon_Amber",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-beacon-amber",
+      "meshName": "LOD1_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-2-3-2p8-berthlamp2",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.24832966923713684,
-          10.560009299381777,
-          9.248124427947227
+          -1.4032887902338083,
+          9.984987146263139,
+          -0.19999998807907104
         ],
         "min": [
-          -0.24846139550209045,
-          10.330754937068418,
-          8.751697234955605
+          -1.9967150900285666,
+          9.41499906122206,
+          -1.7999999523162842
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7daf64c43187780713c762a168c239251226e0fa0705036b27e3a02925d15f1",
-      "id": "sf.render.maintenance-gantry.mesh.lod1-hook-nav-port.primitive.0",
-      "indexCount": 198,
+      "geometryHash": "b3e425e70a0c5e0bbc8408125ed1cb2540c1d7f3cbfb3a598f382b76cb9e0996",
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1-2.primitive.0",
+      "indexCount": 570,
       "indexed": true,
-      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HOOK_NAV_PORT",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-hook-nav-port",
+      "meshName": "LOD1_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1-2",
       "primitiveIndex": 0,
-      "vertexCount": 69
+      "vertexCount": 169
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9967112455289786,
+          9.984987146263139,
+          -0.19999998807907104
+        ],
+        "min": [
+          1.4032849457342202,
+          9.41499906122206,
+          -1.7999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25a19f592f9b1f0598764729ebada26c3fc3cba927685d53418a35659bcadb5e",
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1.primitive.0",
+      "indexCount": 570,
+      "indexed": true,
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 167
+    },
+    {
+      "bounds": {
+        "max": [
+          2.297733783721924,
+          10.346735954284668,
+          9.697300910949707
+        ],
+        "min": [
+          -2.297734022140503,
+          0.001606941455975175,
+          -9.697300910949707
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "12864798ad2568bad65458b608f97e7d163c10c269398bb38f259ce60e805a35",
+      "id": "sf.render.maintenance-gantry.mesh.lod1-armor.primitive.0",
+      "indexCount": 6450,
+      "indexed": true,
+      "materialHash": "de118b59d049937dbc3943f6fe123853c2feedf3b0d3d701d5e89c3287cf724e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 2434
     },
     {
       "bounds": {
@@ -413,7 +688,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7afca5178bae021f79cb914f831ef41630e1100ef47da2bcb24a74293de7181",
+      "geometryHash": "cad791c435e12eb28968c1ee6a5b78094f2bd3964657048f24a6465adf72f39b",
       "id": "sf.render.maintenance-gantry.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -427,27 +702,27 @@
     {
       "bounds": {
         "max": [
-          1.9973591566085815,
-          10.338258743286133,
+          0.3967740535736084,
+          10.338400840759277,
           9.316023826599121
         ],
         "min": [
-          -1.9974970817565918,
-          5.753180027008057,
-          -1.798815131187439
+          -0.3970416784286499,
+          5.753036975860596,
+          -1.3968913555145264
         ]
       },
       "drawMode": 4,
-      "geometryHash": "233e6d4599c19e7f0f3a8c312c8227545c8499c88b299100d867a0f8918c9159",
+      "geometryHash": "e036a587b9389e232485944d75e4f5b5ff54f26e7cf76e1e3b143dd393d0883f",
       "id": "sf.render.maintenance-gantry.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 900,
+      "indexCount": 480,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 341
+      "vertexCount": 171
     },
     {
       "bounds": {
@@ -463,16 +738,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c3114c3da5365b342f09cf71a423e5adcf9b16def43c3d061e4b8f2f69cbf99",
+      "geometryHash": "4b3c5e2314e13bea5454248caf64ff8cc68ca99a462402d624ec47b7da59a160",
       "id": "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 888,
+      "indexCount": 870,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "89a3943b9932e62644ff6fc91e6e44dadbb3b3aeb65e0e83ec6b4f18a66711dc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 393
+      "vertexCount": 387
     },
     {
       "bounds": {
@@ -488,16 +763,166 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "297a106136c450952a10bbdc53474cc8df5a359faf15ee6d765488596afaf718",
+      "geometryHash": "93ac72cba14e1a64517292be3bb4ef9f14872392f589b4fb6057245655fae5b7",
       "id": "sf.render.maintenance-gantry.mesh.lod1-warning.primitive.0",
       "indexCount": 576,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "c7a6c485366b5e184a2da73b7aecf3b47828db03f32a874c2f54711c03ad5cf7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-warning",
       "primitiveIndex": 0,
       "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2480001449584961,
+          10.55998983206222,
+          9.248000144958496
+        ],
+        "min": [
+          -0.2480001449584961,
+          10.330010511260534,
+          8.751999855041504
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cc24f30193f8bba7021328c333a1ea5e9920490e9ffc4af0580c813da626cd69",
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-blink-1p2-0p5-gantrystrobe-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-blink-1p2-0p5-gantrystrobe-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17500019073486328,
+          1.3225060560175972,
+          6.175000190734863
+        ],
+        "min": [
+          -0.17500019073486328,
+          1.0774940393498345,
+          5.824999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa92c5ea72113a967cc17e46012068b7eceb7aa24aaa75c355b85da05758471d",
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-0-3-2p8-berthlamp0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-0-3-2p8-berthlamp0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17499999701976776,
+          1.3225059204105274,
+          0.17499999701976776
+        ],
+        "min": [
+          -0.17499999701976776,
+          1.0774941749569042,
+          -0.17499999701976776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d27f25aec507c6ee1bfe6569e57a3b23c7af7c9d1d49bf3b5e9754e6f40f7bc8",
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-1-3-2p8-berthlamp1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-1-3-2p8-berthlamp1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17500019073486328,
+          1.3225060560175972,
+          -5.824999809265137
+        ],
+        "min": [
+          -0.17500019073486328,
+          1.0774940393498345,
+          -6.175000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "97591d1bb6750b3a2982002c217956e127654432f708bf915a3dce95356fcf1a",
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-2-3-2p8-berthlamp2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-2-3-2p8-berthlamp2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.402771912501748,
+          9.982779735943787,
+          -0.201077401638031
+        ],
+        "min": [
+          -1.9980435446038887,
+          9.417152231314667,
+          -1.7986910939216614
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b88f33d6fc898e91f76e7ed7c1efc274bcb2f8251be8e0361bd00cbdf6626aa",
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1-2.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 98
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9972281381622001,
+          9.982779735943787,
+          -0.201077401638031
+        ],
+        "min": [
+          1.4019565060600594,
+          9.417152231314667,
+          -1.7986910939216614
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "423bfb6a294276c71aa7b9f8ff6f77eef9ec96154d25db1ddc7f6663e577c9bd",
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 93
     },
     {
       "bounds": {
@@ -513,66 +938,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "796e86cb7a497196d935607ae8176ff44bd18702eab6efb68405f2c3d3fed8d5",
+      "geometryHash": "2e4752540df5f1fc4f650feaa20d4b4f46d0468b9a45dba62741ae856b2b5557",
       "id": "sf.render.maintenance-gantry.mesh.lod2-armor.primitive.0",
-      "indexCount": 2844,
+      "indexCount": 2652,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "de118b59d049937dbc3943f6fe123853c2feedf3b0d3d701d5e89c3287cf724e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1264
-    },
-    {
-      "bounds": {
-        "max": [
-          0.17488327622413635,
-          1.3221168518066406,
-          6.175000190734863
-        ],
-        "min": [
-          -0.17488327622413635,
-          1.077883243560791,
-          -6.175000190734863
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "edb7d5ccf286f5a4546ff01395fdb8efbe3d1e79b170be0f018330b1dd6e2c0b",
-      "id": "sf.render.maintenance-gantry.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Beacon_Amber",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 72
-    },
-    {
-      "bounds": {
-        "max": [
-          0.25029850006103516,
-          10.55749022559427,
-          9.248133952179456
-        ],
-        "min": [
-          -0.24846139550209045,
-          10.329823617179168,
-          8.751687710723376
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9405dfffe37140042db458581d37498bb2427bc3a5b63b496206dbe26b0ffcb8",
-      "id": "sf.render.maintenance-gantry.mesh.lod2-hook-nav-port.primitive.0",
-      "indexCount": 102,
-      "indexed": true,
-      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_HOOK_NAV_PORT",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-hook-nav-port",
-      "primitiveIndex": 0,
-      "vertexCount": 43
+      "vertexCount": 1200
     },
     {
       "bounds": {
@@ -588,7 +963,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7afca5178bae021f79cb914f831ef41630e1100ef47da2bcb24a74293de7181",
+      "geometryHash": "cad791c435e12eb28968c1ee6a5b78094f2bd3964657048f24a6465adf72f39b",
       "id": "sf.render.maintenance-gantry.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -602,27 +977,27 @@
     {
       "bounds": {
         "max": [
-          1.996279239654541,
-          10.338162422180176,
+          0.3938387632369995,
+          10.338390350341797,
           9.316023826599121
         ],
         "min": [
-          -1.9962564706802368,
-          5.755546569824219,
-          -1.7961324453353882
+          -0.39457663893699646,
+          5.755317687988281,
+          -1.39459228515625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a202471bb00e214b5ba4c3ffec0ed8832c8301b82e29a5b542766d431b4d162",
+      "geometryHash": "b018927ac44328bd616fe7e3dd6fcede3f2ee19c7786e90cec7587928183bf21",
       "id": "sf.render.maintenance-gantry.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 504,
+      "indexCount": 288,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 211
+      "vertexCount": 115
     },
     {
       "bounds": {
@@ -638,11 +1013,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0715806bc983eb157c4ad63a563026a2421805fbf8b69a620d9e82f27ef01143",
+      "geometryHash": "19afdc6e4f2948af48e2cc413c3e497b18f7e1ada0fe652ba568b5b40ff1abe4",
       "id": "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "89a3943b9932e62644ff6fc91e6e44dadbb3b3aeb65e0e83ec6b4f18a66711dc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark",
@@ -663,11 +1038,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d40bd9d260c9dd9c9b33511d53d2f2e0f2d147eac9eab86e67d2e84d9df00ac",
+      "geometryHash": "bcf8077a1dd55f1ebc7d9c23f5bdf7fe30ee60fcf897eb0baf262aed5bb839fb",
       "id": "sf.render.maintenance-gantry.mesh.lod2-warning.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "c7a6c485366b5e184a2da73b7aecf3b47828db03f32a874c2f54711c03ad5cf7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-warning",
@@ -680,8 +1055,22 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "89a3943b9932e62644ff6fc91e6e44dadbb3b3aeb65e0e83ec6b4f18a66711dc",
+      "id": "material:89a3943b9932e62644ff6fc9",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -693,7 +1082,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_maintenance_gantry_AO-forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -705,15 +1094,54 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_maintenance_gantry_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "b65dceaa97a1459f3384ec57cb7f5020c0edab655d804a9b4955affaaa89367d",
+      "id": "material:b65dceaa97a1459f3384ec57",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_maintenance_gantry_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_maintenance_gantry_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c7a6c485366b5e184a2da73b7aecf3b47828db03f32a874c2f54711c03ad5cf7",
+      "id": "material:c7a6c485366b5e184a2da73b",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -737,29 +1165,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_maintenance_gantry_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
-      "id": "material:7d49b2b274926ec08348a5fd",
+      "hash": "de118b59d049937dbc3943f6fe123853c2feedf3b0d3d701d5e89c3287cf724e",
+      "id": "material:de118b59d049937dbc3943f6",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -783,50 +1197,11 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_maintenance_gantry_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
     }
   ],
   "nodes": [
@@ -880,6 +1255,300 @@
       ]
     },
     {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-blink-1p2-0p5-gantrystrobe-dome",
+      "localTransform": [
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        10.445000171661377,
+        9,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodeName": "LOD0_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        10.445000171661377,
+        9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-0-3-2p8-berthlamp0",
+      "localTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        6,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodeName": "LOD0_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        6,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-1-3-2p8-berthlamp1",
+      "localTransform": [
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodeName": "LOD0_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-2-3-2p8-berthlamp2",
+      "localTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        -6,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodeName": "LOD0_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        -6,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1",
+      "localTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        1.7000000476837158,
+        9.699999809265137,
+        -0.9999999701976776,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodeName": "LOD0_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        1.7000000476837158,
+        9.699999809265137,
+        -0.9999999701976776,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1-2",
+      "localTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        -1.7000000029802322,
+        9.699999809265137,
+        -0.9999999701976776,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodeName": "LOD0_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        -1.7000000029802322,
+        9.699999809265137,
+        -0.9999999701976776,
+        1
+      ]
+    },
+    {
       "id": "sf.render.maintenance-gantry.mesh.lod0-armor",
       "localTransform": [
         1,
@@ -904,7 +1573,7 @@
       "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        1
+        7
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -925,104 +1594,6 @@
         0,
         0,
         0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod0-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
-      "nodePath": [
-        0,
-        2
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port",
-      "localTransform": [
-        0.2480001449584961,
-        0,
-        0,
-        0,
-        0,
-        0.2480001449584961,
-        0,
-        0,
-        0,
-        0,
-        0.2480001449584961,
-        0,
-        0,
-        10.445000171661377,
-        9,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
-      "nodeName": "LOD0_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        3
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        0.2480001449584961,
-        0,
-        0,
-        0,
-        0,
-        0.2480001449584961,
-        0,
-        0,
-        0,
-        0,
-        0.2480001449584961,
-        0,
-        0,
-        10.445000171661377,
-        9,
         1
       ]
     },
@@ -1051,7 +1622,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        4
+        8
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1100,7 +1671,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        5
+        9
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1149,7 +1720,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        6
+        10
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1198,7 +1769,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        7
+        11
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1219,6 +1790,300 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-blink-1p2-0p5-gantrystrobe-dome",
+      "localTransform": [
+        0.24839553982019424,
+        0,
+        0,
+        0,
+        0,
+        0.24839553982019424,
+        0,
+        0,
+        0,
+        0,
+        0.24839553982019424,
+        0,
+        -0.00006585568189620972,
+        10.445382095873356,
+        8.999910339713097,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodeName": "LOD1_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.24839553982019424,
+        0,
+        0,
+        0,
+        0,
+        0.24839553982019424,
+        0,
+        0,
+        0,
+        0,
+        0.24839553982019424,
+        0,
+        -0.00006585568189620972,
+        10.445382095873356,
+        8.999910339713097,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-0-3-2p8-berthlamp0",
+      "localTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        6,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodeName": "LOD1_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        6,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-1-3-2p8-berthlamp1",
+      "localTransform": [
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodeName": "LOD1_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-2-3-2p8-berthlamp2",
+      "localTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        -6,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodeName": "LOD1_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        -6,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1",
+      "localTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        1.6999980956315994,
+        9.6999931037426,
+        -0.9999999701976776,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodeName": "LOD1_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        1.6999980956315994,
+        9.6999931037426,
+        -0.9999999701976776,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1-2",
+      "localTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        -1.7000019401311874,
+        9.6999931037426,
+        -0.9999999701976776,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodeName": "LOD1_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.7999999821186066,
+        0,
+        -1.7000019401311874,
+        9.6999931037426,
+        -0.9999999701976776,
         1
       ]
     },
@@ -1247,7 +2112,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        8
+        18
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1268,104 +2133,6 @@
         0,
         0,
         0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod1-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Beacon_Amber",
-      "nodeName": "LOD1_Beacon_Amber",
-      "nodePath": [
-        0,
-        9
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod1-hook-nav-port",
-      "localTransform": [
-        0.24839553236961365,
-        0,
-        0,
-        0,
-        0,
-        0.24839553236961365,
-        0,
-        0,
-        0,
-        0,
-        0.24839553236961365,
-        0,
-        -0.00006586313247680664,
-        10.445382118225098,
-        8.999910831451416,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
-      "nodeName": "LOD1_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        10
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        0.24839553236961365,
-        0,
-        0,
-        0,
-        0,
-        0.24839553236961365,
-        0,
-        0,
-        0,
-        0,
-        0.24839553236961365,
-        0,
-        -0.00006586313247680664,
-        10.445382118225098,
-        8.999910831451416,
         1
       ]
     },
@@ -1394,7 +2161,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        11
+        19
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1443,7 +2210,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        12
+        20
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1492,7 +2259,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        13
+        21
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1541,7 +2308,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        14
+        22
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1562,6 +2329,300 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-blink-1p2-0p5-gantrystrobe-dome",
+      "localTransform": [
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        10.445000171661377,
+        9,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodeName": "LOD2_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        0,
+        0,
+        0.2480001449584961,
+        0,
+        0,
+        10.445000171661377,
+        9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-0-3-2p8-berthlamp0",
+      "localTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        6,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodeName": "LOD2_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        6,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-1-3-2p8-berthlamp1",
+      "localTransform": [
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodeName": "LOD2_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        0,
+        0,
+        0.17499999701976776,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-2-3-2p8-berthlamp2",
+      "localTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        -6,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodeName": "LOD2_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        1.2000000476837158,
+        -6,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1",
+      "localTransform": [
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        1.6995923221111298,
+        9.699965983629227,
+        -0.9998842477798462,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodeName": "LOD2_ANIM_spin_side_0p8_TrolleyWheel+1",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        1.6995923221111298,
+        9.699965983629227,
+        -0.9998842477798462,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1-2",
+      "localTransform": [
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        -1.7004077285528183,
+        9.699965983629227,
+        -0.9998842477798462,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodeName": "LOD2_ANIM_spin_side_0p8_TrolleyWheel-1",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.maintenance-gantry.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.maintenance-gantry.body",
+      "worldTransform": [
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        0,
+        0,
+        0,
+        0.7988068461418152,
+        0,
+        -1.7004077285528183,
+        9.699965983629227,
+        -0.9998842477798462,
         1
       ]
     },
@@ -1590,7 +2651,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        15
+        29
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1611,104 +2672,6 @@
         0,
         0,
         0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod2-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Beacon_Amber",
-      "nodeName": "LOD2_Beacon_Amber",
-      "nodePath": [
-        0,
-        16
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod2-hook-nav-port",
-      "localTransform": [
-        0.2493799477815628,
-        0,
-        0,
-        0,
-        0,
-        0.2493799477815628,
-        0,
-        0,
-        0,
-        0,
-        0.2493799477815628,
-        0,
-        0.0009185522794723511,
-        10.443656921386719,
-        8.999910831451416,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
-      "nodeName": "LOD2_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        17
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        0.2493799477815628,
-        0,
-        0,
-        0,
-        0,
-        0.2493799477815628,
-        0,
-        0,
-        0,
-        0,
-        0.2493799477815628,
-        0,
-        0.0009185522794723511,
-        10.443656921386719,
-        8.999910831451416,
         1
       ]
     },
@@ -1737,7 +2700,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        18
+        30
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1786,7 +2749,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        19
+        31
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1835,7 +2798,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        20
+        32
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1884,7 +2847,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        21
+        33
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1959,22 +2922,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "7bf6f8307924e727109ed5907d04332c338c19ce8cae5ed3ba67c01ba5e7aa5d"
+      "sha256": "88a8cbf3eaacbf2e1eed27d712c9c303a79872856dac064c47f2c146f32936fb"
     },
     "sourceGlb": {
-      "bytes": 528756,
-      "sha256": "de73a7eaf6445bcfc8c55e61b169539a9ac2eeedb1b8524d2ac77ccb06a4faff",
+      "bytes": 1040972,
+      "sha256": "23aa521c361f4fee5575ddbb41abafcd9d19643636a8a281fc8dbf8baa2ed4b4",
       "uri": "place_maintenance_gantry.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 799648,
-    "sha256": "d4b076af5b6d73e97096b153c396ab3d2f2151b5afa56c158c79402e6ac45aac",
+    "bytes": 1305560,
+    "sha256": "3308ed47da67d013adf383cbe677ccf4ae41c2526f2254ebe5829caad74fa821",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2025,7 +2988,7 @@
           1
         ],
         "name": "SOCKET_Berth",
-        "planIndex": 24,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2066,7 +3029,7 @@
           1
         ],
         "name": "SOCKET_Hook",
-        "planIndex": 25,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2090,8 +3053,8 @@
     ],
     "materialProfileRoles": {
       "hull": 4,
-      "mechanical": 6,
-      "signal": 9,
+      "mechanical": 12,
+      "signal": 15,
       "warning": 3
     },
     "materialProfiles": [
@@ -2103,7 +3066,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2133,67 +3096,67 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "warning"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
         "role": "warning"
       },
       {
         "allowTextures": true,
+        "planIndex": 14,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2203,11 +3166,233 @@
       {
         "allowTextures": true,
         "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
         "role": "warning"
       }
     ],
-    "nodeCount": 26,
+    "nodeCount": 38,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.2480001449584961,
+          0,
+          0,
+          0,
+          0,
+          0.2480001449584961,
+          0,
+          0,
+          0,
+          0,
+          0.2480001449584961,
+          0,
+          0,
+          10.445000171661377,
+          9,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          1.2000000476837158,
+          6,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17499999701976776,
+          0,
+          0,
+          0,
+          0,
+          0.17499999701976776,
+          0,
+          0,
+          0,
+          0,
+          0.17499999701976776,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          1.2000000476837158,
+          -6,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          1.7000000476837158,
+          9.699999809265137,
+          -0.9999999701976776,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_side_0p8_TrolleyWheel+1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          -1.7000000029802322,
+          9.699999809265137,
+          -0.9999999701976776,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_side_0p8_TrolleyWheel-1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -2229,64 +3414,9 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2480001449584961,
-          0,
-          0,
-          0,
-          0,
-          0.2480001449584961,
-          0,
-          0,
-          0,
-          0,
-          0.2480001449584961,
-          0,
-          0,
-          10.445000171661377,
-          9,
-          1
-        ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
           "lod": "lod0"
         }
       },
@@ -2311,7 +3441,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 6,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2338,7 +3468,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 7,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2365,7 +3495,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 8,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2392,10 +3522,172 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 9,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.24839553982019424,
+          0,
+          0,
+          0,
+          0,
+          0.24839553982019424,
+          0,
+          0,
+          0,
+          0,
+          0.24839553982019424,
+          0,
+          -0.00006585568189620972,
+          10.445382095873356,
+          8.999910339713097,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          1.2000000476837158,
+          6,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17499999701976776,
+          0,
+          0,
+          0,
+          0,
+          0.17499999701976776,
+          0,
+          0,
+          0,
+          0,
+          0.17499999701976776,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          1.2000000476837158,
+          -6,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          1.6999980956315994,
+          9.6999931037426,
+          -0.9999999701976776,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_side_0p8_TrolleyWheel+1",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.7999999821186066,
+          0,
+          -1.7000019401311874,
+          9.6999931037426,
+          -0.9999999701976776,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_side_0p8_TrolleyWheel-1",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
         }
       },
       {
@@ -2419,64 +3711,9 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 10,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Beacon_Amber",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.24839553236961365,
-          0,
-          0,
-          0,
-          0,
-          0.24839553236961365,
-          0,
-          0,
-          0,
-          0,
-          0.24839553236961365,
-          0,
-          -0.00006586313247680664,
-          10.445382118225098,
-          8.999910831451416,
-          1
-        ],
-        "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
           "lod": "lod1"
         }
       },
@@ -2501,7 +3738,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 13,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2528,7 +3765,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 14,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2555,7 +3792,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 15,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2582,10 +3819,172 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 16,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.2480001449584961,
+          0,
+          0,
+          0,
+          0,
+          0.2480001449584961,
+          0,
+          0,
+          0,
+          0,
+          0.2480001449584961,
+          0,
+          0,
+          10.445000171661377,
+          9,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p2_0p5_GantryStrobe_Dome",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          1.2000000476837158,
+          6,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_berth_0_3_2p8_BerthLamp0",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17499999701976776,
+          0,
+          0,
+          0,
+          0,
+          0.17499999701976776,
+          0,
+          0,
+          0,
+          0,
+          0.17499999701976776,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_berth_1_3_2p8_BerthLamp1",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          1.2000000476837158,
+          -6,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_berth_2_3_2p8_BerthLamp2",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7988068461418152,
+          0,
+          0,
+          0,
+          0,
+          0.7988068461418152,
+          0,
+          0,
+          0,
+          0,
+          0.7988068461418152,
+          0,
+          1.6995923221111298,
+          9.699965983629227,
+          -0.9998842477798462,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_side_0p8_TrolleyWheel+1",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7988068461418152,
+          0,
+          0,
+          0,
+          0,
+          0.7988068461418152,
+          0,
+          0,
+          0,
+          0,
+          0.7988068461418152,
+          0,
+          -1.7004077285528183,
+          9.699965983629227,
+          -0.9998842477798462,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_side_0p8_TrolleyWheel-1",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
         }
       },
       {
@@ -2609,64 +4008,9 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 17,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Beacon_Amber",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2493799477815628,
-          0,
-          0,
-          0,
-          0,
-          0.2493799477815628,
-          0,
-          0,
-          0,
-          0,
-          0.2493799477815628,
-          0,
-          0.0009185522794723511,
-          10.443656921386719,
-          8.999910831451416,
-          1
-        ],
-        "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
           "lod": "lod2"
         }
       },
@@ -2691,7 +4035,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 20,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2718,7 +4062,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 21,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2745,7 +4089,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 22,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2772,7 +4116,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 23,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2783,7 +4127,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_maintenance_gantry.glb"
   },
-  "runtimeHash": "3ce29d346687120e9251cf55eb8bc164091f41253b9dc54330ec44c369236315",
+  "runtimeHash": "102f1544bb37bdac2488911070d92d73c33b34662aa0e2998a5db6778a71b4ba",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -2802,23 +4146,35 @@
       "id": "sf.render.maintenance-gantry.body",
       "nodeIds": [
         "sf.render.maintenance-gantry.mesh.collision-hull",
+        "sf.render.maintenance-gantry.mesh.lod0-anim-blink-1p2-0p5-gantrystrobe-dome",
+        "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-0-3-2p8-berthlamp0",
+        "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-1-3-2p8-berthlamp1",
+        "sf.render.maintenance-gantry.mesh.lod0-anim-chase-berth-2-3-2p8-berthlamp2",
+        "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1",
+        "sf.render.maintenance-gantry.mesh.lod0-anim-spin-side-0p8-trolleywheel-1-2",
         "sf.render.maintenance-gantry.mesh.lod0-armor",
-        "sf.render.maintenance-gantry.mesh.lod0-beacon-amber",
-        "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port",
         "sf.render.maintenance-gantry.mesh.lod0-lights-warm",
         "sf.render.maintenance-gantry.mesh.lod0-mechanical",
         "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark",
         "sf.render.maintenance-gantry.mesh.lod0-warning",
+        "sf.render.maintenance-gantry.mesh.lod1-anim-blink-1p2-0p5-gantrystrobe-dome",
+        "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-0-3-2p8-berthlamp0",
+        "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-1-3-2p8-berthlamp1",
+        "sf.render.maintenance-gantry.mesh.lod1-anim-chase-berth-2-3-2p8-berthlamp2",
+        "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1",
+        "sf.render.maintenance-gantry.mesh.lod1-anim-spin-side-0p8-trolleywheel-1-2",
         "sf.render.maintenance-gantry.mesh.lod1-armor",
-        "sf.render.maintenance-gantry.mesh.lod1-beacon-amber",
-        "sf.render.maintenance-gantry.mesh.lod1-hook-nav-port",
         "sf.render.maintenance-gantry.mesh.lod1-lights-warm",
         "sf.render.maintenance-gantry.mesh.lod1-mechanical",
         "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark",
         "sf.render.maintenance-gantry.mesh.lod1-warning",
+        "sf.render.maintenance-gantry.mesh.lod2-anim-blink-1p2-0p5-gantrystrobe-dome",
+        "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-0-3-2p8-berthlamp0",
+        "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-1-3-2p8-berthlamp1",
+        "sf.render.maintenance-gantry.mesh.lod2-anim-chase-berth-2-3-2p8-berthlamp2",
+        "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1",
+        "sf.render.maintenance-gantry.mesh.lod2-anim-spin-side-0p8-trolleywheel-1-2",
         "sf.render.maintenance-gantry.mesh.lod2-armor",
-        "sf.render.maintenance-gantry.mesh.lod2-beacon-amber",
-        "sf.render.maintenance-gantry.mesh.lod2-hook-nav-port",
         "sf.render.maintenance-gantry.mesh.lod2-lights-warm",
         "sf.render.maintenance-gantry.mesh.lod2-mechanical",
         "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark",

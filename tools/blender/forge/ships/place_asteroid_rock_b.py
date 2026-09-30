@@ -29,6 +29,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- compact displaced core + satellites, inside the live envelope ----------------------
     F.rock(s, 'Core', (0.1, 0, 0.4), 4.5, seed=19, subdiv=4, relief=0.32, terrace=0.0,

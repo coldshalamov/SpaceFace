@@ -342,6 +342,7 @@ def sag(a, b, drop, n=10):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     rng = random.Random(1987)
     for name, c, r, sq, flat, seed in ROCKS:
         rock(s, name, c, r, sq, flat, seed)
@@ -408,7 +409,10 @@ def build():
 
     # --- neon signs: the warren's advertising, facing the flight lanes ----------------------------
     sign(s, 'SignBeak', (25.0, 0.0, 32.0), 11.0, 4.0, 'glow_red', yaw=0.0)
+    n0 = len(s.objects)
     sign(s, 'SignCrown', (-13.0, 4.8, 40.0), 10.0, 3.6, 'glow_cyan', yaw=0.0)
+    # the crown billboard slowly turns on its mount, facing every lane in turn
+    s.anim(s.objects[n0:], 'spin:up:0p35', (-13.0, 4.8, 44.4))
     sign(s, 'SignStern', (-47.0, -3.0, 13.0), 9.0, 3.2, 'glow_amber', yaw=-0.25)
     sign(s, 'SignCore', (6.0, -6.0, 15.0), 7.0, 2.6, 'glow_red', yaw=math.pi / 2 - 0.3)
 
@@ -434,8 +438,11 @@ def build():
     boxes(s, 'SpireNeon', sn_[::2], 'glow_red')
     boxes(s, 'SpireNeonC', sn_[1::2], 'glow_cyan')
     F.cylinder(s, 'SpireMast', (sx0, sy0, z), (sx0, sy0, z + 6.0), 0.3, 0.15, material='gunmetal', segments=8)
+    n0 = len(s.objects)
     F.beacon(s, 'Beacon', (sx0, sy0, z), size=0.8)
-    F.light(s, 'SpireTip', (sx0, sy0, z + 6.0), 'glow_red', size=0.5)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('Beacon_Dome')], 'blink:1p5:0p4', (sx0, sy0, z))
+    tip = F.light(s, 'SpireTip', (sx0, sy0, z + 6.0), 'glow_red', size=0.5)
+    s.anim(tip, 'blink:2p0:0p1', (sx0, sy0, z + 6.0))
 
     # --- patched plates on the rock faces: stolen ivory hull panels bolted over breaches ----------
     patches, bolts = [], []
@@ -457,14 +464,19 @@ def build():
     # --- lights: nav, beacons, work lamps over the terraces ----------------------------------------
     F.light(s, 'NavPort', (-47.0, 12.5, 3.0), 'glow_red', size=0.7)
     F.light(s, 'NavStarboard', (-47.0, -12.5, 3.0), 'glow_green', size=0.7)
+    n0 = len(s.objects)
     F.beacon(s, 'BeaconStern', (-52.0, 5.0, 13.0), finish='glow_red', size=0.6)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('BeaconStern_Dome')], 'blink:1p7:0p7',
+           (-52.0, 5.0, 13.0))
     s.detail = 1
     for p in ((2.0, 6.0, 15.45), (-12.0, -3.0, 40.45), (-42.0, 6.0, 13.45)):
         F.work_lamp(s, f'Lamp{p}', p, aim=(0.3, -0.3, 0.9), size=0.8)
     for p in ((-8.0, 5.0, 15.0), (-10.0, -2.0, 40.0), (28.0, 3.0, 32.0)):
         F.antenna(s, f'Whip{p}', p, 5.0)
     F.cylinder(s, 'StolenDishPost', (-50.0, -4.0, 12.5), (-50.0, -4.0, 15.6), 0.3, material='gunmetal', segments=10)
+    n0 = len(s.objects)
     F.dish(s, 'StolenDish', (-50.0, -4.0, 15.5), 2.6, 0.9, axis=(0.3, -0.4, 0.86))
+    s.anim(s.objects[n0:], 'sweep:up:0p6:0p4', (-50.0, -4.0, 15.5))
     s.detail = 0
     return s
 

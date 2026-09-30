@@ -837,7 +837,17 @@ async function finishShot(shot) {
     // Bench-only: the authored conduit templates never settle on the bench, so on slow runs the
     // renderer's watchdog raises its fault strip before capture. The strip reports a bench
     // condition, not the claim's state — keep it out of the frame. Game behavior untouched.
-    for (const el of document.querySelectorAll('.ast3d-conduit-fault')) el.style.display = 'none';
+    // A stylesheet rule, not an inline style: the watchdog re-asserts style.display='block'
+    // asynchronously (and retries re-show it), and a plain inline assignment replaces any
+    // inline !important. Author !important beats the watchdog's inline normal priority —
+    // present and future strips alike — while game behavior stays untouched.
+    for (const el of document.querySelectorAll('.ast3d-conduit-fault')) el.style.setProperty('display', 'none', 'important');
+    if (!document.getElementById('bench-drill-fault-hide')) {
+      const benchFaultHide = document.createElement('style');
+      benchFaultHide.id = 'bench-drill-fault-hide';
+      benchFaultHide.textContent = '.ast3d-conduit-fault{display:none!important}';
+      document.head.appendChild(benchFaultHide);
+    }
   }
   try { await document.fonts.ready; } catch { /* fonts are best-effort */ }
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -961,9 +971,13 @@ async function openOverlay(kind) {
     const contact = {
       id: 7, type: 'ship', alive: true, team: 2, radius: 14,
       pos: { x: 80, y: 0, z: 40 }, vel: { x: 0, y: 0, z: 0 },
-      data: { callsign: 'HAULER 12', trafficRole: 'hauler', ai: { passive: true, archetype: 'fleeing_trader' } },
+      data: { callsign: 'HAULER 12', trafficRole: 'hauler', jobId: 'job:bench-haul-7',
+        cargoManifest: { lines: [{ commodityId: 'cmdty_ore_iron', qty: 12 }] },
+        ai: { passive: true, archetype: 'fleeing_trader' } },
     };
     state.player.targetId = 7;
+    state.player.ownedShips = [{ defId: 'ship_kestrel',
+      fittings: [null, null, null, null, null, 'mod_cargo_scanner_s', null] }];
     state.entities.set(7, contact);
     if (!state.entityList.some((entity) => entity.id === 7)) state.entityList.push(contact);
     const { createCommsRadial } = await import('../src/ui/commsRadial.js');

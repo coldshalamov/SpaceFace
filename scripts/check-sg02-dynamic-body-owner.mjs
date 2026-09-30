@@ -476,6 +476,11 @@ function makeAsteroid(id = 404, x = 24) {
     alive: true,
     radius: 10,
     mass: 800,
+    // Package E (b7b499263) makes non-landmark solids below the 90 WU fixed-radius threshold
+    // dynamic — a bare asteroid fixture is a dynamic body now. The layered-sync lab needs an
+    // authored-FIXED body to exercise the static-layer contract (single import, version bumps,
+    // unchanged-record reuse, stale removal), so it declares one explicitly.
+    physicsBody: { dynamic: false },
     pos: { x, z: 0 },
     vel: { x: 0, z: 0 },
     rot: 0,

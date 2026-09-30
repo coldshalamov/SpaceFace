@@ -110,6 +110,10 @@ const SOLID_ENV_INTENSITY_METAL = 2.8;
 // below (roughness noise, family multipliers, occupational pigment, synthetic panel wells) exist to
 // rescue older exports; stacked on a finished surface they are what read as leather and scraped tin.
 export const FORGE_FINISH = 'forge-v1';
+// Baked body AO multiplies diffuse+specular at this strength in the shared illustrated program
+// (illustratedSurface.js sfAOOut). 0.7 keeps recesses and junctions legible at z144/z58 without
+// muddying open plates; tune by looking, not by formula.
+const FORGE_AO_STRENGTH = 0.7;
 const FORGE_ENV_INTENSITY = Object.freeze({
   hull: 1.15, accent: 1.1, mechanical: 1.6, warning: 1.0, ceramic: 0.7, drive: 0.6, signal: 0.4,
 });
@@ -125,6 +129,9 @@ function applyForgeFinish(material, role) {
     spacefaceRemasterGeometry: true,
     spacefacePbrCoverage: inspectAuthoredPbrCoverage(material),
     spacefacePbrRemasterRequired: false,
+    // Baked occlusionTexture (texCoord 1) is forge-authored when present: the shared illustrated
+    // program reads this uniform to shape direct light with it. No aoMap -> 0 -> no-op branch.
+    spacefaceForgeAOStrength: material.aoMap ? FORGE_AO_STRENGTH : 0,
   };
   delete material.userData.spacefaceHullLayout;
   material.dithering = true;

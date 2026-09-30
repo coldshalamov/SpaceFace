@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ffee58e16869460bbd35635317e6556ec248e7e4456706990063fc0251683f41",
+  "contentHash": "a2c510c93e3b74fb65646ae5dace770a2ef53e097ff3059e1498896764119aca",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -162,7 +162,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fef0f062152b7e0e8093dd62d3953843ef8c5a773d340706c7a4ca2bf492ede1",
+      "geometryHash": "7f79505ed728a8291aea3d941b4453f5d972b6405521e9e2c6e7ed5cff2b7e61",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -187,7 +187,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d1fb1d67c13e18f224a3212c32510186283da43c22432b1b3f7801ab3bb32cf",
+      "geometryHash": "12d90984be732110a31bc6747d2f045e0da693275778695b21fdcbbd6f7340bc",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -212,7 +212,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd195f1fb91c59e359e8a718b548db0d609d5e97a14fc2eef05ba0a1bdaf287e",
+      "geometryHash": "67da53389131a92acda15a07e5264a2854cb3b40b199e72b271984efa9133a3d",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -237,7 +237,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e206c170b33ad4254d779cb3728f113253f6386048bfdc402e57ba3d5ac60a31",
+      "geometryHash": "8639920e162fe9ef3759488e264ca01434d894f1324653626eb275ed9f4dfa54",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -262,7 +262,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3571b7798af356546040c555d8269567f5aae700958b77f9642e1136ff63202",
+      "geometryHash": "c0ba5b331410877694aecbe8e2c9ea5c9adcb01c239921cd3824c1358db63238",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-3-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -287,7 +287,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d544fdff0006981c90fddc2a16a5df1edc3e9463a3cfe7738463fa759b837f43",
+      "geometryHash": "1fc8dcee0d66dc833683f0359de5f26020c8112d45312e2b7b1824de3be0ee40",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -312,7 +312,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9783feaaac5d547a88e1922d38eecfc07cc504d52b5f367a8d1118454dcfceb3",
+      "geometryHash": "b4a6d1c9dff51c57b2f380e7d0d10cf9019e29986b2a5be327dc7518b84338f9",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-4-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -337,7 +337,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5f934ef2c5291be3fec1189be9ca2839f2e3fb8e5fa4e51b1664fa26244f2a0",
+      "geometryHash": "85fbf298b5d32dd42cc1654ce711ed6d50075301819ab8c01952ea45fc083a3e",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -362,7 +362,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31dcc6acfe02a0afdda9e2745ba4e2fea47924682c0d370108de387e90b46666",
+      "geometryHash": "7a5eb70e776f6b85fa7ead0f4bcdd906d4460eb49c273250211f1b67df7f5ed6",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-5-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -387,7 +387,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dba05093b5c51097291893132a96f5b783f9108b960a386c8f400026e30afd1e",
+      "geometryHash": "a1b18c529bc8768420026984bb0566e6d9a445aa72abca1c0a94832a82c61a39",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -412,7 +412,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ab33d95a00e5b0b21226cc96d8fc79c10ae2fe9b3418d1171668ddfc925d7cf",
+      "geometryHash": "110ac460bf8240aed055ee81cc3cf0f2ffeb4ef73a12376138a443b9a99f0883",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-6-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -437,7 +437,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f9dc584f270a2378e5b7e715f9b311272cc68c53fdb588c0b7be4e916dc7928",
+      "geometryHash": "7fefb81ec1befed39029179b9ec7fd8b7377cb53fcebd659c0c603b429ff0f5b",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-6.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -462,7 +462,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3e3cdc8deff39939a1d998a4645978a9c48d0222f5211e0f9e7ed23eeb5c00f",
+      "geometryHash": "1bfce76cb22ce1bb04940f1fc110f950f72a47bd1d66fc30a87d07e93a34d0a1",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-7-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -487,7 +487,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd523fca972d6b720e0734f8b83f3dfe4dc6d393192e7f265f4b43ef7c417216",
+      "geometryHash": "521a50204aec3f9553546ec117103795025c5b8d6f318f35758448d6b2e5d999",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-7.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -512,7 +512,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72a7cd19335046b20f13dbe7fc77e2873d6a21c5ffac90aa3b1500673eb4c322",
+      "geometryHash": "6750e5ab9b27f6d4273aac43a9985ab78c66babf7710cdde6f30e03acd807787",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-8-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -537,7 +537,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d1889cc8afc5d6be832b243fbe4f9791f7b674521e5d8885963c18e0b1019ac",
+      "geometryHash": "562ecb195b30d5d7353feb052c79c9d2f6a3d77a9c9e436001afe8a7928f57c7",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-8.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -562,7 +562,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9107558bf6dc3b144c3d47bedf8ac62aceaf266309d95589eaddb4b225e2608",
+      "geometryHash": "e2efa4845b2e40f05e3730df4bc2cb9135578d700516be9674ecfc4c5a90520e",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-9-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -587,7 +587,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ca3ff41235e8f56a3d0883fadf17de3122e050652de95bdbd15a55d759655b6",
+      "geometryHash": "7951553916e31975d189c85868b41abe9ca819afb0ac6a8bee60b5b34c8709f7",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.aftdeck-9.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -612,7 +612,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e44f9cd369ac165378ca93b55d0e2b0584f1a1ae49f890091e3d5df2033c7712",
+      "geometryHash": "73aea3668df10f9564bbba6acdc5dc5dcf4717420b61091f9e9e03c82b570e4c",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.bhrib00.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -637,7 +637,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "269ecd74cae81abe7570b455ced65daca0a7b86de700ae14fa4661201a48eac0",
+      "geometryHash": "4d4443eec561eff043dcff4d16eb74492d53557360ad8723995ed639fb01c258",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.bhrib01.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -662,7 +662,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81f7e08760dc56ac36071231485ac761d864bfd69f8a76227471d0eaa1239062",
+      "geometryHash": "7c2d50a0b91365da235ecc428270ef16e1a87c7168b3e6f5a9092511c7324980",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.bhrib10.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -687,7 +687,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74a1d02cbddda4335a7069b928aaf095bf1393bba98a8fe09829484572035e83",
+      "geometryHash": "0aacb595453e210baa665e1542997b2e9b19a05e51d4425c5ca81925b5f9d7b4",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.bhrib11.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -712,7 +712,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5082a17187d42d8a6e44332b2f4e4c57e369ac7adcc1e2eaa079e94dbd86f70",
+      "geometryHash": "7c322c8e86af860d878dc72ac20dd5c3c9c9c45fde6c2d28d3b5a20e1222eb36",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -737,7 +737,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c812bba3059e2b5dcf57c843d5d2d83cf36e796534b549ea2e35f2a62d195a4",
+      "geometryHash": "9c51ef648685dcebaf4f9f2e95346bfd4a527a526f6e9ce7249baa326863a00a",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -762,7 +762,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a7589729018fc71926276eddbfea031fb8d3fb5491af515d96094ff88f53afa",
+      "geometryHash": "bfd2dd05733264a5d5cf263ee81ed2a4636e02683a396d4e6dfefb4a51c5cb7d",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -787,7 +787,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c1b798abbceafc94b0901ed9122be8913d348decfcd76b1523187ee03fc2492",
+      "geometryHash": "5e4455d39e1c59ea07c3a355b4b394c9bf1d00c7c3caba916d53efa5dc64181f",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -812,7 +812,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "381b1dd4a7bab6b03e6d50daeb6224b54bf559aeca4fa88a187c780477913ec6",
+      "geometryHash": "f043bac8eb2bafa3ee24c1b02876545d381b584571316f9b257cfa6cf2d40fe7",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-2-m.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -837,7 +837,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35fc2a1c90adb4e434f38fc7d2567ff447dd49c7f7b9f155586ba432a0db6ff8",
+      "geometryHash": "23afd8ad4e15aa785ecc41196e3708cfecb8a0e166742460846e037138100702",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-2-m.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -862,7 +862,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a00a4efe676870904f41fa4ba6c71117fb1c90c8000f724fc360b3f1008782e",
+      "geometryHash": "a9a8109902018d11b5f04f23928010abd710894cc5d20cf586ae1e24088329a8",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-2.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -887,7 +887,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b908d1876e37a94fb81780e4c100e6e3bd61940e3b23d64afc8d4cd2ab12826b",
+      "geometryHash": "ae6a0930ec507f86305b720f69cea5355dd6ca6e687ab97dbc1b48693acdc1ce",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck-0-55-2.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -912,7 +912,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "933524ae360e2d0ca4392084cac5d5a17dbb9db3771486d07ae123241904c542",
+      "geometryHash": "e08e0e62b1e60fedc982036fb9727971c0329a0c2d81fa5f36c2c0c923b27195",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -937,7 +937,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29d67385b18eba7f30d7ed013c109a3c446af6b50311d0a14ce2f4ba12abc578",
+      "geometryHash": "de35cc5082fb52e57f34bb99f0c2d5565c8b7e0cac8e071defdfecb7ffec7344",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -962,7 +962,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b68a720b8424cb0b248359431905d7c14b4cec778d5162cbbf2c05c8fa6f1d5",
+      "geometryHash": "d29b045f715cc3af27f1f553c407e8b2038197c81387c29d38906f5ae3d105d1",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -987,7 +987,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7baf440c7452ac2b52e8877290386585cdccd8a027ca17780b5bf9f89f4c406",
+      "geometryHash": "69f84602fbb27986bd23a32195afc81ee84d54cfe51fa33b072aebdaa3289bd5",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1012,7 +1012,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a4d57d4c421141dffdeeecde9a3df4d10a40a6e0125e56fc85c02ed71f01e00",
+      "geometryHash": "3aff824e619a87cffefa9f21db2e7added9347a0d741f80fdfe1df6c8af652fd",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-2-m.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -1037,7 +1037,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "36223737840f271d5a7e98f9c3b4c71c371cac3de59c2ebd6f96998d29e33804",
+      "geometryHash": "1298734501bef983eeeed80a8e80bb3e13a2f8518fd6efbdc987ed98567ca6f6",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-2-m.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1062,7 +1062,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e05565e1ac075fd81ee0f581858fbfc92815eced979f3827a76a1753504eea7",
+      "geometryHash": "3ca322cd955556fc0f821ed7f571e05afaf94b094f12b0c32b272ce3cf3171ff",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-2.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -1087,7 +1087,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a05840f65d5ef7861bfdb2e48e0940a7cb49f12b35d0d454a09a89ae080d1b2a",
+      "geometryHash": "2a55749355d272a6ab5ad3894f6d670100c232f29519b2d83420f9e445c1822c",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.deck1-35-2.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1112,11 +1112,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab4aab6245690850a34f3b2c17b6475dde74cbe1042b6a1e63559e2540a43863",
+      "geometryHash": "52709d770eef7fdd88422fa480056df8e810832d78f5d816666d1028845228fe",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-001.primitive.0",
       "indexCount": 3558,
       "indexed": true,
-      "materialHash": "abdafa9a3562195c30af8a2110302d9df76377f0de80a5d5177e6e150b5fae7b",
+      "materialHash": "6f9dac8908e5aacc17ad961ebe212df9bebb1482f7dca644cb3a9d7c78a43662",
       "materialPipelineKey": "opaque",
       "meshName": "Drum.001",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-001",
@@ -1137,11 +1137,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f82eff140c5d72537cb90f361a3e0090e1f315ff0f9cda9680a1813dfa252cbb",
+      "geometryHash": "9734b98e3e32ec5b8be0a817438580030d683eae1824d7a4be43abd5a80da1d8",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-001.primitive.1",
       "indexCount": 5793,
       "indexed": true,
-      "materialHash": "e0b1798dca5a9551b4088d53e07b133c2ce56e41ecf5d127302c89182a672d70",
+      "materialHash": "752a3d27e763d802fade127d94bb20b6719dc1dd7669f794631f231802cadc16",
       "materialPipelineKey": "opaque",
       "meshName": "Drum.001",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-001",
@@ -1162,7 +1162,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87f94ce85ddc8550c4e39b464f3f971707b19ee6d8c30371f3f0fae912da36e8",
+      "geometryHash": "938e858577f683cfd20ec537848a8cb1f8d80c1980bac7aef1cb4f60f345fbe2",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-001.primitive.2",
       "indexCount": 1551,
       "indexed": true,
@@ -1187,11 +1187,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65599fc1f3b272ce1f2a8fb25bdce969e9ccc8d6c69b31234a391440b344e994",
+      "geometryHash": "e61953cfecab2ff2e58e51186e157ee26dd87ec6b4f98adbd7846431c52787d2",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum.primitive.0",
       "indexCount": 3462,
       "indexed": true,
-      "materialHash": "abdafa9a3562195c30af8a2110302d9df76377f0de80a5d5177e6e150b5fae7b",
+      "materialHash": "6f9dac8908e5aacc17ad961ebe212df9bebb1482f7dca644cb3a9d7c78a43662",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum",
@@ -1212,11 +1212,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35504f806223ffad09f875e8c8a3d2e098c55fd8e39d7fb39a8e772d49e0fe3c",
+      "geometryHash": "740322a278bff04b6aac0779b44ab131762b521feaf1185e8cf2d65bd24b829e",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum.primitive.1",
       "indexCount": 6117,
       "indexed": true,
-      "materialHash": "e0b1798dca5a9551b4088d53e07b133c2ce56e41ecf5d127302c89182a672d70",
+      "materialHash": "752a3d27e763d802fade127d94bb20b6719dc1dd7669f794631f231802cadc16",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum",
@@ -1237,7 +1237,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85e41ee32e0d25a54dea08b78a8aaee633eaab938011dae0271fca1535635d40",
+      "geometryHash": "0f3222ee6fa6de89f4ac7c38c0d918afd3928f33eb4f55f61ba74340bf351e4f",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum.primitive.2",
       "indexCount": 1569,
       "indexed": true,
@@ -1262,7 +1262,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37c165b132484d0df566c792946fdfe1c598ad8196ca889d4e69515e5fc8e13c",
+      "geometryHash": "0988863611f840e4eaa238f61c554ef55e98563d7908358fe3304c38f60dcc76",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft-m.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -1287,7 +1287,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "812bce3d4546500d69b1b251f0d0cd188f3f0064623d95e0d8df2cc0d3085ddc",
+      "geometryHash": "97fa248f70a887ee70e4258fb2daa98145e205e4653099f99ed115f6995c5e2b",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft-m.primitive.1",
       "indexCount": 90,
       "indexed": true,
@@ -1312,7 +1312,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "696de10c2009bf917b6184821c89cfe9ea21e68a95f144a9fe7052c500e7435f",
+      "geometryHash": "9fe5c94f1b56d3ac84b906fedbd64b2ed0863e842c9d8f0d3f35fc6d7d0e302b",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft-n0-12-0-09-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1337,7 +1337,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "885b5d7c809d5be5c8d80ea7b124fcb2542c6734039f8a72500bfaa329ff5b38",
+      "geometryHash": "bd241d78d1d651ffacdc8c52da6b8228093e8c99c0c810509021f1255cb5c3dc",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft-n0-12-0-09.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1362,7 +1362,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29aa839c287ca788f54292b9264477547ac5b303d58c832d15aa999804d79082",
+      "geometryHash": "fd80c0cf388d0efd97b94baf1a050023afb4a130501d5e286eba55b66bb921dd",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft-n0-120-09-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1387,7 +1387,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8565647afcd6af4e3f91df1b7aa3b7b6b6f7289127ace222aaa28c5b53f2f4b6",
+      "geometryHash": "702abc89742767f0f6913d84b2199b282d10ec1a8327aaded33a6064cc4530a0",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft-n0-120-09.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1412,7 +1412,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac7a377724dd7ba5136209cace550e3839d77d92d833d0820ae891c58bc45062",
+      "geometryHash": "7d49e08d680563652714e608e2443aa70ecdf7c1d9415f74178ccc8a822a4568",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -1437,7 +1437,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7af741e2cbd71838cf1e5f037f50a68d56f476f762ea3c8a3a21b55b134897a6",
+      "geometryHash": "8977994878948eee2e0211d9571ec3b1eaa4a94698d3b0a63050b91e0c7eadca",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.rcsaft.primitive.1",
       "indexCount": 90,
       "indexed": true,
@@ -1462,7 +1462,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "936e721bbb38931c149df0d54c5a9a20e3fd7ba2063d56a336ee1f46d28dd79e",
+      "geometryHash": "1528a74e69197953b833326720aacd5b9fabc70afc70bf25a25659dad28df867",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1487,7 +1487,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5dd21c3c78b47f06eb4ea2c0d63c760acce91998fa15443223119a7f069d639d",
+      "geometryHash": "c593040dee44b81f8e94bb619ea292bf1f9e0bdd624bcc081b690885106bf0aa",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1512,7 +1512,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81dadc1aa8fdaf33fd3efa9b26560be0101751c18c5daffc372ff855857a38e1",
+      "geometryHash": "418ece41c8290925bf980bae3f590891bc9b0506351c06dcf823d02c1df809df",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1537,7 +1537,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65a78eda61d96d3a238c6ac4aa257eeee9f6427d10ec167c404c2c9b04aad408",
+      "geometryHash": "acdacac22db1660335cebf5fa6f49162e5d0a8b52fba9c0762189a817a4efb5d",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1562,7 +1562,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11f1a7d621a668910af1ba204f76153e8d13c7d036b47d845c18074f5e6c095f",
+      "geometryHash": "052cb1fc995a181026916fbf1d66eda2d6f9e3d9a422637a7c453e4754700cc2",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1587,7 +1587,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "adaf9b556d8884e2f1201277c66be3abaaec97a4b74736ab36296caee2edb04d",
+      "geometryHash": "f2634754c6fd5145c4559db7940e1fb16c88453391d3929d80253400d94c6f4c",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1612,7 +1612,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc2a596e86a653c65168de8c5b22dd0fc27f5371d31e139e512988e4dae03f8c",
+      "geometryHash": "14cd34cf5d3a70f7dcf9fb700f3c484ce7e4f74e6ef623f6d1a75cc7392eb6ef",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1637,7 +1637,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5a1338a8ba51d924b6c81b1a48788643b987b6c8c0cbc3f8c4798e5229d6882",
+      "geometryHash": "b9963c2e207c4832a25d03c21cd30af7fab561e799b3af832bf48cc47eb39637",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1662,7 +1662,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a01d1a562b6fc376afcb809fbc92d2a0358f155dc4dd99a6a2c1da25301db957",
+      "geometryHash": "b3cec963cbb84a9c0736296a57b9d036f56d64cdda8c114f1741b6f6d0d110e2",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1687,11 +1687,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "845ff0d6249364cab6733bbbfeaa0f948dcb0f501cfc3de7ec40fc41deff049f",
+      "geometryHash": "7a60443e40562ed174e75b1027f053e253ef485bb918ec54c50baab34021ddc5",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundA_t_tear0",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear0",
@@ -1712,11 +1712,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9572e31eeacb82798aed83b17f9509b0a61b0a113cd507b3c50899558b765d8",
+      "geometryHash": "deeb40b6a6e0b77e1ce5420c4470dc6d0824c03b64b799dfe244fde867506a78",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundA_t_tear1",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear1",
@@ -1737,11 +1737,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2dae79ecf35c91a2f3f28c5588b1b08f8d8043a83c29732009a1dbbe3a90fbae",
+      "geometryHash": "4efc57d6785018cadd70dbf0a009458f55be9757912cd1869cdabba88570f6c4",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundA_t_tear2",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear2",
@@ -1762,11 +1762,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "510bfc4a258bd243b7cfaa12559980adf69313325f33f0153dc86d89abe9c350",
+      "geometryHash": "91d46b6e9a725fc07bbe58c227aa7a330c78c7db821b4a6c92a0ef2fcbae1fcf",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundA_t_tear3",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear3",
@@ -1787,11 +1787,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "654ccc2be0c9fe276ba9454a86e8dc4eaa979cf90ee9b3eaed73c068244349eb",
+      "geometryHash": "31bf67c939070462c210480c16a2e3fc5398508a7d689cc11bd9c734cce0c985",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundA_t_tear4",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear4",
@@ -1812,11 +1812,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e69c41c1d85d01fe1e0b7417670bbddcfec788e5a5ce9c9274fdf1d6ceb50785",
+      "geometryHash": "02b6512f9e82a5d8b655f8d0ff53891aea5f9a6ac33bd50abf1f80b2c3743069",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundA_t_tear5",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear5",
@@ -1837,11 +1837,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ea24c0cfffac07d1e25309654756829842fc7e9db939ac14731da452548481f7",
+      "geometryHash": "3bc998cc8f2020335a8660836759ad334fd9cc22d9af89c9277eee80bece4ece",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundA_t_tear6",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.wounda-t-tear6",
@@ -1862,7 +1862,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27631803697219a146bd60539e4d4b09e8aa696201a51f4babc0b085b417f006",
+      "geometryHash": "b7bf2311498ac21bc242003114bfbda6ea61d39024b9a6ba6012b3194c886966",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1887,7 +1887,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0abc7aa4ac78a65be2f73c9b17dc022ee8d9926f1c207473a9fec61c10f3cb0",
+      "geometryHash": "09fb057a733adcf96bbc0a48d31b8143f7da998b9f42da508d7f789b1af55f8a",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1912,7 +1912,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06dc6ae8cc31267329a65575b6ccabfabc96d5d1b79137389c013c19ed280627",
+      "geometryHash": "9d885e82e73b93661737aaa02dc958b4a27258759e8951f9317aadea0510d977",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1937,7 +1937,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9af428d93306abdba2ca7fea7d6ac248b0cf06ad8cbca1fe9cd19001ae07ccc6",
+      "geometryHash": "a1746282819b7064114ecb93ab57a8ea4e852ea22116c56e0bc91c9bc6192951",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1962,7 +1962,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ad406e66ab7eb6889f3e922366b44aad7881c45a677a209fdc0b06e79f32a1a",
+      "geometryHash": "5ad4ebb3efc234a000387f7db05e432aeacaf860dc7939cb2d239d9ff2888178",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1987,7 +1987,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8fc659505eda96822ef0ab79df2ec6899150aa5f4c3bd3bcddc285daa5fc2b55",
+      "geometryHash": "5994190ab25a6c7b2a333cd01501056b08f49aa7c6a567800ed501e99e909849",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2012,7 +2012,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "460abd247f186a6fd0a63b21f4918830b44f03f1f76bd41bbfce6c0b302d964b",
+      "geometryHash": "96c9e681d83761a9f22aa9c222d18ab104918c98f51db5d2c26cf1017d4dae61",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2037,7 +2037,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b01785ef44c83f3f2a3c2b14b5ea103c09b1b174ba1f7d8149949e9df1db89b3",
+      "geometryHash": "5589db6f919e66dcc6b352d428e2f54901356db70a87c4f976740995d97848ea",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2062,7 +2062,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83e83ff2c29ef8be4814b492e157eaa7a06d9f1a81a7d457fb8988901816c01a",
+      "geometryHash": "7523d74b68dfcce1a825c1dbc46c03592effb4b5d7ffeb1756039192318a16d5",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2087,11 +2087,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf4a2246b590686ab218c423b823b4f22156bcea4fbf85b3a18d25382e1bc0db",
+      "geometryHash": "54cbd01ac23c32fcc554f0d747c8ac2c5a2b8106f5d1fc9f49e2ca212420976c",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundB_t_tear0",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear0",
@@ -2112,11 +2112,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c74f14031365bbe03d6d75544b21bb3cd483855a0a0524e7f62e743dcf532879",
+      "geometryHash": "e723e6124b830d669e4afb1b2cbe756c17da7fdcb492c1dbde4dd07eff08b692",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundB_t_tear1",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear1",
@@ -2137,11 +2137,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "035c4d8a6cc12884c71b1cdcd9ca1ee29317b4cfa361bd0f7e0cb8a945cbf2a2",
+      "geometryHash": "a296c3d80770a5f06ee21e011dd52bf0c86edb3793f650e04f30edb0e3fc7565",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundB_t_tear2",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear2",
@@ -2162,11 +2162,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "882a138789e2c14b0093814fc26308dc9c3aef63213177bb42139e60caf1f3fb",
+      "geometryHash": "88484552f4f004673846818a5982c39526a4e0b3d986a2e93c51032df63cdf44",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundB_t_tear3",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear3",
@@ -2187,11 +2187,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "932458bc940be5399597b7591c21689fec6e3cbb0bc914d2c31f7c55469eb3fd",
+      "geometryHash": "3f58ccaa53a595d33b323402eef68ee17c62c2dff3f3501eb7a1fa532b1cca4b",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundB_t_tear4",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear4",
@@ -2212,11 +2212,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9b7decf391273ac9d41f984fa273918a9d64b224828c31133a944220721e4d4",
+      "geometryHash": "2a3d9f18b6a074f67ea5af5c5581ca583b3c3a8b025194b9ec5d94593458a64b",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear5.primitive.0",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundB_t_tear5",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear5",
@@ -2237,7 +2237,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43dd4b977edea0ac7d1163705af7492f0e5c579d324876dca589a48c292001d1",
+      "geometryHash": "2d3a9235485292599f609d3465931639d82614f27d184e0ba839336b7afb57e5",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear5.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -2262,11 +2262,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "443abc5ad499c9eb7c9253dfab55bfc3bac5f2f5f924a28e968d4a32f087b36d",
+      "geometryHash": "790ff66b21e45547fd2a64c1d0fb6ba3595b5d248ac90b6d6128602897b651e8",
       "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
       "materialPipelineKey": "opaque",
       "meshName": "woundB_t_tear6",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.woundb-t-tear6",
@@ -2375,6 +2375,102 @@
       ]
     },
     {
+      "hash": "6f9dac8908e5aacc17ad961ebe212df9bebb1482f7dca644cb3a9d7c78a43662",
+      "id": "material:6f9dac8908e5aacc17ad961e",
+      "name": "Forge_massline_express_liner_paint__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "752a3d27e763d802fade127d94bb20b6719dc1dd7669f794631f231802cadc16",
+      "id": "material:752a3d27e763d802fade127d",
+      "name": "Forge_massline_express_liner_paint2.frame__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7ea07253e792064e3f6448b73adfb1223ff1698a70d611b53949497eb3f79e4c",
+      "id": "material:7ea07253e792064e3f6448b7",
+      "name": "Forge_massline_express_liner_wk_torn__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "8ae036dd411f7e5445fda0a3843c7efdfec1aad89973c7dba55d76524fb7e1a5",
       "id": "material:8ae036dd411f7e5445fda0a3",
       "name": "Forge_massline_express_liner_gunmetal__dead",
@@ -2407,70 +2503,6 @@
       ]
     },
     {
-      "hash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
-      "id": "material:8e7bb086a9b3b9e3e1d2f26a",
-      "name": "Forge_massline_express_liner_wk_torn__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "abdafa9a3562195c30af8a2110302d9df76377f0de80a5d5177e6e150b5fae7b",
-      "id": "material:abdafa9a3562195c30af8a21",
-      "name": "Forge_massline_express_liner_paint__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
       "id": "material:b5a6d18a5afd893c95a48d69",
       "name": "Forge_massline_express_liner_wk_frame__dead",
@@ -2497,38 +2529,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "e0b1798dca5a9551b4088d53e07b133c2ce56e41ecf5d127302c89182a672d70",
-      "id": "material:e0b1798dca5a9551b4088d53",
-      "name": "Forge_massline_express_liner_paint2.frame__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -6223,19 +6223,19 @@
       "sha256": "28380f9138fe0d622ad364a5aa3a1e03da054ecbcd11f9d989cb9b2ef7f90855"
     },
     "sourceGlb": {
-      "bytes": 350132,
-      "sha256": "a2d9e7971fa1d12cedebf8c5bbaaecfd06a49b854a9b0753221db8cd42dc842d",
+      "bytes": 510916,
+      "sha256": "7a70b711b2169c6dc64d4355ea2baa8b5261cf8f2b2be3d2556595f130fad4be",
       "uri": "place_aftermath_wreck_liner_drum__derelict.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 501320,
-    "sha256": "aff48d56b894e3b1e29e7ac3b9178e69667b8038024ab86a5e8115bed7723e25",
+    "bytes": 662192,
+    "sha256": "6452420658c575bd1c70e8d1ec9f7cdcbfeedddde297951031055a74beb90d1c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9111,7 +9111,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb"
   },
-  "runtimeHash": "449ee8095ed49be56c6a86d9ff5540bf018319c40c8a2b15f77ece77b001f095",
+  "runtimeHash": "3b9a101250d7cb6185226b4b587eb5bd0561a70b0d0d70fdc9f7dbb1dab711c2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -79,6 +79,7 @@ def polar(r, a, x=0.0):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     step = 2 * math.pi / N_SEG
     win, strips, glow_tips = [], [], []
     coil_glow, coil_clamp, ribs, hatches = [], [], [], []
@@ -174,6 +175,13 @@ def build():
     for sx in (1, -1):
         F.ring(s, f'ApertureRim{sx}', (sx * (HX - 0.5), 0, 0), R_IN - 0.45, 0.18, axis=(1, 0, 0),
                material='glow_cyan', segments=128, sides=5)
+    # the charge wheel: a dashed amber light ring inside the aperture, slowly turning about the
+    # flight axis so the gate visibly idles (spin:fore = rotation about the X flight axis)
+    for i in range(N_SEG):
+        am = (i + 0.5) * step
+        seg = sector(s, f'SpinRing{i}', 29.2, 30.4, am + 0.05, am + step - 0.05, -0.5, 0.5,
+                     material='glow_amber', steps=2, bevel=0.0)
+        s.anim(seg, 'spin:fore:0p3', (0.0, 0.0, 0.0))
 
     # --- control tower on the crown ---------------------------------------------------------------
     F.plate(s, 'TowerBase', [(7.5, 5.5), (-7.5, 5.5), (-7.5, -5.5), (7.5, -5.5)], z0=41.0, thickness=7.0,
@@ -199,8 +207,11 @@ def build():
     F.dish(s, 'TowerDish', (-3.5, 2.0, 53.0), 1.8, 0.6, axis=(-0.4, 0.3, 0.86), material='paint')
     F.cylinder(s, 'TowerDishPost', (-3.5, 2.0, 52.4), (-3.5, 2.0, 53.2), 0.3, material='gunmetal', segments=10)
     F.cylinder(s, 'TowerMast', (2.5, -1.0, 52.4), (2.5, -1.0, 56.4), 0.25, 0.12, material='gunmetal', segments=8)
-    F.light(s, 'TowerMastTip', (2.5, -1.0, 56.5), 'glow_red', size=0.5)
+    tip = F.light(s, 'TowerMastTip', (2.5, -1.0, 56.5), 'glow_red', size=0.5)
+    s.anim(tip, 'blink:1p9:0p4', (2.5, -1.0, 56.5))
+    n0 = len(s.objects)
     F.beacon(s, 'Beacon', (0.0, 0.0, 52.5), size=0.8)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('Beacon_Dome')], 'blink:1p3:0p2', (0.0, 0.0, 52.5))
 
     # --- power block under the ring ----------------------------------------------------------------
     F.plate(s, 'PowerBlock', [(7.0, 6.0), (-7.0, 6.0), (-7.0, -6.0), (7.0, -6.0)], z0=-48.0, thickness=7.8,

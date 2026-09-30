@@ -36,6 +36,7 @@ TOP = 2.6
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- cage frame: corner posts + two rail courses ------------------------------------------
     for k, (px, py) in enumerate(((X0, Y0), (X0, Y1), (X1, Y0), (X1, Y1))):

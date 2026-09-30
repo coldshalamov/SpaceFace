@@ -24,6 +24,7 @@ L, W, H = 6.0, 3.3, 3.1
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     # Body with a fine ribbed skin: raised ribs along the long walls and roof.
     F.box(s, 'Body', (0, 0, 0), (L - 0.3, W - 0.2, H - 0.2), material='paint', bevel=0.04)
     for i in range(9):

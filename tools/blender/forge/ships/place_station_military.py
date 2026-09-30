@@ -157,6 +157,7 @@ def parked_fighter(s, name, x, y, z, yaw=0.0, sc=0.75):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- T0: the battle belt at the flight plane, split round the hangar gatehouse ---------------
     t0 = octo(T0['x0'], T0['x1'], T0['hw'], T0['c'])
@@ -256,13 +257,19 @@ def build():
     for z in (33.0, 35.0, 37.0):
         F.box(s, f'MastRing{z}', (mx, 0.0, z), (1.6 - (z - 31) * 0.18, 1.6 - (z - 31) * 0.18, 0.18), material='gunmetal',
               bevel=0.0)
+    # the authored rotating bar — the one moving element the star-fort reads as ALIVE for
+    n0 = len(s.objects)
     F.box(s, 'RadarBar', (mx, 0.0, 38.3), (0.5, 7.0, 0.7), material='paint2', bevel=0.05)
     F.box(s, 'RadarFace', (mx + 0.28, 0.0, 38.3), (0.06, 6.4, 0.45), material='glow_cyan', bevel=0.0)
-    F.light(s, 'MastTip', (mx, 0.0, 39.0), 'glow_red', size=0.45)
+    s.anim(s.objects[n0:], 'spin:up:0p7', (mx, 0.0, 38.3))
+    tip = F.light(s, 'MastTip', (mx, 0.0, 39.0), 'glow_red', size=0.45)
+    s.anim(tip, 'blink:1p8:0p2', (mx, 0.0, 39.0))
     # search radome and a fire-control dish on T3
     F.sensor_dome(s, 'Radome', (-6.5, 0.0, 33.6), 1.9)
     F.cylinder(s, 'RadomePlinth', (-6.5, 0, 33.2), (-6.5, 0, 33.7), 1.4, material='gunmetal', segments=18)
+    n0 = len(s.objects)
     F.dish(s, 'FireControl', (-19.2, 3.0, 31.6), 1.7, 0.6, axis=(0.5, 0.3, 0.8))
+    s.anim(s.objects[n0:], 'sweep:up:0p6:0p5', (-19.2, 3.0, 31.6))
     F.cylinder(s, 'FireControlPost', (-19.2, 3.0, 31.0), (-19.2, 3.0, 31.8), 0.3, material='gunmetal', segments=10)
     F.dish(s, 'CommDish', (-19.2, -3.0, 31.6), 1.4, 0.5, axis=(-0.4, -0.3, 0.85))
     F.cylinder(s, 'CommDishPost', (-19.2, -3.0, 31.0), (-19.2, -3.0, 31.8), 0.3, material='gunmetal', segments=10)
@@ -271,7 +278,8 @@ def build():
     F.box(s, 'Keel', (-10.0, 0.0, -33.0), (14.0, 5.0, 4.0), material='paint2', bevel=0.2, taper=1.0)
     F.cylinder(s, 'KeelSpike', (-10.0, 0.0, -35.0), (-10.0, 0.0, -40.0), 0.6, 0.15, material='gunmetal',
                segments=12)
-    F.light(s, 'KeelTip', (-10.0, 0.0, -40.0), 'glow_red', size=0.4)
+    tip = F.light(s, 'KeelTip', (-10.0, 0.0, -40.0), 'glow_red', size=0.4)
+    s.anim(tip, 'blink:2p2:0p9', (-10.0, 0.0, -40.0))
     F.dish(s, 'KeelDish', (-4.0, 0.0, -35.0), 1.5, 0.5, axis=(0.3, 0.0, -1.0))
     for i, x in enumerate((6.0, -6.0, -18.0)):
         for sy in (1, -1):
@@ -337,7 +345,9 @@ def build():
     red += [((cx, sy * (cy + 4.0), 9.2), (0.6, 0.6, 0.4)) for (cx, cy) in BASTIONS for sy in (1, -1)]
     boxes(s, 'RedLights', red, 'glow_red')
     F.work_lamp(s, 'ApronLamp', (27.6, 8.5, 8.4), aim=(0.6, -0.3, 0.6), size=0.9, mirror=True)
+    n0 = len(s.objects)
     F.beacon(s, 'Beacon', (-6.5, 0.0, 36.1), size=0.5)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('Beacon_Dome')], 'blink:1p3:0p6', (-6.5, 0.0, 36.1))
     F.light(s, 'NavPort', (-10.0, 18.95, 0.0), 'glow_red', size=0.6)
     F.light(s, 'NavStarboard', (-10.0, -18.95, 0.0), 'glow_green', size=0.6)
 

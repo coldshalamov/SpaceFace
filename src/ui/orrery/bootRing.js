@@ -8,7 +8,12 @@
 // The old 2 px bar stays in the DOM (the presenter and its checks still write and read it), hidden.
 const NS = 'http://www.w3.org/2000/svg';
 const EMBLEM = new URL('../../../assets/ui/generated/emblem/emblem.thumb.webp', import.meta.url).href;
-const R = 60;
+// F2: the ring group at x1.2 (R 60→72) — r=120px on the 240px glass, a hero, not a medallion.
+// The svg box stays 240px; graduations, stage marks and the leader overhang it (overflow visible).
+const R = 72;
+// F7: head-dot offset outward along the radius (~4px at the 240/144 unit scale), so the head
+// never fully caps a stage tick.
+const HEAD_OUT = 2.4;
 
 function node(doc, tag, attrs) {
   const el = doc.createElementNS(NS, tag);
@@ -34,7 +39,11 @@ export function mountBootRing(document, overlay) {
   overlay.classList.add('boot-overlay--orrery');
   const c = 72;
   const svg = node(document, 'svg', { class: 'boot-ring', viewBox: '0 0 144 144', 'aria-hidden': 'true' });
-  const emblem = node(document, 'image', { href: EMBLEM, x: c - 50, y: c - 50, width: 100, height: 100, class: 'boot-ring__emblem' });
+  // F4: the ring is the hero, not a medallion — 240px on the glass. Inline style, because the
+  // sheet's 144px rule belongs to another lane and presentation attributes lose to stylesheets.
+  svg.style.width = '240px';
+  svg.style.height = '240px';
+  const emblem = node(document, 'image', { href: EMBLEM, x: c - 60, y: c - 60, width: 120, height: 120, class: 'boot-ring__emblem' });
   // outer graduations, the track, the progress arc (ice) over a soft bloom, the stage marks
   const ticks = [];
   for (let i = 0; i < 72; i += 1) {
@@ -48,9 +57,12 @@ export function mountBootRing(document, overlay) {
   const track = node(document, 'path', { d: arc(c, c, R, 0, 360), class: 'boot-ring__track' });
   const bloom = node(document, 'path', { d: arc(c, c, R, 0, 360), class: 'boot-ring__bloom', pathLength: 1, 'stroke-dasharray': '0 1' });
   const fill = node(document, 'path', { d: arc(c, c, R, 0, 360), class: 'boot-ring__fill', pathLength: 1, 'stroke-dasharray': '0 1' });
-  const head = node(document, 'circle', { r: 2.6, cx: c, cy: c - R, class: 'boot-ring__head' });
+  const head = node(document, 'circle', { r: 2.6, cx: c, cy: c - R - HEAD_OUT, class: 'boot-ring__head' });
   const marks = node(document, 'g', { class: 'boot-ring__marks' });
-  svg.append(emblem, grad, track, bloom, fill, marks, head);
+  // F6: a leader tick joining the ring to the pct numeral — it starts at the arc's edge and ends
+  // just under the numeral's first digit, bridging the row gap.
+  const leader = node(document, 'path', { d: `M ${c + R + 2} ${c} L ${c + R + 12} ${c}`, class: 'boot-ring__leader' });
+  svg.append(emblem, grad, track, bloom, fill, marks, leader, head);
   row.insertBefore(svg, row.firstChild);
 
   let shown = -1;
@@ -64,8 +76,8 @@ export function mountBootRing(document, overlay) {
       fill.setAttribute('stroke-dasharray', dash);
       bloom.setAttribute('stroke-dasharray', dash);
       const a = f * 360;
-      head.setAttribute('cx', (c + R * Math.sin(a * Math.PI / 180)).toFixed(2));
-      head.setAttribute('cy', (c - R * Math.cos(a * Math.PI / 180)).toFixed(2));
+      head.setAttribute('cx', (c + (R + HEAD_OUT) * Math.sin(a * Math.PI / 180)).toFixed(2));
+      head.setAttribute('cy', (c - (R + HEAD_OUT) * Math.cos(a * Math.PI / 180)).toFixed(2));
     },
     /** A reported stage: a bone tick on the outer ring where the boot really is, never a timer's. */
     mark(fraction) {

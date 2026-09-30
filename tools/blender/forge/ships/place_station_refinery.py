@@ -47,6 +47,11 @@ def polar(r, a_deg, z=0.0):
 
 # --- local helpers --------------------------------------------------------------------------------
 
+def anim_parts(s, n0, prefix, spec, pivot):
+    """s.anim() for every object added since n0 whose name starts with prefix."""
+    s.anim([o for o in s.objects[n0:] if o.name.startswith(prefix)], spec, pivot)
+
+
 def cluster(s, name, items, material, bevel=0.0):
     """Many small boxes in one mesh (windows, rim lights, grating): items = (center, size, rot_z)."""
     bm = bmesh.new()
@@ -186,8 +191,10 @@ def build_core(s):
         F.band(s, f'Stack{k}', (x, y, 17.0), (0, 0, 1), 0.7, 'paint2', inset=0.05, depth=0.1)
         F.cylinder(s, f'StackLip{k}', (x, y, 28.3), (x, y, 29.3), 2.15, 2.25, material='gunmetal', segments=24,
                    cap_material='dark', bevel=0.0)
-        F.cylinder(s, f'StackHot{k}', (x, y, 29.2), (x, y, 29.45), 1.2, material='glow_amber', segments=20,
-                   bevel=0.0)
+        hot = F.cylinder(s, f'StackHot{k}', (x, y, 29.2), (x, y, 29.45), 1.2, material='glow_amber', segments=20,
+                         bevel=0.0)
+        # stack flare breathes on an irregular rhythm, staggered per stack
+        s.anim(hot, f'flicker:0p{7 + k}:0p{k}', (x, y, 29.3))
         F.cylinder(s, f'StackBoot{k}', (x, y, 13.4), (x, y, 15.2), 2.8, 2.2, material='paint.graphite', segments=24,
                    bevel=0.0)
     F.cylinder(s, 'Chimney', (0, 0, 13.4), (0, 0, 32.0), 3.0, 2.5, material='paint.graphite', segments=32, bevel=0.15)
@@ -195,7 +202,9 @@ def build_core(s):
     F.band(s, 'Chimney', (0, 0, 22.0), (0, 0, 1), 0.8, 'paint2', inset=0.05, depth=0.12)
     F.cylinder(s, 'ChimneyLip', (0, 0, 31.8), (0, 0, 32.8), 2.75, 2.9, material='gunmetal', segments=32,
                cap_material='dark', bevel=0.05)
-    F.cylinder(s, 'ChimneyHot', (0, 0, 32.7), (0, 0, 32.95), 1.7, material='glow_amber', segments=24, bevel=0.0)
+    chot = F.cylinder(s, 'ChimneyHot', (0, 0, 32.7), (0, 0, 32.95), 1.7, material='glow_amber', segments=24,
+                      bevel=0.0)
+    s.anim(chot, 'flicker:1p1:0p4', (0, 0, 32.8))
     # stack bracing ring at mid height ties the five stacks together
     F.ring(s, 'StackBrace', (0, 0, 21.0), 6.4, 0.3, axis=(0, 0, 1), material='gunmetal', segments=40, sides=6)
     for k in range(4):
@@ -216,7 +225,9 @@ def build_core_details(s):
         F.work_lamp(s, f'CapLamp{k}', (x, y, 13.9), aim=(-x * 0.05, -y * 0.05, 1.0), size=0.9)
     for k in range(4):
         x, y, _ = polar(3.0, 90 * k + 45)
-        F.light(s, f'ChimneyBeacon{k}', (x * 0.93, y * 0.93, 32.9), 'glow_red', size=0.45)
+        pos = (x * 0.93, y * 0.93, 32.9)
+        o = F.light(s, f'ChimneyBeacon{k}', pos, 'glow_red', size=0.45)
+        s.anim(o, f'blink:2p1:0p{k}', pos)
 
 
 def build_crown(s):
@@ -278,9 +289,13 @@ def build_crown(s):
         F.cylinder(s, f'Feed{i}b', polar(DECK_R0 + 0.3, a - 4, DECK_Z1 + 0.6), polar(CORE_R + 1.2, a - 4, DECK_Z1 + 0.6),
                    0.45, material='gunmetal', segments=10, bevel=0.0)
         if i % 2 == 0:
+            n0 = len(s.objects)
             F.beacon(s, f'ColBeacon{i}', (x, y, top + r * 0.45 - 0.05), 'glow_amber', size=0.8)
+            anim_parts(s, n0, f'ColBeacon{i}_Dome', f'blink:1p{4 + i % 4}:0p{i}', (x, y, top + r * 0.45))
         else:
-            F.light(s, f'ColBeacon{i}', (x, y, top + r * 0.45 + 0.1), 'glow_red', size=0.6)
+            pos = (x, y, top + r * 0.45 + 0.1)
+            o = F.light(s, f'ColBeacon{i}', pos, 'glow_red', size=0.6)
+            s.anim(o, f'blink:1p{4 + i % 4}:0p{i}', pos)
         # riser pipe up the outboard flank and a hoop clamp
         out = Vector((x, y, 0)).normalized()
         rx, ry = x + out.x * (r + 0.55), y + out.y * (r + 0.55)
@@ -365,9 +380,12 @@ def build_dock(s):
     F.ring(s, 'PortRing', (47.4, 0, 1.6), 2.75, 0.25, axis=(1, 0, 0), material='hazard', segments=32, sides=6)
     for k in range(8):
         a = math.radians(22.5 + 45 * k)
-        F.light(s, f'PortLight{k}', (47.55, 3.0 * math.cos(a), 1.6 + 3.0 * math.sin(a)),
-                'glow_green' if k % 2 else 'glow_amber', size=0.4)
+        pos = (47.55, 3.0 * math.cos(a), 1.6 + 3.0 * math.sin(a))
+        o = F.light(s, f'PortLight{k}', pos, 'glow_green' if k % 2 else 'glow_amber', size=0.4)
+        s.anim(o, f'chase:port:{k}:8:2p4', pos)
+    n0 = len(s.objects)
     F.beacon(s, 'DockBeacon', (45.6, 0, 1.6 + 3.55), 'glow_amber', size=0.9)
+    anim_parts(s, n0, 'DockBeacon_Dome', 'blink:1p2:0p1', (45.6, 0, 1.6 + 3.55))
     # the parked ore tanker on the starboard side of the arm, held by a gangway
     ty, tz = -8.6, 1.2
     F.loft(s, 'Tanker', [
@@ -497,9 +515,13 @@ def build_hab(s):
     truss(s, 'HabSpoke', (0, -DECK_R1 + 2.0, 1.2), (0, -31.8, 1.2), 3.2, 2.4, 2)
     F.cylinder(s, 'DishMast', (-7.0, -37.0, 5.4), (-7.0, -37.0, 9.0), 0.45, material='gunmetal', segments=10,
                bevel=0.0)
+    n0 = len(s.objects)
     F.dish(s, 'Dish', (-7.0, -37.0, 9.0), 3.4, 1.1, axis=(0.35, -0.5, 1.0), material='gunmetal', face='paint')
+    s.anim(s.objects[n0:], 'sweep:up:0p7:0p4', (-7.0, -37.0, 9.0))
     F.light(s, 'NavStarboard', (0, -41.6, 1.0), 'glow_green', size=0.8)
+    n0 = len(s.objects)
     F.beacon(s, 'HabBeacon', (4.5, -35.5, 8.4), 'glow_amber', size=0.7)
+    anim_parts(s, n0, 'HabBeacon_Dome', 'blink:1p5:0p6', (4.5, -35.5, 8.4))
     for k, x in enumerate((-9.0, 9.0)):
         F.light(s, f'HabCorner{k}', (x, -41.6, 5.3), 'glow_green', size=0.5)
 
@@ -535,6 +557,7 @@ def build_hab_details(s):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     build_core(s)
     build_crown(s)
     build_dock(s)

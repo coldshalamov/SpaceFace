@@ -37,6 +37,7 @@ TRI = [(-1.9, -1.5), (2.3, -1.1), (-0.6, 2.1)]
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === the boulder the claim is staked into ======================================
     F.rock(s, 'Boulder', (0, 0, -0.6), 1.55, seed=4471, quarry_plane=((0, 0, 2.2), (0, 0, 1)))

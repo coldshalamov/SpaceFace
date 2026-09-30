@@ -50,7 +50,7 @@ Fiction: [THE_LONG_AFTERMATH](../../../../design/fiction/THE_LONG_AFTERMATH.md).
 | `wreck_corvette_forward` | primary | cooling | 89 x 53 x 31 | 17150 | SOCKET_BlackBox, SOCKET_Evidence_Registry, SOCKET_Hazard_Break, SOCKET_Salvage_Barbette | - |
 | `wreck_corvette_engine` | secondary | cooling | 73 x 49 x 44 | 14164 | SOCKET_Hazard_Reactor, SOCKET_Salvage_Drive | - |
 | `wreck_corvette_turret` | secondary | cooling | 16 x 7 x 7 | 4220 | SOCKET_Salvage_Weapon | - |
-| `wreck_corvette_forward__fresh` | state-variant | fresh | 89 x 53 x 31 | 17254 | SOCKET_BlackBox, SOCKET_Evidence_Registry, SOCKET_Hazard_Break, SOCKET_Salvage_Barbette | - |
+| `wreck_corvette_forward__fresh` | state-variant | fresh | 89 x 53 x 31 | 17190 | SOCKET_BlackBox, SOCKET_Evidence_Registry, SOCKET_Hazard_Break, SOCKET_Salvage_Barbette | - |
 | `wreck_corvette_forward__stripped_heavy` | state-variant | stripped_heavy | 89 x 53 x 31 | 9300 | SOCKET_BlackBox, SOCKET_Evidence_Registry, SOCKET_Hazard_Break, SOCKET_Salvage_Barbette | - |
 
 **`deb_corvette_armor_belt`** - *was:* The corvette's flank armour belt, peeled off in one run.  
@@ -160,7 +160,7 @@ Fiction: [THE_LONG_AFTERMATH](../../../../design/fiction/THE_LONG_AFTERMATH.md).
 | `wreck_ore_freighter_stern` | secondary | cooling | 145 x 65 x 63 | 22360 | SOCKET_Hazard_Reactor, SOCKET_Salvage_Drive, SOCKET_Salvage_Radiator | - |
 | `wreck_ore_freighter_bow__derelict` | state-variant | derelict | 179 x 70 x 70 | 15998 | INTERACTION_RibcageGap, SOCKET_BlackBox, SOCKET_Hazard_Break, SOCKET_Salvage_Bridge, SOCKET_Salvage_Hopper | INTERACTION_RibcageGap 48 m PASS |
 | `wreck_ore_freighter_bow__fresh` | state-variant | fresh | 179 x 70 x 70 | 16038 | INTERACTION_RibcageGap, SOCKET_BlackBox, SOCKET_Hazard_Break, SOCKET_Salvage_Bridge, SOCKET_Salvage_Hopper | INTERACTION_RibcageGap 48 m PASS |
-| `wreck_ore_freighter_bow__stripped` | state-variant | stripped | 179 x 70 x 70 | 9888 | INTERACTION_RibcageGap, SOCKET_BlackBox, SOCKET_Hazard_Break, SOCKET_Salvage_Bridge, SOCKET_Salvage_Hopper | INTERACTION_RibcageGap 48 m PASS |
+| `wreck_ore_freighter_bow__stripped` | state-variant | stripped | 179 x 70 x 70 | 9882 | INTERACTION_RibcageGap, SOCKET_BlackBox, SOCKET_Hazard_Break, SOCKET_Salvage_Bridge, SOCKET_Salvage_Hopper | INTERACTION_RibcageGap 48 m PASS |
 
 **`deb_ore_freighter_drive_bell`** - *was:* The stern drive face of the ore barge: four bells in a square block.  
 *reads:* Four dark bells pointing one way — an engine room with the ship torn off it.

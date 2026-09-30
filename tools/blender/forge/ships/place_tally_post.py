@@ -40,6 +40,7 @@ GATE_H = 7.4      # lintel height
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === the square gate frame ====================================================
     # two legs at +-GATE_W, lintel across the top — a doorway in plan, a square from above

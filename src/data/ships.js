@@ -57,7 +57,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'scout',
-      proportions: { length: 1.72, halfWidth: 0.42, height: 0.43 },
+      proportions: { length: 1.35, halfWidth: 0.42, height: 0.30 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.4, finCount: 0, spineRibs: 0 } },
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.7, finCount: 2, spineRibs: 1 } },
@@ -80,7 +80,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'miner',
-      proportions: { length: 1.72, halfWidth: 0.37, height: 0.54 },
+      proportions: { length: 1.30, halfWidth: 0.55, height: 0.42 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, armCount: 2, scoopSize: 0.8 } },
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, armCount: 2, scoopSize: 1.0 } },
@@ -103,7 +103,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'fighter',
-      proportions: { length: 1.72, halfWidth: 0.64, height: 0.21 },
+      proportions: { length: 1.40, halfWidth: 0.58, height: 0.26 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.4, canard: false, wingSweep: 0.55 } },
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.7, canard: true, wingSweep: 0.60 } },
@@ -126,7 +126,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'freighter',
-      proportions: { length: 1.72, halfWidth: 0.37, height: 0.35 },
+      proportions: { length: 1.55, halfWidth: 0.50, height: 0.46 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, podCols: 1, podRows: 2 } },
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, podCols: 2, podRows: 2 } },
@@ -150,7 +150,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'multirole',
-      proportions: { length: 1.72, halfWidth: 0.33, height: 0.31 },
+      proportions: { length: 1.50, halfWidth: 0.50, height: 0.38 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, nacelles: 2, winglets: true } },
         { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, nacelles: 2, winglets: true } },
@@ -173,7 +173,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'fighter',
-      proportions: { length: 1.72, halfWidth: 0.77, height: 0.25 },
+      proportions: { length: 1.45, halfWidth: 0.70, height: 0.30 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6, canard: true, wingSweep: 0.70 } },
         { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, canard: true, wingSweep: 0.78 } },
@@ -196,7 +196,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'miner',
-      proportions: { length: 1.72, halfWidth: 0.29, height: 0.33 },
+      proportions: { length: 1.40, halfWidth: 0.72, height: 0.56 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, armCount: 2, scoopSize: 1.2 } },
         { minTier: 9, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, armCount: 4, scoopSize: 1.4 } },
@@ -219,7 +219,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'freighter',
-      proportions: { length: 1.72, halfWidth: 0.26, height: 0.38 },
+      proportions: { length: 1.15, halfWidth: 0.68, height: 0.50 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, podCols: 1, podRows: 1 } },
         { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, podCols: 2, podRows: 1 } },
@@ -243,7 +243,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'frigate',
-      proportions: { length: 1.72, halfWidth: 0.35, height: 0.41 },
+      proportions: { length: 1.55, halfWidth: 0.62, height: 0.42 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, broadsideGuns: 1, towerTiers: 1 } },
         { minTier: 10, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, broadsideGuns: 1, towerTiers: 2 } },
@@ -268,7 +268,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'freighter',
-      proportions: { length: 1.72, halfWidth: 0.28, height: 0.33 },
+      proportions: { length: 1.75, halfWidth: 0.62, height: 0.62 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.6, podCols: 2, podRows: 3 } },
         { minTier: 10, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, podCols: 3, podRows: 3 } },
@@ -291,7 +291,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'multirole',
-      proportions: { length: 1.72, halfWidth: 0.37, height: 0.33 },
+      proportions: { length: 1.65, halfWidth: 0.52, height: 0.40 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6, nacelles: 2, winglets: true } },
         { minTier: 9, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, nacelles: 2, winglets: true } },
@@ -317,7 +317,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'frigate',
-      proportions: { length: 1.72, halfWidth: 0.26, height: 0.45 },
+      proportions: { length: 1.70, halfWidth: 0.78, height: 0.52 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.8, broadsideGuns: 1, towerTiers: 2 } },
         { minTier: 12, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, broadsideGuns: 2, towerTiers: 2 } },
@@ -342,7 +342,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'capital',
-      proportions: { length: 1.72, halfWidth: 0.42, height: 0.39 },
+      proportions: { length: 1.85, halfWidth: 0.82, height: 0.60 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.9, towerTiers: 2, finArrays: 1 } },
         { minTier: 14, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 2 } },
@@ -368,7 +368,7 @@ export const SHIPS = [
     thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'capital',
-      proportions: { length: 1.72, halfWidth: 0.47, height: 0.49 },
+      proportions: { length: 2.00, halfWidth: 0.92, height: 0.72 },
       tiers: [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 2 } },
         { minTier: 16, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, towerTiers: 4, finArrays: 3 } },

@@ -1,4 +1,4 @@
-// Pure carrier adapter for the four authored wreck rumors delivered in station bars.
+// Pure carrier adapter for the authored wreck rumors delivered in station bars.
 // The Bar owns when the player hears the line; uniqueWrecks owns durable knowledge after the
 // `uniqueWreck:rumorHeard` receipt is emitted. Keeping selection here prevents the runtime system
 // from granting a bearing merely because a bar screen opened.
@@ -10,6 +10,8 @@ const BAR_SOURCE_BY_STATION = Object.freeze({
   station_haumea_rift: 'bar.rift_observatory.deepsurvey',
   station_reach: 'bar.io_mercenary.smokesong',
   station_helios: 'bar.helios_meridian.silver_draft',
+  // D17: the Long Chord worked the Helios–Tethys chord; you hear it where her tolls were spent.
+  station_tethys: 'bar.tethys_chord.long_chord',
 });
 
 function knownBearings(state) {

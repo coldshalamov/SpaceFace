@@ -30,6 +30,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- pressure hull: lofted capsule — cylinder body + domed ends, axis along X -------------
     F.cylinder(s, 'Hull', (-1.8, 0, 0.15), (1.8, 0, 0.15), 1.35, material='paint',

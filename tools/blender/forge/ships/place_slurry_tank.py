@@ -23,6 +23,7 @@ COLORS = dict(K.COLORS, **{
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- cradle frame: base skid + rib arcs under the tanks ----------------------------------------
     F.box(s, 'Skid', (0, 0, 0.5), (10.4, 4.0, 1.0), material='paint2', bevel=0.06)

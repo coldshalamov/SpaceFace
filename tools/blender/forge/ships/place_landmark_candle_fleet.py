@@ -260,6 +260,8 @@ def build_candle(s, i):
         (fz, 0.01, 'glow_amber'), (fz + 0.5 * K, 1.9 * K, 'glow_amber'), (fz + 1.6 * K, 2.35 * K), (fz + 3.1 * K, 2.2 * K),
         (fz + 4.7 * K, 1.5 * K), (fz + 6.1 * K, 0.75 * K), (fz + 7.4 * K, 0.0),
     ], 'glow_warm', segs=16, smooth=80.0)
+    # the flame flickers — irregular per candle so the ring never breathes in lockstep
+    s.anim(s.objects[-1:], f'flicker:0p{5 + i % 4}:0p2', (x, y, fz + 3.0 * K))
     # lantern cage: six bronze ribs from the lip curving in to a crown ring, a finial on top
     ribs = []
     for k in range(6):
@@ -516,6 +518,7 @@ def build_tender(s):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     s.socket_names = ['SOCKET_Structure_Core', 'SOCKET_Camera_Focus']
     s.socket('SOCKET_Structure_Core', (0.0, 0.0, 0.0))
     s.socket('SOCKET_Camera_Focus', (0.0, 0.0, 12.0))

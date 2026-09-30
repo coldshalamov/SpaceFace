@@ -38,6 +38,7 @@ HEX_R = 4.2    # float radius to corner
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === the hexagonal float ======================================================
     # a 6-sided drum: flat top deck, chamfered rim, ballast pods at the corners
@@ -72,6 +73,7 @@ def build():
                segments=10, bevel=0.05)
     F.band(s, 'Tower', (0, 0, 4.4), (0, 0, 1), 0.7, 'stripe', depth=0.07)
     # the lit halo: a glowing teal ring carried on four spokes — THE top-view read
+    n0 = len(s.objects)
     F.ring(s, 'Halo', (0, 0, 7.9), 2.1, 0.22, axis=(0, 0, 1), material='glow_cyan',
            segments=20, sides=8)
     for i in range(4):
@@ -82,7 +84,11 @@ def build():
     # cap + the white top blink
     F.cylinder(s, 'Cap', (0, 0, 8.4), (0, 0, 9.1), 0.55, 0.3, material='paint2',
                segments=10, bevel=0.04)
+    # the halo is the lane mark — it breathes on a slow pulse; the hat blinks on top of that
+    s.anim(s.objects[n0:n0 + 1], 'blink:4p0:0p0', (0, 0, 7.9))
+    n0 = len(s.objects)
     F.beacon(s, 'TopBlink', (0, 0, 9.3), 'glow_warm', size=0.3)
+    s.anim([o for o in s.objects[n0:] if o.name == 'TopBlink_Dome'], 'blink:1p5:0p4', (0, 0, 9.3))
 
     return s
 

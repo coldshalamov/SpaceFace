@@ -565,6 +565,12 @@ const SHIPPED_MODULES = [
     mods: { hiddenCargoPct: 0.35, cargoFlat: 20 },
   },
   {
+    // D17 Long Chord unique — the unlogged toll hold, pulled from her grave off the chord.
+    id: 'unique_long_chord_hold', baseId: 'mod_smuggler_hold_m', name: 'Long Chord Hold', slotType: 'cargo', size: 'M', tier: 3, mass: 8, price: 0,
+    energyDraw: 1, legality: 'contraband', purchasable: false, unique: true, salvageOnly: true,
+    mods: { hiddenCargoPct: 0.35, cargoFlat: 20 },
+  },
+  {
     id: 'mod_sensor_scrambler_s', name: 'Sensor Scrambler S', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 16000,
     energyDraw: 2, legality: 'restricted',
     mods: { scannerCloak: 0.25 },
@@ -830,6 +836,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   unique_knitbots: 'Heals the hull a little faster between fights than the stock nanobots.',
   mod_tractor_beam_m: 'Picks up ore and wrecks without stopping on them.',
   unique_tideline_tractor: 'Picks up a whole wreck, from farther out than a stock tractor.',
+  unique_long_chord_hold: 'Hides a third of the hold from every scan, the way she hid a whole career.',
   unique_no_cut_filament: 'A taut swing cuts a hostile line.',
   unique_toll_saint_bridle: 'Anchors two points at once, and the pull tumbles light hulls.',
   unique_broken_ring_whip: 'Stores the stretch of a swing and gives it back as a snap.',

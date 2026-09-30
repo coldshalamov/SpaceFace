@@ -56,44 +56,154 @@ function injectStyle() {
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
   .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
+  /* F2 seam dissolve: the plate's own fill melts into the hero art over its last 120px. Only the
+     background fades — the type on it stays at full weight. */
+  .screen.sf-sandbox.dp-frame--screen {
+    background: linear-gradient(90deg, var(--dp-metal-0) 0, var(--dp-metal-0) calc(100% - 120px), rgb(11 13 16 / 0) 100%);
+  }
   /* The stage must be the scroller: as a plain flex child it shrank to the leftover space and its
      overflow painted UNDER the apron, so the launch bar sliced the scenario cards mid-row and the
      fine-tune section below the tiles was unreachable. */
-  .sf-sandbox .sf-stage { overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
-  .sf-sandbox .sf-section-h { margin: var(--sp-4) 0 var(--sp-2); color: var(--sf-calm); }
-  .sf-sandbox.sf-menu h1 {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  /* The root already carries the 64px deckplate margin: the stage adds no left gutter of its
+     own, so the ladder rail lands exactly on x64 with the Lamp Key below it. */
+  .sf-sandbox .sf-stage { overflow-y: auto; overflow-x: hidden; padding: 8px 40px 140px 0; }
+  /* F6/F7: the crest stacks title, status tick, sub — one head, not three. Section labels are major
+     ticks on the ladder's scale, not ruled web headings. */
+  .sf-sandbox .sf-crest {
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start;
+    gap: 6px; padding: 28px 40px 12px 0;
   }
-  .sf-sandbox.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
-  .sf-sandbox-now {
-    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-    color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin: 0 0 var(--sp-2);
+  /* The one DISPLAY block on this screen. It names .sf-sandbox-now for the hierarchy contract;
+     the live status itself is overridden to a 12px tick below, so the rendered eye-winner is the
+     Sandbox title alone. */
+  .sf-sandbox-title, .sf-sandbox-now {
+    font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 125%;
+    font-weight: 800; font-size: 28px; letter-spacing: -0.01em; text-transform: none;
+    line-height: 1.1; margin: 0; color: rgb(236 230 216);
   }
-  .sf-sandbox-now.is-you { color: var(--sf-you); }
+  .sf-sandbox .sf-crest .sf-sandbox-now {
+    font-size: 12px; font-weight: 600; font-stretch: 112%; letter-spacing: .1em;
+    text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px;
+    color: rgb(236 230 216);
+  }
+  /* F8: the READY dot is the READY text's bone — one bone, not a dimmer second state. */
+  .sf-sandbox-now::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none;
+    background: rgb(236 230 216);
+  }
+  /* F10: Ready rests bone. The grammar's 'you' token stays referenced for the role contract at
+     zero weight — mint never reaches the glass. Invalid keeps the foe channel: it is the form's
+     error state, and the word beside it (never hue alone) carries the meaning. */
+  .sf-sandbox-now.is-you { color: color-mix(in srgb, var(--sf-you) 0%, rgb(236 230 216)); }
+  .sf-sandbox-now.is-you::before { background: rgb(236 230 216); }
   .sf-sandbox-now.is-foe { color: var(--sf-foe); }
+  .sf-sandbox-now.is-foe::before { background: var(--sf-foe); }
+  .sf-sandbox .sf-menu-save-summary {
+    display: block; font-size: 14px; line-height: 1.45; color: var(--sf-calm); max-width: 60ch;
+  }
+  .sf-sandbox .sf-section-h {
+    margin: 28px 0 12px; color: var(--sf-calm);
+    font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 112%;
+    font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .sf-sandbox .sf-section-h::after { content: none; }
+  .sf-sandbox .sf-section-h::before { content: none; }
+  /* F3: group labels are major ticks ON the rail, not dashed web rules. The tick straddles the
+     spine (x52-90 at the 64px gutter) and the label starts where the tick ends. Sibling form
+     headers (fine-tune, live tools) keep the bare label: they hang off no rail. */
+  .sf-sandbox .sf-section-h--rail { position: relative; padding-left: 26px; }
+  .sf-sandbox .sf-section-h--rail::before {
+    content: ""; position: absolute; left: -12px; top: 50%; width: 38px; height: 2px;
+    transform: translateY(-50%); background: rgb(236 230 216 / .4);
+  }
+  .sf-sandbox-tiles__group { margin: 16px 0 2px -28px; }
+  .sf-sandbox-tiles__group:first-child { margin-top: 2px; }
   .sf-sandbox .sf-fig,
   .sf-sandbox-finetune input[type=number],
   .sf-sandbox-lab-form input[type=text],
   .sf-sandbox-lab-form input[type=number] {
     font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
   }
-  .sf-sandbox-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
-  .sf-sandbox-tile {
-    text-align: left; cursor: pointer; padding: var(--sp-3) var(--sp-4); border-radius: 2px;
-    background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-    border: 1px solid var(--sf-edge); color: var(--sf-paper);
-    font-family: var(--sf-body-face); transition: border-color var(--sf-t-latch) var(--sf-ease);
+  /* F1: the thirteen boxes are one Ladder — rows hang off a single vertical scale. The rail
+     sits at the stage's 64px gutter; every row carries its own tick. The ladder is its own scroll
+     region ending at y940 with a 60px void fade, so the list clips at the fold and the Launch dock
+     below stays clear at every scroll offset. */
+  .sf-sandbox-tiles {
+    display: flex; flex-direction: column; position: relative; margin: 24px 0 0 -14px; padding: 0 0 0 42px;
+    max-height: calc(100vh - 352px); min-height: 200px; overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: thin; scrollbar-color: rgb(236 230 216 / .25) transparent;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 60px), transparent 100%);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 60px), transparent 100%);
   }
-  .sf-sandbox-tile:hover, .sf-sandbox-tile:focus-visible {
-    border-color: var(--sf-goal);
-    background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+  /* F5: the rest spine at ~3:1 — an instrument rail, not a wire at the limit. The box overhangs
+     the gutter by 14px so the scroller never clips the bead or the major ticks' left reach; the
+     spine itself stays exactly on x64. */
+  .sf-sandbox-tiles::before {
+    content: ""; position: absolute; left: 14px; top: 14px; bottom: 14px; width: 2px;
+    background: rgb(236 230 216 / .4);
+  }
+  .sf-sandbox-tile {
+    position: relative; text-align: left; cursor: pointer; border: none; border-radius: 0;
+    background: transparent; color: rgb(236 230 216); padding: 20px 8px 12px 0;
+    font-family: var(--sf-body-face);
+  }
+  .sf-sandbox-tile::before {
+    content: ""; position: absolute; left: -28px; top: 50%; width: 12px; height: 2px;
+    transform: translateY(-50%); background: rgb(236 230 216 / .3);
+  }
+  .sf-sandbox-tile:hover::before, .sf-sandbox-tile:focus::before {
+    background: rgb(236 230 216 / .75);
+  }
+  /* F2/F6: the armed row wears a 7px bone bead on the title centerline plus a 24px amber arm on
+     the title cap line — bead+arm, the Hand of this screen. F7: 8px air above each title, so the
+     title belongs to its body. */
+  .sf-sandbox-tile[aria-pressed="true"]::before {
+    width: 7px; height: 7px; border-radius: 50%; left: -31px; top: 25px; transform: none;
+    background: rgb(236 230 216); box-shadow: 0 0 8px rgb(236 230 216 / .5);
+  }
+  .sf-sandbox-tile[aria-pressed="true"]::after {
+    content: ""; position: absolute; left: -28px; top: 16px; height: 24px; width: 3px;
+    background: rgb(242 185 80); box-shadow: 0 0 12px rgb(242 185 80 / .5);
+  }
+  .sf-sandbox-tile:focus { outline: none; }
+  /* F9: focus is a vertical bone light segment on the title, never a box. Scripted focus matches
+     :focus even where :focus-visible does not, so the walk can prove it. */
+  .sf-sandbox-tile:focus:not([aria-pressed="true"])::after {
+    content: ""; position: absolute; left: -28px; top: 16px; height: 24px; width: 3px;
+    background: rgb(236 230 216); box-shadow: 0 0 12px rgb(236 230 216 / .5);
   }
   .sf-sandbox-tile__title {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px;
-    letter-spacing: 0; margin-bottom: var(--sp-1); color: var(--sf-paper);
+    font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 112%;
+    font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+    margin-bottom: 4px; color: rgb(236 230 216);
   }
-  .sf-sandbox-tile__desc { font-size: 13px; color: var(--sf-calm); line-height: 1.4; }
+  .sf-sandbox-tile__desc {
+    font-family: "Instrument Sans", "Segoe UI", sans-serif; font-size: 14px; line-height: 1.45;
+    text-transform: none; letter-spacing: 0; color: var(--sf-calm);
+  }
+  /* F4: the rail foot sits below the fold-limited ladder — a counter tick with the setup count
+     and a bone position bead riding a short scale, so the fold is never a silent cut. The bead
+     follows the chosen row. */
+  .sf-sandbox-railfoot {
+    position: relative; display: flex; align-items: center; gap: 12px;
+    margin: 12px 0 0; padding-left: 26px;
+    font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 112%;
+    font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--sf-calm);
+  }
+  .sf-sandbox-railfoot::before {
+    content: ""; position: absolute; left: -12px; top: 50%; width: 38px; height: 2px;
+    transform: translateY(-50%); background: rgb(236 230 216 / .4);
+  }
+  .sf-sandbox-railfoot__track {
+    position: relative; width: 64px; height: 2px; flex: none;
+    background: rgb(236 230 216 / .3);
+  }
+  .sf-sandbox-railfoot__bead {
+    position: absolute; top: 50%; left: 0; width: 5px; height: 5px; border-radius: 50%;
+    background: rgb(236 230 216); transform: translate(-50%, -50%);
+  }
   .sf-sandbox-finetune { display: grid; grid-template-columns: max-content 1fr; gap: var(--sp-2) var(--sp-3); align-items: center; }
   .sf-sandbox-finetune label { color: var(--sf-calm); font-size: 12px; }
   .sf-sandbox-finetune select, .sf-sandbox-finetune input[type=number] {
@@ -106,7 +216,39 @@ function injectStyle() {
     display: inline-flex; align-items: center; gap: var(--sp-2); cursor: pointer;
     color: var(--sf-paper); font-size: 13px;
   }
-  .sf-sandbox-launch { margin-top: var(--sp-4); }
+  /* F5: the one Lamp Key — amber field, dark ink, one 45° cut, pinned to the gutter.
+     The doubled class outranks the kit's k-word chrome; the goal token seasons the hover.
+     F1: docked in the reserved y985-1055 zone the ladder can never enter. */
+  .sf-sandbox-launch.sf-sandbox-launch {
+    position: fixed; left: var(--dp-margin); bottom: 25px; z-index: 5;
+    width: 200px; min-height: 56px; margin: 0; padding: 0 20px;
+    display: inline-flex; align-items: center; justify-content: center; text-align: center;
+    background: rgb(242 185 80); color: rgb(5 7 10);
+    font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 112%;
+    font-weight: 800; font-size: 15px; letter-spacing: .08em; text-transform: uppercase;
+    text-decoration: none; border: none; border-radius: 0;
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+    cursor: pointer;
+  }
+  .sf-sandbox-launch.sf-sandbox-launch:hover {
+    background: color-mix(in srgb, rgb(242 185 80) 82%, var(--sf-goal));
+  }
+  .sf-sandbox-launch.sf-sandbox-launch:focus-visible {
+    outline: 2px solid rgb(236 230 216); outline-offset: 3px;
+  }
+  .sf-sandbox-launch.sf-sandbox-launch:active { transform: translateY(1px); }
+  /* The kit k-word underline would surface on hover/focus: the Key carries no chrome. */
+  .sf-sandbox-launch.sf-sandbox-launch::after { content: none; }
+  .sf-sandbox-launch.sf-sandbox-launch:disabled { opacity: .45; cursor: not-allowed; }
+  /* The lab status chip rests bone like the crest tick — no mint anywhere. Danger keeps foe. */
+  .sf-sandbox .sf-chip--good {
+    color: rgb(236 230 216); background: transparent;
+    border-color: rgb(236 230 216 / .25);
+  }
+  .sf-sandbox .sf-chip--good .sf-chip__dot { background: rgb(236 230 216); box-shadow: none; }
+  /* The apron is the grid pinned foot: its rows start on x64 with the rail and stop above
+     the pinned Key, so the last row (Back) is never under it. */
+  .sf-sandbox .sf-apron { padding: 0 40px 40px 0; }
   .sf-sandbox-livehint {
     font-size: 12px; color: var(--sf-calm);
     font-style: italic; margin-bottom: var(--sp-2);
@@ -120,7 +262,14 @@ function injectStyle() {
     padding: var(--sp-1) var(--sp-2); font-family: var(--sf-data-face); font-size: 13px; min-width: 0;
   }
   .sf-sandbox-picker button:disabled { opacity: .45; cursor: not-allowed; }
-  .sf-sandbox-lab { margin: 0 0 var(--sp-2); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--sf-edge); }
+  .sf-sandbox-lab {
+    position: relative; margin: 0 0 var(--sp-2); padding: 4px 0 0 28px;
+    border: none; background: transparent;
+  }
+  .sf-sandbox-lab::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px;
+    background: rgb(236 230 216 / .18);
+  }
   .sf-sandbox-lab-form {
     display: grid; grid-template-columns: max-content 1fr; gap: var(--sp-2) var(--sp-3); align-items: center;
   }
@@ -147,19 +296,35 @@ function injectStyle() {
     display: flex; flex-wrap: wrap; gap: var(--sp-2); grid-column: 1 / -1; margin-top: var(--sp-1);
   }
   .sf-sandbox-lab-actions button:disabled { opacity: .45; cursor: not-allowed; }
+  /* F9: at narrow widths the plate yields to the art — the ladder is already single-column,
+     so the plate narrows and the ship clears it. */
+  @media (max-width: 1366px) {
+    .screen.sf-sandbox { max-width: 600px; }
+  }
   @media (max-width: 560px) {
-    .sf-sandbox-tiles { grid-template-columns: 1fr; }
     .sf-sandbox-finetune { grid-template-columns: 1fr; }
     .sf-sandbox-picker { grid-template-columns: 1fr; }
     .sf-sandbox-lab-form { grid-template-columns: 1fr; }
   }
   @media (forced-colors: active) {
     .sf-sandbox-tile, .sf-sandbox-lab {
-      background: Canvas; color: CanvasText; border-color: CanvasText;
+      background: Canvas; color: CanvasText; border: 1px solid CanvasText;
     }
+    .sf-sandbox-launch.sf-sandbox-launch {
+      background: ButtonFace; color: ButtonText; clip-path: none; border: 2px solid ButtonText;
+    }
+    .sf-sandbox-tiles::before, .sf-sandbox-tile::before, .sf-sandbox-lab::before,
+    .sf-sandbox .sf-section-h--rail::before, .sf-sandbox-railfoot::before,
+    .sf-sandbox-railfoot__track { background: CanvasText; }
+    .sf-sandbox-tile[aria-pressed="true"]::before, .sf-sandbox-tile[aria-pressed="true"]::after,
+    .sf-sandbox-tile:focus:not([aria-pressed="true"])::after,
+    .sf-sandbox-railfoot__bead { background: Highlight; box-shadow: none; }
   }
   @media (prefers-reduced-motion: reduce) {
     .sf-sandbox, .sf-sandbox * { animation: none !important; transition: none !important; }
+  }
+  html.sf-reduce-motion .sf-sandbox, html.sf-reduce-motion .sf-sandbox * {
+    animation: none !important; transition: none !important;
   }
   `;
   document.head.appendChild(s);
@@ -298,7 +463,7 @@ export const sandboxScreen = {
     rootEl.dataset.stamp = 'SANDBOX / TEST HARNESS';
 
     const crest = el('div', 'sf-crest');
-    crest.appendChild(el('h1', null, 'Sandbox'));
+    crest.appendChild(el('h1', 'sf-sandbox-title', 'Sandbox'));
     const nowEl = el('div', 'sf-sandbox-now', 'Ready');
     nowEl.setAttribute('role', 'status');
     crest.appendChild(nowEl);
@@ -310,24 +475,73 @@ export const sandboxScreen = {
     const apron = el('div', 'sf-apron');
 
     // --- Quick-setup tiles ---
-    const cardsHeader = el('div', 'sf-section-h', 'QUICK SETUPS');
-    stage.appendChild(cardsHeader);
+    // F3: the ladder carries its own group rhythm — both headers ride INSIDE the rail as major
+    // ticks, so the spine runs through them. Plain presets group first, staged scenarios second.
     const cardGrid = el('div', 'sf-sandbox-tiles');
+    cardGrid.setAttribute('role', 'group');
+    cardGrid.setAttribute('aria-label', 'Scenarios');
     stage.appendChild(cardGrid);
+    const groupHead = (text) => el('div', 'sf-section-h sf-section-h--rail sf-sandbox-tiles__group', text);
     let readOverrides = () => ({});
-    for (const preset of SCENARIO_PRESETS) {
+    // F1/F5: the ladder holds one chosen scenario (the bead + amber arm). A tile click chooses
+    // the row and fires it — the playtest probe's contract — while the Launch key fires whatever
+    // row is chosen. Arrow keys walk the choice without firing.
+    let chosenScenario = 0;
+    let launchBtn = null;
+    let railBead = null;
+    const tileBtns = [];
+    const chooseScenario = (index, { focus = false } = {}) => {
+      const next = Math.max(0, Math.min(SCENARIO_PRESETS.length - 1, index));
+      chosenScenario = next;
+      if (railBead) {
+        const span = Math.max(1, SCENARIO_PRESETS.length - 1);
+        railBead.style.left = ((next / span) * 100).toFixed(1) + '%';
+      }
+      tileBtns.forEach((btn, i) => btn.setAttribute('aria-pressed', i === next ? 'true' : 'false'));
+      const preset = SCENARIO_PRESETS[next];
+      if (launchBtn && preset) {
+        launchBtn.setAttribute('aria-label', 'Launch with these settings: ' + preset.title);
+      }
+      if (focus && tileBtns[next] && typeof tileBtns[next].focus === 'function') tileBtns[next].focus();
+    };
+    cardGrid.appendChild(groupHead('QUICK SETUPS'));
+    let stagedHeadAdded = false;
+    SCENARIO_PRESETS.forEach((preset, presetIndex) => {
+      if (!stagedHeadAdded && preset.config && preset.config.scenarioId) {
+        cardGrid.appendChild(groupHead('STAGED SCENARIOS'));
+        stagedHeadAdded = true;
+      }
       const tile = el('button', 'sf-sandbox-tile');
       tile.type = 'button';
+      tile.setAttribute('aria-pressed', 'false');
       tile.appendChild(el('div', 'sf-sandbox-tile__title', preset.title));
       tile.appendChild(el('div', 'sf-sandbox-tile__desc', preset.description));
       tile.addEventListener('click', () => {
+        chooseScenario(presetIndex);
         requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(preset.config, readOverrides()));
       });
+      tileBtns.push(tile);
       cardGrid.appendChild(tile);
-    }
+    });
+    // F4: the rail foot lands right below the fold-limited ladder — count plus position bead.
+    const railFoot = el('div', 'sf-sandbox-railfoot');
+    railFoot.setAttribute('aria-hidden', 'true');
+    railFoot.appendChild(el('span', 'sf-sandbox-railfoot__label', SCENARIO_PRESETS.length + ' SETUPS'));
+    const railTrack = el('div', 'sf-sandbox-railfoot__track');
+    railBead = el('div', 'sf-sandbox-railfoot__bead');
+    railTrack.appendChild(railBead);
+    railFoot.appendChild(railTrack);
+    stage.appendChild(railFoot);
+    chooseScenario(0);
+    cardGrid.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      chooseScenario(chosenScenario + (event.key === 'ArrowDown' ? 1 : -1), { focus: true });
+    });
 
     // --- Combat Lab ---
-    stage.appendChild(el('div', 'sf-section-h', COMBAT_LAB_SURFACE.title.toUpperCase()));
+    // F3: the lab header ticks on its own panel rail, the same grammar as the ladder groups.
+    stage.appendChild(el('div', 'sf-section-h sf-section-h--rail', COMBAT_LAB_SURFACE.title.toUpperCase()));
     const labPanel = panel({ cut: true });
     labPanel.classList.add('sf-sandbox-lab');
     const labForm = el('div', 'sf-sandbox-lab-form');
@@ -425,7 +639,8 @@ export const sandboxScreen = {
     labForm.appendChild(digestLine);
 
     const labActions = el('div', 'sf-sandbox-lab-actions');
-    const labLaunch = el('button', 'k-word k-word--emph k-word--primary', COMBAT_LAB_SURFACE.launchLabel);
+    // Bone word, not the primary: this screen already has its one amber verb, the Launch Lamp Key.
+    const labLaunch = el('button', 'k-word k-word--emph', COMBAT_LAB_SURFACE.launchLabel);
     labLaunch.type = 'button';
     const labRelaunch = el('button', 'k-word k-word--emph', COMBAT_LAB_SURFACE.relaunchLabel);
     labRelaunch.type = 'button';
@@ -669,17 +884,23 @@ export const sandboxScreen = {
     };
 
     // --- Launch ---
-    const launch = el('button', 'k-word k-word--emph k-word--primary sf-sandbox-launch', 'Launch with these settings');
+    // F5: the Lamp Key fires the ladder's chosen scenario. The fine-tune panel overrides it only
+    // where the tester moved a control off its default — so a zero-grant room like Sling Practice
+    // stays zero-grant until someone actually edits the form.
+    const launch = el('button', 'k-word k-word--emph k-word--primary sf-sandbox-launch', 'Launch');
     launch.type = 'button';
+    launchBtn = launch;
+    chooseScenario(chosenScenario);
     launch.addEventListener('click', () => {
-      const config = {
-        shipId: shipSel.value || undefined,
-        sectorId: sectorSel.value || undefined,
-        credits: Math.max(0, parseInt(creditsInput.value, 10) || 0),
-        unlockAllTech: checkboxes.unlockAllTech.checked,
-        grantAllModules: checkboxes.grantAllModules.checked,
-        maxReputation: checkboxes.maxReputation.checked,
-      };
+      const preset = SCENARIO_PRESETS[chosenScenario] || SCENARIO_PRESETS[0];
+      const config = { ...preset.config };
+      if (shipSel.value && shipSel.value !== 'ship_kestrel') config.shipId = shipSel.value;
+      if (sectorSel.value && sectorSel.value !== 'sector_helios_prime') config.sectorId = sectorSel.value;
+      const credits = parseInt(creditsInput.value, 10);
+      if (Number.isFinite(credits) && credits !== 500000) config.credits = Math.max(0, credits);
+      if (!checkboxes.unlockAllTech.checked) config.unlockAllTech = false;
+      if (!checkboxes.grantAllModules.checked) config.grantAllModules = false;
+      if (checkboxes.maxReputation.checked) config.maxReputation = true;
       requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(config, readOverrides()));
     });
     apron.appendChild(launch);

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        37
+        79
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        38
+        80
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        39
+        81
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Gate_Aperture",
       "nodePath": [
         0,
-        40
+        82
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        41
+        83
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -243,8 +243,78 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5e468cb8fe355ad1f13b5745516f56ac591f47d03fdae0bed6ec6f37e417e7b0",
+  "contentHash": "077ffcfb75436461c3dcb87f746a62f6759bbd3fe91135b701b7a85df3f74c14",
   "dynamicGroups": [
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-blink-1p3-0p2-beacon-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-blink-1p3-0p2-beacon-dome"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-blink-1p9-0p4-towermasttip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-blink-1p9-0p4-towermasttip"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring0"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring1"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring10.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring10"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring11.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring11"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring2"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring3"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring4"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring5"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring6"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring7.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring7"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring8.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring8"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring9.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring9"
+    },
     {
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
@@ -256,6 +326,76 @@
       "nodeId": "sf.render.jump-ring.node.lod0-hook-nav-starboard"
     },
     {
+      "id": "sf.render.jump-ring.node.lod1-anim-blink-1p3-0p2-beacon-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-blink-1p3-0p2-beacon-dome"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-blink-1p9-0p4-towermasttip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-blink-1p9-0p4-towermasttip"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring0"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring1"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring10.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring10"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring11.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring11"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring2"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring3"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring4"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring5"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring6"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring7.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring7"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring8.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring8"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring9.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring9"
+    },
+    {
       "id": "sf.render.jump-ring.node.lod1-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.jump-ring.node.lod1-hook-nav-port"
@@ -264,6 +404,76 @@
       "id": "sf.render.jump-ring.node.lod1-hook-nav-starboard.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.jump-ring.node.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-blink-1p3-0p2-beacon-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-blink-1p3-0p2-beacon-dome"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-blink-1p9-0p4-towermasttip.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-blink-1p9-0p4-towermasttip"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring0"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring1"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring10.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring10"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring11.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring11"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring2"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring3"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring4"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring5"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring6"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring7.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring7"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring8.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring8"
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring9.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring9"
     },
     {
       "id": "sf.render.jump-ring.node.lod2-hook-nav-port.dynamic",
@@ -291,7 +501,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74111ee035d21106a18b7eddd3266ce33fecaab89e525c5c086c165a645ddcdd",
+      "geometryHash": "317be7f38ac3cff4d07a7725befbca46f82933d69bf7f74362818adaa0e46c28",
       "id": "sf.render.jump-ring.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -300,7 +510,357 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.jump-ring.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 762
+      "vertexCount": 768
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4959999918937683,
+          53.22001502666285,
+          0.4959999918937683
+        ],
+        "min": [
+          -0.4959999918937683,
+          52.76998665180395,
+          -0.4959999918937683
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a565b6e46b025e4b98275194e306677be75fa1dc71d78f95e6cb3084f592942a",
+      "id": "sf.render.jump-ring.node.lod0-anim-blink-1p3-0p2-beacon-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-blink-1p3-0p2-beacon-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          2.75,
+          56.67500839259011,
+          1.25
+        ],
+        "min": [
+          2.25,
+          56.32499160740989,
+          0.75
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e8d07c0507564d69193402800b0fcaf0c90f16242966afc14d75ea1ff82041d",
+      "id": "sf.render.jump-ring.node.lod0-anim-blink-1p9-0p4-towermasttip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-blink-1p9-0p4-towermasttip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          20.394826889038086,
+          -21.653763516623677
+        ],
+        "min": [
+          -0.4998295692869708,
+          8.957735061645508,
+          -28.934102312844097
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6448f9759c6fabc70090398288abc0b779902856a44983fff15d9965433bb5b",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing0",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring0",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          28.934102312844097,
+          -8.957735061645508
+        ],
+        "min": [
+          -0.4998295692869708,
+          21.653763516623677,
+          -20.394826889038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f6cf2e68edba75b7172bb2a0595e29d17d28df071cd5ece5292ea8c3e7de169",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing1",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring1",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -8.957735061645508,
+          -21.653763516623677
+        ],
+        "min": [
+          -0.4998295692869708,
+          -20.394826889038086,
+          -28.934102312844097
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "04b14f88e6109c75e73335d21aaed1f827f50ea9855affa0228e9b3e35cec86a",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring10.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing10",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring10",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          6.390670299530029,
+          -28.54773186180638
+        ],
+        "min": [
+          -0.5000664890894801,
+          -6.390670299530029,
+          -30.399772181772722
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "413b3b369c46fb04c08a74d742a0d648def65902e4b3e0ce27b38d36fa99e0f2",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring11.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing11",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring11",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          30.399772181772722,
+          6.390670299530029
+        ],
+        "min": [
+          -0.5000664890894801,
+          28.54773186180638,
+          -6.390670299530029
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "494af2243bc0073878c2a06370a8cf64a902c3a93ebdc7f0549af93fadf8e146",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing2",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring2",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          28.934102312844097,
+          20.394826889038086
+        ],
+        "min": [
+          -0.4998295692869708,
+          21.653763516623677,
+          8.957735061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "69594e5bb1d5d67d2f98fb554b41504d890f6f4a99acd6896457911d99d0dd62",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring3.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing3",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring3",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          20.394826889038086,
+          28.934102312844097
+        ],
+        "min": [
+          -0.4998295692869708,
+          8.957735061645508,
+          21.653763516623677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c807cff470fc1871dc1b58215ea015bafb5b265c5df60d2317fb12b9b315cb66",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring4.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing4",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring4",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          6.390670299530029,
+          30.399772181772722
+        ],
+        "min": [
+          -0.5000664890894801,
+          -6.390670299530029,
+          28.54773186180638
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3f1316f9de502525190d446771e25f262f37fb08e72f2f46858bcf69bb64927b",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring5.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing5",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring5",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -8.957735061645508,
+          28.934102312844097
+        ],
+        "min": [
+          -0.4998295692869708,
+          -20.394826889038086,
+          21.653763516623677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a8ba104b550f53dcce336c3cee9887c25c2a40f02d7d66ad003d978a6646fb64",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring6.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing6",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring6",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -21.653763516623677,
+          20.394826889038086
+        ],
+        "min": [
+          -0.4998295692869708,
+          -28.934102312844097,
+          8.957735061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c9ba90f4efc8935359eda6cb56bd2027f35b2a1ad5ee91bf63fe3ba07fb73a65",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring7.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing7",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring7",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          -28.54773186180638,
+          6.390670299530029
+        ],
+        "min": [
+          -0.5000664890894801,
+          -30.399772181772722,
+          -6.390670299530029
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "097c8b0d5a946b749f35c51c89e0ad8c57062af71e45502da02b7253f16ca7d3",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring8.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing8",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring8",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -21.653763516623677,
+          -8.957735061645508
+        ],
+        "min": [
+          -0.4998295692869708,
+          -28.934102312844097,
+          -20.394826889038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ab88ed85e713882aa14630c4ce38487e87add3816c5270709d75ef0d5e6a987",
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring9.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_spin_fore_0p3_SpinRing9",
+      "nodeId": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring9",
+      "primitiveIndex": 0,
+      "vertexCount": 32
     },
     {
       "bounds": {
@@ -316,41 +876,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c46b10a71b522303e74a7f241caa3ad2a9327ccb47aad8793707e228ec41ed3",
+      "geometryHash": "96a1036a5a7df6f5b6deb9c332bf93f91f7e94c51a1928b14c7cd29ef0601c87",
       "id": "sf.render.jump-ring.node.lod0-armor.primitive.0",
       "indexCount": 46416,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "996c22b0f3fb29c988e0c81cfb9dee2b80c179d6fdf9b571713fd840e7851c21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.jump-ring.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 16628
+      "vertexCount": 17204
     },
     {
       "bounds": {
         "max": [
           7.198599338531494,
-          53.21875,
+          36.85960388183594,
           48.375
         ],
         "min": [
           -7.198599338531494,
-          -36.85822677612305,
+          -36.85960388183594,
           -48.375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca5cf0efe482c01aab5d722743137dc5f87078a1ee537a326f45e6fdffe8cb15",
+      "geometryHash": "0c86cea462c3f6224b2cfeae9e1b8de9958a3069cb8fd820ec6bd722f777941a",
       "id": "sf.render.jump-ring.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 1332,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.jump-ring.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 704
+      "vertexCount": 576
     },
     {
       "bounds": {
@@ -366,7 +926,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "292cc6027e0ab4e54ad425ecc3d6589020293d415d03a683b2ba4c3d8a1c0997",
+      "geometryHash": "ed13ccf73575abad4ab641ef4b5b7768e0c48e2cae6457548bf4d629628da7e4",
       "id": "sf.render.jump-ring.node.lod0-canopy.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -380,27 +940,27 @@
     {
       "bounds": {
         "max": [
-          2.748734092962612,
-          56.67499923706055,
-          1.2509365754106092
+          0.3514114653590863,
+          0.5437559674743504,
+          0.30000001192092896
         ],
         "min": [
-          -0.3487340870021476,
-          -48.61000061035156,
-          -50.650934286592246
+          -0.3514114653590863,
+          -48.608756561136616,
+          -50.64999771118164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9cfc6224f2540f83c1ccc52223443ae87db76186bf895044c20fcb5043b18d79",
+      "geometryHash": "caba9c9ad4c0489681bf02dfaf6850f9cdba28f45b52fe6989439179ae9a1192",
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port.primitive.0",
-      "indexCount": 108,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.jump-ring.node.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -416,7 +976,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a75e4351288c02182f2b0a842a19779ddad8d23cd2fa9bcea6af83e606edfc1",
+      "geometryHash": "31dcafc3fc7d22b94fde418ff5188de818e464057dcda66550e68e7cd5e7fdae",
       "id": "sf.render.jump-ring.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -441,11 +1001,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87765a11429310aa13182b974a3ceabf9363f6294a08dee53669bd4947c837d4",
+      "geometryHash": "a802f211946f231ffa0e42a090802c495a50961b7f007f70f55293e62c685b4b",
       "id": "sf.render.jump-ring.node.lod0-hull.primitive.0",
       "indexCount": 37434,
       "indexed": true,
-      "materialHash": "6772075bab95eb13d91bf46e90011f6d82a31851b2d10119ed791378552e2d73",
+      "materialHash": "045941d2081a74f0fd1f1a1f2366e345433e46701eb805c414fd9b2d5d2417b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.jump-ring.node.lod0-hull",
@@ -466,7 +1026,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87268475c11260951af3ee2a4174f7bb56d9f89d806e090f91a464de9fccbf32",
+      "geometryHash": "9d37e84d1eea397577333254b922393d1e56d43b4c4017e412c808ad5940f4ad",
       "id": "sf.render.jump-ring.node.lod0-lights-cyan.primitive.0",
       "indexCount": 19884,
       "indexed": true,
@@ -475,32 +1035,32 @@
       "meshName": "LOD0_Lights_Cyan",
       "nodeId": "sf.render.jump-ring.node.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 8400
+      "vertexCount": 9552
     },
     {
       "bounds": {
         "max": [
-          9.154603004455566,
-          49.90311050415039,
-          49.55054473876953
+          9.310315132141113,
+          49.90207290649414,
+          49.437591552734375
         ],
         "min": [
-          -8.870925903320312,
-          -41.01995849609375,
-          -49.55054473876953
+          -8.867244720458984,
+          -41.0189208984375,
+          -49.437591552734375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "692c02dff0490c0d4ffaeb1ee93a38b30db6acf7e633d22e9fc0f7ece2af478a",
+      "geometryHash": "6fb2727991280f052f3f6123e56c8ced07477b0ac6600aae371acff9fb88dacd",
       "id": "sf.render.jump-ring.node.lod0-lights-warm.primitive.0",
-      "indexCount": 16944,
+      "indexCount": 17832,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.jump-ring.node.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 11030
+      "vertexCount": 11308
     },
     {
       "bounds": {
@@ -516,16 +1076,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3fde67c601601b530b49bde27b40f66a0b2bc947ae9b0cb96bc62d6acf96ecb",
+      "geometryHash": "2966bf1e8509338eac050cede1779b7b03b66a74625c0edf0489674d6b32f112",
       "id": "sf.render.jump-ring.node.lod0-livery.primitive.0",
       "indexCount": 4446,
       "indexed": true,
-      "materialHash": "6b7275d98401c9710ecb77cc943c2e07c9d990045a6907b47fdef15f54b7f285",
+      "materialHash": "ac09cd811d2bc98f620759536aa539d3c164f002a19bdc340346a0dfaef23280",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.jump-ring.node.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1754
+      "vertexCount": 1767
     },
     {
       "bounds": {
@@ -541,11 +1101,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6736b122d63b58ac3d33ab7a8945876d1d9c5ba3c29a1df1cd059baf5166e67e",
+      "geometryHash": "f9d7b5a4255513b91eb027485cf17721dc2afaf86fa3e61d5e2fee8c8aaaaec5",
       "id": "sf.render.jump-ring.node.lod0-mechanical.primitive.0",
       "indexCount": 13656,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "fb9c71da09e55beca8843c99418098eb3f10dc7d466ee151cd0ff551827dc176",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.jump-ring.node.lod0-mechanical",
@@ -555,27 +1115,27 @@
     {
       "bounds": {
         "max": [
-          8.80158519744873,
-          54.47191619873047,
-          49.36000061035156
+          8.800067901611328,
+          54.47269058227539,
+          49.55054473876953
         ],
         "min": [
-          -6.081584453582764,
-          -43.07912063598633,
-          -49.36000061035156
+          -6.080067157745361,
+          -43.07989501953125,
+          -49.55054473876953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4611a97933e9ecfb3b901a5b3e80905ad3363267251565fdffa84cab38500dec",
+      "geometryHash": "d9fa2a7ca5f2c74e089a7d1d4c3fef59862431cf4cf49948ad06583aac264d1a",
       "id": "sf.render.jump-ring.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 4344,
+      "indexCount": 4752,
       "indexed": true,
-      "materialHash": "bb6e55499f39cbb628b985a75976f8f21b6da97f05b5faea26217f5fcd5dd259",
+      "materialHash": "b8cb9cec5ddaa749fee2ade28a4d0b1b01d0d68fa6ec7be1bcfba98eaa4d20d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.jump-ring.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2354
+      "vertexCount": 2492
     },
     {
       "bounds": {
@@ -591,11 +1151,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "04ab60ae0ff1a2184483f524ffa385d0601f2309eaa6ac6e4f79e70a1c2b6f9d",
+      "geometryHash": "9216ab7390b8b6094a9219eca567320a7649b9a01e1cc164c8bf226e071ea2da",
       "id": "sf.render.jump-ring.node.lod0-warning.primitive.0",
       "indexCount": 2724,
       "indexed": true,
-      "materialHash": "9d2cb52aedd6f7952845a38b03c5e21d851ddad63c7f30c49d67ef11448e6383",
+      "materialHash": "0a9021d03a9df6d3bf23e092032e2abd737f86ee5f4b807c3ca0aca04535a27e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.jump-ring.node.lod0-warning",
@@ -605,22 +1165,372 @@
     {
       "bounds": {
         "max": [
-          9.499424934387207,
+          0.49640020728111267,
+          53.22001362124146,
+          0.496592178940773
+        ],
+        "min": [
+          -0.496946781873703,
+          52.7705867858821,
+          -0.49675481021404266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ded4170d18068bb590db4ef9580808d127e2f060f1ddbe48d279f118490b8122",
+      "id": "sf.render.jump-ring.node.lod1-anim-blink-1p3-0p2-beacon-dome.primitive.0",
+      "indexCount": 186,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-blink-1p3-0p2-beacon-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          2.75,
+          56.67500839259011,
+          1.25
+        ],
+        "min": [
+          2.25,
+          56.32499160740989,
+          0.75
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "751c5fb68311724bd823351eb1522ab255ff44518dfaebcab2c4a5bd392596b6",
+      "id": "sf.render.jump-ring.node.lod1-anim-blink-1p9-0p4-towermasttip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-blink-1p9-0p4-towermasttip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          20.394826889038086,
+          -21.653763516623677
+        ],
+        "min": [
+          -0.4998295692869708,
+          8.957735061645508,
+          -28.934102312844097
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bf16a8e63cc27dcc6ed0e9e53135ed52172856008e96ec21ac22febc55bc19e",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing0",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring0",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          28.934102312844097,
+          -8.957735061645508
+        ],
+        "min": [
+          -0.4998295692869708,
+          21.653763516623677,
+          -20.394826889038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab23736910f40c7c940b017e11a2b4a92be5ece47085278c55fe8a16ff1a4d14",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing1",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring1",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -8.957735061645508,
+          -21.653763516623677
+        ],
+        "min": [
+          -0.4998295692869708,
+          -20.394826889038086,
+          -28.934102312844097
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "878705d69326e6c446ececca63d2a7abb22c3e61134abd42c39b5a52805fd4bb",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring10.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing10",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring10",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          6.390670299530029,
+          -28.54773186180638
+        ],
+        "min": [
+          -0.5000664890894801,
+          -6.390670299530029,
+          -30.399772181772722
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "07eeb8fce61820d771dd55f97333a076d7dcfc1c38c4affaf15933ba5fb80a3b",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring11.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing11",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring11",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          30.399772181772722,
+          6.390670299530029
+        ],
+        "min": [
+          -0.5000664890894801,
+          28.54773186180638,
+          -6.390670299530029
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2272a9c142419522f053dad503a6789cfc98f428756f58ab3ddf42551dc4df34",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing2",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring2",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          28.934102312844097,
+          20.394826889038086
+        ],
+        "min": [
+          -0.4998295692869708,
+          21.653763516623677,
+          8.957735061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac6708407a7326677b05e71c7582159d5085f04d34ab3eb8be283ac8557d23d9",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring3.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing3",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring3",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          20.394826889038086,
+          28.934102312844097
+        ],
+        "min": [
+          -0.4998295692869708,
+          8.957735061645508,
+          21.653763516623677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "947c1f1353f4b85ce3be7506b5c5c729318841a42e795baaaa7c2fa16aa4c052",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring4.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing4",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring4",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          6.390670299530029,
+          30.399772181772722
+        ],
+        "min": [
+          -0.5000664890894801,
+          -6.390670299530029,
+          28.54773186180638
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18bb0f46f96a6588337c9260c23b1c7dfdb6d33682edb86eacb8b675414abd20",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring5.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing5",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring5",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -8.957735061645508,
+          28.934102312844097
+        ],
+        "min": [
+          -0.4998295692869708,
+          -20.394826889038086,
+          21.653763516623677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9953a707cecb352ebeb52b69ae8db715e22c83c81c163bad35d5dda33e4a89c1",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring6.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing6",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring6",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -21.653763516623677,
+          20.394826889038086
+        ],
+        "min": [
+          -0.4998295692869708,
+          -28.934102312844097,
+          8.957735061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b222a131229c267f4cec5838c0bb52b930fb0223adc1adda857438028fe60951",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring7.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing7",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring7",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          -28.54773186180638,
+          6.390670299530029
+        ],
+        "min": [
+          -0.5000664890894801,
+          -30.399772181772722,
+          -6.390670299530029
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c1866938f9dbb5b697e929ea3527336d591380117afdf018fa394b079e455ba",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring8.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing8",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring8",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -21.653763516623677,
+          -8.957735061645508
+        ],
+        "min": [
+          -0.4998295692869708,
+          -28.934102312844097,
+          -20.394826889038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f6f6719e34c662961653418723dd153ae0e8c34cb9a599a611a9f5e2fb91e9d",
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring9.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_spin_fore_0p3_SpinRing9",
+      "nodeId": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring9",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          9.499393463134766,
           52.48189926147461,
           50.19990921020508
         ],
         "min": [
-          -9.499361038208008,
+          -9.499393463134766,
           -47.99150848388672,
           -50.19990921020508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19628cc8a894b7aea86ad803c944bef390e52af0ab935aa9e0d6d4b9047e16f1",
+      "geometryHash": "faa48e41a2d032a203c47edd1a77fe13ae324225d5d31b5bf1199ed74e4b1387",
       "id": "sf.render.jump-ring.node.lod1-armor.primitive.0",
       "indexCount": 15096,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "996c22b0f3fb29c988e0c81cfb9dee2b80c179d6fdf9b571713fd840e7851c21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.jump-ring.node.lod1-armor",
@@ -631,76 +1541,76 @@
       "bounds": {
         "max": [
           7.198599338531494,
-          53.21625518798828,
+          36.85960388183594,
           48.375
         ],
         "min": [
           -7.198599338531494,
-          -36.86072540283203,
+          -36.85960388183594,
           -48.375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6ecc6e4792c42fd93f5cbdcc95ae4810408e0f3584f348b52827457a5b27239",
+      "geometryHash": "d8ed396050fc6cd38a98ed20c4d4a952ad3c4e7a6c1f89a8cfe70677e0635b72",
       "id": "sf.render.jump-ring.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 960,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.jump-ring.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 618
+      "vertexCount": 576
     },
     {
       "bounds": {
         "max": [
-          -5.995967388153076,
-          49.620758056640625,
-          -3.998990297317505
+          8.796637535095215,
+          49.62091827392578,
+          6.99795389175415
         ],
         "min": [
-          -8.79672622680664,
-          48.006019592285156,
-          -6.9974045753479
+          -8.796638488769531,
+          48.005859375,
+          -6.99795389175415
         ]
       },
       "drawMode": 4,
-      "geometryHash": "725c7f2340834d4a81223f19ae1638027fc4e8f83c08098cccd1a5bfa4af1fab",
+      "geometryHash": "e625c8cd0742a3993a229de586da531b72e7b638b170ec55012a7bdb9bff196f",
       "id": "sf.render.jump-ring.node.lod1-canopy.primitive.0",
-      "indexCount": 3,
+      "indexCount": 6,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_CANOPY",
       "nodeId": "sf.render.jump-ring.node.lod1-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 3
+      "vertexCount": 6
     },
     {
       "bounds": {
         "max": [
-          2.748734092962612,
-          56.67499923706055,
-          1.2509365754106092
+          0.3514114653590863,
+          0.5437559674743504,
+          0.30000001192092896
         ],
         "min": [
-          -0.3487340870021476,
-          -48.61000061035156,
-          -50.650934286592246
+          -0.3514114653590863,
+          -48.608756561136616,
+          -50.64999771118164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7fcefee237da94620d3874e7765f58a58fa5b6b4d61a4a95926dafac38b9c04",
+      "geometryHash": "914163f3ce717611d2652a56710c7834736a145b29810afbab88b17a41bc1c5e",
       "id": "sf.render.jump-ring.node.lod1-hook-nav-port.primitive.0",
-      "indexCount": 108,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_NAV_PORT",
       "nodeId": "sf.render.jump-ring.node.lod1-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -716,7 +1626,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41ab55c252b96f9b6a28253f886f84f208a4f77643031ca3ac2a47df501d7f55",
+      "geometryHash": "f43c4ce95f84aa854235f9bbcaf997e045c5b2f092521fb2b7b5fe157267d668",
       "id": "sf.render.jump-ring.node.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -730,27 +1640,27 @@
     {
       "bounds": {
         "max": [
-          9.491311073303223,
+          9.491296768188477,
           54.63324737548828,
           50.193538665771484
         ],
         "min": [
-          -9.491296768188477,
+          -9.491312026977539,
           -41.11005401611328,
-          -50.194313049316406
+          -50.19431686401367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c8178668cd643a8060deded8f4dc67c93c1ca416cf9eba6a512441115b7d80c",
+      "geometryHash": "15d75b052ea3d146027d48f605989527e67b27210562a98cf47dbb85bf63361e",
       "id": "sf.render.jump-ring.node.lod1-hull.primitive.0",
-      "indexCount": 8103,
+      "indexCount": 8100,
       "indexed": true,
-      "materialHash": "6772075bab95eb13d91bf46e90011f6d82a31851b2d10119ed791378552e2d73",
+      "materialHash": "045941d2081a74f0fd1f1a1f2366e345433e46701eb805c414fd9b2d5d2417b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.jump-ring.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3178
+      "vertexCount": 3174
     },
     {
       "bounds": {
@@ -766,7 +1676,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff18a6e9e3796706243458b9eb9c53a69f585fbb982311f42961b8ff8dbda33e",
+      "geometryHash": "855cdc3c9c332a68bb6c1a3e29860d44077a8407eae2f6762c0e2fbe199d717d",
       "id": "sf.render.jump-ring.node.lod1-lights-cyan.primitive.0",
       "indexCount": 14628,
       "indexed": true,
@@ -780,27 +1690,27 @@
     {
       "bounds": {
         "max": [
-          9.153529167175293,
-          49.903194427490234,
-          49.550506591796875
+          9.310275077819824,
+          49.9015998840332,
+          49.443145751953125
         ],
         "min": [
-          -8.835740089416504,
-          -41.02003860473633,
-          -49.55076217651367
+          -8.833293914794922,
+          -41.0184440612793,
+          -49.44413375854492
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87e4730adc436a088284623c00ce1018dc1dc6481592cb4b2a4f01c380f9eecc",
+      "geometryHash": "fe1d7e8a33ecd1394868c2c2f48dd6273eae4513e7f1f80656f122e5158463f1",
       "id": "sf.render.jump-ring.node.lod1-lights-warm.primitive.0",
-      "indexCount": 13272,
+      "indexCount": 13626,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.jump-ring.node.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 9296
+      "vertexCount": 9443
     },
     {
       "bounds": {
@@ -816,16 +1726,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8cf998515b07a1ab7ba3a91f1e1facb4b7f8ccf994a83eea87dfbc173b61114",
+      "geometryHash": "a28510c6575b741b4f0611da35439ff886196ee90430111b73196683803c0c34",
       "id": "sf.render.jump-ring.node.lod1-livery.primitive.0",
       "indexCount": 1818,
       "indexed": true,
-      "materialHash": "6b7275d98401c9710ecb77cc943c2e07c9d990045a6907b47fdef15f54b7f285",
+      "materialHash": "ac09cd811d2bc98f620759536aa539d3c164f002a19bdc340346a0dfaef23280",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.jump-ring.node.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 825
+      "vertexCount": 824
     },
     {
       "bounds": {
@@ -841,11 +1751,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "683b235e07a29ffe1c9c3c1607a01fa4db8e2ec0ffb1a57f535642602c51ff67",
+      "geometryHash": "84bface5985fdb45b260accaa537681fd9ce640ad479c16c664d2b3e3ada037b",
       "id": "sf.render.jump-ring.node.lod1-mechanical.primitive.0",
       "indexCount": 1464,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "fb9c71da09e55beca8843c99418098eb3f10dc7d466ee151cd0ff551827dc176",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.jump-ring.node.lod1-mechanical",
@@ -855,27 +1765,27 @@
     {
       "bounds": {
         "max": [
-          8.80158519744873,
-          54.48080062866211,
-          49.36000061035156
+          8.800081253051758,
+          54.47563552856445,
+          49.550506591796875
         ],
         "min": [
-          -6.081584453582764,
-          -43.08229064941406,
-          -49.36000061035156
+          -6.080080986022949,
+          -43.077125549316406,
+          -49.55076217651367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57bb6339f0fe0d58a6b8537daa26bd6258b3433842f1dfc7c0a3769b13a32851",
+      "geometryHash": "91ddfbdf8c1fef38b312c83d234d59906d3111fb8625c561242a611175791a36",
       "id": "sf.render.jump-ring.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 2979,
+      "indexCount": 3075,
       "indexed": true,
-      "materialHash": "bb6e55499f39cbb628b985a75976f8f21b6da97f05b5faea26217f5fcd5dd259",
+      "materialHash": "b8cb9cec5ddaa749fee2ade28a4d0b1b01d0d68fa6ec7be1bcfba98eaa4d20d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.jump-ring.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2017
+      "vertexCount": 2053
     },
     {
       "bounds": {
@@ -891,11 +1801,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c88348218e0b38e781d59e8d49e77a1797b0484fae9558a7550c2ef1d016982",
+      "geometryHash": "88ad5311f178d62382d157f6dc1fc848e939c43b2fa507ddff368669c927a9c0",
       "id": "sf.render.jump-ring.node.lod1-warning.primitive.0",
       "indexCount": 633,
       "indexed": true,
-      "materialHash": "9d2cb52aedd6f7952845a38b03c5e21d851ddad63c7f30c49d67ef11448e6383",
+      "materialHash": "0a9021d03a9df6d3bf23e092032e2abd737f86ee5f4b807c3ca0aca04535a27e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.jump-ring.node.lod1-warning",
@@ -905,22 +1815,372 @@
     {
       "bounds": {
         "max": [
-          9.496543884277344,
+          0.4959999918937683,
+          53.22001502666285,
+          0.4959999918937683
+        ],
+        "min": [
+          -0.4959999918937683,
+          52.76998665180395,
+          -0.4959999918937683
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "404ae07528a36520412e54926e5ae4d2e261cc57bb6686cdb56d90e71a4852fb",
+      "id": "sf.render.jump-ring.node.lod2-anim-blink-1p3-0p2-beacon-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-blink-1p3-0p2-beacon-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          2.75,
+          56.67500839259011,
+          1.25
+        ],
+        "min": [
+          2.25,
+          56.32499160740989,
+          0.75
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "751c5fb68311724bd823351eb1522ab255ff44518dfaebcab2c4a5bd392596b6",
+      "id": "sf.render.jump-ring.node.lod2-anim-blink-1p9-0p4-towermasttip.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-blink-1p9-0p4-towermasttip",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          20.394826889038086,
+          -21.653763516623677
+        ],
+        "min": [
+          -0.4998295692869708,
+          8.957735061645508,
+          -28.934102312844097
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bf16a8e63cc27dcc6ed0e9e53135ed52172856008e96ec21ac22febc55bc19e",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing0",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring0",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          28.934102312844097,
+          -8.957735061645508
+        ],
+        "min": [
+          -0.4998295692869708,
+          21.653763516623677,
+          -20.394826889038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab23736910f40c7c940b017e11a2b4a92be5ece47085278c55fe8a16ff1a4d14",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing1",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring1",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -8.957735061645508,
+          -21.653763516623677
+        ],
+        "min": [
+          -0.4998295692869708,
+          -20.394826889038086,
+          -28.934102312844097
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "878705d69326e6c446ececca63d2a7abb22c3e61134abd42c39b5a52805fd4bb",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring10.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing10",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring10",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          6.390670299530029,
+          -28.54773186180638
+        ],
+        "min": [
+          -0.5000664890894801,
+          -6.390670299530029,
+          -30.399772181772722
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "07eeb8fce61820d771dd55f97333a076d7dcfc1c38c4affaf15933ba5fb80a3b",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring11.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing11",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring11",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          30.399772181772722,
+          6.390670299530029
+        ],
+        "min": [
+          -0.5000664890894801,
+          28.54773186180638,
+          -6.390670299530029
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2272a9c142419522f053dad503a6789cfc98f428756f58ab3ddf42551dc4df34",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing2",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring2",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          28.934102312844097,
+          20.394826889038086
+        ],
+        "min": [
+          -0.4998295692869708,
+          21.653763516623677,
+          8.957735061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac6708407a7326677b05e71c7582159d5085f04d34ab3eb8be283ac8557d23d9",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring3.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing3",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring3",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          20.394826889038086,
+          28.934102312844097
+        ],
+        "min": [
+          -0.4998295692869708,
+          8.957735061645508,
+          21.653763516623677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "947c1f1353f4b85ce3be7506b5c5c729318841a42e795baaaa7c2fa16aa4c052",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring4.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing4",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring4",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          6.390670299530029,
+          30.399772181772722
+        ],
+        "min": [
+          -0.5000664890894801,
+          -6.390670299530029,
+          28.54773186180638
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18bb0f46f96a6588337c9260c23b1c7dfdb6d33682edb86eacb8b675414abd20",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring5.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing5",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring5",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -8.957735061645508,
+          28.934102312844097
+        ],
+        "min": [
+          -0.4998295692869708,
+          -20.394826889038086,
+          21.653763516623677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9953a707cecb352ebeb52b69ae8db715e22c83c81c163bad35d5dda33e4a89c1",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring6.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing6",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring6",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -21.653763516623677,
+          20.394826889038086
+        ],
+        "min": [
+          -0.4998295692869708,
+          -28.934102312844097,
+          8.957735061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b222a131229c267f4cec5838c0bb52b930fb0223adc1adda857438028fe60951",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring7.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing7",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring7",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5000664890894801,
+          -28.54773186180638,
+          6.390670299530029
+        ],
+        "min": [
+          -0.5000664890894801,
+          -30.399772181772722,
+          -6.390670299530029
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c1866938f9dbb5b697e929ea3527336d591380117afdf018fa394b079e455ba",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring8.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing8",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring8",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4998295692869708,
+          -21.653763516623677,
+          -8.957735061645508
+        ],
+        "min": [
+          -0.4998295692869708,
+          -28.934102312844097,
+          -20.394826889038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f6f6719e34c662961653418723dd153ae0e8c34cb9a599a611a9f5e2fb91e9d",
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring9.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_spin_fore_0p3_SpinRing9",
+      "nodeId": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring9",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          9.496511459350586,
           52.45142364501953,
           50.19694519042969
         ],
         "min": [
-          -9.496479988098145,
+          -9.496511459350586,
           -47.99150848388672,
           -50.19694519042969
         ]
       },
       "drawMode": 4,
-      "geometryHash": "337272761f88ac570f0a416d239875fa8567e065529f93786104aa1c3c2aad7b",
+      "geometryHash": "ea8047a0e2e3b66f8038ddb4a78547e1f5614afccea4b0f2f30aa260ee411886",
       "id": "sf.render.jump-ring.node.lod2-armor.primitive.0",
       "indexCount": 7887,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "996c22b0f3fb29c988e0c81cfb9dee2b80c179d6fdf9b571713fd840e7851c21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.jump-ring.node.lod2-armor",
@@ -930,77 +2190,77 @@
     {
       "bounds": {
         "max": [
-          0.4963279366493225,
-          53.23506164550781,
+          0.37194451689720154,
+          1.097716212272644,
           48.375
         ],
         "min": [
-          -6.377478122711182,
-          1.0614594221115112,
+          -6.371944427490234,
+          1.0622841119766235,
           -48.375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a800305cffd033f219cd23927f05744ec54df3267ba38d403ef1f6c457c8ff27",
+      "geometryHash": "dabff903dedc170284b91e4ca1499d002c1f2357298a13bda6dd06931f4fc24d",
       "id": "sf.render.jump-ring.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 66,
+      "indexCount": 24,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.jump-ring.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 50
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -5.995967388153076,
-          49.620758056640625,
-          -3.998990297317505
+          8.796637535095215,
+          49.62091827392578,
+          6.99795389175415
         ],
         "min": [
-          -8.79672622680664,
-          48.006019592285156,
-          -6.9974045753479
+          -8.796638488769531,
+          48.005859375,
+          -6.99795389175415
         ]
       },
       "drawMode": 4,
-      "geometryHash": "725c7f2340834d4a81223f19ae1638027fc4e8f83c08098cccd1a5bfa4af1fab",
+      "geometryHash": "e625c8cd0742a3993a229de586da531b72e7b638b170ec55012a7bdb9bff196f",
       "id": "sf.render.jump-ring.node.lod2-canopy.primitive.0",
-      "indexCount": 3,
+      "indexCount": 6,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_CANOPY",
       "nodeId": "sf.render.jump-ring.node.lod2-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 3
+      "vertexCount": 6
     },
     {
       "bounds": {
         "max": [
-          2.751369198100442,
-          56.55833435058594,
-          1.2517775186530606
+          0.35141149166975194,
+          0.38281870101361193,
+          0.30000001192092896
         ],
         "min": [
-          -0.3513691921399773,
-          -48.470001220703125,
-          -50.65177904453196
+          -0.35141149166975194,
+          -48.47115323160558,
+          -50.650001525878906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7195fe73d9aa502bc38da6e332dbfe73efc0ef84fdd9e2a452fa025a43cad982",
+      "geometryHash": "8dc2e6cb180990cb4556e8b6fe0f51fba1fa3d4f2e063dd491cd9f90363987e4",
       "id": "sf.render.jump-ring.node.lod2-hook-nav-port.primitive.0",
-      "indexCount": 36,
+      "indexCount": 24,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_NAV_PORT",
       "nodeId": "sf.render.jump-ring.node.lod2-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 16
     },
     {
       "bounds": {
@@ -1016,7 +2276,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5abc356eee595a1abb89c8320b8e8962fcd50ead6dc31ca3fa7dff9601b81fda",
+      "geometryHash": "eb3ea813b67bbaf9f14cf648fb15e98b4d2a060b5632ac31f0bced574b5c0902",
       "id": "sf.render.jump-ring.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 12,
       "indexed": true,
@@ -1030,22 +2290,22 @@
     {
       "bounds": {
         "max": [
-          9.491311073303223,
-          54.608646392822266,
+          9.491296768188477,
+          54.60865020751953,
           50.193538665771484
         ],
         "min": [
-          -9.491296768188477,
-          -41.08563232421875,
-          -50.194313049316406
+          -9.491312026977539,
+          -41.085636138916016,
+          -50.19431686401367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c63c31ea8821dfb6a4d75f14e61fa325ff9d102a7895ca151de4315a60edbaa2",
+      "geometryHash": "3a6c4d52ee733a192b9ebe53f890e1ffa6ebb8f3a09ee723b27e5593bf95b14a",
       "id": "sf.render.jump-ring.node.lod2-hull.primitive.0",
-      "indexCount": 2817,
+      "indexCount": 2814,
       "indexed": true,
-      "materialHash": "6772075bab95eb13d91bf46e90011f6d82a31851b2d10119ed791378552e2d73",
+      "materialHash": "045941d2081a74f0fd1f1a1f2366e345433e46701eb805c414fd9b2d5d2417b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.jump-ring.node.lod2-hull",
@@ -1066,7 +2326,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "326592e679e3b2bfd3662c358443c0c611bdd418f67f9eeb47bd6c43d4077f4f",
+      "geometryHash": "d9eff74732126eb629dc3a1c4caeeba2477296ed6daa36386a9986b469d6e0d1",
       "id": "sf.render.jump-ring.node.lod2-lights-cyan.primitive.0",
       "indexCount": 8079,
       "indexed": true,
@@ -1080,27 +2340,27 @@
     {
       "bounds": {
         "max": [
-          9.132562637329102,
-          49.89860916137695,
-          49.56362533569336
+          9.323576927185059,
+          49.89918899536133,
+          49.39360427856445
         ],
         "min": [
-          -8.837221145629883,
-          -40.975852966308594,
-          -49.563629150390625
+          -8.832847595214844,
+          -40.97643280029297,
+          -49.4322395324707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f093a94f8816908b4a06992bfefb32cf0352a4842bae3ea090019987252e095",
+      "geometryHash": "7f548cec2c173a23b634693269f50497e448277ca5c721af7796b7e88b4f2087",
       "id": "sf.render.jump-ring.node.lod2-lights-warm.primitive.0",
-      "indexCount": 3468,
+      "indexCount": 3651,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.jump-ring.node.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 2524
+      "vertexCount": 2659
     },
     {
       "bounds": {
@@ -1116,16 +2376,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46fff21c038ffd5d1d797abf0c3d62f3fc049ee291687562935f2ba4348451ea",
+      "geometryHash": "22a4e9bff30d1344ff83e4d14a96c4329d16220c4ef1ce4f013067cdbed18ae3",
       "id": "sf.render.jump-ring.node.lod2-livery.primitive.0",
       "indexCount": 864,
       "indexed": true,
-      "materialHash": "6b7275d98401c9710ecb77cc943c2e07c9d990045a6907b47fdef15f54b7f285",
+      "materialHash": "ac09cd811d2bc98f620759536aa539d3c164f002a19bdc340346a0dfaef23280",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.jump-ring.node.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 459
+      "vertexCount": 458
     },
     {
       "bounds": {
@@ -1141,11 +2401,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cccb91406a413617f4203234a9810576128ec673f6a7c48d8d5940396df46f7",
+      "geometryHash": "d8ba21cdf86b9e9666492fb1860bc1a9aabf2cad1f29efbe8c326f1f1d508156",
       "id": "sf.render.jump-ring.node.lod2-mechanical.primitive.0",
       "indexCount": 846,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "fb9c71da09e55beca8843c99418098eb3f10dc7d466ee151cd0ff551827dc176",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.jump-ring.node.lod2-mechanical",
@@ -1155,27 +2415,27 @@
     {
       "bounds": {
         "max": [
-          8.80158519744873,
-          54.450721740722656,
-          49.36000061035156
+          8.802032470703125,
+          54.4521484375,
+          49.56362533569336
         ],
         "min": [
-          -6.0815839767456055,
-          -43.040061950683594,
-          -49.36000061035156
+          -6.08203125,
+          -43.04148864746094,
+          -49.563629150390625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccd538d1a38755c9114460b9fab1de5012ec7647accadf8be39e4f1073e2e54e",
+      "geometryHash": "933972dc1e929e09c68cf4fb8c24a8a2097d1cb6bc6f99a730d0e2500d0fa0fd",
       "id": "sf.render.jump-ring.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 1404,
+      "indexCount": 1419,
       "indexed": true,
-      "materialHash": "bb6e55499f39cbb628b985a75976f8f21b6da97f05b5faea26217f5fcd5dd259",
+      "materialHash": "b8cb9cec5ddaa749fee2ade28a4d0b1b01d0d68fa6ec7be1bcfba98eaa4d20d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.jump-ring.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1017
+      "vertexCount": 1026
     },
     {
       "bounds": {
@@ -1191,11 +2451,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68f1859a0492753f911c8f627a4c65ff57872a4ff13edcbb7000bab1e96e5c71",
+      "geometryHash": "291b726d3a634596c99fd36e46e593846d0edba0ca8b0c525e943592cf096aee",
       "id": "sf.render.jump-ring.node.lod2-warning.primitive.0",
       "indexCount": 261,
       "indexed": true,
-      "materialHash": "9d2cb52aedd6f7952845a38b03c5e21d851ddad63c7f30c49d67ef11448e6383",
+      "materialHash": "0a9021d03a9df6d3bf23e092032e2abd737f86ee5f4b807c3ca0aca04535a27e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.jump-ring.node.lod2-warning",
@@ -1208,22 +2468,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
-      "id": "material:1ee807a3355d83d28693fa8c",
-      "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6772075bab95eb13d91bf46e90011f6d82a31851b2d10119ed791378552e2d73",
-      "id": "material:6772075bab95eb13d91bf46e",
+      "hash": "045941d2081a74f0fd1f1a1f2366e345433e46701eb805c414fd9b2d5d2417b7",
+      "id": "material:045941d2081a74f0fd1f1a1f",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1247,132 +2493,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_gate_jump_ring_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6b7275d98401c9710ecb77cc943c2e07c9d990045a6907b47fdef15f54b7f285",
-      "id": "material:6b7275d98401c9710ecb77cc",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
-      "id": "material:7d49b2b274926ec08348a5fd",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "id": "material:85add90c89b799ae69ad3e2f",
-      "name": "Material_Emissive_Cyan",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "9d2cb52aedd6f7952845a38b03c5e21d851ddad63c7f30c49d67ef11448e6383",
-      "id": "material:9d2cb52aedd6f7952845a38b",
+      "hash": "0a9021d03a9df6d3bf23e092032e2abd737f86ee5f4b807c3ca0aca04535a27e",
+      "id": "material:0a9021d03a9df6d3bf23e092",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1396,15 +2525,114 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_gate_jump_ring_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "bb6e55499f39cbb628b985a75976f8f21b6da97f05b5faea26217f5fcd5dd259",
-      "id": "material:bb6e55499f39cbb628b985a7",
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "996c22b0f3fb29c988e0c81cfb9dee2b80c179d6fdf9b571713fd840e7851c21",
+      "id": "material:996c22b0f3fb29c988e0c81c",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_gate_jump_ring_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ac09cd811d2bc98f620759536aa539d3c164f002a19bdc340346a0dfaef23280",
+      "id": "material:ac09cd811d2bc98f62075953",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_gate_jump_ring_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b8cb9cec5ddaa749fee2ade28a4d0b1b01d0d68fa6ec7be1bcfba98eaa4d20d1",
+      "id": "material:b8cb9cec5ddaa749fee2ade2",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1428,7 +2656,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_gate_jump_ring_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -1440,6 +2668,38 @@
       "name": "Material_Emissive_NavGreen",
       "pipelineKey": "opaque:front",
       "textures": []
+    },
+    {
+      "hash": "fb9c71da09e55beca8843c99418098eb3f10dc7d466ee151cd0ff551827dc176",
+      "id": "material:fb9c71da09e55beca8843c99",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_gate_jump_ring_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -1493,6 +2753,692 @@
       ]
     },
     {
+      "id": "sf.render.jump-ring.node.lod0-anim-blink-1p3-0p2-beacon-dome",
+      "localTransform": [
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        52.9950008392334,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodeName": "LOD0_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        52.9950008392334,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-blink-1p9-0p4-towermasttip",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.5,
+        56.5,
+        1,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodeName": "LOD0_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.5,
+        56.5,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring0",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        -25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing0",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing0",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        -25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring1",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        -14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing1",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing1",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        -14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring10",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        -25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing10",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing10",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        -25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring11",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        -29.47375202178955,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing11",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing11",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        -29.47375202178955,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring2",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        29.47375202178955,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing2",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing2",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        29.47375202178955,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring3",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing3",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing3",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring4",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing4",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing4",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring5",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        29.47375202178955,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing5",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing5",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        29.47375202178955,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring6",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing6",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing6",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring7",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing7",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing7",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring8",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        -29.47375202178955,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing8",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing8",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        -29.47375202178955,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring9",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        -14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_spin_fore_0p3_SpinRing9",
+      "nodeName": "LOD0_ANIM_spin_fore_0p3_SpinRing9",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        -14.676280975341797,
+        1
+      ]
+    },
+    {
       "id": "sf.render.jump-ring.node.lod0-armor",
       "localTransform": [
         1,
@@ -1517,7 +3463,7 @@
       "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        1
+        15
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -1566,7 +3512,7 @@
       "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
-        2
+        16
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -1615,7 +3561,7 @@
       "nodeName": "LOD0_CANOPY",
       "nodePath": [
         0,
-        3
+        17
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -1642,21 +3588,21 @@
     {
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port",
       "localTransform": [
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
-        1.2000000029802322,
-        4.032499313354492,
-        -24.69999885559082,
+        0,
+        -24.03250029683113,
+        -25.174998849630356,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1664,27 +3610,27 @@
       "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        4
+        18
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.jump-ring.body",
       "worldTransform": [
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
-        1.2000000029802322,
-        4.032499313354492,
-        -24.69999885559082,
+        0,
+        -24.03250029683113,
+        -25.174998849630356,
         1
       ]
     },
@@ -1713,7 +3659,7 @@
       "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        5
+        19
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
@@ -1762,7 +3708,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        6
+        20
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -1811,7 +3757,7 @@
       "nodeName": "LOD0_Lights_Cyan",
       "nodePath": [
         0,
-        7
+        21
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -1860,7 +3806,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        8
+        22
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -1909,7 +3855,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        9
+        23
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -1958,7 +3904,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        10
+        24
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2007,7 +3953,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        11
+        25
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2056,7 +4002,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        12
+        26
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2077,6 +4023,692 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-blink-1p3-0p2-beacon-dome",
+      "localTransform": [
+        0.49667349457740784,
+        0,
+        0,
+        0,
+        0,
+        0.49667349457740784,
+        0,
+        0,
+        0,
+        0,
+        0.49667349457740784,
+        0,
+        -0.000273287296295166,
+        52.99530020356178,
+        -0.00008131563663482666,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodeName": "LOD1_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        0.49667349457740784,
+        0,
+        0,
+        0,
+        0,
+        0.49667349457740784,
+        0,
+        0,
+        0,
+        0,
+        0.49667349457740784,
+        0,
+        -0.000273287296295166,
+        52.99530020356178,
+        -0.00008131563663482666,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-blink-1p9-0p4-towermasttip",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.5,
+        56.5,
+        1,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodeName": "LOD1_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.5,
+        56.5,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring0",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        -25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing0",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing0",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        -25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring1",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        -14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing1",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing1",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        -14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring10",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        -25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing10",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing10",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        -25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring11",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        -29.47375202178955,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing11",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing11",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        -29.47375202178955,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring2",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        29.47375202178955,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing2",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing2",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        29.47375202178955,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring3",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing3",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing3",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring4",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing4",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing4",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring5",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        29.47375202178955,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing5",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing5",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        29.47375202178955,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring6",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing6",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing6",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring7",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing7",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing7",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring8",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        -29.47375202178955,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing8",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing8",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        -29.47375202178955,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring9",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        -14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_spin_fore_0p3_SpinRing9",
+      "nodeName": "LOD1_ANIM_spin_fore_0p3_SpinRing9",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        -14.676280975341797,
         1
       ]
     },
@@ -2105,7 +4737,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        13
+        41
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2154,7 +4786,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        14
+        42
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2203,7 +4835,7 @@
       "nodeName": "LOD1_CANOPY",
       "nodePath": [
         0,
-        15
+        43
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2230,21 +4862,21 @@
     {
       "id": "sf.render.jump-ring.node.lod1-hook-nav-port",
       "localTransform": [
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
-        1.2000000029802322,
-        4.032499313354492,
-        -24.69999885559082,
+        0,
+        -24.03250029683113,
+        -25.174998849630356,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2252,27 +4884,27 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        16
+        44
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.jump-ring.body",
       "worldTransform": [
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
         0,
         0,
         0,
-        52.642499923706055,
+        25.474998861551285,
         0,
-        1.2000000029802322,
-        4.032499313354492,
-        -24.69999885559082,
+        0,
+        -24.03250029683113,
+        -25.174998849630356,
         1
       ]
     },
@@ -2301,7 +4933,7 @@
       "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        17
+        45
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
@@ -2350,7 +4982,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        18
+        46
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2399,7 +5031,7 @@
       "nodeName": "LOD1_Lights_Cyan",
       "nodePath": [
         0,
-        19
+        47
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2448,7 +5080,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        20
+        48
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2497,7 +5129,7 @@
       "nodeName": "LOD1_Livery",
       "nodePath": [
         0,
-        21
+        49
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2546,7 +5178,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        22
+        50
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2595,7 +5227,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        23
+        51
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2644,7 +5276,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        24
+        52
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2665,6 +5297,692 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-blink-1p3-0p2-beacon-dome",
+      "localTransform": [
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        52.9950008392334,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodeName": "LOD2_ANIM_blink_1p3_0p2_Beacon_Dome",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        0,
+        0,
+        0.4959999918937683,
+        0,
+        0,
+        52.9950008392334,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-blink-1p9-0p4-towermasttip",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.5,
+        56.5,
+        1,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodeName": "LOD2_ANIM_blink_1p9_0p4_TowerMastTip",
+      "nodePath": [
+        0,
+        54
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.5,
+        56.5,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring0",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        -25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing0",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing0",
+      "nodePath": [
+        0,
+        55
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        -25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring1",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        -14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing1",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing1",
+      "nodePath": [
+        0,
+        56
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        -14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring10",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        -25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing10",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing10",
+      "nodePath": [
+        0,
+        57
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        -25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring11",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        -29.47375202178955,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing11",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing11",
+      "nodePath": [
+        0,
+        58
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        -29.47375202178955,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring2",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        29.47375202178955,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing2",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing2",
+      "nodePath": [
+        0,
+        59
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        29.47375202178955,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring3",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing3",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing3",
+      "nodePath": [
+        0,
+        60
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        25.293932914733887,
+        14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring4",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing4",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing4",
+      "nodePath": [
+        0,
+        61
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        14.676280975341797,
+        25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring5",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        29.47375202178955,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing5",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing5",
+      "nodePath": [
+        0,
+        62
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        29.47375202178955,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring6",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        25.293932914733887,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing6",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing6",
+      "nodePath": [
+        0,
+        63
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -14.676280975341797,
+        25.293932914733887,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring7",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing7",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing7",
+      "nodePath": [
+        0,
+        64
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        14.676280975341797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring8",
+      "localTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        -29.47375202178955,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing8",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing8",
+      "nodePath": [
+        0,
+        65
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        0,
+        0,
+        6.390670299530029,
+        0,
+        0,
+        -29.47375202178955,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring9",
+      "localTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        -14.676280975341797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_spin_fore_0p3_SpinRing9",
+      "nodeName": "LOD2_ANIM_spin_fore_0p3_SpinRing9",
+      "nodePath": [
+        0,
+        66
+      ],
+      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.jump-ring.body",
+      "worldTransform": [
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        0,
+        0,
+        5.718545913696289,
+        0,
+        0,
+        -25.293932914733887,
+        -14.676280975341797,
         1
       ]
     },
@@ -2693,7 +6011,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        25
+        67
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2742,7 +6060,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        26
+        68
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2791,7 +6109,7 @@
       "nodeName": "LOD2_CANOPY",
       "nodePath": [
         0,
-        27
+        69
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2818,21 +6136,21 @@
     {
       "id": "sf.render.jump-ring.node.lod2-hook-nav-port",
       "localTransform": [
-        52.51416778564453,
+        25.475000768899918,
         0,
         0,
         0,
         0,
-        52.51416778564453,
+        25.475000768899918,
         0,
         0,
         0,
         0,
-        52.51416778564453,
+        25.475000768899918,
         0,
-        1.2000000029802322,
-        4.044166564941406,
-        -24.700000762939453,
+        0,
+        -24.044167265295982,
+        -25.17500075697899,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2840,27 +6158,27 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        28
+        70
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.jump-ring.body",
       "worldTransform": [
-        52.51416778564453,
+        25.475000768899918,
         0,
         0,
         0,
         0,
-        52.51416778564453,
+        25.475000768899918,
         0,
         0,
         0,
         0,
-        52.51416778564453,
+        25.475000768899918,
         0,
-        1.2000000029802322,
-        4.044166564941406,
-        -24.700000762939453,
+        0,
+        -24.044167265295982,
+        -25.17500075697899,
         1
       ]
     },
@@ -2889,7 +6207,7 @@
       "nodeName": "LOD2_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        29
+        71
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
@@ -2938,7 +6256,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        30
+        72
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -2987,7 +6305,7 @@
       "nodeName": "LOD2_Lights_Cyan",
       "nodePath": [
         0,
-        31
+        73
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3036,7 +6354,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        32
+        74
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3085,7 +6403,7 @@
       "nodeName": "LOD2_Livery",
       "nodePath": [
         0,
-        33
+        75
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3134,7 +6452,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        34
+        76
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3183,7 +6501,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        35
+        77
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3232,7 +6550,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        36
+        78
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3329,7 +6647,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        37
+        79
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3378,7 +6696,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        38
+        80
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3427,7 +6745,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        39
+        81
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3476,7 +6794,7 @@
       "nodeName": "SOCKET_Gate_Aperture",
       "nodePath": [
         0,
-        40
+        82
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3525,7 +6843,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        41
+        83
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -3552,45 +6870,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6943f8b2ad95617cc2115e132a85ea3444ab071118363ff636218ff79b0d80f2"
+      "sha256": "56575eddc9fa659dfcad8ac626d67a0dcfa17ee65923c54ad15df5f47c7b7418"
     },
     "sourceGlb": {
-      "bytes": 1855980,
-      "sha256": "39d8ca0c6342ffb4e244c7d072d7a6d638e1c1da8cb1257383957fc54aae0f2f",
+      "bytes": 2727052,
+      "sha256": "5be19b6bfeb43ec6497ebb574f2dc9f41e3a71abf691b5001b329aec253f455f",
       "uri": "place_gate_jump_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3405604,
-    "sha256": "af28252877fb5bab2745e29a608b3e7ed517b7e652740bde97c4ae850deee01d",
+    "bytes": 4430332,
+    "sha256": "cca25ed472185be98a0f1624d42e3b6b7fa0707cf446102c70599e4ffa480c15",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        4.032499313354492,
-        -0.0007132832523097932
+        4.032503891119273,
+        0
       ],
       "max": [
         9.501907348632812,
-        56.67499923706055,
+        56.67500839259011,
         50.650352478027344
       ],
       "min": [
         -9.501907348632812,
         -48.61000061035156,
-        -50.65177904453196
+        -50.650352478027344
       ],
       "size": [
         19.003814697265625,
-        105.28499984741211,
-        101.3021315225593
+        105.28500900294168,
+        101.30070495605469
       ]
     },
     "hidden": [
@@ -3618,7 +6936,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 39,
+        "planIndex": 81,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -3655,7 +6973,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 40,
+        "planIndex": 82,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3692,7 +7010,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 41,
+        "planIndex": 83,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3730,7 +7048,7 @@
           1
         ],
         "name": "SOCKET_Gate_Aperture",
-        "planIndex": 42,
+        "planIndex": 84,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3768,7 +7086,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 43,
+        "planIndex": 85,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3792,7 +7110,7 @@
       "glass": 3,
       "hull": 7,
       "mechanical": 6,
-      "signal": 15,
+      "signal": 57,
       "warning": 3
     },
     "materialProfiles": [
@@ -3804,7 +7122,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3814,7 +7132,7 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3829,7 +7147,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3844,27 +7162,27 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3874,7 +7192,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3884,12 +7202,12 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "signal"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3899,42 +7217,42 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 28,
+        "planIndex": 23,
         "role": "signal"
       },
       {
         "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 29,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3949,7 +7267,7 @@
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3964,26 +7282,614 @@
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 74,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 75,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 76,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 77,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 79,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 80,
         "role": "warning"
       }
     ],
-    "nodeCount": 44,
+    "nodeCount": 86,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.4959999918937683,
+          0,
+          0,
+          0,
+          0,
+          0.4959999918937683,
+          0,
+          0,
+          0,
+          0,
+          0.4959999918937683,
+          0,
+          0,
+          52.9950008392334,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p3_0p2_Beacon_Dome",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          2.5,
+          56.5,
+          1,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p9_0p4_TowerMastTip",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          14.676280975341797,
+          -25.293932914733887,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing0",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          25.293932914733887,
+          -14.676280975341797,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -14.676280975341797,
+          -25.293932914733887,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing10",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          -29.47375202178955,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing11",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          29.47375202178955,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing2",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          25.293932914733887,
+          14.676280975341797,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing3",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          14.676280975341797,
+          25.293932914733887,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing4",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          29.47375202178955,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing5",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -14.676280975341797,
+          25.293932914733887,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing6",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -25.293932914733887,
+          14.676280975341797,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing7",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          -29.47375202178955,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing8",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -25.293932914733887,
+          -14.676280975341797,
+          1
+        ],
+        "name": "LOD0_ANIM_spin_fore_0p3_SpinRing9",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -4005,7 +7911,7 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4032,7 +7938,7 @@
           1
         ],
         "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4059,7 +7965,7 @@
           1
         ],
         "name": "LOD0_CANOPY",
-        "planIndex": 5,
+        "planIndex": 19,
         "tags": {
           "canopy": true,
           "lod": "lod0"
@@ -4068,25 +7974,25 @@
       {
         "canopy": false,
         "matrix": [
-          52.642499923706055,
+          25.474998861551285,
           0,
           0,
           0,
           0,
-          52.642499923706055,
+          25.474998861551285,
           0,
           0,
           0,
           0,
-          52.642499923706055,
+          25.474998861551285,
           0,
-          1.2000000029802322,
-          4.032499313354492,
-          -24.69999885559082,
+          0,
+          -24.03250029683113,
+          -25.174998849630356,
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 6,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4114,7 +8020,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 7,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4142,7 +8048,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 8,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4169,7 +8075,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan",
-        "planIndex": 9,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4196,7 +8102,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 10,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4223,7 +8129,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 11,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4250,7 +8156,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 12,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4277,7 +8183,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 13,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4304,10 +8210,388 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 14,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.49667349457740784,
+          0,
+          0,
+          0,
+          0,
+          0.49667349457740784,
+          0,
+          0,
+          0,
+          0,
+          0.49667349457740784,
+          0,
+          -0.000273287296295166,
+          52.99530020356178,
+          -0.00008131563663482666,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p3_0p2_Beacon_Dome",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          2.5,
+          56.5,
+          1,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p9_0p4_TowerMastTip",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          14.676280975341797,
+          -25.293932914733887,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing0",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          25.293932914733887,
+          -14.676280975341797,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -14.676280975341797,
+          -25.293932914733887,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing10",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          -29.47375202178955,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing11",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          29.47375202178955,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing2",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          25.293932914733887,
+          14.676280975341797,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing3",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          14.676280975341797,
+          25.293932914733887,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing4",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          29.47375202178955,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing5",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -14.676280975341797,
+          25.293932914733887,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing6",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -25.293932914733887,
+          14.676280975341797,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing7",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          -29.47375202178955,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing8",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -25.293932914733887,
+          -14.676280975341797,
+          1
+        ],
+        "name": "LOD1_ANIM_spin_fore_0p3_SpinRing9",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
         }
       },
       {
@@ -4331,7 +8615,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 15,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4358,7 +8642,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 16,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4385,7 +8669,7 @@
           1
         ],
         "name": "LOD1_CANOPY",
-        "planIndex": 17,
+        "planIndex": 45,
         "tags": {
           "canopy": true,
           "lod": "lod1"
@@ -4394,25 +8678,25 @@
       {
         "canopy": false,
         "matrix": [
-          52.642499923706055,
+          25.474998861551285,
           0,
           0,
           0,
           0,
-          52.642499923706055,
+          25.474998861551285,
           0,
           0,
           0,
           0,
-          52.642499923706055,
+          25.474998861551285,
           0,
-          1.2000000029802322,
-          4.032499313354492,
-          -24.69999885559082,
+          0,
+          -24.03250029683113,
+          -25.174998849630356,
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 18,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4440,7 +8724,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 19,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4468,7 +8752,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 20,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4495,7 +8779,7 @@
           1
         ],
         "name": "LOD1_Lights_Cyan",
-        "planIndex": 21,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4522,7 +8806,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 22,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4549,7 +8833,7 @@
           1
         ],
         "name": "LOD1_Livery",
-        "planIndex": 23,
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4576,7 +8860,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 24,
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4603,7 +8887,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 25,
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4630,10 +8914,388 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 26,
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4959999918937683,
+          0,
+          0,
+          0,
+          0,
+          0.4959999918937683,
+          0,
+          0,
+          0,
+          0,
+          0.4959999918937683,
+          0,
+          0,
+          52.9950008392334,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p3_0p2_Beacon_Dome",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          2.5,
+          56.5,
+          1,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p9_0p4_TowerMastTip",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          14.676280975341797,
+          -25.293932914733887,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing0",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          25.293932914733887,
+          -14.676280975341797,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing1",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -14.676280975341797,
+          -25.293932914733887,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing10",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          -29.47375202178955,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing11",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          29.47375202178955,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing2",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          25.293932914733887,
+          14.676280975341797,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing3",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          14.676280975341797,
+          25.293932914733887,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing4",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          29.47375202178955,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing5",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -14.676280975341797,
+          25.293932914733887,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing6",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -25.293932914733887,
+          14.676280975341797,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing7",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          0,
+          0,
+          6.390670299530029,
+          0,
+          0,
+          -29.47375202178955,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing8",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          0,
+          0,
+          5.718545913696289,
+          0,
+          0,
+          -25.293932914733887,
+          -14.676280975341797,
+          1
+        ],
+        "name": "LOD2_ANIM_spin_fore_0p3_SpinRing9",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
         }
       },
       {
@@ -4657,7 +9319,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 27,
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4684,7 +9346,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 28,
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4711,7 +9373,7 @@
           1
         ],
         "name": "LOD2_CANOPY",
-        "planIndex": 29,
+        "planIndex": 71,
         "tags": {
           "canopy": true,
           "lod": "lod2"
@@ -4720,25 +9382,25 @@
       {
         "canopy": false,
         "matrix": [
-          52.51416778564453,
+          25.475000768899918,
           0,
           0,
           0,
           0,
-          52.51416778564453,
+          25.475000768899918,
           0,
           0,
           0,
           0,
-          52.51416778564453,
+          25.475000768899918,
           0,
-          1.2000000029802322,
-          4.044166564941406,
-          -24.700000762939453,
+          0,
+          -24.044167265295982,
+          -25.17500075697899,
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 30,
+        "planIndex": 72,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4766,7 +9428,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 31,
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4794,7 +9456,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 32,
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4821,7 +9483,7 @@
           1
         ],
         "name": "LOD2_Lights_Cyan",
-        "planIndex": 33,
+        "planIndex": 75,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4848,7 +9510,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 34,
+        "planIndex": 76,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4875,7 +9537,7 @@
           1
         ],
         "name": "LOD2_Livery",
-        "planIndex": 35,
+        "planIndex": 77,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4902,7 +9564,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 36,
+        "planIndex": 78,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4929,7 +9591,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 37,
+        "planIndex": 79,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4956,7 +9618,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 38,
+        "planIndex": 80,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4967,25 +9629,39 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-  "runtimeHash": "ccdaecbdbc50b09f41e5deb010c01a0cd66dab8153843049dd992377092d97b5",
+  "runtimeHash": "e89302b2c911d599e0a31889af042dbba994eba643cfe3fb8c1e38f2f075dbae",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           9.501907348632812,
-          56.67499923706055,
+          56.67500839259011,
           50.650352478027344
         ],
         "min": [
           -9.501907348632812,
           -48.61000061035156,
-          -50.65177904453196
+          -50.650352478027344
         ]
       },
       "id": "sf.render.jump-ring.body",
       "nodeIds": [
         "sf.render.jump-ring.node.collision-hull",
+        "sf.render.jump-ring.node.lod0-anim-blink-1p3-0p2-beacon-dome",
+        "sf.render.jump-ring.node.lod0-anim-blink-1p9-0p4-towermasttip",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring0",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring1",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring10",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring11",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring2",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring3",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring4",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring5",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring6",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring7",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring8",
+        "sf.render.jump-ring.node.lod0-anim-spin-fore-0p3-spinring9",
         "sf.render.jump-ring.node.lod0-armor",
         "sf.render.jump-ring.node.lod0-beacon-amber",
         "sf.render.jump-ring.node.lod0-canopy",
@@ -4998,6 +9674,20 @@
         "sf.render.jump-ring.node.lod0-mechanical",
         "sf.render.jump-ring.node.lod0-mechanicaldark",
         "sf.render.jump-ring.node.lod0-warning",
+        "sf.render.jump-ring.node.lod1-anim-blink-1p3-0p2-beacon-dome",
+        "sf.render.jump-ring.node.lod1-anim-blink-1p9-0p4-towermasttip",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring0",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring1",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring10",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring11",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring2",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring3",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring4",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring5",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring6",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring7",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring8",
+        "sf.render.jump-ring.node.lod1-anim-spin-fore-0p3-spinring9",
         "sf.render.jump-ring.node.lod1-armor",
         "sf.render.jump-ring.node.lod1-beacon-amber",
         "sf.render.jump-ring.node.lod1-canopy",
@@ -5010,6 +9700,20 @@
         "sf.render.jump-ring.node.lod1-mechanical",
         "sf.render.jump-ring.node.lod1-mechanicaldark",
         "sf.render.jump-ring.node.lod1-warning",
+        "sf.render.jump-ring.node.lod2-anim-blink-1p3-0p2-beacon-dome",
+        "sf.render.jump-ring.node.lod2-anim-blink-1p9-0p4-towermasttip",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring0",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring1",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring10",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring11",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring2",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring3",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring4",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring5",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring6",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring7",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring8",
+        "sf.render.jump-ring.node.lod2-anim-spin-fore-0p3-spinring9",
         "sf.render.jump-ring.node.lod2-armor",
         "sf.render.jump-ring.node.lod2-beacon-amber",
         "sf.render.jump-ring.node.lod2-canopy",

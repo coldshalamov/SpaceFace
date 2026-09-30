@@ -112,7 +112,14 @@ function assertNoModal(emitted, label) {
   // draws again — seed 8's haven schedule now fires once, all proximity-exempt. Seed 22 is the
   // only seed of 1-24 still scheduling ambush_snare inside the haven (3 fired incl. the snare).
   // Floor unchanged.
-  const SOAK_SEED = 22;
+  // 2026-09-28: 22 -> 23. The PB-TAC-A catalog wave (3a15d87b2: encounters 171/359/360 plus the
+  // regenerated index) consumed seeded composition draws again — seed 22's haven two-day
+  // schedule now plans only storyBeatMin-gated shapes (ghost_on_the_bearing 2, minefield_wake 1,
+  // depth_h8_echo_of_player 7; day 0: pd_screen_wall, vael_lane_tithe), which the bare boot's
+  // beatIndex 0 can never pass — 0 fired, all gate-deferred. Scanned 1-40: seed 23 is the
+  // strongest schedule that still anchors a proximity combat shape inside the haven
+  // (ambush_snare; 4 fired, 1 proximity-gated, all voiced). Floor unchanged.
+  const SOAK_SEED = 23;
   const { sim, state, bus, emitted, voice } = boot(SOAK_SEED, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
   const firedKinds = [];

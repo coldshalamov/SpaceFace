@@ -33,6 +33,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === the charred plate: a low hex slab, edge chipped ============================
     F.cylinder(s, 'Plate', (0, 0, 0.0), (0, 0, 0.55), 3.1, material='deadmetal', segments=6,

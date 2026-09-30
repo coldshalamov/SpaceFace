@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ab9fbbd0c80dfe13ad6ac287fc32a21fe2bb3aff28bc93bd2ae1a48a9d1d4bf6",
+  "contentHash": "e1fdd33d9f20a32a59aa26a5d16b39c4125a8fd75462c72e51f2c8c514665255",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4e8310b3c3bf6e0a54c8a6e47fec670d8e1669e3a60425aa71502cb6785526a",
+      "geometryHash": "06d5b77e5cb493527f0aecb67a52a7836e5630db9ac277a61fc2067943cb87ea",
       "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -141,11 +141,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9601a2fd88ad3c8ac93baa4b56694d55477901e7aca419d47b26ab850fe9a18a",
+      "geometryHash": "3ef7e94cf167c95ebd370017f9a8767478316142f0e20ba54afa3b4bfe2b3c2f",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.0",
       "indexCount": 2748,
       "indexed": true,
-      "materialHash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
+      "materialHash": "23168e858fc1a90114bb364e7bc816fb36469a1bb9635b7c54daed759a0ccab3",
       "materialPipelineKey": "opaque",
       "meshName": "Bridge",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridge",
@@ -166,11 +166,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "275e7ebc96e22f55920cf3edeab10e8c60a5385ff6861b091a8d46a3a3681060",
+      "geometryHash": "33dc5a17b29e21fb8475fe096fbe7520599f4a663ecad08052809f0276607aa4",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.1",
       "indexCount": 1248,
       "indexed": true,
-      "materialHash": "9e925530abc8aa063cee7e347eb47c4d67b6c1de375e4fa2da9a057c7b8de817",
+      "materialHash": "0a8e24c44d528b6adc77d0dda5d17a3907d0bc2f9ca625af66f505ce7a89d654",
       "materialPipelineKey": "opaque",
       "meshName": "Bridge",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridge",
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01603305b68fefdd42a398fc8b022c63c9a1da357a76f37cc0aa4b3bfc8036e6",
+      "geometryHash": "3071b2e511c8e7fe6ff73c4a1799a406ade878a7931be1d6af7d45d3b46cfe60",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.2",
       "indexCount": 2760,
       "indexed": true,
@@ -216,11 +216,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54fc7ad113402bec8a0a8a2016d25a542bd2f428bf99c7e8c737767f36644965",
+      "geometryHash": "8d3af497f44e5ac118b7b4038708667bdf88ea1adfd46b5fae4b9ab6181c654e",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.3",
       "indexCount": 2880,
       "indexed": true,
-      "materialHash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
+      "materialHash": "e03e5b129cb3927c77b399325c8cdc43097c25eb9ab7b1bd4e7c162b4d2408d6",
       "materialPipelineKey": "opaque",
       "meshName": "Bridge",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridge",
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f769dcc3980eea89962f70876ec65254a0fdcd34c8e242ba465a6ef4af6953b",
+      "geometryHash": "dd73bb4157602886afc1cec8b7d390750b83de23f1cd3df4393f1cc733652c65",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2820433500d4f51fa697915aa517e79c16fe22d3f382e962cc5ab15cf8464c0d",
+      "geometryHash": "188c8fb4cb59e6ec0ed5645357289b0e77a2affff7a847ec8966dc6ad5a6e697",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2691c5916ee2e61c97057e274fc4a50f316746b690af03a1509c882f3310e452",
+      "geometryHash": "610c4d119fdc43e5042ff80a658447ea1e87786f4bf4563dfd4c67e284f2a490",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -316,7 +316,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4c186161df040dcdd7001ff4850d0a37070de11ee7e726077010fe04c01b334",
+      "geometryHash": "31d3db4fa583fc20cccb16bb44f8cd990c2c8da29ff7442ba58010b6747f9541",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -341,7 +341,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44522ac79c455166ea5cf65fb8c6940412535b9ab86db3e3a465e293d3384442",
+      "geometryHash": "40dd3a119764da4be93495da1304b808e3cf5bba725dab49088b24450e3d5cd1",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f326a4107ca097d8f15e6d3152f3b66fc90a95934153dd2b57e4a1e1aff6cb62",
+      "geometryHash": "fc765626cf29d8c37299d43930dcf9804b7151f11dd8edd893c49ba5bce3d16c",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -391,7 +391,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03fec97daf4acaead5389df690dbdf4b360dde129ccd20cc6f4201ad97622d95",
+      "geometryHash": "05bff8ffce4126654f080fe73393ca5a809aae0e657b71bd23eabe4bbc992a37",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -416,7 +416,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc37f71453d38d7f5ceb6ab94c2795a9d194c4dd9f68d4aa5f9c364c3104b2ce",
+      "geometryHash": "b228ed9d8f5acff2ec98ec067542bc6b632074b45b1e5347227f472df74a6c1a",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -441,7 +441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65a5c6c4f758a620bff8c03ace1cc73f73ac7831b08341ceb6cf3a20bc2f4c63",
+      "geometryHash": "b700647b69990592356b5bc53fb8c5c60a4a67a35724ffbe267b8f2fc1e30541",
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -466,7 +466,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00a5130ee3e5dfe82a8a9c59f9bf72107f11c0fa2dfc148a97d5f9239b4444bb",
+      "geometryHash": "749e30ce296bdbec233cde56595db981df8fe1b1a8684c77358f7be7d565a233",
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -491,7 +491,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98aa30cf7bc9b735d7b75296dae0e00e05bf306c87cca79a232187615dafe9f3",
+      "geometryHash": "ac114ee51402cee9941b4e8962dcfb7fda460b71586f3831623df1805bc4c315",
       "id": "sf.render.aftermath-aft-cockpit-section.node.lampbar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -516,7 +516,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47c9805112faf728d10d9aa3984b479721b30eb077e186fe72353e777eab4321",
+      "geometryHash": "9eeccddc4d7b80f45264f495a701e2de9c9f857a8dda450a059b4895985b66e7",
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-foot.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -541,7 +541,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d311133fe5456d1b987ed2e444afce8e09af104e73d30bd27ac57b24ab502808",
+      "geometryHash": "f0d41ddf1a5e4385ba45103ba15f25750ea72c328f8c7f06177732d8f4afb86e",
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-mast.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -566,7 +566,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f195452eac179bcbe8edf4093afc2ce63201212263a6280bb80ff29b4996ee64",
+      "geometryHash": "1aa15b70f24c2cf7b95fabd696e948267278ce8153e6d6bac71d29b83ac37bd0",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -591,7 +591,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0a8a2a55721656b7b0cf58da05eea7c9a9d9045df37c25b3d6076d951138e1f",
+      "geometryHash": "b3d8cd89520d5a73d7b034b9977db2c227f23637a8fdba8d40d785b93ab76471",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -616,7 +616,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1eb5d8d98c43181d19d50c62ec58e60b3357d7bea15356a1733c25dea62d6eb",
+      "geometryHash": "f719dbf158651305d1b8f8c0f89aaf10db8447098d0e05cf67b7137f1daca6b5",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -641,7 +641,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4e477f5143d3a8cfc05fb38e3cb7ee4bc688ddbd7a1cc85423f07072d03acc2",
+      "geometryHash": "1cdef62872bfc2bd13b298d60f33ea4a67570a7ac528b65880207956d70f4ab8",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -666,7 +666,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "265519c24622de3e14fd52e8f80ead2d900dcab9f93812c644e262e4ebcfc04c",
+      "geometryHash": "f273dbebe0d7acefda0bf7f580feba304238c6da00c15237ab617f733d672878",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -691,7 +691,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0180362cbddc8eb13903d081def6e9c1eb288698e9bb05f9a033bd3fe951e8f4",
+      "geometryHash": "9e9798fd59a00493c5c281004da7cc4ea49983d268a004fd4028374167d833e7",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -716,7 +716,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a9ecaf4ea8f1f82cd91d4422eaad686e0e8ca47b8ec6e3211d84184184265b2",
+      "geometryHash": "9224d8c87c6b7dc6ea62fdb8ce7d5d94b68ba8e3d28b4fdb3c65f39c3a1b1cb3",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -741,11 +741,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4f378936556825e51b126b65e71a1bfe6fcc369e1877260b2f4ae9792ce3565",
+      "geometryHash": "cc32f8adf264dbdf3853b28128604dbd5ac86ed2ee92990252e59c5bbd67aa65",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase.primitive.0",
       "indexCount": 3084,
       "indexed": true,
-      "materialHash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
+      "materialHash": "23168e858fc1a90114bb364e7bc816fb36469a1bb9635b7c54daed759a0ccab3",
       "materialPipelineKey": "opaque",
       "meshName": "TowerBase",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase",
@@ -766,7 +766,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0151bbc81cfa67e036ddc659430d2bab9d480d5b4e8634cd6da79bde7111b7c6",
+      "geometryHash": "968d9c438ee72ac2f58cf96e909ded0b0696a933ad0252f2555ef8521e127756",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerskirt.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -791,7 +791,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c917ba44921799d62b8baa85a9b025be08f8d53d0d87b42f1ccf0f13b9bbafb",
+      "geometryHash": "b7a2a550cd7ea1f42d22bfed52eabef482c766a477ff5dfe06461d5005b779f2",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -816,7 +816,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9419f82c29abf1832258ee03f4cc27310cf9e6034769bb53566415c5211619d5",
+      "geometryHash": "5c3b4d07f7c9d9f22d75265f0fbfb23560442ef2ed05abc581b1f52e73573906",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -841,7 +841,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f39f5476b5a8857e176bb7e8ffa1a199a7002b7a2aa409463df71f92ab720e8",
+      "geometryHash": "73a8b12b69fef29d9354f867832e25f340c075c2a60c49dcfb7049d2fd047669",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -866,7 +866,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebbff79862df1fb98b5ee18cbc8e8aaf1bfc730650a940f0699e3b6374b92075",
+      "geometryHash": "cf3a94721e886673edeb4ad0249b6e158609325b40f261ae25383b8391f531df",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -882,6 +882,38 @@
   "kind": "place",
   "lods": [],
   "materials": [
+    {
+      "hash": "0a8e24c44d528b6adc77d0dda5d17a3907d0bc2f9ca625af66f505ce7a89d654",
+      "id": "material:0a8e24c44d528b6adc77d0dd",
+      "name": "Forge_ore_barge_paint2",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
     {
       "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "id": "material:0c7aa7865a150ff305773a74",
@@ -947,9 +979,9 @@
       ]
     },
     {
-      "hash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
-      "id": "material:15ed238ec68bfce5920f3de3",
-      "name": "Forge_ore_barge_stripe",
+      "hash": "23168e858fc1a90114bb364e7bc816fb36469a1bb9635b7c54daed759a0ccab3",
+      "id": "material:23168e858fc1a90114bb364e",
+      "name": "Forge_ore_barge_paint",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -993,70 +1025,6 @@
       "textures": []
     },
     {
-      "hash": "9e925530abc8aa063cee7e347eb47c4d67b6c1de375e4fa2da9a057c7b8de817",
-      "id": "material:9e925530abc8aa063cee7e34",
-      "name": "Forge_ore_barge_paint2",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
-      "id": "material:b7b0be5052ab4f1138a547db",
-      "name": "Forge_ore_barge_paint",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
       "id": "material:c36a4bf93ab869729a357a6a",
       "name": "Forge_ore_barge_wk_scorch",
@@ -1083,6 +1051,38 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e03e5b129cb3927c77b399325c8cdc43097c25eb9ab7b1bd4e7c162b4d2408d6",
+      "id": "material:e03e5b129cb3927c77b39932",
+      "name": "Forge_ore_barge_stripe",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -2621,19 +2621,19 @@
       "sha256": "70352c6e5fba6fcbad9f713aa9a348906b329f41bce7939376274814b250f8f0"
     },
     "sourceGlb": {
-      "bytes": 211860,
-      "sha256": "32f36c764537d0e52833e3d3328875086ab76d771d0b774ce38810cb0fc7478f",
+      "bytes": 372560,
+      "sha256": "cc5c023429025598f0198acefc3063d7ad040e04f874858aa51203102489ffa2",
       "uri": "place_aftermath_aft_cockpit_section.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 279720,
-    "sha256": "d4df5f01d5afce0b79dcda38267ae8e50085f2b43ccff95a94e1f4a82913df23",
+    "bytes": 440440,
+    "sha256": "87cfb58ce0f031c343768c6a9d1c2ab99f72b350c81d9a0a1534efa030c16652",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3748,7 +3748,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
   },
-  "runtimeHash": "1080d8d46fffe2123ad886f46b93dc4e55e10f328827e2a281bf6f8bc09db8e2",
+  "runtimeHash": "39e41d64b6e3b8d9f671fc3a85212d82814deac24c31a0b9e2d531dd968d1606",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

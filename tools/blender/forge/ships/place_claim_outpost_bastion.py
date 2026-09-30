@@ -25,6 +25,7 @@ COLORS = dict(K.COLORS, **{
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     K.build_platform(s, {'hab': (0.0, -30.0), 'hab_scale': 0.55})
 
     # --- the casemate: one chamfered armour block covering most of the deck ------------------
@@ -55,8 +56,9 @@ def build():
                    cu + e * 2.4, cv + 24.0, 11.6, 0.55, material='gunmetal', segments=10)
         K.plan_cyl(s, f'BarrelTip{e:+d}', cu + e * 2.4, cv + 23.4, 11.6,
                    cu + e * 2.4, cv + 24.8, 11.6, 0.75, material='dark', segments=10)
-        F.light(s, f'BarrelLamp{e:+d}', K.P(cu + e * 2.4, cv + 25.0, 11.6), 'glow_red',
-                size=0.3)
+        pos = K.P(cu + e * 2.4, cv + 25.0, 11.6)
+        o = F.light(s, f'BarrelLamp{e:+d}', pos, 'glow_red', size=0.3)
+        s.anim(o, f'blink:2p{1 + e}:0p{1 - e}', pos)
     F.sensor_dome(s, 'FireControl', K.P(cu - 9.0, cv - 8.0, 11.2), 1.5,
                   material='paint2', lens='glow_red')
 
@@ -74,7 +76,10 @@ def build():
         u, v, _ = K.polar_plan(K.FRAME_R - 1.0, a)
         K.plan_cyl(s, f'WarnMast{k}', u, v, 1.6, u, v, 9.0, 0.3, material='paint2',
                    segments=10)
+        n0 = len(s.objects)
         F.beacon(s, f'WarnBeacon{k}', K.P(u, v + 9.3, 0.4), finish='glow_red', size=0.55)
+        s.anim([o for o in s.objects[n0:] if o.name.startswith(f'WarnBeacon{k}_Dome')],
+               f'blink:1p{4 + k}:0p{k}', K.P(u, v + 9.3, 0.4))
     return s
 
 

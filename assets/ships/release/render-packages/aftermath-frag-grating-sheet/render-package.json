@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c6f0331887ed05251c08b149adff30719311b6b6907a07e7b204b36ac68cf62e",
+  "contentHash": "754baada23adb4c01b93a08b960076c8b5f0032d57048dd7add82a3417dc5ed3",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e57984bb9d2b5699cac451fb15064644546cfb8b53cafded4491d3d5005211e",
+      "geometryHash": "3218aa68e5df75b8a064b0551cdaf68811ff590e856f9532cc70c1f4b762fdb8",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "030cef0da763a30a2dfaf0e4eae5c1efbdc8590e4438c15fd87a713c602cda76",
+      "geometryHash": "77481f65359d2965f980bb487f72c3b31a6ad730dcb4540bdfdef7c255b3a1de",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4dbd619595945779200e77e2850539bf71c7a8554f61b6fbc7d8724d972d10e7",
+      "geometryHash": "62d5f29477e3deae675ccd09bbe11e4541d7eb43e36b869358f293fc09da5920",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10c59493be5dac6b577ef5757d7d380e14eb15b872148e76116c4062a9f57124",
+      "geometryHash": "82bc5919dd1b35960a5ef04bcb734e37f2cbc344bbe7c90094a187f7dc916c9a",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f009f08d22a11360a994aded971c58f55d55f2990878498916a86df53433344",
+      "geometryHash": "4be1cc1bc8338213aebd368c66e03e2798d5bdef5f2bf5e00a14ecc5a1dd3970",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.grate.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -504,19 +504,19 @@
       "sha256": "052c099ba4ac5633b5553fa3c86f2934119062c64dbbe3ca871a89af0a5afa45"
     },
     "sourceGlb": {
-      "bytes": 43616,
-      "sha256": "ff1021c6b3f123c94c889aab68618466621b7228c47b6334713d2bf7ac4380d9",
+      "bytes": 43492,
+      "sha256": "22c5d1714d831a5480f1175dca93244584635f39c27211bd21953f08ee46b27f",
       "uri": "place_aftermath_frag_grating_sheet.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 47580,
-    "sha256": "a8be53233879b56057720962037b3c0950d95f078843ea3fac440431942d64c5",
+    "bytes": 47456,
+    "sha256": "508b1dd9ef8180071669e79e097fb5e21b7e098477cba78cb18ff297fabf6abe",
     "uri": "render.glb"
   },
   "runtime": {
@@ -718,7 +718,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet.glb"
   },
-  "runtimeHash": "3d259264ac245b2b6456516e2b78b4c6e33926bbe3b590c7f2855a53d9ac6c8a",
+  "runtimeHash": "91b5f6b8ab93f37f66c188502d9ce02db57f7ad806ac2ce2d448069d368c86a8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

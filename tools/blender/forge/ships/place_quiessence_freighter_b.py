@@ -19,6 +19,7 @@ SHIP_ID = 'place_quiessence_freighter_b'
 
 
 def extra(s):
+    s.emit_scale = 4.0
     # Warm bunks: the crew rides in the clamp-lock blocks — a lit row on each lock spine.
     Q.bunk_windows(s, -6.6, 6.6, 8, y=0.66, z=1.55, tag='Lock', z_top=3.05)
     # one faint violet beacon over the cab roof

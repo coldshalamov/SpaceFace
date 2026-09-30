@@ -33,10 +33,12 @@ const CANON = Object.freeze([
   { slot: 'D14', id: 'wreck_isc_double_entry', cls: 'military', sector: 'sector_tethys_junction', source: 'mission.sp1.witness_run.double_entry', channel: 'mission' },
   { slot: 'D15', id: 'wreck_dmc_first_notch', cls: 'fresh', sector: 'sector_vesta_forge', source: 'mission.sp1.hearing.first_notch', channel: 'mission' },
   { slot: 'D16', id: 'wreck_mts_regular', cls: 'battlefield', sector: 'sector_pallas_drift', source: 'mission.sp1.blockade_run.regular', channel: 'mission' },
+  // D17: the deep-space find — her site sits off-disc in the Helios–Tethys transit gap.
+  { slot: 'D17', id: 'wreck_long_chord', cls: 'battlefield', sector: 'sector_helios_prime', source: 'bar.tethys_chord.long_chord', channel: 'bar' },
 ]);
 
 const EXPECTED_PRIMARY_CHANNEL_SPREAD = Object.freeze({
-  bar: 4,
+  bar: 5,
   news: 2,
   comms_intercept: 1,
   bark: 1,
@@ -57,8 +59,8 @@ function refId(value) {
   return typeof value === 'string' ? value : value?.id;
 }
 
-test('R2 registry carries all sixteen canon identities and all seven primary rumor channels', () => {
-  assert.equal(UNIQUE_WRECKS.length, 16, 'R2 is not a partial registry');
+test('R2 registry carries all seventeen canon identities and all seven primary rumor channels', () => {
+  assert.equal(UNIQUE_WRECKS.length, 17, 'R2 is not a partial registry');
   assert.deepEqual(validateUniqueWreckRegistry(), { ok: true, errors: [] });
   assert.deepEqual(UNIQUE_WRECKS.map((wreck) => wreck.programSlot), CANON.map((row) => row.slot));
 
@@ -87,7 +89,7 @@ test('R2 registry carries all sixteen canon identities and all seven primary rum
   assert.deepEqual(spread, EXPECTED_PRIMARY_CHANNEL_SPREAD);
 });
 
-test('all sixteen placements are deterministic, order-independent, fuzzy, and seed-sensitive', () => {
+test('all seventeen placements are deterministic, order-independent, fuzzy, and seed-sensitive', () => {
   const seed = programSeedFor(0x47a2d00d);
   for (const row of CANON) assert.ok(uniqueWreckById(row.id), `${row.slot} must exist before placement can be audited`);
   if (UNIQUE_WRECKS.length !== CANON.length) return;
@@ -198,6 +200,6 @@ test('every equippable unique is a base-family salvage-only variant with no purc
     assert.equal(wreck.uniqueDropId, equippable[0]?.id || null, `${wreck.programSlot} primary grant is its first equippable variant`);
   }
 
-  assert.equal(uniqueIds.size, 18, 'the set contains every reserved equippable unique exactly once');
+  assert.equal(uniqueIds.size, 19, 'the set contains every reserved equippable unique exactly once');
   assert.equal(storyRewardCount, 3, 'Lost Ledger, Cassandra Treaty, and Quadrille Seal-Log are durable story rewards');
 });

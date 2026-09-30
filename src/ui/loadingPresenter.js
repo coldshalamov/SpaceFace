@@ -5,7 +5,7 @@ const DEFAULT_STAGE = Object.freeze({
   id: 'restoring-save',
   progress: 0.05,
   label: 'Restoring flight state',
-  detail: 'Rebuilding the current sector and critical visuals',
+  detail: 'Rebuilding the current sector',
 });
 
 // Stage events arrive as sparse steps (0.08 → 0.25 → 0.5 …); writing them straight to the bar
@@ -23,6 +23,64 @@ const PROGRESS_CAP = 0.985;      // 100% is only ever shown when a stage actuall
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
+const ORRERY_STYLE_ID = 'sf-loading-orrery-style';
+
+// F5/F7: the lockup reads over every phase of the field. A radial scrim sits behind the wordmark
+// and stage sentences (worst phase governs: bone on the scrimmed field clears 4.5:1 with room),
+// and the pct is promoted from a small readout to the ring's thin-display-numeral hero (96px Archivo 250).
+const ORRERY_LOCKUP_CSS = `
+#boot-overlay.boot-overlay--orrery .boot-lockup {
+  background: radial-gradient(closest-side, rgb(5 7 10 / .78), rgb(5 7 10 / .45) 62%, rgb(5 7 10 / 0) 100%);
+  padding: 28px 48px 32px;
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+#boot-overlay.boot-overlay--orrery .boot-label { color: rgb(236 230 216); text-shadow: 0 1px 10px rgb(0 0 0 / .85); }
+#boot-overlay.boot-overlay--orrery .boot-detail { color: rgb(236 230 216 / .92); text-shadow: 0 1px 8px rgb(0 0 0 / .85); }
+#boot-overlay.boot-overlay--orrery .boot-progress-row { align-items: center; gap: 12px; }
+/* F3+F4 CUT: the registry tag + raw stopwatch are generic chrome with no voice. The DOM and its
+   hooks stay (checks and the clock writer keep working); the glass drops them. */
+#boot-overlay.boot-overlay--orrery .boot-meta { display: none; }
+/* F1 field: the faint Sensor Lattice in bone at ~6% across the whole frame — the screen's
+   authored air. Above the canvas, below the lockup; static, so reduced-motion keeps it. */
+#boot-overlay.boot-overlay--orrery::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background-image: radial-gradient(circle, rgb(236 230 216 / .06) 1px, transparent 1.7px);
+  background-size: 30px 30px;
+}
+/* F1 disc: the tableaux aura, locked to the ring disc by containFieldInRing (geometry inline).
+   A faint bone breath inside the ring — the interior always holds light on pixels, even when
+   the travelling sculptures are off-disc. Real tableaux strokes paint over it when they cross. */
+.boot-tableaux-aura {
+  position: absolute; z-index: 1; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(circle, rgb(236 230 216 / .10) 0, rgb(236 230 216 / .05) 55%, rgb(236 230 216 / 0) 72%);
+}
+/* F6: the leader tick joining ring to numeral. */
+.boot-ring__leader { fill: none; stroke: rgb(236 230 216 / .55); stroke-width: 1.5; }
+@media (forced-colors: active) {
+  #boot-overlay.boot-overlay--orrery::before, .boot-tableaux-aura { display: none; }
+  .boot-ring__leader { stroke: CanvasText; }
+}
+#boot-overlay.boot-overlay--orrery .boot-progress-pct {
+  position: static; left: auto; top: auto; transform: none; min-width: 4ch; text-align: left;
+  font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 100%;
+  font-weight: 250; font-size: 96px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1;
+  color: #dfeeff; text-shadow: 0 0 18px rgb(0 0 0 / .8);
+}
+`;
+
+function injectOrreryLockupStyle(document) {
+  if (!document || typeof document.getElementById !== 'function') return;
+  try {
+    if (document.getElementById(ORRERY_STYLE_ID)) return;
+    if (typeof document.createElement !== 'function' || !document.head) return;
+    const s = document.createElement('style');
+    s.id = ORRERY_STYLE_ID;
+    s.textContent = ORRERY_LOCKUP_CSS;
+    document.head.appendChild(s);
+  } catch (_) { /* decoration never blocks boot */ }
+}
+
 /** DOM-only loading presenter shared by browser and Electron's one game route. */
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
   if (!document || !bus || typeof bus.on !== 'function') {
@@ -37,6 +95,51 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   // ORRERY: the progress reads on a ring round the turning emblem, a tick per reported stage.
   let ring = { set() {}, mark() {} };
   try { ring = mountBootRing(document, overlay); } catch (_) { /* decoration never blocks boot */ }
+  injectOrreryLockupStyle(document);
+
+  // F1: the tableaux play INSIDE the ring — the field canvas wears a radial mask centred on
+  // the ring, full strength over the inner disc (r), 30% at 1.6r, gone by 2r. The ring stays the
+  // hero; the field is its aura, not a fullscreen rival. Recomputed per show so a moved lockup
+  // cannot strand the mask; any failure leaves the field unmasked, never blank.
+  const containFieldInRing = () => {
+    try {
+      if (!overlay.querySelector || !document.getElementById) return;
+      const canvas = document.getElementById('boot-terminal-canvas');
+      const video = document.getElementById('boot-intro-video'); // the baked tableaux wears the same mask
+      const ringEl = overlay.querySelector('.boot-ring');
+      if (!ringEl || !ringEl.getBoundingClientRect) return;
+      const surfaces = [canvas, video].filter((s) => s && s.style && typeof s.getBoundingClientRect === 'function');
+      if (!surfaces.length) return;
+      const geom = surfaces[0];
+      const cr = geom.getBoundingClientRect();
+      const rr = ringEl.getBoundingClientRect();
+      if (!(cr.width > 0 && cr.height > 0 && rr.width > 0)) return;
+      const cx = Math.round(rr.left + rr.width / 2 - cr.left);
+      const cy = Math.round(rr.top + rr.height / 2 - cr.top);
+      const r = Math.round(rr.width / 2);
+      const mask = `radial-gradient(circle at ${cx}px ${cy}px, `
+        + `rgb(0 0 0 / 1) 0 ${r}px, `
+        + `rgb(0 0 0 / .3) ${Math.round(r * 1.6)}px, `
+        + `rgb(0 0 0 / 0) ${Math.round(r * 2)}px)`;
+      for (const s of surfaces) { s.style.webkitMaskImage = mask; s.style.maskImage = mask; }
+      // The tableaux aura rides the same geometry: a faint bone breath locked to the disc, so
+      // the interior always holds light even when the travelling sculptures are off-disc. DOM,
+      // not canvas — it cannot miss a frame, a worker, or a still.
+      let aura = overlay.querySelector ? overlay.querySelector('.boot-tableaux-aura') : null;
+      if (!aura && document.createElement && overlay.appendChild) {
+        aura = document.createElement('div');
+        aura.className = 'boot-tableaux-aura';
+        if (aura.setAttribute) aura.setAttribute('aria-hidden', 'true');
+        overlay.appendChild(aura);
+      }
+      if (aura && aura.style) {
+        aura.style.left = `${cx - r}px`;
+        aura.style.top = `${cy - r}px`;
+        aura.style.width = `${r * 2}px`;
+        aura.style.height = `${r * 2}px`;
+      }
+    } catch (_) { /* decoration never blocks boot */ }
+  };
 
   const raf = typeof globalThis.requestAnimationFrame === 'function'
     ? globalThis.requestAnimationFrame.bind(globalThis)
@@ -214,7 +317,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   // If overlay is initially visible, start terminal artwork immediately
   if (!overlay.classList?.contains?.('hidden')) {
     const initial = artwork();
-    initial.start();
+    initial.start(); containFieldInRing();
     initial.updateProgress(DEFAULT_STAGE);
     displayProgress = DEFAULT_STAGE.progress;
     paintProgress();
@@ -239,7 +342,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     overlay.setAttribute('aria-busy', 'true');
     overlay.dataset.loadingStage = String(stage.id || 'loading');
     if (label) label.textContent = String(stage.label || DEFAULT_STAGE.label);
-    if (detail) detail.textContent = String(stage.detail || 'Preparing the playable scene');
+    if (detail) detail.textContent = String(stage.detail || 'Preparing the flight');
     if (!raf) {
       // No animation clock (probes, unit tests): keep the honest step write.
       if (progress) progress.style.width = `${Math.round(amount * 100)}%`;
@@ -259,7 +362,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     }
 
     const art = artwork();
-    art.start();
+    art.start(); containFieldInRing();
     attachRetainedPointerBridge();
     art.updateProgress(raf ? { ...stage, progress: clamp01(displayProgress) } : stage);
   };

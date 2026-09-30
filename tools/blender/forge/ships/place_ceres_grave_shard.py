@@ -34,6 +34,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the fallen wall: a broad leaning plate, its torn edge high ------------------------------
     lean = math.radians(28)

@@ -34,7 +34,7 @@ const EXPECTED = {
   ship_medium: { entity: entityFor('ship'), shape: 'capsule', material: 'ship', dynamic: true, sensor: false },
   ship_heavy: { entity: entityFor('ship'), shape: 'capsule', material: 'ship', dynamic: true, sensor: false },
   drone: { entity: entityFor('drone'), shape: 'capsule', material: 'ship', dynamic: true, sensor: false },
-  rock: { entity: entityFor('asteroid'), shape: 'ball', material: 'rock', dynamic: true, sensor: false },
+  rock: { entity: entityFor('asteroid'), shape: 'ball', material: 'rock', dynamic: false, sensor: false },
   chunk: { entity: entityFor('asteroid', { isChunk: true }), shape: 'ball', material: 'rock', dynamic: true, sensor: false },
   wreck: { entity: entityFor('wreck'), shape: 'ball', material: 'debris', dynamic: true, sensor: false },
   pickup: { entity: entityFor('pickup'), shape: 'ball', material: 'sensor', dynamic: true, sensor: true },
@@ -105,38 +105,3 @@ test('chunk fixtures carry no respawn timer or parent link (retirement invariant
   assert.equal(chunk.data.parentId, undefined);
   assert.equal(substanceFor(chunk).dynamic, true);
 });
-
-test('landmark rocks, gates, and giant asteroids (>90 WU) resolve as fixed bodies', () => {
-  const landmarkRock = entityFor('asteroid', { isLandmark: true });
-  assert.equal(substanceFor(landmarkRock).dynamic, false);
-  assert.equal(isDynamicPhysicsBodyEntity(landmarkRock), false);
-
-  const giantRock = { ...entityFor('asteroid'), radius: 110 };
-  assert.equal(substanceFor(giantRock).dynamic, false);
-  assert.equal(isDynamicPhysicsBodyEntity(giantRock), false);
-
-  const gate = entityFor('station', { isGate: true, placeId: 'place_gate_jump_ring' });
-  assert.equal(substanceFor(gate).dynamic, false);
-  assert.equal(isDynamicPhysicsBodyEntity(gate), false);
-});
-
-test('volume-proportional mass table scales dynamic bodies with volume', () => {
-  const smallRock = entityFor('asteroid');
-  smallRock.radius = 4;
-  delete smallRock.mass;
-  const smallSpec = ensurePhysicsBodySpec(smallRock);
-  assert.equal(smallSpec.mass, 16); // 0.25 * 4^3
-
-  const medRock = entityFor('asteroid');
-  medRock.radius = 8;
-  delete medRock.mass;
-  const medSpec = ensurePhysicsBodySpec(medRock);
-  assert.equal(medSpec.mass, 128); // 0.25 * 8^3
-
-  const standardRock = entityFor('asteroid');
-  standardRock.radius = 12;
-  delete standardRock.mass;
-  const stdSpec = ensurePhysicsBodySpec(standardRock);
-  assert.equal(stdSpec.mass, 432); // 0.25 * 12^3
-});
-

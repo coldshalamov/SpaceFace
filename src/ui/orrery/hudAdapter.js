@@ -21,7 +21,20 @@ import { masslineInstrumentReadout } from '../hudAttention.js';
 import { SHIPS } from '../../data/ships.js';
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
+import { createObjectiveTape } from './flightInstruments.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
+
+/**
+ * F2: a waypoint name never carries its own distance ("Beacon 419 WU" went stale the moment the
+ * ship moved — the live "457 WU · ETA 13s" sits one line below it). Strip a trailing distance so
+ * the name reads clean; genuine names ("47-A", "Sector 7") never match the WU suffix.
+ */
+const STALE_DISTANCE_SUFFIX = /\s+\d[\d,]*(\.\d+)?\s*k?\s*WU\.?$/i;
+export function stripStaleDistance(label) {
+  const s = String(label == null ? '' : label);
+  const clean = s.replace(STALE_DISTANCE_SUFFIX, '').trim();
+  return clean || s;
+}
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const GROUP_NAME = Object.freeze({ ORDNANCE: 'Ordnance', FIELDWORK: 'Fieldwork', RIG: 'Rig', BAY: 'Bay' });
@@ -142,9 +155,17 @@ const HOST_CSS = `
 #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:1; }
 @media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.82; } }
 @media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; } }
+/* F5: the Objective Tape rides top-center, the §6 compass instrument with its own distance */
+#hud .orr-hud-tape { position:absolute; left:50%; top:26px; transform:translateX(-50%); z-index:5; pointer-events:none; }
 /* ORRERY owns the bottom-left and the ordnance: the old chassis and rail stay mounted, hidden. */
 #hud[data-hud="orrery"] .sf-leftstack, #hud[data-hud="orrery"] .sf-prail { visibility:hidden !important; pointer-events:none !important; }
 `;
+
+/** Screen bearing in dial degrees (0 = up, clockwise) — the chase camera's fixed world frame. */
+function screenBearingDeg(dx, dz) {
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return null;
+  return ((Math.atan2(-dx, dz) * 180) / Math.PI + 360) % 360;
+}
 
 /**
  * Mount the ORRERY Cluster into the live HUD root. Returns { update(state, p, slow), dispose }.
@@ -175,11 +196,72 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
   });
   host.appendChild(cluster.el);
   root.appendChild(host);
+  // F5: the §6 Objective Tape — the library instrument, 640px, top-center, with its marker and
+  // distance counter. Reads the same waypoint every other surface reads; nothing new is authored.
+  const tapeHost = document.createElement('div');
+  tapeHost.className = 'orr-hud-tape';
+  const tape = createObjectiveTape({ width: 640 });
+  tapeHost.appendChild(tape.el);
+  root.appendChild(tapeHost);
   root.dataset.hud = 'orrery';
   const removeSkin = applyOrreryHudSkin(document);
   cluster.arrive();
   const tracker = createCooldownTracker();
   let ordnance = null;
+  // The tape's write gate: ticks redraw only on a 1° heading quantum, the marker/counter only on
+  // a quantized reading change — a settled frame writes nothing, and the counter's own per-digit
+  // transforms never run for an unchanged value.
+  const tapeLast = { heading: null, sig: null, shown: null };
+  function updateTape(liveState, p) {
+    const wp = liveState && liveState.nav && liveState.nav.waypoint;
+    const pos = wp && wp.pos;
+    const shown = !!(pos && p && p.pos);
+    if (shown !== tapeLast.shown) {
+      tapeLast.shown = shown;
+      tapeHost.style.display = shown ? '' : 'none';
+    }
+    if (!shown) return;
+    // Heading from the nose (forward is (cos rot, sin rot)); the bearing frame matches the dial.
+    const rot = Number(p.rot);
+    const heading = Number.isFinite(rot)
+      ? ((Math.atan2(-Math.cos(rot), Math.sin(rot)) * 180) / Math.PI + 360) % 360
+      : tapeLast.heading;
+    const headingQ = heading == null ? null : Math.round(heading);
+    if (headingQ != null && headingQ !== tapeLast.heading) {
+      tapeLast.heading = headingQ;
+      tape.setHeading(headingQ);
+    }
+    const dx = Number(pos.x) - Number(p.pos.x);
+    const dz = Number(pos.z) - Number(p.pos.z);
+    const dist = Math.hypot(dx, dz);
+    const bearing = screenBearingDeg(dx, dz);
+    const closing = dist > 0
+      ? ((Number(p.vel && p.vel.x) || 0) * dx + (Number(p.vel && p.vel.z) || 0) * dz) / dist
+      : 0;
+    const etaS = closing > 5 ? dist / closing : null;
+    const text = stripStaleDistance((wp.reason || wp.label || 'Follow the marked route'));
+    // The counter prints whole WU under 1k and 0.1k above — quantize to what it can show.
+    const distQ = dist >= 1000 ? Math.round(dist / 100) : Math.round(dist);
+    const etaQ = etaS == null ? -1 : etaS < 60 ? Math.max(1, Math.round(etaS)) : Math.round(etaS / 60);
+    const sig = `${text}|${bearing == null ? -1 : Math.round(bearing)}|${distQ}|${etaQ}|${headingQ}`;
+    if (sig === tapeLast.sig) return;
+    tapeLast.sig = sig;
+    tape.setObjective({ kind: 'Objective', text, bearing: bearing == null ? 0 : bearing, distance: dist, etaS });
+  }
+  // Recall-A mount-time prime: the cluster + tape paint their first reading synchronously
+  // during mount — retint, strip, tape-fill — so an instant capture never shows unfed
+  // structures (the r1 stills caught pre-tick pixels). Best-effort; update() keeps filling.
+  try {
+    const p0 = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (p0) {
+      ordnance = readOrdnanceModel(state, tracker, bindings);
+      const model0 = readClusterModel(state, p0, { ordnance });
+      if (model0) cluster.update(model0);
+      updateTape(state, p0);
+    }
+  } catch (_) { /* the HUD's first frame fills on its slow tick */ }
   return {
     host,
     update(liveState, p, slow) {
@@ -187,7 +269,8 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
       if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, bindings);
       const model = readClusterModel(liveState, p, { ordnance });
       if (model) cluster.update(model);
+      updateTape(liveState, p);
     },
-    dispose() { cluster.dispose(); host.remove(); removeSkin(); if (root.dataset.hud === 'orrery') delete root.dataset.hud; },
+    dispose() { cluster.dispose(); host.remove(); tapeHost.remove(); removeSkin(); if (root.dataset.hud === 'orrery') delete root.dataset.hud; },
   };
 }

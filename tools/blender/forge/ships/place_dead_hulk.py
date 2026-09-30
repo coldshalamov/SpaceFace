@@ -47,6 +47,7 @@ def _hull(s, name, x0, x1, r0, r1=None, cy=0.0, seg=14):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === FORE SECTION — intact skin, gutted inside ==============================
     _hull(s, 'HullFore', FORE_X1, -21.0, HULL_R)

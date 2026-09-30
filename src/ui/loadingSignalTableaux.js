@@ -31,9 +31,11 @@ export function createSignalTableaux(host) {
   const qt=(t,f)=>t*qf(f);
   const ids = ['witness','courier','anchorage','massline','singularity'];
   const names = ['THE WITNESS','DEAD RECKONING','THE ANCHORAGE','BORROWED MOMENTUM','EVENT HORIZON'];
-  // Obsidian / graphite / worn titanium / copper / cold glass. One palette,
-  // never a per-act rainbow. Lighting shades are compiled once into 48 bins.
-  const materialRGB = [[27,40,43],[56,75,76],[133,161,155],[167,118,79],[97,165,164],[6,12,15],[0,0,0],[96,87,79]];
+  // ORRERY field (one palette, never a rainbow): bone ink contours, ice for emission in
+  // motion, a single amber note. 0/1/5/7 are dark bone-neutral solids; 2 is bone for contour
+  // strokes; 3 is the one amber (seams, tether, strata); 4 is ice (slits, filaments, glow).
+  // 6 stays absolute black — the singularity's opaque core. Shades compile once into 48 bins.
+  const materialRGB = [[24,26,30],[52,55,60],[236,230,216],[242,185,80],[143,203,255],[10,14,17],[0,0,0],[120,114,102]];
   const shades = materialRGB.map((rgb,m) => Array.from({length:48},(_,i) => {
     // Steeper than a linear ramp so shadowed facets stay dark and lit metal separates.
     const q = i/47, k = m===6 ? 0 : .20+Math.pow(q,.85)*1.35;
@@ -449,7 +451,7 @@ export function createSignalTableaux(host) {
       const sheenX=w*(.5+.62*Math.sin(qt(t,.031)+1.1));
       const sheen=target.createLinearGradient(sheenX-w*.34,0,sheenX+w*.34,h);
       if(sheen&&typeof sheen.addColorStop==='function'){
-        sheen.addColorStop(0,'rgba(120,170,175,0)');sheen.addColorStop(.5,'rgba(150,200,200,0.05)');sheen.addColorStop(1,'rgba(120,170,175,0)');
+        sheen.addColorStop(0,'rgba(143,203,255,0)');sheen.addColorStop(.5,'rgba(143,203,255,0.05)');sheen.addColorStop(1,'rgba(143,203,255,0)');
         target.fillStyle=sheen;target.fillRect(0,0,w,h);
       }
     }

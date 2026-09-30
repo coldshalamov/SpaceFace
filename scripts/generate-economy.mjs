@@ -36,6 +36,15 @@ for (const [id,row] of Object.entries(table.tech)) {
 tech=tech.replace('// Costs in this file stay live. Do not retune them here to fake the 15-minute\n// first-upgrade gate — that faucet work is PQ-155.01.',
   '// Credit and RP costs are generated from explicit saving-time budgets in economyModel.js.\n// Hardware acquisition remains separate; the verifier never calls an unlock a fitted upgrade.');
 write('src/data/tech.js',tech);
+// Capital hull list prices project the same way as tech costs: derived saving-minutes wages
+// written into the def's own price field. T0-T3 hulls are hand-authored ladder prices and are
+// deliberately NOT in SHIP_WORK, so the generator never touches them.
+let shipCatalog=await read('src/data/ships.js');
+for (const [id,row] of Object.entries(table.ships)) {
+  const price=new RegExp(`(id: '${id}'[\\s\\S]*?price: )[\\d.]+`);
+  shipCatalog=once(shipCatalog,price,`$1${row.credits}`,id);
+}
+write('src/data/ships.js',shipCatalog);
 let missions=await read('src/data/missions.js');
 missions=once(missions,/  BASE: \{[\s\S]*?\n  \},/,
   `  BASE: {\n    // Generated compatibility values. economyMissionTerms is the canonical live quote.\n${Object.entries(table.mission.base).map(([k,v])=>`    ${k}: ${v},`).join('\n')}\n  },`,'MISSION_TUNING.BASE');
@@ -110,5 +119,5 @@ if (check && differences.length) {
  process.exitCode=1;
 } else {
  if (!check) for (const [name,text] of planned) await writeFile(path.join(root,name),text);
- console.log(`${check?'Verified':'Generated'}: 47 commodity valuations, 32 tech costs, 15 mission bases, 9 offer mixes, demand and resource tables.`);
+  console.log(`${check?'Verified':'Generated'}: 47 commodity valuations, 32 tech costs, 3 capital hull prices, 15 mission bases, 9 offer mixes, demand and resource tables.`);
 }

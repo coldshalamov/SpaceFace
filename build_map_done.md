@@ -707,3 +707,12 @@ by the integrator; nothing below is an owner ruling until the owner says so.
 - Cost: SP-07 spindle + capture fork authored through material-truth preflight and wired on the
   ordinary route; Wave 1b + Wave 2b PARTIAL + inline R1-R4 close + Wave 3 fixed-and-verified.
 
+
+### HAND-CUTDENIED · cut refusals answer the player — **DONE (was already true)**
+
+- Row 37 asked for one visible/audio response to `tether:cutDenied`. The response already ships:
+  a denied cut emits the event plus a deduped warn toast ("Massline cut refused: …") on the default
+  route (`tetherGameplay.js::_cutActive`, landed 2026-09-27 in `652a95d769`), and the audio cue table
+  deliberately keeps refusals silent with its sibling denied events. Verified 2026-09-28 by
+  `test/massline-cadence/control.test.mjs` (22/22 — asserts the event, the toast text, and the
+  dedupe). Cost: none — the board row predated the fix.

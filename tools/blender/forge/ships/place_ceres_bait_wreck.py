@@ -40,6 +40,7 @@ R = 12.0   # hull radius — fills the live envelope
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === fore hull: the intact-but-gutted liner bow, axis +X =================================
     F.cylinder(s, 'Bow', (-34.0, 0, 0), (-22.0, 0, 0), 4.0, R, material='deadmetal',

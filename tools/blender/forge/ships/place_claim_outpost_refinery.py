@@ -30,6 +30,7 @@ TANK_R = 6.6
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     K.build_platform(s, {'hab': (0.0, -26.0), 'hab_scale': 0.6})
 
     for k, (tu, tv) in enumerate(TANKS):
@@ -52,7 +53,9 @@ def build():
                        TANK_R + 0.25, material='paint2', segments=24)
         K.plan_cyl(s, f'TankHaz{k}', tu, tv, 6.0, tu, tv, 6.5, TANK_R + 0.3,
                    material='hazard', segments=24)
-        F.light(s, f'ValveLamp{k}', K.P(tu, tv, 12.4), 'glow_amber', size=0.35)
+        pos = K.P(tu, tv, 12.4)
+        o = F.light(s, f'ValveLamp{k}', pos, 'glow_amber', size=0.35)
+        s.anim(o, f'blink:2p{0 + k % 3}:0p{k}', pos)
     # manifold ring + risers tying the farm to the core block
     K.ring_slab(s, 'Manifold', 8.6, 9.8, 2.6, 3.6, material='paint2', segments=32)
     for k, (tu, tv) in enumerate(TANKS):
@@ -72,7 +75,10 @@ def build():
                material='gunmetal', segments=18)
     K.plan_cyl(s, 'StackBand', sx, sv + 2.0, 4.1, sx, sv + 3.4, 4.3, 2.0,
                material='hazard', segments=18)
-    F.light(s, 'StackEmber', K.P(sx, sv + 13.8, 4.2), 'glow_amber', size=0.8)
+    pos = K.P(sx, sv + 13.8, 4.2)
+    o = F.light(s, 'StackEmber', pos, 'glow_amber', size=0.8)
+    # the flare stack's ember mouth breathes on an irregular rhythm
+    s.anim(o, 'flicker:0p8:0p2', pos)
     # furnace mouth on the stack foot — the warm glow at the core of the block
     K.plan_box(s, 'FurnaceFoot', sx, sv - 10.0, 3.4, 6.0, 5.0, 4.4, material='paint2',
                bevel=0.2, taper=0.9)

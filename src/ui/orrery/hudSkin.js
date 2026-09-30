@@ -55,6 +55,10 @@ ${S} .sf-alert.sf-alert--floor, ${S} .sf-alert.sf-alert--dock { position:relativ
 ${S} .sf-alert.sf-alert--floor::before, ${S} .sf-alert.sf-alert--dock::before { ${pool('-12px -36px')} }
 ${S} .sf-alert.sf-alert--floor { color:var(--dp-ink, #e8e2d4); }
 
+/* ---- F1: threat wears red, never amber — hud.js tags danger and TAKING FIRE pills (text stays bone) */
+${S} #alerts .sf-alert--threat .dp-annunc__lens { --dp-lamp-c:var(--dp-danger, #ff5038);
+  background:var(--dp-danger, #ff5038) !important; box-shadow:0 0 7px rgb(255 80 56 / .4) !important; }
+
 /* ---- the band key: an engraved word and a lamp ring, lit only while a channel is tuned ---------- */
 ${S} #hud .sf-band-hud__button { position:relative; background:none !important; background-image:none !important; box-shadow:none !important;
   border:0 !important; padding:4px 0 4px 20px; font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px;
@@ -101,9 +105,32 @@ ${S} #hud .sf-radar-wrap--orrery :is(.sf-kit-radar__bezel, .sf-kit-radar__face, 
 ${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:26px; font-family:var(--dp-face-label); font-stretch:112%;
   font-weight:600; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-hand, #f2b950); ${HALO} }
 
+/* ---- F8: the dock prompt is the Lamp Key verb — amber field, dark ink, one 45° cut --------- */
+${S} .sf-alert.sf-alert--dock { background:var(--dp-hand, #f2b950) !important; color:#1c1406 !important;
+  text-shadow:none !important; min-height:44px; padding:0 26px 0 20px !important;
+  font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-weight:800 !important;
+  font-size:15px !important; letter-spacing:.14em !important; text-transform:uppercase !important; line-height:1 !important;
+  clip-path:polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%) !important; }
+${S} .sf-alert.sf-alert--dock::before { content:none !important; }
+${S} .sf-alert.sf-alert--dock .dp-annunc__lens { display:none !important; }
+${S} .sf-alert.sf-alert--dock .sf-alert__text { color:#1c1406 !important; }
+/* the sheen crosses every 6 s on transform only — never a background-position repaint over flight */
+${S} .sf-alert.sf-alert--dock::after { content:""; position:absolute; inset:0; pointer-events:none;
+  clip-path:polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%);
+  background:linear-gradient(112deg, transparent 42%, rgb(255 250 236 / .5) 50%, transparent 58%);
+  transform:translateX(-120%); animation:orr-dockkey-sheen 6s linear infinite; }
+@keyframes orr-dockkey-sheen { 0% { transform:translateX(-120%); } 22% { transform:translateX(120%); } 100% { transform:translateX(120%); } }
+html.sf-reduce-motion ${S} .sf-alert.sf-alert--dock::after { animation:none; transform:none; }
+
+/* ---- F10: the engraved RANGE holds ink-dim at 80% — the contrast alternative to 11px uncurved ---- */
+${S} #hud .sf-radar-orrery .orr-micro--hi text { fill:rgb(232 226 212 / .8); }
+
 html.sf-reduce-motion ${S} #hud .sf-discovery-plate { transition:opacity .2s linear; }
 @media (forced-colors: active) {
   ${S} #hud .sf-discovery-plate__frame::after, ${S} #hud .sf-toast::after, ${S} #hud .sf-band-hud__button::before { box-shadow:none; border:1px solid CanvasText; }
+  ${S} #alerts .sf-alert--threat .dp-annunc__lens { background:Mark !important; box-shadow:none !important; }
+  ${S} .sf-alert.sf-alert--dock { clip-path:none !important; border:1px solid CanvasText; }
+  ${S} .sf-alert.sf-alert--dock::after { display:none; }
 }
 `;
 

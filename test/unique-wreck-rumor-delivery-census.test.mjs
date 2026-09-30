@@ -131,7 +131,7 @@ test(`seed ${META_SEED}: the Vigilant case file rides the news ticker but mints 
   }
 });
 
-test('census: every one of the sixteen authored wrecks has a live delivery path', () => {
+test('census: every one of the seventeen authored wrecks has a live delivery path', () => {
   const covered = new Map();
 
   // Sector-entry surfaces: exact authored source + channel, home sector, authored copy present.
@@ -147,7 +147,7 @@ test('census: every one of the sixteen authored wrecks has a live delivery path'
   }
 
   // Bar wiring: every bar-channel bearing source is askable at a live station bar.
-  for (const stationId of ['station_sker', 'station_haumea_rift', 'station_reach', 'station_helios']) {
+  for (const stationId of ['station_sker', 'station_haumea_rift', 'station_reach', 'station_helios', 'station_tethys']) {
     const rumor = uniqueWreckBarRumor({}, stationId, 'rumors');
     assert.ok(rumor, `${stationId} bar carries a wreck rumor`);
     const def = uniqueWreckById(rumor.wreckId);

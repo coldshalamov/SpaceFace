@@ -585,6 +585,50 @@ const RAW_UNIQUE_WRECKS = [
     }),
     followup: { id: 'regular_recovered', text: 'REGULAR GRAVEYARD OPENED; THE CORDON’S LATEST KILL FINISHED HER RUN UNDER A NEW FLAG.' },
   }),
+  // ── D17: the deep-space find. Every earlier authored wreck sits inside its sector's charted
+  // disc; the Long Chord is the first whose physical site is OUT in the transit gap — anchored a
+  // thousand-odd WU south of the Helios–Tethys travel lane's dead segment (travelLaneRoutes.js
+  // disruptedSegments[4]). Her rumor is navigated the way deep space is actually addressed
+  // (src/core/deepSpaceAddress.js): fly the chord, read "HELIOS <-> TETHYS TRANSIT", hang south of
+  // the dead beacons, pulse the dark. The anchor is placed so every seeded placement stays (a)
+  // outside Helios' 3500 WU charted disc, (b) inside Helios' Voronoi cell so the site materializes
+  // and scan-fixes under its home sector while the player is out there, and (c) clear of the
+  // lane's 512 WU boost corridor — a find off the road, not on it.
+  wreck({
+    id: 'wreck_long_chord', programSlot: 'D17', name: 'Privateer Long Chord', victimLabel: 'Long Chord',
+    wreckClass: 'battlefield', sectorId: 'sector_helios_prime', factionId: 'faction_reach',
+    scanLabel: 'LONG CHORD · UNFILED TOLL-HAULER GRAVE',
+    uniqueDropId: 'unique_long_chord_hold',
+    uniqueDrops: [{ id: 'unique_long_chord_hold', kind: 'module', baseId: 'mod_smuggler_hold_m' }],
+    bearingSourceRef: 'bar.tethys_chord.long_chord',
+    rumorSources: [{ id: 'tethys_chord_long_chord', sourceRef: 'bar.tethys_chord.long_chord', channelId: 'bar' }],
+    provenance: { lossId: 'loss_long_chord', incidentId: 'incident_chord_last_toll', sourceRef: 'bar.tethys_chord.long_chord', recordType: 'unfiled_toll_loss' },
+    hazardContext: { label: 'Helios–Tethys dead segment', anchorType: 'sector', anchorId: 'sector_helios_prime', zoneId: null, hazardTypes: [], placementRule: 'deep_chord_off_lane', approachGate: null },
+    salvageLaw: CONCORD_RESTRICTED_SALVAGE,
+    complications: [{
+      id: 'long_chord_warden',
+      kind: 'cleaner_pursuit',
+      trigger: 'bearing_recorded',
+      role: 'chord_toll_warden',
+      encounterRef: 'unique_wreck_long_chord_warden',
+    }],
+    encounterRefs: ['unique_wreck_long_chord_warden'],
+    seededTimers: [{ id: 'long_chord_warden', trigger: 'bearing_recorded', minS: 150, maxS: 260, seedSalt: 'wreck_long_chord:warden:v1', clock: 'sim_time' }],
+    salvagePool: { cmdty_scrap_metal: 2 },
+    bonusCargo: [{ commodityId: 'cmdty_stolen_goods', qty: 2 }],
+    placement: { anchorLocal: { x: 3967, z: 4146 }, minRadius: 180, maxRadius: 420, bearingRadiusMin: 260, bearingRadiusMax: 520 },
+    decision: salvageDecision({
+      headline: 'LONG CHORD TOLL-GRAVE CLAIM', prompt: 'Choose whether the unfiled toll-hauler finishes under your name or enters Concord custody.',
+      claimLabel: 'CLAIM THE HOLD', claimConsequence: 'Keep the unlogged hold and her last toll; Concord can still fine the restricted claim.',
+      claimTitle: 'LONG CHORD HOLD CLAIMED', claimDetail: 'The unlogged hold and her final toll entered your manifest.',
+      claimStamp: 'CLAIMED OFF THE CHORD',
+      handoverLabel: 'FILE THE GRAVE WITH CONCORD', handoverConsequence: 'Enter the unfiled wreck as evidence for the lawful recovery award.',
+      handoverTitle: 'LONG CHORD FILED', handoverDetail: 'Concord closed a toll file the convoys never knew was open.',
+      handoverStamp: 'FILED AS CONCORD EVIDENCE',
+      handoverCredits: 7400, claimRepDelta: -10, handoverRepDelta: 12,
+    }),
+    followup: { id: 'long_chord_recovered', text: 'LONG CHORD GRAVE OPENED; THE CHORD’S UNFILED TOLLS NOW HAVE A READER.' },
+  }),
 ];
 
 export const UNIQUE_WRECKS = deepFreeze(RAW_UNIQUE_WRECKS);
@@ -698,7 +742,7 @@ export function validateUniqueWreckRegistry() {
   const channels = new Set();
   for (const def of UNIQUE_WRECKS) {
     if (!def.id || ids.has(def.id)) errors.push(`duplicate/missing wreck id ${def.id || '<empty>'}`);
-    if (!/^D(?:[1-9]|1[0-6])$/.test(def.programSlot || '') || slots.has(def.programSlot)) errors.push(`duplicate/invalid program slot ${def.programSlot || '<empty>'}`);
+    if (!/^D(?:[1-9]|1[0-7])$/.test(def.programSlot || '') || slots.has(def.programSlot)) errors.push(`duplicate/invalid program slot ${def.programSlot || '<empty>'}`);
     ids.add(def.id);
     slots.add(def.programSlot);
     if (!def.sectorId || !def.wreckClass || !def.uniqueDropId) errors.push(`${def.id}: incomplete authored identity`);
@@ -735,7 +779,7 @@ export function validateUniqueWreckRegistry() {
     if (!placement.anchorLocal || !Number.isFinite(placement.anchorLocal.x) || !Number.isFinite(placement.anchorLocal.z)) errors.push(`${def.id}: invalid placement anchor`);
     if (!def.followup || !def.followup.id || !def.followup.text) errors.push(`${def.id}: missing recovery followup`);
   }
-  if (slots.size !== 16) errors.push(`expected D1-D16, found ${slots.size} slots`);
+  if (slots.size !== 17) errors.push(`expected D1-D17, found ${slots.size} slots`);
   for (const channel of REQUIRED_RUMOR_CHANNELS) if (!channels.has(channel)) errors.push(`missing rumor channel ${channel}`);
   return { ok: errors.length === 0, errors };
 }

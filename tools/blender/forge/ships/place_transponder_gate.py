@@ -32,6 +32,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- twin pylons, thin in x, standing on splayed feet ------------------------------------
     # Tall/thin rule: the gate is a plan sliver, so the feet carry the top read — each pylon
@@ -65,11 +66,14 @@ def build():
         # transit strip down the inner face — the lane light column
         s.detail = 1
         for i in range(5):
-            F.box(s, f'LaneStrip{e:+d}{i}', (0, y - e * 0.8, 2.4 + i * 2.0),
-                  (0.4, 0.1, 0.9), material='glow_cyan', bevel=0.0)
+            pos = (0, y - e * 0.8, 2.4 + i * 2.0)
+            F.box(s, f'LaneStrip{e:+d}{i}', pos, (0.4, 0.1, 0.9), material='glow_cyan', bevel=0.0)
+            # the transit strip chases up the tower face
+            s.anim(s.objects[-1:], f'chase:lane{e:+d}:{i}:5:2p4', pos)
         s.detail = 0
         # red corner marker on the crown
-        F.light(s, f'CrownLamp{e:+d}', (0, y, 12.95), 'glow_red', size=0.3)
+        o = F.light(s, f'CrownLamp{e:+d}', (0, y, 12.95), 'glow_red', size=0.3)
+        s.anim(o, f'blink:1p{3 + e}:0p{1 - e}', (0, y, 12.95))
 
     # --- the portal: a heavy lit beam spans the crowns, a sill closes the rectangle ------------
     # ships fly through along +/-X, so the opening must read as a doorway: beam at the top,
@@ -84,8 +88,10 @@ def build():
     # lit edge strips down the beam's underside — the "scan curtain" ships pass under
     s.detail = 1
     for i in range(7):
-        F.box(s, f'ScanBar{i}', (0, -7.5 + i * 2.5, 10.85), (0.7, 0.9, 0.22),
-              material='glow_cyan', bevel=0.0)
+        pos = (0, -7.5 + i * 2.5, 10.85)
+        F.box(s, f'ScanBar{i}', pos, (0.7, 0.9, 0.22), material='glow_cyan', bevel=0.0)
+        # the scan curtain sweeps along the beam
+        s.anim(s.objects[-1:], f'chase:scan:{i}:7:3p6', pos)
     s.detail = 0
     # reader head at the throat centre, face looking down the lane (+-X)
     F.box(s, 'ReaderHead', (0, 0, 11.6), (1.05, 3.2, 1.9), material='paint2.navy',
@@ -113,7 +119,10 @@ def build():
     # --- lane-centre beacon on the beam's crown --------------------------------------------------
     F.cylinder(s, 'LaneMast', (0, 0, 12.6), (0, 0, 13.0), 0.16, material='gunmetal',
                segments=8)
+    n0 = len(s.objects)
     F.beacon(s, 'LaneBlink', (0, 0, 13.05), 'glow_amber', size=0.25)
+    s.anim([o for o in s.objects[n0:] if o.name == 'LaneBlink_Dome'], 'blink:1p1:0p2',
+           (0, 0, 13.05))
     # service lamp on one foot
     F.work_lamp(s, 'ServiceLamp', (0.4, -10.4, 1.2), aim=(-0.2, 0.4, 0.6), size=0.4,
                 lens='glow_warm')

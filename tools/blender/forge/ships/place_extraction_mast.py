@@ -20,6 +20,7 @@ COLORS = dict(K.COLORS)
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- wellhead + pump skid at the base -------------------------------------------------------
     F.box(s, 'Wellhead', (0, 0, 1.2), (3.4, 3.4, 2.4), material='paint2', bevel=0.15)
@@ -51,6 +52,8 @@ def build():
                segments=12)
 
     # --- crown flood head (SOCKET_Head station) ---------------------------------------------------
+    # the rotor head: the well's turning cap carrying the flood arms
+    n0 = len(s.objects)
     F.box(s, 'Head', (0, 0, 11.9), (2.6, 2.6, 1.4), material='paint2', bevel=0.12)
     F.box(s, 'HeadBand', (0, 0, 12.0), (2.7, 2.7, 0.4), material='stripe', bevel=0.0)
     # three amber floods on arms, aimed down at the work face
@@ -62,7 +65,12 @@ def build():
                 material='paint2')
         F.work_lamp(s, f'Flood{k}', (ax, ay, 11.5), aim=(_m.cos(r) * 0.5, _m.sin(r) * 0.5,
                                                         -0.8), size=0.5, lens='glow_amber')
+    # head + flood arms turn together — the extraction mast's rotor
+    s.anim(s.objects[n0:], 'spin:up:0p5', (0, 0, 11.9))
+    n0 = len(s.objects)
     F.beacon(s, 'ClaimStrobe', (0, 0, 13.0), finish='glow_red', size=0.4)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('ClaimStrobe_Dome')], 'blink:1p3:0p6',
+           (0, 0, 13.0))
     return s
 
 

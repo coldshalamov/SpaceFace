@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "95f74a0807378a73c5eaefd7be43e9d1b858190b78b997e3b001db3a425f6c50",
+  "contentHash": "bd2dffc3efed718d0c8908bbdae3ed838d31fec27e77ee1b2005f22cdf800bdf",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfae6febe79b3c8b8c575cae71f59fbb8fdd05dd015612fa82f62171b7d85beb",
+      "geometryHash": "54b54d982a7b842e959fb65dd8427243050bdccbd3e57b405f72c7e7a8d9a8f9",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ca7251e6f68a72a21f5d46078d33d17d32d01055e84fbd0a6f550e9a2bfcdea",
+      "geometryHash": "d341ec6b29f60fdcc50897799b2d4f126591de764d4f6c1c1a7f6c61aa9c5ee9",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b77aac44774a7f3de946611d700c33905f956c68dfbe39a5221524239190144",
+      "geometryHash": "5860a506bc232e90697b0c483da44b913811d46a971b5fc4a53ace25bc5f4d17",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f94abc147d720f4c54d544dba4c05dd0a0f279c3bbcd298565788c1b28418b2c",
+      "geometryHash": "e020c3f4eb2d902923f09e05ba3d5adf03f1b39625853eae0465bebe57e44d69",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fee3f0c0bd8071ee5f6ceaccdea274f64af9cacdb24b377f35e6248968c4221",
+      "geometryHash": "b974517f622fa3e531e7bdfd138b1b6aa84e7c41c36d388359d78544e98942cc",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a3d381c0ba8e79b38740111408112b6e7baf03e65b297c4432421504e921d04",
+      "geometryHash": "38ac9dbfe95c1c55f5cb48cc1ddd3e843456b92540706561841ef9407951a9e3",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00e0a8a7d9ada13dda586334aa69df3c251857927b4a532da75184b605f0bb04",
+      "geometryHash": "a4cc496733a5c2c4643d0e3d72b85caf5c8d0ed42d59bef5b49078e619b542af",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribhub.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -620,19 +620,19 @@
       "sha256": "cb28ea10ec6f2535390047b3c903dbb0ef5dd459c9269a351d5a2b988feb13dc"
     },
     "sourceGlb": {
-      "bytes": 48844,
-      "sha256": "d14bc8cfeb75c5b61c65f775b45df0c9f70baf785c03c241412f0806b914262d",
+      "bytes": 48772,
+      "sha256": "d0c332769b15ee70f412b515fa83646fb5055c5a95f2b617dcc0fad12c70a31a",
       "uri": "place_aftermath_frag_rib_cluster.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 51756,
-    "sha256": "694d535234642daf510fdbdf0735560e2d1ad26a8d7e3914097a7525dc5bbfbe",
+    "bytes": 51684,
+    "sha256": "cdbc4885da8e48be6adde6ce026730ee194795a301d7578ab29d1327fb751aa6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -897,7 +897,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_rib_cluster.glb"
   },
-  "runtimeHash": "5c5a8acbba61189741cbd73a18da6bbab497d3e81c2b1169cc31ea51b98c42cc",
+  "runtimeHash": "ee502639d9cec6d138ba18d6c98ce087a33c28b1641cb5f11c9d506c4b8959b5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

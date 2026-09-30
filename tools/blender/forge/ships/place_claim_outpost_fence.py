@@ -29,6 +29,7 @@ PYLON_TIP = 12.4     # depth (d) the emitter head stands off the deck plane
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     K.build_platform(s, {'hab': (0.0, -26.0), 'hab_scale': 0.6})
 
     tips = []
@@ -54,7 +55,10 @@ def build():
                    material='paint2', rot=math.radians(a), bevel=0.08)
         K.plan_cyl(s, f'FenceCap{k}', u, v, PYLON_TIP, u, v, PYLON_TIP + 1.0, 0.9,
                    material='glow_amber', segments=12)
-        F.light(s, f'FenceStrobe{k}', K.P(u, v, PYLON_TIP + 1.9), 'glow_amber', size=0.6)
+        pos = K.P(u, v, PYLON_TIP + 1.9)
+        o = F.light(s, f'FenceStrobe{k}', pos, 'glow_amber', size=0.6)
+        # the patrol strobe travels pylon to pylon round the fence ring
+        s.anim(o, f'chase:fence:{k}:{N_PYLONS}:4p8', pos)
         tips.append((u, v, PYLON_TIP + 0.7))
     # beam run tip-to-tip — the fence line itself
     s.detail = 1

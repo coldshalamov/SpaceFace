@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d6614e0cc69bc17c4075541b9bf5baf0efeb95e509ca3935e65836892867b047",
+  "contentHash": "a87da55130125a5309541a070c125e205463901555468bd84de795b4d7d2305e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "845e603e0f7db4e8e63201aa26a71dd12ef2bb119093aee70472c604a76d17ea",
+      "geometryHash": "51b73e8ee7a603305a91d21962d73fe79cf882a28830a5f44e721582f361c09a",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72bbeb34984040b494fd7fcb8bf93a72dc255591f258a9a658175db4528ebee9",
+      "geometryHash": "caed83693593444f7aab8cccf9f371e7fa5d028bee895d7496c231d7671c839f",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25d1b442d73dec3cc57dcb5c37b365fc4984aea959e6e396b214d0f90e341582",
+      "geometryHash": "42958e7c839bc216f1cf5d834b0e930cb31f192b5ae617b2394cbb3eda613020",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71a2a3d1e243ea93be37ce05370b21df0343b21421ebd4c7869e4ba8b940f834",
+      "geometryHash": "f49181c4643fedf70366516d181879966162b60c8fa4b47723c4538c18b66966",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "feef018ba979173031e34e4a713f4038ab2b0eb33f761ee1fe21ae5d2b688f5d",
+      "geometryHash": "f8e6d43800f5b5f4423ad9c4499e3e355f981f57deae0c77d3d1298c6b45883f",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb7a25d240de31e6f5361ceb81162eda0799b66145ab7db88015d8179e412567",
+      "geometryHash": "7a3361730f5608fb1fed44545376cbcb65494c280bc35cd1079f18292dbcfa7e",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bda57464a55b106e20cffe5b8c2f4cece00096ad5e1e658de09278a108f6f630",
+      "geometryHash": "5fc3f3d70b6f4c855ab0e027a90f23106177e7e0a5e8848712d19b4c951951cb",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62dceb943faa79a3dbdadad04a31fb51a6801bddd3238dce6d862297dd8632da",
+      "geometryHash": "95b3ff1984cdcf78b907abe6afb67910ed58afad1f8365e2d315be68ceb4a91a",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35c07aa32d585f4aee9dceb027c2d9c11238e19e0e981eccf6044372a7edf7de",
+      "geometryHash": "8c584d9e8228b22e9a10e94d5e90d94455dc270d704575c68d0b34a79583bb0f",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -248,11 +248,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12bdf4b2c79b9b63680752642c25818ff01c3751e8acc35511cb20eb324ac799",
+      "geometryHash": "a705e25448a5144617649b2355e14059cc03f2c37717b5769c448310edfa0f54",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear0",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear0",
@@ -273,11 +273,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45b47d28a254170783487cb1818fd3929d675efcee848e82364b0afbc9a6045a",
+      "geometryHash": "159972d408bcb4f12b95c417f15dd26bb69caa15a9f9b9fb905b85d36fc53d11",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear1",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear1",
@@ -298,11 +298,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "803dfa0a90939417e192cb20d1ef96f97ca068d5594afca6251b0182dcf58d38",
+      "geometryHash": "603c1d581daf558099085b17007bdfd27d01a7383febdccbb8bde1823d11b1fc",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear2",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear2",
@@ -323,11 +323,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64cfcb43a198ea88b7aa308dfbd84d56b23294b2a54a430ea98b08ca4154ea47",
+      "geometryHash": "943492f0c263c5150e927a426e08d994beb39015c86f9658e20a2480a7b5b65c",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear3",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear3",
@@ -348,11 +348,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42f58c4b6e45ce1abeecc4e46b13338ca5af5758ed2f2ff848029f5abac11e0a",
+      "geometryHash": "f00fde9def587a2b1eb2e07d603c63eceff4333103289afbc27b7c54a4532264",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear4",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear4",
@@ -373,11 +373,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dad219bf8bcc4971b9170611e5f43db8c0314892f128e136a7495acdafa0e939",
+      "geometryHash": "06a29cae980c949ebe23270e48c8a223702ab34e3f6f84689dca99b9244133e5",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear5",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear5",
@@ -398,11 +398,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "377ef12f3f29c75b3b19c22f3b683138f4439ce83937f2a3ff3ea28c5cbbd553",
+      "geometryHash": "72f73438bbbc6254288ba168871558e48f12c9e572dea5c1dfd7c3a50ccfa35e",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear6",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear6",
@@ -423,7 +423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c42e08fa61829de441bbdfca10ed71d5be8dd9edd460478780c061f3d5161e3",
+      "geometryHash": "9e3be1ae0e84bd8c4736acb51d99f0d6287330b8bca09252454d92324400d852",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -448,7 +448,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "766f0ffe97a5b9086dfc5751bb4d09b1cddf90c7922a673598e4ddbb2a97d289",
+      "geometryHash": "ef470bd3620343c5158a0e7fe36ce00ab751c37bb95e6b900a580c8f7484cbf6",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1b.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -473,11 +473,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdfbde7e94f6e355758d22a98ccf39f64ede6cf1aef3a9acea1fe035deadb614",
+      "geometryHash": "7054a02a19ddf7038d8e35afd6de8b5c6acca7276caf88da7d9ec3fed3b78c99",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.0",
       "indexCount": 996,
       "indexed": true,
-      "materialHash": "0a31079a0b042d9ccde182dac942dbedafbb885d498b764d9715956a0aa0a2ed",
+      "materialHash": "4bdf247b2608015cd3e6a8173af121685cdf7941e6036ea8fa94535603b9a1d4",
       "materialPipelineKey": "opaque",
       "meshName": "Drive",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive",
@@ -498,11 +498,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12f76654fda66a3aab76b60f2a7ef40b38d7c6444d37ad8eb8e0325c335f46f9",
+      "geometryHash": "4a8b653d3b0cdd557916a8a36baef76d5e315d44e9a3877b5f39de5cf164ec96",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.1",
       "indexCount": 621,
       "indexed": true,
-      "materialHash": "fdc53fab1f3a311e1b7f098a2fbad09178c773a1df9efac5dcd1c805d4eca17b",
+      "materialHash": "2ba3d2497b43937ba7d038d15ca14436cc0f7ec11a75785f9d67fba06239b83e",
       "materialPipelineKey": "opaque",
       "meshName": "Drive",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive",
@@ -523,7 +523,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e763bef137202d214b5f0500b000c3007287b74c0357b31fd2c752dd99806d3f",
+      "geometryHash": "3c447c2293954d316ba756904e4f092d71d2e8b2438b0e9f6b7e2ba633f7dc8f",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.2",
       "indexCount": 516,
       "indexed": true,
@@ -548,16 +548,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1abc450960b560d8db5e75b7812bb257eeb6037123d3ebf07e502365d8a892d",
+      "geometryHash": "95efbf01e4a8cbdb0bc79d666bcabb40dc169ee7c32fc80725bd80924da3a5ca",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.3",
       "indexCount": 2034,
       "indexed": true,
-      "materialHash": "2e1e70eeccb6aad156d8fc2edcc296f55becd8a4a33d765ba44c9643c71cd862",
+      "materialHash": "ecc59e1cdd698a802a7c81ea40f09c376bcfa5b507d7604661dabd8888f858d5",
       "materialPipelineKey": "opaque",
       "meshName": "Drive",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive",
       "primitiveIndex": 3,
-      "vertexCount": 672
+      "vertexCount": 671
     },
     {
       "bounds": {
@@ -573,7 +573,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a542da908851337be51f3f9d02fb89d9cf275eba4cb0f0880bbd01e7c4aa22c4",
+      "geometryHash": "8c00b129944acac0df56bb903e8cd257e19a2e61bc2c309019f275e7bdc84ffa",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10-2.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -598,7 +598,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56ff6a4c67a900ec4e842c2caffaa9215b33902353c8e803cec5baef1bd6d87b",
+      "geometryHash": "89d9ee86145480c06a552e89c4d56fda2b297fa293d87e6c3437bf4949b3ae79",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10-2.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -623,7 +623,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf5970a0e87c8bd4daee2cd454bf7b48b3c6b7953c5311712a81d905e2a5c7f3",
+      "geometryHash": "f665a620bfe6133bcc7c5e484a463d6e1d014dd71def9d46859fc524afed05a1",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10-2.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -648,7 +648,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d58d0a22527526023f68693a9a43e6dda799ad0c8f79ec5157eea3007bb29fa",
+      "geometryHash": "5daa019e699c0d0daa928c0dd55a00d80f6ab65e62347ab3da85351cb589c5d0",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -673,7 +673,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "efcc2a56c6a0529849a78373e2c29d071eb3882ffeb604bdc341e855df4cd4f3",
+      "geometryHash": "ec081f0cf4feb2cdad7408dd4765863a84bd831261d5e54fd86929fbed11abd7",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -698,7 +698,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "337f1438d8e5318bd57f417802531ec213d2e1fbd78f1a3a58d747bb0493a176",
+      "geometryHash": "0ca33c787334e84d0e854c061fe007d819eada82ae8d8db8acb1dba2f0e93452",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -723,7 +723,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8aec1fec1090842624448f4bb0b420e7cb764b18d4d0bb783a5ec720d36ead68",
+      "geometryHash": "0ce0bb6f484fe826d3244dad9aafa06dbe2272a7b7f3ed99c770a8cdd67c30c5",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10-2.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -748,7 +748,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdd1574540be96cab567838799551f471b4c107024312f55695ed2b65cca0b2b",
+      "geometryHash": "ed91bbea291be5ccde0300218a06d631b168d8296af029c9c8fe25d2087ed11c",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10-2.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -773,7 +773,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f4904352cace8cd48e08a5f4772f74d567345b6d7884d3d446d83010a42fa52",
+      "geometryHash": "57b41c228f201ea02e2452de5ed126cadde596868c42835bae1f31fffd5662e1",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10-2.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -798,7 +798,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "110556f35d7b296bac83b993bdec0d822ed4ec4350efc465b0bfe5d88f31d205",
+      "geometryHash": "202eb784bcd69513e87cfec191935688500bf36c49077cb945536de675f4c163",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "390e51a17e387954ff409de04edf089714f6f8618a3202a0ce1ab6487718d24a",
+      "geometryHash": "9ded5f4af53182ece6b6c9c7e7b7c9ead591c8f982374709c07a342b50999bf7",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -848,7 +848,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "791851ee968fcaeb77fb2a465de7e4e68fa4fdd76529c8f61dde72599cca0985",
+      "geometryHash": "b1f724e272d1e66e5d82b6f6b7804f3587e69c9bca0381f64b7bf5aa3b440859",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -873,7 +873,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c313f636c78e030e4087284e605441b979cdeebb2d0389a8f9bf0eea8310d8ad",
+      "geometryHash": "5c90d0fa59fc9af5af33fb7ba92071fcf3a91ba4a60d442e49c6ebb0630bcb46",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -898,7 +898,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07a8662fd7fa12a47b879691e5de8a85cecbb288595a78f191a71b73fc495f88",
+      "geometryHash": "a61f50cfd82c224ccbe924acea6f372ec0a8f0769d7fed9f15b6da87ea46a2a3",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -923,7 +923,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ece1a78308a191acb86cb7db7ae06b392a23fa6459e79c70a562c02f474acb81",
+      "geometryHash": "478c44d9fa4181936b9eb18a307dc2d6899ab290796c48b04f9afb0b5bfe6b34",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-07-0-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -948,7 +948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ecd604ad23bd2fb7bab7cabe1d50dae531d19ea4e6a95071e56d2447f4df3cfe",
+      "geometryHash": "a405a76b6c28bd46589dc2ec651afceacf120c3e03203b3a6981c4efe06f45f1",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-07-0-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -973,7 +973,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70c075c0a0077956f9aecd0c2673ab97f589c849f29c9a958030488e01b84a46",
+      "geometryHash": "773c31ac4ddf02448acd05ba41a4340fbb3998785b4c0b98ec4b3ffd7fc2119e",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-070-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -998,7 +998,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09fbd28f8d27454c051f0070e8f6c1d3c719f877e0c8a5e79d043a9c20d76009",
+      "geometryHash": "1a99f6a584d524b6b822656ec32f299f88b576c16a7b5c8db4c6e2594ff30bee",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-070-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1023,7 +1023,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "676d196405d249ce3d4fc55b7f3c95f66bfa12889a8f786ef35a90de5a33eb75",
+      "geometryHash": "a379cf8bee2bf8f05bbadb1f2113c316edf32a91b969c4821a3009c9f972fa15",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1048,7 +1048,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "010e91ccdc18df1fcaab7ed984d7d5cf3ad1375221c8e5ba496b60ee77258533",
+      "geometryHash": "2127d63e82ca1d43cc34ead8feda214195a689e53e95a8e08e9a9a913ec5d3ac",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -1064,38 +1064,6 @@
   "kind": "place",
   "lods": [],
   "materials": [
-    {
-      "hash": "0a31079a0b042d9ccde182dac942dbedafbb885d498b764d9715956a0aa0a2ed",
-      "id": "material:0a31079a0b042d9ccde182da",
-      "name": "Forge_ore_barge_paint__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
     {
       "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
       "id": "material:0c7aa7865a150ff305773a74",
@@ -1129,9 +1097,9 @@
       ]
     },
     {
-      "hash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
-      "id": "material:1924058446149e26f586ed31",
-      "name": "Forge_ore_barge_wk_torn__dead",
+      "hash": "2ba3d2497b43937ba7d038d15ca14436cc0f7ec11a75785f9d67fba06239b83e",
+      "id": "material:2ba3d2497b43937ba7d038d1",
+      "name": "Forge_ore_barge_paint2__dead",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -1161,9 +1129,41 @@
       ]
     },
     {
-      "hash": "2e1e70eeccb6aad156d8fc2edcc296f55becd8a4a33d765ba44c9643c71cd862",
-      "id": "material:2e1e70eeccb6aad156d8fc2e",
-      "name": "Forge_ore_barge_hazard__dead",
+      "hash": "4bdf247b2608015cd3e6a8173af121685cdf7941e6036ea8fa94535603b9a1d4",
+      "id": "material:4bdf247b2608015cd3e6a817",
+      "name": "Forge_ore_barge_paint__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5187264cf4f007cf8aadad80674723737919604c21b0b3237187870fdf3888d1",
+      "id": "material:5187264cf4f007cf8aadad80",
+      "name": "Forge_ore_barge_wk_torn__dead",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -1296,9 +1296,9 @@
       "textures": []
     },
     {
-      "hash": "fdc53fab1f3a311e1b7f098a2fbad09178c773a1df9efac5dcd1c805d4eca17b",
-      "id": "material:fdc53fab1f3a311e1b7f098a",
-      "name": "Forge_ore_barge_paint2__dead",
+      "hash": "ecc59e1cdd698a802a7c81ea40f09c376bcfa5b507d7604661dabd8888f858d5",
+      "id": "material:ecc59e1cdd698a802a7c81ea",
+      "name": "Forge_ore_barge_hazard__dead",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -2902,19 +2902,19 @@
       "sha256": "3add0fb91145bae9c0bb18b5841318bf9cd5377b7d024cec2fdbd070d1f42fea"
     },
     "sourceGlb": {
-      "bytes": 223884,
-      "sha256": "e580df4d0c9392c2686fb22f9e231fbb6e1a1706897c4a999a9bca930475fc56",
+      "bytes": 384396,
+      "sha256": "b96f3b1e7dcefdd67fd8a2ef9a8613bfe39c55df549794f61969a023bb0719a4",
       "uri": "place_aftermath_deb_ore_freighter_drive_bell.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 278752,
-    "sha256": "7584f49aacc99f0fbac2292f4d0156f63697a7218a995834d3f67e3ccad39a69",
+    "bytes": 439244,
+    "sha256": "29d7cc626e656288ec810de70553bf49ba87520f1e04fb6382a05d91f8bb1160",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4302,7 +4302,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_drive_bell.glb"
   },
-  "runtimeHash": "c2cefe0ae5666fcefec860b800d15007a41216ca6679dfe74aea6d11f808df8b",
+  "runtimeHash": "72189cc61493c937122ce839d2ab6b9380e965c8113612e3199909d8168c3c0d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

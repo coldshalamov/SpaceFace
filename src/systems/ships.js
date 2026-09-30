@@ -1999,6 +1999,12 @@ export const ships = {
     const owned = p.ownedShips[index];
     if (!owned) return false;
     const def = SHIP_BY_ID.get(owned.defId);
+    if (!(def && def.price > 0)) {
+      // Giveaway hulls (the free starter) still carry an insurance buyback value, but the yard
+      // never pays scrap on a hull it hands out for free — that desk was a credit faucet.
+      this.bus.emit('toast', { text: 'The yard does not buy back giveaway hulls', kind: 'error', ttl: 3 });
+      return false;
+    }
     const base = (def && (def.buyback != null ? def.buyback : def.price)) || 0;
     const refund = Math.floor(base * 0.5);
     // return fitted modules to inventory before scrapping the hull

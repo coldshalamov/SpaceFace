@@ -1,0 +1,10 @@
+You are resuming your SpaceFace task-bank assignment after an interruption (session limit). Your session state, tooling, and partial output under design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/ are as you left them. Continue the task bank per design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/AGENT_BRIEF.md from where you stopped, to the brief's full Definition of Done (§9): ≥140 inference lines + ≥140 FB packets + routing aids + self-audit.
+
+IMPORTANT NEW DEDUPE BASELINE — written since your brief: the repository now ALSO contains two landed task banks you must not restate (extend or cite them instead):
+
+1. design/program/next-wave-2026-09-28/ — 60 NXB build packets + 240 NXI inference lines. Read its INDEX.md and catalog.json (fields: id, title, distinct_delta, prior_refs).
+2. design/finish-expansion-2026-09/ — 24 programs, 240 SFQ-B build candidates + 96 SFQ-I inference candidates. Read its catalog/task_catalog.json (build_tasks/inference_tasks with title/outcome) and FIRST_WAVE.md.
+
+Before finalizing any task, check it against those two catalogs as well as the SF-001…300 bank and build_map.md §1C board rows (which now include sections H and I for those banks). A task that restates one of theirs is a defect in your bank; adjacent-deeper or composing tasks are fine when they cite the neighbor.
+
+Same hard rules as the brief: read-only outside design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/; no commits, branches, pushes, installs, or servers; ground every named file/symbol; run your audit script and record SELF_AUDIT.md. When finished, print the §9.5 final summary.

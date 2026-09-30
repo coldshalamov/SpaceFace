@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Lane_Center",
       "nodePath": [
         0,
-        28
+        65
       ],
       "parentNodeId": "sf.render.transponder-gate.root",
       "worldTransform": [
@@ -59,22 +59,222 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e098acebbfbec4ebd37057348fed728193a1fbe540ff09b7b0e555d312c08d1a",
+  "contentHash": "f56a871683eb5246375548036e1837f6752b9d0a38c53d1adbabe6e054a4be91",
   "dynamicGroups": [
     {
-      "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port.dynamic",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p1-0p2-laneblink-dome.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.transponder-gate.mesh.lod0-hook-nav-port"
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p1-0p2-laneblink-dome"
     },
     {
-      "id": "sf.render.transponder-gate.mesh.lod1-hook-nav-port.dynamic",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p2-0p2-crownlamp-1.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.transponder-gate.mesh.lod1-hook-nav-port"
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p2-0p2-crownlamp-1"
     },
     {
-      "id": "sf.render.transponder-gate.mesh.lod2-hook-nav-port.dynamic",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p4-0p0-crownlamp-1.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.transponder-gate.mesh.lod2-hook-nav-port"
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p4-0p0-crownlamp-1"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-0-7-3p6-scanbar0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-0-7-3p6-scanbar0"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-1-7-3p6-scanbar1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-1-7-3p6-scanbar1"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-2-7-3p6-scanbar2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-2-7-3p6-scanbar2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-3-7-3p6-scanbar3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-3-7-3p6-scanbar3"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-4-7-3p6-scanbar4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-4-7-3p6-scanbar4"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-5-7-3p6-scanbar5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-5-7-3p6-scanbar5"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-6-7-3p6-scanbar6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-6-7-3p6-scanbar6"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p1-0p2-laneblink-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p1-0p2-laneblink-dome"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p2-0p2-crownlamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p2-0p2-crownlamp-1"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p4-0p0-crownlamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p4-0p0-crownlamp-1"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14-2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14-2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-0-7-3p6-scanbar0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-0-7-3p6-scanbar0"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-1-7-3p6-scanbar1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-1-7-3p6-scanbar1"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-2-7-3p6-scanbar2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-2-7-3p6-scanbar2"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-3-7-3p6-scanbar3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-3-7-3p6-scanbar3"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-4-7-3p6-scanbar4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-4-7-3p6-scanbar4"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-5-7-3p6-scanbar5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-5-7-3p6-scanbar5"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-6-7-3p6-scanbar6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-6-7-3p6-scanbar6"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p1-0p2-laneblink-dome.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p1-0p2-laneblink-dome"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p2-0p2-crownlamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p2-0p2-crownlamp-1"
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p4-0p0-crownlamp-1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p4-0p0-crownlamp-1"
     }
   ],
   "geometry": [
@@ -106,6 +306,506 @@
     {
       "bounds": {
         "max": [
+          0.1550000011920929,
+          13.274991321878234,
+          0.1550000011920929
+        ],
+        "min": [
+          -0.1550000011920929,
+          13.12750787703534,
+          -0.1550000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d7331f314c5877a941bc27daeee59a40b02450fff0447fb06373c493b1a12bb7",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p1-0p2-laneblink-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p1-0p2-laneblink-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15000000596046448,
+          13.055004848991725,
+          9.750000387430191
+        ],
+        "min": [
+          -0.15000000596046448,
+          12.844994769538548,
+          9.450000375509262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc68076f332c5a33b0d0cd3a7f2d8e2280b5da0175aa1ed1c61cb1e2cb240abf",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p2-0p2-crownlamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p2-0p2-crownlamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15000000596046448,
+          13.055004848991725,
+          -9.450000375509262
+        ],
+        "min": [
+          -0.15000000596046448,
+          12.844994769538548,
+          -9.750000387430191
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ab46bad7385df4c817861e1041fd3c3c52c730899b95644d35f7560fadf5380",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p4-0p0-crownlamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p4-0p0-crownlamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997102860568824,
+          2.8500001430511475,
+          8.849989514553606
+        ],
+        "min": [
+          -0.19997102860568824,
+          1.9500000476837158,
+          8.75001086691612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bed60331bf5f40303cc080d217f221c28ed263df6fc7970fae9088723806419e",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997102860568824,
+          2.8500001430511475,
+          -8.75001086691612
+        ],
+        "min": [
+          -0.19997102860568824,
+          1.9500000476837158,
+          -8.849989514553606
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d71e4da19e13cb677cd598d3d9b1bf80bdf8fba251310c4e2e87279d1cc7e9df",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997097563146218,
+          4.849999904632568,
+          8.849989501310958
+        ],
+        "min": [
+          -0.19997097563146218,
+          3.950000047683716,
+          8.750010880158769
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "577292b5564334e6844eee5af74f68c5715962c45eff086ece607a0d4afc47a0",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997097563146218,
+          4.849999904632568,
+          -8.750010880158769
+        ],
+        "min": [
+          -0.19997097563146218,
+          3.950000047683716,
+          -8.849989501310958
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f32cdc70186d7c08669b14f7674a597d65976099a72253d7d5da79782bd44239",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          6.849999904632568,
+          8.849989488068312
+        ],
+        "min": [
+          -0.19997092265723612,
+          5.950000286102295,
+          8.750010893401415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e33e26a62ce5840a658b78f454ac6d8fa428ec8a2196e41ce7400e8acb2201c3",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          6.849999904632568,
+          -8.750010893401415
+        ],
+        "min": [
+          -0.19997092265723612,
+          5.950000286102295,
+          -8.849989488068312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9e5380c6a9f11315f8b37e086a59c7fff1a87d134bd9d3ad174ccd468fee3a67",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          8.84999942779541,
+          8.849989488068312
+        ],
+        "min": [
+          -0.19997092265723612,
+          7.949999809265137,
+          8.750010893401415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4e122d904b985d2148a30e2c857c354b9fd9dc1f997423137fbf5a2d12cdd65c",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          8.84999942779541,
+          -8.750010893401415
+        ],
+        "min": [
+          -0.19997092265723612,
+          7.949999809265137,
+          -8.849989488068312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "655d581602b4bba7dca8c9c8b9f0be31a1a3c4bd3e9472c0b4cc338e5eb603c2",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          10.84999942779541,
+          8.849989488068312
+        ],
+        "min": [
+          -0.19997092265723612,
+          9.949999809265137,
+          8.750010893401415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dafb0422e1e33c455879e6ee58bb33907bc0ab908f7c17eb08a8406296c4a8a7",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          10.84999942779541,
+          -8.750010893401415
+        ],
+        "min": [
+          -0.19997092265723612,
+          9.949999809265137,
+          -8.849989488068312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ca14e221c44ba3208455aabe4cef8adbbb2618196610563f02c742b4cd57c5d3",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          7.949999809265137
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          7.050000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "009b5c2934e8dd819d345db4314f3e0e24d8620a37568fb5f0f57afba45719a2",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-0-7-3p6-scanbar0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_scan_0_7_3p6_ScanBar0",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-0-7-3p6-scanbar0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          5.449999809265137
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          4.550000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f92479bf2e38bc245e1b6c772fafdce729866f33b3fb1276d04ce3b8ecf034e",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-1-7-3p6-scanbar1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_scan_1_7_3p6_ScanBar1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-1-7-3p6-scanbar1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002140004623145,
+          10.959976893870959,
+          2.950000047683716
+        ],
+        "min": [
+          -0.35002140004623145,
+          10.740023869068494,
+          2.049999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30006fc0445a37b618459cb24120651c6ca519339f212545f9199759f547bf9d",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-2-7-3p6-scanbar2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_scan_2_7_3p6_ScanBar2",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-2-7-3p6-scanbar2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002135368423365,
+          10.959976879304048,
+          0.44999998807907104
+        ],
+        "min": [
+          -0.35002135368423365,
+          10.740023883635406,
+          -0.44999998807907104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62edbcad6d921779e63c9bef5a0edfea85fcbe37ec77193ff6e8e27214d4dd94",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-3-7-3p6-scanbar3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_scan_3_7_3p6_ScanBar3",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-3-7-3p6-scanbar3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002140004623145,
+          10.959976893870959,
+          -2.049999952316284
+        ],
+        "min": [
+          -0.35002140004623145,
+          10.740023869068494,
+          -2.950000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d1cbfa0f63f626a6dc719cddfd22bc3bd38cd2b3f883103b640ac7c792acbe66",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-4-7-3p6-scanbar4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_scan_4_7_3p6_ScanBar4",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-4-7-3p6-scanbar4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          -4.550000190734863
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          -5.449999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef28232cf7be19d0c863f3ab3e50df01e05ca56797f351b647ffd6c001c108f1",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-5-7-3p6-scanbar5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_scan_5_7_3p6_ScanBar5",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-5-7-3p6-scanbar5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          -7.050000190734863
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          -7.949999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "90fc503390007b773636e730dd1585d17e8914c3da051b2ec1e7eec7221ae03c",
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-6-7-3p6-scanbar6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_scan_6_7_3p6_ScanBar6",
+      "nodeId": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-6-7-3p6-scanbar6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
           0.5243385434150696,
           12.549487113952637,
           10.350000381469727
@@ -117,11 +817,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec3797169a752f372e67a10d13bd02dc9e01e4961fc763a96a7f04f68efa7d99",
+      "geometryHash": "6d279602897c517c432210466d5cbd11a90d67b041b8ab59b903e74d1cc6e823",
       "id": "sf.render.transponder-gate.mesh.lod0-armor-navy.primitive.0",
       "indexCount": 2256,
       "indexed": true,
-      "materialHash": "e6b48b088d5abe3c3df96f9b593e194074551ba37a028dec47855deee5d70b73",
+      "materialHash": "791bc86d2503924c8abad4067d620cb49f11e4aca241f1bb627c14000b46fad9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor_navy",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-armor-navy",
@@ -142,11 +842,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16d6539116081309d183b6162f14bf43aed46414a1b6718b478d72a12ea7071c",
+      "geometryHash": "dd3f9f864687a6f5dba440a3ae6754e57832e6f45c2bcbf211bef70b23ab21dd",
       "id": "sf.render.transponder-gate.mesh.lod0-armor.primitive.0",
       "indexCount": 3384,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "500a91f8557b48b9a2fd9df4f91db664354fe009e0ffdff78799ff9f27363f14",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-armor",
@@ -156,77 +856,27 @@
     {
       "bounds": {
         "max": [
-          0.1550000011920929,
-          13.274991035461426,
-          0.1550000011920929
+          1.0700156688690186,
+          12.150341987609863,
+          5.150000095367432
         ],
         "min": [
-          -0.1550000011920929,
-          13.127508163452148,
-          -0.1550000011920929
+          -1.0700156688690186,
+          5.9496588706970215,
+          -5.150000095367432
         ]
       },
       "drawMode": 4,
-      "geometryHash": "444335577662d8ef642088c9673d94b2e9d8464d97ea583f6d7db4ed4c929bd3",
-      "id": "sf.render.transponder-gate.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 468,
-      "indexed": true,
-      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber",
-      "nodeId": "sf.render.transponder-gate.mesh.lod0-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 128
-    },
-    {
-      "bounds": {
-        "max": [
-          0.14996795556505021,
-          13.05473933378676,
-          9.75
-        ],
-        "min": [
-          -0.14996795556505021,
-          12.845260284743514,
-          -9.75
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9f30ab0a172e2ee97fab17bcbfb50ebf4e1508c1855503ee9a3c70c618bc49a8",
-      "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port.primitive.0",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_NAV_PORT",
-      "nodeId": "sf.render.transponder-gate.mesh.lod0-hook-nav-port",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          1.069551706314087,
-          12.14981746673584,
-          8.850000381469727
-        ],
-        "min": [
-          -1.069551706314087,
-          1.9501832723617554,
-          -8.850000381469727
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "266e42852d412d5ad9b1fd5f41c3483f7c9a7eef20bdf70f8563e3adbc7152b6",
+      "geometryHash": "1ef3d40a9274f43887943013ae778a7e89b7c5f422f3c5432571d7070475fcf3",
       "id": "sf.render.transponder-gate.mesh.lod0-lights-cyan.primitive.0",
-      "indexCount": 828,
+      "indexCount": 216,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 552
+      "vertexCount": 144
     },
     {
       "bounds": {
@@ -242,7 +892,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af37f597ecdcebe700bb1f98e2f70ffd5454b946b4c255642d12bf152020a3dc",
+      "geometryHash": "7201a9e335b8b20272211723ab0468c8404ff0f39c2a087f8af13eb718a81f1a",
       "id": "sf.render.transponder-gate.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -267,11 +917,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "249ce54bc2aea70f1344151105f5cde5c04020703123af1fc40df449825faa6d",
+      "geometryHash": "f5f294fc722077d16d934cb3a54806e0143e16825edc84f2f2a9146d3f97f01d",
       "id": "sf.render.transponder-gate.mesh.lod0-mechanical.primitive.0",
       "indexCount": 3324,
       "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialHash": "e1024ec2d1367ffa694cdfbb30269102a98c70b10818ba2c17edd0d40133950b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-mechanical",
@@ -292,11 +942,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1c570574ad0215c9baaa17cbb364bb64d6c2e5cab4451efb07a2f9f03243c3d",
+      "geometryHash": "b3693e90ef3f63a0c8402d4e2c737c10dac7327ffc1c41787929c4937a41208d",
       "id": "sf.render.transponder-gate.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 9576,
       "indexed": true,
-      "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
+      "materialHash": "5a66d66af341501e772968c2579981136cd155ad1b31a2a25d7f3057af03c875",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-mechanicaldark",
@@ -317,16 +967,516 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7db1028e4b1a613cf79d030718173afb9b3a7d2d0781c1992f38e47cfebd679a",
+      "geometryHash": "dbcb7a3aa49e2d2580478d2cb6472984aedd761f02b3740cc0172cb6a5a78a82",
       "id": "sf.render.transponder-gate.mesh.lod0-warning.primitive.0",
       "indexCount": 1380,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "91720f2514935f28bed91dff4921ce0dc5146dc2d2feec7d2e002494ec3f2ee3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-warning",
       "primitiveIndex": 0,
       "vertexCount": 508
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15518376231193542,
+          13.274995221161088,
+          0.15488843765256097
+        ],
+        "min": [
+          -0.1552295833826065,
+          13.128338249064246,
+          -0.15507018711564233
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "416f9ea8d05489c9d6f2a20fefa1fffa5443117657f5fd0f706a35571ecaeedf",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p1-0p2-laneblink-dome.primitive.0",
+      "indexCount": 186,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p1-0p2-laneblink-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15000000596046448,
+          13.055004848991725,
+          9.750000387430191
+        ],
+        "min": [
+          -0.15000000596046448,
+          12.844994769538548,
+          9.450000375509262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85e3d438c41371a6dc54c819e8b3299cc7714d4991506d1ce5819830dc0c511a",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p2-0p2-crownlamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p2-0p2-crownlamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15000000596046448,
+          13.055004848991725,
+          -9.450000375509262
+        ],
+        "min": [
+          -0.15000000596046448,
+          12.844994769538548,
+          -9.750000387430191
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5b93eed72ce2b91e377d709a8be2371deec471860c8f4be403bae2baa78b12a",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p4-0p0-crownlamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p4-0p0-crownlamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997102860568824,
+          2.8500001430511475,
+          8.849989514553606
+        ],
+        "min": [
+          -0.19997102860568824,
+          1.9500000476837158,
+          8.75001086691612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41aca8cf4c497647644d57845fc36b58c1a0878c263fd11232fa0665a9c2428d",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997102860568824,
+          2.8500001430511475,
+          -8.75001086691612
+        ],
+        "min": [
+          -0.19997102860568824,
+          1.9500000476837158,
+          -8.849989514553606
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "608d8615e2136f5c48dd7fd187ff8ecf7ee219068b2fe0584cfb18b91f6aeeb2",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997097563146218,
+          4.849999904632568,
+          8.849989501310958
+        ],
+        "min": [
+          -0.19997097563146218,
+          3.950000047683716,
+          8.750010880158769
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c0873ad20c3c7fcd6bf58f055ecc3f643a76c05c2e5459084d5538f4001963c",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997097563146218,
+          4.849999904632568,
+          -8.750010880158769
+        ],
+        "min": [
+          -0.19997097563146218,
+          3.950000047683716,
+          -8.849989501310958
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e498fb77ef993e1ceb074fb484bebf6eb240697c5c8f64144ba1506471be36a0",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          6.849999904632568,
+          8.849989488068312
+        ],
+        "min": [
+          -0.19997092265723612,
+          5.950000286102295,
+          8.750010893401415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0fc263648fcef5ae923b12bc88cf029d89e091be68dedff90a181e86267bb7a7",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          6.849999904632568,
+          -8.750010893401415
+        ],
+        "min": [
+          -0.19997092265723612,
+          5.950000286102295,
+          -8.849989488068312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93abdb9669c2484ce12d1cd6061105d67d6ec4184f0273db1ebec76d75bb3b0b",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          8.84999942779541,
+          8.849989488068312
+        ],
+        "min": [
+          -0.19997092265723612,
+          7.949999809265137,
+          8.750010893401415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f610b09cae5bf65dab3697fbfda715b98ac8069fdaa0228323689633b3e32f23",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          8.84999942779541,
+          -8.750010893401415
+        ],
+        "min": [
+          -0.19997092265723612,
+          7.949999809265137,
+          -8.849989488068312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "749b29067a823c44b936dbfec24f36b4d45c6466976a8135c7e624f2188e1707",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          10.84999942779541,
+          8.849989488068312
+        ],
+        "min": [
+          -0.19997092265723612,
+          9.949999809265137,
+          8.750010893401415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a2498e2335c90f12da1375923eacabf440c1fdf27210d1b0618e7c64aed4ba8",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19997092265723612,
+          10.84999942779541,
+          -8.750010893401415
+        ],
+        "min": [
+          -0.19997092265723612,
+          9.949999809265137,
+          -8.849989488068312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a8ab802d728226ee8a64f0a0903a6d64ce42581d49f61b447c9380678c8cbc6",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          7.949999809265137
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          7.050000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a74092be3481810f760a3046095990b7c512d1b674a88773dd1763adb3f22baf",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-0-7-3p6-scanbar0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_scan_0_7_3p6_ScanBar0",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-0-7-3p6-scanbar0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          5.449999809265137
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          4.550000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c02e83acce0b0f77bc8bec216ac3f40ee9e1fb765e46c696fb45d9a72e606b1a",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-1-7-3p6-scanbar1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_scan_1_7_3p6_ScanBar1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-1-7-3p6-scanbar1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002140004623145,
+          10.959976893870959,
+          2.950000047683716
+        ],
+        "min": [
+          -0.35002140004623145,
+          10.740023869068494,
+          2.049999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67e2fdf84a05cdb295e72f22ba0711a6dbed0a26bcd282c4aab006d5fffc2012",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-2-7-3p6-scanbar2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_scan_2_7_3p6_ScanBar2",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-2-7-3p6-scanbar2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002135368423365,
+          10.959976879304048,
+          0.44999998807907104
+        ],
+        "min": [
+          -0.35002135368423365,
+          10.740023883635406,
+          -0.44999998807907104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b319fa6e674e1661571497cb9d7016ff105942d13f01534b8e850bde60f30c6",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-3-7-3p6-scanbar3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_scan_3_7_3p6_ScanBar3",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-3-7-3p6-scanbar3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002140004623145,
+          10.959976893870959,
+          -2.049999952316284
+        ],
+        "min": [
+          -0.35002140004623145,
+          10.740023869068494,
+          -2.950000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c69bf7411a17fc363f18ef076f665d327a165b90b4780b729378c69f00da5830",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-4-7-3p6-scanbar4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_scan_4_7_3p6_ScanBar4",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-4-7-3p6-scanbar4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          -4.550000190734863
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          -5.449999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30d031b04556fb2da9f46071b54e31cc93796fccd9cea028ba0601ebc112d070",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-5-7-3p6-scanbar5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_scan_5_7_3p6_ScanBar5",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-5-7-3p6-scanbar5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.35002121459824026,
+          10.959976835603312,
+          -7.050000190734863
+        ],
+        "min": [
+          -0.35002121459824026,
+          10.740023927336141,
+          -7.949999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eb7060848e78c6269799fc5fc5953a7b22eae7123fbda7b23cd9fb7a1059cfdb",
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-6-7-3p6-scanbar6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_scan_6_7_3p6_ScanBar6",
+      "nodeId": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-6-7-3p6-scanbar6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -342,116 +1492,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "495e0556bbe5b4ec65f1b790e8f152c068a89a19157aa2185d478e56b492caec",
+      "geometryHash": "78b86bed4f7a97224ded14f1cb665939b9f15c520acc4aab7ec4afe0a01261fc",
       "id": "sf.render.transponder-gate.mesh.lod1-armor-navy.primitive.0",
-      "indexCount": 1284,
+      "indexCount": 1296,
       "indexed": true,
-      "materialHash": "e6b48b088d5abe3c3df96f9b593e194074551ba37a028dec47855deee5d70b73",
+      "materialHash": "791bc86d2503924c8abad4067d620cb49f11e4aca241f1bb627c14000b46fad9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor_navy",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-armor-navy",
       "primitiveIndex": 0,
-      "vertexCount": 503
+      "vertexCount": 509
     },
     {
       "bounds": {
         "max": [
           0.9970660209655762,
-          11.496801376342773,
+          11.498087882995605,
           8.877951622009277
         ],
         "min": [
           -0.9970660209655762,
-          1.7027958631515503,
+          1.7019147872924805,
           -8.877951622009277
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2dd53a3e47cb2f8c7d5929cd54cc1c6f3f1ae66be1a3c297b189170d3751915f",
+      "geometryHash": "4c294d00fd43d3b74cb5bf5ec926de1677e321178d22a3f486eaeec3e2e63ece",
       "id": "sf.render.transponder-gate.mesh.lod1-armor.primitive.0",
-      "indexCount": 1002,
+      "indexCount": 1164,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "500a91f8557b48b9a2fd9df4f91db664354fe009e0ffdff78799ff9f27363f14",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 372
+      "vertexCount": 451
     },
     {
       "bounds": {
         "max": [
-          0.15609179437160492,
-          13.273428916931152,
-          0.15489739179611206
+          1.0700156688690186,
+          12.150341987609863,
+          5.150000095367432
         ],
         "min": [
-          -0.156056746840477,
-          13.12820053100586,
-          -0.15507915616035461
+          -1.0700156688690186,
+          5.9496588706970215,
+          -5.150000095367432
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a6d874eeb2b33a42b77cf41244b951944f56e0dba8b578ba3321462cb420ea8",
-      "id": "sf.render.transponder-gate.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 120,
-      "indexed": true,
-      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Beacon_Amber",
-      "nodeId": "sf.render.transponder-gate.mesh.lod1-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          0.14996795556505021,
-          13.05473933378676,
-          9.75
-        ],
-        "min": [
-          -0.14996795556505021,
-          12.845260284743514,
-          -9.75
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "53fd0ef0a5016e5cdd5220b1ff75f1163fa94b01467b765c170d7bd12b9ba3da",
-      "id": "sf.render.transponder-gate.mesh.lod1-hook-nav-port.primitive.0",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HOOK_NAV_PORT",
-      "nodeId": "sf.render.transponder-gate.mesh.lod1-hook-nav-port",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          1.069551706314087,
-          12.14981746673584,
-          8.850000381469727
-        ],
-        "min": [
-          -1.069551706314087,
-          1.9501832723617554,
-          -8.850000381469727
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "be0150b2b702b9879755716152658f9d31b4fcc53be798b1ebf0105eaee00a9d",
+      "geometryHash": "c726f54cb0eb62dbe20175b13ae8a282f220a23eb56ae2fe4522153a0667d39a",
       "id": "sf.render.transponder-gate.mesh.lod1-lights-cyan.primitive.0",
-      "indexCount": 828,
+      "indexCount": 216,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 552
+      "vertexCount": 144
     },
     {
       "bounds": {
@@ -467,16 +1567,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6fb6f6119f9864d2ecd0aab844914ba24aea7d343c03368386b8d319ebf3098",
+      "geometryHash": "d4ee82351a0d490f9e7c9cd095fed70e74918b8194ca5f7be3fd5f0095f4c220",
       "id": "sf.render.transponder-gate.mesh.lod1-lights-warm.primitive.0",
-      "indexCount": 618,
+      "indexCount": 642,
       "indexed": true,
       "materialHash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 202
+      "vertexCount": 210
     },
     {
       "bounds": {
@@ -492,16 +1592,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3c9e29a6af41ee8e7dec9db506312b4224ac451c4eee00c25de078359ca195c",
+      "geometryHash": "95a50cf84aa8eb1a4ebfee13b094f86c0db0316adb0730bbd3cbd7677d866811",
       "id": "sf.render.transponder-gate.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 864,
+      "indexCount": 936,
       "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialHash": "e1024ec2d1367ffa694cdfbb30269102a98c70b10818ba2c17edd0d40133950b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 398
+      "vertexCount": 438
     },
     {
       "bounds": {
@@ -517,16 +1617,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b76e4dfeeab8f502b904680f1c0c129af61834f1afbf77182a98e3afc6a61aa3",
+      "geometryHash": "700f6169e1e45f6891a6ae4425937e5912023851441c3ed198de4de25e192581",
       "id": "sf.render.transponder-gate.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 3648,
+      "indexCount": 3696,
       "indexed": true,
-      "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
+      "materialHash": "5a66d66af341501e772968c2579981136cd155ad1b31a2a25d7f3057af03c875",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1865
+      "vertexCount": 1875
     },
     {
       "bounds": {
@@ -542,16 +1642,91 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a96a9e00b73152d2576356b48ea468d66ccdc1a7b383c852b5702d15872c7d5e",
+      "geometryHash": "2a123e52faf3b9bf3668ab780eed953146a6215ff528f6f2b3253c13123d9699",
       "id": "sf.render.transponder-gate.mesh.lod1-warning.primitive.0",
-      "indexCount": 420,
+      "indexCount": 444,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "91720f2514935f28bed91dff4921ce0dc5146dc2d2feec7d2e002494ec3f2ee3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 248
+      "vertexCount": 256
+    },
+    {
+      "bounds": {
+        "max": [
+          0.1550000011920929,
+          13.274991321878234,
+          0.1550000011920929
+        ],
+        "min": [
+          -0.1550000011920929,
+          13.12750787703534,
+          -0.1550000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd533355e738f4562b96ef66a852bed41db49b5b260d58ad6586a380d43301d6",
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p1-0p2-laneblink-dome.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodeId": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p1-0p2-laneblink-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15000000596046448,
+          13.055004848991725,
+          9.750000387430191
+        ],
+        "min": [
+          -0.15000000596046448,
+          12.844994769538548,
+          9.450000375509262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85e3d438c41371a6dc54c819e8b3299cc7714d4991506d1ce5819830dc0c511a",
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p2-0p2-crownlamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p2-0p2-crownlamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15000000596046448,
+          13.055004848991725,
+          -9.450000375509262
+        ],
+        "min": [
+          -0.15000000596046448,
+          12.844994769538548,
+          -9.750000387430191
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5b93eed72ce2b91e377d709a8be2371deec471860c8f4be403bae2baa78b12a",
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p4-0p0-crownlamp-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodeId": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p4-0p0-crownlamp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -567,11 +1742,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0dde89d9b415ec0e8ec57704330efde87898481e86ac8d10c1444903620e714f",
+      "geometryHash": "0fe8bb0f2de3fdaae2f9dba4c38426ba9b1033315191192c0ffb9218d631d454",
       "id": "sf.render.transponder-gate.mesh.lod2-armor-navy.primitive.0",
       "indexCount": 384,
       "indexed": true,
-      "materialHash": "e6b48b088d5abe3c3df96f9b593e194074551ba37a028dec47855deee5d70b73",
+      "materialHash": "791bc86d2503924c8abad4067d620cb49f11e4aca241f1bb627c14000b46fad9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor_navy",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-armor-navy",
@@ -592,66 +1767,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ae39844f76883633c7b747de2bce08dfb3837357e35ad5d0a477076092d80a1",
+      "geometryHash": "073629d41f4475ab1381d6d9228e0d84b6edec816dd85747e05e535b6f306d40",
       "id": "sf.render.transponder-gate.mesh.lod2-armor.primitive.0",
-      "indexCount": 312,
+      "indexCount": 318,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "500a91f8557b48b9a2fd9df4f91db664354fe009e0ffdff78799ff9f27363f14",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 178
-    },
-    {
-      "bounds": {
-        "max": [
-          0.15741373598575592,
-          13.280153274536133,
-          0.1548943668603897
-        ],
-        "min": [
-          -0.15742957592010498,
-          13.12838077545166,
-          -0.16289730370044708
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f170d833399a60ef8d7c588df4ea59e6c2cb4a6e232d215c2aeb0198b0006c82",
-      "id": "sf.render.transponder-gate.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Beacon_Amber",
-      "nodeId": "sf.render.transponder-gate.mesh.lod2-beacon-amber",
-      "primitiveIndex": 0,
-      "vertexCount": 32
-    },
-    {
-      "bounds": {
-        "max": [
-          0.14996795556505021,
-          13.05473933378676,
-          9.75
-        ],
-        "min": [
-          -0.14996795556505021,
-          12.845260284743514,
-          -9.75
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "53fd0ef0a5016e5cdd5220b1ff75f1163fa94b01467b765c170d7bd12b9ba3da",
-      "id": "sf.render.transponder-gate.mesh.lod2-hook-nav-port.primitive.0",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_HOOK_NAV_PORT",
-      "nodeId": "sf.render.transponder-gate.mesh.lod2-hook-nav-port",
-      "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 175
     },
     {
       "bounds": {
@@ -667,7 +1792,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a812c047b0b4089446132a203773a4a325c83d108c970be179dff91b73ef8a2",
+      "geometryHash": "d851ad1e56e9bc68c5c2aa408e0d3f5c8ad6134fc0f43e086b22a943e79928cf",
       "id": "sf.render.transponder-gate.mesh.lod2-lights-cyan.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -692,16 +1817,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff2dc2b7e5078803ccad26c203c6d2f51a960db6207e5d8a8fb4b118a8323b70",
+      "geometryHash": "fb23b03afa69c9020afb432bd313fb16ef23c081bf49f8cd9424de97d9e776f7",
       "id": "sf.render.transponder-gate.mesh.lod2-lights-warm.primitive.0",
-      "indexCount": 231,
+      "indexCount": 237,
       "indexed": true,
       "materialHash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 109
+      "vertexCount": 111
     },
     {
       "bounds": {
@@ -717,16 +1842,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66ce4dc4b3f3572141557cc66a37aa0ae8e18871801c5a21c135dcf3b04418a9",
+      "geometryHash": "87aab40541e36e5e1e30f80eeed737fe8cf5d2a738ac9d0c3ea379d29b7f7eb6",
       "id": "sf.render.transponder-gate.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 483,
+      "indexCount": 507,
       "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialHash": "e1024ec2d1367ffa694cdfbb30269102a98c70b10818ba2c17edd0d40133950b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 269
+      "vertexCount": 273
     },
     {
       "bounds": {
@@ -742,11 +1867,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b0e1855751781a8c6e7b69e1f38d034a4d84fbe187f69015b643fc39f7459d5",
+      "geometryHash": "2c6023960dea19e914b404945d23e1e6ce83ff3955b9035d0f398699e55d49ca",
       "id": "sf.render.transponder-gate.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 2094,
       "indexed": true,
-      "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
+      "materialHash": "5a66d66af341501e772968c2579981136cd155ad1b31a2a25d7f3057af03c875",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-mechanicaldark",
@@ -767,11 +1892,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "824dba852318e41a8abde87bb3eaf4ae326bd4a29502a0548bfff9db76993313",
+      "geometryHash": "f369f9d2fda1051735427b1f4343715dd951eeded2c1f73fb8cd7be9c0729080",
       "id": "sf.render.transponder-gate.mesh.lod2-warning.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "91720f2514935f28bed91dff4921ce0dc5146dc2d2feec7d2e002494ec3f2ee3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-warning",
@@ -784,40 +1909,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
-      "id": "material:3a3b2f67d6688939e22c4df2",
+      "hash": "500a91f8557b48b9a2fd9df4f91db664354fe009e0ffdff78799ff9f27363f14",
+      "id": "material:500a91f8557b48b9a2fd9df4",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -841,16 +1934,16 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_transponder_gate_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
-      "id": "material:486547a174710d4494bcbd4e",
-      "name": "Material_Mechanical",
+      "hash": "5a66d66af341501e772968c2579981136cd155ad1b31a2a25d7f3057af03c875",
+      "id": "material:5a66d66af341501e772968c2",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -861,7 +1954,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_transponder_gate_AO-forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -873,7 +1966,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_transponder_gate_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -887,54 +1980,8 @@
       "textures": []
     },
     {
-      "hash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
-      "id": "material:a95c24dd907809020b9d1621",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
-      "id": "material:c73d1b5264f0a58926ed9d98",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
-      "id": "material:c8bc418ef6e934f23d9f4f7d",
-      "name": "Material_Emissive_Cyan",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "e6b48b088d5abe3c3df96f9b593e194074551ba37a028dec47855deee5d70b73",
-      "id": "material:e6b48b088d5abe3c3df96f9b",
+      "hash": "791bc86d2503924c8abad4067d620cb49f11e4aca241f1bb627c14000b46fad9",
+      "id": "material:791bc86d2503924c8abad406",
       "name": "Material_Armor_navy",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -958,7 +2005,85 @@
         },
         {
           "colorSpace": "linear",
+          "name": "place_transponder_gate_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "91720f2514935f28bed91dff4921ce0dc5146dc2d2feec7d2e002494ec3f2ee3",
+      "id": "material:91720f2514935f28bed91dff",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_transponder_gate_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
+      "id": "material:a95c24dd907809020b9d1621",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "id": "material:c8bc418ef6e934f23d9f4f7d",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e1024ec2d1367ffa694cdfbb30269102a98c70b10818ba2c17edd0d40133950b",
+      "id": "material:e1024ec2d1367ffa694cdfbb",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_transponder_gate_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_transponder_gate_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1023,6 +2148,986 @@
       ]
     },
     {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p1-0p2-laneblink-dome",
+      "localTransform": [
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        13.201249599456787,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodeName": "LOD0_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        13.201249599456787,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p2-0p2-crownlamp-1",
+      "localTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        9.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodeName": "LOD0_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        9.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-blink-1p4-0p0-crownlamp-1",
+      "localTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        -9.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodeName": "LOD0_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        -9.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+      "nodeName": "LOD0_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10-2",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+      "nodeName": "LOD0_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11",
+      "localTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+      "nodeName": "LOD0_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11-2",
+      "localTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+      "nodeName": "LOD0_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+      "nodeName": "LOD0_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12-2",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+      "nodeName": "LOD0_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+      "nodeName": "LOD0_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13-2",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+      "nodeName": "LOD0_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+      "nodeName": "LOD0_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14-2",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+      "nodeName": "LOD0_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-0-7-3p6-scanbar0",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        7.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_scan_0_7_3p6_ScanBar0",
+      "nodeName": "LOD0_ANIM_chase_scan_0_7_3p6_ScanBar0",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-1-7-3p6-scanbar1",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_scan_1_7_3p6_ScanBar1",
+      "nodeName": "LOD0_ANIM_chase_scan_1_7_3p6_ScanBar1",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-2-7-3p6-scanbar2",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        2.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_scan_2_7_3p6_ScanBar2",
+      "nodeName": "LOD0_ANIM_chase_scan_2_7_3p6_ScanBar2",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-3-7-3p6-scanbar3",
+      "localTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        10.850000381469727,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_scan_3_7_3p6_ScanBar3",
+      "nodeName": "LOD0_ANIM_chase_scan_3_7_3p6_ScanBar3",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        10.850000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-4-7-3p6-scanbar4",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        -2.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_scan_4_7_3p6_ScanBar4",
+      "nodeName": "LOD0_ANIM_chase_scan_4_7_3p6_ScanBar4",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        -2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-5-7-3p6-scanbar5",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_scan_5_7_3p6_ScanBar5",
+      "nodeName": "LOD0_ANIM_chase_scan_5_7_3p6_ScanBar5",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-6-7-3p6-scanbar6",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -7.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_scan_6_7_3p6_ScanBar6",
+      "nodeName": "LOD0_ANIM_chase_scan_6_7_3p6_ScanBar6",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -7.5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.transponder-gate.mesh.lod0-armor",
       "localTransform": [
         1,
@@ -1047,7 +3152,7 @@
       "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        1
+        21
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1096,7 +3201,7 @@
       "nodeName": "LOD0_Armor_navy",
       "nodePath": [
         0,
-        2
+        22
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1116,104 +3221,6 @@
         0,
         0,
         0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.transponder-gate.mesh.lod0-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
-      "nodePath": [
-        0,
-        3
-      ],
-      "parentId": "sf.render.transponder-gate.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.transponder-gate.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port",
-      "localTransform": [
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        12.949999809265137,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
-      "nodeName": "LOD0_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        4
-      ],
-      "parentId": "sf.render.transponder-gate.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.transponder-gate.body",
-      "worldTransform": [
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        12.949999809265137,
         0,
         1
       ]
@@ -1243,7 +3250,7 @@
       "nodeName": "LOD0_Lights_Cyan",
       "nodePath": [
         0,
-        5
+        23
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1292,7 +3299,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        6
+        24
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1341,7 +3348,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        7
+        25
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1390,7 +3397,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        8
+        26
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1439,7 +3446,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        9
+        27
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1460,6 +3467,986 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p1-0p2-laneblink-dome",
+      "localTransform": [
+        0.15520667284727097,
+        0,
+        0,
+        0,
+        0,
+        0.15520667284727097,
+        0,
+        0,
+        0,
+        0,
+        0.15520667284727097,
+        0,
+        -0.00002291053533554077,
+        13.201666735112667,
+        -0.00009087473154067993,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodeName": "LOD1_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.15520667284727097,
+        0,
+        0,
+        0,
+        0,
+        0.15520667284727097,
+        0,
+        0,
+        0,
+        0,
+        0.15520667284727097,
+        0,
+        -0.00002291053533554077,
+        13.201666735112667,
+        -0.00009087473154067993,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p2-0p2-crownlamp-1",
+      "localTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        9.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodeName": "LOD1_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        9.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-blink-1p4-0p0-crownlamp-1",
+      "localTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        -9.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodeName": "LOD1_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        -9.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+      "nodeName": "LOD1_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10-2",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+      "nodeName": "LOD1_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        2.4000000953674316,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11",
+      "localTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+      "nodeName": "LOD1_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11-2",
+      "localTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+      "nodeName": "LOD1_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        0,
+        0,
+        0.44999992847442627,
+        0,
+        0,
+        4.399999976158142,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+      "nodeName": "LOD1_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12-2",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+      "nodeName": "LOD1_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        6.400000095367432,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+      "nodeName": "LOD1_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13-2",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+      "nodeName": "LOD1_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        8.399999618530273,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        -8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+      "nodeName": "LOD1_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        -8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14-2",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        8.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+      "nodeName": "LOD1_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.399999618530273,
+        8.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-0-7-3p6-scanbar0",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        7.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_scan_0_7_3p6_ScanBar0",
+      "nodeName": "LOD1_ANIM_chase_scan_0_7_3p6_ScanBar0",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-1-7-3p6-scanbar1",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_scan_1_7_3p6_ScanBar1",
+      "nodeName": "LOD1_ANIM_chase_scan_1_7_3p6_ScanBar1",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-2-7-3p6-scanbar2",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        2.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_scan_2_7_3p6_ScanBar2",
+      "nodeName": "LOD1_ANIM_chase_scan_2_7_3p6_ScanBar2",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-3-7-3p6-scanbar3",
+      "localTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        10.850000381469727,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_scan_3_7_3p6_ScanBar3",
+      "nodeName": "LOD1_ANIM_chase_scan_3_7_3p6_ScanBar3",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        10.850000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-4-7-3p6-scanbar4",
+      "localTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        -2.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_scan_4_7_3p6_ScanBar4",
+      "nodeName": "LOD1_ANIM_chase_scan_4_7_3p6_ScanBar4",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        0,
+        0,
+        0.4500000476837158,
+        0,
+        0,
+        10.850000381469727,
+        -2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-5-7-3p6-scanbar5",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_scan_5_7_3p6_ScanBar5",
+      "nodeName": "LOD1_ANIM_chase_scan_5_7_3p6_ScanBar5",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-6-7-3p6-scanbar6",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -7.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_scan_6_7_3p6_ScanBar6",
+      "nodeName": "LOD1_ANIM_chase_scan_6_7_3p6_ScanBar6",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        10.850000381469727,
+        -7.5,
         1
       ]
     },
@@ -1488,7 +4475,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        10
+        48
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1537,7 +4524,7 @@
       "nodeName": "LOD1_Armor_navy",
       "nodePath": [
         0,
-        11
+        49
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1557,104 +4544,6 @@
         0,
         0,
         0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.transponder-gate.mesh.lod1-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Beacon_Amber",
-      "nodeName": "LOD1_Beacon_Amber",
-      "nodePath": [
-        0,
-        12
-      ],
-      "parentId": "sf.render.transponder-gate.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.transponder-gate.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.transponder-gate.mesh.lod1-hook-nav-port",
-      "localTransform": [
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        12.949999809265137,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
-      "nodeName": "LOD1_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        13
-      ],
-      "parentId": "sf.render.transponder-gate.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.transponder-gate.body",
-      "worldTransform": [
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        12.949999809265137,
         0,
         1
       ]
@@ -1684,7 +4573,7 @@
       "nodeName": "LOD1_Lights_Cyan",
       "nodePath": [
         0,
-        14
+        50
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1733,7 +4622,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        15
+        51
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1782,7 +4671,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        16
+        52
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1831,7 +4720,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        17
+        53
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1880,7 +4769,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        18
+        54
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1901,6 +4790,153 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p1-0p2-laneblink-dome",
+      "localTransform": [
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        13.201249599456787,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodeName": "LOD2_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+      "nodePath": [
+        0,
+        55
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.1550000011920929,
+        0,
+        0,
+        13.201249599456787,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p2-0p2-crownlamp-1",
+      "localTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        9.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodeName": "LOD2_ANIM_blink_1p2_0p2_CrownLamp-1",
+      "nodePath": [
+        0,
+        56
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        9.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transponder-gate.mesh.lod2-anim-blink-1p4-0p0-crownlamp-1",
+      "localTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        -9.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodeName": "LOD2_ANIM_blink_1p4_0p0_CrownLamp+1",
+      "nodePath": [
+        0,
+        57
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        12.949999809265137,
+        -9.600000381469727,
         1
       ]
     },
@@ -1929,7 +4965,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        19
+        58
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1978,7 +5014,7 @@
       "nodeName": "LOD2_Armor_navy",
       "nodePath": [
         0,
-        20
+        59
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -1998,104 +5034,6 @@
         0,
         0,
         0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.transponder-gate.mesh.lod2-beacon-amber",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Beacon_Amber",
-      "nodeName": "LOD2_Beacon_Amber",
-      "nodePath": [
-        0,
-        21
-      ],
-      "parentId": "sf.render.transponder-gate.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.transponder-gate.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.transponder-gate.mesh.lod2-hook-nav-port",
-      "localTransform": [
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        12.949999809265137,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
-      "nodeName": "LOD2_HOOK_NAV_PORT",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.transponder-gate.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.transponder-gate.body",
-      "worldTransform": [
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        0,
-        0,
-        9.75,
-        0,
-        0,
-        12.949999809265137,
         0,
         1
       ]
@@ -2125,7 +5063,7 @@
       "nodeName": "LOD2_Lights_Cyan",
       "nodePath": [
         0,
-        23
+        60
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2174,7 +5112,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        24
+        61
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2223,7 +5161,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        25
+        62
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2272,7 +5210,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        26
+        63
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2321,7 +5259,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        27
+        64
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2396,34 +5334,34 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "70b2fa53cc3718c0ab3c317e15a8df836873f3b96a7b1a1ae83c9daa2ffcf18b"
+      "sha256": "0c07787416659e5b7538072131466aadcbab2af20267ca7ff89cabdf47812d28"
     },
     "sourceGlb": {
-      "bytes": 547856,
-      "sha256": "d81f92cccf8b614af090d4e257dec4719ca8243540f91a0bf0ac88832a8beef1",
+      "bytes": 1068264,
+      "sha256": "5cdc272d6c3b95f7c7461cd4f3def1f9e75af9e662be54392ac30e90de718f7c",
       "uri": "place_transponder_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 792716,
-    "sha256": "35d546423061e1ec6a999bd6d0f7d4b9c5dc267316d93677109bcf4a85aeb612",
+    "bytes": 1382688,
+    "sha256": "b00ec4ea0afe58ef8b8896635a595efb137e3b43cdbbd88bf25d2d1dc7e5c763",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        6.640246725684847,
+        6.6376676989973245,
         0
       ],
       "max": [
         1.129868507385254,
-        13.280153274536133,
+        13.274995221161088,
         11.300000190734863
       ],
       "min": [
@@ -2433,7 +5371,7 @@
       ],
       "size": [
         2.259737014770508,
-        13.279813097702572,
+        13.274655044327528,
         22.600000381469727
       ]
     },
@@ -2462,7 +5400,7 @@
           1
         ],
         "name": "SOCKET_Lane_Center",
-        "planIndex": 30,
+        "planIndex": 67,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2487,7 +5425,7 @@
     "materialProfileRoles": {
       "hull": 7,
       "mechanical": 6,
-      "signal": 12,
+      "signal": 49,
       "warning": 3
     },
     "materialProfiles": [
@@ -2499,12 +5437,12 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2529,27 +5467,27 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2574,37 +5512,37 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -2630,10 +5568,735 @@
         "allowTextures": true,
         "planIndex": 29,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "warning"
       }
     ],
-    "nodeCount": 31,
+    "nodeCount": 68,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.1550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.1550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.1550000011920929,
+          0,
+          0,
+          13.201249599456787,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          12.949999809265137,
+          9.600000381469727,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p2_0p2_CrownLamp-1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          12.949999809265137,
+          -9.600000381469727,
+          1
+        ],
+        "name": "LOD0_ANIM_blink_1p4_0p0_CrownLamp+1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          2.4000000953674316,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          4.399999976158142,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          6.400000095367432,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          8.399999618530273,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.399999618530273,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          2.4000000953674316,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          4.399999976158142,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          6.400000095367432,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          8.399999618530273,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.399999618530273,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          7.5,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_scan_0_7_3p6_ScanBar0",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          5,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_scan_1_7_3p6_ScanBar1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          10.850000381469727,
+          2.5,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_scan_2_7_3p6_ScanBar2",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          0,
+          10.850000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_scan_3_7_3p6_ScanBar3",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          10.850000381469727,
+          -2.5,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_scan_4_7_3p6_ScanBar4",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          -5,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_scan_5_7_3p6_ScanBar5",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          -7.5,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_scan_6_7_3p6_ScanBar6",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -2655,7 +6318,7 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2682,64 +6345,9 @@
           1
         ],
         "name": "LOD0_Armor_navy",
-        "planIndex": 4,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Beacon_Amber",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          9.75,
-          0,
-          0,
-          0,
-          0,
-          9.75,
-          0,
-          0,
-          0,
-          0,
-          9.75,
-          0,
-          0,
-          12.949999809265137,
-          0,
-          1
-        ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
           "lod": "lod0"
         }
       },
@@ -2764,7 +6372,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan",
-        "planIndex": 7,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2791,7 +6399,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 8,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2818,7 +6426,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 9,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2845,7 +6453,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 10,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2872,10 +6480,550 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 11,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15520667284727097,
+          0,
+          0,
+          0,
+          0,
+          0.15520667284727097,
+          0,
+          0,
+          0,
+          0,
+          0.15520667284727097,
+          0,
+          -0.00002291053533554077,
+          13.201666735112667,
+          -0.00009087473154067993,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          12.949999809265137,
+          9.600000381469727,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p2_0p2_CrownLamp-1",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          12.949999809265137,
+          -9.600000381469727,
+          1
+        ],
+        "name": "LOD1_ANIM_blink_1p4_0p0_CrownLamp+1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          2.4000000953674316,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane+1_0_5_2p4_LaneStrip+10",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          4.399999976158142,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane+1_1_5_2p4_LaneStrip+11",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          6.400000095367432,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane+1_2_5_2p4_LaneStrip+12",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          8.399999618530273,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane+1_3_5_2p4_LaneStrip+13",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.399999618530273,
+          -8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane+1_4_5_2p4_LaneStrip+14",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          2.4000000953674316,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane-1_0_5_2p4_LaneStrip-10",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          0,
+          0,
+          0.44999992847442627,
+          0,
+          0,
+          4.399999976158142,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane-1_1_5_2p4_LaneStrip-11",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          6.400000095367432,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane-1_2_5_2p4_LaneStrip-12",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          8.399999618530273,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane-1_3_5_2p4_LaneStrip-13",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.399999618530273,
+          8.800000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_lane-1_4_5_2p4_LaneStrip-14",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          7.5,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_scan_0_7_3p6_ScanBar0",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          5,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_scan_1_7_3p6_ScanBar1",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          10.850000381469727,
+          2.5,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_scan_2_7_3p6_ScanBar2",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          0,
+          10.850000381469727,
+          0,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_scan_3_7_3p6_ScanBar3",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.4500000476837158,
+          0,
+          0,
+          10.850000381469727,
+          -2.5,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_scan_4_7_3p6_ScanBar4",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          -5,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_scan_5_7_3p6_ScanBar5",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          10.850000381469727,
+          -7.5,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_scan_6_7_3p6_ScanBar6",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
         }
       },
       {
@@ -2899,7 +7047,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 12,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2926,64 +7074,9 @@
           1
         ],
         "name": "LOD1_Armor_navy",
-        "planIndex": 13,
+        "planIndex": 51,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Beacon_Amber",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          9.75,
-          0,
-          0,
-          0,
-          0,
-          9.75,
-          0,
-          0,
-          0,
-          0,
-          9.75,
-          0,
-          0,
-          12.949999809265137,
-          0,
-          1
-        ],
-        "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
           "lod": "lod1"
         }
       },
@@ -3008,7 +7101,7 @@
           1
         ],
         "name": "LOD1_Lights_Cyan",
-        "planIndex": 16,
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3035,7 +7128,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 17,
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3062,7 +7155,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 18,
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3089,7 +7182,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 19,
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3116,10 +7209,91 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 20,
+        "planIndex": 56,
         "tags": {
           "canopy": false,
           "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.1550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.1550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.1550000011920929,
+          0,
+          0,
+          13.201249599456787,
+          0,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p1_0p2_LaneBlink_Dome",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          12.949999809265137,
+          9.600000381469727,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p2_0p2_CrownLamp-1",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          12.949999809265137,
+          -9.600000381469727,
+          1
+        ],
+        "name": "LOD2_ANIM_blink_1p4_0p0_CrownLamp+1",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
         }
       },
       {
@@ -3143,7 +7317,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 21,
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3170,64 +7344,9 @@
           1
         ],
         "name": "LOD2_Armor_navy",
-        "planIndex": 22,
+        "planIndex": 61,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Beacon_Amber",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          9.75,
-          0,
-          0,
-          0,
-          0,
-          9.75,
-          0,
-          0,
-          0,
-          0,
-          9.75,
-          0,
-          0,
-          12.949999809265137,
-          0,
-          1
-        ],
-        "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "damageRole": "navLight",
           "lod": "lod2"
         }
       },
@@ -3252,7 +7371,7 @@
           1
         ],
         "name": "LOD2_Lights_Cyan",
-        "planIndex": 25,
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3279,7 +7398,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 26,
+        "planIndex": 63,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3306,7 +7425,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 27,
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3333,7 +7452,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 28,
+        "planIndex": 65,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3360,7 +7479,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 29,
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3371,14 +7490,14 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
-  "runtimeHash": "c4388eae219c2f079c26fe365aa555d63643fc343de710ef4b8c589941286728",
+  "runtimeHash": "c7fe38becb353bc68cc80d9039f66b7dd2861982b32e55b1af62cea2815b0772",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.129868507385254,
-          13.280153274536133,
+          13.274995221161088,
           11.300000190734863
         ],
         "min": [
@@ -3390,28 +7509,65 @@
       "id": "sf.render.transponder-gate.body",
       "nodeIds": [
         "sf.render.transponder-gate.mesh.collision-hull",
+        "sf.render.transponder-gate.mesh.lod0-anim-blink-1p1-0p2-laneblink-dome",
+        "sf.render.transponder-gate.mesh.lod0-anim-blink-1p2-0p2-crownlamp-1",
+        "sf.render.transponder-gate.mesh.lod0-anim-blink-1p4-0p0-crownlamp-1",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-0-5-2p4-lanestrip-10-2",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-1-5-2p4-lanestrip-11-2",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-2-5-2p4-lanestrip-12-2",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-3-5-2p4-lanestrip-13-2",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-lane-1-4-5-2p4-lanestrip-14-2",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-0-7-3p6-scanbar0",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-1-7-3p6-scanbar1",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-2-7-3p6-scanbar2",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-3-7-3p6-scanbar3",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-4-7-3p6-scanbar4",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-5-7-3p6-scanbar5",
+        "sf.render.transponder-gate.mesh.lod0-anim-chase-scan-6-7-3p6-scanbar6",
         "sf.render.transponder-gate.mesh.lod0-armor",
         "sf.render.transponder-gate.mesh.lod0-armor-navy",
-        "sf.render.transponder-gate.mesh.lod0-beacon-amber",
-        "sf.render.transponder-gate.mesh.lod0-hook-nav-port",
         "sf.render.transponder-gate.mesh.lod0-lights-cyan",
         "sf.render.transponder-gate.mesh.lod0-lights-warm",
         "sf.render.transponder-gate.mesh.lod0-mechanical",
         "sf.render.transponder-gate.mesh.lod0-mechanicaldark",
         "sf.render.transponder-gate.mesh.lod0-warning",
+        "sf.render.transponder-gate.mesh.lod1-anim-blink-1p1-0p2-laneblink-dome",
+        "sf.render.transponder-gate.mesh.lod1-anim-blink-1p2-0p2-crownlamp-1",
+        "sf.render.transponder-gate.mesh.lod1-anim-blink-1p4-0p0-crownlamp-1",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-0-5-2p4-lanestrip-10-2",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-1-5-2p4-lanestrip-11-2",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-2-5-2p4-lanestrip-12-2",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-3-5-2p4-lanestrip-13-2",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-lane-1-4-5-2p4-lanestrip-14-2",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-0-7-3p6-scanbar0",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-1-7-3p6-scanbar1",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-2-7-3p6-scanbar2",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-3-7-3p6-scanbar3",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-4-7-3p6-scanbar4",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-5-7-3p6-scanbar5",
+        "sf.render.transponder-gate.mesh.lod1-anim-chase-scan-6-7-3p6-scanbar6",
         "sf.render.transponder-gate.mesh.lod1-armor",
         "sf.render.transponder-gate.mesh.lod1-armor-navy",
-        "sf.render.transponder-gate.mesh.lod1-beacon-amber",
-        "sf.render.transponder-gate.mesh.lod1-hook-nav-port",
         "sf.render.transponder-gate.mesh.lod1-lights-cyan",
         "sf.render.transponder-gate.mesh.lod1-lights-warm",
         "sf.render.transponder-gate.mesh.lod1-mechanical",
         "sf.render.transponder-gate.mesh.lod1-mechanicaldark",
         "sf.render.transponder-gate.mesh.lod1-warning",
+        "sf.render.transponder-gate.mesh.lod2-anim-blink-1p1-0p2-laneblink-dome",
+        "sf.render.transponder-gate.mesh.lod2-anim-blink-1p2-0p2-crownlamp-1",
+        "sf.render.transponder-gate.mesh.lod2-anim-blink-1p4-0p0-crownlamp-1",
         "sf.render.transponder-gate.mesh.lod2-armor",
         "sf.render.transponder-gate.mesh.lod2-armor-navy",
-        "sf.render.transponder-gate.mesh.lod2-beacon-amber",
-        "sf.render.transponder-gate.mesh.lod2-hook-nav-port",
         "sf.render.transponder-gate.mesh.lod2-lights-cyan",
         "sf.render.transponder-gate.mesh.lod2-lights-warm",
         "sf.render.transponder-gate.mesh.lod2-mechanical",

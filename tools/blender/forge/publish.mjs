@@ -93,7 +93,8 @@ run('node', ['scripts/build-sg04-release-assets.mjs', '--no-clean', '--only', [.
 const pilotsPath = join(ROOT, 'assets/ships/render-packages/pilots.json');
 const pilots = JSON.parse(readFileSync(pilotsPath, 'utf8'));
 const list = Array.isArray(pilots) ? pilots : (pilots.pilots || pilots.packages);
-// Flight-static packages are fully merged: their pilots must not carry dynamic-name groups.
+// Flight-static packages merge only immutable geometry: ANIM_ authored-motion nodes stay dynamic,
+// every other dynamic-name group is still barred from the merged lane.
 const flightStaticKeys = new Set(
   JSON.parse(readFileSync(join(ROOT, 'assets/ships/render-packages/flight-static-v3.json'), 'utf8')).packages || [],
 );
@@ -101,8 +102,8 @@ for (const key of pilotKeys) {
   const pilot = list.find((p) => p.key === key);
   if (!pilot) throw new Error(`no render-package pilot ${key}`);
   pilot.dynamicNameIncludes = flightStaticKeys.has(key)
-    ? []
-    : ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR'];
+    ? ['ANIM_']
+    : ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR', 'ANIM_'];
 }
 writeFileSync(pilotsPath, `${JSON.stringify(pilots, null, 2)}\n`);
 run('node', ['scripts/refresh-render-package-pilots.mjs', `--only=${[...pilotKeys].join(',')}`], { quiet: true });

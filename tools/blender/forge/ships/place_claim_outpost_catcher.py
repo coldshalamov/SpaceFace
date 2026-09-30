@@ -29,6 +29,7 @@ ARM_D = 6.8           # arms stand proud of the deck
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     K.build_platform(s, {'hab': (0.0, -27.0), 'hab_scale': 0.55})
 
     for e in (-1, 1):
@@ -56,11 +57,12 @@ def build():
         K.plan_truss(s, f'ArmTip{e:+d}', (ARM_U1, v, ARM_D), (ARM_U1 + 3.0, v - e * 4.0,
                                                               ARM_D + 0.8),
                      1.6, 2, material='paint.role', chord=0.45, web=0.26)
-        # guide strobes walking the arm
+        # guide strobes walking the arm — a real chase: the lit slot marches toward the mouth
         for i in range(4):
             au = -30.0 + i * 20.0
-            F.light(s, f'ArmStrobe{e:+d}{i}', K.P(au, v, ARM_D + 2.0), 'glow_cyan',
-                    size=0.4)
+            pos = K.P(au, v, ARM_D + 2.0)
+            o = F.light(s, f'ArmStrobe{e:+d}{i}', pos, 'glow_cyan', size=0.4)
+            s.anim(o, f'chase:arm{e:+d}:{i}:4:2p2', pos)
 
     # --- the net: ribs + strands strung between the arms across the whole span ---------------
     s.detail = 1
@@ -91,7 +93,9 @@ def build():
     K.plan_beams(s, 'TowCable', [((-8.0, -ARM_V - 4.0, 8.4), (-8.0, -ARM_V, ARM_D + 0.6))],
                  0.16, material='dark')
     # mouth lamp in the middle of the net
-    F.light(s, 'NetLamp', K.P(ARM_U1 - 2.0, 0.0, ARM_D + 0.4), 'glow_warm', size=0.55)
+    pos = K.P(ARM_U1 - 2.0, 0.0, ARM_D + 0.4)
+    o = F.light(s, 'NetLamp', pos, 'glow_warm', size=0.55)
+    s.anim(o, 'blink:1p8:0p5', pos)
     return s
 
 

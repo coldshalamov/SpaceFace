@@ -35,6 +35,7 @@ WHEEL_R = 8.0    # wheel ring radius in the YZ plane
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the flywheel: ring + spokes + hub, axis along X ----------------------------------------
     F.ring(s, 'Wheel', (0, 0, 1.4), WHEEL_R, 1.1, axis=(1, 0, 0), material='gunmetal.copper',

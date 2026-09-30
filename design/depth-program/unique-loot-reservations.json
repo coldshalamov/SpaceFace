@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "r2-sixteen-wreck-data-wired",
+  "status": "r2-seventeen-wreck-data-wired",
   "channels": [
     { "id": "bar", "carrier": "src/ui/station/screens/bar.js" },
     { "id": "news", "carrier": "src/data/newsTemplates.js" },
@@ -210,6 +210,18 @@
       ],
       "rumorSources": [
         { "id": "sp1_regular_assignment", "channelId": "mission", "status": "wired", "sourceRef": "mission.sp1.blockade_run.regular" }
+      ]
+    },
+    {
+      "id": "wreck_long_chord",
+      "programSlot": "D17",
+      "sectorId": "sector_helios_prime",
+      "status": "wired",
+      "uniqueDrops": [
+        { "id": "unique_long_chord_hold", "kind": "module", "baseId": "mod_smuggler_hold_m" }
+      ],
+      "rumorSources": [
+        { "id": "tethys_chord_long_chord", "channelId": "bar", "status": "authored", "sourceRef": "bar.tethys_chord.long_chord" }
       ]
     }
   ]

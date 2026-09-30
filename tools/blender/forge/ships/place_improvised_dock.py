@@ -32,6 +32,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- root block: counterweight + winch house ----------------------------------------------
     F.box(s, 'Root', (1.4, -0.6, 0.4), (5.6, 3.4, 2.6), material='deadmetal.rust', bevel=0.15)

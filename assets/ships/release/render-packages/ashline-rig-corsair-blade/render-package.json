@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e197355482182bc67b7d1a6b6a426bcec00a2334ec361ebab576b5c4f83b2773",
+  "contentHash": "f4e9f0d1ed87fc032720c942536f4945d61520c43a6088e3c35d2feedcb4a3e2",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-hook-drive-core.dynamic",
@@ -653,16 +653,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3099a2c50f9768088411eb8358bd39ab55a91935124810bef5d0c4e0e516d7c6",
+      "geometryHash": "766267425e46dd50ec7cc87852a428a4db17baaefc4cdb50fd45fc24cbca00ed",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-armor.primitive.0",
       "indexCount": 11682,
       "indexed": true,
-      "materialHash": "855cc2ad90f58aec991fc25f17bd17e9aa4d189a6f7214f968c39afe2740fc17",
+      "materialHash": "b9ccbc32a0e6cae0e387816735ea7578f08c64071c23937e0c5475c57f7e232b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3840
+      "vertexCount": 3841
     },
     {
       "bounds": {
@@ -678,7 +678,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ae838da199fe29ae39dc29c9e2a8fbfa9a54f33ca5ac0e8405d13fb87d7b76e",
+      "geometryHash": "d75ac881bebf1f2dac4a26e6ac953a34b0b79b4c65699aa01bbecabeda27d66b",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-beacon-amber.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -703,16 +703,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "644d0ab9ed5071b1ffabce1bbf4b2008fd6d0f6aa0c0fcafcc9af64f841b91c3",
+      "geometryHash": "80c0a16fde03532ecea72ac5b67a01a500c2e2df5e77c46e3112c8413d449442",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-brushedmetal.primitive.0",
       "indexCount": 5292,
       "indexed": true,
-      "materialHash": "f66ed9e7bad14bdadfc3ebfe8dc00c55d921d680d3c03d400556a930cb8a3aaa",
+      "materialHash": "34dd31ffb3e5c6dd1101e8ca07bc014c78ee5abff64230425824061967099ddb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 1561
+      "vertexCount": 1563
     },
     {
       "bounds": {
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c47fd4edbd03b1ef182ec1e59df2aa886233bee6c7e934e888dbf937c2e0f4f8",
+      "geometryHash": "8a239cc2a2819260b6663b69adbefa80f9dc0ab06cd90853bc5ea64af95d590a",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -753,7 +753,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ca47b1134bf24718d970eeb1846a4e5c8cee80961b1f11f1603d2bad7a6b3e8",
+      "geometryHash": "8acb36421965a095b00406e92eab8e01e8f28e7b296d1a37b12222856bbe67d8",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 3612,
       "indexed": true,
@@ -778,7 +778,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ffa4ea55e09c5830a3611226d52522c3e395df4c24244e2b6ed51addc858dd5f",
+      "geometryHash": "a5c8f521d6f48a88c6453ee98814c45a521a1430717b6f4b300b4e79cc32911f",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -803,7 +803,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2db668a7e1bfff13ce21dfba9dbb4beb5d8ef0ec063fe8cbb1e53395c691cdff",
+      "geometryHash": "a3bc35012422e38d813ec4c5b0bb9964e5b6be04f8ba8abdd8514b7a7c4b11e6",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -828,16 +828,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dcef2f32c76f7282f1903dc043f922284e610c1ee8de275be609f53c5a7c3b27",
+      "geometryHash": "4989ebc032cd481f64a3a0179d654b62a67cab7b78c257cd24b609272f657671",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-hull.primitive.0",
       "indexCount": 6426,
       "indexed": true,
-      "materialHash": "e0061f6e1cd430559648f8e6fcc379eeb96587d32cbc4b63d6f97c7b590d6716",
+      "materialHash": "de55ff229a8d174066a4be4b13365cf90f11d5aa367fc9f87d0d3e0b5edfea21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1872
+      "vertexCount": 1873
     },
     {
       "bounds": {
@@ -853,7 +853,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff4ef862aa30178f78426a7357ffc0ad877e65b3dc8332cc349a0bb5b97d62e3",
+      "geometryHash": "c360e4297bd4edd48007fbfab86ce9cf685561918486535100c99cd63302c5ba",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -878,11 +878,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f7666187377ae1e9e506556f29450caa49a7ee33bb99e13d873626808ae60c4",
+      "geometryHash": "d2540af07f042314705bc35baeea6f4e7acde6a58a4dc1b3361c2922af962754",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-livery.primitive.0",
       "indexCount": 1290,
       "indexed": true,
-      "materialHash": "32c8c1b11c54707a0b6988cb850b8f0fac1c70ccfaf46bddded8b7d06d1975ba",
+      "materialHash": "972ceaaf5fb1c2c517700bca33d2ae9234c2233bdb3b4f2376fd89a5882bf1db",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-livery",
@@ -903,16 +903,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d65a94a466f9fd0f504633ac40555d973fe04a6974af31b0dd1255381b54892",
+      "geometryHash": "8842d3785300fc9dde1713c4c46e1781d7999f8fdf7ed13cff2edaa84a6baed8",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-mechanical.primitive.0",
       "indexCount": 15600,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "de00c4fe4af5c4d15357ea79aa4f5df97d5c52887dd0c7ba0a3c92dd79fa9a6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 5123
+      "vertexCount": 5126
     },
     {
       "bounds": {
@@ -928,11 +928,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aeb2c211af16a717132c60f6ec7763e72688acba8a3561039923365ed66ae3e1",
+      "geometryHash": "7981e9c2ba82cabf9e04529c19b8e9c8535e7c736c1e6c172973958149a2185d",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 19914,
       "indexed": true,
-      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialHash": "1076cf1d3c7b5b7359320417932a1a9b871f8e7cc96387dc45fbe484d0e0f691",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-mechanicaldark",
@@ -953,16 +953,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86d6b90ece9c21e06cf310985c870aee2467ffd538499209ccbebe1370f4fa0c",
+      "geometryHash": "b33af59c2b158dc1bfb91bfe2bd76f989fc3f52c9050a8eec52e0580ae77494a",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-warning.primitive.0",
       "indexCount": 2640,
       "indexed": true,
-      "materialHash": "fe36250de418dadc9356ece1afbf4740a163d065a3dd4717098961db5a77d960",
+      "materialHash": "64e95fa612688c1095ce38a181a15c2085a20f2313af7060cb50625b4e49af43",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 1127
+      "vertexCount": 1143
     },
     {
       "bounds": {
@@ -978,16 +978,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60cb0121f5279b690ffa459b1cb5b32c06b9c4a3dc6c1d651d7caa68128cdee8",
+      "geometryHash": "04779c572843e1b02f831c219bebb93e27ce9b7831c704efe403e43a76658290",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-armor.primitive.0",
       "indexCount": 3675,
       "indexed": true,
-      "materialHash": "855cc2ad90f58aec991fc25f17bd17e9aa4d189a6f7214f968c39afe2740fc17",
+      "materialHash": "b9ccbc32a0e6cae0e387816735ea7578f08c64071c23937e0c5475c57f7e232b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1317
+      "vertexCount": 1327
     },
     {
       "bounds": {
@@ -1003,7 +1003,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1df69eed65a17f8e8563e588ae761dc8f15e448e8dddae37e53c136d8ec91bd",
+      "geometryHash": "596f4539f2b538ce5b4b005abe81c783c09c71d64f3be3e65dfdcac7e5f543f7",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-beacon-amber.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1019,25 +1019,25 @@
         "max": [
           10.59822940826416,
           0.799572765827179,
-          3.275148630142212
+          3.275141716003418
         ],
         "min": [
           -7.304312705993652,
           0.24010123312473297,
-          -3.275148630142212
+          -3.275155544281006
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d4f10e2aac295e5d6d769ae59b70bd10a3bc8a24d795f88f219684c60ccd160",
+      "geometryHash": "80bd3fbfa7baa1d0bd90924c4f6d8af6a61acda3873bb1b76ee68e7187380a2b",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-brushedmetal.primitive.0",
       "indexCount": 1968,
       "indexed": true,
-      "materialHash": "f66ed9e7bad14bdadfc3ebfe8dc00c55d921d680d3c03d400556a930cb8a3aaa",
+      "materialHash": "34dd31ffb3e5c6dd1101e8ca07bc014c78ee5abff64230425824061967099ddb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 631
+      "vertexCount": 634
     },
     {
       "bounds": {
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98b4b87c3dc9149a6a8b52a9d7fc78c83e59654c8515b8bf88f62b0ea6719c3f",
+      "geometryHash": "5a2966e776a181982f33a61beb5e1292574e598113e6b7b1182e0c4780a51189",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-canopy.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -1078,7 +1078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d9f4004ca1787c64bdee5ddfd433f9d50759e4cb9b6fc10e52aacc103f8d4b6",
+      "geometryHash": "d5767f079bab2e0989f704d1e2a5d9e8171cd055926140ba1bddd7d3c433927e",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 1884,
       "indexed": true,
@@ -1103,7 +1103,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1696b2dcb4a57c75178ee5c31328fee9971818699c064275ba38d00868e08601",
+      "geometryHash": "439292dd5b12021775bd496c551ba7c958a4f6f72aac3f1ff285d821471c4883",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1128,7 +1128,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "647f1142902a4df902b8138b28173ab476fd71cf0adb1d61fdc7b021c43f7eac",
+      "geometryHash": "7895d54ccc394f79443998ca1e1340886aed05da2defaac729459821435c96b4",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1153,11 +1153,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52928e49afa55569090461bf84748fbceed297080310b6d3f59a43f7b85eca5d",
+      "geometryHash": "63b1d4c3b57f4560e90d96637da5974104df05f2e72fde3c6e085d2ad0d23bdb",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-hull.primitive.0",
       "indexCount": 1494,
       "indexed": true,
-      "materialHash": "e0061f6e1cd430559648f8e6fcc379eeb96587d32cbc4b63d6f97c7b590d6716",
+      "materialHash": "de55ff229a8d174066a4be4b13365cf90f11d5aa367fc9f87d0d3e0b5edfea21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-hull",
@@ -1178,7 +1178,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "659c52b844161fe01714ccbd897f572956fd20713991500fccd4f103b3afb8ca",
+      "geometryHash": "9d7d5b0e9e02221c8834242a465fe4e1df31d280d40947571fcb525633015b03",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1203,11 +1203,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2891f64687c4440b280b43508ce6c84836e413e457b22d06d3a812b512d007c",
+      "geometryHash": "0fda0f08d76214ee18813365225876f8875a2e844f4489c01f8e0d97128dc9a8",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-livery.primitive.0",
       "indexCount": 93,
       "indexed": true,
-      "materialHash": "32c8c1b11c54707a0b6988cb850b8f0fac1c70ccfaf46bddded8b7d06d1975ba",
+      "materialHash": "972ceaaf5fb1c2c517700bca33d2ae9234c2233bdb3b4f2376fd89a5882bf1db",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-livery",
@@ -1228,16 +1228,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12b6c99317b11c893fc28553b70590be3a08e474a85c01999e665b4e2bab3521",
+      "geometryHash": "2b4a11681d79063f7b61133dd201ef4928fa4099bf76ccf782cfc735d1be181a",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-mechanical.primitive.0",
       "indexCount": 7635,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "de00c4fe4af5c4d15357ea79aa4f5df97d5c52887dd0c7ba0a3c92dd79fa9a6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2892
+      "vertexCount": 2896
     },
     {
       "bounds": {
@@ -1253,11 +1253,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a65bf95bbc56c8babc38083b62e25c393fcfba55070f4c07055ce5b408a9b86e",
+      "geometryHash": "479c6208126a06a3251b2b0d232e6572d15c0ab994113875afab5022e5e46746",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 8154,
       "indexed": true,
-      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialHash": "1076cf1d3c7b5b7359320417932a1a9b871f8e7cc96387dc45fbe484d0e0f691",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-mechanicaldark",
@@ -1278,16 +1278,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c229c9050c2a7c997321a251a0469ccd92db1bc4d49caec825ff5a1e41b974ce",
+      "geometryHash": "bba48c862a0efc032c3d466c9daf6af7415313652d7240238dc40dba92768234",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-warning.primitive.0",
       "indexCount": 1173,
       "indexed": true,
-      "materialHash": "fe36250de418dadc9356ece1afbf4740a163d065a3dd4717098961db5a77d960",
+      "materialHash": "64e95fa612688c1095ce38a181a15c2085a20f2313af7060cb50625b4e49af43",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 504
+      "vertexCount": 501
     },
     {
       "bounds": {
@@ -1303,11 +1303,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "14172776a0dbc551ab750a06085bb5dce740d1fe01b10590b714e2713f36ebd0",
+      "geometryHash": "c8ce8503eacd68cd6a19f4aceb2bfd29b950f9ca9a9c58b19a7ceb22af1a8324",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-armor.primitive.0",
-      "indexCount": 1581,
+      "indexCount": 1575,
       "indexed": true,
-      "materialHash": "855cc2ad90f58aec991fc25f17bd17e9aa4d189a6f7214f968c39afe2740fc17",
+      "materialHash": "b9ccbc32a0e6cae0e387816735ea7578f08c64071c23937e0c5475c57f7e232b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-armor",
@@ -1328,7 +1328,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25d8a02cdadf40e5162f8661014f1df593a95243ea13beb88d2b57bf0d48e2a4",
+      "geometryHash": "8e8a81d39862563327ebb59990a170410c7a24d56b3fceb1174688e80eee945e",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-beacon-amber.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1343,26 +1343,26 @@
       "bounds": {
         "max": [
           10.599640846252441,
-          0.7976959347724915,
-          3.272630214691162
+          0.797696053981781,
+          3.272435426712036
         ],
         "min": [
-          -5.085911273956299,
-          0.24048949778079987,
-          -3.272630214691162
+          -5.085920810699463,
+          0.24048931896686554,
+          -3.2728288173675537
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52647e5997af63be3bee42404d8113b04fc676bff9359bfa1457c6123b59f904",
+      "geometryHash": "072954bec5b53bc5f00e77578cecfcd8316fea638618b7b18f63cb23ec4bd914",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-brushedmetal.primitive.0",
-      "indexCount": 1032,
+      "indexCount": 1038,
       "indexed": true,
-      "materialHash": "f66ed9e7bad14bdadfc3ebfe8dc00c55d921d680d3c03d400556a930cb8a3aaa",
+      "materialHash": "34dd31ffb3e5c6dd1101e8ca07bc014c78ee5abff64230425824061967099ddb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 362
+      "vertexCount": 364
     },
     {
       "bounds": {
@@ -1378,7 +1378,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79e76e064a3f938791699e7f90f87875fe84eb32f9fdb7c0ad6c98bc8e46313c",
+      "geometryHash": "9df54494d8f6321626e69c22b9276c0ad36f106a053f281b1a1e32ee40c1ca8b",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-canopy.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -1403,7 +1403,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e86d2acbb7fe44ad21fdfaa9dd682c9379ee0e43105b5f332fcbd2f5977dfee9",
+      "geometryHash": "90904f17e5888f34e03dee99c30501461b8b6ddabfbff8d4fcde83ece3bb23c8",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 927,
       "indexed": true,
@@ -1428,7 +1428,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1696b2dcb4a57c75178ee5c31328fee9971818699c064275ba38d00868e08601",
+      "geometryHash": "439292dd5b12021775bd496c551ba7c958a4f6f72aac3f1ff285d821471c4883",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1453,7 +1453,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "647f1142902a4df902b8138b28173ab476fd71cf0adb1d61fdc7b021c43f7eac",
+      "geometryHash": "7895d54ccc394f79443998ca1e1340886aed05da2defaac729459821435c96b4",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1478,16 +1478,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f160e57b94005f18397387beb6c42bfb7d97d564ece1e0af7d758d7c50135e19",
+      "geometryHash": "bce41de57fdddec6db3eef306d7ea605b7946c7c621cf7876e41bb81b8c27359",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-hull.primitive.0",
       "indexCount": 639,
       "indexed": true,
-      "materialHash": "e0061f6e1cd430559648f8e6fcc379eeb96587d32cbc4b63d6f97c7b590d6716",
+      "materialHash": "de55ff229a8d174066a4be4b13365cf90f11d5aa367fc9f87d0d3e0b5edfea21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 230
+      "vertexCount": 229
     },
     {
       "bounds": {
@@ -1503,7 +1503,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "659c52b844161fe01714ccbd897f572956fd20713991500fccd4f103b3afb8ca",
+      "geometryHash": "9d7d5b0e9e02221c8834242a465fe4e1df31d280d40947571fcb525633015b03",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1528,11 +1528,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "113741ef70a60b4d1c5f37d8bfcf1120d82357771b3a3bf7a4bd3ea0796605f1",
+      "geometryHash": "d0d1cb9978535d57e60874f62a6144a20544d494144dea280fff579142fe7025",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-livery.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "32c8c1b11c54707a0b6988cb850b8f0fac1c70ccfaf46bddded8b7d06d1975ba",
+      "materialHash": "972ceaaf5fb1c2c517700bca33d2ae9234c2233bdb3b4f2376fd89a5882bf1db",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-livery",
@@ -1553,16 +1553,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cff3843ad9d1e295a76ac5ae3d26398a2537fcecad35f0a012901b8958017370",
+      "geometryHash": "b669e292e45efdfd208e60f1284365e11964d27a6b40781eb6ff83bfccc57ed7",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-mechanical.primitive.0",
       "indexCount": 3051,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "de00c4fe4af5c4d15357ea79aa4f5df97d5c52887dd0c7ba0a3c92dd79fa9a6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1216
+      "vertexCount": 1218
     },
     {
       "bounds": {
@@ -1578,11 +1578,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af3a9faaf9a5c4a9b689648f2a77dc5cb1704bdcdd5170f5d5a6d845329b6f1e",
+      "geometryHash": "6b8d81653e5b5ce4856f02a116819e2aa84fd959aed8a7a7312f90a7681d4396",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 2316,
       "indexed": true,
-      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialHash": "1076cf1d3c7b5b7359320417932a1a9b871f8e7cc96387dc45fbe484d0e0f691",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-mechanicaldark",
@@ -1603,11 +1603,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0fdf3b94c2ffcf26e1f322b3d904cf0bed829f0129b65dd1670e913200ad5533",
+      "geometryHash": "66c1ff946128f5ec445f150437cd035c8a30a2de5fe25e5f6cf514536e44ae11",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-warning.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "fe36250de418dadc9356ece1afbf4740a163d065a3dd4717098961db5a77d960",
+      "materialHash": "64e95fa612688c1095ce38a181a15c2085a20f2313af7060cb50625b4e49af43",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-warning",
@@ -1620,139 +1620,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
-      "id": "material:1ee807a3355d83d28693fa8c",
-      "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "32c8c1b11c54707a0b6988cb850b8f0fac1c70ccfaf46bddded8b7d06d1975ba",
-      "id": "material:32c8c1b11c54707a0b6988cb",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "855cc2ad90f58aec991fc25f17bd17e9aa4d189a6f7214f968c39afe2740fc17",
-      "id": "material:855cc2ad90f58aec991fc25f",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "af386acd88d6551a3dfc52af02b10b39086bbe0b8f7e5ccefe4f4016763f59b0",
-      "id": "material:af386acd88d6551a3dfc52af",
-      "name": "Material_Thruster",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
-      "id": "material:be05a75f6364bf5672ea6503",
+      "hash": "1076cf1d3c7b5b7359320417932a1a9b871f8e7cc96387dc45fbe484d0e0f691",
+      "id": "material:1076cf1d3c7b5b7359320417",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1764,7 +1633,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "ashline_rig_corsair_blade_AO-forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1776,54 +1645,22 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "ashline_rig_corsair_blade_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
       "textures": []
     },
     {
-      "hash": "e0061f6e1cd430559648f8e6fcc379eeb96587d32cbc4b63d6f97c7b590d6716",
-      "id": "material:e0061f6e1cd430559648f8e6",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "f66ed9e7bad14bdadfc3ebfe8dc00c55d921d680d3c03d400556a930cb8a3aaa",
-      "id": "material:f66ed9e7bad14bdadfc3ebfe",
+      "hash": "34dd31ffb3e5c6dd1101e8ca07bc014c78ee5abff64230425824061967099ddb",
+      "id": "material:34dd31ffb3e5c6dd1101e8ca",
       "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1847,15 +1684,22 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "ashline_rig_corsair_blade_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "fe36250de418dadc9356ece1afbf4740a163d065a3dd4717098961db5a77d960",
-      "id": "material:fe36250de418dadc9356ece1",
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "64e95fa612688c1095ce38a181a15c2085a20f2313af7060cb50625b4e49af43",
+      "id": "material:64e95fa612688c1095ce38a1",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1879,7 +1723,163 @@
         },
         {
           "colorSpace": "linear",
+          "name": "ashline_rig_corsair_blade_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "972ceaaf5fb1c2c517700bca33d2ae9234c2233bdb3b4f2376fd89a5882bf1db",
+      "id": "material:972ceaaf5fb1c2c517700bca",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "ashline_rig_corsair_blade_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "af386acd88d6551a3dfc52af02b10b39086bbe0b8f7e5ccefe4f4016763f59b0",
+      "id": "material:af386acd88d6551a3dfc52af",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "b9ccbc32a0e6cae0e387816735ea7578f08c64071c23937e0c5475c57f7e232b",
+      "id": "material:b9ccbc32a0e6cae0e3878167",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "ashline_rig_corsair_blade_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "de00c4fe4af5c4d15357ea79aa4f5df97d5c52887dd0c7ba0a3c92dd79fa9a6d",
+      "id": "material:de00c4fe4af5c4d15357ea79",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "ashline_rig_corsair_blade_AO-forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "ashline_rig_corsair_blade_AO-forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "de55ff229a8d174066a4be4b13365cf90f11d5aa367fc9f87d0d3e0b5edfea21",
+      "id": "material:de55ff229a8d174066a4be4b",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "ashline_rig_corsair_blade_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -4489,19 +4489,19 @@
       "sha256": "96159340aadf0747372cd9ee2f0831a0e085c37e3104cdfd515947649df4006f"
     },
     "sourceGlb": {
-      "bytes": 883992,
-      "sha256": "df5ff59e4c0a7abcf25bc7e5f1467972fd1d2da70198fa8366356513da2171a8",
+      "bytes": 1381236,
+      "sha256": "b1c1c382e2fdbaa517263d64484afd4d1a5ea772a10e033602d2e5770dac7a06",
       "uri": "ashline_rig_corsair_blade.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1573600,
-    "sha256": "dc189d410a4068470d2a8a5ac3bd11cd3ba7633a638ecaef05a9bef42abdc72b",
+    "bytes": 2072444,
+    "sha256": "d07d11f0d9bb5c39fba229bd1efa4ef8817a5725f521d3f63e89ca7fba09f393",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4509,17 +4509,17 @@
       "center": [
         0.9394936561584473,
         0.514770895242691,
-        0
+        -0.0000069141387939453125
       ],
       "max": [
         10.599640846252441,
         1.704530119895935,
-        3.275148630142212
+        3.275141716003418
       ],
       "min": [
         -8.720653533935547,
         -0.674988329410553,
-        -3.275148630142212
+        -3.275155544281006
       ],
       "size": [
         19.32029438018799,
@@ -6491,7 +6491,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb"
   },
-  "runtimeHash": "b1dcd1bd632b4fba2d27d08ab5d95f06d1303ad988faf0ad727582d47b47f543",
+  "runtimeHash": "073a00112221cd5a00ddd262d40cfa19a35e96462d895bef3afed6fe68dfe119",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -6499,12 +6499,12 @@
         "max": [
           10.599640846252441,
           1.704530119895935,
-          3.275148630142212
+          3.275141716003418
         ],
         "min": [
           -8.720653533935547,
           -0.674988329410553,
-          -3.275148630142212
+          -3.275155544281006
         ]
       },
       "id": "sf.render.ashline-rig-corsair-blade.body",

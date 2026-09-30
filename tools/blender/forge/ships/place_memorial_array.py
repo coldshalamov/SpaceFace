@@ -40,6 +40,7 @@ LAMPS = 12
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # === the wreath: a flat annulus deck with an inner lip ========================
     F.annulus(s, 'Wreath', (CX, CY), R_RING - 0.7, R_RING + 0.7, 0.35, 0.5,

@@ -23,6 +23,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the bin: floor, four walls, rim rails, rub strakes (~9.7 x 4.7 x 4.1 like live) --------
     F.box(s, 'Floor', (0.0, 0.0, -1.85), (9.7, 4.7, 0.30), material='gunmetal', bevel=0.02)

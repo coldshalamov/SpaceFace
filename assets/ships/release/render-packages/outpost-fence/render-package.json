@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        37
+        67
       ],
       "parentNodeId": "sf.render.outpost-fence.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        38
+        68
       ],
       "parentNodeId": "sf.render.outpost-fence.root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Module_Defense",
       "nodePath": [
         0,
-        39
+        69
       ],
       "parentNodeId": "sf.render.outpost-fence.root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Module_Depot",
       "nodePath": [
         0,
-        40
+        70
       ],
       "parentNodeId": "sf.render.outpost-fence.root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_Module_Refinery",
       "nodePath": [
         0,
-        41
+        71
       ],
       "parentNodeId": "sf.render.outpost-fence.root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_Module_Teleporter",
       "nodePath": [
         0,
-        42
+        72
       ],
       "parentNodeId": "sf.render.outpost-fence.root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        43
+        73
       ],
       "parentNodeId": "sf.render.outpost-fence.root",
       "worldTransform": [
@@ -335,8 +335,58 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fcf6691198116a1727339b7e234aeae552a42d03377b583c6b3525ae54065cd9",
+  "contentHash": "75fb995bb630b075a1249f2b122b2a0982dd08078a5c018d1423a4d12224364f",
   "dynamicGroups": [
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-0-10-4p8-fencestrobe0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-0-10-4p8-fencestrobe0"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-1-10-4p8-fencestrobe1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-1-10-4p8-fencestrobe1"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-2-10-4p8-fencestrobe2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-2-10-4p8-fencestrobe2"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-3-10-4p8-fencestrobe3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-3-10-4p8-fencestrobe3"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-4-10-4p8-fencestrobe4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-4-10-4p8-fencestrobe4"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-5-10-4p8-fencestrobe5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-5-10-4p8-fencestrobe5"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-6-10-4p8-fencestrobe6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-6-10-4p8-fencestrobe6"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-7-10-4p8-fencestrobe7.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-7-10-4p8-fencestrobe7"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-8-10-4p8-fencestrobe8.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-8-10-4p8-fencestrobe8"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-9-10-4p8-fencestrobe9.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-9-10-4p8-fencestrobe9"
+    },
     {
       "id": "sf.render.outpost-fence.mesh.lod0-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
@@ -348,6 +398,56 @@
       "nodeId": "sf.render.outpost-fence.mesh.lod0-hook-nav-starboard"
     },
     {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-0-10-4p8-fencestrobe0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-0-10-4p8-fencestrobe0"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-1-10-4p8-fencestrobe1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-1-10-4p8-fencestrobe1"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-2-10-4p8-fencestrobe2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-2-10-4p8-fencestrobe2"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-3-10-4p8-fencestrobe3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-3-10-4p8-fencestrobe3"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-4-10-4p8-fencestrobe4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-4-10-4p8-fencestrobe4"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-5-10-4p8-fencestrobe5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-5-10-4p8-fencestrobe5"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-6-10-4p8-fencestrobe6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-6-10-4p8-fencestrobe6"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-7-10-4p8-fencestrobe7.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-7-10-4p8-fencestrobe7"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-8-10-4p8-fencestrobe8.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-8-10-4p8-fencestrobe8"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-9-10-4p8-fencestrobe9.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-9-10-4p8-fencestrobe9"
+    },
+    {
       "id": "sf.render.outpost-fence.mesh.lod1-hook-nav-port.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-hook-nav-port"
@@ -356,6 +456,56 @@
       "id": "sf.render.outpost-fence.mesh.lod1-hook-nav-starboard.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-0-10-4p8-fencestrobe0.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-0-10-4p8-fencestrobe0"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-1-10-4p8-fencestrobe1.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-1-10-4p8-fencestrobe1"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-2-10-4p8-fencestrobe2.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-2-10-4p8-fencestrobe2"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-3-10-4p8-fencestrobe3.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-3-10-4p8-fencestrobe3"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-4-10-4p8-fencestrobe4.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-4-10-4p8-fencestrobe4"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-5-10-4p8-fencestrobe5.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-5-10-4p8-fencestrobe5"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-6-10-4p8-fencestrobe6.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-6-10-4p8-fencestrobe6"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-7-10-4p8-fencestrobe7.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-7-10-4p8-fencestrobe7"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-8-10-4p8-fencestrobe8.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-8-10-4p8-fencestrobe8"
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-9-10-4p8-fencestrobe9.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-9-10-4p8-fencestrobe9"
     },
     {
       "id": "sf.render.outpost-fence.mesh.lod2-hook-nav-port.dynamic",
@@ -397,6 +547,256 @@
     {
       "bounds": {
         "max": [
+          41.19543170928955,
+          13.497741375283232,
+          -14
+        ],
+        "min": [
+          40.595431327819824,
+          13.077720966025362,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7e439421f51a84bd61fdfc29a556f1b497251ebe6de30d30e7bbc845502c55f",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-0-10-4p8-fencestrobe0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-0-10-4p8-fencestrobe0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          25.5747652053833,
+          34.99774137528323,
+          -14
+        ],
+        "min": [
+          24.974764823913574,
+          34.57772096602536,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9cc57f9487ee191caca5779483cb65b14c0582158dc901b5172790702c8129a5",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-1-10-4p8-fencestrobe1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-1-10-4p8-fencestrobe1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3000001907348633,
+          43.21001020462894,
+          -14
+        ],
+        "min": [
+          -0.3000001907348633,
+          42.78998979537106,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e4484acb753f55f7bcc911eeb18f07cdf55a840db7b5a5133a4a38847ccb559",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-2-10-4p8-fencestrobe2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-2-10-4p8-fencestrobe2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -24.974764823913574,
+          34.99774137528323,
+          -14
+        ],
+        "min": [
+          -25.5747652053833,
+          34.57772096602536,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0383ae6a7cbb5fa28ac8e990e308b5a9a99f0b83dd776317175c84cc562cbc2d",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-3-10-4p8-fencestrobe3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-3-10-4p8-fencestrobe3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.595431327819824,
+          13.497741375283232,
+          -14
+        ],
+        "min": [
+          -41.19543170928955,
+          13.077720966025362,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fbd3c090e563180746f2d0af679bbd640c252c8cf599dd8a7009c228a867190e",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-4-10-4p8-fencestrobe4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-4-10-4p8-fencestrobe4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.595431327819824,
+          -13.077720966025362,
+          -14
+        ],
+        "min": [
+          -41.19543170928955,
+          -13.497741375283232,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d756bd00e52f86f72d04f42b92941ab69196daa791ed9ae44ba75176db1b6e4",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-5-10-4p8-fencestrobe5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-5-10-4p8-fencestrobe5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -24.974764823913574,
+          -34.57772096602536,
+          -14
+        ],
+        "min": [
+          -25.5747652053833,
+          -34.99774137528323,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d78c91d0673d91844d7ca280b4818ebfbabf639576f33654d3c50bb2767e705",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-6-10-4p8-fencestrobe6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-6-10-4p8-fencestrobe6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3000001907348633,
+          -42.78998979537106,
+          -14
+        ],
+        "min": [
+          -0.3000001907348633,
+          -43.21001020462894,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "26bbb3e5ee0f8bea8fc3a8f993e4995c196d42bf3e3f69e60a38ce97b2b75e52",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-7-10-4p8-fencestrobe7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-7-10-4p8-fencestrobe7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          25.5747652053833,
+          -34.57772096602536,
+          -14
+        ],
+        "min": [
+          24.974764823913574,
+          -34.99774137528323,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55318e16641198adc5cf99f7497c939b69a67c7fd261f47ff2f5b593f0ce4892",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-8-10-4p8-fencestrobe8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-8-10-4p8-fencestrobe8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          41.19543170928955,
+          -13.077720966025362,
+          -14
+        ],
+        "min": [
+          40.595431327819824,
+          -13.497741375283232,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "07c3d11f743de841e5ca28fb060f9173837c4c611105021c0938029f01a54c8a",
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-9-10-4p8-fencestrobe9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodeId": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-9-10-4p8-fencestrobe9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
           51.63751983642578,
           45.198707580566406,
           1.5732622146606445
@@ -408,11 +808,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3e281ada89f6dc51055d7d4ee93ec32c38b07ffa67a1f82d3a2a28a72c97c17",
+      "geometryHash": "fb2ba3d5fbc892ab3585c2084fa57d8ec8e2d61f550c9d0f2d9633869febfcea",
       "id": "sf.render.outpost-fence.mesh.lod0-armor.primitive.0",
       "indexCount": 36876,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "6ad35f5059bda8faead0e38146ca2d476cdd029a1f4fe2020711e8c6cf00c664",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-armor",
@@ -424,25 +824,25 @@
         "max": [
           41.79389190673828,
           43.900001525878906,
-          -2.42461895942688
+          -2.4248321056365967
         ],
         "min": [
           -41.79389190673828,
           -43.900001525878906,
-          -14.600381851196289
+          -13.400167465209961
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff9a2411fbb36977b60ec03df55da36ac20f9e96c600f813750d06e3d32c8434",
+      "geometryHash": "befb37387783ba9322db855410fb6e03ab8597f238a39ae90ac3a3279a698558",
       "id": "sf.render.outpost-fence.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 7188,
+      "indexCount": 6828,
       "indexed": true,
       "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 2768
+      "vertexCount": 2528
     },
     {
       "bounds": {
@@ -458,7 +858,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cba88606881b8da402695a045e844538000a7d598d5d382054302bc75d63e4c6",
+      "geometryHash": "4553c4811db82932d48dc225ed967248202c6dc054a76364d83c8a022d2bc857",
       "id": "sf.render.outpost-fence.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -483,7 +883,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53fa1c1a50175658c154f535f1b52aa4664efad1e6297680a78e8198270cea70",
+      "geometryHash": "9d12c6a1a57c40d1a4663ab59a6125ccd3b15c6b3dd67953b62973c99c48b60e",
       "id": "sf.render.outpost-fence.mesh.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -508,11 +908,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "238a2380f28758750b04e76509bf6a9862594107d4a7e5dbea7662b2947d2d4b",
+      "geometryHash": "8ab8de453623bfd3935054142123ff5394319d18599e061b70809a2de718dd92",
       "id": "sf.render.outpost-fence.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialHash": "bd5088fa59c480b88543e7d66eb24d96f5903f2799f7cd2549e4f439433265cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-hull-aged",
@@ -533,11 +933,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b87b90bb04f57aea6e198b7280e6dafc73a93cbcb5dead8de4bc9d26face019d",
+      "geometryHash": "48fa9177461a04199821ac405ae6bafd7f64538a7355352a84e59fd34d56c51d",
       "id": "sf.render.outpost-fence.mesh.lod0-hull-role.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "3a98916687ac22c53d2a127d272e74d3dc4fc49f854026145edd941de2f7a8bd",
+      "materialHash": "e1ebfa544db2a2e09195f8bde9a3117c8abae9f5168b9ff907279256403b93d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_role",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-hull-role",
@@ -558,11 +958,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebee67acaa951f82bbf02b3785a6838831f65bd947b5198e69b849e46f37f9f2",
+      "geometryHash": "46531a6a00bba6ee0b438a11440d3b5e4191d4cb37fba86bc020afc65b796e59",
       "id": "sf.render.outpost-fence.mesh.lod0-hull.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "9920436b5806152b542e35bd08ff050668841d55b9e468301a00cca7aa19c446",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-hull",
@@ -583,7 +983,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "570cc14d18c89be96e93553e0b3c9a2043edd5ea719deb32d19e0bfcd1256a91",
+      "geometryHash": "8a5f2668fe045cd5b0bfebfdeeb82851a6e4fe01b0dcd7f48ff4c0beebfb56d5",
       "id": "sf.render.outpost-fence.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 8028,
       "indexed": true,
@@ -592,7 +992,7 @@
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 2864
+      "vertexCount": 2871
     },
     {
       "bounds": {
@@ -608,11 +1008,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08be8f3c6d85bc8b37e2051b09bf9afc9c5b60cd25f2c28fe876a265732869e5",
+      "geometryHash": "e63f90ec4a957b9effe27354fa5ce94769871393a86511592f2188cb1e6d4135",
       "id": "sf.render.outpost-fence.mesh.lod0-livery.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialHash": "975fe7148cec044eea423a20d276f7e2d5b2264e63aa0cdfeae6119c78a223ad",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-livery",
@@ -633,11 +1033,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88a4d77dd02127b16d965bdd77a64e92f3252e1bfdea9a619979b98f989d5a8c",
+      "geometryHash": "fa07beccc2f24375059142ca6859bbe0fa28cd1d424cd5ef0e9743daa47ad489",
       "id": "sf.render.outpost-fence.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2928,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "89b27bf420febb03cda6f2aea01feb562b0aa2ab4724ddef4210efbf36cdec45",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-mechanical",
@@ -658,16 +1058,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89f5a5817a4835aa677368ee74538005c833b0976fb256f656fb534cac8f64fa",
+      "geometryHash": "cbe4919bb68d9101e360259bc4eb60af840f823d26fd7d0852b2c027265ab764",
       "id": "sf.render.outpost-fence.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 12564,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "811b1f662bb978f838381b8cbe382bd3727eb1afe80ae9ebe4869630c8a13133",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 4964
+      "vertexCount": 4971
     },
     {
       "bounds": {
@@ -683,16 +1083,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c14904fcac18d7e8da9da24df71f0cec421c0ffef8b8c5ef4e62db1f2ab5a7c1",
+      "geometryHash": "20a4f535d93ed8f840d205fcb0ddf5eb3b08c329bfcc502c92beb310b28d788f",
       "id": "sf.render.outpost-fence.mesh.lod0-warning.primitive.0",
       "indexCount": 10512,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "1e86aa53224b69a60bfaf57f5ff39a1f5bba9677804319d781ce465997ab8d94",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-warning",
       "primitiveIndex": 0,
       "vertexCount": 3568
+    },
+    {
+      "bounds": {
+        "max": [
+          41.19543170928955,
+          13.497741375283232,
+          -14
+        ],
+        "min": [
+          40.595431327819824,
+          13.077720966025362,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f79d9ed9b0fd4db3025684eb31dec18114d3cf6908d6b9dcc1e42af6df125321",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-0-10-4p8-fencestrobe0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-0-10-4p8-fencestrobe0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          25.5747652053833,
+          34.99774137528323,
+          -14
+        ],
+        "min": [
+          24.974764823913574,
+          34.57772096602536,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9edb54ac295b9d94e4a2ea213fb64e21b7c47685853dff851021b338c4030261",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-1-10-4p8-fencestrobe1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-1-10-4p8-fencestrobe1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3000001907348633,
+          43.21001020462894,
+          -14
+        ],
+        "min": [
+          -0.3000001907348633,
+          42.78998979537106,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6dd3a19deb05c7f2c2056fde8d8eeceb56e5f1bc041465c77fc1ed190fd524cf",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-2-10-4p8-fencestrobe2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-2-10-4p8-fencestrobe2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -24.974764823913574,
+          34.99774137528323,
+          -14
+        ],
+        "min": [
+          -25.5747652053833,
+          34.57772096602536,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "81e831fa3fc625bf635cb69df23b969ace7bf523774f91059522279ce8a2a932",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-3-10-4p8-fencestrobe3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-3-10-4p8-fencestrobe3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.595431327819824,
+          13.497741375283232,
+          -14
+        ],
+        "min": [
+          -41.19543170928955,
+          13.077720966025362,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77023447e9917c3553249dca7aa28d98f3ae56282d01547013f3373b7704ba15",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-4-10-4p8-fencestrobe4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-4-10-4p8-fencestrobe4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.595431327819824,
+          -13.077720966025362,
+          -14
+        ],
+        "min": [
+          -41.19543170928955,
+          -13.497741375283232,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "529e655546802b440c30480fe72510027b01588843e0a2a5bafe282eabbd0a9a",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-5-10-4p8-fencestrobe5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-5-10-4p8-fencestrobe5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -24.974764823913574,
+          -34.57772096602536,
+          -14
+        ],
+        "min": [
+          -25.5747652053833,
+          -34.99774137528323,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4e60f253e88ac0cd8de30aca0a33e992fa9fe630b3693c1cc58b6abd041fd5f",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-6-10-4p8-fencestrobe6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-6-10-4p8-fencestrobe6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3000001907348633,
+          -42.78998979537106,
+          -14
+        ],
+        "min": [
+          -0.3000001907348633,
+          -43.21001020462894,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b21f928c658f3bf8f3875f708af17c43705b8af2063ce75abe441aad745781c",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-7-10-4p8-fencestrobe7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-7-10-4p8-fencestrobe7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          25.5747652053833,
+          -34.57772096602536,
+          -14
+        ],
+        "min": [
+          24.974764823913574,
+          -34.99774137528323,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "32ffb6b75a24af6c425c4eaa83a069b596fa5308f35f037649e952b6bd84e8d2",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-8-10-4p8-fencestrobe8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-8-10-4p8-fencestrobe8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          41.19543170928955,
+          -13.077720966025362,
+          -14
+        ],
+        "min": [
+          40.595431327819824,
+          -13.497741375283232,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de68c59e04fcb3f2c33d150d90b3aacd23e01c859768d00a5153b5a616b2cddc",
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-9-10-4p8-fencestrobe9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodeId": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-9-10-4p8-fencestrobe9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -708,41 +1358,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54a1bcf8b051e45a4dd8b883bb970f095d4efeed01e137c0719d7fa71adcb08f",
+      "geometryHash": "45d4332d7e70a0132628cfabb295269565ffcf5259a9797905d9bcc76ccd8880",
       "id": "sf.render.outpost-fence.mesh.lod1-armor.primitive.0",
       "indexCount": 15690,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "6ad35f5059bda8faead0e38146ca2d476cdd029a1f4fe2020711e8c6cf00c664",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 8009
+      "vertexCount": 7990
     },
     {
       "bounds": {
         "max": [
           41.78995132446289,
           43.8958625793457,
-          -2.4251928329467773
+          -2.4239985942840576
         ],
         "min": [
           -41.78995132446289,
           -43.8958625793457,
-          -14.599807739257812
+          -13.398299217224121
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83e57d325cf59ab17e2c7a126b7472f79313146932539b2278c1ebf79b72ed0f",
+      "geometryHash": "5ed53f3fc914b2833e4e873fd6ba1d8c67afa8c2684cd31d231d3109c5f60dce",
       "id": "sf.render.outpost-fence.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 2538,
+      "indexCount": 2184,
       "indexed": true,
       "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 1331
+      "vertexCount": 1092
     },
     {
       "bounds": {
@@ -758,7 +1408,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9e1680c0c6adfba55bb59a43278a1d2d1fa3e70ef3d32ff746782ebb5836d6f",
+      "geometryHash": "bdd92efe15d2c05d78046315dcce957189390bf7b7c719a8bc2354e9db397108",
       "id": "sf.render.outpost-fence.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -783,7 +1433,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "588b79a1ce2aabea7060ccda74f7470c7f31d217bcc384a579c406c0190dfbf9",
+      "geometryHash": "a28e7e4f02acba61e607ba676fee4f069f87c430f7e3ad70fc8828e794a4916d",
       "id": "sf.render.outpost-fence.mesh.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -808,16 +1458,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30312e6cad287c984f46b36eda1ca7304c4c013fed4a4469d9ebbeecb78ff863",
+      "geometryHash": "dd138734d69ef6dc0084eb18c0a913b302058dfb4cc064669d371570a8772d28",
       "id": "sf.render.outpost-fence.mesh.lod1-hull-aged.primitive.0",
-      "indexCount": 846,
+      "indexCount": 882,
       "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialHash": "bd5088fa59c480b88543e7d66eb24d96f5903f2799f7cd2549e4f439433265cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 298
+      "vertexCount": 308
     },
     {
       "bounds": {
@@ -833,11 +1483,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cae8333928736f8213000169f81f740e1b6d8474ab9834f6aaaeaedd1c68914",
+      "geometryHash": "6b1d9577b965517c225ffb56736469c0dcd57f9bf1e3585d9d87f6545ecbde55",
       "id": "sf.render.outpost-fence.mesh.lod1-hull-role.primitive.0",
       "indexCount": 252,
       "indexed": true,
-      "materialHash": "3a98916687ac22c53d2a127d272e74d3dc4fc49f854026145edd941de2f7a8bd",
+      "materialHash": "e1ebfa544db2a2e09195f8bde9a3117c8abae9f5168b9ff907279256403b93d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_role",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-hull-role",
@@ -858,16 +1508,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2b9f51c5dec010455e6aaa07086abccc9a785e39b65fecdc77daebbc6277f86",
+      "geometryHash": "b917e34c603f964b6d22a7b020dc572949d0ed89b31f80f5821ad5dd001c6b50",
       "id": "sf.render.outpost-fence.mesh.lod1-hull.primitive.0",
-      "indexCount": 1032,
+      "indexCount": 1062,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "9920436b5806152b542e35bd08ff050668841d55b9e468301a00cca7aa19c446",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 331
+      "vertexCount": 339
     },
     {
       "bounds": {
@@ -883,16 +1533,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa599db50a6f5bd5951476c87e2c158ddc50f0ba8f87302c9c9f02947630be6b",
+      "geometryHash": "10a772a49c6494338a13a8ccd0ffdaf9179dadcf0830c9d3bc4b6b78ad2caf92",
       "id": "sf.render.outpost-fence.mesh.lod1-lights-warm.primitive.0",
-      "indexCount": 4872,
+      "indexCount": 5016,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 1926
+      "vertexCount": 1971
     },
     {
       "bounds": {
@@ -908,11 +1558,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0926d425e20dc6960308c2a2860db3b11e43f622003f122e91de8f4c9d9a59c9",
+      "geometryHash": "f9159bd6201ac4f3ba5b56f2323bcc1c91a7488e191d919ed56d5b2675b3f391",
       "id": "sf.render.outpost-fence.mesh.lod1-livery.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialHash": "975fe7148cec044eea423a20d276f7e2d5b2264e63aa0cdfeae6119c78a223ad",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-livery",
@@ -933,11 +1583,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11cd4e3198cf5f9a8450ed0c14cab7898e44817288eaf6228f380e919405a01d",
+      "geometryHash": "af5ebde4d33256ff2bbc40b3dd27bb341065cc30a6e4119c7dd039428ebd018f",
       "id": "sf.render.outpost-fence.mesh.lod1-mechanical.primitive.0",
       "indexCount": 912,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "89b27bf420febb03cda6f2aea01feb562b0aa2ab4724ddef4210efbf36cdec45",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-mechanical",
@@ -958,11 +1608,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "701f295e38e005188a9f198881b1177bf35320b24732609fb529434752da1481",
+      "geometryHash": "e3f5194580757ef68315afee2c546fde398817a16e16c891ec19931e47a55fde",
       "id": "sf.render.outpost-fence.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 4308,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "811b1f662bb978f838381b8cbe382bd3727eb1afe80ae9ebe4869630c8a13133",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-mechanicaldark",
@@ -983,16 +1633,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b412edc995e5643c1990439a896537766d99b1ba72f818d9b208529fa0332f0",
+      "geometryHash": "db679f351f94cbd518bdb1d0213cd890e9dfca8a290c1d154d410606f719be37",
       "id": "sf.render.outpost-fence.mesh.lod1-warning.primitive.0",
       "indexCount": 1968,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "1e86aa53224b69a60bfaf57f5ff39a1f5bba9677804319d781ce465997ab8d94",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-warning",
       "primitiveIndex": 0,
       "vertexCount": 992
+    },
+    {
+      "bounds": {
+        "max": [
+          41.19543170928955,
+          13.497741375283232,
+          -14
+        ],
+        "min": [
+          40.595431327819824,
+          13.077720966025362,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f79d9ed9b0fd4db3025684eb31dec18114d3cf6908d6b9dcc1e42af6df125321",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-0-10-4p8-fencestrobe0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-0-10-4p8-fencestrobe0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          25.5747652053833,
+          34.99774137528323,
+          -14
+        ],
+        "min": [
+          24.974764823913574,
+          34.57772096602536,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9edb54ac295b9d94e4a2ea213fb64e21b7c47685853dff851021b338c4030261",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-1-10-4p8-fencestrobe1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-1-10-4p8-fencestrobe1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3000001907348633,
+          43.21001020462894,
+          -14
+        ],
+        "min": [
+          -0.3000001907348633,
+          42.78998979537106,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6dd3a19deb05c7f2c2056fde8d8eeceb56e5f1bc041465c77fc1ed190fd524cf",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-2-10-4p8-fencestrobe2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-2-10-4p8-fencestrobe2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -24.974764823913574,
+          34.99774137528323,
+          -14
+        ],
+        "min": [
+          -25.5747652053833,
+          34.57772096602536,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "81e831fa3fc625bf635cb69df23b969ace7bf523774f91059522279ce8a2a932",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-3-10-4p8-fencestrobe3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-3-10-4p8-fencestrobe3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.595431327819824,
+          13.497741375283232,
+          -14
+        ],
+        "min": [
+          -41.19543170928955,
+          13.077720966025362,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77023447e9917c3553249dca7aa28d98f3ae56282d01547013f3373b7704ba15",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-4-10-4p8-fencestrobe4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-4-10-4p8-fencestrobe4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.595431327819824,
+          -13.077720966025362,
+          -14
+        ],
+        "min": [
+          -41.19543170928955,
+          -13.497741375283232,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "529e655546802b440c30480fe72510027b01588843e0a2a5bafe282eabbd0a9a",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-5-10-4p8-fencestrobe5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-5-10-4p8-fencestrobe5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -24.974764823913574,
+          -34.57772096602536,
+          -14
+        ],
+        "min": [
+          -25.5747652053833,
+          -34.99774137528323,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4e60f253e88ac0cd8de30aca0a33e992fa9fe630b3693c1cc58b6abd041fd5f",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-6-10-4p8-fencestrobe6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-6-10-4p8-fencestrobe6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3000001907348633,
+          -42.78998979537106,
+          -14
+        ],
+        "min": [
+          -0.3000001907348633,
+          -43.21001020462894,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b21f928c658f3bf8f3875f708af17c43705b8af2063ce75abe441aad745781c",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-7-10-4p8-fencestrobe7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-7-10-4p8-fencestrobe7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          25.5747652053833,
+          -34.57772096602536,
+          -14
+        ],
+        "min": [
+          24.974764823913574,
+          -34.99774137528323,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "32ffb6b75a24af6c425c4eaa83a069b596fa5308f35f037649e952b6bd84e8d2",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-8-10-4p8-fencestrobe8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-8-10-4p8-fencestrobe8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          41.19543170928955,
+          -13.077720966025362,
+          -14
+        ],
+        "min": [
+          40.595431327819824,
+          -13.497741375283232,
+          -14.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de68c59e04fcb3f2c33d150d90b3aacd23e01c859768d00a5153b5a616b2cddc",
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-9-10-4p8-fencestrobe9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodeId": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-9-10-4p8-fencestrobe9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -1008,41 +1908,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72976430a8814e1f9bb9fc6e6792c7f6900fd2ec7a7c51552e3fc2c999882477",
+      "geometryHash": "919b7f909e9cc8b9ccd4fa70de0c8709f77e1310080bcab2944fbe67dc54b174",
       "id": "sf.render.outpost-fence.mesh.lod2-armor.primitive.0",
-      "indexCount": 6588,
+      "indexCount": 6594,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "6ad35f5059bda8faead0e38146ca2d476cdd029a1f4fe2020711e8c6cf00c664",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 4170
+      "vertexCount": 4174
     },
     {
       "bounds": {
         "max": [
           41.793949127197266,
           43.89537048339844,
-          -2.425469160079956
+          -2.4250683784484863
         ],
         "min": [
           -41.79288864135742,
           -43.89237594604492,
-          -14.599532127380371
+          -13.398871421813965
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6c9f9b70ef7b4b9506c5ea657b9be3979e9ab0c10146131d8d6187de52257bd",
+      "geometryHash": "4825f6617c9609f7bfc3124e682fbf11ee8ac3875a4a2ddd75e842d791046ef0",
       "id": "sf.render.outpost-fence.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 936,
+      "indexCount": 816,
       "indexed": true,
       "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 500
+      "vertexCount": 420
     },
     {
       "bounds": {
@@ -1058,7 +1958,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "555de2a10507db7c22d6025d5a52ff492ad0e59f6668d3178307007a97c64be9",
+      "geometryHash": "a057a8fa05a6ccb401e7d49aed873a49962b9f01c760969ac3906ccca4a75bb8",
       "id": "sf.render.outpost-fence.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1083,7 +1983,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b49b5e8546a1e4fc5b3d3d0ac3a073d8d1fb3cfd08d0e48f28abfbbeca34b55f",
+      "geometryHash": "2a943e33ec458662d6903574d9584d0ec997461e5ca847f87f488b2662fc19c3",
       "id": "sf.render.outpost-fence.mesh.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1108,11 +2008,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cce0e3b0b6e3930d039a709a2aea2377d7d647bf3224ed6955b7222f6e6fdc55",
+      "geometryHash": "212c11bd18a3e1b8f18e2eac670b478f964c28881e3bf4981ef866f14179190e",
       "id": "sf.render.outpost-fence.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialHash": "bd5088fa59c480b88543e7d66eb24d96f5903f2799f7cd2549e4f439433265cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-hull-aged",
@@ -1133,11 +2033,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b27eaa266aff98cef0fccfff7eee9992d435b2b80bd74a03b791c87577c55573",
+      "geometryHash": "4974771699283924e88bcf20ce21fc0954f2b5b8d2468b977d4cca0412fc7980",
       "id": "sf.render.outpost-fence.mesh.lod2-hull-role.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3a98916687ac22c53d2a127d272e74d3dc4fc49f854026145edd941de2f7a8bd",
+      "materialHash": "e1ebfa544db2a2e09195f8bde9a3117c8abae9f5168b9ff907279256403b93d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_role",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-hull-role",
@@ -1148,51 +2048,51 @@
       "bounds": {
         "max": [
           54.43663787841797,
-          4.935939311981201,
-          -2.165245771408081
+          4.9350996017456055,
+          -2.1637754440307617
         ],
         "min": [
-          3.6409943103790283,
-          -13.649497032165527,
-          -7.57236909866333
+          3.630230188369751,
+          -13.666679382324219,
+          -7.640268325805664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "adf96d6fbd65864c70fc56ba1d5f9621820bfad11d1dbdba9baccae20b61ccbf",
+      "geometryHash": "33d30eb4ffecbf9acf07f09d3965c4f843af4a25d2569a993e0c51dfca397fc4",
       "id": "sf.render.outpost-fence.mesh.lod2-hull.primitive.0",
-      "indexCount": 72,
+      "indexCount": 96,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "9920436b5806152b542e35bd08ff050668841d55b9e468301a00cca7aa19c446",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 56
     },
     {
       "bounds": {
         "max": [
           40.38323211669922,
           40.357330322265625,
-          -2.12095046043396
+          -2.140657663345337
         ],
         "min": [
           -40.38323211669922,
           -40.379554748535156,
-          -7.454934120178223
+          -7.454922199249268
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6830f1a4381a14f0e82303d1d283e8fa1e03f45c3fd5404663e7fc65a97cde75",
+      "geometryHash": "5727b9f57655076b031d55f9556aee0323e3396ba4b93ff07a648182a344114c",
       "id": "sf.render.outpost-fence.mesh.lod2-lights-warm.primitive.0",
-      "indexCount": 879,
+      "indexCount": 897,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 631
+      "vertexCount": 633
     },
     {
       "bounds": {
@@ -1208,11 +2108,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0926d425e20dc6960308c2a2860db3b11e43f622003f122e91de8f4c9d9a59c9",
+      "geometryHash": "f9159bd6201ac4f3ba5b56f2323bcc1c91a7488e191d919ed56d5b2675b3f391",
       "id": "sf.render.outpost-fence.mesh.lod2-livery.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialHash": "975fe7148cec044eea423a20d276f7e2d5b2264e63aa0cdfeae6119c78a223ad",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-livery",
@@ -1233,16 +2133,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3964e6ab6acf312a8383a8600677256e755b5532d917e5f1a09b89481c7cc317",
+      "geometryHash": "9321967cf2a5afc72b9da277aa558f2d045ec6a648f9b507031f41f99fee0bd1",
       "id": "sf.render.outpost-fence.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 294,
+      "indexCount": 306,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "89b27bf420febb03cda6f2aea01feb562b0aa2ab4724ddef4210efbf36cdec45",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 190
+      "vertexCount": 194
     },
     {
       "bounds": {
@@ -1258,11 +2158,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9de75f8157f385b6be6872ef6a70abff2abd00ffc9530bf862de129f2c04b37b",
+      "geometryHash": "b97af81449af3b28fd31469d05e9ff519f657099eb95e4e448cfe36cf7a703d4",
       "id": "sf.render.outpost-fence.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 3540,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "811b1f662bb978f838381b8cbe382bd3727eb1afe80ae9ebe4869630c8a13133",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-mechanicaldark",
@@ -1283,11 +2183,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65a7e4299849aff46c363731ebaf3f4647c34e51bcb4b1991959187262bb7a26",
+      "geometryHash": "14b2f339e180d3b0d4bc715f1c0409b3e1a0fa7fd9d8f4ea51d41cb519203620",
       "id": "sf.render.outpost-fence.mesh.lod2-warning.primitive.0",
       "indexCount": 1920,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "1e86aa53224b69a60bfaf57f5ff39a1f5bba9677804319d781ce465997ab8d94",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-warning",
@@ -1300,40 +2200,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
+      "hash": "1e86aa53224b69a60bfaf57f5ff39a1f5bba9677804319d781ce465997ab8d94",
+      "id": "material:1e86aa53224b69a60bfaf57f",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1357,39 +2225,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3a98916687ac22c53d2a127d272e74d3dc4fc49f854026145edd941de2f7a8bd",
-      "id": "material:3a98916687ac22c53d2a127d",
-      "name": "Material_Hull_role",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_claim_outpost_fence_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -1403,8 +2239,8 @@
       "textures": []
     },
     {
-      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
-      "id": "material:7d49b2b274926ec08348a5fd",
+      "hash": "6ad35f5059bda8faead0e38146ca2d476cdd029a1f4fe2020711e8c6cf00c664",
+      "id": "material:6ad35f5059bda8faead0e381",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1428,15 +2264,47 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_claim_outpost_fence_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
+      "hash": "811b1f662bb978f838381b8cbe382bd3727eb1afe80ae9ebe4869630c8a13133",
+      "id": "material:811b1f662bb978f838381b8c",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_claim_outpost_fence_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "89b27bf420febb03cda6f2aea01feb562b0aa2ab4724ddef4210efbf36cdec45",
+      "id": "material:89b27bf420febb03cda6f2ae",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1460,7 +2328,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "place_claim_outpost_fence_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -1474,8 +2342,8 @@
       "textures": []
     },
     {
-      "hash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
-      "id": "material:a4d87ca525c4a04848c63811",
+      "hash": "975fe7148cec044eea423a20d276f7e2d5b2264e63aa0cdfeae6119c78a223ad",
+      "id": "material:975fe7148cec044eea423a20",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1499,29 +2367,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_claim_outpost_fence_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
-      "id": "material:c912b5105da889664864247b",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "id": "material:d53e5ef9a99fb30a7a241f6f",
+      "hash": "9920436b5806152b542e35bd08ff050668841d55b9e468301a00cca7aa19c446",
+      "id": "material:9920436b5806152b542e35bd",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1545,15 +2399,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "place_claim_outpost_fence_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
-      "id": "material:f2bfd6ad2d8243301a15508e",
+      "hash": "bd5088fa59c480b88543e7d66eb24d96f5903f2799f7cd2549e4f439433265cc",
+      "id": "material:bd5088fa59c480b88543e7d6",
       "name": "Material_Hull_aged",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1577,7 +2431,53 @@
         },
         {
           "colorSpace": "linear",
+          "name": "place_claim_outpost_fence_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
+      "id": "material:c912b5105da889664864247b",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e1ebfa544db2a2e09195f8bde9a3117c8abae9f5168b9ff907279256403b93d1",
+      "id": "material:e1ebfa544db2a2e09195f8bd",
+      "name": "Material_Hull_role",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "place_claim_outpost_fence_AO",
           "slot": "occlusion",
           "uri": null
         }
@@ -1635,6 +2535,496 @@
       ]
     },
     {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-0-10-4p8-fencestrobe0",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodeName": "LOD0_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-1-10-4p8-fencestrobe1",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodeName": "LOD0_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-2-10-4p8-fencestrobe2",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        43,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodeName": "LOD0_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        43,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-3-10-4p8-fencestrobe3",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodeName": "LOD0_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-4-10-4p8-fencestrobe4",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodeName": "LOD0_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-5-10-4p8-fencestrobe5",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodeName": "LOD0_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-6-10-4p8-fencestrobe6",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodeName": "LOD0_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-7-10-4p8-fencestrobe7",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        -43,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodeName": "LOD0_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        -43,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-8-10-4p8-fencestrobe8",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodeName": "LOD0_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-9-10-4p8-fencestrobe9",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodeName": "LOD0_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
       "id": "sf.render.outpost-fence.mesh.lod0-armor",
       "localTransform": [
         1,
@@ -1659,7 +3049,7 @@
       "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
-        1
+        11
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -1708,7 +3098,7 @@
       "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
-        2
+        12
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -1757,7 +3147,7 @@
       "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        3
+        13
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "dynamic",
@@ -1806,7 +3196,7 @@
       "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        4
+        14
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "dynamic",
@@ -1855,7 +3245,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        5
+        15
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -1904,7 +3294,7 @@
       "nodeName": "LOD0_Hull_aged",
       "nodePath": [
         0,
-        6
+        16
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -1953,7 +3343,7 @@
       "nodeName": "LOD0_Hull_role",
       "nodePath": [
         0,
-        7
+        17
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2002,7 +3392,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        8
+        18
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2051,7 +3441,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        9
+        19
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2100,7 +3490,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        10
+        20
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2149,7 +3539,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        11
+        21
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2198,7 +3588,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        12
+        22
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2219,6 +3609,496 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-0-10-4p8-fencestrobe0",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodeName": "LOD1_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-1-10-4p8-fencestrobe1",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodeName": "LOD1_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-2-10-4p8-fencestrobe2",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        43,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodeName": "LOD1_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        43,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-3-10-4p8-fencestrobe3",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodeName": "LOD1_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-4-10-4p8-fencestrobe4",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodeName": "LOD1_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-5-10-4p8-fencestrobe5",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodeName": "LOD1_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-6-10-4p8-fencestrobe6",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodeName": "LOD1_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-7-10-4p8-fencestrobe7",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        -43,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodeName": "LOD1_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        -43,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-8-10-4p8-fencestrobe8",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodeName": "LOD1_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-9-10-4p8-fencestrobe9",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodeName": "LOD1_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
         1
       ]
     },
@@ -2247,7 +4127,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        13
+        33
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2296,7 +4176,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        14
+        34
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2345,7 +4225,7 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        15
+        35
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "dynamic",
@@ -2394,7 +4274,7 @@
       "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        16
+        36
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "dynamic",
@@ -2443,7 +4323,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        17
+        37
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2492,7 +4372,7 @@
       "nodeName": "LOD1_Hull_aged",
       "nodePath": [
         0,
-        18
+        38
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2541,7 +4421,7 @@
       "nodeName": "LOD1_Hull_role",
       "nodePath": [
         0,
-        19
+        39
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2590,7 +4470,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        20
+        40
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2639,7 +4519,7 @@
       "nodeName": "LOD1_Livery",
       "nodePath": [
         0,
-        21
+        41
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2688,7 +4568,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        22
+        42
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2737,7 +4617,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        23
+        43
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2786,7 +4666,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        24
+        44
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2807,6 +4687,496 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-0-10-4p8-fencestrobe0",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodeName": "LOD2_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-1-10-4p8-fencestrobe1",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodeName": "LOD2_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-2-10-4p8-fencestrobe2",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        43,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodeName": "LOD2_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        43,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-3-10-4p8-fencestrobe3",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodeName": "LOD2_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-4-10-4p8-fencestrobe4",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodeName": "LOD2_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-5-10-4p8-fencestrobe5",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodeName": "LOD2_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-6-10-4p8-fencestrobe6",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodeName": "LOD2_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        -25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-7-10-4p8-fencestrobe7",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        -43,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodeName": "LOD2_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        -43,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-8-10-4p8-fencestrobe8",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodeName": "LOD2_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        25.274765014648438,
+        -34.7877311706543,
+        -14.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-9-10-4p8-fencestrobe9",
+      "localTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodeName": "LOD2_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+      "nodePath": [
+        0,
+        54
+      ],
+      "parentId": "sf.render.outpost-fence.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-fence.body",
+      "worldTransform": [
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.3000001907348633,
+        0,
+        40.89543151855469,
+        -13.287731170654297,
+        -14.300000190734863,
         1
       ]
     },
@@ -2835,7 +5205,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        25
+        55
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2884,7 +5254,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        26
+        56
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -2933,7 +5303,7 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        27
+        57
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "dynamic",
@@ -2982,7 +5352,7 @@
       "nodeName": "LOD2_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        28
+        58
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "dynamic",
@@ -3031,7 +5401,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        29
+        59
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3080,7 +5450,7 @@
       "nodeName": "LOD2_Hull_aged",
       "nodePath": [
         0,
-        30
+        60
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3129,7 +5499,7 @@
       "nodeName": "LOD2_Hull_role",
       "nodePath": [
         0,
-        31
+        61
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3178,7 +5548,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        32
+        62
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3227,7 +5597,7 @@
       "nodeName": "LOD2_Livery",
       "nodePath": [
         0,
-        33
+        63
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3276,7 +5646,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        34
+        64
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3325,7 +5695,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        35
+        65
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3374,7 +5744,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        36
+        66
       ],
       "parentId": "sf.render.outpost-fence.root",
       "role": "immutable",
@@ -3449,22 +5819,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "dd4d613d7fae5d94eb05cd9511b3cf52a2c31e164516d3080f326f142b9132a1"
+      "sha256": "769a645fb37558097109e0d60e4e12659f27765a6038e2e3defef724b1fafea1"
     },
     "sourceGlb": {
-      "bytes": 1170012,
-      "sha256": "0e6f231a270e4927d88cba4db37e4afd7a83204c43a675b6a475954bd5a75549",
+      "bytes": 2206580,
+      "sha256": "de32aaeb1dfb15974c7e7764dc2f66450cd1c7c844ac0e87eef024949ff7265d",
       "uri": "place_claim_outpost_fence.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2123688,
-    "sha256": "e586a7ca0393c1d072fc833bf0cac7d58edb48063175114a1e85c3123ce97822",
+    "bytes": 3215968,
+    "sha256": "c998c9d2067ce1ee77b4d52e7dbad7d6699864897006fc9bf31ca771e2135107",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3472,7 +5842,7 @@
       "center": [
         6.658054351806641,
         0,
-        -3.0398330688476562
+        -3.0398316383361816
       ],
       "max": [
         56.5,
@@ -3482,12 +5852,12 @@
       "min": [
         -43.18389129638672,
         -45.198707580566406,
-        -14.600381851196289
+        -14.60037899017334
       ],
       "size": [
         99.68389129638672,
         90.39741516113281,
-        23.121097564697266
+        23.121094703674316
       ]
     },
     "hidden": [
@@ -3515,7 +5885,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 39,
+        "planIndex": 69,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3552,7 +5922,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 40,
+        "planIndex": 70,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3589,7 +5959,7 @@
           1
         ],
         "name": "SOCKET_Module_Defense",
-        "planIndex": 41,
+        "planIndex": 71,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3626,7 +5996,7 @@
           1
         ],
         "name": "SOCKET_Module_Depot",
-        "planIndex": 42,
+        "planIndex": 72,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3663,7 +6033,7 @@
           1
         ],
         "name": "SOCKET_Module_Refinery",
-        "planIndex": 43,
+        "planIndex": 73,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3700,7 +6070,7 @@
           1
         ],
         "name": "SOCKET_Module_Teleporter",
-        "planIndex": 44,
+        "planIndex": 74,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3737,7 +6107,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 45,
+        "planIndex": 75,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3759,7 +6129,7 @@
       "accent": 3,
       "hull": 13,
       "mechanical": 6,
-      "signal": 12,
+      "signal": 42,
       "warning": 3
     },
     "materialProfiles": [
@@ -3771,7 +6141,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3791,17 +6161,17 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3811,27 +6181,27 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3841,12 +6211,12 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3856,42 +6226,42 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
+        "planIndex": 21,
         "role": "accent"
       },
       {
         "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 24,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
         "role": "warning"
       },
       {
         "allowTextures": true,
+        "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 27,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3911,17 +6281,17 @@
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3931,26 +6301,446 @@
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
         "role": "warning"
       }
     ],
-    "nodeCount": 46,
+    "nodeCount": 76,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          40.89543151855469,
+          13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          25.274765014648438,
+          34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          43,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -25.274765014648438,
+          34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -40.89543151855469,
+          13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -40.89543151855469,
+          -13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -25.274765014648438,
+          -34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          -43,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          25.274765014648438,
+          -34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          40.89543151855469,
+          -13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD0_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -3972,7 +6762,7 @@
           1
         ],
         "name": "LOD0_Armor",
-        "planIndex": 3,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3999,7 +6789,7 @@
           1
         ],
         "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4026,7 +6816,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 5,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4054,7 +6844,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 6,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4082,7 +6872,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 7,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4109,7 +6899,7 @@
           1
         ],
         "name": "LOD0_Hull_aged",
-        "planIndex": 8,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4136,7 +6926,7 @@
           1
         ],
         "name": "LOD0_Hull_role",
-        "planIndex": 9,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4163,7 +6953,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 10,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4190,7 +6980,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 11,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4217,7 +7007,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 12,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4244,7 +7034,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 13,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4271,10 +7061,280 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 14,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          40.89543151855469,
+          13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          25.274765014648438,
+          34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          43,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -25.274765014648438,
+          34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -40.89543151855469,
+          13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -40.89543151855469,
+          -13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -25.274765014648438,
+          -34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          -43,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          25.274765014648438,
+          -34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          40.89543151855469,
+          -13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD1_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
         }
       },
       {
@@ -4298,7 +7358,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 15,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4325,7 +7385,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 16,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4352,7 +7412,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 17,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4380,7 +7440,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 18,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4408,7 +7468,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 19,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4435,7 +7495,7 @@
           1
         ],
         "name": "LOD1_Hull_aged",
-        "planIndex": 20,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4462,7 +7522,7 @@
           1
         ],
         "name": "LOD1_Hull_role",
-        "planIndex": 21,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4489,7 +7549,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 22,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4516,7 +7576,7 @@
           1
         ],
         "name": "LOD1_Livery",
-        "planIndex": 23,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4543,7 +7603,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 24,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4570,7 +7630,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 25,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4597,10 +7657,280 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 26,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          40.89543151855469,
+          13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_0_10_4p8_FenceStrobe0",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          25.274765014648438,
+          34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_1_10_4p8_FenceStrobe1",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          43,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_2_10_4p8_FenceStrobe2",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -25.274765014648438,
+          34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_3_10_4p8_FenceStrobe3",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -40.89543151855469,
+          13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_4_10_4p8_FenceStrobe4",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -40.89543151855469,
+          -13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_5_10_4p8_FenceStrobe5",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          -25.274765014648438,
+          -34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_6_10_4p8_FenceStrobe6",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          -43,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_7_10_4p8_FenceStrobe7",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          25.274765014648438,
+          -34.7877311706543,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_8_10_4p8_FenceStrobe8",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.3000001907348633,
+          0,
+          40.89543151855469,
+          -13.287731170654297,
+          -14.300000190734863,
+          1
+        ],
+        "name": "LOD2_ANIM_chase_fence_9_10_4p8_FenceStrobe9",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
         }
       },
       {
@@ -4624,7 +7954,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 27,
+        "planIndex": 57,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4651,7 +7981,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 28,
+        "planIndex": 58,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4678,7 +8008,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 29,
+        "planIndex": 59,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4706,7 +8036,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 30,
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4734,7 +8064,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 31,
+        "planIndex": 61,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4761,7 +8091,7 @@
           1
         ],
         "name": "LOD2_Hull_aged",
-        "planIndex": 32,
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4788,7 +8118,7 @@
           1
         ],
         "name": "LOD2_Hull_role",
-        "planIndex": 33,
+        "planIndex": 63,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4815,7 +8145,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 34,
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4842,7 +8172,7 @@
           1
         ],
         "name": "LOD2_Livery",
-        "planIndex": 35,
+        "planIndex": 65,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4869,7 +8199,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 36,
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4896,7 +8226,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 37,
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4923,7 +8253,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 38,
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4934,7 +8264,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_fence.glb"
   },
-  "runtimeHash": "8c65a98ce714080b027565b0a27f014af5891c774290478caf572c1ae904e97c",
+  "runtimeHash": "6dc8fea4607d85219e9ca79fa25c020987dab0d2bb16c586646a94c62bcaaf81",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4947,12 +8277,22 @@
         "min": [
           -43.18389129638672,
           -45.198707580566406,
-          -14.600381851196289
+          -14.60037899017334
         ]
       },
       "id": "sf.render.outpost-fence.body",
       "nodeIds": [
         "sf.render.outpost-fence.mesh.collision-hull",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-0-10-4p8-fencestrobe0",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-1-10-4p8-fencestrobe1",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-2-10-4p8-fencestrobe2",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-3-10-4p8-fencestrobe3",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-4-10-4p8-fencestrobe4",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-5-10-4p8-fencestrobe5",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-6-10-4p8-fencestrobe6",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-7-10-4p8-fencestrobe7",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-8-10-4p8-fencestrobe8",
+        "sf.render.outpost-fence.mesh.lod0-anim-chase-fence-9-10-4p8-fencestrobe9",
         "sf.render.outpost-fence.mesh.lod0-armor",
         "sf.render.outpost-fence.mesh.lod0-beacon-amber",
         "sf.render.outpost-fence.mesh.lod0-hook-nav-port",
@@ -4965,6 +8305,16 @@
         "sf.render.outpost-fence.mesh.lod0-mechanical",
         "sf.render.outpost-fence.mesh.lod0-mechanicaldark",
         "sf.render.outpost-fence.mesh.lod0-warning",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-0-10-4p8-fencestrobe0",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-1-10-4p8-fencestrobe1",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-2-10-4p8-fencestrobe2",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-3-10-4p8-fencestrobe3",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-4-10-4p8-fencestrobe4",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-5-10-4p8-fencestrobe5",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-6-10-4p8-fencestrobe6",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-7-10-4p8-fencestrobe7",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-8-10-4p8-fencestrobe8",
+        "sf.render.outpost-fence.mesh.lod1-anim-chase-fence-9-10-4p8-fencestrobe9",
         "sf.render.outpost-fence.mesh.lod1-armor",
         "sf.render.outpost-fence.mesh.lod1-beacon-amber",
         "sf.render.outpost-fence.mesh.lod1-hook-nav-port",
@@ -4977,6 +8327,16 @@
         "sf.render.outpost-fence.mesh.lod1-mechanical",
         "sf.render.outpost-fence.mesh.lod1-mechanicaldark",
         "sf.render.outpost-fence.mesh.lod1-warning",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-0-10-4p8-fencestrobe0",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-1-10-4p8-fencestrobe1",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-2-10-4p8-fencestrobe2",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-3-10-4p8-fencestrobe3",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-4-10-4p8-fencestrobe4",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-5-10-4p8-fencestrobe5",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-6-10-4p8-fencestrobe6",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-7-10-4p8-fencestrobe7",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-8-10-4p8-fencestrobe8",
+        "sf.render.outpost-fence.mesh.lod2-anim-chase-fence-9-10-4p8-fencestrobe9",
         "sf.render.outpost-fence.mesh.lod2-armor",
         "sf.render.outpost-fence.mesh.lod2-beacon-amber",
         "sf.render.outpost-fence.mesh.lod2-hook-nav-port",

@@ -28,6 +28,7 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- the displaced stone core + satellites ---------------------------------------------
     F.rock(s, 'Core', (0, 0, -0.3), 4.3, seed=31, subdiv=4, relief=0.32, terrace=0.0,

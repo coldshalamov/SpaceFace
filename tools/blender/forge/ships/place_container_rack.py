@@ -109,6 +109,7 @@ def ladder(s, name, x):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
 
     # --- rack frame ------------------------------------------------------------------------------
     for i, x in enumerate(UX):

@@ -35,6 +35,7 @@ DISH_AXIS = (0.0, math.cos(TILT), math.sin(TILT))   # mostly +d (viewer), tipped
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.emit_scale = 4.0
     K.build_platform(s, {'hab': (0.0, -28.0), 'hab_scale': 0.55})
 
     # --- gimbal cradle: the dish pivots in a yoke frame inside the deck opening ---------------
@@ -55,8 +56,11 @@ def build():
                material='paint2', bevel=0.15)
 
     # --- the dish itself (F.dish bakes the bowl + rim + feed horn + lens at the axis) ---------
+    n0 = len(s.objects)
     F.dish(s, 'BigDish', K.P(DISH_U, DISH_V, DISH_D), DISH_R, 4.4, axis=DISH_AXIS,
            material='paint', face='paint.role', segments=40, feed='glow_cyan')
+    # the relay dish works a slow yaw sweep in its cradle — the claim's voice hunting the lane
+    s.anim(s.objects[n0:], 'sweep:up:0p5:0p3', K.P(DISH_U, DISH_V, DISH_D))
 
     # --- lattice mast rising UP the face behind the dish ---------------------------------------
     mx, mv0, mv1 = 0.0, -20.0, 34.0
@@ -70,12 +74,17 @@ def build():
     K.plan_truss(s, 'Mast', (mx, mv0, 5.0), (mx, mv1, 5.0), 2.6, 12,
                  material='paint2', chord=0.4, web=0.2)
     for i, vh in enumerate((-12.0, 4.0, 20.0)):
-        F.light(s, f'MastLamp{i}', K.P(mx + 1.5, vh, 5.6), 'glow_cyan', size=0.32)
+        pos = K.P(mx + 1.5, vh, 5.6)
+        o = F.light(s, f'MastLamp{i}', pos, 'glow_cyan', size=0.32)
+        s.anim(o, f'blink:1p{6 + i}:0p{i}', pos)
     K.plan_cyl(s, 'MastBand', mx, 30.0, 4.6, mx, 31.4, 5.4, 1.5, material='hazard',
                segments=12)
     # mast head platform + beacon
     K.plan_box(s, 'MastHead', mx, mv1, 5.4, 4.0, 3.0, 1.6, material='paint2', bevel=0.1)
+    n0 = len(s.objects)
     F.beacon(s, 'MastBeacon', K.P(mx, mv1 + 1.2, 5.4), finish='glow_cyan', size=0.5)
+    s.anim([o for o in s.objects[n0:] if o.name.startswith('MastBeacon_Dome')], 'blink:1p4:0p3',
+           K.P(mx, mv1 + 1.2, 5.4))
 
     # --- cable stays from the mast + dish rim back to the deck ----------------------------------
     for k, (ex, ev) in enumerate(((-16.0, -8.0), (16.0, -8.0), (-18.0, 18.0),
@@ -92,7 +101,9 @@ def build():
         u2, v2, _ = K.polar_plan(min(45.0, K.FRAME_R - 0.5 + h), a)
         K.plan_cyl(s, f'Whip{k}', u, v, 1.8, u2, v2, 1.8, 0.22, material='paint2',
                    segments=8)
-        F.light(s, f'WhipTip{k}', K.P(u2, v2, 2.2), 'glow_cyan', size=0.3)
+        pos = K.P(u2, v2, 2.2)
+        o = F.light(s, f'WhipTip{k}', pos, 'glow_cyan', size=0.3)
+        s.anim(o, f'blink:2p{1 + k}:0p{k}', pos)
 
     # --- comms hut tucked beside the cradle -----------------------------------------------------
     K.plan_box(s, 'CommsHut', -24.0, -8.0, 4.0, 6.5, 5.5, 4.5, material='paint2',

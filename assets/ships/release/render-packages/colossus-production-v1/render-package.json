@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7849da99caddef26ae85a5e9e66396029f17341415f6fa1deef2dbf428b61a7b",
+  "contentHash": "98fcb660eaace04c61bfed4a51fe52184985545659f78548208af766937148a4",
   "dynamicGroups": [
     {
       "id": "sf.render.colossus-production-v1.node.lod0-hook-armor-port-armor.dynamic",
@@ -663,16 +663,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66f8a3418e41765d279511351d93d7ec2e8cf3d5684bfd29445e59f7ba155582",
+      "geometryHash": "6fa2371f28e309b757ae453c86dbda433158d6bbaa99b23f1463dd9f76ffa8fe",
       "id": "sf.render.colossus-production-v1.node.lod0-armor.primitive.0",
       "indexCount": 35046,
       "indexed": true,
-      "materialHash": "348aa2b0f55dbb2a222217b9af7fa1efe3d079e86d5dbc1a979f9db7d74ea9a1",
+      "materialHash": "a9b7d1a8d90ce19115a4bf4154ecac9c54bcfb46bd48370b0182ec33a4b8c5e0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 11204
+      "vertexCount": 11206
     },
     {
       "bounds": {
@@ -688,7 +688,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "953b3a96f42bf21faf4c0084e1c7a874372033a895a7e97e4d25cefe36067240",
+      "geometryHash": "02c2c8c95dcea7ab84420bf75209e0f322babd3b2574187ef8fe90c0f036b8ea",
       "id": "sf.render.colossus-production-v1.node.lod0-beacon-amber.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -713,16 +713,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4ba32f8fa8052a67e951bec9b56d62d1c2f80d3a8409221b74a4bf0a6df250a",
+      "geometryHash": "26430b81260dd8e3d96f1c9e432646161d2f712b5d1fedda119871a8ace6c102",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-armor-port-armor.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "348aa2b0f55dbb2a222217b9af7fa1efe3d079e86d5dbc1a979f9db7d74ea9a1",
+      "materialHash": "a9b7d1a8d90ce19115a4bf4154ecac9c54bcfb46bd48370b0182ec33a4b8c5e0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_ARMOR_PORT_Armor",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hook-armor-port-armor",
       "primitiveIndex": 0,
-      "vertexCount": 232
+      "vertexCount": 230
     },
     {
       "bounds": {
@@ -738,7 +738,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8e6a45741cd3c6d05c071f1e529a3b41a58d99bc7ef0aebcef30bbb00875deb",
+      "geometryHash": "8007c189b567a670ee9b8082776915065ece21e58c556392a02e1a529ffe3771",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -763,7 +763,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "356e1279d7af31e01bf03a808414e6bd80af6d018df11654dc535f522d2eae36",
+      "geometryHash": "88bafe075512cf79787ab4fd6b39fe5564a377bb599dbd53ada29f72b3aaecec",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-nav-port.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -788,7 +788,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "beba47af3a7cc71f9b8fbd30685baae73061b6298df032da0e35b6cc5656ae62",
+      "geometryHash": "401a4c179fa9544ed31143e12a2224651b9d9c50113a0ef29b81cf66ea73c2fa",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -813,11 +813,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a2bb250a246ef0b3ef1f8bf5b69b2f0e3fb97097cc393b5bba197a412fcaf9d9",
+      "geometryHash": "49a30741d1f20d965db2133af3bad5ca7278d213c6bdcc006ad4249ccfebd0b4",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-armor.primitive.0",
       "indexCount": 1434,
       "indexed": true,
-      "materialHash": "348aa2b0f55dbb2a222217b9af7fa1efe3d079e86d5dbc1a979f9db7d74ea9a1",
+      "materialHash": "a9b7d1a8d90ce19115a4bf4154ecac9c54bcfb46bd48370b0182ec33a4b8c5e0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TURRET_Armor",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-armor",
@@ -838,11 +838,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c07dc6d87ed71113bb8a6127dcfd7767d38f78d39039a8156a352bc6dec8d855",
+      "geometryHash": "1080c0b2efa5f3035fee1d995f749fa971f914e8b5532540bba3fe75b11bd1f0",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-livery.primitive.0",
       "indexCount": 486,
       "indexed": true,
-      "materialHash": "e5bfba3c83b2a649503fc1ae480d233f6e1f6cd607692310d91a091f5f33357b",
+      "materialHash": "8d5afde4aaacadf948e6bf0ca27f09ce81040fbe31467dae061bdf0ed9777495",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TURRET_Livery",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-livery",
@@ -863,11 +863,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83778ac12574bf259fd8f930454059a18fac2bc815f20ace0ff8726aff2596b6",
+      "geometryHash": "919e31b8543c4d82a04419f6eab969ef86b659c7f3e6f05fbe2425cab64bab9f",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-mechanical.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "12a2519e9ab21cf2c352d7baae8e6b25644d7d419c52110947f2f11aeeb362c8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-mechanical",
@@ -888,11 +888,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "112969645b8ada5f647583bc5c27fa926ca7497ec20069a9ce145890883b23ac",
+      "geometryHash": "92d17c3bd9d936316ed9dd90bb39e957d928e6509735cd0d9a56277bc97768ac",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-mechanicaldark.primitive.0",
       "indexCount": 372,
       "indexed": true,
-      "materialHash": "a338a0ee62cc72887df05482b8518b10e87463ad38931abf5be775b6a36ab4ba",
+      "materialHash": "7657627203aaa38fa3c8c2193d810f1fb89022cc59cd43a2628d13ae0ea0f20c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-mechanicaldark",
@@ -913,11 +913,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48f10f6faf6625397d713d5a634d319440e5601c7e2bcd80e8aa6e3e5e14abf5",
+      "geometryHash": "282453958883a8d982e557c4258d13602f2e509a6d3c3250b0f91657031e9e64",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-sensor-mast-armor.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "348aa2b0f55dbb2a222217b9af7fa1efe3d079e86d5dbc1a979f9db7d74ea9a1",
+      "materialHash": "a9b7d1a8d90ce19115a4bf4154ecac9c54bcfb46bd48370b0182ec33a4b8c5e0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SENSOR_MAST_Armor",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hook-sensor-mast-armor",
@@ -938,7 +938,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50ca91be0e83a7456d47f03665f705d8226d2c8ac876126da3e8db0588941423",
+      "geometryHash": "2618f3c7283c661338bb5c8160082a1a8329e98d19f26af77b59857c9db07d74",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-sensor-mast-glow-red.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -963,11 +963,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b8ee66a1f01ae8b581e77fc8eb303cbac0571215957c3878eb89b7c5791adc9",
+      "geometryHash": "14f7027147394b82ba8401af3d0b70748ca4675829f8900c22ea0d28a4f3a9aa",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-sensor-mast-mechanical.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "12a2519e9ab21cf2c352d7baae8e6b25644d7d419c52110947f2f11aeeb362c8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SENSOR_MAST_Mechanical",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hook-sensor-mast-mechanical",
@@ -988,11 +988,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8513927d2407f6abbf1ce6676271da5fd87cfa05ba4c663c4b2e49b7b72689c",
+      "geometryHash": "3c26e799cc9fedb4cd49e1f5b465709e0b3f8b0743229deeea6a8ac700f5bc42",
       "id": "sf.render.colossus-production-v1.node.lod0-hull.primitive.0",
       "indexCount": 27402,
       "indexed": true,
-      "materialHash": "ec53581c7702fe9fc3bd2f5eabc76ce445366600b1323c5a4c98566840ebb1c0",
+      "materialHash": "f672d35d4eff9bb3cb36f32266d8a2127c646d7315de63c757d9582ea346e55d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hull",
@@ -1013,7 +1013,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a212bf1b7ec111abab5453c6da13e571baf61d43d8b50762bd2dbdfc2610f9e",
+      "geometryHash": "ca4282772558f543ad486a13a79e57f68c1bbc3900931d3c78557c36700f1061",
       "id": "sf.render.colossus-production-v1.node.lod0-lights-warm.primitive.0",
       "indexCount": 9324,
       "indexed": true,
@@ -1038,16 +1038,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc758ff8265c1bf67a01f916b80fa5f654f77e1102f2ba04343fa64df05e2853",
+      "geometryHash": "e369ad647c1c5c8b146a58618d5ff7a5ab26bb5cb2b9c210d80b200e2709217f",
       "id": "sf.render.colossus-production-v1.node.lod0-livery.primitive.0",
       "indexCount": 51360,
       "indexed": true,
-      "materialHash": "e5bfba3c83b2a649503fc1ae480d233f6e1f6cd607692310d91a091f5f33357b",
+      "materialHash": "8d5afde4aaacadf948e6bf0ca27f09ce81040fbe31467dae061bdf0ed9777495",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 16342
+      "vertexCount": 16315
     },
     {
       "bounds": {
@@ -1063,11 +1063,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e72e7b345d812d9995514fa85ed7531f9c5217cc1b649a3d57b62b7518f2ee2b",
+      "geometryHash": "ebeca83f776a27265b5dbaa93ec08e496b0b0c8b2e299a40e7d8cccbcc9384b1",
       "id": "sf.render.colossus-production-v1.node.lod0-mechanical.primitive.0",
       "indexCount": 20892,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "12a2519e9ab21cf2c352d7baae8e6b25644d7d419c52110947f2f11aeeb362c8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-mechanical",
@@ -1088,16 +1088,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b6f98a15a36fcb4608b3e6e4edd4559a1402a2c9afab5d427a3c31056212247",
+      "geometryHash": "c3a09a584bd503ed1bd9da76ad8b426cd8173d2ae1c091ed26518424a2457152",
       "id": "sf.render.colossus-production-v1.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 24072,
       "indexed": true,
-      "materialHash": "a338a0ee62cc72887df05482b8518b10e87463ad38931abf5be775b6a36ab4ba",
+      "materialHash": "7657627203aaa38fa3c8c2193d810f1fb89022cc59cd43a2628d13ae0ea0f20c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 8208
+      "vertexCount": 8210
     }
   ],
   "hlods": [],
@@ -1105,32 +1105,32 @@
   "lods": [],
   "materials": [
     {
-      "hash": "348aa2b0f55dbb2a222217b9af7fa1efe3d079e86d5dbc1a979f9db7d74ea9a1",
-      "id": "material:348aa2b0f55dbb2a222217b9",
-      "name": "Material_Armor",
+      "hash": "12a2519e9ab21cf2c352d7baae8e6b25644d7d419c52110947f2f11aeeb362c8",
+      "id": "material:12a2519e9ab21cf2c352d7ba",
+      "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "colossus_AO-forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "colossus_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1151,47 +1151,8 @@
       "textures": []
     },
     {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "a338a0ee62cc72887df05482b8518b10e87463ad38931abf5be775b6a36ab4ba",
-      "id": "material:a338a0ee62cc72887df05482",
+      "hash": "7657627203aaa38fa3c8c2193d810f1fb89022cc59cd43a2628d13ae0ea0f20c",
+      "id": "material:7657627203aaa38fa3c8c219",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1203,7 +1164,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "colossus_AO-forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -1215,22 +1176,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "colossus_AO-forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "e5bfba3c83b2a649503fc1ae480d233f6e1f6cd607692310d91a091f5f33357b",
-      "id": "material:e5bfba3c83b2a649503fc1ae",
+      "hash": "8d5afde4aaacadf948e6bf0ca27f09ce81040fbe31467dae061bdf0ed9777495",
+      "id": "material:8d5afde4aaacadf948e6bf0c",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1254,15 +1208,68 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "colossus_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "ec53581c7702fe9fc3bd2f5eabc76ce445366600b1323c5a4c98566840ebb1c0",
-      "id": "material:ec53581c7702fe9fc3bd2f5e",
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a9b7d1a8d90ce19115a4bf4154ecac9c54bcfb46bd48370b0182ec33a4b8c5e0",
+      "id": "material:a9b7d1a8d90ce19115a4bf41",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "colossus_AO",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f672d35d4eff9bb3cb36f32266d8a2127c646d7315de63c757d9582ea346e55d",
+      "id": "material:f672d35d4eff9bb3cb36f322",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1286,18 +1293,11 @@
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "colossus_AO",
           "slot": "occlusion",
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
-      "id": "material:f64dcbc7e999cc81995955b9",
-      "name": "Material_Thruster",
-      "pipelineKey": "opaque:front",
-      "textures": []
     }
   ],
   "nodes": [
@@ -2874,19 +2874,19 @@
       "sha256": "feb582c1754fc587f0190017f81bdd10b64dcfa0318419b2626786b0a9cf684f"
     },
     "sourceGlb": {
-      "bytes": 1127552,
-      "sha256": "38ea9d49d5fac669ee4034b411938ead6e184a1cdc41e5d9147b5243f41752e6",
+      "bytes": 1627360,
+      "sha256": "79048657a5aa6325faf1a42e12f8b623209ca484af9380ab5a4d12b117dba12f",
       "uri": "colossus_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 209118,
-      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
+      "bytes": 212641,
+      "sha256": "8764307a2fd63f5fd9c49764e525cd830568bc2b108ef4a9af835136f4713ec3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2045680,
-    "sha256": "28ea753b0c9fb3cb5497c3f5b146f84200017140a8f17d9a81ff8786cbaf679f",
+    "bytes": 2552056,
+    "sha256": "3e1ba8983323ac6acaef384e0c9b60ee242e29d22e42d32f84b57ff9bb7bd147",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4163,7 +4163,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/colossus_production_v1.glb"
   },
-  "runtimeHash": "25d6a524cfb269e6e7f2b7fd50510cd46c89823423965f43a8a97de83c42fa96",
+  "runtimeHash": "e2d4e8f1573835a06498d21130349e297b80cc627f690b64646ad32a4baffa58",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
