@@ -12,7 +12,7 @@
 // (content-hash immutable, so force-cache makes the re-read cheap); a clean error reply hands the
 // GLB back inside the result so the stock parse still runs on the same bytes. When workers are
 // unavailable the prepass resolves to the input buffer untouched, which is the stock path.
-import { resolveDecodeTaskBudgetLimit, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { deadlineDecodeActive, resolveDecodeTaskBudgetLimit, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 
 const WORKER_NAME = 'spaceface-glb-prepass';
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -118,7 +118,7 @@ export function createGlbPrepasser(options = {}) {
       if (worker.current) continue;
       const job = queue.shift();
       worker.current = job;
-      budget.acquire().then((release) => {
+      budget.acquire(job.decodeClass || (deadlineDecodeActive() ? 'deadline' : 'ambient')).then((release) => {
         if (worker.current !== job) { release(); return; } // retired while waiting for the token
         job.release = release;
         try {
@@ -142,7 +142,7 @@ export function createGlbPrepasser(options = {}) {
      * are Maps keyed by bufferView index, or null when the worker declined/failed. Resolves null
      * only when the buffer was lost with the worker: the caller must re-read the package.
      */
-    prepass(glb) {
+    prepass(glb, options = {}) {
       if (unavailable) return Promise.resolve({ glb, bufferViews: null, sourceBytes: null });
       while (workers.length < poolSize) {
         if (!spawn()) break;
@@ -155,6 +155,7 @@ export function createGlbPrepasser(options = {}) {
           resolve,
           release: null,
           timer: null,
+          decodeClass: options.decodeClass,
         };
         if (timeoutMs > 0) {
           job.timer = setTimeout(() => {

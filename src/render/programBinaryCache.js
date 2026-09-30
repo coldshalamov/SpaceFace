@@ -13,6 +13,106 @@ const MEMORY = new Map();
 const shaderSources = new WeakMap();
 const programShaders = new WeakMap();
 
+// Persisted layer (boot lane, wave-1): MEMORY alone makes every cold boot replay the
+// opening-cohort links at full cost. Binaries persist to IndexedDB keyed by fnv1a(salted
+// shader sources) under a bounded ~4MB LRU, so a repeat boot on the same renderer+driver
+// replays the warm set at ~free. Hydration is async — links racing it miss the cache and
+// backfill it at harvest — but the bulk of the opening cohort lands after the ~ms read.
+const IDB_DB = 'spaceface-program-binaries';
+const IDB_STORE = 'binaries';
+const IDB_MAX_BYTES = 4 * 1024 * 1024;
+const idbMeta = new Map(); // key -> { t, size }
+let idbBytes = 0;
+let idbDb = null;
+let idbSalt = null;
+let idbOpen = false;
+
+function saltedKey(key) {
+  return `${idbSalt || ''}:${key}`;
+}
+
+function idbEvict() {
+  const doomed = [];
+  while (idbBytes > IDB_MAX_BYTES && idbMeta.size) {
+    let oldestKey = null;
+    let oldestT = Infinity;
+    for (const [key, meta] of idbMeta) {
+      if (meta.t < oldestT) { oldestT = meta.t; oldestKey = key; }
+    }
+    if (!oldestKey) break;
+    idbBytes -= idbMeta.get(oldestKey).size;
+    idbMeta.delete(oldestKey);
+    MEMORY.delete(oldestKey.slice((idbSalt || '').length + 1));
+    doomed.push(oldestKey);
+  }
+  if (!doomed.length || !idbDb) return;
+  try {
+    const tx = idbDb.transaction(IDB_STORE, 'readwrite');
+    for (const key of doomed) tx.objectStore(IDB_STORE).delete(key);
+  } catch { /* eviction is best-effort */ }
+}
+
+function idbPut(key, binary) {
+  if (!idbDb || !binary || !binary.binary) return;
+  const skey = saltedKey(key);
+  const size = binary.binary.byteLength || binary.binary.length || 0;
+  if (size <= 0 || size > IDB_MAX_BYTES) return;
+  const prior = idbMeta.get(skey);
+  if (prior) idbBytes -= prior.size;
+  idbBytes += size;
+  idbMeta.set(skey, { t: Date.now(), size });
+  try {
+    const tx = idbDb.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put({ format: binary.format, binary: binary.binary, t: Date.now(), size }, skey);
+  } catch { /* persist is best-effort */ }
+  idbEvict();
+}
+
+function idbHydrate(gl) {
+  if (idbOpen || typeof indexedDB === 'undefined') return;
+  idbOpen = true;
+  try {
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = String(gl.getParameter(dbg ? dbg.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
+    const vendor = String(gl.getParameter(dbg ? dbg.UNMASKED_VENDOR_WEBGL : gl.VENDOR) || '');
+    idbSalt = `${vendor}::${renderer}::${String(gl.getParameter(gl.VERSION) || '')}`;
+  } catch {
+    idbSalt = 'unknown';
+  }
+  let request;
+  try {
+    request = indexedDB.open(IDB_DB, 1);
+  } catch { return; }
+  request.onupgradeneeded = () => {
+    try { request.result.createObjectStore(IDB_STORE); } catch { /* exists */ }
+  };
+  request.onerror = () => { idbDb = null; };
+  request.onsuccess = () => {
+    idbDb = request.result;
+    idbDb.onclose = () => { idbDb = null; };
+    let tx;
+    try {
+      tx = idbDb.transaction(IDB_STORE, 'readonly');
+    } catch { idbDb = null; return; }
+    const cursor = tx.objectStore(IDB_STORE).openCursor();
+    cursor.onsuccess = () => {
+      const it = cursor.result;
+      if (!it) return;
+      const skey = String(it.key);
+      const rec = it.value;
+      if (rec && rec.binary && skey.startsWith(`${idbSalt}:`)) {
+        const key = skey.slice(idbSalt.length + 1);
+        if (!MEMORY.has(key)) MEMORY.set(key, { format: rec.format, binary: rec.binary });
+        const size = Number(rec.size) || rec.binary.byteLength || 0;
+        idbBytes += size;
+        idbMeta.set(skey, { t: Number(rec.t) || 0, size });
+      }
+      it.continue();
+    };
+    tx.oncomplete = idbEvict;
+  };
+}
+
 function fnv1a(text) {
   let hash = 2166136261;
   for (let i = 0; i < text.length; i++) {
@@ -46,6 +146,7 @@ export function installProgramBinaryCache(gl) {
     : null;
   const pending = [];
   let drainScheduled = false;
+  idbHydrate(gl);
 
   // Harvest programs whose driver link has finished. COMPLETION_STATUS_KHR answers without
   // blocking; a program reporting false keeps its slot for the next drain. Without the
@@ -70,7 +171,10 @@ export function installProgramBinaryCache(gl) {
       try {
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) continue;
         const binary = gl.getProgramBinary(program);
-        if (binary && binary.binary) MEMORY.set(key, binary);
+        if (binary && binary.binary) {
+          MEMORY.set(key, binary);
+          idbPut(key, binary);
+        }
       } catch {
         /* some drivers reject getProgramBinary until COMPLETION_STATUS */
       }

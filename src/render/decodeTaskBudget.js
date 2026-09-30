@@ -20,25 +20,32 @@ export function resolveDecodeTaskBudgetLimit(hardwareConcurrency) {
 }
 
 /**
- * FIFO semaphore. `acquire()` resolves a `release` function; release returns the token to the
- * next waiter (FIFO) or to `available`. Releasing is idempotent-free — callers must invoke a
- * release exactly once, so wrap tasks so settle paths release exactly one token.
+ * FIFO semaphore with a deadline class. `acquire(decodeClass)` resolves a `release` function;
+ * release returns the token to the next waiter — 'deadline' waiters before 'ambient' ones,
+ * FIFO within each class — or to `available`. Releasing is idempotent-free — callers must
+ * invoke a release exactly once, so wrap tasks so settle paths release exactly one token.
+ *
+ * Two classes only: a deadline decode (decode-runway / wave-hull / admission-deadline work)
+ * never waits behind a queued ambient warm, while ambient fairness is preserved because
+ * deadline arrivals are rare and capped per poll.
  */
 export function createDecodeTaskBudget(limit) {
   const size = Math.max(1, Math.floor(limit));
   let available = size;
   const waiters = [];
   const release = () => {
-    const next = waiters.shift();
-    if (next) next(release);
+    let idx = waiters.findIndex((w) => w.decodeClass === 'deadline');
+    if (idx < 0) idx = waiters.length ? 0 : -1;
+    const next = idx >= 0 ? waiters.splice(idx, 1)[0] : null;
+    if (next) next.resolve(release);
     else available += 1;
   };
-  const acquire = () => {
+  const acquire = (decodeClass) => {
     if (available > 0) {
       available -= 1;
       return Promise.resolve(release);
     }
-    return new Promise((resolve) => { waiters.push(resolve); });
+    return new Promise((resolve) => { waiters.push({ decodeClass, resolve }); });
   };
   return Object.freeze({
     acquire,
@@ -46,6 +53,37 @@ export function createDecodeTaskBudget(limit) {
     get inFlight() { return size - available; },
     get queued() { return waiters.length; },
   });
+}
+
+// Depth of currently in-flight deadline-class decode operations. Task intakes that cannot
+// thread a per-task class (the KTX2 worker pool's postMessage is created inside the shared
+// loader's internals) read this at post time: any task posted while a deadline decode owns
+// the lane is treated as deadline work. The serial decode lane keeps the over-inclusion
+// bounded to at most the co-scheduled sibling of a deadline part — strictly narrower than
+// classifying nothing.
+let deadlineDecodeDepth = 0;
+
+export function deadlineDecodeActive() {
+  return deadlineDecodeDepth > 0;
+}
+
+/** Run fn with the deadline-class flag set for the duration of its settlement. */
+export function withDeadlineDecodeClass(fn) {
+  deadlineDecodeDepth += 1;
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    deadlineDecodeDepth -= 1;
+  };
+  try {
+    const result = fn();
+    Promise.resolve(result).finally(settle);
+    return result;
+  } catch (error) {
+    settle();
+    throw error;
+  }
 }
 
 let shared = null;

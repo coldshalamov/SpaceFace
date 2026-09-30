@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { deadlineDecodeActive, sharedDecodeTaskBudget, withDeadlineDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import {
   renderPackagePilotForAssetId,
@@ -366,7 +366,9 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   if (typeof pool.postMessage === 'function' && pool.spacefaceDecodeBudgetGated !== true) {
     const postTask = pool.postMessage.bind(pool);
     pool.spacefaceDecodeBudgetGated = true;
-    pool.postMessage = (msg, transfer) => decodeBudget.acquire().then((release) => {
+    pool.postMessage = (msg, transfer) => decodeBudget.acquire(
+      msg && msg.spacefaceDecodeClass || (deadlineDecodeActive() ? 'deadline' : 'ambient'),
+    ).then((release) => {
       if (disposed) {
         release();
         return new Promise(() => {});
@@ -560,8 +562,15 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
+  // Deadline-class decodes (runway/wave-hull/admission-deadline work) mark the whole fetch +
+  // worker-decode window so every task this part posts — prepass, meshopt, KTX2 — is served
+  // ahead of queued ambient warm inside the shared decode budget. The class travels by depth,
+  // not by message, because the worker intakes are shared-loader internals.
+  const deadlineClass = options.admissionDeadline === true
+    || /runway|deadline/i.test(String(options.residencyRole || ''));
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
-    loadGltfDocument(url, runtime.gltf)
+    (deadlineClass ? () => withDeadlineDecodeClass(() => loadGltfDocument(url, runtime.gltf))
+      : () => loadGltfDocument(url, runtime.gltf))()
       .then((gltf) => {
         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
         const tier1 = tier1CountersForRenderer(renderer);
@@ -613,15 +622,27 @@ export async function loadAuthoredPart(url, options = {}) {
 }
 
 export async function preloadAuthoredParts(requests, renderer) {
-  const records = [];
-  // GLB fetches are local; decode, transcode, resource registration, and first upload are the costly
-  // operations. Keep one admission in flight so the preparation runway cannot become its own spike.
-  for (const rawRequest of requests || []) {
-    const request = typeof rawRequest === 'string' ? { url: rawRequest } : rawRequest;
-    if (!request || !request.url) continue;
-    records.push(await loadAuthoredPart(request.url, { ...request, renderer }));
-  }
-  return records;
+  const list = requests || [];
+  const records = new Array(list.length);
+  // GLB fetches are local; decode, transcode, resource registration, and first upload are the
+  // costly operations. Depth 2 keeps the admission lane near-serial (the runway cannot become
+  // its own spike) while a multi-file plan decodes at ~max(file) instead of sum(files) — the
+  // shared decode budget already caps true worker parallelism underneath.
+  const DECODE_PRELOAD_DEPTH = 2;
+  let cursor = 0;
+  const worker = async () => {
+    for (;;) {
+      const i = cursor;
+      cursor += 1;
+      if (i >= list.length) return;
+      const rawRequest = list[i];
+      const request = typeof rawRequest === 'string' ? { url: rawRequest } : rawRequest;
+      if (!request || !request.url) continue;
+      records[i] = await loadAuthoredPart(request.url, { ...request, renderer });
+    }
+  };
+  await Promise.all(Array.from({ length: DECODE_PRELOAD_DEPTH }, worker));
+  return records.filter((record) => record !== undefined);
 }
 
 /**
@@ -682,21 +703,34 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
   // `loadPart` and `residency` are injectable so the ordering contract can be exercised for real
   // headlessly. A check that re-implemented this body would only prove itself consistent.
   const loadPart = options.loadPart || loadAuthoredPart;
-  const records = [];
+  const records = new Array(requested.length);
   let failureReason = 'sector-prewarm-load-failed';
   try {
-    for (const request of requested) {
-      if (!isEntryActive()) return cancelled();
-      records.push(await loadPart(request.url, {
-        ...request,
-        renderer,
-        sectorId: exactSectorId,
-        residencyOwner: owner,
-        residencyRole: 'sector-prewarm',
-        isResidencyOwnerActive: isEntryActive,
-      }));
-    }
-    if (!isEntryActive()) return cancelled();
+    // Depth 2: the serial census paid the SUM of per-file decode latency across a whole sector
+    // plan; two pipelined lanes halve the warm while the shared decode budget and the serial
+    // residency/commit contracts underneath keep the anti-spike invariant.
+    const PREWARM_DECODE_DEPTH = 2;
+    let cursor = 0;
+    let inactive = false;
+    const worker = async () => {
+      for (;;) {
+        if (!isEntryActive()) { inactive = true; return; }
+        const i = cursor;
+        cursor += 1;
+        if (i >= requested.length) return;
+        const request = requested[i];
+        records[i] = await loadPart(request.url, {
+          ...request,
+          renderer,
+          sectorId: exactSectorId,
+          residencyOwner: owner,
+          residencyRole: 'sector-prewarm',
+          isResidencyOwnerActive: isEntryActive,
+        });
+      }
+    };
+    await Promise.all(Array.from({ length: PREWARM_DECODE_DEPTH }, worker));
+    if (inactive || !isEntryActive()) return cancelled();
 
     const missing = requested.filter((_, index) => !records[index]);
     if (missing.length) {

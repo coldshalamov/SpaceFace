@@ -15713,6 +15713,15 @@ export function createVfxPrecompileSalvo() {
   });
   stagingVolume.group.userData.precompileStaging = true;
 
+  // The selection sigil is a bespoke ShaderMaterial nothing else can pin: a specimen here warms
+  // its exact program key so the first target select does not link inside the presented frame.
+  // The live instance starts visible=false and is skipped by the residency-leaf census, so this
+  // specimen is the only staged draw the program ever gets.
+  const sigilSpecimen = new SelectionSigil();
+  sigilSpecimen.mesh.visible = true;
+  sigilSpecimen.mesh.name = 'SF_Precompile_SelectionSigil';
+  group.add(sigilSpecimen.mesh);
+
   // Deliberately NO light here: precompile.js tops the scene up to the exact runtime event-light
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program
   // would then miss the cache in real gameplay and recompile mid-combat.

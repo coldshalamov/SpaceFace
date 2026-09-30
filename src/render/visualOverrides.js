@@ -423,7 +423,7 @@ function slotForPackagedFile(file) {
   return String(file || '').replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place';
 }
 
-function packagedPropSpec(entity) {
+export function packagedPropSpec(entity) {
   if (!entity || entity.alive === false) return null;
   const data = entity.data || {};
   if (data.authoredPayloadAssetId) return null;
@@ -543,7 +543,11 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   if (!spec || !spec.file) return root;
   const url = packagedPartUrl(spec.file);
   const hideImmediately = spec.hideImmediately !== false;
-  if (hideImmediately) hideProceduralPropDrawables(root);
+  // Same-envelope prop: the packaged body is fitted to packagedFitRadius, so the procedural
+  // prop stays drawn through admission (the geology-skin precedent — hiding it produced a
+  // guaranteed pop-in window while the job queued/decoded/compiled). The publish path re-hides
+  // the fallback at swap; the flag exempts this boundary from the authoredPending submit deny.
+  if (hideImmediately) root.userData.authoredPendingFallbackDrawn = true;
   root.userData.authoredPackageUrl = url;
   root.userData.authoredPackageSlot = spec.slot || slotForPackagedFile(spec.file);
   if (hideImmediately) {
@@ -553,7 +557,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   root.userData.renderContract = {
     ...(root.userData.renderContract || {}),
     assetBoundary: 'packaged 47-A / TOW body',
-    gracefulFallback: hideImmediately !== true,
+    gracefulFallback: true,
   };
   const start = (renderer, scene, requestOptions = {}) => {
     const state = root.userData.authoredAssetState;

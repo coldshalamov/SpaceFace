@@ -3218,7 +3218,7 @@ function hulkPackagedFileForEntity(e) {
   return selection && selection.file || null;
 }
 
-function wreckPackagedFile(e) {
+export function wreckPackagedFile(e) {
   const hulkFile = hulkPackagedFileForEntity(e);
   if (hulkFile) return hulkFile;
   const identity = interactionProfileForEntity(e);
@@ -3701,7 +3701,11 @@ function attachPackagedBody(root, relativeFile, entity) {
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
   // a wreck that fell back to a generic aftermath piece must not be dead-stated.
   const deadHulk = relativeFile === hulkPackagedFileForEntity(entity);
-  hideProceduralChildren(root);
+  // Same-envelope body: the packaged group is fitted to entity.radius, so the procedural
+  // wreck stays drawn through admission (the geology-skin precedent — hiding it produced a
+  // guaranteed pop-in window). The commit at publish re-hides; the flag exempts this boundary
+  // from the authoredPending submit deny while the fallback is the visible stand-in.
+  root.userData.authoredPendingFallbackDrawn = true;
   root.userData.authoredAssetState = 'awaiting-authored-admission';
   root.userData.authoredPackageUrl = url;
   root.userData.authoredVisualRoot = 'none-pending-admission';

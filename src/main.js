@@ -996,9 +996,16 @@ async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent
   const started = nowMs();
   let readiness = authoredVisualReadiness(state);
   let heartbeatLogged = false;
+  // The readiness scan is O(entityList) with per-entity status derives; on a contended host the
+  // old every-frame poll ran it thousands of times inside its own bound. Full-rate early (the
+  // first ~0.5s where a fast boot flips ready), then one scan per four presented frames — a
+  // ~66ms granularity far tighter than any link/compile leg underneath it.
+  let frames = 0;
   while (!readiness.pipelineReady && nowMs() - started < timeoutMs) {
+    frames += 1;
     await nextFrame();
     if (isCurrent && !isCurrent()) return false;
+    if (frames > 30 && frames % 4 !== 0) continue;
     readiness = authoredVisualReadiness(state);
     // A same-session restore re-stages every required pipeline; on a contended host the gate
     // can sit inside its own bound long enough that probes and players both wonder what is

@@ -35,8 +35,8 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, upgradeAdmissionStandIn } from './visualOverrides.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { installVisualOverrides, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -1069,7 +1069,9 @@ function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_H
   }
   const relVx = (Number(entity.vel && entity.vel.x) || 0) - env.pvx;
   const relVz = (Number(entity.vel && entity.vel.z) || 0) - env.pvz;
-  const visual = Math.max(0, Number(entity.radius) || 0);
+  // Presence radius, not the collision proxy: a big authored body's surface reaches
+  // the glass long before its centre+radius math says it does.
+  const visual = entityPresenceRadius(entity);
   return timeToEnterRadiusSeconds(
     ex - env.anchorX,
     ez - env.anchorZ,
@@ -1098,7 +1100,7 @@ function isInboundDecodeHull(entity, state, radius = null) {
   // Promote and catch-up are player-centered. tableLookAtDelta follows the
   // leftover chase focus, so a relocate leaves the hull "beyond the table"
   // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
-  const visual = Math.max(0, Number(entity.radius) || 0);
+  const visual = entityPresenceRadius(entity);
   if ((playerPlanarDistance(entity, state) - visual) <= inboundDecodeRadius(state, radius)) {
     return true;
   }
@@ -2392,7 +2394,17 @@ function syncResolvingMarker(mesh) {
     if (isAuthoredPendingStatus(mesh.userData.authoredAssetState)) upgradeAdmissionStandIn(mesh);
     else releaseAdmissionStandInFallback(mesh);
   }
-  mesh.userData.resolvingMarker.visible = isAuthoredPendingStatus(mesh.userData.authoredAssetState);
+  const marker = mesh.userData.resolvingMarker;
+  if (isAuthoredPendingStatus(mesh.userData.authoredAssetState)) {
+    marker.visible = true;
+    return;
+  }
+  // Terminal admission failure with no other drawable: hiding the marker leaves the hull
+  // permanently invisible (a retry-capped substrate has no fallback). Keep the stand-in drawn —
+  // it is the same already-linked program it drew throughout admission, so submitting it is
+  // free and the wreck/hull never pops out of existence on the player's glass.
+  const parent = marker.parent;
+  marker.visible = !parent || !parent.children.some((child) => child !== marker && child.visible !== false);
 }
 
 /**
@@ -2414,6 +2426,9 @@ function authoredPendingBoundarySubmitsStandIn(mesh) {
   if (!userData) return false;
   if (userData.pipelinesPending === true || userData.geometryPending === true) return false;
   if (userData.authoredResolvingMarker === true || userData.resolvingMarker) return true;
+  // Wreck / packaged-prop boundaries keep a same-envelope procedural fallback drawn
+  // through admission — it is the visible stand-in until the authored commit.
+  if (userData.authoredPendingFallbackDrawn === true) return true;
   return userData.authoredGeologySkin === true;
 }
 
@@ -2434,7 +2449,14 @@ function kickDecodeRunwayAssets(owner, entities) {
   // whole list (the comparator used to re-evaluate both keys on every pair).
   const ordered = pickDecodeRunwayCandidates(list, (entity, key) => {
     if (!entity || entity.alive === false) return false;
-    if (entity.type !== 'ship' && entity.type !== 'station') return false;
+    // The runway is not ship-only: wrecks/payloads/beacons carry the same GLB-decode
+    // long pole on first contact (packagedPropSpec covers payload/beacon/assetRef-mapped
+    // and explicit packagedPropFile props; wrecks decode a 'place'-slot hulk/aftermath
+    // body). Ship and station still take the full authored plan.
+    const packagedBody = entity.type === 'ship' || entity.type === 'station'
+      ? true
+      : !!packagedDecodeFileForEntity(entity);
+    if (!packagedBody) return false;
     if (!meshNeedsAuthoredDecode(owner, entity)) return false;
     if (pending.has(entity.id)) return false;
     // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
@@ -2457,15 +2479,98 @@ function kickDecodeRunwayAssets(owner, entities) {
     const entity = ordered[i];
     pending.add(entity.id);
     started += 1;
-    const opts = entityMatchesWaveHullRunway(entity, state)
-      ? { residencyRole: 'wave-hull-decode-runway' }
-      : {};
-    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
+    if (entity.type === 'ship' || entity.type === 'station') {
+      const opts = entityMatchesWaveHullRunway(entity, state)
+        ? { residencyRole: 'wave-hull-decode-runway' }
+        : {};
+      Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
+        pending.delete(entity.id);
+      });
+      warmKillHulkDecode(owner, entity);
+    } else {
+      // Non-ship packaged bodies have no authored plan — the decode is one file under its
+      // authored slot, file-deduped against the whole sector run.
+      warmPackagedEntityDecode(owner, entity).finally(() => {
+        pending.delete(entity.id);
+      });
+    }
+  }
+  return started;
+}
+
+/**
+ * The packaged file a non-ship decodes for its authored body, or null when the entity has no
+ * packaged presentation: wrecks resolve through wreckPackagedFile (hulk then aftermath piece),
+ * payload/beacon/explicit-prop entities through packagedPropSpec.
+ */
+function packagedDecodeFileForEntity(entity) {
+  if (!entity || entity.alive === false) return null;
+  try {
+    if (entity.type === 'wreck') {
+      const file = wreckPackagedFile(entity);
+      return file ? { file, slot: 'place' } : null;
+    }
+    const spec = packagedPropSpec(entity);
+    return spec && spec.file ? { file: spec.file, slot: spec.slot || 'place' } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function warmPackagedEntityDecode(owner, entity) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || !renderer || !entity) return Promise.resolve();
+  const files = owner._decodeRunwayPackagedFiles || (owner._decodeRunwayPackagedFiles = new Set());
+  const resolved = packagedDecodeFileForEntity(entity);
+  if (!resolved || !resolved.file) return Promise.resolve();
+  const key = `${resolved.slot}::${resolved.file}`;
+  if (files.has(key)) return Promise.resolve();
+  files.add(key);
+  const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+    || 'assets/ships/release/parts/';
+  const sectorId = (state.world && state.world.currentSectorId) || null;
+  return Promise.resolve(loadAuthoredPart(`${releaseRoot}${resolved.file}`, {
+    renderer,
+    slot: resolved.slot,
+    optional: true,
+    residencyRole: 'packaged-decode-runway',
+    sectorId,
+  })).catch(() => {});
+}
+
+/**
+ * entity:spawned decode kick — the spawn event beats the 0.25 s residency poll and the poll's
+ * 2-per-poll cap. Ships decode their authored plan; packaged-body entities decode their file.
+ * Shares the poll's pending set so a kicked entity is not also started by the next poll, and
+ * the canonical library dedupes duplicate file starts across a cohort.
+ */
+function kickSpawnedEntityDecode(owner, entity) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return;
+  if (!entity || entity.alive === false || entity.isPlayer === true) return;
+  const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
+  if (pending.has(entity.id)) return;
+  if (entity.type === 'ship') {
+    if (!meshNeedsAuthoredDecode(owner, entity)) return;
+    pending.add(entity.id);
+    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {
+      residencyRole: 'combat-spawn-decode-runway',
+      sectorId: (state.world && state.world.currentSectorId) || null,
+    })).catch(() => {}).finally(() => {
       pending.delete(entity.id);
     });
     warmKillHulkDecode(owner, entity);
+    return;
   }
-  return started;
+  if (packagedDecodeFileForEntity(entity)) {
+    if (!meshNeedsAuthoredDecode(owner, entity)) return;
+    pending.add(entity.id);
+    warmPackagedEntityDecode(owner, entity).finally(() => {
+      pending.delete(entity.id);
+    });
+  }
 }
 
 /**
@@ -10875,12 +10980,19 @@ export const render = {
           && this._incomingSectorPrewarm.sectorId === String(spawnedSectorId || '')
           ? this._incomingSectorPrewarm
           : null);
-      if (!pending) return;
-      appendSectorPrewarmRequests(pending, authoredPrewarmRequestsForEntities([entity], {
-        sectorId: pending.sectorId,
-        playerId: state.playerId,
-      }));
-      stageSectorPrewarmBoundaries(pending, [entity]);
+      if (pending) {
+        appendSectorPrewarmRequests(pending, authoredPrewarmRequestsForEntities([entity], {
+          sectorId: pending.sectorId,
+          playerId: state.playerId,
+        }));
+        stageSectorPrewarmBoundaries(pending, [entity]);
+      }
+      // Event-driven decode kick: mid-flight combat cohorts (nemesis wing, bounty pair,
+      // reinforcement squads) and payoff props arrive as same-tick groups; the 0.25 s runway
+      // poll plus its 2-per-poll cap serializes them behind ambient warm. The spawn event is
+      // the earliest spec — start the hull/packaged decode now (file-deduped through the same
+      // pending set the poll uses) so the cohort decodes in parallel from tick zero.
+      kickSpawnedEntityDecode(this, entity);
     });
     onBus('jump:arrive', ({ sectorId } = {}) => {
       const pending = this._authoredSectorPrewarmPending;
@@ -14307,7 +14419,7 @@ export const render = {
       const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
       const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
         ? hlodVisualRadius
-        : (entity && Number(entity.radius)) || world.radii[slot] || 0;
+        : (entity && entityPresenceRadius(entity)) || world.radii[slot] || 0;
       const projectedPx = projectedWidthPx(
         mesh.position,
         lodRadius,

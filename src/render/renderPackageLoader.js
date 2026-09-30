@@ -13,7 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { deadlineDecodeActive, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
@@ -989,7 +989,9 @@ export function startMeshoptWorkerPool(MeshoptDecoder) {
     const decodeGltfBufferAsync = MeshoptDecoder.decodeGltfBufferAsync;
     if (typeof decodeGltfBufferAsync === 'function' && decodeGltfBufferAsync.spacefaceDecodeBudgetGated !== true) {
       const gated = function gatedMeshoptDecodeGltfBufferAsync(count, size, source, mode, filter) {
-        return sharedDecodeTaskBudget().acquire().then((release) => {
+        return sharedDecodeTaskBudget().acquire(
+          deadlineDecodeActive() ? 'deadline' : 'ambient',
+        ).then((release) => {
           let result;
           try {
             result = decodeGltfBufferAsync.call(this, count, size, source, mode, filter);

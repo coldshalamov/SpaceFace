@@ -1052,6 +1052,13 @@ export function createUnreadyDrawableGuard(renderer) {
   let unreadyProgramsPending = true;
   let unreadyProgramCount = -1;
   let unreadyProgramTail = null;
+  // Same length+tail trick as the program set, but for direct scene mounts: a never-compiled
+  // drawable mounted mid-flight (SelectionSigil-class non-admission mounts) leaves the program
+  // set untouched, so without this watch the steady-state early-return submits it and its
+  // program links inside the presented frame. A mount costs one traverse next frame; true
+  // steady state still returns before any walk.
+  let unreadySceneChildCount = -1;
+  let unreadySceneChildTail = null;
   let admissionScene = null;
   let admissionPendingSubjects = null;
   let admissionGl = null;
@@ -1101,13 +1108,18 @@ export function createUnreadyDrawableGuard(renderer) {
       admissionGl = null;
       return;
     }
+    const sceneChildren = scene.children || [];
+    const sceneMountChanged = sceneChildren.length !== unreadySceneChildCount
+      || sceneChildren[sceneChildren.length - 1] !== unreadySceneChildTail;
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
     // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
     if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
-      && programs[programs.length - 1] === unreadyProgramTail) return;
+      && programs[programs.length - 1] === unreadyProgramTail && !sceneMountChanged) return;
     unreadyProgramsPending = false;
     unreadyProgramCount = programs.length;
     unreadyProgramTail = programs[programs.length - 1] || null;
+    unreadySceneChildCount = sceneChildren.length;
+    unreadySceneChildTail = sceneChildren[sceneChildren.length - 1] || null;
     for (let i = 0; i < programs.length; i++) {
       const program = programs[i];
       if (!program || typeof program.isReady !== 'function') continue;
@@ -1116,7 +1128,8 @@ export function createUnreadyDrawableGuard(renderer) {
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
     }
-    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
+    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
+      && !sceneMountChanged) return;
     unreadyCheckedMaterials.clear();
     unreadyHiddenMaterials.clear();
     admissionScene = scene;

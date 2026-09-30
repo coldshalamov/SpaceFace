@@ -78,7 +78,7 @@ import {
   isPlaceLayerBlockingFlightReady,
   selectPlacePackageLayer,
 } from './flightReadySet.js';
-import { PRESENTATION_TIER } from '../world/activityClassification.js';
+import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
 import { canonicalizeObjectSurfaceProgramKeys, canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
@@ -1181,7 +1181,7 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
   const requests = [];
   const seen = new Set();
 
-  const pushPlan = (plan) => {
+  const pushPlan = (plan, deadlineRank = Infinity) => {
     for (const [slot, files] of Object.entries(plan || {})) {
       for (const file of files || []) {
         if (!file) continue;
@@ -1189,7 +1189,7 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
         const key = `${url}::${slot}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        requests.push(Object.freeze({ url, slot }));
+        requests.push(Object.freeze({ url, slot, deadlineRank }));
       }
     }
   };
@@ -1203,15 +1203,36 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       if (String(entitySectorId || '') !== exactSectorId) continue;
     }
 
+    const entityDeadlineRank = (options.playerPos && entity.pos)
+      ? Math.hypot(
+        (Number(entity.pos.x) || 0) - (Number(options.playerPos.x) || 0),
+        (Number(entity.pos.z) || 0) - (Number(options.playerPos.z) || 0),
+      )
+      : Infinity;
+
+    // An explicit packagedPropFile is the entity's authored body (packagedPartUrl scope —
+    // always the release parts root regardless of asset mode) but placeFileForEntity never
+    // consults it, so a prop whose only authored file is its packagedPropFile minted an
+    // empty plan and decoded at reveal.
+    const packagedFile = entity.data && entity.data.packagedPropFile;
+    if (typeof packagedFile === 'string' && packagedFile) {
+      const slot = entity.data.packagedPropSlot
+        || (String(packagedFile).replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place');
+      const url = `${PART_RELEASE_ROOT}${packagedFile}`;
+      const key = `${url}::${slot}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        requests.push(Object.freeze({ url, slot, deadlineRank: entityDeadlineRank }));
+      }
+    }
+
     let plan = {};
     if (entity.type === 'ship') {
       let lodLevel = options.lodLevel;
       if (!lodLevel && options.playerPos && entity.pos && entity.isPlayer !== true) {
-        const dx = Number(entity.pos.x) - Number(options.playerPos.x);
-        const dz = Number(entity.pos.z) - Number(options.playerPos.z);
-        const dist = Math.hypot(dx, dz);
         const radius = Number(entity.radius) || 8;
-        const px = (radius / Math.max(dist, 0.001)) * (Number(options.viewportHeight) || 800);
+        const px = (radius / Math.max(entityDeadlineRank, 0.001))
+          * (Number(options.viewportHeight) || 800);
         lodLevel = selectPrewarmLodLevel(px);
       }
       plan = authoredPreloadPlanForEntity(entity, {
@@ -1231,16 +1252,22 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
         plan = { place: overlay ? [placeFile, overlay] : [placeFile] };
       }
     }
-    pushPlan(plan);
+    pushPlan(plan, entityDeadlineRank);
   }
 
   // Always retain combat/traffic archetype GLBs for the sector so mid-fight spawns can admit
-  // without a cold decode hitch (composition still uses the prepared/defer path).
+  // without a cold decode hitch (composition still uses the prepared/defer path). Coverage
+  // files have no owner bearing down on the glass — they rank behind every live deadline.
   if (options.includeSpawnableArchetypes !== false) {
     pushPlan({ hull: [...spawnableShipArchetypePrewarmUrls()] });
   }
 
-  requests.sort((a, b) => a.url.localeCompare(b.url) || a.slot.localeCompare(b.slot));
+  // Nearest-deadline-first: the alphabetical census order was stable but served the file the
+  // player reaches LAST as readily as the one they reach next. deadlineRank keeps ordering
+  // deterministic (distance then url) while the serial lane works the next-visible body first.
+  requests.sort((a, b) => a.deadlineRank - b.deadlineRank
+    || a.url.localeCompare(b.url)
+    || a.slot.localeCompare(b.slot));
   return Object.freeze(requests);
 }
 
@@ -4718,18 +4745,23 @@ function firstFlightShipCanPassBusyPlace(state) {
 // lane is concurrency 1, so one station / place / rock job — a trade hub is an 82 MB GLB whose
 // decode has sat in flight for minutes (ledger D48) — held every ship behind it, and the player
 // watched stand-ins for as long as it took. The first-flight hold already grants one extra ship
-// slot past a busy non-ship job; steady flight gets the same grant, but only for a ship the
-// player is already looking at or fighting (rung ≤ on-glass): a far runway ship still waits its
-// turn, so two full ship composes never overlap (the measured combat stall), and at most one
-// ship ever rides beside one non-ship job.
+// slot past a busy non-ship job; steady flight gets the same grant for the body the player is
+// already looking at (rung ≤ on-glass): a far runway job still waits its turn, so two full
+// composes never overlap (the measured combat stall), and at most one extra job ever rides
+// beside one non-ship job. The glass law is type-agnostic — the loading hold and the late-present
+// throttle already exempt ANY on-glass body — so an on-glass station/place earns the pass the
+// same way a ship does, while the in-flight guard keeps the serial ship invariant intact.
 const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
+function queuedGlassLawJobStillNeeded(state, job) {
+  return !!(job && job.entity && jobStillNeeded(state, job)
+    && authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY);
+}
 function steadyFlightShipCanPassBusyPlace(state) {
   if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true
       || state.inFlight !== 1) return false;
   const live = authoredRuntimeState();
   if (!live || live.mode !== 'flight') return false;
-  if (!state.jobs.some((job) => queuedShipJobStillNeeded(state, job)
-      && authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY)) return false;
+  if (!state.jobs.some((job) => queuedGlassLawJobStillNeeded(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
   return active.length === 1 && active[0].entity?.type !== 'ship';
@@ -4755,8 +4787,8 @@ function queuedShipJobStillNeeded(state, job) {
 }
 
 /**
- * One queued ship may pass the concurrency cap while every unreleased in-flight job is stalled
- * past the bound. The admit path hoists needed ships to the head when it fires (the
+ * One queued on-glass body may pass the concurrency cap while every unreleased in-flight job is
+ * stalled past the bound. The admit path hoists the needed job to the head when it fires (the
  * stallBypassShipPass marker), so a stale hog can never farm the lane behind ordinary dressing
  * jobs, and a live ship admission still blocks the bypass — the serial ship invariant only
  * yields to dead lanes.
@@ -4765,7 +4797,7 @@ function stalledHogsCanPassShip(state) {
   if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true) {
     return false;
   }
-  if (!state.jobs.some((job) => queuedShipJobStillNeeded(state, job))) return false;
+  if (!state.jobs.some((job) => queuedGlassLawJobStillNeeded(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
   if (!active.length) return false;
@@ -5009,7 +5041,10 @@ export function entityIsOnscreen(entity, state) {
     root.updateWorldMatrix(true, false);
     const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     const frustum = new THREE.Frustum().setFromProjectionMatrix(projection);
-    return frustum.containsPoint(root.getWorldPosition(new THREE.Vector3()));
+    // Sphere, not point: a big authored body is onscreen while its centre is off it.
+    const presence = entityPresenceRadius(entity);
+    const center = root.getWorldPosition(new THREE.Vector3());
+    return frustum.intersectsSphere(new THREE.Sphere(center, Math.max(presence, 0.001)));
   } catch {
     return true;
   }
@@ -5258,11 +5293,12 @@ function admitNextUpgradeJob(state) {
     }
   }
   state.jobs.sort((a, b) => {
-    // The stall bypass exists to feed the ship lane; a queued needed ship must take the freed
-    // slot ahead of ordinary dressing or the hog's own kind could keep re-winning the escape.
+    // The stall bypass exists to feed the on-glass body the lane granted; a queued needed
+    // on-glass job must take the freed slot ahead of ordinary dressing or the hog's own kind
+    // could keep re-winning the escape.
     if (stallBypassShipPass) {
-      const stallDelta = Number(queuedShipJobStillNeeded(state, b))
-        - Number(queuedShipJobStillNeeded(state, a));
+      const stallDelta = Number(queuedGlassLawJobStillNeeded(state, b))
+        - Number(queuedGlassLawJobStillNeeded(state, a));
       if (stallDelta) return stallDelta;
     }
     if (state.firstFlightHandoffHold === true) {
@@ -5341,6 +5377,20 @@ function admitNextUpgradeJob(state) {
     // Loading composes one boundary at a time, then lets its exact GPU gate overlap the next CPU
     // admission. The authored overlap branches invoke this only after publishing pipelineReady.
     job.options.onAuthoredPipelineStaged = releaseSerialSlotAfterPipelineStaging;
+  } else if (job.options && Object.isExtensible(job.options)
+      && authoredRuntimeState() && authoredRuntimeState().mode === 'flight') {
+    // Flight-mode glass-law overlap: the job still stages its GPU work detached (the exact
+    // pipeline/GPU gate), but the serial slot frees only while a queued job's owner is on the
+    // readable glass — the hole-in-the-picture case. An on-glass nemesis wing or cohort no
+    // longer waits behind the whole in-flight job's upload drain; ambient jobs keep the
+    // original hold-the-slot pacing that keeps two composes from colliding on soft GPUs.
+    job.options.overlapAuthoredPipelineCompile = true;
+    job.options.onAuthoredPipelineStaged = () => {
+      const glassQueued = state.jobs.some((queued) => queued !== job
+        && entityIsOnReadableGlass(queued && queued.entity));
+      if (!glassQueued) return false;
+      return releaseSerialSlotAfterPipelineStaging();
+    };
   }
   // One entity begins CPU admission per frame. Non-overlap jobs and custom runs that do not enter
   // an authored overlap branch keep the original single-flight semantics; loading authored jobs
@@ -7189,6 +7239,7 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
           residencyRole: options.residencyRole,
           sectorId: options.sectorId,
           isResidencyOwnerActive: options.isResidencyOwnerActive,
+          admissionDeadline: options.admissionDeadline,
         });
       } finally {
         finishDecodeAdmission(renderer, diagnostic);
