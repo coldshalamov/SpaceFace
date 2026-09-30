@@ -73,6 +73,31 @@ export function firesEnergyVolley(weapons) {
 }
 
 /**
+ * Does this mount's hold contain an energy beam? A continuous beam prisms a diamond exactly
+ * like a bolt — weapons.js stamps the burst's opticFamilyId and the lattice throws the ring
+ * once per burst — so a beam-only battery belongs inside the awareness layer. Fixed beams
+ * also follow the ship's aim angle (`_hardpointDir`), which makes them corridor-capable
+ * where turrets and homing mounts are not.
+ */
+function isOpticBeamWeapon(w) {
+  if (!w || w.defensiveOnly === true) return false;
+  const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
+  const tracking = w.tracking || (def && def.tracking);
+  if (tracking !== 'hitscan' && !(def && def.continuous) && w.continuous !== true) return false;
+  const type = w.damageType || (def && def.damageType) || 'kinetic';
+  return type === 'energy';
+}
+
+/** Energy bolt mounts or energy beam mounts — every shot that can light a lattice. */
+export function firesPrismableSalvo(weapons) {
+  if (!Array.isArray(weapons)) return false;
+  for (const w of weapons) {
+    if (isOpticVolleyWeapon(w) || isOpticBeamWeapon(w)) return true;
+  }
+  return false;
+}
+
+/**
  * Per-mount half of firesEnergyVolley. Callers steering a planned bearing need to know WHICH
  * mounts can field an energy bolt — a ship whose optic-capable battery is all turrets can never
  * aim a corridor, since a turret leads the target itself and ignores the ship's aim angle.
@@ -95,6 +120,25 @@ export function opticVolleyMountTracking(w) {
   if (!isOpticVolleyWeapon(w)) return null;
   const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
   return w.tracking || (def && def.tracking) || 'fixed';
+}
+
+/**
+ * The resolved tracking mode of a prismable mount ('fixed', 'hitscan', …) — bolts AND beams —
+ * or null when the mount cannot light a lattice. Corridor-capable checks use this so a
+ * beam-only battery reads as steerable instead of bolt-blind.
+ */
+export function opticPrismableMountTracking(w) {
+  if (!isOpticVolleyWeapon(w) && !isOpticBeamWeapon(w)) return null;
+  const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
+  return w.tracking || (def && def.tracking) || 'fixed';
+}
+
+/** The furthest a mount's shot can travel: bolt range, or the beam's ray length. */
+function prismableShotRange(w) {
+  if (!isOpticVolleyWeapon(w) && !isOpticBeamWeapon(w)) return 0;
+  const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
+  const r = Number.isFinite(w.range) ? w.range : (def && Number.isFinite(def.range) ? def.range : 0);
+  return r;
 }
 
 /**
@@ -189,7 +233,7 @@ function cascadeThreatensOwnSide(entity, shooter) {
  */
 export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities, weapons } = {}) {
   if (!shooter || !shooter.pos || !target || !target.pos || !Number.isFinite(aimAngle)) return CLEAR;
-  if (!firesEnergyVolley(weapons)) return CLEAR;
+  if (!firesPrismableSalvo(weapons)) return CLEAR;
   const dx = target.pos.x - shooter.pos.x;
   const dz = target.pos.z - shooter.pos.z;
   const targetRange = Math.hypot(dx, dz);
@@ -197,7 +241,21 @@ export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities,
   const dirX = Math.cos(aimAngle);
   const dirZ = Math.sin(aimAngle);
   const muzzleClear = Math.max(1, Number(shooter.radius) || 0);
-  const laneEnd = targetRange + Math.max(0, Number(target.radius) || 0);
+  // A bolt flies to the target; a beam ray terminates at its own range whether or not the
+  // target is that far. The refusal must cover a diamond inside EITHER mount's reach.
+  let laneEnd = 0;
+  let hasBolt = false;
+  let beamReach = 0;
+  for (const w of weapons || []) {
+    if (isOpticVolleyWeapon(w)) hasBolt = true;
+    else if (isOpticBeamWeapon(w)) {
+      const r = prismableShotRange(w);
+      if (r > beamReach) beamReach = r;
+    }
+  }
+  if (hasBolt) laneEnd = targetRange + Math.max(0, Number(target.radius) || 0);
+  if (beamReach > laneEnd) laneEnd = beamReach;
+  if (!(laneEnd > muzzleClear)) return CLEAR;
 
   // First contact on the firing lane. A bolt absorbed by stone or stopped by any nearer body
   // never reaches a diamond, so only the closest hit on the segment decides.
@@ -270,7 +328,7 @@ function opticLaneBodiesFlat(entities) {
  */
 export function planOpticBankShot({ shooter, target, aimAngle, entities, weapons } = {}) {
   if (!shooter || !shooter.pos || !target || !target.pos || !Number.isFinite(aimAngle)) return null;
-  if (!firesEnergyVolley(weapons)) return null;
+  if (!firesPrismableSalvo(weapons)) return null;
   const dirX = Math.cos(aimAngle);
   const dirZ = Math.sin(aimAngle);
   const targetRange = Math.hypot(target.pos.x - shooter.pos.x, target.pos.z - shooter.pos.z);
@@ -303,9 +361,7 @@ export function planOpticBankShot({ shooter, target, aimAngle, entities, weapons
   // to the grammar's own ray cap).
   let maxBoltRange = 0;
   for (const w of weapons || []) {
-    if (!isOpticVolleyWeapon(w)) continue;
-    const def = WEAPON_DEF_BY_ID.get(w.defId || w.id || w.weaponId);
-    const r = Number.isFinite(w.range) ? w.range : (def && Number.isFinite(def.range) ? def.range : 0);
+    const r = prismableShotRange(w);
     if (r > maxBoltRange) maxBoltRange = r;
   }
   const boltReach = maxBoltRange > 0 ? Math.min(maxBoltRange, OPTIC_RAY_RANGE) : OPTIC_RAY_RANGE;

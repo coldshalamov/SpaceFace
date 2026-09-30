@@ -5,7 +5,7 @@ import {
   assessFriendlyFireLane,
   assessOpticSplinterReturn,
   mountFollowsAimAngle,
-  opticVolleyMountTracking,
+  opticPrismableMountTracking,
   planOpticBankShot,
 } from '../ai/fireDiscipline.js';
 import { GIMBAL_ARC_DEFAULT } from './ships.js';
@@ -338,7 +338,7 @@ export function opticLaneBodiesWithShelved(state) {
  */
 function opticBankMountStatus(shooter, weapons, aimAngle) {
   return mountConeStatus(shooter, weapons, aimAngle, (w) => {
-    const tracking = opticVolleyMountTracking(w);
+    const tracking = opticPrismableMountTracking(w);
     return tracking != null && w.facing !== 'turret'
       && tracking !== 'auto_turret' && tracking !== 'homing';
   });
