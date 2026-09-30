@@ -1415,6 +1415,11 @@ export const traffic = {
       if (reason !== 'load_failed' && reason !== 'visual_gate_failed'
           && reason !== 'deferred_transition_failed') return;
       if (this._restoreEpochPending === true) this._restoreEpochPending = false;
+      // Same lifecycle as the epoch latch: a failed restore leaves the disabled-hauler
+      // incident unable to terminalize (actor_absent gate) until the next successful load.
+      if (this._ceresDisabledHaulerRestorePending === true) {
+        this._ceresDisabledHaulerRestorePending = false;
+      }
     });
     this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still

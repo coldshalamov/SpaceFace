@@ -826,16 +826,32 @@ export const mainMenuScreen = {
     };
     const frameAtClick = frameCount();
     const start = Date.now();
-    const lift = () => {
+    // rAF-chain the readiness check: the presented-frame counter only advances at paint, so a
+    // timer poll can lag readiness by up to its period (~120ms of veil latency after the frame
+    // already exists). rAF wakes the same frame the counter moves; a timer stays as failsafe
+    // for hosts that throttle background rAF.
+    let rafId = null;
+    let timerId = null;
+    let lifted = false;
+    const check = () => {
+      if (lifted) return;
       const live = ctx && ctx.state && ctx.state.mode === 'flight';
       const presented = frameAtClick == null || (frameCount() != null && frameCount() > frameAtClick);
       if ((live && presented) || Date.now() - start > 4000) {
+        lifted = true;
         fade.classList.remove('open');
         setTimeout(() => { if (fade.parentNode) fade.remove(); }, 1100);
         return;
       }
-      setTimeout(lift, 120);
+      if (typeof requestAnimationFrame === 'function') rafId = requestAnimationFrame(check);
+      else timerId = setTimeout(check, 120);
     };
-    setTimeout(lift, 200);
+    if (typeof requestAnimationFrame === 'function') {
+      rafId = requestAnimationFrame(check);
+      timerId = setTimeout(check, 200); // failsafe only: rAF-throttled hosts still lift
+    } else {
+      timerId = setTimeout(check, 200);
+    }
+    void rafId; void timerId;
   },
 };

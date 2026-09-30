@@ -61,6 +61,55 @@ import {
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
+
+// Save-store write generation: detecting slot changes used to mean walking + hashing every
+// stored blob on EVERY listSlots call — multi-MB getItem copies plus an FNV-1a pass per
+// character, synchronously inside the menu render path. A generation counter bumps on the
+// same three write APIs the store uses (patched once so dynamically-bound call sites still
+// route through it) and on the window 'storage' event for cross-tab writes. The rescan — with
+// its full per-blob verification — then only runs when the generation moved; an unchanged
+// generation proves the blobs identical for every API-mediated write. The one uncovered
+// writer is a devtools-style `localStorage['sf.save.x'] = ...` property assignment, whose
+// worst consequence is a stale slot card — never hidden corruption, because a real load
+// re-validates every byte of the envelope.
+let _saveStoreGeneration = 0;
+let _saveStoreTrackedObject = null;
+
+function bumpSaveStoreGeneration(key) {
+  if (key != null) {
+    const k = String(key);
+    if (!k.startsWith(LS_PREFIX) && !k.startsWith(RECOVERY_PREFIX)) return;
+  }
+  _saveStoreGeneration++;
+}
+
+function installSaveStoreWriteTracking() {
+  if (typeof localStorage === 'undefined') return;
+  if (_saveStoreTrackedObject === localStorage) return;
+  _saveStoreTrackedObject = localStorage;
+  // A swapped store object (test mocks, host replacement) cannot share the old generation's
+  // signature — bump so the first signature after the swap always rescans.
+  _saveStoreGeneration++;
+  const target = (typeof Storage === 'function' && localStorage instanceof Storage)
+    ? Storage.prototype : localStorage;
+  for (const name of ['setItem', 'removeItem', 'clear']) {
+    const original = target[name];
+    if (typeof original !== 'function' || original.spacefaceSaveTracking === true) continue;
+    const wrapped = function (...args) {
+      const result = original.apply(this, args);
+      // 'clear' takes no key — treat it as a bump for every store, save-prefixed or not.
+      bumpSaveStoreGeneration(name === 'clear' ? null : args[0]);
+      return result;
+    };
+    wrapped.spacefaceSaveTracking = true;
+    target[name] = wrapped;
+  }
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('storage', (event) => {
+      bumpSaveStoreGeneration(event && event.key);
+    });
+  }
+}
 // Previous-generation saves live outside LS_PREFIX so legacy/index recovery scans never mistake
 // them for player-visible slots. A valid primary is copied here before it is overwritten.
 const RECOVERY_PREFIX = 'sf.recovery.';
@@ -79,6 +128,8 @@ export const SAVE_IMPORT_MAX_PERSISTENT_ENTITIES = 2_048;
 // Restore-route persistent respawn batch: spawn order is unchanged; the window only bounds
 // how much spawn work runs between presentation yields inside the chunked restore.
 const RESTORE_PERSISTENT_SPAWN_BATCH = 16;
+// Entities cleared per restore yield — a dispose-mesh fan-out sits behind each destroy emit.
+const RESTORE_ENTITY_CLEAR_BATCH = 16;
 export const SAVE_IMPORT_LIMITS = Object.freeze({
   maxBytes: SAVE_IMPORT_MAX_BYTES,
   maxDepth: SAVE_IMPORT_MAX_DEPTH,
@@ -1250,30 +1301,23 @@ export const save = {
   // The merged index is rebuilt only when the store actually changes: one Continue touches it
   // through listSlots/_latestSlot/_newerUnplayableSkip several times in a row, and each rebuild
   // used to deep-validate every stored blob (decrypt+migrate+parse) — several megabyte-scale
-  // envelopes parsed three or four times per menu visit. The signature walks the key list once
-  // (plus each value's length + end-slices — never a full parse), so a stale cache is impossible
-  // even for writes saveLoad.js performs outside this system.
+  // envelopes parsed three or four times per menu visit. The signature is the write
+  // generation: an unchanged counter proves the blobs identical for every API-mediated write
+  // (see installSaveStoreWriteTracking above — the only uncovered writer is a devtools-style
+  // property assignment, which can stale a card but never a restore). A moved generation pays
+  // one enumerate+getItem walk that feeds `raws` to the scanners so they never re-read.
   _slotStoreSignature() {
     if (typeof localStorage === 'undefined') return { sig: 'none', raws: null };
-    const parts = [];
+    installSaveStoreWriteTracking();
+    const sig = 'gen:' + _saveStoreGeneration;
+    const cache = this._slotIndexCache;
+    if (cache && cache.sig === sig) return { sig, raws: null };
     const raws = new Map();
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (!key || (!key.startsWith(LS_PREFIX) && !key.startsWith(RECOVERY_PREFIX))) continue;
-        const v = localStorage.getItem(key);
-        raws.set(key, v);
-        // FNV-1a over the whole blob — the raws map already holds the full string, so the
-        // only added cost is the char walk itself (still far cheaper than the parse-and-checksum
-        // this signature replaced). End-slice sampling left same-length middle edits invisible.
-        let hash = 0x811c9dc5;
-        if (v) {
-          for (let j = 0; j < v.length; j++) {
-            hash ^= v.charCodeAt(j);
-            hash = (hash * 0x01000193) | 0;
-          }
-        }
-        parts.push(key + ':' + (v == null ? -1 : v.length) + ':' + (hash >>> 0).toString(16));
+        raws.set(key, localStorage.getItem(key));
       }
     } catch (err) {
       // A signature built from a partial walk could collide with a previously cached one and
@@ -1281,7 +1325,7 @@ export const save = {
       // never match — each call re-attempts the walk until the store is readable again.
       return { sig: 'sig-error:' + (this._slotSigErrorSeq = (this._slotSigErrorSeq || 0) + 1), raws };
     }
-    return { sig: parts.join('|'), raws };
+    return { sig, raws };
   },
 
   // `burst` shares one signature walk across a single call chain (a Continue click resolves
@@ -3074,6 +3118,9 @@ export const save = {
         // an absent marker keeps the main-thread walk as the fallback for any worker build
         // that doesn't include it.
         if (prepared.preflighted !== true) {
+          // Fallback lane only: preflight is a full-graph bound-walk on the envelope — yield
+          // before it too so the loading shell paints instead of freezing on a mature save.
+          await this._restoreFrameYield();
           const preflight = preflightSaveImport(env);
           if (!preflight.ok) return preflight;
         }
@@ -3221,6 +3268,15 @@ export const save = {
   _handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt) {
     console.error('[save] load failed', err);
     if (rollbackAttempt || !rollbackSnapshot || rollbackSnapshot.notNeeded) {
+      // A chunk-level throw after the 'loading' flip leaves state.mode stranded — the veil
+      // gate holds forever and the title stage is suppressed permanently. Without a rollback
+      // (title-screen Continue) nothing else recovers it, so hand the mode back here.
+      const strandedMode = this._restoreModeBeforeLoading;
+      this._restoreModeBeforeLoading = null;
+      if (strandedMode != null && this.state.mode === 'loading') {
+        this.state.mode = strandedMode;
+        this.bus.emit('mode:changed', { mode: strandedMode, previousMode: 'loading' });
+      }
       if (options.emitError !== false) {
         this.bus.emit('save:error', {
           slot,
@@ -3506,6 +3562,9 @@ export const save = {
     // Reserve ownership before any restore event can synchronously start a newer route.
     // The token travels to the async visual finalizer so stale completions become no-ops.
     const transitionToken = beginLoadedGameTransition ? beginLoadedGameTransition() : null;
+    // Per-session channel for the mid-restore 'loading' flip: a chunk-level throw must hand
+    // the pre-flip mode back to the failure path, or the veil gate stays armed forever.
+    this._restoreModeBeforeLoading = null;
     const timeEffects = createTimeEffects(state); // fixtures may call _restore without init()
     this._beginRestoreSequence();
     const restoreSource = `save:restore:${this._restoreSequence}`;
@@ -3547,7 +3606,7 @@ export const save = {
       this._clearMissionRuntimeForRestore();
 
       // 3. clear ALL transient entities (dispose meshes via entity:destroyed) and reset id allocator.
-      this._clearEntities();
+      yield* this._clearEntitiesChunked();
       this._reportRestoreProgress(0.08, 'Clearing the old sector');
       yield 'cleared';
 
@@ -3562,7 +3621,9 @@ export const save = {
       this._callDeserialize('economy', data.economy);
       this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);
+      yield 'deserialized-factions';
       this._callDeserialize('world', data.world); // sets currentSectorId; does NOT spawn entities
+      yield 'deserialized-world';
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
@@ -3593,6 +3654,7 @@ export const save = {
       if (cargoSys && typeof cargoSys.recompute === 'function') {
         cargoSys.recompute();
       }
+      yield 'pre-sector-enter';
 
       // 9. regenerate the saved sector's contents around the player.
       // world.deserialize already restored durable world.records and cleared residency bags.
@@ -3607,6 +3669,7 @@ export const save = {
       if (finalizeLoadedGame && state.mode !== 'loading') {
         const previousMode = state.mode;
         state.mode = 'loading';
+        this._restoreModeBeforeLoading = previousMode;
         if (previousMode !== state.mode) {
           this.bus.emit('mode:changed', { mode: state.mode, previousMode });
         }
@@ -3683,6 +3746,7 @@ export const save = {
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
         missionsSys.spawnTargetsForSector(sectorId);
       }
+      yield 'mission-targets-spawned';
       this._restoreAutomation(data.automation);
       this._restoreCrafting(data.crafting);
       this._reportRestoreProgress(0.215, 'Restoring automation');
@@ -3788,6 +3852,7 @@ export const save = {
       // 14. rebuild master RNG from serialized CONTINUATION (H9), not seed alone.
       // simTime/tick were restored before spawn so sector rebuild sees the saved clock.
       this._restoreEntropy(data.entropy);
+      yield 'entropy-restored';
       this.registry?.get?.('fields')?.deserialize?.(data.fields,entityIdRemap);
       const stuntOwner = this.registry?.get?.('stuntGrammar');
       stuntOwner?.deserialize?.(data.stunts, entityIdRemap);
@@ -3821,10 +3886,18 @@ export const save = {
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
       });
+      // Time-aware drain: a fixed batch of 12 listeners could stack several heavy reconciles
+      // into one over-frame slice. Drain small batches and hand a yield back whenever a slice's
+      // worth of work has run — cheap tails still finish without a single extra frame, heavy
+      // ones paint between batches (the driver's own 16ms gate dedupes any extra yield).
+      let saveLoadedDrainSince = nowMs();
       while (typeof this.bus.pendingEmitSliceCount === 'function'
           && this.bus.pendingEmitSliceCount() > 0) {
-        this.bus.drainEmitSlice(12);
-        yield 'save-loaded-drained';
+        this.bus.drainEmitSlice(4);
+        if (nowMs() - saveLoadedDrainSince >= RESTORE_YIELD_SLICE_MS) {
+          yield 'save-loaded-drained';
+          saveLoadedDrainSince = nowMs();
+        }
       }
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
@@ -3894,6 +3967,9 @@ export const save = {
       }
       throw restoreError;
     }
+    // Success or supersession owns 'loading' from here — the pending finalizer (or the newer
+    // route) drives the exit, so the stranded-mode channel for THIS session is spent.
+    this._restoreModeBeforeLoading = null;
     return { restored: true, slot, drained: drainedRunTransition };
   },
 
@@ -4147,6 +4223,14 @@ export const save = {
   // player is a ship → no junk entities are spawned by this (verified: mining listens to
   // entity:killed/loot:drop, not entity:destroyed).
   _clearEntities() {
+    for (const _ of save._clearEntitiesChunked.call(this)) { /* sync lane: every batch inline */ }
+  },
+
+  // A generator so the async restore lane can paint between batches — each entity:destroyed
+  // fan-out disposes a mesh tree, so on a populated sector this is the biggest single brick
+  // in the whole restore. The synchronous lane drains every yield inline, so ordering and
+  // the single-writer final reset are identical either way.
+  *_clearEntitiesChunked() {
     const state = this.state;
     const list = state.entityList;
     for (let i = list.length - 1; i >= 0; i--) {
@@ -4161,6 +4245,7 @@ export const save = {
           reason: 'save_restore',
         });
       } catch (err) { /* a render/vfx handler must not abort the clear */ }
+      if ((list.length - i) % RESTORE_ENTITY_CLEAR_BATCH === 0) yield 'entities-clearing';
     }
     state.entities.clear();
     state.entityList.length = 0;
