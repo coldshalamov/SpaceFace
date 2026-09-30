@@ -1138,7 +1138,7 @@ export const mining = {
       const pickupData = e.data || {};
       // Combat loot (the player's own kill burst) waits out its beat, then homes from ANY distance;
       // everything else keeps the ordinary magnet range.
-      const combatLoot = arcadeLoot && pickupData.combatLoot === true;
+      const combatLoot = arcadeLoot && e.type === 'pickup' && pickupData.combatLoot === true;
       const beatPending = combatLoot && state.simTime < finiteNum(pickupData.homeAt);
       if (pickupData.anchored) continue;
       if (e.type === 'payload' && !payloadHasCollectibleContent(pickupData)) continue;
@@ -1175,7 +1175,7 @@ export const mining = {
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
-      if (combatLoot ? !beatPending : dist <= magnet) {
+      if (e.type === 'pickup' && (combatLoot ? !beatPending : dist <= magnet)) {
         // Homing vacuum: inherit player velocity, then accelerate relative approach.
         // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
         // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.

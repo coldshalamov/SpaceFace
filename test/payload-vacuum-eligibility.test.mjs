@@ -5,7 +5,9 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { spawnPayloadEntity } from '../src/combat/industrialBeam.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { cargo } from '../src/systems/cargo.js';
+import { spawnJettisonedCargoPod } from '../src/systems/lootShards.js';
 import { mining } from '../src/systems/mining.js';
 import { survivorPod } from '../src/systems/survivorPod.js';
 
@@ -154,7 +156,7 @@ test('payloads with no collectible content are untouched at magnet range and on 
   }
 });
 
-test('a payload with a real salvage pool still homes, scoops once, and cannot double-fill the hold', () => {
+test('a payload with a real salvage pool is not pulled at range, scoops once on overlap, and cannot double-fill the hold', () => {
   const { state, collected } = boot({ withCargo: true });
   const pod = spawnPod(state, {
     pos: { x: 120, z: 0 },
@@ -164,10 +166,18 @@ test('a payload with a real salvage pool still homes, scoops once, and cannot do
   });
   pod.data.tetherPayload = true;
   giveBody(pod);
+  const pos0 = { x: pod.pos.x, z: pod.pos.z };
 
-  mining._updatePickups(DT, state);
-  assert.ok(pod.vel.x < -1, `collectible payload must home toward the ship (vel.x ${pod.vel.x})`);
-  assert.equal(pod.alive, true, 'homing alone must not consume the pod');
+  consumePhysicsCommand(pod);
+  for (let i = 0; i < 30; i++) mining._updatePickups(DT, state);
+
+  assert.equal(pod.vel.x, 0, 'a physical payload body must never inherit the ship velocity');
+  assert.equal(pod.vel.z, 0);
+  assert.equal(pod.pos.x, pos0.x);
+  assert.equal(pod.pos.z, pos0.z);
+  assert.equal(queuedImpulseCount(pod), 0, 'no homing impulse may queue on a payload');
+  assert.equal(pod.alive, true, 'staying at range must not consume the pod');
+  assert.equal(collected.filter((p) => p.pickupId === pod.id).length, 0);
 
   pod.pos.x = 4;
   pod.pos.z = 0;
@@ -187,7 +197,7 @@ test('a payload with a real salvage pool still homes, scoops once, and cannot do
   assert.equal(state.player.cargo.items.cmdty_scrap_metal, 3, 'cargo cannot duplicate');
 });
 
-test('commodityId + whole amount collects through the fallback when the pool is absent or empty', () => {
+test('commodityId + whole amount is not pulled at range and collects through the fallback on overlap', () => {
   for (const pool of ['absent', 'empty']) {
     const { state, collected } = boot({ withCargo: true });
     const pod = spawnPod(state, {
@@ -200,9 +210,15 @@ test('commodityId + whole amount collects through the fallback when the pool is 
     pod.data.commodityId = 'cmdty_scrap_metal';
     pod.data.amount = 4;
     giveBody(pod);
+    const pos0 = { x: pod.pos.x, z: pod.pos.z };
 
-    mining._updatePickups(DT, state);
-    assert.ok(pod.vel.x < -1, `${pool} pool: commodity payload must still home (vel.x ${pod.vel.x})`);
+    consumePhysicsCommand(pod);
+    for (let i = 0; i < 30; i++) mining._updatePickups(DT, state);
+    assert.equal(pod.vel.x, 0, `${pool} pool: a physical payload must not be pulled`);
+    assert.equal(pod.vel.z, 0);
+    assert.equal(pod.pos.x, pos0.x);
+    assert.equal(pod.pos.z, pos0.z);
+    assert.equal(queuedImpulseCount(pod), 0);
 
     pod.pos.x = 4;
     pod.pos.z = 0;
@@ -210,6 +226,79 @@ test('commodityId + whole amount collects through the fallback when the pool is 
     assert.equal(pod.alive, false, `${pool} pool: overlap must consume the payload`);
     assert.equal(state.player.cargo.items.cmdty_scrap_metal, 4);
     assert.equal(collected.filter((p) => p.pickupId === pod.id).length, 1);
+  }
+});
+
+test('real cargo pods from the shipped spawn seams are never pulled; overlap still settles their pools', () => {
+  for (const name of ['jettisoned cargo pod', 'civilian manifest pod']) {
+    const { state, collected } = boot({ withCargo: true });
+    const pod = name === 'jettisoned cargo pod'
+      ? spawnJettisonedCargoPod(state, {
+        pos: { x: 120, z: 0 }, vel: { x: 0, z: 0 },
+        commodityId: 'cmdty_scrap_metal', amount: 5,
+        unitMass: 0.8, factionId: 'faction_free', ownerId: 77,
+      }, null)
+      : spawnPayloadEntity(state, {
+        pos: { x: 120, z: 0 }, vel: { x: 0, z: 0 }, radius: 6,
+        ownerId: null, factionId: 'neutral',
+        salvagePool: { cmdty_scrap_metal: 2, cmdty_ore_iron: 3 },
+        payloadType: 'civilian_manifest',
+        worldRecordId: null, transientSector: false,
+      }, null);
+    assert.ok(pod && pod.alive === true, `${name}: the real seam must produce a live pod`);
+    assert.equal(pod.type, 'payload');
+    giveBody(pod);
+    const pos0 = { x: pod.pos.x, z: pod.pos.z };
+    const vel0 = { x: pod.vel.x, z: pod.vel.z };
+
+    consumePhysicsCommand(pod);
+    for (let i = 0; i < 30; i++) mining._updatePickups(DT, state);
+
+    assert.equal(pod.vel.x, vel0.x, `${name}: a full cargo pod must never be pulled onto the hull`);
+    assert.equal(pod.vel.z, vel0.z);
+    assert.equal(pod.pos.x, pos0.x);
+    assert.equal(pod.pos.z, pos0.z);
+    assert.equal(queuedImpulseCount(pod), 0);
+    assert.equal(pod.alive, true);
+    assert.equal(collected.filter((p) => p.pickupId === pod.id).length, 0);
+
+    pod.pos.x = 4;
+    pod.pos.z = 0;
+    mining._updatePickups(DT, state);
+
+    assert.equal(pod.alive, false, `${name}: overlap still collects the real pool`);
+    assert.equal(state.player.cargo.items.cmdty_scrap_metal, name === 'jettisoned cargo pod' ? 5 : 2);
+    if (name !== 'jettisoned cargo pod') assert.equal(state.player.cargo.items.cmdty_ore_iron, 3);
+  }
+});
+
+test('a payload forged with combat-loot stamps is never attracted as a combat drop', () => {
+  const previous = COMBAT_FLAGS.arcadeLoot;
+  COMBAT_FLAGS.arcadeLoot = true;
+  try {
+    const { state, collected } = boot({ withCargo: true });
+    const pod = spawnPod(state, {
+      pos: { x: 1500, z: 0 },
+      vel: { x: 0, z: 0 },
+      salvagePool: { cmdty_scrap_metal: 3 },
+    });
+    pod.data.combatLoot = true;
+    pod.data.homeAt = 0;
+    giveBody(pod);
+    const pos0 = { x: pod.pos.x, z: pod.pos.z };
+
+    consumePhysicsCommand(pod);
+    for (let i = 0; i < 30; i++) mining._updatePickups(DT, state);
+
+    assert.equal(pod.vel.x, 0, 'combat-loot stamps must not buy a payload body any homing');
+    assert.equal(pod.vel.z, 0);
+    assert.equal(pod.pos.x, pos0.x);
+    assert.equal(pod.pos.z, pos0.z);
+    assert.equal(queuedImpulseCount(pod), 0);
+    assert.equal(pod.alive, true);
+    assert.equal(collected.filter((p) => p.pickupId === pod.id).length, 0);
+  } finally {
+    COMBAT_FLAGS.arcadeLoot = previous;
   }
 });
 
