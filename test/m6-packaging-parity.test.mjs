@@ -18,6 +18,7 @@ import {
   validateReleaseBuildReceipt,
 } from '../scripts/lib/releasePackaging.mjs';
 import { RENDER_PACKAGE_PILOTS } from '../src/render/renderPackageManifest.js';
+import { SAMPLE_MANIFEST } from '../src/audio/sampleLibrary.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -32,6 +33,22 @@ test('release copy map includes only the live thruster texture runtime subtree',
     false,
     'authoring-only FX contact sheets must remain outside the retail bundle',
   );
+});
+
+test('release copy map ships the authored audio tree used by the sample manifest', () => {
+  assert.ok(
+    RELEASE_COPY_MAPPINGS.some(({ source, destination }) =>
+      source === 'assets/audio' && destination === 'assets/audio'),
+    'SAMPLE_MANIFEST wavs are fetched from assets/audio/** at runtime; a package without them falls back to synth-only audio',
+  );
+  // Every manifest entry must resolve under the copied root — a stray prefix silently 404s in retail.
+  assert.ok(SAMPLE_MANIFEST.size > 0);
+  for (const entry of SAMPLE_MANIFEST.values()) {
+    assert.ok(
+      entry.file.startsWith('assets/audio/'),
+      `sample ${entry.file} must live under the shipped assets/audio root`,
+    );
+  }
 });
 
 test('release build lock serializes candidates and recovers only dead owners', async (t) => {

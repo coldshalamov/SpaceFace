@@ -67,7 +67,7 @@ const SCAN_DIRS = ['src', 'styles'];
 const SCAN_EXT = /\.(m?js|css)$/;
 const NON_RUNTIME_SCAN_FILES = new Set(['src/contracts/assetValidation.js']);
 // Match a relative assets/... path with a media extension (the leading ../ or ./ falls outside).
-const ASSET_RE = /assets\/[A-Za-z0-9_./-]+\.(?:jpg|jpeg|png|webp|gif|mp4|webm|ogg|glb|gltf|ktx2|svg|json)/g;
+const ASSET_RE = /assets\/[A-Za-z0-9_./-]+\.(?:jpg|jpeg|png|webp|gif|mp4|webm|ogg|wav|mp3|aac|m4a|flac|opus|glb|gltf|ktx2|svg|json)/g;
 
 function walk(dir, out = []) {
   if (!existsSync(dir)) return out;

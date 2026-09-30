@@ -34,6 +34,10 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
     projection: RENDER_PACKAGE_SOURCE_PROJECTION,
   }),
   Object.freeze({ source: 'assets/portraits', destination: 'assets/portraits' }),
+  // The entire authored audio tree ships: SAMPLE_MANIFEST sfx, generated bark voice lines, and
+  // music beds are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
+  // Omitting it silently degrades the retail build to synth-only voices.
+  Object.freeze({ source: 'assets/audio', destination: 'assets/audio' }),
   // Runtime plume/RCS masks are loaded through template paths in vfx.js. Copy only this manifest-
   // governed subtree; the labelled FX reference sheets in assets/fx/ remain authoring-only.
   Object.freeze({ source: 'assets/fx/thruster', destination: 'assets/fx/thruster' }),
