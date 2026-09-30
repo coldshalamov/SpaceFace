@@ -138,6 +138,18 @@ export function createAssetResidencyRegistry(options = {}) {
     else releasedPrimitiveOwners.add(owner);
   }
 
+  // Admission intent revives an owner: authored boundaries re-admit after a readmission marker
+  // (stall abort, owner-inactive keep) and a permanently-released mark would kill every request
+  // the fresh epoch mints. The old state was already torn down by cleanupOwnerState on release,
+  // so revival is just letting the next ownerState() rebuild it fresh.
+  function reviveOwner(owner) {
+    if (owner == null) return;
+    if (typeof owner === 'object' || typeof owner === 'function') releasedObjectOwners.delete(owner);
+    else releasedPrimitiveOwners.delete(owner);
+    const state = owners.get(owner);
+    if (state) state.released = false;
+  }
+
   function registerAsset(key, gpuResources, registration = {}) {
     const exactKey = String(key || '');
     if (!exactKey) throw new Error('Asset residency registration requires a stable key.');
@@ -585,6 +597,13 @@ export function createAssetResidencyRegistry(options = {}) {
         continue;
       }
       if (minAgeMs > 0 && nowMs - entry.lastReleaseAtMs < minAgeMs) {
+        if (maxCacheOnlyBytes != null) budgetCandidates.push(entry);
+        continue;
+      }
+      // A warm-decode lease still claims this entry for an inbound approach: sweeping it at the
+      // idle bound makes the residency poll re-decode the same file every ~30s. Warm leases stay
+      // byte-capped by the maxCacheOnlyBytes budget path below, so nothing grows unbound.
+      if (hasWarmDecodeLease(entry)) {
         if (maxCacheOnlyBytes != null) budgetCandidates.push(entry);
         continue;
       }
@@ -1048,6 +1067,7 @@ export function createAssetResidencyRegistry(options = {}) {
     beginRequest,
     release,
     releaseOwner,
+    reviveOwner,
     releaseDetachedBoundaryOwners,
     releaseUnreferencedCacheOwners,
     handoffOwnerWhenCovered,
