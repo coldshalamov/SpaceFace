@@ -228,6 +228,7 @@ import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import {
   resolveForceNeonScale,
   resolveMasslineCableProfile,
+  resolveMasslineWhipGlow,
   resolveTumbleContinuousVfxPlan,
 } from './masslinePresentation.js';
 import {
@@ -9349,15 +9350,20 @@ export const vfx = {
     // UVP force-neon: taut / loaded lines push energy above hull-neutral; slack stays quieter.
     const neon = resolveForceNeonScale('taut', this._forceNeonMetrics({ load: l }));
     const neonMul = taut ? neon.energy : (1 + (neon.energy - 1) * 0.35);
+    // PIC-13: the stored-swing-energy glow. The sim publishes tether.strainGlow per tick (0 when
+    // the line is inactive); this is a straight transport into the ribbon frame, not a re-derivation.
+    const whipGlow = resolveMasslineWhipGlow(tether);
     const ribbonFrame = {
       time: pulseTime,
       color: this._ctmp,
       tension: l,
       // uStrain in the ribbon shader. Fed the past-capture working read, not tether.strain: the
       // physical ratio is ~1e-4 against a 10.5M breakTension, so uStrain*uStrain was always 0 and
-      // the shader's brightness chatter never ran. (energyMaterials.js still documents this uniform
-      // as "physical strain" — that comment needs the same correction; it is not this file.)
+      // the shader's brightness chatter never ran. (energyMaterials.js's uStrain declaration
+      // carries the same correction.)
       strain: s * masslineA11y.pulseScale,
+      // PIC-13: stored swing energy lights the rope, so a loaded whip reads before it snaps.
+      glow: whipGlow,
       whip: visualWhip,
       // uLatchWave: the one-shot bright band running anchor→ship on latch. The shader keys the
       // band position off this value (0 = at the hitch, 1 = spent); with reduced motion/flash the
