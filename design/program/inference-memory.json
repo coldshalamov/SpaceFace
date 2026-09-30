@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "tool-01-denied-latch-tick",
-      "date": "2026-09-22",
-      "wf": "WF-13",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "denied Massline latch plays a promoted Kenney tick instead of the menu error voice",
-      "fingerprint": "verb=hear,subject=massline-deny,sector=any,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "6ac65cd74",
-      "verification": "focused_green"
-    },
-    {
       "id": "tool-03-starter-shot-audition",
       "date": "2026-09-22",
       "wf": "WF-13",
@@ -1634,6 +1621,19 @@
       "commit": "5d4dcc440aef6a35692e71d0bbdebda7de60d2e9",
       "verification": "focused_green",
       "evidence": "test/inference-velocity-vectoring-setting.test.mjs"
+    },
+    {
+      "id": "the-eighth-bell",
+      "date": "2026-09-30",
+      "wf": "WF-08",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "towable pilgrimage bell on the Vesta lane that tolls under speed and draws danger — tow/hire/pass/desecrate branches with credit, reputation, and news consequences",
+      "fingerprint": "verb=tow,subject=pilgrimage_bell,sector=vesta_forge,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "34155f048",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
