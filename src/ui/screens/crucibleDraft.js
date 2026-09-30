@@ -901,8 +901,10 @@ export const crucibleDraftScreen = {
     }
 
     this._sub.textContent = offers.length
-      ? (shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
-        : `Wave ${wave} cleared. Choose a new weapon.`)
+      ? (wave === 0
+        ? 'Fit out before round 1 — the purse is already open.'
+        : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+          : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`;
 
     // INF-060: a purchase rebuilds the cards; the player stays on the same offer instead of
