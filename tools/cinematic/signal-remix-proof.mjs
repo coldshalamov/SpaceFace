@@ -81,6 +81,34 @@ try {
   await page.evaluate(()=>__remixProof.video.remove());await page.waitForTimeout(100);
   assert.equal(await page.evaluate(()=>document.querySelectorAll('.intro-signal-remix').length),0);
   report.checks.push('removed host releases canvas and controller');
+  // Record a real-time complete loop from the actual compositor, not a
+  // slideshow of the still grabs. Software capture is visual evidence only.
+  await page.setViewportSize({width:960,height:540});
+  await page.goto(url+'?capture&art',{waitUntil:'load'});
+  await page.waitForFunction(()=>window.__remixProof?.ready);
+  await page.evaluate(()=>__remixProof.frame(0,'remix',0));
+  const recording=await page.evaluate(async()=>{
+    const ctl=__remixProof.controller,stream=ctl.canvas.captureStream(24);
+    const recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8',videoBitsPerSecond:3200000});
+    const chunks=[];
+    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    const done=new Promise((resolve,reject)=>{
+      recorder.onerror=e=>reject(new Error(e.error?.message||'Capture failed'));
+      recorder.onstop=()=>{
+        stream.getTracks().forEach(track=>track.stop());
+        const reader=new FileReader();reader.onerror=()=>reject(new Error('Capture read failed'));
+        reader.onload=()=>resolve({data:String(reader.result).split(',')[1],frames:ctl.inspect().frameCount});
+        reader.readAsDataURL(new Blob(chunks,{type:'video/webm'}));
+      };
+    });
+    recorder.start();__remixProof.play();
+    await new Promise(resolve=>setTimeout(resolve,18600));
+    recorder.stop();__remixProof.video.pause();ctl.pause();
+    return done;
+  });
+  await writeFile(resolve(out,'signal-overprint-motion.webm'),Buffer.from(recording.data,'base64'));
+  report.motionCapture={file:'signal-overprint-motion.webm',width:960,height:540,frames:recording.frames,
+    note:'Real-time software-rendered capture; not a target-device frame-rate benchmark.'};
   assert.deepEqual(report.errors,[]);
   report.passed=true;
 } catch(error) { report.passed=false;report.failure=error.stack;report.diagnostics=await page.evaluate(()=>({ready:window.__remixProof?.ready,errors:window.__remixProof?.errors,video:[...document.querySelectorAll('video')].map(v=>({readyState:v.readyState,networkState:v.networkState,source:v.currentSrc,error:v.error?.message,codec:v.canPlayType('video/mp4; codecs=\"avc1.42E01E\"')}))})).catch(()=>null);await page.screenshot({path:resolve(out,'failure.png')}).catch(()=>{});throw error; }
