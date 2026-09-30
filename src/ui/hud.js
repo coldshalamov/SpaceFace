@@ -45,6 +45,7 @@ import { fuelReserveWarning } from './fuelReserveWarning.js';
 import { holdLeanChips } from './cargoConscience.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { objectiveText } from './screens/missionLog.js';
 import { adventureDecisionHudLine } from './adventureDecisions.js';
@@ -1723,7 +1724,7 @@ export function createHud(ctx, alerts) {
       : threatReadout.count + ' hostile' + (threatReadout.count === 1 ? '' : 's'));
     setText(fc.hrange, Number.isFinite(threatReadout.nearest) ? Math.round(threatReadout.nearest) + ' WU' : '');
     const tid = state.player && state.player.targetId;
-    const t = tid != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(tid) : null;
+    const t = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
     if (t && t.pos && p.pos) {
       const d = t.data || {};
       setText(fc.tname, String(d.callsign || d.name || t.name || d.trafficRole || d.role || t.type || 'Contact'));
@@ -4107,7 +4108,7 @@ export function createHud(ctx, alerts) {
 
     // ---- Target lock diamond (world-space overlay on locked/selected target) ----
     const tid = (state.player || {}).targetId;
-    const tgt = tid != null ? state.entities.get(tid) : null;
+    const tgt = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
     const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
     if (tgt && tgt.alive && tgtAnchor && helpers.worldToScreen) {
       const proj = projectTargetCenter(tgtAnchor);
@@ -4724,9 +4725,7 @@ export function createHud(ctx, alerts) {
 
   function updateTargetArcs() {
     const tid = state.player && state.player.targetId;
-    const tgt = tid != null && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(tid)
-      : null;
+    const tgt = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
     const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
 
     if (!tgt || !tgt.alive || !tgtAnchor) {
@@ -5282,11 +5281,13 @@ export function createHud(ctx, alerts) {
     // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
     if (targetTick) {
       const tgtId = (state.player || {}).targetId;
-      const target = tgtId != null ? state.entities.get(tgtId) : null;
+      const target = tgtId != null ? resolveWorldPresentationEntity(state, tgtId) : null;
       const player = state.entities.get(state.playerId);
       const combatRelevant = target && (target.type === 'ship' || target.type === 'drone')
         && isHostileToPlayer(target, player ? player.team : 0, state);
       const miningRelevant = target && target.type === 'asteroid';
+      const objectSelected = !!(state.ui && state.ui.objectSelection
+        && state.ui.objectSelection.targetId === tgtId);
       const routeOwnsAttention = !!(state.nav && state.nav.waypoint);
       let weakPoint = null;
       if (tgtId != null && revealedWeakPoints.size) {
@@ -5294,7 +5295,7 @@ export function createHud(ctx, alerts) {
         if (wp && (!wp.until || (state.simTime || 0) < wp.until)) weakPoint = wp;
         else if (wp) revealedWeakPoints.delete(tgtId);
       }
-      if (routeOwnsAttention && target && !combatRelevant && !miningRelevant) {
+      if (routeOwnsAttention && target && !combatRelevant && !miningRelevant && !objectSelected) {
         setDisplay(targetPanel.el, false);
       } else {
         targetPanelUpdateOptions.slow = slow;

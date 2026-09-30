@@ -62,8 +62,8 @@ function buildKbmPrompts(state) {
   const mapChart = `${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`;
 
   const classic = {
-    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${mine} mine  •  ${beam} selected Site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
-    mining: `${mine} hold to mine  •  ${beam} beam selected Site  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
+    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${mine} select · hold to use  •  ${beam} selected Site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
+    mining: `${mine} select · hold to mine  •  ${beam} beam selected Site  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
     combat: `${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${bomb} bomb  •  ${bombCycle} cycle bombs  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
     station: `${BINDINGS.dock.label} dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  ${BINDINGS.dock.label}/Esc undock`,
     gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
@@ -79,7 +79,7 @@ function buildKbmPrompts(state) {
   if (scheme === 'helm-assist') {
     return {
       ...classic,
-      flight: `Mouse steer+aim  •  ${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${strafe} strafe  •  ${fire} fire  •  ${mine} mine  •  ${boost} boost  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${mapChart}`,
+      flight: `Mouse steer+aim  •  ${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${strafe} strafe  •  ${fire} fire  •  ${mine} select · hold to use  •  ${boost} boost  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${mapChart}`,
       combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${brake} or ${reverse} brake  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
       tutorialFlight: `Follow the yellow nav arrow. Nose follows the mouse — ${forwardFirst} thrusts, ${brake} or ${reverse} brakes, ${tether} controls the Massline.`,
       firstFlight: `Nose follows the mouse. ${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop.`,
@@ -89,7 +89,7 @@ function buildKbmPrompts(state) {
   if (scheme === 'pilot') {
     return {
       ...classic,
-      flight: `${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} turn  •  Mouse aim  •  ${fire} fire  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${boost} boost  •  Tab target  •  ${mapChart}`,
+      flight: `${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} turn  •  Mouse aim  •  ${fire} fire  •  ${mine} select · hold to use  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${boost} boost  •  Tab target  •  ${mapChart}`,
       combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
       tutorialFlight: `Follow the yellow nav arrow. ${forwardFirst} thrusts; ${brake} or ${reverse} brakes; ${yaw.replace(' ', '/')} turns; mouse aims; ${tether} controls the Massline.`,
       firstFlight: `${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop. ${yaw} turn. Mouse aims.`,

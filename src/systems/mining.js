@@ -25,6 +25,7 @@ import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } 
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import {
   clearPickupAcceptanceRetry,
   finiteWholePickupAmount,
@@ -666,11 +667,7 @@ export const mining = {
     // beam acquires it, so pod eligibility joins the gate here instead of the catalog table.
     // WF-05 beam-tender: a damaged non-hostile hull is mine-membership for the beam too — the
     // repair verb below it is real, and a held lock has to stay valid while the weld runs.
-    if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)
-      && !weldableHullForBeam(entity, state)) return false;
-    if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
-    if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
-    if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
+    if (!isBeamTargetEligible(entity, state)) return false;
     const dx = entity.pos.x - ship.pos.x, dz = entity.pos.z - ship.pos.z;
     const dist = Math.hypot(dx, dz);
     return dist <= range + (entity.radius || 0);
@@ -679,6 +676,19 @@ export const mining = {
   // Nearest mineable target (asteroid or salvageable wreck) within range, biased toward aim.
   // While the beam is held, the first-acquired target stays locked until fire is released.
   _acquireTarget(ship, range, state) {
+    const inp = state.input;
+    if (inp && Object.prototype.hasOwnProperty.call(inp, 'worldObjectTargetId')) {
+      const pointerId = inp.worldObjectTargetId;
+      if (pointerId == null) return null;
+      const presented = resolveWorldPresentationEntity(state, pointerId);
+      if (!this._isValidMineableTarget(presented, ship, range, state)) return null;
+      if (presented.type === 'asteroid' && presented.fieldResident === true) {
+        const promoted = promoteAsteroidFieldRock(state, pointerId, this.helpers, 'mine');
+        if (!promoted || !this._isValidMineableTarget(promoted, ship, range, state)) return null;
+        return promoted;
+      }
+      return presented;
+    }
     const tetherTarget = activeMineableTetherTarget(state, ship, range);
     if (tetherTarget !== undefined) return tetherTarget;
 
@@ -2544,6 +2554,25 @@ const miningMineableSeen = new Set();
 function isBeamSplittableCargoPod(entity) {
   return !!(entity && entity.type === 'payload' && entity.data
     && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
+}
+
+export function beamRangeFor(player, state) {
+  const beam = (player && player.data && player.data.miningBeam)
+    || (state && state.player && state.player.miningBeam);
+  if (!beam) return null;
+  const tier = BEAM_BY_ID.get(beam.tierId) || BEAM_BY_ID.get('beam_mk1');
+  const range = beam.range || (tier && tier.range);
+  return Number.isFinite(range) ? range : null;
+}
+
+export function isBeamTargetEligible(entity, state) {
+  if (!entity || entity.alive === false) return false;
+  if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)
+    && !weldableHullForBeam(entity, state)) return false;
+  if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
+  if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
+  if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
+  return true;
 }
 
 // --- WF-05 beam-tender: the beam can finally reach a hull that needs it ----------------------

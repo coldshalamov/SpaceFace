@@ -10,6 +10,7 @@
 // ship with no mark anywhere in the world. Dead or positionless bodies never subject.
 
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 
 /**
  * The live subject entity, or null when nothing is marked. Consumers that must CLASSIFY the subject
@@ -22,7 +23,7 @@ export function resolveTargetContourEntity(state) {
   const entities = state && state.entities;
   if (!player || !entities || typeof entities.get !== 'function') return null;
   const selId = player.targetId != null ? player.targetId : null;
-  const selection = selId != null ? entities.get(selId) : null;
+  const selection = selId != null ? resolveWorldPresentationEntity(state, selId) : null;
   const liveSelection = selection && selection.alive && selection.pos ? selection : null;
   if (liveSelection) return liveSelection;
   const gunId = player.gunTargetId != null && player.gunTargetId !== selId ? player.gunTargetId : null;

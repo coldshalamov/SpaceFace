@@ -157,6 +157,11 @@ function copyRecord(target, source) {
   target.targetTick = source.targetTick;
   target.lifecycleGeneration = source.lifecycleGeneration;
   for (const key of COMMAND_KEYS) target[key] = source[key];
+  if (Object.prototype.hasOwnProperty.call(source, 'worldObjectTargetId')) {
+    target.worldObjectTargetId = source.worldObjectTargetId;
+  } else {
+    delete target.worldObjectTargetId;
+  }
   for (const key of AXIS_KEYS) target.axes[key] = source.axes[key];
   for (const key of ACTION_KEYS) target.actions[key] = source.actions[key];
   for (const key of MASSLINE_KEYS) target.massline[key] = source.massline[key];
@@ -251,6 +256,16 @@ function copyInput(slot, input) {
   data.route.inputActivitySequence = Number.isSafeInteger(source._activitySeq)
     ? source._activitySeq
     : 0;
+
+  if (Object.prototype.hasOwnProperty.call(source, 'worldObjectTargetId')) {
+    const id = source.worldObjectTargetId;
+    data.worldObjectTargetId = (typeof id === 'number' && Number.isFinite(id))
+      || typeof id === 'string' || id === null
+      ? id
+      : null;
+  } else {
+    delete data.worldObjectTargetId;
+  }
 }
 
 /**
@@ -479,6 +494,7 @@ export function createInputCommandSnapshotQueue(capacity = 8) {
     lastReservedSequence--;
     lastReservedTargetTick = slot.priorTargetTick;
     slot.status = SLOT_FREE;
+    delete slot.data.worldObjectTargetId;
     cancelledCount++;
     return true;
   }
@@ -565,6 +581,7 @@ export function createInputCommandSnapshotQueue(capacity = 8) {
     } finally {
       slot.activeLease = 0;
       slot.status = SLOT_FREE;
+      delete slot.data.worldObjectTargetId;
       read = (read + 1) % size;
       count--;
       lastConsumedSequence = sequence;

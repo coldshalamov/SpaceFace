@@ -49,10 +49,15 @@ import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { isHostileToPlayer } from './scanner.js';
+import { isBeamTargetEligible } from './mining.js';
+import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
 const HELM_SOFT_ANGLE = 0.55;
+
+const WORLD_TOOL_HOLD_S = 0.28;
 const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
 const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
 
@@ -803,6 +808,13 @@ export const input = {
     resetAutoTargetPath(this, this.state);
     resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
     this._m0 = false; this._m1 = false; this._m2 = false;
+    this._m2HeldS = 0;
+    this._m2ToolLane = null;
+    this._m2SlingTargetId = null;
+    this._m2HoldReady = false;
+    this._m2HoldTimer = null;
+    this._m2UsesUiClock = false;
+    this._m2TimerTarget = null;
     this._cmHeld = false;
     this._gamepadLifecycleQuarantine = {
       massline: true,
@@ -849,6 +861,10 @@ export const input = {
   _attachDomInputAdapter(keys) {
     const windowTarget = typeof window !== 'undefined' ? window : null;
     const bindings = (this._domBindings = []);
+    this._m2UsesUiClock = !!(windowTarget
+      && typeof windowTarget.setTimeout === 'function'
+      && typeof windowTarget.clearTimeout === 'function');
+    this._m2TimerTarget = this._m2UsesUiClock ? windowTarget : null;
     const listen = (target, type, listener, options) => {
       if (!target || typeof target.addEventListener !== 'function') return;
       target.addEventListener(type, listener, options);
@@ -913,18 +929,34 @@ export const input = {
       handlePointerMove(e);
       if (this._canvas && e.target !== this._canvas) {
         this._m0 = false; this._m1 = false; this._m2 = false;
+        this._clearM2HoldClock();
         return;
       }
       if (!this._canvas && isUiCommandTarget(e.target)) {
         this._m0 = false; this._m1 = false; this._m2 = false;
+        this._clearM2HoldClock();
         return;
       }
       if (e.button === 0) this._m0 = true;
       if (e.button === 1) { this._m1 = true; if (typeof e.preventDefault === 'function') e.preventDefault(); } // no autoscroll cursor
-      if (e.button === 2) this._m2 = true;
+      if (e.button === 2) {
+        this._m2 = true; this._m2HeldS = 0; this._m2ToolLane = null; this._m2SlingTargetId = null;
+        this._clearM2HoldClock();
+        const clockTarget = this._m2TimerTarget;
+        if (this._m2UsesUiClock && clockTarget && typeof clockTarget.setTimeout === 'function') {
+          const epoch = this._m2HoldEpoch;
+          try {
+            this._m2HoldTimer = clockTarget.setTimeout(() => {
+              if (this._initialized && this._m2 === true && this._m2HoldEpoch === epoch) {
+                this._m2HoldReady = true;
+              }
+            }, WORLD_TOOL_HOLD_S * 1000);
+          } catch (_) { this._m2HoldTimer = null; }
+        }
+      }
       this._kbmActivityPending = true;
     });
-    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) this._m2 = false; });
+    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } });
     listen(pointerSurface, 'contextmenu', (e) => e.preventDefault());
   },
 
@@ -943,6 +975,8 @@ export const input = {
     }
 
     this.releaseHeldControls('destroy');
+    this._m2UsesUiClock = false;
+    this._m2TimerTarget = null;
     const touch = this.touch;
     if (touch && typeof touch.setEnabled === 'function') {
       try { touch.setEnabled(false); } catch (_) {}
@@ -962,6 +996,40 @@ export const input = {
     this._canvas = null;
   },
 
+  cancelWorldObjectGesture(reason = 'lifecycle') {
+    const inp = this.state && this.state.input;
+    const hadField = !!(inp && Object.prototype.hasOwnProperty.call(inp, 'worldObjectTargetId'));
+    if ((this._m2 === true || hadField) && this.bus && typeof this.bus.emit === 'function') {
+      try { this.bus.emit('input:worldGestureCancelled', { reason }); } catch (_) {}
+    }
+    this._m2 = false;
+    this._m2HeldS = 0;
+    this._m2ToolLane = null;
+    this._m2SlingTargetId = null;
+    this._clearM2HoldClock();
+    if (hadField) delete inp.worldObjectTargetId;
+  },
+
+  _clearM2HoldClock() {
+    const target = this._m2TimerTarget;
+    if (this._m2HoldTimer != null && target && typeof target.clearTimeout === 'function') {
+      try { target.clearTimeout(this._m2HoldTimer); } catch (_) {}
+    }
+    this._m2HoldTimer = null;
+    this._m2HoldReady = false;
+    this._m2HoldEpoch = (this._m2HoldEpoch || 0) + 1;
+  },
+
+  _sampleMouseToolLane(state, inp) {
+    if (!inp || !Object.prototype.hasOwnProperty.call(inp, 'worldObjectTargetId')) return 'legacy';
+    const lane = initialMouseToolLane(state, inp.worldObjectTargetId);
+    if (lane === 'sling') {
+      const tether = state.player && state.player.tether;
+      this._m2SlingTargetId = tether && tether.targetId != null ? tether.targetId : null;
+    }
+    return lane;
+  },
+
   // Lifecycle transitions clear raw device ownership here, before the next authoritative input tick.
   // Pointer activity is also cleared from committed input so it cannot revive without a new event;
   // other committed commands remain intact for the coherent restore snapshot.
@@ -972,9 +1040,13 @@ export const input = {
     if (keys) {
       for (const code in keys) keys[code] = false;
     }
+    this.cancelWorldObjectGesture(_reason);
     this._m0 = false;
     this._m1 = false;
     this._m2 = false;
+    this._m2HeldS = 0;
+    this._m2ToolLane = null;
+    this._m2SlingTargetId = null;
     this._prevM1 = false;
     if (this._screen) this._screen.active = false;
     const committedInput = this.state && this.state.input;
@@ -1166,6 +1238,7 @@ export const input = {
       inp.tetherMode = null;
       resetAutoTargetPath(this, state);
       writeAutoTargetVector(inp);
+      this.cancelWorldObjectGesture('neutralize');
       this._m0 = false; this._m1 = false; this._m2 = false;
       this._prevM1 = false;
       this._edgePrev = this._edgePrev || {};
@@ -1365,7 +1438,15 @@ export const input = {
     const contextualSiteBeam = this._held(state, 'siteBeam') && !!selectedSite;
     const gamepadSiteBeam = gpMine && !!selectedSite;
     const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
-    const anyMineHeld = !!(this._m2 || gpMine || tpMine);
+    this._m2HeldS = this._m2 ? (this._m2HeldS || 0) + dt : 0;
+    const mouseToolHeld = !!(this._m2 && (this._m2UsesUiClock
+      ? this._m2HoldReady === true
+      : this._m2HeldS >= WORLD_TOOL_HOLD_S));
+    if (!this._m2) { this._m2ToolLane = null; this._m2SlingTargetId = null; }
+    else if (this._m2ToolLane == null) this._m2ToolLane = this._sampleMouseToolLane(state, inp);
+    const mouseLane = this._m2ToolLane;
+    const anyMineHeld = !!((mouseToolHeld && (mouseLane === 'beam' || mouseLane === 'legacy'))
+      || gpMine || tpMine);
     // RMB and touch Mine are cursor-aimed even when a World Site remains selected. Only the
     // explicit B action and gamepad LT claim the selected-site lane; preserving this provenance
     // prevents a stale site selection from stealing ordinary rock mining.
@@ -1374,7 +1455,12 @@ export const input = {
     acts.siteBeam = siteBeamHeld;
     acts.aimedMine = aimedMineHeld;
     const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
-    const throwArmHeld = massline2Flag('throw') && tetherLatched && aimedMineHeld
+    const tether = state.player && state.player.tether;
+    const slingLaneLive = mouseLane === 'sling'
+      && !!(tether && tether.active && tether.targetId === this._m2SlingTargetId);
+    const slingHeld = mouseLane !== 'beam'
+      && (aimedMineHeld || (mouseToolHeld && !siteBeamHeld && slingLaneLive));
+    const throwArmHeld = massline2Flag('throw') && tetherLatched && slingHeld
       && isThrowArmPayload(state);
     inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
 
@@ -1628,7 +1714,7 @@ const THROW_ARM_COMBAT_ARCHETYPES = new Set([
  * is what made it true. A latched hostile still throws exactly as before.
  * Parent asteroids and wrecks keep RMB as the mining/salvage beam so latched extraction works.
  */
-function isThrowArmPayload(state) {
+export function isThrowArmPayload(state) {
   const tether = state && state.player && state.player.tether;
   if (!tether || !tether.active || tether.targetId == null) return false;
   const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
@@ -1645,6 +1731,23 @@ function isThrowArmPayload(state) {
   if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
   if (target.type === 'payload') return true;
   return false;
+}
+
+function pointerBeamLane(state, entity) {
+  if (isBeamTargetEligible(entity, state)) return true;
+  if (!entity) return false;
+  const profile = interactionProfileForEntity(entity);
+  return !!(profile.beamExtractable === true
+    && !(entity.data && entity.data.opticMaterial));
+}
+
+export function initialMouseToolLane(state, id) {
+  if (id != null) {
+    const entity = resolveWorldPresentationEntity(state, id);
+    if (entity && pointerBeamLane(state, entity)) return 'beam';
+  }
+  if (isThrowArmPayload(state)) return 'sling';
+  return 'inspect';
 }
 
 /**

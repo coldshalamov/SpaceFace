@@ -385,3 +385,62 @@ test('a stepped-but-frozen registry tick still publishes its input snapshot', as
     input.update = realUpdate;
   }
 });
+
+test('worldObjectTargetId captures as an optional primitive with absent/null/id distinction', () => {
+  const queue = createInputCommandSnapshotQueue(4);
+  const record = createInputCommandSnapshotRecord();
+
+  const input = commandInput();
+  input.worldObjectTargetId = 42;
+  queue.publish(1, 1, 0, input);
+  input.worldObjectTargetId = 'rock_field_7';
+  queue.consume(1, (reader, token) => {
+    reader.copyTo(token, record);
+    assert.equal(record.worldObjectTargetId, 42, 'the captured numeric id survives the copy');
+    assert.equal(reader.read(token, 'command', 'worldObjectTargetId'), 42);
+  });
+  assert.equal(Object.hasOwn(record, 'worldObjectTargetId'), true);
+
+  const blank = commandInput();
+  blank.worldObjectTargetId = null;
+  queue.publish(2, 2, 0, blank);
+  queue.consume(2, (reader, token) => {
+    reader.copyTo(token, record);
+    assert.equal(record.worldObjectTargetId, null, 'a deliberate blank capture stays null');
+    assert.equal(Object.hasOwn(record, 'worldObjectTargetId'), true);
+  });
+
+  queue.publish(3, 3, 0, commandInput());
+  queue.consume(3, (reader, token) => {
+    reader.copyTo(token, record);
+    assert.equal(Object.hasOwn(record, 'worldObjectTargetId'), false,
+      'a reused record drops the stale optional key when the new frame has no capture');
+  });
+
+  const odd = commandInput();
+  odd.worldObjectTargetId = { id: 9 };
+  queue.publish(4, 4, 0, odd);
+  queue.consume(4, (reader, token) => {
+    reader.copyTo(token, record);
+    assert.equal(record.worldObjectTargetId, null,
+      'a non-primitive capture rejects to blank, never an object graph');
+  });
+});
+
+test('a reused snapshot slot with no gesture deletes the stale capture', () => {
+  const queue = createInputCommandSnapshotQueue(1);
+  const record = createInputCommandSnapshotRecord();
+
+  const captured = commandInput();
+  captured.worldObjectTargetId = 'asteroid_42';
+  queue.publish(1, 1, 0, captured);
+  queue.consume(1, (reader, token) => reader.copyTo(token, record));
+  assert.equal(record.worldObjectTargetId, 'asteroid_42');
+
+  queue.publish(2, 2, 0, commandInput());
+  queue.consume(2, (reader, token) => {
+    reader.copyTo(token, record);
+    assert.equal(Object.hasOwn(record, 'worldObjectTargetId'), false,
+      'the next frame on the same slot must not resurrect the old capture');
+  });
+});

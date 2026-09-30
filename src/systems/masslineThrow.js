@@ -106,6 +106,7 @@ export const masslineThrow = {
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:cut', (p) => this._onManualCut(p || {})));
+      this._unsubs.push(this.bus.on('input:worldGestureCancelled', () => this._resetCadenceThrow(this.state)));
       for (const name of ['save:loaded', 'game:new', 'game:started', 'sector:exit', 'sector:enter']) {
         this._unsubs.push(this.bus.on(name, () => this._resetCadenceThrow(this.state)));
       }

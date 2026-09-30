@@ -27,6 +27,7 @@ export function targetFrameHtml() {
          SF-037 can't-fire vs can't-steer). Facts come from src/ui/targetCondition.js over the
          combat runtime; hidden on clean hulls. -->
     <div class="sf-target__condition mono" style="display:none;margin-top:3px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-signal);"></div>
+    <div class="sf-target__object mono" style="display:none;margin-top:3px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-bone-62);"></div>
     <div class="sf-target__meta">
       <span class="sf-target__range mono" style="color:var(--k-bone-62);"></span>
       <span class="sf-target__closing mono"><span data-glyph aria-hidden="true"></span><span data-txt></span></span>

@@ -31,6 +31,7 @@ import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -58,6 +59,7 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
 //  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
 import { createHud } from './hud.js';
 import { createBandHud } from './bandHud.js';
+import { createWorldObjectInteraction } from './worldObjectInteraction.js';
 import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
 import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
@@ -403,6 +405,8 @@ export const ui = {
     destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
+    if (this.worldObject && typeof this.worldObject.destroy === 'function') this.worldObject.destroy();
+    this.worldObject = null;
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
@@ -578,6 +582,8 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
     this.bandHud = createBandHud(ctx);
+
+    this.worldObject = createWorldObjectInteraction(ctx, this.screenManager);
 
     // Command Bar — a persistent top-center resource strip (hull/shield/energy/heat/cargo/credits/
     // role/sector). It is a FOURTH permanent anchor that duplicates the bottom-left schematic vitals
@@ -1392,6 +1398,7 @@ export const ui = {
       // Gamepad UI navigation / global button intents are processed every render frame so menus
       // work even when the sim is paused and input.update is not being stepped.
       if (this.input && this.input.tick) this.input.tick(dt);
+      if (this.worldObject && this.worldObject.tick) this.worldObject.tick(dt);
 
       const st = state || this.state;
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
@@ -1459,6 +1466,8 @@ export const ui = {
     this._screenRegistrationSettledGeneration = null;
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
+    if (this.worldObject && typeof this.worldObject.destroy === 'function') this.worldObject.destroy();
+    this.worldObject = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
@@ -1541,6 +1550,7 @@ function cycleTarget(state, dir, bus) {
   const nextIdx = idx < 0 ? (dir < 0 ? ids.length - 1 : 0) : idx + (dir < 0 ? -1 : 1);
   const target = contacts[nextIdx].e;
   state.player.targetId = target.id;
+  if (state.ui) state.ui.objectSelection = null;
   if (state.input) state.input.targetAssistDisabled = false;
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
 }
@@ -1548,6 +1558,7 @@ function cycleTarget(state, dir, bus) {
 function clearCombatTarget(state, bus) {
   if (!state?.player) return;
   state.player.targetId = null;
+  if (state.ui) state.ui.objectSelection = null;
   if (state.input) {
     state.input.targetAssistDisabled = true;
     if (state.input.autoAim) state.input.autoAim = null;
@@ -1603,6 +1614,13 @@ function isScannerHostileLock(player, state, entity) {
   return (dx * dx + dz * dz) <= SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
 }
 
+function explicitObjectSelectionAlive(state, targetId) {
+  const sel = state.ui && state.ui.objectSelection;
+  if (!sel || sel.targetId !== targetId) return false;
+  const subject = resolveWorldPresentationEntity(state, targetId);
+  return !!(subject && subject.alive !== false);
+}
+
 // The hostile the Massline is physically holding, if it is a legal scanner lock. Whenever this
 // function is the one CHOOSING (rather than preserving a pick the player made), the ship on the end
 // of your own line beats the ship that merely happens to be nearest — that near-miss is what had you
@@ -1635,6 +1653,8 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     const cur = state.entities.get(curId);
     if (isScannerHostileLock(player, state, cur)) {
       if (quiet) return;
+    } else if (quiet && explicitObjectSelectionAlive(state, curId)) {
+      return;
     } else if (quiet && isDeliberateNonHostilePick(player, state, cur)) {
       // A deliberate selection can seed the NEXT latch's transient releaseTarget. Once a line is
       // latched, selection churn and this 0.12s housekeeping refresh no longer steer the armed
@@ -1654,6 +1674,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     // No lock yet — quiet refresh may acquire the nearest hostile.
   }
   // Past the quiet early-out, so a Tab/radar pick is never stomped by the 0.12s refresh.
+  if (state.ui) state.ui.objectSelection = null;
   const tethered = tetheredHostileLock(player, state);
   if (tethered) {
     state.player.targetId = tethered.id;

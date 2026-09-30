@@ -112,7 +112,7 @@ assert.match(flightPrompt, new RegExp(`\\b${brake}\\b`),
   'the kbm flight prompt must name the live brake key');
 assert.match(flightPrompt, new RegExp(MOUSE_ACTION_LABELS.fire),
   'the kbm flight prompt must name LMB fire');
-assert.match(controlPrompt('mining', 'kbm'), /RMB hold to mine/);
+assert.match(controlPrompt('mining', 'kbm'), /RMB select · hold to mine/);
 // Dock rides B on the pad since the dock/shove re-teach (a4bb310e2); A is act aboard.
 assert.match(controlPrompt('station', 'gamepad'), /B dock/,
   'the gamepad station prompt must name the live dock button');

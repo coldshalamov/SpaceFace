@@ -130,7 +130,7 @@ test('RMB and touch Mine retain aimed-rock semantics even while a World Site is 
 
   const mouseHost = inputHarness();
   mouseHost._m2 = true;
-  mouseHost.update(1 / 60, fixture.state);
+  for (let i = 0; i < 19; i++) mouseHost.update(1 / 60, fixture.state);
   assert.equal(fixture.state.input.actions.siteBeam, false);
   assert.equal(fixture.state.input.actions.aimedMine, true);
   const miningHost = Object.assign(Object.create(mining), { _mineableScratch: [], _diag: {}, state: fixture.state });

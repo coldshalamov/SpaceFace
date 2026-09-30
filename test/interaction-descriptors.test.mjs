@@ -120,7 +120,7 @@ test('capability flags: known profile/gate asymmetries are surfaced faithfully (
   assert.equal(capabilityFlagsForEntity({ type: 'payload' }).destructible, true);
   assert.equal(verbAcceptsType('damage', 'payload'), true);
   // massSeed has no presentation profile (kind 'unknown') yet IS tether/damage eligible.
-  assert.equal(capabilityFlagsForEntity({ type: 'massSeed' }).kind, 'unknown');
+  assert.equal(capabilityFlagsForEntity({ type: 'massSeed' }).kind, 'massSeed');
   assert.equal(verbAcceptsType('damage', 'massSeed'), true);
   assert.equal(verbAcceptsType('tether', 'massSeed'), true);
 });

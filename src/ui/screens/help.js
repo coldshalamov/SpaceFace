@@ -202,7 +202,8 @@ export function controlSections(state) {
     ]],
     ['Interface (fixed keys)', [
       ['Aim weapons freely', null, 'Backspace, then Mouse'],
-      ['Mine beam', null, 'RMB on rock'],
+      ['Select / inspect object', null, 'RMB tap'],
+      ['Mine / salvage / weld', null, 'hold RMB on object'],
       ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
       ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
       ['Cycle combat lock', null, 'Tab / Shift+Tab'],

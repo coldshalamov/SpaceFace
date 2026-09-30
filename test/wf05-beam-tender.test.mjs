@@ -303,7 +303,7 @@ test('beam-tender route: a latched hostile still steals RMB for the throw arm (c
   state.player.tether = { active: true, targetId: pirate.id };
   host._m2 = true;
 
-  host.update(DT, state);
+  for (let i = 0; i < 19; i++) host.update(DT, state);
 
   try {
     assert.equal(state.input.actions.throwArm, true, 'a hostile latch is still a combat throw');

@@ -25,7 +25,11 @@ import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
-import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
+import { initialMouseToolLane } from '../systems/input.js';
+import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { oreTableByWeight, oreTableForAsteroidType } from '../data/mining.js';
 import { listSelectableComponents } from '../systems/interactionDescriptors.js';
 import { glyphSvg } from './glyphs.js';
@@ -150,7 +154,7 @@ export function targetDisplayName(e) {
   }
   if (e.type === 'asteroid' || e.type === 'wreck') return interactionDisplayName(e);
   if (e.type === 'drone') return (e.data && (e.data.callsign || e.data.name)) || 'Unidentified';
-  return e.type || 'Contact';
+  return interactionDisplayName(e);
 }
 
 export function targetInteractionClass(e) {
@@ -158,6 +162,7 @@ export function targetInteractionClass(e) {
   if (interaction.kind === 'unstable_reactor_wreck') return 'Hazardous Salvage';
   if (interaction.kind === 'wreck') return 'Salvage';
   if (interaction.kind === 'asteroid') return asteroidClassLine(e);
+  if (interaction.classLabel) return interaction.classLabel;
   return '';
 }
 
@@ -272,7 +277,9 @@ function entityClass(e) {
   }
   const interactionClass = targetInteractionClass(e);
   if (interactionClass) return interactionClass;
-  return e.type || '';
+  return typeof e.type === 'string' && e.type
+    ? e.type.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : '';
 }
 
 const MOTIVE_LABEL = Object.freeze({
@@ -309,6 +316,18 @@ export function wingLineFor(target, playerId) {
   if (wingRole) line += ` · ${wingRole.replace(/_/g, ' ').toUpperCase()}`;
   if (tracking) line += ' · TRACKING YOU';
   return line;
+}
+
+const ZERO_VEL = { x: 0, z: 0 };
+
+function beamVerbWordFor(entity) {
+  if (entity && entity.data && entity.data.worldSiteTargetable === true) return 'work site';
+  const t = entity && entity.type;
+  if (t === 'asteroid') return 'mine';
+  if (t === 'wreck' || t === 'derelict') return 'salvage';
+  if (t === 'payload') return 'split';
+  if (t === 'ship' || t === 'drone') return 'weld';
+  return 'beam';
 }
 
 function playerWeaponRange(player) {
@@ -353,8 +372,8 @@ export function engagedContactReadout(state) {
   const entities = (state && state.entities) || null;
   if (!player || !entities) return { subjectId: null, subject: null, engaged: null, subjectIsEngaged: false, text: '' };
   const selId = player.targetId != null ? player.targetId : null;
-  const selection = selId != null ? entities.get(selId) : null;
-  const liveSelection = selection && selection.alive ? selection : null;
+  const selection = selId != null ? resolveWorldPresentationEntity(state, selId) : null;
+  const liveSelection = selection && selection.alive !== false && selection.pos ? selection : null;
   // An absent gunTargetId (flag off, or no player firing this tick) is "no divergence", never an error.
   const gunId = player.gunTargetId != null ? player.gunTargetId : null;
   const engagedCandidate = gunId != null && gunId !== selId ? entities.get(gunId) : null;
@@ -426,6 +445,63 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
   });
 }
 
+export function objectInfoLine(t, state, p, dist) {
+  if (t.type === 'ship' || t.type === 'drone') return presentationStatusWord(t) || '';
+  const d = t.data || {};
+  const facts = [];
+  if (t.type === 'asteroid') {
+    facts.push(d.respawnAt != null ? 'Mined out' : 'Ore-bearing');
+  } else if (t.type === 'payload' || t.type === 'wreck' || t.type === 'pickup') {
+    const pool = d.salvagePool && typeof d.salvagePool === 'object' ? d.salvagePool : null;
+    const lines = pool
+      ? Object.entries(pool).map(([id, q]) => [id, finiteWholePickupAmount(q)]).filter(([, q]) => q > 0)
+      : [];
+    if (lines.length) {
+      const parts = lines.slice(0, 3).map(([id, q]) => {
+        const c = COMMODITY_BY_ID.get(id);
+        const label = (c && c.name) || String(id).replace(/^cmdty_/, '').replace(/_/g, ' ');
+        return `${label} ×${q}`;
+      });
+      facts.push(`Holds ${parts.join(', ')}`);
+    } else if (d.commodityId) {
+      const c = COMMODITY_BY_ID.get(d.commodityId);
+      const label = (c && c.name) || String(d.commodityId);
+      const amount = finiteWholePickupAmount(d.amount);
+      facts.push(`Holds ${label}${amount > 0 ? ` ×${amount}` : ''}`);
+    } else if (t.type === 'wreck') {
+      facts.push('Salvageable');
+    }
+  } else if (Number.isFinite(t.mass) && t.mass > 0) {
+    facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);
+  }
+  const ownerName = typeof d.ownerName === 'string' && d.ownerName ? d.ownerName
+    : (typeof d.owner === 'string' && d.owner
+      && !(state && state.entities && typeof state.entities.get === 'function' && state.entities.get(d.owner))
+      ? d.owner : null);
+  if (ownerName) facts.push(`Owner: ${ownerName}`);
+  const interaction = interactionProfileForEntity(t);
+  if (interaction.hazardous) facts.push('Hazard');
+  const lane = initialMouseToolLane(state, t.id);
+  const eligible = isBeamTargetEligible(t, state);
+  const beamRange = beamRangeFor(p, state);
+  let action;
+  if (lane === 'beam') {
+    if (!eligible) {
+      action = d.respawnAt != null ? 'Beam depleted' : 'Beam unavailable';
+    } else if (beamRange != null && dist <= beamRange + (t.radius || 0)) {
+      action = `Hold RMB · ${beamVerbWordFor(t)}`;
+    } else {
+      action = 'Out of beam range';
+    }
+  } else if (lane === 'sling') {
+    action = 'Hold RMB · aim sling';
+  } else {
+    action = 'Inspect only';
+  }
+  facts.push(action);
+  return facts.join(' · ');
+}
+
 export function createTargetPanel(ctx) {
   const { state, bus } = ctx;
   const el = document.createElement('div');
@@ -470,6 +546,7 @@ export function createTargetPanel(ctx) {
   const elIntent = el.querySelector('.sf-target__intent');
   const elCondition = el.querySelector('.sf-target__condition');
   const elRange = el.querySelector('.sf-target__range');
+  const elObject = el.querySelector('.sf-target__object');
   const elEngaged = el.querySelector('.sf-target__engaged');
   const elEngagedGlyph = elEngaged.querySelector('[data-glyph]');
   const elEngagedTxt = elEngaged.querySelector('[data-txt]');
@@ -480,6 +557,7 @@ export function createTargetPanel(ctx) {
   let lastIntelKey = null;
   let lastComponentKey = null;
   let lastConditionKey = null;
+  let lastObjectKey = null;
 
   // PQ-015: the component chip is the reachable (DOM) trigger for sub-selecting a target component.
   // pointer-events:auto is set inline so the chip is clickable even inside a pointer-events:none HUD
@@ -522,10 +600,11 @@ export function createTargetPanel(ctx) {
     const gunRead = engagedContactReadout(state);
     const t = gunRead.subject;
     const tid = gunRead.subjectId;
-    if (!t || !t.alive) {
+    if (!t || t.alive === false || !t.pos) {
       setPanelDisplay('none');
       lastTargetId = null;
       lastEngagedKey = null;
+      lastObjectKey = null;
       return;
     }
     setPanelDisplay('block');
@@ -724,6 +803,14 @@ export function createTargetPanel(ctx) {
         lastConditionKey = null;
         if (elCondition.style.display !== 'none') elCondition.style.display = 'none';
       }
+      const objectLine = objectInfoLine(t, state, p, dist);
+      const objectKey = `${tid}:${objectLine}`;
+      if (objectKey !== lastObjectKey) {
+        lastObjectKey = objectKey;
+        setText(elObject, objectLine);
+        const show = objectLine ? 'block' : 'none';
+        if (elObject.style.display !== show) elObject.style.display = show;
+      }
       // Threat badge. Tier drives a data attribute so colour AND the printed word both carry it --
       // never colour alone (grammar: no state may be colour-only).
       // contactThreatTier returns a NUMBER 0..3 keyed off mass (scanner.js THREAT_MASS_TIERS),
@@ -752,7 +839,9 @@ export function createTargetPanel(ctx) {
       const distText = dist > 1000 ? (dist / 1000).toFixed(1) + 'k wu' : Math.round(dist) + ' wu';
       if (distText !== lastDistText) { elDist.textContent = distText; lastDistText = distText; }
       // closing speed = -dot(relVel, normalize(relPos)); positive = approaching
-      const rvx = t.vel.x - p.vel.x, rvz = t.vel.z - p.vel.z;
+      const tv = t.vel || ZERO_VEL;
+      const pv = p.vel || ZERO_VEL;
+      const rvx = tv.x - pv.x, rvz = tv.z - pv.z;
       const inv = dist > 0.001 ? 1 / dist : 0;
       const closing = -((rvx * dx + rvz * dz) * inv);
       const closeText = Math.abs(Math.round(closing)) + ' wu/s';

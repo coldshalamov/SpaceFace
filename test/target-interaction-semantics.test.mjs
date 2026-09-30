@@ -228,3 +228,63 @@ test('B keeps the generic no-target drill guidance when no semantic target exist
   assert.match(latestToast(h.events), /No asteroid targeted/i);
   h.input.dispose();
 });
+
+test('object readout advertises only finite whole cargo quantities and an honest mass', () => {
+  const stateFor = (e) => ({ entities: new Map([[e.id, e]]), entityList: [e], player: {}, playerId: 'player' });
+  const lineFor = (e, extra = {}) =>
+    targetPanel.objectInfoLine(Object.assign(e, extra), stateFor(e), {}, 50);
+
+  const wreck = entity('w1', 'wreck', {
+    salvagePool: {
+      cmdty_ore_iron: 4,
+      cmdty_nan: NaN,
+      cmdty_inf: Infinity,
+      cmdty_str: '9',
+      cmdty_zero: 0,
+    },
+  });
+  const line = lineFor(wreck);
+  assert.match(line, /Iron Ore ×4/, `whole finite pool entries advertise: ${line}`);
+  assert.ok(!/Infinity|NaN/.test(line), `malformed quantities are never printed: ${line}`);
+
+  const ghost = entity('w2', 'wreck', {
+    salvagePool: { cmdty_inf: Infinity, cmdty_str: '9', cmdty_zero: 0 },
+  });
+  const ghostLine = lineFor(ghost);
+  assert.ok(!/Holds/.test(ghostLine), `no Holds line when every quantity is malformed: ${ghostLine}`);
+  assert.match(ghostLine, /Salvageable/, `the wreck still reports its honest class: ${ghostLine}`);
+
+  const frac = entity('w3', 'payload', { salvagePool: { cmdty_ore_iron: 2.7 } });
+  const fracLine = lineFor(frac);
+  assert.match(fracLine, /Iron Ore ×2/,
+    `a fractional pool advertises the actual whole units only: ${fracLine}`);
+
+  const pod = entity('p1', 'pickup', { commodityId: 'cmdty_ore_iron', amount: Infinity });
+  const podLine = lineFor(pod);
+  assert.match(podLine, /Holds Iron Ore(?! ×)/,
+    `a malformed amount shows the commodity without a count: ${podLine}`);
+  assert.ok(!/Infinity/.test(podLine));
+
+  const station = entity('s1', 'station', {});
+  const stationLine = lineFor(station, { mass: 5000 });
+  assert.match(stationLine, /Mass 5000/, `a finite actual mass prints plainly: ${stationLine}`);
+  assert.ok(!/\d+t\b/.test(stationLine), `no invented tonnes unit: ${stationLine}`);
+
+  const badMass = entity('s2', 'station', {});
+  const badLine = lineFor(badMass, { mass: Infinity });
+  assert.ok(!/Mass|Infinity/.test(badLine), `non-finite mass prints nothing: ${badLine}`);
+});
+
+test('a pending or unavailable authored body reports an honest appearance status', () => {
+  const stateFor = (e) => ({ entities: new Map([[e.id, e]]), entityList: [e], player: {}, playerId: 'player' });
+  const ship = entity('npc', 'ship', { name: 'Inspection Tender' });
+  ship.presentationAdmission = 'pending';
+  assert.match(targetPanel.objectInfoLine(ship, stateFor(ship), {}, 50),
+    /Appearance loading/i, 'the selected pending ship names its loading state');
+  ship.presentationAdmission = 'unavailable';
+  assert.match(targetPanel.objectInfoLine(ship, stateFor(ship), {}, 50),
+    /Appearance unavailable/i, 'the unavailable body says so instead of an empty row');
+  ship.presentationAdmission = 'ready';
+  assert.equal(targetPanel.objectInfoLine(ship, stateFor(ship), {}, 50), '',
+    'a ready ship keeps the plain object row');
+});
