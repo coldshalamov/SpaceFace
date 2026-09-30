@@ -63,7 +63,70 @@ export function restorePrepareSaveJson(raw, currentVersion) {
   const player = envelope.data.entities && envelope.data.entities.player;
   if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
   if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
-  return { ok: true, version: versionRead.version, env: envelope };
+  const preflight = preflightSaveImport(envelope);
+  if (!preflight.ok) return preflight;
+  return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+
+// Full-envelope graph bound in the worker so the multi-MB walk never reaches the main thread.
+// Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
+const PREFLIGHT_MAX_DEPTH = 64;
+const PREFLIGHT_MAX_NODES = 200_000;
+const PREFLIGHT_MAX_COLLECTION_ITEMS = 50_000;
+const PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2_048;
+export function preflightSaveImport(value) {
+  const persistent = value && typeof value === 'object'
+    && value.data && typeof value.data === 'object'
+    && value.data.entities && typeof value.data.entities === 'object'
+    ? value.data.entities.persistent
+    : null;
+  if (Array.isArray(persistent) && persistent.length > PREFLIGHT_MAX_PERSISTENT_ENTITIES) {
+    return { ok: false, reason: 'import_persistent_entity_limit',
+      limit: PREFLIGHT_MAX_PERSISTENT_ENTITIES, actual: persistent.length };
+  }
+  const active = new WeakSet();
+  const stack = [{ value, depth: 0, exit: false }];
+  let nodes = 0;
+  while (stack.length) {
+    const frame = stack.pop();
+    const current = frame.value;
+    if (frame.exit) {
+      active.delete(current);
+      continue;
+    }
+    if (frame.depth > PREFLIGHT_MAX_DEPTH) {
+      return { ok: false, reason: 'import_depth_limit', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    nodes++;
+    if (nodes > PREFLIGHT_MAX_NODES) {
+      return { ok: false, reason: 'import_node_limit', limit: PREFLIGHT_MAX_NODES, actual: nodes };
+    }
+    if (current === null || typeof current !== 'object') continue;
+    if (active.has(current)) {
+      return { ok: false, reason: 'import_cycle', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    active.add(current);
+    stack.push({ value: current, depth: frame.depth, exit: true });
+    if (Array.isArray(current)) {
+      if (current.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+        return { ok: false, reason: 'import_collection_limit',
+          limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: current.length };
+      }
+      for (let i = current.length - 1; i >= 0; i--) {
+        stack.push({ value: current[i], depth: frame.depth + 1, exit: false });
+      }
+      continue;
+    }
+    const keys = Object.keys(current);
+    if (keys.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+      return { ok: false, reason: 'import_collection_limit',
+        limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: keys.length };
+    }
+    for (let i = keys.length - 1; i >= 0; i--) {
+      stack.push({ value: current[keys[i]], depth: frame.depth + 1, exit: false });
+    }
+  }
+  return { ok: true, nodes };
 }
 
 export function handleSaveWorkerRequest(message) {
@@ -207,7 +270,68 @@ function restorePrepareSaveJson(raw, currentVersion) {
   var player = envelope.data.entities && envelope.data.entities.player;
   if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
   if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
-  return { ok: true, version: versionRead.version, env: envelope };
+  var preflight = preflightSaveImport(envelope);
+  if (!preflight.ok) return preflight;
+  return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+var PREFLIGHT_MAX_DEPTH = 64;
+var PREFLIGHT_MAX_NODES = 200000;
+var PREFLIGHT_MAX_COLLECTION_ITEMS = 50000;
+var PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2048;
+// Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
+function preflightSaveImport(value) {
+  var persistent = value && typeof value === 'object'
+    && value.data && typeof value.data === 'object'
+    && value.data.entities && typeof value.data.entities === 'object'
+    ? value.data.entities.persistent
+    : null;
+  if (Array.isArray(persistent) && persistent.length > PREFLIGHT_MAX_PERSISTENT_ENTITIES) {
+    return { ok: false, reason: 'import_persistent_entity_limit',
+      limit: PREFLIGHT_MAX_PERSISTENT_ENTITIES, actual: persistent.length };
+  }
+  var active = new WeakSet();
+  var stack = [{ value: value, depth: 0, exit: false }];
+  var nodes = 0;
+  while (stack.length) {
+    var frame = stack.pop();
+    var current = frame.value;
+    if (frame.exit) {
+      active.delete(current);
+      continue;
+    }
+    if (frame.depth > PREFLIGHT_MAX_DEPTH) {
+      return { ok: false, reason: 'import_depth_limit', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    nodes++;
+    if (nodes > PREFLIGHT_MAX_NODES) {
+      return { ok: false, reason: 'import_node_limit', limit: PREFLIGHT_MAX_NODES, actual: nodes };
+    }
+    if (current === null || typeof current !== 'object') continue;
+    if (active.has(current)) {
+      return { ok: false, reason: 'import_cycle', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    active.add(current);
+    stack.push({ value: current, depth: frame.depth, exit: true });
+    if (Array.isArray(current)) {
+      if (current.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+        return { ok: false, reason: 'import_collection_limit',
+          limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: current.length };
+      }
+      for (var i = current.length - 1; i >= 0; i--) {
+        stack.push({ value: current[i], depth: frame.depth + 1, exit: false });
+      }
+      continue;
+    }
+    var keys = Object.keys(current);
+    if (keys.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+      return { ok: false, reason: 'import_collection_limit',
+        limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: keys.length };
+    }
+    for (var j = keys.length - 1; j >= 0; j--) {
+      stack.push({ value: current[keys[j]], depth: frame.depth + 1, exit: false });
+    }
+  }
+  return { ok: true, nodes: nodes };
 }
 function now() {
   // Synchronous worker-task elapsed time. Do not use process/thread CPU clocks here: on Windows

@@ -1137,7 +1137,11 @@ export const world = {
   },
 
   _arrivalSliceEnabled(opts = {}) {
-    if (opts.restoreDurableRecords === true || opts.syncResidency === true) return false;
+    if (opts.syncResidency === true) return false;
+    // A restore still materializes the membership sector synchronously (durable records),
+    // but callers may opt its non-membership plan entries into the deferred queue — the
+    // restore generator drains them across its frame yields instead of in one chunk.
+    if (opts.restoreDurableRecords === true) return opts.sliceNeighbors === true;
     return !!(this.state && this.state.world && this.state.world.sliceArrival === true);
   },
 

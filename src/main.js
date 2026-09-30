@@ -164,6 +164,20 @@ async function boot() {
       },
     });
     SF_DEBUG_ONLY: if (SF_DEBUG) window.__SF_BOOT_INIT__ = bootInitMetrics;
+    // Kick SG-02 backend bring-up the moment the saved envelope decodes: the whole chunked
+    // restore then overlaps WASM boot instead of the D26 gate waiting on a cold start.
+    // Boot-time only — a mid-flight restore keeps the finalize-time kick so the live
+    // authority is never re-armed under the running sim. finalizeLoadedGame adopts the
+    // promise below (and kicks itself if this lane never ran).
+    let earlyContinuePhysicsPrep = null;
+    bus.on('save:envelopePrepared', () => {
+      if (state.mode === 'flight') return;
+      const physicsSystem = registry.get('physics');
+      if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
+      earlyContinuePhysicsPrep = Promise.resolve()
+        .then(() => physicsSystem.prepareBackend(state));
+      earlyContinuePhysicsPrep.catch(() => {});
+    });
     helpers.deferLoadedGameRestore = (restore) => {
       bus.emit('game:loadingProgress', {
         id: 'restoring-save',
@@ -191,9 +205,17 @@ async function boot() {
       });
       return token;
     };
-    helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(
-      state, bus, registry, runTransitionGuard, payload || {},
-    );
+    helpers.finalizeLoadedGame = (payload) => {
+      const inherited = earlyContinuePhysicsPrep;
+      earlyContinuePhysicsPrep = null;
+      return finalizeLoadedGame(
+        state,
+        bus,
+        registry,
+        runTransitionGuard,
+        { ...(payload || {}), physicsPrep: inherited },
+      );
+    };
     let loopController = null;
     const closeRuntime = createPresentationRuntimeCloser({
       stopPresentation() {
@@ -620,6 +642,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
         () => runTransitionGuard.isCurrent(transitionToken),
         bus,
+        'new-game',
       ),
     ),
     waitForWarmup: () => withLoadingGatePulse(
@@ -824,8 +847,10 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   // visuals/GPU chain below — the same overlap New Game gets from its scenePrepared
   // kick. save:loaded already rebound the player record before this function ran,
   // so the non-reset prepare only needs to resolve before the D26 gate at the end.
-  let continuePhysicsPrep = null;
-  {
+  // save:envelopePrepared may already have started it at envelope decode (payload.physicsPrep)
+  // — adopt that promise so a restore-time bring-up is never paid twice.
+  let continuePhysicsPrep = payload.physicsPrep || null;
+  if (!continuePhysicsPrep) {
     const physicsSystem = registry.get('physics');
     if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
       continuePhysicsPrep = Promise.resolve()
@@ -1090,7 +1115,7 @@ async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
 // running between waits, so a transient stall (host contention, driver-variant compile
 // burst) resolves inside the retry while a persistent stall still fails closed. Without
 // this a one-shot timeout lands the player on a frozen menu with a valid save (D31).
-async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurrent = null, bus = null) {
+async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurrent = null, bus = null, transition = 'continue') {
   let ready = await waitForInitialAuthoredVisuals(state, timeoutMs, isCurrent);
   if (ready || (isCurrent && !isCurrent())) return ready;
   console.warn('[SpaceFace] authored visuals staging stalled; retrying once before declaring startup failure', authoredVisualReadiness(state));
@@ -1100,7 +1125,7 @@ async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurren
       progress: 0.5,
       label: 'Building the opening scene',
       detail: 'Still placing ships and stations — giving it another moment',
-      transition: 'continue',
+      transition,
     });
   }
   ready = await waitForInitialAuthoredVisuals(state, AUTHORED_VISUAL_RETRY_TIMEOUT_MS, isCurrent);

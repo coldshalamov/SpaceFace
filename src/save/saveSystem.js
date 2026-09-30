@@ -1080,7 +1080,7 @@ export const save = {
       };
     }
     const t = nowMs();
-    this._updateIndex(slot, envelope);
+    this._updateIndex(slot, envelope, json);
     indexMs = nowMs() - t;
     return {
       ok: true,
@@ -1200,7 +1200,7 @@ export const save = {
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
-  _updateIndex(slot, envelope) {
+  _updateIndex(slot, envelope, raw = null) {
     try {
       // The fallback scanner is for Continue/list repair, not the write hot path. Re-validating every
       // primary and recovery envelope here made one autosave pay an O(all save bytes) index tax.
@@ -1215,7 +1215,13 @@ export const save = {
           return known && (known.name || known.id) || '';
         })
         : null;
-      idx[slot] = fromFile || liveSlotSummary(slot, envelope, this.state);
+      const card = fromFile || liveSlotSummary(slot, envelope, this.state);
+      // Fingerprint the exact bytes just verified by the write path. The fallback scan can then
+      // trust this card after one cheap blob hash — any post-write byte change (corruption,
+      // foreign writer) fails the hash and falls back to the full validate walk, so the
+      // corruption-hiding contract is unchanged for every blob the hash does not cover.
+      if (card && typeof raw === 'string') card._blobHash = fnv1a(raw);
+      idx[slot] = card;
       localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
     } catch (err) { /* index is best-effort; never fail a save over it */ }
   },
@@ -1254,7 +1260,7 @@ export const save = {
     const cache = this._slotIndexCache;
     if (cache && cache.sig === sig) return { ...cache.merged };
     const indexed = normalizeSlotIndex(this._readIndex());
-    const scanned = this._scanStoredSlots();
+    const scanned = this._scanStoredSlots(indexed);
     const recovered = this._scanRecoverySlots(scanned);
     const merged = mergeSlotIndexes(indexed, scanned);
     for (const slot in recovered) {
@@ -1268,11 +1274,18 @@ export const save = {
     for (const slot in merged) {
       if (!scanned[slot] && !recovered[slot]) delete merged[slot];
     }
+    // _blobHash is scan-internal bookkeeping — never publish it on slot cards.
+    for (const slot in merged) {
+      if (merged[slot] && merged[slot]._blobHash !== undefined) {
+        merged[slot] = Object.assign({}, merged[slot]);
+        delete merged[slot]._blobHash;
+      }
+    }
     this._slotIndexCache = { sig, merged };
     return { ...merged };
   },
 
-  _scanStoredSlots() {
+  _scanStoredSlots(indexed = {}) {
     const out = {};
     if (typeof localStorage === 'undefined') return out;
     try {
@@ -1281,7 +1294,22 @@ export const save = {
         if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
         const slot = key.slice(LS_PREFIX.length);
         if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
-        const prepared = this._prepareEnvelopeString(localStorage.getItem(key));
+        // The write path's index card is already envelope-accurate for this slot — trust it and
+        // Index cards written by _updateIndex carry the fingerprint of the bytes they were
+        // verified against. One fnv1a over the blob replaces the parse+preflight+migrate+
+        // stringify walk when the bytes are unchanged; anything else (missing fingerprint,
+        // foreign write, flipped byte) still pays the full validation so an unplayable slot
+        // is never advertised — the Continue resolver depends on that hiding contract.
+        const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
+        const raw = localStorage.getItem(key);
+        if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string'
+          && fnv1a(raw) === indexCard._blobHash) {
+          const trusted = Object.assign({}, indexCard);
+          delete trusted._blobHash;
+          out[slot] = trusted;
+          continue;
+        }
+        const prepared = this._prepareEnvelopeString(raw);
         if (!prepared.ok) continue;
         const meta = slotMetaFromEnvelope(slot, prepared.env);
         if (meta) out[slot] = meta;
@@ -1599,20 +1627,37 @@ export const save = {
    */
   primeAutosaveCapture() {
     if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
-    try {
-      for (const [key, read] of this._saveCapturePlan()) {
-        // The large-player path is deliberately warmed by its bounded production batches. Running
-        // the synchronous compatibility serializer here would reintroduce the same loading brick.
-        if (key === 'player' && this._shouldCapturePlayerIncrementally()) continue;
-        read();
+    const plan = this._saveCapturePlan();
+    const incrementalPlayer = this._shouldCapturePlayerIncrementally();
+    const runSlice = (index) => {
+      try {
+        const started = workNowMs();
+        while (index < plan.length) {
+          const [key, read] = plan[index++];
+          // The large-player path is deliberately warmed by its bounded production batches.
+          // Running the synchronous compatibility serializer here would reintroduce the same
+          // loading brick.
+          if (key === 'player' && incrementalPlayer) continue;
+          read();
+          if (workNowMs() - started >= AUTOSAVE_TARGET_SLICE_MS) break;
+        }
+      } catch (error) {
+        // Save reliability does not depend on preparation. A later real save still owns its
+        // normal error receipt and defensive fallback behavior.
+        console.warn('[save] autosave capture preparation failed', error);
+        return false;
+      }
+      if (index < plan.length) {
+        // Same macrotask cadence the autosave capture slices use: bounded reads between
+        // painted frames instead of one ~50-read monolith at the end of the restore. The warm
+        // only exists for loading mode; once flight starts, the first real autosave reads
+        // again anyway, so a stale slice simply stops.
+        if (this.state.mode !== 'loading' || !this._hasPlayerEntity()) return true;
+        this._scheduleAutosaveWork(() => runSlice(index));
       }
       return true;
-    } catch (error) {
-      // Save reliability does not depend on preparation. A later real save still owns its normal
-      // error receipt and defensive fallback behavior.
-      console.warn('[save] autosave capture preparation failed', error);
-      return false;
-    }
+    };
+    return runSlice(0);
   },
 
   _captureAutosaveSlice(job, capture) {
@@ -2602,7 +2647,7 @@ export const save = {
   _autosaveWriteIndex(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope);
+    this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope, snapshot.json);
     const sliceMs = workNowMs() - started;
     tx.indexMs += sliceMs;
     this._pushAutosaveSlice(tx, 'storage_write_index', sliceMs);
@@ -2763,7 +2808,7 @@ export const save = {
         try {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
-          if (promoted) this._updateIndex(slot, backup.env);
+          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
           if (promoted) this._queueSharedStoreMirror();
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this.bus.emit('save:recovered', {
@@ -2850,7 +2895,7 @@ export const save = {
         try {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
-          if (promoted) this._updateIndex(slot, backup.env);
+          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
           if (promoted) this._queueSharedStoreMirror();
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this.bus.emit('save:recovered', {
@@ -2908,8 +2953,13 @@ export const save = {
         const versionRead = readSaveVersion(env.version);
         if (!versionRead.ok) return versionRead;
         const ver = versionRead.version;
-        const preflight = preflightSaveImport(env);
-        if (!preflight.ok) return preflight;
+        // The worker's restore_prepare already ran the full-graph bound (preflighted flag);
+        // an absent marker keeps the main-thread walk as the fallback for any worker build
+        // that doesn't include it.
+        if (prepared.preflighted !== true) {
+          const preflight = preflightSaveImport(env);
+          if (!preflight.ok) return preflight;
+        }
         // env.data is the worker's private structured clone: migrations may mutate it in place.
         const data = env.data;
         // The parse+checksum already ran in the worker; preflight/migrations/normalize stay on
@@ -3241,6 +3291,20 @@ export const save = {
     return this._closeRestoreSession(s, restoreError);
   },
 
+  // The Continue bar otherwise sits at its 0.05 seed through the whole chunked restore leg
+  // (the async lane already paints a frame between chunks — these emits give that paint real
+  // numbers). Same event as the rest of the boot timeline; the sync lane emits identically.
+  _reportRestoreProgress(progress, detail) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('game:loadingProgress', {
+      id: 'restoring-save',
+      progress,
+      label: 'Restoring flight state',
+      detail,
+      transition: 'continue',
+    });
+  },
+
   _restoreFrameYield() {
     if (typeof requestAnimationFrame !== 'function') {
       return new Promise((resolve) => setTimeout(resolve, 0));
@@ -3314,6 +3378,7 @@ export const save = {
 
       // 3. clear ALL transient entities (dispose meshes via entity:destroyed) and reset id allocator.
       this._clearEntities();
+      this._reportRestoreProgress(0.08, 'Clearing the old sector');
       yield 'cleared';
 
       // 4. restore non-spatial subtrees (deps first).
@@ -3333,6 +3398,7 @@ export const save = {
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
       this._callDeserialize('scanner', data.signalInvestigation);
       this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
+      this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 
       // 5. spawn the saved player entity (fresh id) and adopt it.
@@ -3376,11 +3442,24 @@ export const save = {
         }
       }
       if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
-        worldSys.enterSector(sectorId, { restoreDurableRecords: true });
+        worldSys.enterSector(sectorId, { restoreDurableRecords: true, sliceNeighbors: true });
       }
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
+      this._reportRestoreProgress(0.17, 'Rebuilding the saved sector');
       yield 'sector-entered';
+      // The restore plan deferred non-membership materialization onto _pendingResidency (the
+      // membership sector already ran synchronously with durable records). Drain one plan entry
+      // per restore yield so a mature save's neighbor materialization spreads across frames
+      // instead of landing inside this chunk — plan order is preserved, so the post-drain state
+      // is identical to the synchronous plan before later chunks read neighbor sectors.
+      if (worldSys && typeof worldSys._drainResidencyQueue === 'function') {
+        while (worldSys._pendingResidency && worldSys._pendingResidency.length) {
+          worldSys._drainResidencyQueue();
+          this._reportRestoreProgress(0.18, 'Materializing nearby sectors');
+          yield 'residency-drained';
+        }
+      }
 
       // The frame is runtime-only. Derive it from the restored global player pose before any
       // persistent actor or physics body can be created at an unnecessarily large local offset.
@@ -3393,6 +3472,7 @@ export const save = {
       // 10. restore persistent saved actors after sector regeneration, which despawns non-player
       // entities from the previous live sector.
       this._spawnPersistentEntities(data.entities && data.entities.persistent, entityIdRemap);
+      this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
       yield 'persistent-spawned';
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
@@ -3430,6 +3510,7 @@ export const save = {
       this._callDeserialize('claims', data.claims);
       this._callDeserialize('asteroidSites', data.sites);
       this._callDeserialize('asteroidFormations', data.formations);
+      this._reportRestoreProgress(0.22, 'Restoring world memory');
       yield 'deserialized-tail';
       this._callDeserialize('aceMemory', data.aceMemory);
       this._callDeserialize('lossLedger', data.lossLedger);
@@ -3516,6 +3597,7 @@ export const save = {
         this.bus.emit('mode:changed', { mode: state.mode, previousMode });
       }
 
+      this._reportRestoreProgress(0.24, 'Priming the flight deck');
       yield 'pre-loaded';
       this.bus.emit('save:loaded', {
         slot,

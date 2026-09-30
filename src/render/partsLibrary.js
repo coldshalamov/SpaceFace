@@ -2616,6 +2616,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       slot: authoredPayloadSlotForEntity(entity),
       optional: true,
+      admissionDeadline: true,
       residencyOwner: options.residencyOwner,
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
@@ -4823,13 +4824,16 @@ function queuedGlassLawJobStillNeeded(state, job) {
 }
 function steadyFlightShipCanPassBusyPlace(state) {
   if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true
-      || state.inFlight !== 1) return false;
+      || state.inFlight < 1) return false;
   const live = authoredRuntimeState();
   if (!live || live.mode !== 'flight') return false;
   if (!state.jobs.some((job) => queuedGlassLawJobStillNeeded(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
-  return active.length === 1 && active[0].entity?.type !== 'ship';
+  // Any count works: during the concurrency-2 opening window (or an overlap transition) a
+  // ship can sit behind two ambient jobs. Passing whenever NO slot-holder is a ship feeds
+  // the ship lane; a ship already in-flight makes the pass a no-op anyway.
+  return active.length > 0 && active.every((job) => job.entity?.type !== 'ship');
 }
 
 // Steady flight runs the serial lane at concurrency 1, so a job whose inner await never settles
@@ -7408,6 +7412,12 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
         finishDecodeAdmission(renderer, diagnostic);
       }
       if (record) records.push(record);
+      // File boundary: same pacing contract as the compose/compile stages — in flight a
+      // multi-file plan must let a presented frame land between serial decode+upload units
+      // instead of stacking one uninterrupted block across a visible beat.
+      if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+        try { await options.yieldToNextPresent(); } catch (_) { /* pacing only */ }
+      }
     }
     library.set(slot, records);
   }

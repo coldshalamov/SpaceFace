@@ -47,6 +47,20 @@ export function normalizeIntent(raw) {
   };
 }
 
+// Durable records store an already-normalized intent object; per-tick evaluators (the
+// far-ledger sweep, render-side time tests) re-pay the {...parameters} spread every call
+// without it. WeakMap the raw object to its normalized spec — identical fields, shared
+// identity. Callers must not mutate the returned spec.
+const _normalizedIntentCache = new WeakMap();
+
+function normalizeIntentShared(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (_normalizedIntentCache.has(raw)) return _normalizedIntentCache.get(raw);
+  const spec = normalizeIntent(raw);
+  _normalizedIntentCache.set(raw, spec);
+  return spec;
+}
+
 export function ballisticDrift(pos, vel, rot, angVel, dt) {
   const t = Math.max(0, finite(dt));
   const px = finite(pos && pos.x);
@@ -61,12 +75,31 @@ export function ballisticDrift(pos, vel, rot, angVel, dt) {
   };
 }
 
-export function itineraryProgress(intent, simTime) {
-  const spec = normalizeIntent(intent);
+export function itineraryProgressFromSpec(spec, simTime) {
   if (!spec) return 0;
   const span = spec.endT - spec.startT;
   if (!(span > 0)) return simTime >= spec.endT ? 1 : 0;
   return clamp((finite(simTime) - spec.startT) / span, 0, 1);
+}
+
+export function itineraryProgress(intent, simTime) {
+  return itineraryProgressFromSpec(normalizeIntent(intent), simTime);
+}
+
+// Allocation-free twin of itineraryPosition for per-tick evaluators: the normalized spec is
+// memoized on the intent object (see normalizeIntentShared) and the result lands in `out`.
+export function itineraryPositionInto(intent, simTime, out) {
+  const spec = normalizeIntentShared(intent);
+  if (!spec || !out) return null;
+  const from = spec.parameters.from;
+  const to = spec.parameters.to;
+  if (!from || !to
+    || !Number.isFinite(from.x) || !Number.isFinite(from.z)
+    || !Number.isFinite(to.x) || !Number.isFinite(to.z)) return null;
+  const u = itineraryProgressFromSpec(spec, simTime);
+  out.x = finite(from.x) + (finite(to.x) - finite(from.x)) * u;
+  out.z = finite(from.z) + (finite(to.z) - finite(from.z)) * u;
+  return out;
 }
 
 export function itineraryPosition(intent, simTime) {
@@ -140,6 +173,66 @@ export function advanceWorldRecord(record, fromT, toT, context = {}) {
     lastObservedT: b,
     abstractTier: record.abstractTier || SIM_TIER.S2_ABSTRACT,
   };
+}
+
+/**
+ * In-place twin of advanceWorldRecord for per-tick catch-up paths: identical math and
+ * field values, but advances the record it is given instead of paying a {...record}
+ * spread plus fresh pos/vel/drift literals every tick. pos/vel objects mutate in place
+ * (collect re-reads each frame; serialization reads fields). Null-safe like the original.
+ */
+export function advanceWorldRecordInto(record, fromT, toT, context = {}) {
+  if (!record || typeof record !== 'object') return null;
+  const a = finite(fromT);
+  const b = finite(toT);
+  const dt = b - a;
+  if (!(dt > 0)) return record;
+  if (record.alive === false || record.outcome === 'destroyed' || record.outcome === 'defeated') {
+    return record;
+  }
+  if (context.unresolvedPlayerCombat === true) {
+    record.abstractTier = SIM_TIER.S0_EXACT;
+    return record;
+  }
+  const pos = record.pos && typeof record.pos === 'object'
+    ? record.pos
+    : (record.pos = { x: 0, z: 0 });
+  const vel = record.vel && typeof record.vel === 'object'
+    ? record.vel
+    : (record.vel = { x: 0, z: 0 });
+  const intent = normalizeIntentShared(record.intent);
+  if (intent && (intent.kind === INTENT_KIND.TRAVEL || intent.kind === INTENT_KIND.ESCORT || intent.kind === INTENT_KIND.PATROL)) {
+    const along = itineraryPositionInto(record.intent, b, _itineraryScratch);
+    if (along) {
+      pos.x = along.x; pos.z = along.z;
+      vel.x = 0; vel.z = 0;
+    } else {
+      _driftInto(pos, vel, record, dt);
+    }
+  } else {
+    _driftInto(pos, vel, record, dt);
+  }
+  const regen = record.regeneration && typeof record.regeneration === 'object' ? record.regeneration : {};
+  record.shield = regenerateVital(record.shield, record.shieldMax, regen.shieldRate, dt);
+  record.hull = regenerateVital(record.hull, record.hullMax, regen.hullRate, dt);
+  record.lastExactT = b;
+  record.lastObservedT = b;
+  record.abstractTier = record.abstractTier || SIM_TIER.S2_ABSTRACT;
+  return record;
+}
+
+const _itineraryScratch = { x: 0, z: 0 };
+
+function _driftInto(pos, vel, record, dt) {
+  const t = Math.max(0, finite(dt));
+  const vx = finite(vel.x);
+  const vz = finite(vel.z);
+  pos.x = finite(pos.x) + vx * t;
+  pos.z = finite(pos.z) + vz * t;
+  vel.x = vx;
+  vel.z = vz;
+  record.rot = wrapAngle(finite(record.rot) + finite(record.angVel) * t);
+  record.angVel = finite(record.angVel);
 }
 
 export function advanceResourceBody(record, fromT, toT, context = {}) {

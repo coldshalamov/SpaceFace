@@ -87,6 +87,10 @@ import {
   attachSampleLayer,
 } from './sampleLibrary.js';
 
+// Sync-read options for the 0.1 s / 0.05 s cadence loops — entityNeedsExactAudio reads
+// fields synchronously, so one shared options object serves every call site.
+const _exactAudioOpts = { playerId: null };
+
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
 const D_FAR = TABLE_HEARING_FAR_WU;     // wu — silent / culled beyond the table
@@ -5847,6 +5851,10 @@ export const audio = {
     const rows = rt._remoteRows || (rt._remoteRows = []);
     rows.length = 0;
     if (Array.isArray(list) && player) {
+      // Row records pool across 0.1 s cadence runs: the loop stays one positional
+      // index into a stable backing array instead of a fresh {id,dist,…} per ship.
+      const rowPool = rt._remoteRowPool || (rt._remoteRowPool = []);
+      _exactAudioOpts.playerId = playerId;
       for (let i = 0; i < list.length; i++) {
         const entity = list[i];
         if (!entity || entity.alive === false || entity.id === playerId || !entity.pos) continue;
@@ -5855,24 +5863,34 @@ export const audio = {
         let throttle = 0;
         if (frame && Number.isFinite(frame.throttle)) throttle = Math.max(0, frame.throttle);
         else if (frame && Number.isFinite(frame.commandedThrottle)) throttle = Math.max(0, frame.commandedThrottle);
-        const exact = entityNeedsExactAudio(entity, { playerId }) === true;
-        rows.push({
-          id: entity.id,
-          dist: Math.hypot(entity.pos.x - player.x, entity.pos.z - player.z),
-          throttle,
-          exact,
-          entity,
-        });
+        const exact = entityNeedsExactAudio(entity, _exactAudioOpts) === true;
+        let row = rowPool[rows.length];
+        if (!row) {
+          row = { id: null, idKey: '', engKey: '', dist: 0, throttle: 0, exact: false, entity: null };
+          rowPool[rows.length] = row;
+        }
+        row.id = entity.id;
+        row.idKey = String(entity.id);
+        row.engKey = 'eng_' + row.idKey;
+        row.dist = Math.hypot(entity.pos.x - player.x, entity.pos.z - player.z);
+        row.throttle = throttle;
+        row.exact = exact;
+        row.entity = entity;
+        rows.push(row);
       }
     }
-    const chosen = pickRemoteEngines(rows, REMOTE_ENGINE_CAP, rt._remoteChosen || (rt._remoteChosen = []));
+    const chosen = pickRemoteEngines(
+      rows,
+      REMOTE_ENGINE_CAP,
+      rt._remoteChosen || (rt._remoteChosen = []),
+      rt._remotePickPool || (rt._remotePickPool = []),
+    );
     const want = rt._remoteWant || (rt._remoteWant = Object.create(null));
     for (const key in want) want[key] = false;
     for (let i = 0; i < chosen.length; i++) {
       const row = chosen[i];
-      const idKey = String(row.id);
-      want[idKey] = true;
-      const loopKey = 'eng_' + idKey;
+      want[row.idKey] = true;
+      const loopKey = row.engKey;
       const rate = remoteEnginePlaybackRate(row.id, row.entity.mass);
       let voice = loops[loopKey];
       if (!voice) {
@@ -5917,7 +5935,11 @@ export const audio = {
     const entities = this.state && this.state.entities;
     if (!entities || typeof entities.get !== 'function') return;
     const pp = this._playerPos();
-    const apply = (v) => {
+    _exactAudioOpts.playerId = this.state && this.state.playerId;
+    for (const k in rt.loops) this._applyLoopPosition(rt.loops[k], rt, entities, pp, now);
+  },
+
+  _applyLoopPosition(v, rt, entities, pp, now) {
       if (!v || v.trackId == null) return;
       const e = entities.get(v.trackId);
       if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) {
@@ -5934,7 +5956,7 @@ export const audio = {
         return;
       }
       const d = Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z);
-      const exact = entityNeedsExactAudio(e, { playerId: this.state && this.state.playerId });
+      const exact = entityNeedsExactAudio(e, _exactAudioOpts);
       const preserveRemote = v.busName === 'ui' || v.busName === 'combat';
       if (!preserveRemote && exact !== true) {
         if (v._audioResidencyActive !== false) {
@@ -6001,9 +6023,8 @@ export const audio = {
         const base = Number.isFinite(v._remoteRate) ? v._remoteRate : 1;
         this._setVoiceRate(v, base * factor);
       }
-    };
-    for (const k in rt.loops) apply(rt.loops[k]);
   },
+
 
   _gcVoices(now) {
     const rt = this.rt;

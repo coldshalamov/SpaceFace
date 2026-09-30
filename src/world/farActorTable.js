@@ -8,7 +8,7 @@ import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassif
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
 import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
-import { advanceWorldRecord, itineraryPosition, normalizeIntent } from './worldCatchup.js';
+import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
 import { resolveFarEncounters } from './farEncounterOutcomes.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
@@ -25,6 +25,8 @@ export function getFarEmptyQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const FAR_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+const _sweepPos = { x: 0, z: 0 };
 
 function entityIndexVersion(state) {
   const index = state && state.entityIndex;
@@ -334,17 +336,14 @@ export function catchUpFarRecord(rec, simTime, table = null) {
     rec.lastExactT = toT;
     return rec;
   }
-  const advanced = advanceWorldRecord(rec, fromT, toT);
+  // In-place advance: the per-tick sweep only needs the record's fields to land —
+  // advanceWorldRecordInto skips the {...record} spread + pos/vel/drift literals the
+  // allocating variant pays per row per tick. Field values are identical.
+  const advanced = advanceWorldRecordInto(rec, fromT, toT);
   if (!advanced) {
     rec.lastExactT = toT;
     return rec;
   }
-  rec.pos = advanced.pos ? { x: finite(advanced.pos.x), z: finite(advanced.pos.z) } : rec.pos;
-  rec.vel = advanced.vel ? { x: finite(advanced.vel.x), z: finite(advanced.vel.z) } : rec.vel;
-  rec.rot = finite(advanced.rot, rec.rot);
-  rec.angVel = finite(advanced.angVel, rec.angVel);
-  if (Number.isFinite(advanced.hull)) rec.hull = advanced.hull;
-  if (Number.isFinite(advanced.shield)) rec.shield = advanced.shield;
   rec.lastExactT = toT;
   rec.lastObservedT = toT;
   // A moved row must re-key the spatial grid — otherwise query discs centred on the
@@ -772,7 +771,9 @@ export function tickFarActors(state, helpers, bus) {
       if (!(drift > 0)) continue;
       // Itinerary intents hold the authoritative position (accelerating/decelerating
       // routes diverge from pure ballistic), so mirror advanceWorldRecord's predictor.
-      const along = rec.intent ? itineraryPosition(normalizeIntent(rec.intent), simTime) : null;
+      // rec.intent is already normalized at insert — the memoized into-variant drops the
+      // triple re-normalization + {x,z} literal this test paid per row per tick.
+      const along = rec.intent ? itineraryPositionInto(rec.intent, simTime, _sweepPos) : null;
       const px = along ? finite(along.x)
         : rec.pos.x + finite(rec.vel && rec.vel.x) * drift;
       const pz = along ? finite(along.z)

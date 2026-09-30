@@ -96,12 +96,15 @@ import {
   wholeShipVisualForEntity,
   resolve19305CensusAEntityPackagedFile,
   resolvePlaceFileForEntity,
+  authoredPayloadFileForEntity,
+  authoredPayloadSlotForEntity,
   PQ_193_05_WRECK_PACKAGED_FILES,
   PQ_193_05_DRONE_PACKAGED_FILE,
   PQ_193_05_GATE_PACKAGED_FILE,
   OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID,
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
+import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
@@ -159,6 +162,7 @@ import {
 } from '../world/presentationSources.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { itineraryPositionInto } from '../world/worldCatchup.js';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
@@ -474,6 +478,7 @@ const _viewBandOptions = {
   forceInner: false,
 };
 const _shadowCasterPoseOptions = { visualRadius: 1, extent: 300, mapSize: 1024 };
+const _shadowCastPoseGate = { poseApplied: false, visibilityChanged: false, policyRefreshed: false };
 const _allowCastScratch = {
   isPlayer: false,
   lodLevel: 'lod0',
@@ -883,11 +888,31 @@ function entityIsExplicitRenderFocus(entity, state) {
   return targetId != null && entity.id === targetId;
 }
 
+// Shelf-time pos for dormant ledger rows freezes at shelf; the sim's own freshness sweep
+// catches them up the same way — itinerary when the row carries an intent, ballistic
+// otherwise. Returns a shared scratch — callers must consume it before the next call.
+const _ledgerPredPos = { x: 0, z: 0 };
+function ledgerAwarePos(entity, state) {
+  if (!isPresentationLedgerRow(entity) || !Number.isFinite(entity.lastExactT)) return entity.pos;
+  const simTime = Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : ((state && state.tick) | 0) / 60;
+  const drift = Math.max(0, simTime - entity.lastExactT);
+  if (!(drift > 0)) return entity.pos;
+  if (entity.intent) {
+    const along = itineraryPositionInto(entity.intent, simTime, _ledgerPredPos);
+    if (along) return along;
+  }
+  _ledgerPredPos.x = (Number(entity.pos.x) || 0) + (Number(entity.vel && entity.vel.x) || 0) * drift;
+  _ledgerPredPos.z = (Number(entity.pos.z) || 0) + (Number(entity.vel && entity.vel.z) || 0) * drift;
+  return _ledgerPredPos;
+}
+
 function entityWithinPlayerRadius(entity, state, radius) {
   if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
-  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
   const visual = entityVisualCullRadius(entity);
   const reach = Math.max(0, Number(radius) || 0) + visual;
   return delta.x * delta.x + delta.z * delta.z <= reach * reach;
@@ -953,7 +978,7 @@ function entityHasAuthoredPendingRoot(entity) {
 function landmarkKeepDistanceWu(entity, state) {
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos || !entity || !entity.pos) return Infinity;
-  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
   return Math.hypot(delta.x, delta.z);
 }
 
@@ -1003,16 +1028,9 @@ function renderAdmissionEnv(state, out = _admissionEnv) {
 function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_HORIZON_SECONDS, padWu = 0) {
   const pos = entity && entity.pos;
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return Infinity;
-  let ex = pos.x;
-  let ez = pos.z;
-  if (entity.farResident === true && Number.isFinite(entity.lastExactT)) {
-    const simTime = Number.isFinite(state && state.simTime)
-      ? state.simTime
-      : ((state && state.tick) | 0) / 60;
-    const drift = Math.max(0, simTime - entity.lastExactT);
-    ex += (Number(entity.vel && entity.vel.x) || 0) * drift;
-    ez += (Number(entity.vel && entity.vel.z) || 0) * drift;
-  }
+  const ledgerPos = ledgerAwarePos(entity, state);
+  const ex = ledgerPos.x;
+  const ez = ledgerPos.z;
   const relVx = (Number(entity.vel && entity.vel.x) || 0) - env.pvx;
   const relVz = (Number(entity.vel && entity.vel.z) || 0) - env.pvz;
   // Presence radius, not the collision proxy: a big authored body's surface reaches
@@ -1645,8 +1663,9 @@ function entityIsOnReadableGlassScan(entity, state, scan) {
   const player = scan.player;
   if (!player || !player.pos || !entity.pos) return false;
   const glass = scan.glass;
-  _residencyLookDelta.x = (Number.isFinite(entity.pos.x) ? entity.pos.x : 0) - scan.lookOrigin.x;
-  _residencyLookDelta.z = (Number.isFinite(entity.pos.z) ? entity.pos.z : 0) - scan.lookOrigin.z;
+  const scanPos = ledgerAwarePos(entity, state);
+  _residencyLookDelta.x = (Number.isFinite(scanPos.x) ? scanPos.x : 0) - scan.lookOrigin.x;
+  _residencyLookDelta.z = (Number.isFinite(scanPos.z) ? scanPos.z : 0) - scan.lookOrigin.z;
   const band = classifyTableBand({
     dx: _residencyLookDelta.x,
     dz: _residencyLookDelta.z,
@@ -1753,7 +1772,7 @@ export function entityIsOnReadableGlass(entity, state) {
   if (!player || !player.pos || !entity.pos) return false;
   const cam = liveTableCamera(state);
   const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
-  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
@@ -1789,7 +1808,7 @@ function entityIsOnDeadlineGlass(entity, state) {
   if (!player || !player.pos || !entity.pos) return false;
   const cam = liveTableCamera(state);
   const g = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
-  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
   return classifyTableBand({
     dx: delta.x,
     dz: delta.z,
@@ -2427,12 +2446,29 @@ function kickDecodeRunwayAssets(owner, entities) {
     if (entity.type === 'ship' || entity.type === 'station') {
       pending.add(entity.id);
       started += 1;
-      const opts = entityMatchesWaveHullRunway(entity, state)
+      const wave = entityMatchesWaveHullRunway(entity, state);
+      const opts = wave
         ? { residencyRole: 'wave-hull-decode-runway' }
         : {};
       Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
         pending.delete(entity.id);
       });
+      // The decode runway warms the LIBRARY half only — a mounted substrate would otherwise
+      // still run compose+compile+upload at admission pick, which is the dominant
+      // marker-on-glass interval for inbound traffic hulls. Its boundary upgrade job is the
+      // same job relevance would enqueue, so starting it here stages the whole pipeline tail
+      // inside the runway window; the admission-time call then resolves 'authored' and exits.
+      const boundary = owner._meshes && owner._meshes.get(entity.id);
+      const boundaryData = boundary && boundary.userData;
+      if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
+          && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
+        try {
+          requestAuthoredUpgrade(boundary, renderer, owner.scene, {
+            residencyRole: wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare',
+            sectorId: (state.world && state.world.currentSectorId) || null,
+          });
+        } catch (_) { /* a refused request leaves the relevance trigger armed */ }
+      }
       warmKillHulkDecode(owner, entity);
     } else {
       // Non-ship packaged bodies have no authored plan — the decode is one file under its
@@ -2467,6 +2503,12 @@ function packagedDecodeFileForEntity(entity) {
     }
     const spec = packagedPropSpec(entity);
     if (spec && spec.file) return { file: spec.file, slot: spec.slot || 'place' };
+    // Explicit authored payloads (custody capsule, SP-07 spindle, yard-tug lots) bypass
+    // packagedPropSpec by contract — resolve their real file/slot so the runway, spawn,
+    // and save-envelope warm lanes decode them instead of the ambient class at admission.
+    if (hasExplicitAuthoredPayloadPresentation(entity)) {
+      return { file: authoredPayloadFileForEntity(entity), slot: authoredPayloadSlotForEntity(entity) };
+    }
     // Deployables and mid-flight dressing materializations (drones, gate stations, claim
     // outposts, site relays, POIs) never emit entity:spawned and resolve no packaged prop —
     // without the census/place resolvers they decode cold at admission and pop in.
@@ -5829,12 +5871,19 @@ export const render = {
     this._envMapSource = null;
     this._loadFoundryIbl();
     try {
-      // wait one frame so scene.background (an async-decoded CanvasTexture) is present, then bake
+      // Bake once on foundry-settle-or-deadline. The 120ms floor still covers a starfield
+      // background that decodes slower than the IBL fetch; a foundry that lands inside it is
+      // the PMREM source for the ONLY convolve — baking blind at 120ms and again on arrival
+      // paid two synchronous convolve stalls before the menu ever painted.
       const bakeEnv = () => {
         if (this._openingEnvFrozen === true) return;
         this._bakeEnv();
       };
-      scheduleTimeout(bakeEnv, 120); // let the starfield's async background decode first
+      const foundryReady = this._foundryIblPromise || Promise.resolve(null);
+      Promise.race([
+        foundryReady.catch(() => null),
+        new Promise((resolve) => scheduleTimeout(resolve, 120)),
+      ]).then(bakeEnv);
     } catch (_) { /* PMREM unavailable */ }
 
     // WebGL context-loss recovery. The browser fires webglcontextlost when the GPU driver resets
@@ -13459,12 +13508,13 @@ export const render = {
   // for the next env bake. Arrival during the frozen opening picture only banks the texture —
   // the unfreeze promotion below (or a context-restore force-bake) upgrades the live env.
   _loadFoundryIbl() {
-    loadFoundryIblTexture(THREE).then((texture) => {
+    this._foundryIblPromise = loadFoundryIblTexture(THREE).then((texture) => {
       if (!texture) return;
       if (!this._rendererLifecycle) { try { texture.dispose(); } catch (_) {} return; }
       this._foundryEnvTexture = texture;
       this._bakeEnv();
     });
+    this._foundryIblPromise.catch(() => {});
   },
 
   _bakeEnv(options = {}) {
@@ -13475,6 +13525,17 @@ export const render = {
         ? options.previousEnvMap
         : this._envMap;
       const disposePrevious = options.disposePrevious !== false;
+      // Same-source guard: a second arm of the source already baked (the init deadline racing
+      // foundry arrival, an explicit re-kick after a same-source settle) would only convolve to
+      // the identical cube — skip the stall outright. force: bakes (context restore, opening
+      // unfreeze promotion) bypass this since the current target may be dead GL state.
+      const earlyIblSource = resolveIblSource({
+        foundryTexture: this._foundryEnvTexture,
+        background: scene.background,
+      });
+      if (options.force !== true
+          && this._envMapTarget != null
+          && earlyIblSource === this._envMapSource) return;
       const pmrem = new THREE.PMREMGenerator(renderer);
       // Capture the IBL from the foundry HDRI when it has arrived, NOT from the live scene.
       //
@@ -14560,11 +14621,10 @@ export const render = {
       if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
         // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
         // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
-        if (shouldNoteRealtimeShadowCasterPose(mesh, {
-          poseApplied,
-          visibilityChanged,
-          policyRefreshed: shadowPolicyRefreshed,
-        })) {
+        _shadowCastPoseGate.poseApplied = poseApplied;
+        _shadowCastPoseGate.visibilityChanged = visibilityChanged;
+        _shadowCastPoseGate.policyRefreshed = shadowPolicyRefreshed;
+        if (shouldNoteRealtimeShadowCasterPose(mesh, _shadowCastPoseGate)) {
           _shadowCasterPoseOptions.visualRadius = lodRadius;
           _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
           _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
@@ -17140,6 +17200,17 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
   // parked body publishes dead reflections.
   for (const root of collectPreparedAuthoredCompileRoots(scene)) {
     if (root && typeof root.traverse === 'function') root.traverse(rebind);
+  }
+  // Whole-ship LOD demote keeps demoted-level roots retained-but-detached for instant
+  // swap-back — the same dead-reflection trap as parked authored roots. Walk every live
+  // boundary's retained set; the rebind guard makes double-visits a no-op.
+  for (const boundary of scene.children) {
+    const lodRoots = boundary && boundary.userData && boundary.userData.wholeShipLodRoots;
+    if (!lodRoots) continue;
+    for (const level in lodRoots) {
+      const root = lodRoots[level];
+      if (root && root !== boundary && typeof root.traverse === 'function') root.traverse(rebind);
+    }
   }
 }
 

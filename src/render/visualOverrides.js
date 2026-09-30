@@ -542,18 +542,19 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   const spec = packagedPropSpec(entity);
   if (!spec || !spec.file) return root;
   const url = packagedPartUrl(spec.file);
-  const hideImmediately = spec.hideImmediately !== false;
   // Same-envelope prop: the packaged body is fitted to packagedFitRadius, so the procedural
   // prop stays drawn through admission (the geology-skin precedent — hiding it produced a
   // guaranteed pop-in window while the job queued/decoded/compiled). The publish path re-hides
   // the fallback at swap; the flag exempts this boundary from the authoredPending submit deny.
-  if (hideImmediately) root.userData.authoredPendingFallbackDrawn = true;
+  // The pending stamp rides along for every spec family, not only hideImmediately ones: it is
+  // what puts this root inside meshNeedsAuthoredDecode so the decode runway warms the file
+  // before the frame needs it, and it keeps the stand-in submitted once start() flips the
+  // state to 'loading'. Without it the generic tow payload blinks out for the whole window.
+  root.userData.authoredPendingFallbackDrawn = true;
   root.userData.authoredPackageUrl = url;
   root.userData.authoredPackageSlot = spec.slot || slotForPackagedFile(spec.file);
-  if (hideImmediately) {
-    root.userData.authoredAssetState = 'awaiting-authored-admission';
-    root.userData.authoredVisualRoot = 'none-pending-admission';
-  }
+  root.userData.authoredAssetState = 'awaiting-authored-admission';
+  root.userData.authoredVisualRoot = 'none-pending-admission';
   root.userData.renderContract = {
     ...(root.userData.renderContract || {}),
     assetBoundary: 'packaged 47-A / TOW body',
