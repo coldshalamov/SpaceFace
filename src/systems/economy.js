@@ -959,7 +959,7 @@ export const economy = {
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
-    bus.on('economy:chargeCredits', (p) => this.chargeCredits((p && p.amount) || 0, p && p.reason, p));
+    bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p));
     bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
     bus.on('economy:payBounty', (p) => {
       const payload = (p && typeof p === 'object') ? p : {};
@@ -2494,6 +2494,36 @@ export const economy = {
       }
     }
     return p.credits;
+  },
+
+  // NXB-009 — optional exact-payment requests. A requireFull payload carries the balance it
+  // was priced against (expectedCredits), a caller commit() performing an already-validated
+  // no-throw replacement, and a result slot. The replacement runs BEFORE the charge
+  // notification and only the sole writer moves money — so a missing listener, a stale
+  // balance, or a short balance rejects with payload.result=false and nothing mutates.
+  // Ordinary payloads keep the legacy clamp-at-zero path untouched.
+  _onChargeCreditsRequest(p) {
+    if (!p || p.requireFull !== true) {
+      return this.chargeCredits((p && p.amount) || 0, p && p.reason, p);
+    }
+    // A settled exact request stays settled: a second listener must never reopen it into a
+    // reported rejection after money already moved.
+    if (p.result === true) return this.state.player.credits;
+    p.result = false;
+    if (this._exactChargeInFlight) return this.state.player.credits;
+    const amount = Number(p.amount);
+    const live = normalizeCredits(this.state.player && this.state.player.credits);
+    if (!Number.isSafeInteger(amount) || amount < 0) return live;
+    if (live !== p.expectedCredits || live < amount || typeof p.commit !== 'function') return live;
+    this._exactChargeInFlight = true;
+    try {
+      if (p.commit() !== true) return live;
+      this.chargeCredits(amount, p.reason, p);
+      p.result = true;
+    } finally {
+      this._exactChargeInFlight = false;
+    }
+    return this.state.player.credits;
   },
 
   /** PQ-155.02 — spilled named cargo can levy restitution. No levy, no debit. */

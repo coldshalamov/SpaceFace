@@ -198,6 +198,214 @@ function considerShove(rows, id, dx, dz, mag) {
   if (mag > rows[weakest].mag) rows[weakest] = Object.freeze({ id, dx, dz, mag });
 }
 
+// ---- atomic rack preparation (NXB-009) --------------------------------------
+// One preparation = re-fit + reload + optional socket extension under a single yard
+// charge. previewBombPreparation is PURE: it reads normalized copies and never mutates
+// state. The system freezes a plan into a quote pinned to a live-state fingerprint;
+// commit re-derives the plan from the registered options and pays through the exact
+// economy:chargeCredits seam, so money and rack move together or not at all.
+function prepCreditsOf(state) {
+  const n = Number(state && state.player && state.player.credits);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+}
+function prepDockIdentity(state) {
+  const ui = state && state.ui;
+  return ui && ui.docked === true && typeof ui.dockedStationId === 'string' ? ui.dockedStationId : null;
+}
+function prepHullIdentity(state) {
+  const p = state && state.player;
+  const idx = Number(p && p.activeShipIndex) || 0;
+  const ship = Array.isArray(p && p.ownedShips) ? p.ownedShips[idx] : null;
+  return `${idx}:${(ship && ship.defId) || ''}`;
+}
+// Normalized rack read without the in-place writes ensureRuntime performs — cells beyond
+// the socket count are reported as hangar overflow instead of being moved.
+function prepReadRack(rt) {
+  const rack = rt && rt.rack && typeof rt.rack === 'object' ? rt.rack : null;
+  let sockets = Math.floor(Number(rack && rack.sockets));
+  if (!Number.isSafeInteger(sockets) || sockets < 1) sockets = BOMB_RACK.socketsBase;
+  const cells = new Array(sockets).fill(null);
+  const overflow = {};
+  const src = rack && Array.isArray(rack.cells) ? rack.cells : [];
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i], def = c && BOMB_DEFS[c.id];
+    if (!def) continue;
+    const count = Math.max(0, Math.min(def.magazine, Math.floor(Number(c.count)) || 0));
+    if (i < sockets) cells[i] = { id: def.id, count };
+    else if (count > 0) overflow[def.id] = (overflow[def.id] || 0) + count;
+  }
+  return { sockets, cells, overflow };
+}
+function prepReadStock(rt) {
+  const stock = {};
+  const src = rt && rt.stock && typeof rt.stock === 'object' && !Array.isArray(rt.stock) ? rt.stock : {};
+  for (const [id, n] of Object.entries(src)) {
+    const raw = Number(n);
+    const count = Number.isFinite(raw) ? Math.floor(raw) : 0;
+    // Non-finite or beyond-safe-integer entries count as zero — an Infinity hangar row
+    // must never read as unlimited free units. Fractions floor (2.9 → 2).
+    if (BOMB_DEFS[id] && Number.isSafeInteger(count) && count > 0) stock[id] = count;
+  }
+  return stock;
+}
+
+/**
+ * Pure preparation plan. options: { socketCount = current, payloadIds = current cell ids,
+ * purchaseMissing = true }. Retained cells keep their rounds; changed/removed cells return
+ * every unit to the hangar BEFORE allocation; owned matching units load before any
+ * purchased unit is priced, in deterministic socket order. The plan reserves the authored
+ * socket weld and one authored restock fee when loading actually happens — nothing moved,
+ * no fee. Insufficient credits fill only affordable whole units, still in socket order.
+ */
+export function previewBombPreparation(state, options = {}) {
+  const rt = state && state.bombs;
+  const credits = prepCreditsOf(state);
+  const stationId = prepDockIdentity(state);
+  const read = prepReadRack(rt);
+  const curSockets = read.sockets;
+  const curCells = read.cells;
+  const stock = prepReadStock(rt);
+  for (const [id, n] of Object.entries(read.overflow)) stock[id] = (stock[id] || 0) + n;
+  const invalid = (reason) => ({ ok: false, reason, credits, stationId });
+  const opt = options && typeof options === 'object' ? options : {};
+  const desiredSockets = opt.socketCount == null ? curSockets : opt.socketCount;
+  if (!Number.isSafeInteger(desiredSockets) || desiredSockets < 1 || desiredSockets > BOMB_RACK.socketsMax) {
+    return invalid('invalid_socket_count');
+  }
+  // A bare shrink keeps the leading sockets' fit — the trimmed cells drain to the hangar
+  // through the normal re-fit pass below instead of invalidating the plan.
+  const idsOpt = opt.payloadIds == null
+    ? curCells.slice(0, desiredSockets).map((c) => (c ? c.id : null))
+    : opt.payloadIds;
+  if (!Array.isArray(idsOpt) || idsOpt.length > desiredSockets) return invalid('invalid_payload_ids');
+  const seen = new Set();
+  const desiredIds = new Array(desiredSockets).fill(null);
+  for (let i = 0; i < idsOpt.length; i++) {
+    const id = idsOpt[i];
+    if (id == null) continue;
+    if (!BOMB_DEFS[id]) return invalid('unknown_payload');
+    if (seen.has(id)) return invalid('duplicate_family');
+    seen.add(id);
+    desiredIds[i] = id;
+  }
+  const purchaseMissing = opt.purchaseMissing !== false;
+
+  const pool = { ...stock };
+  const desired = new Array(desiredSockets).fill(null);
+  for (let i = 0; i < curSockets; i++) {
+    const c = curCells[i];
+    const keepId = i < desiredSockets ? desiredIds[i] : null;
+    if (c && c.id === keepId) {
+      desired[i] = { id: c.id, count: c.count };
+    } else {
+      if (c && c.count > 0) pool[c.id] = (pool[c.id] || 0) + c.count;
+      if (i < desiredSockets) desired[i] = keepId ? { id: keepId, count: 0 } : null;
+    }
+  }
+  for (let i = curSockets; i < desiredSockets; i++) desired[i] = desiredIds[i] ? { id: desiredIds[i], count: 0 } : null;
+
+  // Socket growth is the authored yard weld, whole sockets only; shrinking is free.
+  let appliedSockets = desiredSockets, expansionCost = 0, limitingReason = null;
+  if (desiredSockets > curSockets) {
+    const added = Math.min(desiredSockets - curSockets, Math.floor(credits / BOMB_RACK.socketUpgradeCr));
+    appliedSockets = curSockets + added;
+    expansionCost = added * BOMB_RACK.socketUpgradeCr;
+    if (appliedSockets < desiredSockets) limitingReason = 'credits';
+  }
+  const postCells = desired.slice(0, appliedSockets);
+
+  const needs = postCells.map((c) => (c ? BOMB_DEFS[c.id].magazine - c.count : 0));
+  const purchasedUnits = {}, usedOwnedUnits = {}, loadedUnits = {};
+  let roundsLoaded = 0, restockFee = 0, purchaseCost = 0;
+  if (needs.some((n) => n > 0)) {
+    const serviceCredits = credits - expansionCost;
+    if (serviceCredits >= BOMB_RACK.restockFeeCr) {
+      let spendable = serviceCredits - BOMB_RACK.restockFeeCr;
+      for (let i = 0; i < postCells.length; i++) {
+        const c = postCells[i];
+        if (!c || needs[i] <= 0) continue;
+        const move = Math.min(needs[i], pool[c.id] || 0);
+        if (move <= 0) continue;
+        c.count += move; needs[i] -= move;
+        if ((pool[c.id] -= move) <= 0) delete pool[c.id];
+        usedOwnedUnits[c.id] = (usedOwnedUnits[c.id] || 0) + move;
+        loadedUnits[c.id] = (loadedUnits[c.id] || 0) + move;
+        roundsLoaded += move;
+      }
+      if (purchaseMissing) {
+        for (let i = 0; i < postCells.length; i++) {
+          const c = postCells[i];
+          if (!c || needs[i] <= 0) continue;
+          const def = BOMB_DEFS[c.id];
+          const n = Math.min(needs[i], Math.floor(spendable / def.price));
+          if (n <= 0) continue;
+          c.count += n; needs[i] -= n; spendable -= n * def.price;
+          purchaseCost += n * def.price;
+          purchasedUnits[c.id] = (purchasedUnits[c.id] || 0) + n;
+          loadedUnits[c.id] = (loadedUnits[c.id] || 0) + n;
+          roundsLoaded += n;
+        }
+      }
+      if (roundsLoaded > 0) restockFee = BOMB_RACK.restockFeeCr;
+      if (needs.some((n) => n > 0) && !limitingReason) limitingReason = purchaseMissing ? 'credits' : 'stock';
+    } else if (!limitingReason) {
+      limitingReason = 'credits'; // the yard fee itself is out of reach — no loading service
+    }
+  }
+
+  const totalCost = expansionCost + restockFee + purchaseCost;
+  let changed = appliedSockets !== curSockets;
+  for (let i = 0; i < appliedSockets && !changed; i++) {
+    const a = curCells[i], b = postCells[i];
+    if ((a ? a.id : null) !== (b ? b.id : null) || (a ? a.count : 0) !== (b ? b.count : 0)) changed = true;
+  }
+  const unmetNeed = needs.reduce((sum, n) => sum + Math.max(0, n), 0);
+  return {
+    ok: true,
+    rack: { sockets: curSockets, cells: curCells },
+    stock,
+    credits,
+    stationId,
+    desiredSockets,
+    desiredIds,
+    appliedSockets,
+    postCells,
+    postStock: pool,
+    totalCost,
+    roundsLoaded,
+    purchasedUnits,
+    usedOwnedUnits,
+    loadedUnits,
+    restockFee,
+    expansionCost,
+    limitingReason,
+    unmetNeed,
+    changed,
+  };
+}
+
+// Primitive snapshot pinning a quote: rack, stock, selection, credits, berth, hull.
+function prepFingerprint(state) {
+  const rt = state && state.bombs;
+  const read = prepReadRack(rt);
+  return JSON.stringify({
+    rack: [read.sockets, read.cells.map((c) => (c ? [c.id, c.count] : null))],
+    ovr: read.overflow, // beyond-socket loaded cells are live state too — they feed the plan
+    stock: prepReadStock(rt),
+    sel: rt && typeof rt.selectedId === 'string' ? rt.selectedId : null,
+    cr: prepCreditsOf(state),
+    dock: prepDockIdentity(state),
+    hull: prepHullIdentity(state),
+  });
+}
+function freezeDeep(value) {
+  if (value && typeof value === 'object') {
+    for (const k of Object.keys(value)) freezeDeep(value[k]);
+    Object.freeze(value);
+  }
+  return value;
+}
+
 /**
  * Authoritative pose adapter for the projectile-sweep proxy.
  * The bomb stays the kinematic owner (`physicsBody:false`, analytic drift). This publishes the
@@ -236,6 +444,8 @@ export const bombs = {
     this._viscosity = { x: 0, y: 0, z: 0 };
     this._ownerCooldowns = new Map();
     this._bombsQuiet = null;
+    this._prepQuotes = new WeakMap();
+    this._preparationInFlight = false;
     ensureRuntime(ctx.state);
     // Rack work is dock-side only: every ui: intent is gated by the same berth authority
     // the Shipworks module verbs use. Direct method calls stay open to internal callers
@@ -267,6 +477,14 @@ export const bombs = {
       this.bus.on('ui:sellPayload', rackIntent((p) => this.sellPayload(p))),
       this.bus.on('ui:restockBombRack', rackIntent(() => this.restockRack())),
       this.bus.on('ui:upgradeBombRack', rackIntent(() => this.upgradeRack())),
+      // NXB-009 — the preview is a read-only quote handed back on the payload; the commit
+      // runs through the same berth gate as every other rack verb.
+      this.bus.on('ui:previewBombRackPreparation', (p) => {
+        if (p && typeof p === 'object') p.quote = this.previewPreparation(p.options || {});
+      }),
+      this.bus.on('ui:prepareBombRack', rackIntent((p) => {
+        if (p && typeof p === 'object') p.result = this.commitPreparation(p.quote) === true;
+      })),
     ];
   },
   destroy() {
@@ -274,6 +492,8 @@ export const bombs = {
     for (const off of this._unsubs || EMPTY) if (typeof off === 'function') off();
     this._unsubs = [];
     this._ownerCooldowns?.clear();
+    this._prepQuotes = null;
+    this._preparationInFlight = false;
     this.state = this.bus = this.helpers = this.registry = null;
   },
   newGame() { this._resetRuntime('new_game'); },
@@ -367,6 +587,7 @@ export const bombs = {
   // Every credit move goes through the economy owner's event seam; this system never writes
   // state.player.credits itself.
   buyPayload({ payloadId, units = 1 } = {}) {
+    if (this._preparationInFlight) return false;
     const def = BOMB_DEFS[payloadId];
     if (!def) return false;
     const n = Math.max(1, Math.floor(Number(units) || 0));
@@ -389,6 +610,7 @@ export const bombs = {
   // another socket consolidates its load here (one payload lives in one socket); the socket's
   // previous occupant returns its remaining units to stock.
   fitPayload({ socketIndex, payloadId } = {}) {
+    if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state), def = BOMB_DEFS[payloadId];
     const i = Math.floor(Number(socketIndex));
     if (!def || !Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
@@ -423,6 +645,7 @@ export const bombs = {
   },
 
   unfitPayload({ socketIndex } = {}) {
+    if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state);
     const i = Math.floor(Number(socketIndex));
     if (!Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
@@ -438,6 +661,7 @@ export const bombs = {
   // fee (economy data: BOMB_RACK.restockFeeCr). A dry socket keeps its fit, so this is the
   // whole combat-rearm loop — buy stock, dock, restock.
   restockRack() {
+    if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state);
     const needy = rt.rack.cells.filter((c) => c && (rt.stock[c.id] || 0) > 0 && c.count < BOMB_DEFS[c.id].magazine);
     if (!needy.length) {
@@ -463,6 +687,7 @@ export const bombs = {
   },
 
   upgradeRack() {
+    if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state);
     if (rt.rack.sockets >= BOMB_RACK.socketsMax) {
       this.bus.emit('toast', { text: 'The rack is already at full extension.', kind: 'info', ttl: 1.8 });
@@ -482,6 +707,7 @@ export const bombs = {
   },
 
   sellPayload({ payloadId, units = 1 } = {}) {
+    if (this._preparationInFlight) return false;
     const def = BOMB_DEFS[payloadId];
     if (!def) return false;
     const rt = ensureRuntime(this.state);
@@ -493,6 +719,76 @@ export const bombs = {
     this.bus.emit('economy:grantCredits', { amount: refund, reason: `ordnance:resell:${payloadId}` });
     this.bus.emit('bombs:stockChanged', { payloadId, stock: rt.stock[payloadId], delta: -n });
     this.bus.emit('toast', { text: `${n}× ${def.name} sold back — ${refund} cr.`, kind: 'info', ttl: 1.8 });
+    return true;
+  },
+
+  // NXB-009 — a quote is the frozen plan plus a WeakMap-side record of the options and the
+  // live-state fingerprint it was priced against. Only this owner can read it back; quotes
+  // die at save/load/new-game boundaries along with the map itself.
+  previewPreparation(options = {}) {
+    const safeOptions = options && typeof options === 'object' ? options : {};
+    const plan = previewBombPreparation(this.state, safeOptions);
+    const rec = {
+      options: JSON.parse(JSON.stringify(safeOptions)),
+      plan,
+      fingerprint: prepFingerprint(this.state),
+      credits: prepCreditsOf(this.state),
+      consumed: false,
+    };
+    const quote = freezeDeep({ plan });
+    (this._prepQuotes ||= new WeakMap()).set(quote, rec);
+    return quote;
+  },
+
+  // Atomic settlement: recompute from the registered options, refuse any snapshot or term
+  // drift instead of silently rebinding, then pay the exact quoted amount. The rack
+  // replacement runs INSIDE the economy owner's commit callback — before the charge
+  // notification — so a missing or rejecting credit writer leaves everything untouched.
+  commitPreparation(quote) {
+    const rec = this._prepQuotes && quote && typeof quote === 'object' ? this._prepQuotes.get(quote) : null;
+    if (!rec || rec.consumed || !this.state || !this.bus || this._preparationInFlight) return false;
+    if (prepFingerprint(this.state) !== rec.fingerprint) return false;
+    const plan = previewBombPreparation(this.state, rec.options);
+    // Whole-plan equality, not just headline terms — the planner is pure and deterministic,
+    // so any state drift that survives the fingerprint shows up here instead of settling
+    // silently rebound terms.
+    if (!plan.ok || JSON.stringify(plan) !== JSON.stringify(rec.plan)) return false;
+    this._preparationInFlight = true;
+    try {
+      const request = {
+        amount: plan.totalCost,
+        reason: 'service:bomb_rack_prepare',
+        requireFull: true,
+        expectedCredits: rec.credits,
+        result: false,
+        commit: () => this._applyPreparedRack(plan),
+      };
+      this.bus.emit('economy:chargeCredits', request);
+      if (request.result !== true) return false;
+      rec.consumed = true;
+      this._rackChanged(
+        plan.roundsLoaded > 0
+          ? `Rack prepared — ${plan.roundsLoaded} unit${plan.roundsLoaded === 1 ? '' : 's'} loaded, ${plan.totalCost} cr.`
+          : `Rack prepared — ${plan.totalCost > 0 ? `${plan.totalCost} cr.` : 'no charge.'}`,
+      );
+      return true;
+    } finally {
+      this._preparationInFlight = false;
+    }
+  },
+
+  // No-event, no-throw replacement — the plan was already validated and priced. The
+  // selection law is the existing one: keep the id while it still names a loaded cell.
+  _applyPreparedRack(plan) {
+    const rt = ensureRuntime(this.state);
+    rt.rack = {
+      sockets: plan.appliedSockets,
+      cells: plan.postCells.map((c) => (c ? { id: c.id, count: c.count } : null)),
+    };
+    rt.stock = { ...plan.postStock };
+    normalizeStock(rt);
+    normalizeRack(rt);
+    normalizeSelection(rt);
     return true;
   },
 
@@ -935,6 +1231,8 @@ export const bombs = {
   },
   _resetRuntime(reason) {
     this.releaseAll(reason);
+    this._prepQuotes = new WeakMap();
+    this._preparationInFlight = false;
     if (!this.state) return;
     const rt = ensureRuntime(this.state);
     applyStarterKit(rt);
@@ -951,6 +1249,8 @@ export const bombs = {
     // nothing — _callSerialize treats undefined as absent-owner, and the rack's starter
     // kit is additive on the deserialize side anyway.
     if (!this.state) return undefined;
+    // Outstanding preparation quotes were priced against pre-save state — they die here.
+    this._prepQuotes = new WeakMap();
     const rt = ensureRuntime(this.state);
     return {
       v: 1,
@@ -967,6 +1267,8 @@ export const bombs = {
   deserialize(data) {
     // No bound state means no live bag to restore into — the starter kit lands at init.
     if (!this.state) return;
+    this._prepQuotes = new WeakMap();
+    this._preparationInFlight = false;
     const rt = ensureRuntime(this.state);
     // Pre-rack saves carry no `bombs` key at all (and a partial bag without a rack is treated
     // the same): the additive default is the starter kit, not an error and not an empty bay.

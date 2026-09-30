@@ -89,8 +89,13 @@ test('the chooser emits ui:fitModule for hold rows — shipIndex, slot, and inst
     'ui:fitModule carries the viewed hull and the row instanceId');
   assert.ok(/emit\('ui:unfitModule',\s*\{[^}]*shipIndex:\s*viewIdx/s.test(src),
     'ui:unfitModule outfits the viewed hull, not always the active one');
-  assert.ok(/emit\('ui:buyModule',\s*\{[^}]*shipIndex:\s*viewIdx/s.test(src),
-    'ui:buyModule fits the viewed hull, not always the active one');
+  // The purchase settles on the hull the confirmation named: the handler captures
+  // viewIdx into statedShipIndex at quote time and emits that binding — pinning the
+  // capture plus the emission proves the same discipline without asserting raw viewIdx.
+  assert.ok(/statedShipIndex\s*=\s*viewIdx/.test(src),
+    'a buy confirmation captures the viewed hull index at quote time');
+  assert.ok(/emit\('ui:buyModule',\s*\{[^}]*shipIndex:\s*statedShipIndex/s.test(src),
+    'ui:buyModule settles on the hull the confirmation named');
   // Refusals are rendered in words, never silently omitted or left as dead buttons.
   assert.ok(/stationShopOffer\(d,\s*shopStationId\)/.test(src),
     'hold rows refuse research-locked modules the way the backend does');

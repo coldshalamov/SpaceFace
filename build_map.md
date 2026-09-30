@@ -630,14 +630,13 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 174 | BUILD | [NXB-004](design/program/next-wave-2026-09-28/build/NXB-004.md) | A damaged loaded ship remains controllable through the real propulsion stack | Existing owners; SF-004, SF-005, SF-013, PQ-135 | OPEN |
 | 175 | BUILD | [NXB-005](design/program/next-wave-2026-09-28/build/NXB-005.md) | A recovered tow reaches a receiver with its custody and value intact | Existing owners; SF-029, SF-111, SF-273, SF-286 | OPEN |
 | 176 | BUILD | [NXB-007](design/program/next-wave-2026-09-28/build/NXB-007.md) | One physical kill has one readable legal and salvage aftermath | Existing owners; SF-030, SF-042, SF-159, SF-292 | OPEN |
-| 177 | BUILD | [NXB-009](design/program/next-wave-2026-09-28/build/NXB-009.md) | A dock-side bomb preparation order commits the exact affordable loadout | Existing owners; SF-043, SF-110, SF-127, PQ-205 | OPEN |
 | 178 | BUILD | [NXB-012](design/program/next-wave-2026-09-28/build/NXB-012.md) | Countermeasures break a particular lock rather than erase every threat | Existing owners; SF-040, SF-050, SF-057 | OPEN |
 | 179 | BUILD | [NXB-013](design/program/next-wave-2026-09-28/build/NXB-013.md) | A wounded squad withdraws through a usable corridor with one covering ship | Existing owners; SF-056, SF-057, SF-059 | OPEN |
 | 180 | BUILD | [NXB-017](design/program/next-wave-2026-09-28/build/NXB-017.md) | Author one three-round act whose physical question changes each round | Existing owners; SF-061, SF-062, SF-064, SF-068, PQ-174 | OPEN |
 | 181 | BUILD | [NXB-018](design/program/next-wave-2026-09-28/build/NXB-018.md) | Draft offers remain useful for the actual build and transaction state | Existing owners; SF-065, SF-066, SF-072, SF-251 | OPEN |
 | 182 | BUILD | [NXB-021](design/program/next-wave-2026-09-28/build/NXB-021.md) | Deep-core mining makes the next commitment visible without revealing the whole rock | Existing owners; SF-095, SF-125, PQ-130 | OPEN |
 | 183 | BUILD | [NXB-026](design/program/next-wave-2026-09-28/build/NXB-026.md) | Compare a multi-stop freight trip using known stock, actual capacity and operating cost | Existing owners; SF-107, SF-108, SF-112, SF-115 | OPEN |
-| 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack | NXB-009; SF-127, SF-128, SF-242, PQ-205 | WAITING NXB-009 |
+| 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack | NXB-009; SF-127, SF-128, SF-242, PQ-205 | OPEN |
 | 185 | BUILD | [NXB-030](design/program/next-wave-2026-09-28/build/NXB-030.md) | Prove three existing hull sidegrades through actual physical jobs | Existing owners; SF-121, SF-122, SF-123, SF-124, SF-130 | OPEN |
 | 186 | BUILD | [NXB-031](design/program/next-wave-2026-09-28/build/NXB-031.md) | A synergy explanation matches the live combined effect and its drawback | Existing owners; SF-126, SF-132, SF-133 | OPEN |
 | 188 | BUILD | [NXB-038](design/program/next-wave-2026-09-28/build/NXB-038.md) | A failed job leaves a playable continuation rather than a reset scene | Existing owners; SF-139, SF-147, SF-150, SF-285 | OPEN |
@@ -2425,6 +2424,60 @@ What is in the working tree (verify, then commit by pathspec — foreign dirty f
   144 WU; mining beam with body + contact spray + heat on the rock; white-hot Massline core; sector
   arrival wake/flash; visible retro jet.
 - Also from the assessment: Sker Haven's purple soft-sphere crystals read as blobs (part of E).
+
+### Wave ANI — premium Blender-authored model motion — owner-requested, reference-first
+
+**Outcome:** the models visibly operate, take damage and break into useful physical mass; not another
+nav-blink, particle or camera-shake pass. The owner asked for 10–20 researched animation ideas,
+model-matched Grok reference movies, and agents iterating actual Blender animations against those
+movies. Three independent combat/world/pipeline brainstorms and a debate produced **15 tasks**.
+
+Build contract, exact source/model locators, event/state wiring, rig/export/playback decisions and
+per-task failure cases: [ANIMATION_REFERENCE_PROGRAM.md](./design/program/ANIMATION_REFERENCE_PROGRAM.md).
+Lead-authored generation jobs: [ANIMATION_REFERENCE_JOBS.json](./design/program/ANIMATION_REFERENCE_JOBS.json).
+Curated movie/model-image provenance and reference-review state:
+[animation reference manifest](./assets/animation-references/manifest.json).
+A generated reference is **not** an implemented/accepted game animation. A task may use only its
+reviewed reference; rejected drafts and frame sheets stay local. No runtime animations were shipped
+by the reference-collection task.
+
+**Start `ANI-00`.** The current Forge exporter welds ordinary parts and disables GLB clips; the part
+loader rejects clips/skins/morphs, and the flight-static package lane flattens moving hierarchies.
+Build the shared pivot-preserving **Blender-authored rigid motion-bank** path, retaining those GLB
+validation guarantees. Prove a scanner action and an articulated place on the default route before
+opening the dependent rows. Do not hand-code a sine wave instead of the Blender action, or turn the
+reference movie into in-game footage. Shared Forge/package/runtime work has one owner; Kestrel rows
+and the two fab-yard rows serialize their shared model/builder/publish mutations.
+
+| Task | Player-visible animation | Models / build focus |
+|---|---|---|
+| **ANI-00** | Shared real Blender-action export, dynamic group preservation, state-driven playback and lifecycle | Forge rigid pivot groups + hash-bound 60-sample/s motion bank + package binding; scanner/place proofs |
+| **ANI-01** | Scanner dish deploys, aims, pulses and parks | Kestrel dorsal sensor; the long roof spine stays rigid |
+| **ANI-02** | Mining head releases, advances, bites and stows | Kestrel chin cutter; the beam still joins its validated emitter |
+| **ANI-03** | Massline winch pays out, catches load, reels and releases | Yard tug winch/fairlead, then host-reviewed liner/player adapters; one real tether |
+| **ANI-04** | Heat vents open in a radiator wave and latch after cooling | Kestrel radiator combs/louvers; real vent state, not only glow |
+| **ANI-05** | Boost drive iris and linked actuators engage and lock | New compact iris inside Kestrel's existing bell; parent gimbal/core keep their own writers |
+| **ANI-06** | Repair pod opens and a linked service arm performs a weld pass | Kestrel green pod; actual repair miner/target, not proximity idle |
+| **ANI-07** | Struck armour hinges, peels and settles, with truthful tear-off | Kestrel armour hook first; replace instant damage pops, preserve root heading |
+| **ANI-08** | Wasp seam rupture and fresh fragment/plate motion | Hull-matched Wasp pieces; immediate kill and physics-owned debris trajectories |
+| **ANI-09** | Salvage-cutter hydraulic jaws bite, hold, shred and release | Existing paired jaws, rams and throat roller; verified salvor work phase |
+| **ANI-10** | Mining-drone cutter engages, grinds and coasts down | Existing orange drum/teeth/spike assembly; active drones and place views |
+| **ANI-11** | Worked cargo-pod bars unlock and doors breach open | Teal pod end frame plus real door leaves/interior; exactly one actual salvage spill |
+| **ANI-12** | Harbour jaws seat, lock and release on actual docking | Compact new central-collar clamps in the trade hub's existing mooring language; open throat remains clear |
+| **ANI-13** | Linked fabrication arm aligns, welds a seam and parks | Fab yard's existing shoulder/elbow/wrist; station-keyed manufacturing queue |
+| **ANI-14** | Heavy hull plate is hoisted, traversed, fitted and parked | Fab bridge crane 0, paired hoists and hanging plate; not the workshop jib |
+| **ANI-15** | Jump-gate emitters index, lock, energise and reset | Small existing emitter carriages; outer frame and flyable aperture stay fixed/open |
+
+**Iteration law:** render the Blender candidate at **60 FPS**, compare against **every native reference
+frame** and full-size key poses in matched framing, and inspect the real 60°/144-WU shipping view.
+Do not invent high-FPS reference evidence by frame duplication or optical flow. When the author
+thinks it is ready, spawn an **independent read-only reviewer** with frozen video/model hashes,
+phase alignment, whole-model and mechanism views, and the lead-authored rubric in the program §5.
+It must score **at least 80/100**, satisfy the rubric's category floors, cite frame/time evidence and
+have no hard failure. Fix the concrete defects and repeat; move to the next animation only after
+that gate, focused lifecycle/ownership checks, the actual live-route picture, and owned publication
+are complete. No self-awarded grade, camera trick, hidden feature, fake physics handoff or new input
+latency can close a row.
 
 ### CI stabilization campaign — IN PROGRESS, handoff (2026-09-29)
 

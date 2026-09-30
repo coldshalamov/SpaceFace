@@ -68,7 +68,7 @@ import { admitModuleMetric, liveDamageRate } from '../moduleCardMetrics.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
-import { describeOutfittingSpendConfirm, focusNamedStationControl, statedHullStillViewed, statedModulePurchaseStillMatches } from '../../outfittingSpendConfirm.js';
+import { describeOutfittingSpendConfirm, focusNamedStationControl, isOutfittingSpendDanger, statedHullStillViewed, statedModulePurchaseStillMatches } from '../../outfittingSpendConfirm.js';
 import { moduleRiskStrip } from '../../panels/moduleRisk.js';
 import { describeOutfittingPurchase, masslineHeadOutcome } from '../outfittingGuidance.js';
 import {
@@ -3394,14 +3394,33 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const armedCells = rack.cells.filter((c) => c && c.id && c.count > 0).length;
     const stockTotal = Object.values(rack.stock).reduce((sum, n) => sum + (Number(n) || 0), 0);
     const anyMagazine = rack.cells.some((c) => c && BOMB_DEFS[c.id]);
-    const restockable = rack.cells.some((c) => c && BOMB_DEFS[c.id] && c.count < BOMB_DEFS[c.id].magazine && (rack.stock[c.id] || 0) > 0);
+    // NXB-009: the rack verb asks the owner for the real whole-rack preparation plan —
+    // owned-stock top-up AND purchasable ammunition under one atomic yard charge. The
+    // label/hint read the quoted cost, loaded units and any partial-limiting reason.
+    const prepReq = availability.outfitEnabled && ctx.bus ? { options: {}, quote: null } : null;
+    if (prepReq) ctx.bus.emit('ui:previewBombRackPreparation', prepReq);
+    const prepPlan = prepReq && prepReq.quote && prepReq.quote.plan && prepReq.quote.plan.ok === true ? prepReq.quote.plan : null;
+    const prepReady = !!(prepPlan && prepPlan.changed);
+    // A dry magazine the yard cannot afford to touch is "need credits", not "nothing" —
+    // the disabled reason stays truthful.
+    const prepBroke = !!(prepPlan && !prepReady && prepPlan.unmetNeed > 0 && prepPlan.limitingReason === 'credits');
     const rackVerbs = [];
+    let prepNote = null;
     if (anyMagazine) {
-      const restockLabel = !availability.outfitEnabled ? 'Dock to restock'
-        : restockable ? `Restock · ${fmt(BOMB_RACK.restockFeeCr)} cr` : 'Nothing to restock';
-      const restockHint = !availability.outfitEnabled ? availability.outfitLabel
-        : restockable ? 'Top up every fitted magazine from hangar stock' : 'Rack is full or the hangar has no matching ordnance';
-      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock ${availability.outfitEnabled && restockable ? '' : `disabled aria-label="${escapeHtml(restockHint)}"`}>${escapeHtml(restockLabel)}</button></li>`);
+      const prepareLabel = !availability.outfitEnabled ? 'Dock to prepare'
+        : prepReady
+          ? `Prepare ${prepPlan.roundsLoaded} · ${fmt(prepPlan.totalCost)} cr`
+          : prepBroke ? 'Need credits to prepare' : 'Nothing to prepare';
+      const prepareHint = !availability.outfitEnabled ? availability.outfitLabel
+        : prepReady
+          ? (prepPlan.limitingReason === 'credits'
+            ? `Partial fill — ${prepPlan.roundsLoaded} units load before credits run out`
+            : `Load ${prepPlan.roundsLoaded} units — hangar stock first, then purchased ammunition`)
+          : prepBroke
+            ? `The rack is short ${prepPlan.unmetNeed} units — restock fee plus ammunition exceed the balance`
+            : 'Rack is already prepared';
+      if (prepReady && prepPlan.limitingReason === 'credits') prepNote = prepareHint;
+      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock title="${escapeHtml(prepareHint)}" ${availability.outfitEnabled && prepReady ? '' : `disabled aria-label="${escapeHtml(prepareHint)}"`}>${escapeHtml(prepareLabel)}</button></li>`);
     }
     if (rack.sockets < BOMB_RACK.socketsMax) {
       const afford = rack.credits >= BOMB_RACK.socketUpgradeCr;
@@ -3416,6 +3435,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<p class="k-caps sx-sw-band__label">Bomb rack <span class="k-38">${armedCells}/${rack.sockets} armed · ${stockTotal} stowed</span></p>` +
         `<ul class="k-rows sx-sw-rack__cells">${rackCells}</ul>` +
         (rackVerbs.length ? `<ul class="k-words k-words--row sx-sw-rack__verbs">${rackVerbs.join('')}</ul>` : '') +
+        // Credit-limited partial fills say so in visible type, not just the button title.
+        (prepNote ? `<p class="k-sentence sx-muted">${escapeHtml(prepNote)}</p>` : '') +
       `</div>`;
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
     // docked it stays gated by hull service availability with the reason printed on the verb.
@@ -4315,6 +4336,68 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     setTimeout(refresh, 80);
   }
 
+  // NXB-009 — one pending rack preparation per screen. The click re-quotes the owner's
+  // preview (state may have moved since render), the confirm names the exact quoted
+  // families/quantities/price/balance, and only then ui:prepareBombRack commits — the
+  // owner's quote fingerprint is still the final stale-state authority.
+  let rackPrepBusy = false;
+  async function prepareBombRack() {
+    if (rackPrepBusy || isConfirmOpen() || !ctx.bus) return;
+    const req = { options: {}, quote: null };
+    ctx.bus.emit('ui:previewBombRackPreparation', req);
+    const quote = req.quote, plan = quote && quote.plan;
+    if (!plan || plan.ok !== true || !plan.changed) { setTimeout(refresh, 60); return; }
+    const stated = {
+      shipIndex: viewIdx,
+      hullDefId: (viewedShip() || {}).defId,
+      dockId: ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null,
+    };
+    const parts = Object.entries(plan.loadedUnits || {}).map(([id, n]) => `${BOMB_DEFS[id].name} ×${n}`);
+    if (plan.appliedSockets > plan.rack.sockets) parts.push(`rack socket ${plan.appliedSockets}`);
+    const remaining = Math.max(0, plan.credits - plan.totalCost);
+    const partial = plan.limitingReason === 'credits' ? ' Partial fill — magazines stay short until more credits.' : '';
+    rackPrepBusy = true;
+    let ok = false;
+    try {
+      ok = await confirm({
+        title: 'Prepare bomb rack?',
+        body: `${parts.join(' · ') || 'Reconfigure rack'}. Cost: ${fmt(plan.totalCost)} CR — balance after ${fmt(remaining)} CR.${partial}`,
+        confirmLabel: 'Prepare',
+        cancelLabel: 'Cancel',
+        danger: isOutfittingSpendDanger(plan.totalCost, plan.credits),
+      });
+    } finally { rackPrepBusy = false; }
+    if (!ok) {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      setTimeout(refresh, 60);
+      return;
+    }
+    const liveShip = viewedShip();
+    if (!statedHullStillViewed(
+      { shipIndex: stated.shipIndex, hullDefId: stated.hullDefId },
+      { shipIndex: viewIdx, hullDefId: liveShip && liveShip.defId, connected: el.isConnected !== false },
+    )) {
+      ctx.bus.emit('toast', { text: 'That confirmation was for a different hull. Review it and confirm again.', kind: 'error', ttl: 3 });
+      setTimeout(refresh, 60);
+      return;
+    }
+    const liveDockId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
+    if (liveDockId !== stated.dockId) {
+      ctx.bus.emit('toast', { text: 'Dock changed since the quote — review and confirm again.', kind: 'error', ttl: 3 });
+      setTimeout(refresh, 60);
+      return;
+    }
+    const settle = { quote };
+    ctx.bus.emit('ui:prepareBombRack', settle);
+    if (settle.result === true) {
+      ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+    } else {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      ctx.bus.emit('toast', { text: 'The quote went stale — review the rack and prepare again.', kind: 'error', ttl: 3 });
+    }
+    setTimeout(refresh, 70);
+  }
+
   // ---------- events ----------
   el.querySelector('.sx-seg').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-mode]'); if (!b) return;
@@ -4369,11 +4452,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (rackCell) { openPayloadChooser(Number(rackCell.getAttribute('data-rack-socket')), rackCell); return; }
     const rackRestock = ev.target.closest('[data-rack-restock]');
     if (rackRestock) {
-      if (!rackRestock.disabled && ctx.bus) {
-        ctx.bus.emit('ui:restockBombRack', {});
-        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
-        setTimeout(refresh, 70);
-      }
+      if (!rackRestock.disabled) prepareBombRack();
       return;
     }
     const rackUpgrade = ev.target.closest('[data-rack-upgrade]');

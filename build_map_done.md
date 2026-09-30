@@ -7,6 +7,17 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### NXB-009 — atomic bomb preparation (2026-09-30).
+
+Implemented in this landing: one quoted order tops up fitted bomb families from owned
+stock first, buys only affordable whole rounds, and settles rack and credits together.
+Cancel, repeat confirm, stale terms and socket shrink preserve money/ammunition. Proof:
+[test/next-wave-nxb-009.test.mjs](./test/next-wave-nxb-009.test.mjs) (13 cases),
+adjacent rack/Shipworks/economy tests (35 cases), and real Shipworks bench
+cancel/confirm/stale interactions at desktop and mobile. Bench-proven; adventure route
+not played. No new entities or per-frame scans.
+Packet: [NXB-009](./design/program/next-wave-2026-09-28/build/NXB-009.md).
+
 ### NXB-027 — one freight settlement (2026-09-30)
 
 Implemented in this landing: identified deliveries and sales count once across market supply
