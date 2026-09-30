@@ -30,6 +30,7 @@ import {
 import { applyAccessibility } from './ui/accessibility.js';
 import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
+import { createRuntimeFailurePresenter } from './ui/runtimeFailurePresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
@@ -126,6 +127,7 @@ async function boot() {
     });
     const presentationJournal = createPresentationJournal();
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
+    const failurePresenter = createRuntimeFailurePresenter({ document });
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
@@ -206,6 +208,7 @@ async function boot() {
         if (receipt.errorCount > 0) {
           console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
         }
+        failurePresenter.destroy();
       });
     }
 
@@ -265,7 +268,16 @@ async function boot() {
       if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
     });
 
-    loopController = startLoop(state, registry, { presentationJournal });
+    loopController = startLoop(state, registry, {
+      presentationJournal,
+      onSimulationFailure(failure) {
+        const receipt = closeRuntime();
+        if (receipt.errorCount > 0) {
+          console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
+        }
+        failurePresenter.show(failure);
+      },
+    });
     ctx.simStep = () => loopController.stepOnce();
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
