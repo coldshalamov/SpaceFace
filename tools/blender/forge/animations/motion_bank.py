@@ -17,7 +17,7 @@ import os
 import struct
 
 import bpy
-from mathutils import Euler, Matrix, Quaternion
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))
@@ -120,36 +120,57 @@ class MotionBank:
         scene.render.fps = 60
         scene.render.fps_base = 1.0
 
-        # Author the Blender action: wipe prior animation, then insert keys on each pivot's basis.
+        # Evaluate authored keys directly per output frame. Blender's quaternion F-curves
+        # canonicalize stored keys to w>=0, which drops winding information: a roll past pi
+        # lands the next key at -q and the in-between frames reverse through the wrap.
+        # Interpolating the keys here keeps authored winding intact across any span.
+        def _channel_samples(entries, frames_out, default):
+            """entries: sorted [(frame, vec|quat)] -> interpolated absolute value per frame."""
+            if not entries:
+                return {f: default for f in frames_out}
+            out = {}
+            i = 0
+            prev_entry = None
+            for f in frames_out:
+                while i + 1 < len(entries) and entries[i + 1][0] <= f:
+                    i += 1
+                if f <= entries[0][0]:
+                    out[f] = entries[0][1]
+                    continue
+                if i + 1 >= len(entries):
+                    out[f] = entries[-1][1]
+                    continue
+                f0, v0 = entries[i]
+                f1, v1 = entries[i + 1]
+                if f1 <= f0:
+                    out[f] = v1
+                    continue
+                t = (f - f0) / (f1 - f0)
+                if isinstance(v0, Quaternion):
+                    q1 = v1 if v0.dot(v1) >= 0 else Quaternion((-v1.w, -v1.x, -v1.y, -v1.z))
+                    out[f] = v0.slerp(q1, t)
+                else:
+                    out[f] = v0.lerp(v1, t)
+                prev_entry = f
+            return out
+
         channels = {}
-        pivots = {}
+        frames_out = list(range(0, int(round(clip.duration_s * 60)) + 1))
         for rig_id in clip._keys:
             pivot = self.ship.motion_pivots.get(rig_id)
             if pivot is None:
                 raise KeyError(f'motion bank {self.rig_id}: clip {clip.name} keys unknown group {rig_id}')
-            pivots[rig_id] = pivot
-            if pivot.animation_data is None:
-                pivot.animation_data_create()
-            pivot.animation_data.action = None
-            pivot.rotation_mode = 'QUATERNION'
-            for frame in sorted(clip._keys[rig_id]):
-                key = clip._keys[rig_id][frame]
-                # Unspecified channel keeps the current basis component — absolute keys, never
-                # accumulations of whatever previous frame happened to evaluate to.
-                cur_loc, cur_rot, _ = pivot.matrix_basis.decompose()
-                pivot.matrix_basis = (Matrix.Translation(key.get('loc', cur_loc))
-                                      @ key.get('rot', cur_rot).to_matrix().to_4x4())
-                pivot.keyframe_insert(data_path='location', frame=frame)
-                pivot.keyframe_insert(data_path='rotation_quaternion', frame=frame)
-
-        # Sample the baked action: basis carries the animated LOCAL pose each frame.
-        for rig_id, pivot in pivots.items():
             rest = self._rest_basis(rig_id)
+            rest_loc, rest_rot_b, _ = rest.decompose()
             rest_t, rest_q = blender_local_to_gltf(rest)
+            keymap = clip._keys[rig_id]
+            loc_entries = sorted((f, Vector(v['loc'])) for f, v in keymap.items() if 'loc' in v)
+            rot_entries = sorted((f, v['rot']) for f, v in keymap.items() if 'rot' in v)
+            loc_at = _channel_samples(loc_entries, frames_out, rest_loc)
+            rot_at = _channel_samples(rot_entries, frames_out, rest_rot_b)
             t_times, t_values, r_times, r_values = [], [], [], []
-            for frame in range(0, int(round(clip.duration_s * 60)) + 1):
-                scene.frame_set(frame)
-                basis = pivot.matrix_basis
+            for frame in frames_out:
+                basis = Matrix.Translation(loc_at[frame]) @ rot_at[frame].to_matrix().to_4x4()
                 tg, qg = blender_local_to_gltf(basis)
                 # translation delta is additive on the rest position
                 dt = [tg[0] - rest_t[0], tg[1] - rest_t[1], tg[2] - rest_t[2]]
@@ -164,8 +185,6 @@ class MotionBank:
                 'translation': (t_times, t_values),
                 'rotation': (r_times, r_values),
             }
-            if pivot.animation_data:
-                pivot.animation_data.action = None
         return channels
 
     def _rest_basis(self, rig_id):

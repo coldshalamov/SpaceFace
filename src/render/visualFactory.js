@@ -54,6 +54,7 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import {
   admissionOwnerInactive,
   authoredAdmissionRetriableStatus,
@@ -3765,12 +3766,47 @@ function attachPackagedBody(root, relativeFile, entity) {
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       packaged.userData.packagedAuthoredBody = true;
-      instantiatePackagedPrimitives(record, packaged);
+      // Banked packages (mining drone, fracture fragments) mount through the node graph so the
+      // MOTION_* pivots the motion bank drives actually exist in the scene — the flat-primitive
+      // path bakes every transform into world-space meshes and leaves the rig no nodes.
+      const motionControllers = [];
+      if (record.motionBank && record.renderPackage
+          && typeof record.renderPackage.createInstance === 'function') {
+        const instance = record.renderPackage.createInstance({
+          name: `RenderPackage_PackagedBody_${record.assetId || record.url}`,
+          residencyOwner: liveEntity,
+          residencyRole: 'live-boundary',
+        });
+        const packageRoot = instance && instance.root;
+        if (packageRoot && packageRoot.isObject3D) {
+          packageRoot.userData = {
+            ...(packageRoot.userData || {}),
+            spacefaceRenderPackageDirect: true,
+            spacefacePartUrl: record.url,
+          };
+          const tagsByName = new Map([
+            ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+            ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+          ]);
+          for (const node of instance.planNodes || []) {
+            const tags = tagsByName.get(node.name) || {};
+            node.visible = !tags.lod || tags.lod === 'lod0';
+          }
+          packaged.add(packageRoot);
+          packaged.userData.renderPackageInstance = instance;
+          const controller = bindInstanceMotion(packageRoot, record.motionBank);
+          if (controller) motionControllers.push(controller);
+        } else if (instance && typeof instance.dispose === 'function') {
+          instance.dispose();
+        }
+      }
+      if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
       }
+      if (motionControllers.length) attachAuthoredMotionDriver(root, liveEntity, motionControllers);
       if (deadHulk) {
         const emberMats = deadenPackagedHulk(packaged);
         packaged.userData.hulkOfDefId = entity && entity.data && entity.data.hulkOfDefId || null;

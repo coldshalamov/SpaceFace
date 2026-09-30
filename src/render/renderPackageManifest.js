@@ -824,7 +824,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mining-drone",
-    "expectedContentHash": "7ce06a1282dc32e74b8cf7c450ba9884f6c4938a872baaf48733d37e3461e58e",
+    "expectedContentHash": "db6e4c898f857d08120d8691e176511f251f2ed51515ace0771b81877a3fc8ac",
     "key": "mining-drone",
     "metadataUrl": "assets/ships/release/render-packages/mining-drone/render-package.json",
     "runtimeAssetId": "SF_PART_PLACE_MINING_DRONE",

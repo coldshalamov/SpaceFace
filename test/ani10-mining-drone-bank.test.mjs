@@ -67,3 +67,44 @@ test('ANI-10 events map routes the grind lifecycle to the cycle and rest', () =>
   assert.equal(bank.events['drone:grindStart'], 'grindCycle');
   assert.equal(bank.events['drone:grindStop'], 'rest');
 });
+
+test('ANI-10 drum rotation integrates monotonically to four revolutions without stalls', () => {
+  const clip = bank.clips.find((c) => c.name === 'grindCycle');
+  const FPS = 60;
+  const samples = Math.floor(clip.durationS * FPS);
+  // Unwrap the roll via per-frame relative quats — representation-safe: rel = q_next * q_prev^-1
+  // normalized to w>=0 gives the signed frame delta regardless of hemisphere flips.
+  const mul = (a, b) => [
+    a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+    a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+    a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+    a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+  ];
+  let revs = 0;
+  let prev = null;
+  let stall = 0;
+  let maxStall = 0;
+  let backspin = 0;
+  for (let i = 0; i <= samples; i++) {
+    const q = evaluateMotionClip(bank, clip, i / FPS).get('drone_drum').rotation;
+    if (prev) {
+      let rel = mul(q, [-prev[0], -prev[1], -prev[2], prev[3]]);
+      if (rel[3] < 0) rel = rel.map((v) => -v);
+      const d = 2 * Math.atan2(rel[0], rel[3]);
+      revs += d;
+      if (Math.abs(d) < 1e-5) {
+        stall++;
+        if (stall > maxStall) maxStall = stall;
+      } else {
+        stall = 0;
+      }
+      if (d < -1e-6) backspin += -d;
+    }
+    prev = q;
+  }
+  const turns = revs / (2 * Math.PI);
+  assert.ok(turns > 3.9 && turns < 4.1, `net roll integrates to ~4 revolutions (got ${turns})`);
+  assert.ok(maxStall < 20, `no dead stalls inside the cycle (max frozen samples ${maxStall})`);
+  assert.ok(backspin < 0.05 * Math.PI,
+    `no meaningful backward whips (reversed radians ${backspin})`);
+});

@@ -49,9 +49,19 @@ def author(bank):
     cyc = next(c for c in bank.clips if c.name == 'grindCycle')
     # Roll: spin-up over 0.8s, sustained grind through 3.0s, coast down landing on exactly
     # REVS turns at 4.2s — an integral wrap so cycle-end pose == rest pose.
-    for t, revs in ((0.0, 0.0), (0.4, 0.18), (0.8, 0.55), (1.4, 1.35), (2.0, 2.15),
-                    (2.6, 2.9), (3.0, 3.35), (3.5, 3.72), (3.9, 3.94), (CYCLE_S, REVS)):
-        cyc.key(group, t, rot=Euler((revs * 2.0 * math.pi, 0.0, 0.0)))
+    # key() quaternises each key, so winding must never exceed ~90 deg between neighbours —
+    # sparse keys collapse into plateau/lurch/reversal. Emit a dense rail: linear rev
+    # interpolation subdivided so every step stays well under a quarter turn.
+    anchors = ((0.0, 0.0), (0.4, 0.18), (0.8, 0.55), (1.4, 1.35), (2.0, 2.15),
+               (2.6, 2.9), (3.0, 3.35), (3.5, 3.72), (3.9, 3.94), (CYCLE_S, REVS))
+    for (t0, r0), (t1, r1) in zip(anchors, anchors[1:]):
+        span = r1 - r0
+        steps = max(1, math.ceil(abs(span) / 0.0625))  # <= 22.5 deg of roll per step
+        for i in range(steps):
+            f = i / steps
+            cyc.key(group, t0 + (t1 - t0) * f,
+                    rot=Euler(((r0 + span * f) * 2.0 * math.pi, 0.0, 0.0)))
+    cyc.key(group, CYCLE_S, rot=Euler((REVS * 2.0 * math.pi, 0.0, 0.0)))
     # Three pressure strokes along the guide during the sustained phase: quick push toward
     # +x, partial relax, seat back.
     for t0 in (1.15, 1.85, 2.55):
