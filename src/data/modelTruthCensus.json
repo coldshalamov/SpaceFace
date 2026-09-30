@@ -42059,33 +42059,33 @@
       "bounds": {
         "center": [
           0.175488,
-          1.630786,
+          1.630777,
           0
         ],
         "max": [
           13.321647,
-          4.53124,
-          3.914407
+          4.531222,
+          3.914383
         ],
         "min": [
           -12.970671,
           -1.269668,
-          -3.914407
+          -3.914383
         ],
         "size": [
           26.292317,
-          5.800908,
-          7.828814
+          5.80089,
+          7.828766
         ]
       },
-      "bytes": 1287416,
+      "bytes": 1300504,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:ship_hawser",
         "kind": "proxy",
         "outline": [
-          19.251895,
+          19.251888,
           18.284954,
           7.477004,
           5.258157,
@@ -42096,8 +42096,8 @@
           6.438329,
           8.187816,
           18.426315,
-          19.226568,
-          19.226568,
+          19.226026,
+          19.226336,
           18.426315,
           8.187816,
           6.438425,
@@ -42108,7 +42108,7 @@
           5.256774,
           7.476032,
           18.284479,
-          19.251895
+          19.251888
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -42185,6 +42185,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Cyan_rust",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
@@ -42254,18 +42262,18 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.256074,
-        "height": 0.379486,
+        "halfWidth": 0.256072,
+        "height": 0.379485,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 53,
-      "nodes": 66,
+      "meshes": 56,
+      "nodes": 69,
       "note": null,
       "opening": null,
       "pivot": [
         0.175488,
-        1.630786,
+        1.630777,
         0
       ],
       "proposedSkin": {
@@ -42279,7 +42287,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.858587,
+            "bx": -0.858586,
             "bz": -0.113035,
             "id": "arm-0",
             "kind": "capsule",
@@ -42369,8 +42377,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.857445,
-            "bz": -0.112885,
+            "bx": 0.857421,
+            "bz": -0.112882,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.020455
@@ -42378,8 +42386,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.857445,
-            "bz": 0.112885,
+            "bx": 0.857435,
+            "bz": 0.112883,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.020455
@@ -42468,23 +42476,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.858587,
+            "bx": -0.858586,
             "bz": 0.113035,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.020455
           }
         ],
-        "silhouetteRadius": 19.251895,
+        "silhouetteRadius": 19.251888,
         "toleranceWu": 2.310227
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3692,
+        "boundaryEdges": 3606,
         "inwardFaceFraction": 0.13325,
-        "silhouetteRadius": 19.251895,
+        "silhouetteRadius": 19.251888,
         "sliceY": 0
       },
       "sockets": [
@@ -42589,15 +42597,15 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 64504,
+      "triangles": 64934,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/yard_tug.glb",
       "worldSize": [
         37.84,
-        8.348688,
-        11.267259
+        8.348663,
+        11.26719
       ]
     },
     {
@@ -69227,33 +69235,33 @@
       "bounds": {
         "center": [
           0.175488,
-          1.630786,
+          1.630777,
           0
         ],
         "max": [
           13.321647,
-          4.53124,
-          3.914407
+          4.531222,
+          3.914383
         ],
         "min": [
           -12.970671,
           -1.269668,
-          -3.914407
+          -3.914383
         ],
         "size": [
           26.292317,
-          5.800908,
-          7.828814
+          5.80089,
+          7.828766
         ]
       },
-      "bytes": 1287416,
+      "bytes": 1300504,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:traffic:tug",
         "kind": "proxy",
         "outline": [
-          12.251206,
+          12.251202,
           11.63588,
           4.758094,
           3.3461,
@@ -69264,8 +69272,8 @@
           4.097118,
           5.210428,
           11.725837,
-          12.235088,
-          12.235088,
+          12.234744,
+          12.234941,
           11.725837,
           5.210428,
           4.09718,
@@ -69276,7 +69284,7 @@
           3.34522,
           4.757475,
           11.635578,
-          12.251206
+          12.251202
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -69353,6 +69361,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Cyan_rust",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
@@ -69422,18 +69438,18 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.256074,
-        "height": 0.379486,
+        "halfWidth": 0.256072,
+        "height": 0.379485,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 53,
-      "nodes": 66,
+      "meshes": 56,
+      "nodes": 69,
       "note": null,
       "opening": null,
       "pivot": [
         0.175488,
-        1.630786,
+        1.630777,
         0
       ],
       "proposedSkin": {
@@ -69546,8 +69562,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.852295,
-            "bz": -0.112207,
+            "bx": 0.85227,
+            "bz": -0.112204,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.032143
@@ -69555,8 +69571,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.852295,
-            "bz": 0.112207,
+            "bx": 0.852284,
+            "bz": 0.112205,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.032143
@@ -69661,16 +69677,16 @@
             "r": 0.032143
           }
         ],
-        "silhouetteRadius": 12.251206,
+        "silhouetteRadius": 12.251202,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3692,
+        "boundaryEdges": 3606,
         "inwardFaceFraction": 0.13325,
-        "silhouetteRadius": 12.251206,
+        "silhouetteRadius": 12.251202,
         "sliceY": 0
       },
       "sockets": [
@@ -69775,15 +69791,15 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 64504,
+      "triangles": 64934,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/yard_tug.glb",
       "worldSize": [
         24.08,
-        5.312802,
-        7.170074
+        5.312785,
+        7.17003
       ]
     },
     {

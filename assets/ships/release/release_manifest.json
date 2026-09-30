@@ -3842,20 +3842,6 @@
       "contractNodeCount": 54
     },
     {
-      "id": "wholeship_yard_tug",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/yard_tug.glb",
-      "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "sourceSha256": "a1b145b8bdf7e7487feb04712f1d2066b8050062bb0febe6e960613e1c11c22f",
-      "releaseSha256": "2e1bcf0f830a5032eeabff05bdbd78b5bf19ccf8e06045e5f260ebcceb3b85c1",
-      "sourceBytes": 3683208,
-      "releaseBytes": 1287416,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 189,
-      "contractNodeCount": 64
-    },
-    {
       "id": "place_quiessence_freighter_a",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_quiessence_freighter_a.glb",
@@ -4442,6 +4428,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 62,
       "contractNodeCount": 29
+    },
+    {
+      "id": "wholeship_yard_tug",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/yard_tug.glb",
+      "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
+      "sourceSha256": "3aa01310cb56e2ea64b553598fec5fe04c3e4ecdedb210c7f10755b5e3c13da1",
+      "releaseSha256": "7fc0515da6c3f2797a8107baa079412aa3307576f947aaef6d93d33bc526e321",
+      "sourceBytes": 3712280,
+      "releaseBytes": 1300504,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 201,
+      "contractNodeCount": 67
     }
   ]
 }
