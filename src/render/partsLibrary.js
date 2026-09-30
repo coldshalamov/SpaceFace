@@ -4650,7 +4650,25 @@ function mergeQueuedJobOptions(queuedJob, request) {
   const incoming = request && request.options;
   if (!target || !incoming || !Object.isExtensible(target)) return;
   for (const optionKey of Object.keys(incoming)) {
+    // admissionEpoch is boundary-scoped — a merge can join a different boundary's job (the
+    // byKey site), where a stamped epoch would poison that job's own commit. Only a
+    // same-boundary join carries it, via carryAdmissionEpochToJoinedJob.
+    if (optionKey === 'admissionEpoch') continue;
     if (incoming[optionKey] !== undefined) target[optionKey] = incoming[optionKey];
+  }
+}
+
+// A same-boundary dedupe join IS the newest admission — the joiner's residencyOptionsForBoundary
+// already minted its options against the bumped admissionEpoch, so the joined job must carry it
+// or the stale-commit guard drops this run's mount with no replacement committer (boundary stuck
+// 'loading'). Never call this for a different-boundary join (the byKey site): the epoch counter
+// lives on each boundary's own userData.
+function carryAdmissionEpochToJoinedJob(joinedJob, request) {
+  const incomingEpoch = request && request.options && request.options.admissionEpoch;
+  const target = joinedJob && joinedJob.options;
+  if (incomingEpoch != null && target && Object.isExtensible(target)
+      && target.admissionEpoch !== incomingEpoch) {
+    target.admissionEpoch = incomingEpoch;
   }
 }
 
@@ -4674,6 +4692,7 @@ export function enqueueBoundaryUpgrade(scene, job) {
   if (boundaryJob) {
     if (boundaryJob.lifecycle === 'queued') mergeQueuedJobOptions(boundaryJob, job);
     else promoteInFlightJobAdmissionVisible(boundaryJob, job);
+    carryAdmissionEpochToJoinedJob(boundaryJob, job);
     return boundaryJob.completion;
   }
   if (!boundaryBelongsToScene(job.boundary, scene)) {
