@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8103a7645c693eba3bd6261f09540c0c5d638160ed7432a9d9fcabc7d25e5896",
+  "contentHash": "0573d532c3dc22043da1d1555838be2d46d7762fc35ea41bd06bfe73939619f4",
   "dynamicGroups": [
     {
       "id": "sf.render.drifter-production-v1.node.lod0-hook-armor-winglet-armor.dynamic",
@@ -3863,7 +3863,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "b9856239464cf62cb3a92f23851838c40320680f3fbf90db4317c23ccef2c6de",
+      "sha256": "a27d733355a96fd25bcc033600a50f35db84dafce5d2f85f375a7e9f1c662c8b",
       "uri": "pilots.json"
     }
   },
@@ -5504,7 +5504,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1.glb"
   },
-  "runtimeHash": "d8a17dd265e6ca796b8568ab56f4a1ecb36b0ef324a71d1126a4b75bce20cbf4",
+  "runtimeHash": "0d26762bc36120cb5c0962a866aab3a25894e270d0ee7e492182cbd1d42956cc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

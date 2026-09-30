@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f6c0a6bd2250ec96c9caeb9a8619fdd0a6a4f3444e627c5f57a6ee2a279a35d2",
+  "contentHash": "0fb78d4ea31e5f629e2892defc1ae20ee657af239fca277a6479582655e52dca",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1422,7 +1422,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "b9856239464cf62cb3a92f23851838c40320680f3fbf90db4317c23ccef2c6de",
+      "sha256": "a27d733355a96fd25bcc033600a50f35db84dafce5d2f85f375a7e9f1c662c8b",
       "uri": "pilots.json"
     }
   },
@@ -1779,7 +1779,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_lance.glb"
   },
-  "runtimeHash": "cd29f7ba07dd31f66e13b90534fed03f67c263c947703efb114b6c5b189acf0a",
+  "runtimeHash": "49f4c1220324455f0e3eb979d88fbe1d95763715aa87d6e8960416846db5c8c9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

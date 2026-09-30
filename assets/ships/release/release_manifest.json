@@ -3506,20 +3506,6 @@
       "contractNodeCount": 34
     },
     {
-      "id": "wholeship_bastion_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/bastion_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/bastion_production_v1.glb",
-      "sourceSha256": "ec90e6250cd4a6c7ae32f6ffde5d1ed34aa7cc91265e9ef498473c4604244db6",
-      "releaseSha256": "9be74aa31f43a04d9a6fb4a57dd8f1f974157baf3fc364f5be7270d935f0ee98",
-      "sourceBytes": 1766336,
-      "releaseBytes": 736212,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 73,
-      "contractNodeCount": 31
-    },
-    {
       "id": "wholeship_colossus_production_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/colossus_production_v1.glb",
@@ -3968,34 +3954,6 @@
       "contractNodeCount": 34
     },
     {
-      "id": "wholeship_bastion_production_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/bastion_production_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb",
-      "sourceSha256": "dd9bf92b5fc34475996ff62901f70a9a59e670d26066185504c181ec05ba8652",
-      "releaseSha256": "cbceb5a29b1c04a65cc674fb4ef7d422a059a51bc058d1263e2f82ffccac67e0",
-      "sourceBytes": 916448,
-      "releaseBytes": 527516,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 73,
-      "contractNodeCount": 31
-    },
-    {
-      "id": "wholeship_bastion_production_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/bastion_production_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb",
-      "sourceSha256": "418b6886bb82000abc10d05f8f6fab1871c703ac97b4b6dea5eca47a3dd0a7af",
-      "releaseSha256": "a0a9375ce8c47f8d5b028182d0915398086ee536ac9e4dfcb21337e9eb7d581a",
-      "sourceBytes": 578520,
-      "releaseBytes": 437236,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 70,
-      "contractNodeCount": 31
-    },
-    {
       "id": "wholeship_colossus_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/colossus_production_v1_lod1.glb",
@@ -4442,6 +4400,48 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 62,
       "contractNodeCount": 29
+    },
+    {
+      "id": "wholeship_bastion_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/bastion_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/bastion_production_v1.glb",
+      "sourceSha256": "002baff1c8c501f0dc68cd1b702f37d9bebc653886757d3c1e1d372e52bdf56f",
+      "releaseSha256": "758615d3c8d95a42a7255ccaaecb3570720649db19168ece68aaa83f90fda8be",
+      "sourceBytes": 1972636,
+      "releaseBytes": 786696,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 77,
+      "contractNodeCount": 32
+    },
+    {
+      "id": "wholeship_bastion_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/bastion_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb",
+      "sourceSha256": "8a581363544bb8302735ae7d6497f28c94a243d54fd330ea1445fd60948762f2",
+      "releaseSha256": "0ee4b996e58b39d369c85c85d70d1d586bced270cd4da4c24f26408f1268acb9",
+      "sourceBytes": 1015192,
+      "releaseBytes": 557284,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 77,
+      "contractNodeCount": 32
+    },
+    {
+      "id": "wholeship_bastion_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/bastion_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb",
+      "sourceSha256": "7987d1e0234e96bfc3f837944312a06e31542f6708fa828e6ada5ed20e8c5224",
+      "releaseSha256": "f792f62b25328f6ac964d2185175670f4791b43abfc523eb5fa146432e48406d",
+      "sourceBytes": 624540,
+      "releaseBytes": 452232,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 74,
+      "contractNodeCount": 32
     }
   ]
 }

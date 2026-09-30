@@ -3839,8 +3839,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb",
-      "releaseSha256": "9be74aa31f43a04d9a6fb4a57dd8f1f974157baf3fc364f5be7270d935f0ee98",
-      "releaseBytes": 736212,
+      "releaseSha256": "758615d3c8d95a42a7255ccaaecb3570720649db19168ece68aaa83f90fda8be",
+      "releaseBytes": 786696,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4364,8 +4364,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb",
-      "releaseSha256": "cbceb5a29b1c04a65cc674fb4ef7d422a059a51bc058d1263e2f82ffccac67e0",
-      "releaseBytes": 527516,
+      "releaseSha256": "0ee4b996e58b39d369c85c85d70d1d586bced270cd4da4c24f26408f1268acb9",
+      "releaseBytes": 557284,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4385,8 +4385,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb",
-      "releaseSha256": "a0a9375ce8c47f8d5b028182d0915398086ee536ac9e4dfcb21337e9eb7d581a",
-      "releaseBytes": 437236,
+      "releaseSha256": "f792f62b25328f6ac964d2185175670f4791b43abfc523eb5fa146432e48406d",
+      "releaseBytes": 452232,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

@@ -6,6 +6,7 @@ two twin-barrel turrets forward (the second superfiring), a stepped bridge tower
 hatch grid aft and a heavy three-nozzle drive block. Warning-red bands mark the bow chevron, belts
 and turret cheeks. Three values: slate, dark gunmetal hull, near-black machinery; red identity.
 """
+import math
 import os
 import sys
 
@@ -20,6 +21,7 @@ COLORS = {
     'stripe': '#7a241c',   # warning red (brief #8a2a22)
     'hazard': '#7a241c',
     'dark': '#16191d',
+    'glow_cyan.warning': '#ff4838',  # warning red, lit: the deck-edge outline
 }
 
 
@@ -65,6 +67,16 @@ def build():
     for y in (1.6, -1.6):
         F.panel(s, 'Deck', (-7.6, y), (1.6, 1.4), 'paint', inset=0.05, depth=0.05)
     F.band(s, 'Deck', (8.2, 0, 0), (1, 0, 0), 0.32, 'stripe', facing=(0, 0, 1), min_facing=0.3)
+    # Identity trim, lit: a thin warning-red line just inside the deck's outer edge, bow to
+    # stern on both sides, so the armoured arrowhead is outlined by its own light.
+    for (ax, ay), (bx, by), lo, hi in (((9.6, 0.0), (5.6, 1.75), 5.55, 9.2), ((5.6, 1.75), (-2.0, 2.7), -2.0, 5.55),
+                                        ((-2.0, 2.7), (-8.0, 2.75), -8.6, -2.0)):
+        dx, dy = bx - ax, by - ay
+        L = math.hypot(dx, dy)
+        nx, ny = dy / L, -dx / L            # outboard normal of the port edge (bow-to-stern winding)
+        mx, my = (ax + bx) / 2 - nx * 0.32, (ay + by) / 2 - ny * 0.32
+        F.band(s, 'Deck', (mx, my, 0), (nx, ny, 0), 0.1, 'glow_cyan.warning', facing=(0, 0, 1), min_facing=0.3,
+               inset=0.01, depth=-0.02, mirror=True, region=(('x', lo, hi),))
     F.panel(s, 'Deck', (3.2, 0.0), (0.9, 1.6), 'dark', inset=0.04, depth=-0.04)
     for y in (1.3, -1.3):
         F.panel(s, 'Deck', (6.3, y * 0.75), (0.8, 0.5), 'paint', inset=0.04, depth=0.05)

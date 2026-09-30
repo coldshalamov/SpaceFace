@@ -6483,8 +6483,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
-      "tris": 29012,
-      "bytes": 1766336,
+      "tris": 33032,
+      "bytes": 1972636,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

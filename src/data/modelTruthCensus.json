@@ -40357,7 +40357,7 @@
           8.600095
         ]
       },
-      "bytes": 736212,
+      "bytes": 786696,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -40371,21 +40371,21 @@
           6.862528,
           7.758907,
           6.636409,
-          6.318296,
+          6.318909,
           1.775997,
-          6.210012,
-          11.311874,
+          6.210497,
+          11.313063,
           18.260248,
           18.260247,
           11.311473,
-          6.210012,
+          6.210497,
           1.775156,
-          6.318296,
+          6.318909,
           6.636944,
           7.758562,
           6.862433,
-          7.839876,
-          11.437902,
+          7.83955,
+          11.437594,
           17.082486,
           19.97184
         ],
@@ -40423,8 +40423,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 2.569449,
-          "lod2": 2.572561
+          "lod1": 2.569204,
+          "lod2": 2.57172
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -40452,6 +40452,14 @@
           "depthWrite": false,
           "doubleSided": false,
           "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_warning",
           "role": "emissive"
         },
         {
@@ -40533,8 +40541,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 20,
-      "nodes": 33,
+      "meshes": 21,
+      "nodes": 34,
       "note": null,
       "opening": null,
       "pivot": [
@@ -40616,8 +40624,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.106426,
-            "bz": -0.256935,
+            "bx": 0.106437,
+            "bz": -0.256961,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.020455
@@ -40634,8 +40642,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.21673,
-            "bz": -0.166303,
+            "bx": 0.216748,
+            "bz": -0.166316,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.020455
@@ -40643,8 +40651,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.466638,
-            "bz": -0.193288,
+            "bx": 0.466688,
+            "bz": -0.193308,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.020455
@@ -40679,8 +40687,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.21673,
-            "bz": 0.166303,
+            "bx": 0.216748,
+            "bz": 0.166316,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.020455
@@ -40697,8 +40705,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.106426,
-            "bz": 0.256935,
+            "bx": 0.106437,
+            "bz": 0.256961,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.020455
@@ -40733,8 +40741,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.211403,
-            "bz": 0.275505,
+            "bx": -0.211394,
+            "bz": 0.275494,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.020455
@@ -40742,8 +40750,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.405256,
-            "bz": 0.310964,
+            "bx": -0.405245,
+            "bz": 0.310955,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.020455
@@ -40774,7 +40782,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3344,
+        "boundaryEdges": 3492,
         "inwardFaceFraction": 0.261,
         "silhouetteRadius": 19.971855,
         "sliceY": 0
@@ -40881,7 +40889,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 29012,
+      "triangles": 33032,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
