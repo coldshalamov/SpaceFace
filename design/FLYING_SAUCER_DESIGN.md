@@ -73,15 +73,13 @@ Nothing was fighting the brief here; no changes needed. The mass does the work.
 ### Flight feel — `src/data/flightFeelEnvelopes.js`
 
 `applyFeelEnvelope` scales the resolved drive profile per player hull (or per class via
-`CLASS_FALLBACK`). This is where "irrespective of inertia" gets its last shaping:
-`lateralKill` (how fast uncommanded lateral velocity dies), `stopHorizon`/`brakeHorizon`
-(how far ahead the stop engages), `neutralBrake` (stick-neutral braking), `governor`.
+`CLASS_FALLBACK`). On `drive_inertialess_s` the envelope's lever set is narrower than the
+table suggests: the drive authors no `assist` block (the servo IS the assist), so the
+horizon/lateral/governor keys have nothing to scale — the stop-on-a-dime feel comes from
+the drive's own `maxBrakeAccel`/`responseHz`. What the envelope still shapes is yaw.
 
 Built: a `ship_saucer` envelope — translation 1.0, strafe 1.0 (the field answers
-identically in every direction — a disc has no preferred axis), yaw 1.30/1.40/1.30,
-lateralKill 1.45, stopHorizon 0.45, governor 1.0, brakeHorizon 0.50, neutralBrake 1.30 —
-the revision-2 pass sharpened every stop/turn axis to match the drive's new numbers:
-lateral velocity dies ~45% faster and the stop engages much closer to the contact.
+identically in every direction — a disc has no preferred axis), yaw 1.30/1.40/1.30.
 New `CLASS_FALLBACK.exotic` entry so any future exotic hull inherits the shaping, and a
 `ENEMY_HULL_FEEL_ALIASES.ship_saucer` self-map so an NPC saucer keeps the same envelope
 rather than silently borrowing the capital row.

@@ -52,11 +52,12 @@ test('co-spawned dynamic bodies on one authored point never collide coincident',
     const wreck = dynamicBody(10, { type: 'wreck', shape: 'capsule', material: 'debris', mass: 55, radius: 18 });
     const pod = dynamicBody(11);
     owner.syncFromEntities([wreck, pod]);
-    // The guard fired at creation: the second co-created body claimed the +2.5 ladder slot
-    // (2.5 WU clears the measured ~1.5 WU degenerate window along a capsule partner's axis).
+    // The guard fired at creation: the wreck's capsule spine lies along +x at rot 0, so its
+    // degenerate window spans the whole spine plus COINCIDENT_SPAWN_AXIAL_EPS (~4.6 + 2.0 WU
+    // here) — +2.5 and +5.0 still sit inside it, and +7.5 is the first free ladder slot.
     assert.ok(Math.abs(wreck.pos.x - SPAWN.x) < 0.01, `wreck keeps the authored point (${wreck.pos.x})`);
-    assert.ok(Math.abs(pod.pos.x - (SPAWN.x + 2.5)) < 0.01,
-      `pod claims the +2.5 ladder slot (got ${pod.pos.x})`);
+    assert.ok(Math.abs(pod.pos.x - (SPAWN.x + 7.5)) < 0.01,
+      `pod claims the first slot past the wreck spine (got ${pod.pos.x})`);
     owner.step(DT);
     owner.step(DT);
     const sep = Math.hypot(wreck.pos.x - pod.pos.x, wreck.pos.z - pod.pos.z);
@@ -129,12 +130,13 @@ test('ghost-material bodies neither nudge nor force nudges', async () => {
     const solid = dynamicBody(50);
     owner.syncFromEntities([solid]);
     owner.step(DT);
-    // A ghost candidate on an occupied point keeps its authored pose.
-    const ghost = dynamicBody(51, { type: 'pickup', material: 'default' });
+    // A ghost-material candidate on an occupied point keeps its authored pose — it joins
+    // no contact pairs, so the ladder never fires for it.
+    const ghost = dynamicBody(51, { type: 'pickup', material: 'massline_sensor' });
     owner.syncFromEntities([solid, ghost]);
     assert.ok(Math.abs(ghost.pos.x - SPAWN.x) < 0.01, `ghost stays on the authored point (${ghost.pos.x})`);
     // And a solid body co-spawned onto a ghost is unaffected — ghosts form no pairs.
-    const ghost2 = dynamicBody(52, { type: 'pickup', material: 'default' });
+    const ghost2 = dynamicBody(52, { type: 'pickup', material: 'massline_sensor' });
     const solid2 = dynamicBody(53);
     ghost2.pos = { x: 2000, z: 2000 };
     solid2.pos = { x: 2000, z: 2000 };

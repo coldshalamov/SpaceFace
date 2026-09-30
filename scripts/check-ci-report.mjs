@@ -202,7 +202,15 @@ export function buildCommandMatrix(checkCommand = '', scripts = {}) {
     const occurrence = (seenIds.get(baseId) || 0) + 1;
     seenIds.set(baseId, occurrence);
     const id = occurrence === 1 ? baseId : `${baseId}-${occurrence}`;
-    const timeoutMs = /(?:^|:)(?:long|browser|electron)(?:$|:)|flight:clean|check:art\b|check:bundle\b|playwright|\b(?:probe|capture|soak|performance)\b/i.test(command)
+    // Timeout class is judged on the RESOLVED command, not the npm alias: `npm run check:x` hides
+    // what it runs, so a probe/capture script reached through package.json would silently take the
+    // default 180s and die mid-proof on contended software-GL hosts (observed: the sector-arrival
+    // probe printed PASS at ~360s wall, killed at 180s). Fall back to the alias itself when the
+    // script is missing so an opaque command keeps its declared class.
+    const resolvedCommand = npmScript && typeof scripts[npmScript] === 'string'
+      ? scripts[npmScript]
+      : command;
+    const timeoutMs = /(?:^|:)(?:long|browser|electron)(?:$|:)|flight:clean|check:art\b|check:bundle\b|playwright|\b(?:probe|capture|soak|performance)\b/i.test(resolvedCommand)
       ? LONG_TIMEOUT_MS
       : DEFAULT_TIMEOUT_MS;
     return cmd(id, command, timeoutMs);
