@@ -1619,7 +1619,7 @@
       "fingerprint": "verb=chart,subject=depot-patrol,sector=any,domain=wf-04",
       "references": [],
       "integration": "live",
-      "commit": "pending-unit-5-commit",
+      "commit": "97556682567346924efe1ee9dd199d3c4c524906",
       "verification": "focused_green"
     },
     {
