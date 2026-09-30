@@ -4262,20 +4262,6 @@
       "contractNodeCount": 29
     },
     {
-      "id": "wholeship_yard_tug",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/yard_tug.glb",
-      "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "sourceSha256": "3aa01310cb56e2ea64b553598fec5fe04c3e4ecdedb210c7f10755b5e3c13da1",
-      "releaseSha256": "7fc0515da6c3f2797a8107baa079412aa3307576f947aaef6d93d33bc526e321",
-      "sourceBytes": 3712280,
-      "releaseBytes": 1300504,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 201,
-      "contractNodeCount": 67
-    },
-    {
       "id": "wholeship_warden_production_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/warden_production_v1.glb",
@@ -4442,6 +4428,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 85,
       "contractNodeCount": 31
+    },
+    {
+      "id": "wholeship_yard_tug",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/yard_tug.glb",
+      "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
+      "sourceSha256": "663ed887156fdca76798fbfeb13f9f741c38c55de083f35bacf02ef3c23631a5",
+      "releaseSha256": "4f2522408f1f31e84f7546ca83041b7f6719b2ac8dec343f8eb51bae72b55070",
+      "sourceBytes": 3739612,
+      "releaseBytes": 1335840,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 249,
+      "contractNodeCount": 79
     }
   ]
 }

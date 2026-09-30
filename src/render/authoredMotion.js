@@ -132,12 +132,48 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
+  // ANI-03: the massline winch pays out when its owner attaches a tether or deploys a snare,
+  // reacts on snap catch, winds on reel pumps, and slack-releases on release/denial. Events
+  // that name the winch owner route by actorId/sourceId; player-side telemetry events carry
+  // only targetId (the tug actor is implicit — the player ship is entity 0), so they route to
+  // PLAYER_ENTITY_ID and no-op on entities that never bound a winch bank.
+  const PLAYER_ENTITY_ID = 0;
+  const lineDeployed = (controller) =>
+    controller.clipActive?.('payout') || controller.clipActive?.('catch') || controller.clipActive?.('reel');
+  const onTetherAttached = (payload) => {
+    dispatch('tether:attached', payload && payload.actorId, payload, (c) => !lineDeployed(c));
+  };
+  const onSnareDeployed = (payload) => {
+    dispatch('massline:snareDeployed', payload && payload.sourceId, payload, (c) => !lineDeployed(c));
+  };
+  const onSnapCatch = (payload) => {
+    dispatch('tether:snapCatch', PLAYER_ENTITY_ID, payload, lineDeployed);
+  };
+  const onReelPump = (payload) => {
+    dispatch('tether:reelPump', PLAYER_ENTITY_ID, payload, lineDeployed);
+  };
+  const onTetherReleased = (payload) => {
+    dispatch('tether:released', PLAYER_ENTITY_ID, payload, lineDeployed);
+  };
+  const onSnareEnded = (payload) => {
+    dispatch('massline:snareEnded', PLAYER_ENTITY_ID, payload, lineDeployed);
+  };
+  const onLatchDenied = (payload) => {
+    dispatch('tether:latchDenied', PLAYER_ENTITY_ID, payload, lineDeployed);
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
+    bus.on('tether:attached', onTetherAttached),
+    bus.on('massline:snareDeployed', onSnareDeployed),
+    bus.on('tether:snapCatch', onSnapCatch),
+    bus.on('tether:reelPump', onReelPump),
+    bus.on('tether:released', onTetherReleased),
+    bus.on('massline:snareEnded', onSnareEnded),
+    bus.on('tether:latchDenied', onLatchDenied),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

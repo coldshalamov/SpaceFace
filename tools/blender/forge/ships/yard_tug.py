@@ -9,6 +9,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_03  # noqa: E402
 
 SHIP_ID = 'yard_tug'
 COLORS = {
@@ -171,10 +174,25 @@ def build():
     s.hook_part('HOOK_SECONDARY_TOWGEAR', _dmg['Fairlead'], _dmg['FairleadRoll'], _dmg['TowHook'])
     s.hook_part('HOOK_SENSOR_BEACON', _dmg['Beacon'], _dmg['BeaconAft'])
     s.hook_part('HOOK_ARMOR_WINCH', _dmg['WinchCheek'])
+
+    # ANI-03: massline winch payout/catch/reel/release — one bank carries all the tug's clips.
+    s.ani03_bank = ANI_03.build(s, {
+        'winch': [o for n, o in _dmg.items() if n.startswith('WinchDrum')
+                  or n.startswith('WinchCable') or n.startswith('WinchFlange')
+                  or n.startswith('WinchHub')],
+        'fairlead': [_dmg['Fairlead'], _dmg['FairleadRoll']],
+        'hook': [_dmg['TowHook'], _dmg['TowCable']],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        # The bank seals against the exported release GLBs; bake() defaults derive the file name
+        # from rig_id ('yard' — wrong), so the pilot-key name is passed explicitly.
+        ship.ani03_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_03.motion_bank.MOTIONS_DIR,
+                                                   'yard-tug.motion.json'))
