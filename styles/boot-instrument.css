@@ -1,0 +1,37 @@
+/* ORRERY instrument refinement. Loaded via intro.css; does not replace the cinematic or logo. */
+#boot-overlay.boot-overlay--orrery .boot-progress-row {
+  position:relative; width:176px; min-width:176px; height:208px; margin-top:12px;
+  display:block; flex:none;
+}
+.boot-instrument { position:relative; width:176px; height:208px; isolation:isolate; contain:layout style; }
+.boot-instrument .boot-ring { position:absolute; inset:0; width:176px; height:208px; overflow:visible; }
+.boot-instrument .boot-ring-layer { position:absolute; inset:0; width:176px; height:208px; visibility:hidden; pointer-events:none; }
+.boot-instrument--worker .boot-ring-layer { visibility:visible; }
+.boot-instrument--worker .boot-ring__fallback { visibility:hidden; }
+#boot-overlay.boot-overlay--orrery .boot-progress-row > .boot-progress,
+#boot-overlay.boot-overlay--orrery .boot-progress-row > [data-loading-pct] { display:none; }
+.boot-instrument .boot-ring__emblem { opacity:.44; }
+.boot-instrument .boot-ring__grad { fill:none; stroke:rgb(232 226 212 / .30); stroke-width:.65; }
+.boot-ring__filigree { fill:none; stroke:rgb(232 226 212 / .32); stroke-width:.6; }
+.boot-instrument .boot-ring__track { fill:none; stroke:rgb(232 226 212 / .16); stroke-width:1; }
+.boot-instrument .boot-ring__bloom { fill:none; stroke:rgb(143 203 255 / .32); stroke-width:7; stroke-linecap:round; }
+.boot-instrument .boot-ring__fill { fill:none; stroke:#8fcbff; stroke-width:1.8; stroke-linecap:round; }
+.boot-instrument .boot-ring__head { fill:#dfeeff; filter:none; }
+.boot-ring__percent { fill:#b8dcff; font:500 15px system-ui,sans-serif; font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+.boot-instrument .boot-ring__marks path { fill:none; stroke:rgb(236 230 216 / .8); stroke-width:1; }
+@media (max-height:680px) {
+  #boot-overlay.boot-overlay--orrery .boot-lockup { bottom:18px; }
+  #boot-overlay.boot-overlay--orrery .boot-progress-row { margin-top:5px; }
+}
+@media (prefers-reduced-motion:reduce) { .boot-instrument .boot-ring__emblem { animation:none; } }
+html.sf-reduce-motion .boot-instrument .boot-ring__emblem { animation:none; }
+@media (forced-colors:active) {
+  .boot-instrument .boot-ring-layer { display:none; }
+  .boot-instrument .boot-ring__fallback { visibility:visible; }
+  .boot-instrument .boot-ring__emblem, .boot-instrument .boot-ring__bloom { display:none; }
+  .boot-instrument .boot-ring__track, .boot-instrument .boot-ring__grad,
+  .boot-ring__filigree, .boot-instrument .boot-ring__marks path { stroke:CanvasText; }
+  .boot-instrument .boot-ring__fill { stroke:Highlight; }
+  .boot-instrument .boot-ring__head, .boot-ring__percent { fill:CanvasText; }
+}
+#boot-overlay:not(.hidden) { pointer-events:auto; }

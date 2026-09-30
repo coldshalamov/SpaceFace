@@ -1,6 +1,7 @@
 // System registry: holds every system, runs init in registration order, runs the sim UPDATE_ORDER
 // each step (§2.3), and the render-phase systems each frame. main.js builds it with the ctx.
 import { core } from './coreSystem.js';
+import { runBootInitializers } from './bootSystemInit.js';
 import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalResults } from '../systems/survivalResults.js';
@@ -294,6 +295,7 @@ export function createSystemLifecycle({
   let phase = 'new';
   let initError = null;
   let teardownStarted = false;
+  let pendingInit = null;
 
   function lifecycleError(action) {
     const error = new Error(`[registry] cannot ${action}: lifecycle is ${phase}`);
@@ -340,6 +342,24 @@ export function createSystemLifecycle({
     }
   }
 
+  function initAsync(options = {}) {
+    // Duplicate async callers join one pass; synchronous init() remains unchanged for sim tools.
+    if (phase === 'initializing' && pendingInit) return pendingInit;
+    if (phase === 'active') return Promise.resolve(null);
+    if (phase !== 'new') return Promise.reject(lifecycleError('initialize'));
+    phase = 'initializing';
+    const attempted = [];
+    // Assign ownership before any observer/hook can call back into initAsync().
+    pendingInit = Promise.resolve().then(() => runBootInitializers(initSystems, context, options, attempted))
+      .then((metrics) => { phase = 'active'; return metrics; })
+      .catch((error) => {
+        initError = error;
+        teardown(attempted, 'failed');
+        throw error;
+      });
+    return pendingInit;
+  }
+
   function destroy() {
     if (phase === 'destroyed' || phase === 'failed' || phase === 'destroying') return;
     if (phase === 'initializing') throw lifecycleError('destroy');
@@ -349,7 +369,7 @@ export function createSystemLifecycle({
     teardown(destroyCandidates(), 'destroyed');
   }
 
-  return { init, destroy };
+  return { init, initAsync, destroy };
 }
 
 /**
@@ -782,6 +802,7 @@ export function createRegistry(ctx) {
     ctx,
     get(name) { return byName.get(name); },
     init: lifecycle.init,
+    initAsync: lifecycle.initAsync,
     destroy: lifecycle.destroy,
     keepalive(dt = 0, wallDt = dt) {
       const state = ctx.state;

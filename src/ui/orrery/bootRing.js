@@ -1,82 +1,186 @@
-// ORRERY boot ring (design/frontend/ORRERY.md §6 Loading: "the Emblem spins up; the load's real stages
-// are ticks round the outer ring (never a timer)").
-//
-// The loading presenter already models progress honestly (a smoothed value chasing the stages the
-// boot reports). This is only its face: the engraved emblem turning slowly inside a ring, the
-// progress as an arc of ice (data in motion), and a bone tick on the outer ring for every stage the
-// boot has actually reported. Plain DOM + SVG, no library imports: it mounts before the game does.
-// The old 2 px bar stays in the DOM (the presenter and its checks still write and read it), hidden.
+// The existing ORRERY face, with a small worker-owned progress layer. The cinematic is untouched.
+import { createLoadingProgressModel } from '../loadingProgressModel.js';
+import { createBootRingWorker } from './bootRingWorker.js';
+const mounted = new WeakMap();
 const NS = 'http://www.w3.org/2000/svg';
-const EMBLEM = new URL('../../../assets/ui/generated/emblem/emblem.thumb.webp', import.meta.url).href;
-const R = 60;
-
-function node(doc, tag, attrs) {
-  const el = doc.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+const noop = () => {};
+const EMPTY = { set: noop, mark: noop, report: noop, start: noop, stop: noop, finish: noop,
+  destroy: noop, subscribe: () => noop, snapshot: () => ({ shown: 0 }), ready: Promise.resolve(false) };
+const clock = () => globalThis.performance?.now?.() ?? Date.now();
+function element(doc, name, attrs) {
+  const el = doc.createElementNS(NS, name);
+  for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value));
   return el;
 }
-
-function arc(cx, cy, r, a0, a1) {
-  const p = (a) => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
-  if (a1 - a0 >= 359.999) {
-    const [x0, y0] = p(a0); const [x1, y1] = p(a0 + 180);
-    return `M ${x0} ${y0} A ${r} ${r} 0 1 1 ${x1} ${y1} A ${r} ${r} 0 1 1 ${x0} ${y0}`;
-  }
-  const [x0, y0] = p(a0); const [x1, y1] = p(a1);
-  return `M ${x0} ${y0} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`;
+function point(r, degrees) {
+  const a = degrees * Math.PI / 180;
+  return [88 + r * Math.sin(a), 88 - r * Math.cos(a)];
+}
+function arc(r, a, b) {
+  const p = point(r, a), q = point(r, b);
+  return `M${p.join(' ')}A${r} ${r} 0 ${b - a > 180 ? 1 : 0} 1 ${q.join(' ')}`;
 }
 
-/** Mount the ring into the boot overlay's progress row. Returns { set(fraction), mark(fraction) }. */
+/** One instance is shared by the lightweight entry and the full loading presenter. */
 export function mountBootRing(document, overlay) {
-  const row = overlay && overlay.querySelector ? overlay.querySelector('.boot-progress-row') : null;
-  if (!row || typeof document.createElementNS !== 'function') return { set() {}, mark() {} };
-  if (row.querySelector('.boot-ring')) row.querySelector('.boot-ring').remove();
+  if (!overlay || typeof document?.createElementNS !== 'function') return EMPTY;
+  if (mounted.has(overlay)) return mounted.get(overlay);
+  const row = overlay.querySelector?.('.boot-progress-row');
+  if (!row || typeof document.createElement !== 'function') return EMPTY;
   overlay.classList.add('boot-overlay--orrery');
-  const c = 72;
-  const svg = node(document, 'svg', { class: 'boot-ring', viewBox: '0 0 144 144', 'aria-hidden': 'true' });
-  const emblem = node(document, 'image', { href: EMBLEM, x: c - 50, y: c - 50, width: 100, height: 100, class: 'boot-ring__emblem' });
-  // outer graduations, the track, the progress arc (ice) over a soft bloom, the stage marks
-  const ticks = [];
-  for (let i = 0; i < 72; i += 1) {
-    const a = i * 5;
-    const len = i % 6 === 0 ? 6 : 3;
-    const [x0, y0] = [c + (R + 5) * Math.sin(a * Math.PI / 180), c - (R + 5) * Math.cos(a * Math.PI / 180)];
-    const [x1, y1] = [c + (R + 5 + len) * Math.sin(a * Math.PI / 180), c - (R + 5 + len) * Math.cos(a * Math.PI / 180)];
-    ticks.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`);
+  row.removeAttribute('aria-hidden');
+  const host = document.defaultView || globalThis;
+  const model = createLoadingProgressModel();
+  const listeners = new Set(), marked = new Set();
+  const shell = document.createElement('div');
+  shell.className = 'boot-instrument';
+  shell.setAttribute('role', 'progressbar');
+  shell.setAttribute('aria-label', 'Startup progress, estimated within each loading stage');
+  shell.setAttribute('aria-valuemin', '0'); shell.setAttribute('aria-valuemax', '100');
+  const svg = element(document, 'svg', { class: 'boot-ring', viewBox: '0 0 176 208', 'aria-hidden': 'true' });
+  const emblem = element(document, 'image', { x: 38, y: 38, width: 100, height: 100, class: 'boot-ring__emblem' });
+  try { emblem.setAttribute('href', new URL('assets/ui/generated/emblem/emblem.thumb.webp', document.baseURI).href); } catch { /* probes */ }
+  const engraving = [];
+  for (let i = 0; i < 96; i++) {
+    const a = i * 3.75, major = i % 8 === 0;
+    engraving.push(`M${point(major ? 72 : 74, a).join(' ')}L${point(major ? 79 : 77, a).join(' ')}`);
   }
-  const grad = node(document, 'path', { d: ticks.join(' '), class: 'boot-ring__grad' });
-  const track = node(document, 'path', { d: arc(c, c, R, 0, 360), class: 'boot-ring__track' });
-  const bloom = node(document, 'path', { d: arc(c, c, R, 0, 360), class: 'boot-ring__bloom', pathLength: 1, 'stroke-dasharray': '0 1' });
-  const fill = node(document, 'path', { d: arc(c, c, R, 0, 360), class: 'boot-ring__fill', pathLength: 1, 'stroke-dasharray': '0 1' });
-  const head = node(document, 'circle', { r: 2.6, cx: c, cy: c - R, class: 'boot-ring__head' });
-  const marks = node(document, 'g', { class: 'boot-ring__marks' });
-  svg.append(emblem, grad, track, bloom, fill, marks, head);
-  row.insertBefore(svg, row.firstChild);
-
-  let shown = -1;
-  const marked = new Set();
-  return {
-    set(fraction) {
-      const f = Math.max(0, Math.min(1, Number(fraction) || 0));
-      if (Math.abs(f - shown) < 0.001) return;
-      shown = f;
-      const dash = `${f.toFixed(4)} 1`;
-      fill.setAttribute('stroke-dasharray', dash);
-      bloom.setAttribute('stroke-dasharray', dash);
-      const a = f * 360;
-      head.setAttribute('cx', (c + R * Math.sin(a * Math.PI / 180)).toFixed(2));
-      head.setAttribute('cy', (c - R * Math.cos(a * Math.PI / 180)).toFixed(2));
+  const grad = element(document, 'path', { class: 'boot-ring__grad', d: engraving.join(' ') });
+  const filigree = element(document, 'g', { class: 'boot-ring__filigree' });
+  for (let i = 0; i < 4; i++) {
+    filigree.append(element(document, 'path', { d: arc(82, i * 90 + 9, i * 90 + 65) }),
+      element(document, 'path', { d: arc(53, i * 90 + 5, i * 90 + 73) }));
+    const [x, y] = point(82, i * 90);
+    filigree.append(element(document, 'path', { d: `M${x} ${y - 2.4}l2.4 2.4 -2.4 2.4 -2.4 -2.4Z` }));
+  }
+  const track = element(document, 'circle', { cx: 88, cy: 88, r: 60, class: 'boot-ring__track' });
+  const live = element(document, 'g', { class: 'boot-ring__fallback' });
+  const attrs = { cx: 88, cy: 88, r: 60, pathLength: 1, transform: 'rotate(-90 88 88)', 'stroke-dasharray': '0 1' };
+  const bloom = element(document, 'circle', { ...attrs, class: 'boot-ring__bloom' });
+  const fill = element(document, 'circle', { ...attrs, class: 'boot-ring__fill' });
+  const marks = element(document, 'g', { class: 'boot-ring__marks' });
+  const head = element(document, 'circle', { r: 2.2, cx: 88, cy: 28, class: 'boot-ring__head' });
+  const percent = element(document, 'text', { x: 88, y: 195, class: 'boot-ring__percent', 'text-anchor': 'middle' });
+  percent.textContent = '0.0%';
+  live.append(bloom, fill, marks, head, percent);
+  svg.append(emblem, grad, filigree, track, live);
+  const canvas = document.createElement('canvas');
+  canvas.className = 'boot-ring-layer'; canvas.setAttribute('aria-hidden', 'true');
+  shell.append(svg, canvas); row.insertBefore(shell, row.firstChild);
+  let worker = null, workerReady = false, running = false, disposed = false;
+  let frame = null, lastNotify = -Infinity, lastAria = -Infinity, lastPaint = -1, lastSample = null;
+  let epoch = 0;
+  let stage = { id: 'boot-modules', progress: 0, ceiling: .14 };
+  let resolveReady;
+  const ready = new Promise((resolve) => { resolveReady = resolve; });
+  let motionQuery = null, contrastQuery = null, observer = null, motion = null;
+  try { motionQuery = host.matchMedia?.('(prefers-reduced-motion: reduce)');
+    contrastQuery = host.matchMedia?.('(forced-colors: active)'); } catch { /* optional */ }
+  const readMotion = () => !!(motionQuery?.matches || document.documentElement?.classList?.contains('sf-reduce-motion'));
+  const updateMotion = () => {
+    const next = readMotion(); if (next === motion) return;
+    motion = next; model.setReduced(motion); worker?.post({ type: 'motion', reduced: motion });
+  };
+  function fallback() {
+    workerReady = false; shell.classList.remove('boot-instrument--worker');
+    // Never touch the transferred canvas context; SVG is an independent, already-painted fallback.
+    worker?.destroy(); worker = null; lastPaint = -1; paint(clock()); resolveReady(false);
+  }
+  function paint(t) {
+    const f = model.tick(t);
+    if (!workerReady && Math.abs(f - lastPaint) > .00005) {
+      lastPaint = f;
+      const dash = `${f.toFixed(5)} 1`;
+      fill.setAttribute('stroke-dasharray', dash); bloom.setAttribute('stroke-dasharray', dash);
+      bloom.style.opacity = String(.25 + .75 * f * f);
+      const [x, y] = point(60, f * 360);
+      head.setAttribute('cx', x.toFixed(3)); head.setAttribute('cy', y.toFixed(3));
+      percent.textContent = model.format();
+    }
+    if (t - lastAria >= 500) {
+      lastAria = t;
+      const value = Math.floor(f * 1000) / 10;
+      shell.setAttribute('aria-valuenow', String(value));
+      shell.setAttribute('aria-valuetext', `${model.format()} — ${stage.label || 'Loading'}`);
+    }
+    if (t - lastNotify >= 100) {
+      lastNotify = t;
+      for (const listener of listeners) { try { listener(f, model.format()); } catch { /* decoration */ } }
+    }
+  }
+  function loop(t) {
+    frame = null;
+    if (disposed || !running || document.hidden) return;
+    paint(t);
+    frame = host.requestAnimationFrame?.(loop) ?? null;
+  }
+  function pauseClock() {
+    if (frame !== null) host.cancelAnimationFrame?.(frame);
+    frame = null; worker?.post({ type: 'pause' });
+  }
+  function startClock() {
+    if (disposed || !running || document.hidden) return;
+    worker?.post({ type: 'resume' });
+    if (frame === null && host.requestAnimationFrame) frame = host.requestAnimationFrame(loop);
+  }
+  function mark(value, forward = true) {
+    const key = Math.round(Math.max(0, Math.min(.997, Number(value) || 0)) * 200);
+    if (!key || marked.has(key)) return;
+    marked.add(key);
+    if (forward) worker?.post({ type: 'mark', value });
+    const a = key / 200 * 360;
+    marks.append(element(document, 'path', { d: `M${point(57, a).join(' ')}L${point(69, a).join(' ')}` }));
+  }
+  const visibility = () => { if (document.hidden) pauseClock(); else startClock(); };
+  const contrastChanged = () => { if (contrastQuery?.matches) fallback(); };
+  const api = {
+    mounted: true,
+    ready,
+    report(next = {}, { reset = false } = {}) {
+      if (disposed) return;
+      if (reset) { epoch++; marked.clear(); marks.replaceChildren(); lastPaint = -1; lastSample = null; }
+      stage = next; model.report(next, clock(), reset); updateMotion(); mark(next.progress, false);
+      worker?.post({ type: 'stage', stage: next, reset, epoch });
+      if (!running || document.hidden) worker?.post({ type: 'pause' });
+      if (!host.requestAnimationFrame) model.adopt(Number(next.progress) || 0);
+      paint(clock());
     },
-    /** A reported stage: a bone tick on the outer ring where the boot really is, never a timer's. */
-    mark(fraction) {
-      const f = Math.max(0, Math.min(1, Number(fraction) || 0));
-      const key = Math.round(f * 200);
-      if (marked.has(key) || f <= 0) return;
-      marked.add(key);
-      const a = f * 360;
-      const [x0, y0] = [c + (R - 6) * Math.sin(a * Math.PI / 180), c - (R - 6) * Math.cos(a * Math.PI / 180)];
-      const [x1, y1] = [c + (R + 13) * Math.sin(a * Math.PI / 180), c - (R + 13) * Math.cos(a * Math.PI / 180)];
-      marks.appendChild(node(document, 'path', { d: `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}` }));
+    set(value) { model.adopt(Number(value)); worker?.post({ type: 'set', value }); paint(clock()); }, // legacy hooks
+    mark,
+    finish() { model.finish(); worker?.post({ type: 'finish' }); },
+    start() { if (!disposed) { running = true; updateMotion(); startClock(); } },
+    stop() { running = false; pauseClock(); },
+    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+    snapshot() { return { ...model.snapshot(), workerReady, running, workerSample: lastSample }; },
+    destroy() {
+      if (disposed) return; api.stop(); disposed = true;
+      worker?.destroy(); worker = null; resolveReady(false); listeners.clear();
+      document.removeEventListener?.('visibilitychange', visibility);
+      motionQuery?.removeEventListener?.('change', updateMotion);
+      contrastQuery?.removeEventListener?.('change', contrastChanged);
+      observer?.disconnect(); shell.remove(); mounted.delete(overlay);
     },
   };
+  mounted.set(overlay, api);
+  updateMotion(); model.report(stage, clock()); paint(clock());
+  if (!contrastQuery?.matches) {
+    worker = createBootRingWorker(canvas, { stage, reduced: motion,
+      onReady() {
+        if (disposed) return;
+        workerReady = true; shell.classList.add('boot-instrument--worker'); resolveReady(true);
+        if (!running || document.hidden) worker?.post({ type: 'pause' });
+      },
+      onSample(sample) { if (sample.epoch !== epoch) return; lastSample = sample; model.adopt(sample.shown); },
+      onFailure: fallback,
+    });
+  }
+  if (!worker) resolveReady(false);
+  document.addEventListener?.('visibilitychange', visibility);
+  motionQuery?.addEventListener?.('change', updateMotion);
+  contrastQuery?.addEventListener?.('change', contrastChanged);
+  if (typeof host.MutationObserver === 'function' && document.documentElement) {
+    observer = new host.MutationObserver(updateMotion);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
+  return api;
 }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { beginBootWork } from '../core/bootWork.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import {
@@ -453,6 +454,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
     ? options.paceQueue
     : makeGpuQueuePacer(renderer);
   const batches = partitionGeometryWork(work, options);
+  const geometryProgress = beginBootWork(renderer, 'geometry', batches.length);
   const material = residencyMaterialFor(renderer);
   const target = residencyScratchTargetFor(renderer);
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 10);
@@ -518,6 +520,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
           results.push(receipt);
         }
         reportBlockingSlice(onBlockingSlice, receipt);
+        geometryProgress.update(index + 1, success);
       }
       }
     }, { urgent: options.urgent === true });
@@ -570,6 +573,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const uploads = [];
   let residentTextures = 0;
   const count = textures.length;
+  const textureProgress = beginBootWork(renderer, 'textures', count);
   const deadlineMs = Number(options.deadlineMs);
   const hasDeadline = Number.isFinite(deadlineMs) && deadlineMs >= 0;
   const startedAt = now();
@@ -592,6 +596,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // the entry's last live user the bytes can actually leave.
       detachPackageTexture(texture);
       residentTextures += 1;
+      textureProgress.update(index + 1);
       continue;
     }
     if (isPackageTextureDetached(texture)) {
@@ -599,6 +604,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // context-restore rehydrate refills it — uploading now would push empty mips over the live
       // copy, so count it resident and skip.
       residentTextures += 1;
+      textureProgress.update(index + 1);
       continue;
     }
     await yieldToMain();
@@ -633,6 +639,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
         count,
         success,
       });
+      textureProgress.update(index + 1, success);
     }
     if (paceQueue) await paceQueue();
   }

@@ -30,7 +30,10 @@
     "src/ui/orrery/flightPreview.js": "ORRERY flight preview staged alongside flightInstruments.js by the same live refactor; wire with the cluster or retire it.",
     "src/ui/virtualList.js": "PQ-184.01 list windowing kernel; long screens have not mounted it yet. Keep until that leaf wires market/contracts/ledger/codex or retires the component.",
     "src/render/glbPrepassWorker.js": "Worker loaded via new URL() from glbPrepass.js (defaultWorkerUrl); the static import graph cannot see that wire. Batch-decodes meshopt bufferViews off-thread for the GLB prepass.",
-    "src/render/vfxColorLightDirector.js": "VFX-to-light preset table staged with its color/lighting standard (7cba87298). Presenters still call vfx._flashLight with hand-tuned values; gated by scripts/audit-color-lighting.mjs and test/vfx-color-light-director.test.mjs until the flash-light path routes through presetFor()."
+    "src/render/vfxColorLightDirector.js": "VFX-to-light preset table staged with its color/lighting standard (7cba87298). Presenters still call vfx._flashLight with hand-tuned values; gated by scripts/audit-color-lighting.mjs and test/vfx-color-light-director.test.mjs until the flash-light path routes through presetFor().",
+    "src/ui/bootEntry.js": "The dev page's module entry: index.html's <script src> loads it before main.js so the boot instrument paints first; the static import graph cannot see the HTML wire. Bootstraps the game via import('../main.js'), so it must stay OUTSIDE the main.js graph. Gated by scripts/check-smooth-boot-integration.mjs entry-wiring asserts.",
+    "src/ui/introSignalRemixBoot.js": "Optional intro-video optics, dynamically imported by src/ui/bootEntry.js (itself an index.html-wired orphan); the static graph cannot see either wire. Landed with PR #180 wired from the index.html inline script.",
+    "src/ui/introSignalRemix.js": "Reached only through introSignalRemixBoot.js (itself HTML-wired); the static graph never traverses into it. Landed with PR #180."
   },
   "recordedAt": "2026-09-16"
 }

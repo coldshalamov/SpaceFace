@@ -126,6 +126,8 @@ async function boot() {
     });
     const presentationJournal = createPresentationJournal();
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
+    bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
+      label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
     const helpers = {
       scenarioContract: contract.document,
@@ -144,7 +146,16 @@ async function boot() {
 
     const registry = createRegistry(ctx);
     ctx.registry = registry;
-    registry.init();
+    const bootInitMetrics = await registry.initAsync({
+      budgetMs: 4,
+      onProgress({ completed, total }) {
+        bus.emit('game:loadingProgress', {
+          id: 'boot-systems', progress: .20 + .72 * (total ? completed / total : 1), ceiling: .94,
+          label: 'Initializing flight systems', detail: `${completed} of ${total} systems initialized`,
+        });
+      },
+    });
+    SF_DEBUG_ONLY: if (SF_DEBUG) window.__SF_BOOT_INIT__ = bootInitMetrics;
     helpers.deferLoadedGameRestore = (restore) => {
       bus.emit('game:loadingProgress', {
         id: 'restoring-save',
@@ -272,6 +283,9 @@ async function boot() {
     // Route through the presenter, not a direct DOM toggle: it owns the overlay's lifecycle —
     // on hide it also stops and destroys the boot artwork's worker/WebGL2 context, which
     // otherwise kept rendering into the hidden canvas for the rest of the session.
+    bus.emit('game:loadingProgress', { id: 'boot-menu', progress: .96, ceiling: .997,
+      label: 'Opening the command deck', detail: 'Flight systems initialized' });
+    await nextPaint();
     loadingPresenter.hide();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="./styles/fonts.css" />
   <link rel="stylesheet" href="./styles/menu.css" />
   <link rel="stylesheet" href="./styles/intro.css" />
+  <link rel="stylesheet" href="./styles/boot-instrument.css" />
   <link rel="stylesheet" href="./styles/asteroid-ops.css" />
   <link rel="stylesheet" href="styles/accessibility.css">
   <!-- hud.css is NOT linked here: styles/ui.css @imports it, which is how every other page
@@ -83,14 +84,6 @@
       </div>
     </div>
   </div>
-  <script type="module">
-    import { bootstrapLoadingTerminal } from './src/ui/loadingTerminalArt.js';
-    bootstrapLoadingTerminal();
-    // Optional optics: preserves the existing video and both artwork fallbacks.
-    import('./src/ui/introSignalRemixBoot.js')
-      .then(({ installIntroSignalRemix }) => installIntroSignalRemix())
-      .catch(() => { /* Decoration cannot block boot. */ });
-  </script>
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/ui/bootEntry.js"></script>
 </body>
 </html>

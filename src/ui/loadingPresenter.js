@@ -1,352 +1,203 @@
 import { createTerminalArtwork, ensureBootTerminalCanvas } from './loadingTerminalArt.js';
 import { mountBootRing } from './orrery/bootRing.js';
+import { createLoadingProgressDriver } from './loadingProgressDriver.js';
+import { observeBootWork, createBootWorkAccumulator } from '../core/bootWork.js';
 
-const DEFAULT_STAGE = Object.freeze({
-  id: 'restoring-save',
-  progress: 0.05,
-  label: 'Restoring flight state',
-  detail: 'Rebuilding the current sector and critical visuals',
-});
+const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
+  label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
+const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
+const NOOP = { show() {}, hide() {}, destroy() {} };
 
-// Stage events arrive as sparse steps (0.08 → 0.25 → 0.5 …); writing them straight to the bar
-// made the loader click between values and sit parked while a stage ran. The displayed value
-// instead chases a moving goal through a velocity-lagged approach: it accelerates smoothly out
-// of each completed stage, eases in over a tail a little slower than the ramp-up, then keeps
-// creeping — asymptotically slower — into a small overhang past the last reported stage so a
-// long-running stage never looks stuck.
-const PROGRESS_GAIN = 3.4;       // approach rate toward the goal (1/s)
-const PROGRESS_VEL_TAU = 0.13;   // velocity lag in seconds — the "accelerate off the step" ramp
-const PROGRESS_VEL_MAX = 1.1;    // bound on bar speed (progress/s)
-const PROGRESS_OVERHANG = 0.06;  // creep headroom past the last stage while it runs
-const PROGRESS_CREEP_TAU = 6.5;  // seconds for that headroom to open fully while waiting
-const PROGRESS_CAP = 0.985;      // 100% is only ever shown when a stage actually reports it
-
-const clamp01 = (v) => Math.max(0, Math.min(1, v));
-
-/** DOM-only loading presenter shared by browser and Electron's one game route. */
+/** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
-  if (!document || !bus || typeof bus.on !== 'function') {
-    return { show() {}, hide() {}, destroy() {} };
-  }
-  const overlay = document.getElementById ? document.getElementById('boot-overlay') : null;
-  const label = document.querySelector ? document.querySelector('[data-loading-label]') : null;
-  const detail = document.querySelector ? document.querySelector('[data-loading-detail]') : null;
-  const progress = document.querySelector ? document.querySelector('[data-loading-progress]') : null;
-  const pctEl = document.querySelector ? document.querySelector('[data-loading-pct]') : null;
-  if (!overlay) return { show() {}, hide() {}, destroy() {} };
-  // ORRERY: the progress reads on a ring round the turning emblem, a tick per reported stage.
-  let ring = { set() {}, mark() {} };
-  try { ring = mountBootRing(document, overlay); } catch (_) { /* decoration never blocks boot */ }
-
-  const raf = typeof globalThis.requestAnimationFrame === 'function'
-    ? globalThis.requestAnimationFrame.bind(globalThis)
-    : null;
-  const cancelRaf = typeof globalThis.cancelAnimationFrame === 'function'
-    ? globalThis.cancelAnimationFrame.bind(globalThis)
-    : null;
-
-  const waveformCanvas = document.getElementById ? document.getElementById('boot-waveform-canvas') : null;
-  // The loading screen's artwork is DECORATION. It must never be able to stop the game from
-  // starting — and it has: createTerminalArtwork threw InvalidStateError out of boot (the canvas
-  // was being set up twice and transferControlToOffscreen is irreversible), which meant the boot
-  // overlay was never hidden and the game hung on the loading screen indefinitely.
-  //
-  // The underlying re-entrancy is fixed in loadingTerminalArt.js. This guard is here so that the
-  // NEXT bug in the artwork costs the player a missing animation instead of the whole game.
-  const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
-  // The artwork is acquired lazily. On worker-capable hosts it uses the 2D renderer and can stay
-  // paused between loading screens, so a later New Game/Continue does not wait for another worker
-  // and canvas startup. Hosts without transferable worker canvases keep the old destroy/rebuild
-  // lifecycle, since their renderer may own a main-thread WebGL context.
-  let terminalArt = null;
-  let retainWorkerArt = false;
-  let retainedCanvas = null;
-  let retainedPointerMove = null;
-  let needsPointerBridge = false;
-  const artwork = () => {
+  if (!document || !bus || typeof bus.on !== 'function') return NOOP;
+  const overlay = document.getElementById?.('boot-overlay');
+  if (!overlay) return NOOP;
+  const label = document.querySelector?.('[data-loading-label]');
+  const detail = document.querySelector?.('[data-loading-detail]');
+  const progress = document.querySelector?.('[data-loading-progress]');
+  const pctEl = document.querySelector?.('[data-loading-pct]');
+  const waveformCanvas = document.getElementById?.('boot-waveform-canvas');
+  const host = document.defaultView || globalThis;
+  const raf = host.requestAnimationFrame?.bind(host);
+  const cancelRaf = host.cancelAnimationFrame?.bind(host);
+  const now = () => host.performance?.now?.() ?? Date.now();
+  let ring;
+  try { ring = mountBootRing(document, overlay); } catch { ring = null; }
+  if (!ring?.mounted) ring = createLoadingProgressDriver(host);
+  // Only phase sentences are live. Numeric progress is a queryable progressbar, not 10 spoken
+  // announcements per second; the existing hidden span hooks remain available to tools.
+  overlay.setAttribute('aria-live', 'off');
+  label?.setAttribute?.('role', 'status'); label?.setAttribute?.('aria-live', 'polite');
+  let terminalArt = null, retainWorkerArt = false, retainedCanvas = null;
+  let retainedPointerMove = null, needsPointerBridge = false;
+  let hideTimer = null, activeStage = null, revealRaf = null, revealDeadlineTimer = null;
+  let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
+  let session = 0;
+  const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
+  function artwork() {
     if (terminalArt) return terminalArt;
     const canvas = ensureBootTerminalCanvas(document);
     if (!canvas) return NO_ART;
     try {
-      const isolatedWorkerCanvas = typeof globalThis.Worker === 'function'
-        && typeof canvas.transferControlToOffscreen === 'function';
-      // The opening load is already compiling pipelines and uploading large textures on the
-      // shared GPU. Keep the decorative visualizer in its existing worker-based 2D renderer so
-      // it can animate without competing for that GPU time or allocating a second set of GL
-      // feedback buffers.
-      terminalArt = createTerminalArtwork({
-        canvas,
-        waveformCanvas,
-        overlay,
-        force2D: isolatedWorkerCanvas,
-        document,
-      }) || NO_ART;
-      retainWorkerArt = isolatedWorkerCanvas && terminalArt !== NO_ART;
+      const isolated = typeof globalThis.Worker === 'function' && typeof canvas.transferControlToOffscreen === 'function';
+      terminalArt = createTerminalArtwork({ canvas, waveformCanvas, overlay, force2D: isolated, document }) || NO_ART;
+      retainWorkerArt = isolated && terminalArt !== NO_ART;
       retainedCanvas = retainWorkerArt ? canvas : null;
-    } catch (err) {
-      retainWorkerArt = false;
-      retainedCanvas = null;
-      try { console.warn('[boot] loading artwork failed; continuing without it', err); } catch (_) {}
-      terminalArt = NO_ART;
+    } catch (error) {
+      console.warn('[boot] loading artwork failed; continuing without it', error);
+      retainWorkerArt = false; retainedCanvas = null; terminalArt = NO_ART;
     }
     return terminalArt;
-  };
-
-  const detachRetainedPointerBridge = () => {
-    if (!retainedPointerMove) return;
-    try { overlay.removeEventListener('pointermove', retainedPointerMove); } catch (_) {}
+  }
+  function detachPointer() {
+    if (retainedPointerMove) overlay.removeEventListener?.('pointermove', retainedPointerMove);
     retainedPointerMove = null;
-  };
-
-  const attachRetainedPointerBridge = () => {
-    if (!needsPointerBridge || !retainWorkerArt || !retainedCanvas
-        || !terminalArt || typeof overlay.addEventListener !== 'function') return;
-    const receive = terminalArt.__engine && terminalArt.__engine.receive;
+  }
+  function attachPointer() {
+    if (!needsPointerBridge || retainedPointerMove || !retainWorkerArt || !retainedCanvas) return;
+    const receive = terminalArt?.__engine?.receive;
     if (typeof receive !== 'function') return;
     retainedPointerMove = (event) => {
-      const rect = retainedCanvas.getBoundingClientRect && retainedCanvas.getBoundingClientRect();
+      const rect = retainedCanvas.getBoundingClientRect?.();
       if (!rect || rect.width <= 0 || rect.height <= 0) return;
-      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
-      receive.call(terminalArt.__engine, { type: 'pointer', x, y });
+      receive.call(terminalArt.__engine, { type: 'pointer',
+        x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        y: ((event.clientY - rect.top) / rect.height) * 2 - 1 });
     };
-    overlay.addEventListener('pointermove', retainedPointerMove, { passive: true });
+    overlay.addEventListener?.('pointermove', retainedPointerMove, { passive: true });
     needsPointerBridge = false;
-  };
-
-  let hideTimer = null;
-  let activeStage = null;
-
-  // Smoothed progress model. `targetProgress` is the last stage's honest value; the bar eases
-  // toward it and then keeps inching into the overhang while that stage runs. All timestamps
-  // come from the rAF clock so a busy main thread pauses the animation rather than jumping it.
-  let displayProgress = 0;
-  let displayVel = 0;
-  let targetProgress = DEFAULT_STAGE.progress;
-  let targetAt = null;         // rAF-clock timestamp of the last stage change; null = next tick
-  let lastFrameAt = null;
-  let progressRaf = null;
-
-  const reducedMotion = () => {
-    try {
-      if (document.documentElement && document.documentElement.classList
-          && document.documentElement.classList.contains('sf-reduce-motion')) return true;
-      if (typeof globalThis.matchMedia === 'function'
-          && globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
-    } catch (_) {}
-    return false;
-  };
-
-  const paintProgress = () => {
-    const shown = clamp01(displayProgress);
-    if (progress) progress.style.width = `${(shown * 100).toFixed(2)}%`;
-    if (pctEl) pctEl.textContent = `${Math.round(shown * 100)}%`;
-    ring.set(shown);
-    // Feed the smoothed value to the artwork so its segment bar, pct and worker morphs move
-    // with the bar instead of stepping. NO_ART keeps this a no-op when the canvas is absent.
-    (terminalArt || NO_ART).updateProgress({
-      id: activeStage && activeStage.id ? activeStage.id : 'loading',
-      progress: shown,
-    });
-  };
-
-  const tickProgress = (ts) => {
-    progressRaf = null;
-    if (overlay.style.display === 'none') return; // fully hidden — the loop's job is done
-    const t = Number.isFinite(ts) ? ts
-      : (typeof performance !== 'undefined' && performance && typeof performance.now === 'function'
-        ? performance.now() : Date.now());
-    const dt = lastFrameAt == null ? 0 : Math.min(0.1, Math.max(0, (t - lastFrameAt) / 1000));
-    lastFrameAt = t;
-    if (targetAt == null) targetAt = t;
-    if (reducedMotion()) {
-      displayProgress = targetProgress;
-      displayVel = 0;
-    } else {
-      const waitingS = Math.max(0, (t - targetAt) / 1000);
-      const creep = PROGRESS_OVERHANG * (1 - Math.exp(-waitingS / PROGRESS_CREEP_TAU));
-      const goal = targetProgress >= 1 ? 1 : Math.min(targetProgress + creep, PROGRESS_CAP);
-      let desired = (goal - displayProgress) * PROGRESS_GAIN;
-      if (desired > PROGRESS_VEL_MAX) desired = PROGRESS_VEL_MAX;
-      else if (desired < -PROGRESS_VEL_MAX) desired = -PROGRESS_VEL_MAX;
-      displayVel += (desired - displayVel) * (1 - Math.exp(-dt / PROGRESS_VEL_TAU));
-      displayProgress = clamp01(displayProgress + displayVel * dt);
-    }
-    paintProgress();
-    progressRaf = raf(tickProgress);
-  };
-
-  const ensureProgressLoop = () => {
-    if (raf && progressRaf == null) {
-      lastFrameAt = null;
-      progressRaf = raf(tickProgress);
-    }
-  };
-  const stopProgressLoop = () => {
-    if (progressRaf != null && cancelRaf) cancelRaf(progressRaf);
-    progressRaf = null;
-  };
-
-  // ---- first-presented-frame gate ---------------------------------------------------------
-  // `mode:changed` -> 'flight' lands one commit before the first real flight draw; the canvas is
-  // still holding the frozen menu-era picture at that instant, and lifting the shell on the flag
-  // alone was the "brown frame" flash players saw on Continue. The shell instead stays up — bar
-  // run out to 100%, so it reads as finishing, not stalled — until the renderer has presented
-  // again, and only then fades. A bounded deadline keeps a broken renderer from hanging the shell.
-  const FLIGHT_REVEAL_TIMEOUT_MS = 20000;
-  let revealRaf = null;
-  let revealDeadlineTimer = null;
-
-  const flightFrameNow = () => {
-    const info = state && state.render && state.render.renderer && state.render.renderer.info;
-    // Three's presented-frame counter lives at info.render.frame (info.frame does not exist).
-    const frame = info && info.render && info.render.frame;
-    return Number.isFinite(frame) ? frame : null;
-  };
-
-  const cancelRevealWait = () => {
-    if (revealRaf != null && cancelRaf) cancelRaf(revealRaf);
-    revealRaf = null;
-    if (revealDeadlineTimer != null) clearTimeout(revealDeadlineTimer);
-    revealDeadlineTimer = null;
-  };
-
-  // If overlay is initially visible, start terminal artwork immediately
-  if (!overlay.classList?.contains?.('hidden')) {
-    const initial = artwork();
-    initial.start();
-    initial.updateProgress(DEFAULT_STAGE);
-    displayProgress = DEFAULT_STAGE.progress;
-    paintProgress();
-    ensureProgressLoop();
   }
+  function clearWork() {
+    if (workTimer !== null) clearTimeout(workTimer);
+    workTimer = null; pendingWork = null;
+  }
+  function cancelRevealWait() {
+    if (revealRaf !== null) cancelRaf?.(revealRaf);
+    revealRaf = null;
+    if (revealDeadlineTimer !== null) clearTimeout(revealDeadlineTimer);
+    revealDeadlineTimer = null;
+  }
+  function paint(fraction, formatted) {
+    if (!visible() || disposed) return;
+    if (progress) progress.style.width = raf ? `${(fraction * 100).toFixed(2)}%` : `${Math.round(fraction * 100)}%`;
+    if (pctEl && pctEl.textContent !== formatted) pctEl.textContent = formatted;
+    (terminalArt || NO_ART).updateProgress({ id: activeStage?.id || 'loading', progress: fraction });
+  }
+  const unsubscribePaint = ring?.subscribe(paint) || (() => {});
+  const unsubscribeWork = observeBootWork((receipt) => {
+    if (!visible() || !accumulator || disposed || !activeStage) return;
+    if (!['authored-library', 'authored-visuals', 'render-pipelines', 'gpu-resources'].includes(activeStage.id)) return;
+    if (!receipt.owner || (receipt.owner !== state?.render && receipt.owner !== state?.render?.renderer)) return;
+    const work = accumulator.accept(receipt);
+    if (!work) return;
+    pendingWork = work;
+    if (workTimer !== null) return;
+    const ownerSession = session;
+    // Coalesce receipts, not progress animation: 100 texture completions do not post 100 UI writes.
+    workTimer = setTimeout(() => {
+      workTimer = null;
+      if (ownerSession !== session || !visible() || !pendingWork || disposed) return;
+      const current = pendingWork; pendingWork = null;
+      ring?.report({ ...activeStage, progress: current.progress });
+      if (detail && current.total > 0) {
+        detail.textContent = `${current.completed} of ${current.total} resources prepared in this pass`;
+      }
+    }, 80);
+  });
 
-  const show = (stage = DEFAULT_STAGE) => {
+  function show(stage = DEFAULT_STAGE) {
+    if (disposed) return;
     cancelRevealWait();
-    if (hideTimer != null) {
-      clearTimeout(hideTimer);
-      hideTimer = null;
-    }
-    const amount = clamp01(Number(stage.progress) || 0);
-    const wasHidden = Boolean(overlay.classList?.contains?.('hidden'))
-      || overlay.style.display === 'none';
-    const stageChanged = !activeStage || activeStage.id !== stage.id
-      || Math.abs((Number(activeStage.progress) || 0) - amount) > 1e-6;
+    if (hideTimer !== null) clearTimeout(hideTimer);
+    hideTimer = null;
+    const wasHidden = !visible();
+    // New run/restore restarts a completed/retiring session. Late progress inside one session
+    // cannot rewind it. The first presenter inherits the entry worker's existing boot progress.
+    const fresh = wasHidden || stage.reset === true;
+    const changed = !activeStage || activeStage.id !== stage.id || fresh;
+    if (changed) { session++; clearWork(); accumulator = createBootWorkAccumulator(stage); }
     activeStage = stage;
-    ring.mark(amount);
-    overlay.style.display = 'flex';
-    overlay.classList.remove('hidden');
-    overlay.setAttribute('aria-busy', 'true');
-    overlay.dataset.loadingStage = String(stage.id || 'loading');
+    overlay.style.display = 'flex'; overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-busy', 'true'); overlay.dataset.loadingStage = String(stage.id || 'loading');
     if (label) label.textContent = String(stage.label || DEFAULT_STAGE.label);
     if (detail) detail.textContent = String(stage.detail || 'Preparing the playable scene');
-    if (!raf) {
-      // No animation clock (probes, unit tests): keep the honest step write.
-      if (progress) progress.style.width = `${Math.round(amount * 100)}%`;
-      if (pctEl) pctEl.textContent = `${Math.round(amount * 100)}%`;
-      ring.set(amount);
-    } else {
-      targetProgress = amount;
-      // A fresh session or a regressed target snaps to the reported step; a re-show of the
-      // same stage keeps the creep clock so the bar doesn't visibly drop its headroom.
-      if (stageChanged || wasHidden) targetAt = null;
-      if (wasHidden || amount < displayProgress - 1e-4) {
-        displayProgress = amount;
-        displayVel = 0;
-        paintProgress();
-      }
-      ensureProgressLoop();
+    ring?.report(stage, { reset: fresh }); ring?.start();
+    if (!ring || !raf) {
+      const amount = Math.max(0, Math.min(.997, Number(stage.progress) || 0));
+      paint(amount, `${(Math.floor(amount * 1000) / 10).toFixed(1)}%`);
     }
-
-    const art = artwork();
-    art.start();
-    attachRetainedPointerBridge();
-    art.updateProgress(raf ? { ...stage, progress: clamp01(displayProgress) } : stage);
-  };
-
-  const hide = () => {
-    cancelRevealWait();
-    overlay.classList.add('hidden');
-    overlay.setAttribute('aria-busy', 'false');
-    // Let the bar run out to 100% while the shell fades; the loop stops when display:none lands.
-    targetProgress = 1;
-    targetAt = null;
-    const retiring = terminalArt || NO_ART;
-    retiring.stop();
-    detachRetainedPointerBridge();
-    // A paused 2D worker has no GL context and is cheap to resume on the next load. Release the
-    // non-retained path immediately so a main-thread WebGL context cannot race the flight route.
+    const needsStart = wasHidden || !terminalArt;
+    const art = artwork(); if (needsStart) art.start(); attachPointer();
+    art.updateProgress({ ...stage, progress: ring?.snapshot().shown ?? Number(stage.progress) ?? 0 });
+  }
+  /** completed=false on error/timeout/menu cancellation: never celebrate a failed load as 100%. */
+  function hide({ completed = true } = {}) {
+    if (disposed) return;
+    cancelRevealWait(); clearWork(); accumulator = null; session++;
+    if (completed) ring?.finish();
+    overlay.classList.add('hidden'); overlay.setAttribute('aria-busy', 'false');
+    ring?.stop();
+    const retiring = terminalArt || NO_ART; retiring.stop(); detachPointer();
     if (retiring === terminalArt && !retainWorkerArt) {
-      retiring.destroy();
-      terminalArt = null;
-      retainedCanvas = null;
-    } else if (retiring === terminalArt) {
-      needsPointerBridge = true;
-    }
-    if (hideTimer != null) clearTimeout(hideTimer);
+      retiring.destroy(); terminalArt = null; retainedCanvas = null;
+    } else if (retiring === terminalArt) needsPointerBridge = true;
+    if (hideTimer !== null) clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       hideTimer = null;
-      if (!overlay.classList.contains('hidden')) return;
-      overlay.style.display = 'none';
-      stopProgressLoop();
+      if (overlay.classList.contains('hidden')) overlay.style.display = 'none';
     }, hideDelayMs);
+  }
+  const frameNow = () => {
+    const count = state?.render?.renderer?.info?.render?.frame;
+    return Number.isFinite(count) ? count : null;
   };
-
-  // The 'flight' handoff: keep the shell up until the renderer has presented a frame past the
-  // mode change — the first real world picture — so the held menu-era canvas never shows through.
-  const hideAfterFirstFlightFrame = () => {
-    const baseline = flightFrameNow();
-    if (baseline == null || overlay.classList.contains('hidden')) { hide(); return; }
-    targetProgress = 1;
-    targetAt = null;
-    const deadline = Date.now() + FLIGHT_REVEAL_TIMEOUT_MS;
+  function hideAfterFirstFlightFrame() {
+    cancelRevealWait(); clearWork(); accumulator = null;
+    const baseline = frameNow();
+    if (baseline === null || !raf || !visible()) { hide({ completed: false }); return; }
+    // Reserve the final arc until the existing renderer-frame handoff gate actually advances.
+    ring?.report({ id: 'entering-flight', progress: .96, ceiling: .997, label: 'Presenting the first frame' });
     const poll = () => {
       revealRaf = null;
-      const frame = flightFrameNow();
-      if ((frame != null && frame > baseline) || Date.now() >= deadline) { hide(); return; }
-      revealRaf = raf ? raf(poll) : null;
-      if (revealRaf == null) hide();
-    };
-    if (raf) {
+      if (disposed) return;
+      if (frameNow() > baseline) {
+        cancelRevealWait(); ring?.finish();
+        // A small, bounded finish interval lets the needle settle before removing the shell.
+        if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide(), 450);
+        else hide(); // no decorative instrument to finish on minimal shells
+        return;
+      }
       revealRaf = raf(poll);
-      revealDeadlineTimer = setTimeout(() => { cancelRevealWait(); hide(); }, FLIGHT_REVEAL_TIMEOUT_MS + 500);
-    } else {
-      // No animation clock (probes, unit tests): there is no frame to observe — hide now.
-      hide();
-    }
-  };
+    };
+    revealRaf = raf(poll);
+    // Preserve the pre-existing escape hatch; timeout is NOT evidence of readiness or 100%.
+    revealDeadlineTimer = setTimeout(() => hide({ completed: false }), 20500);
+  }
   const unsubs = [
     bus.on('game:loadingProgress', show),
     bus.on('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') show(activeStage || DEFAULT_STAGE);
-      else if (mode === 'flight') {
-        activeStage = null;
-        hideAfterFirstFlightFrame();
-      } else if (mode === 'menu') {
-        activeStage = null;
-        hide();
+      else if (mode === 'flight') { activeStage = null; hideAfterFirstFlightFrame(); }
+      else if (mode === 'menu') {
+        if (activeStage?.id?.startsWith('boot-')) return; // initial menu is revealed by main after init
+        activeStage = null; hide({ completed: false });
       }
     }),
-    bus.on('game:startFailed', hide),
-    bus.on('save:error', hide),
+    bus.on('game:startFailed', () => hide({ completed: false })),
+    bus.on('save:error', () => hide({ completed: false })),
   ];
-
-  return {
-    show,
-    hide,
-    destroy() {
-      for (const unsub of unsubs) if (typeof unsub === 'function') unsub();
-      cancelRevealWait();
-      if (hideTimer != null) clearTimeout(hideTimer);
-      hideTimer = null;
-      stopProgressLoop();
-      detachRetainedPointerBridge();
-      (terminalArt || NO_ART).destroy();
-      terminalArt = null;
-      retainedCanvas = null;
-      retainWorkerArt = false;
-      needsPointerBridge = false;
-    },
-  };
+  if (visible()) {
+    // Do not replace boot-modules with restoring-save at the entry -> main handoff.
+    ring?.start(); const art = artwork(); art.start();
+    art.updateProgress({ id: 'boot-state', progress: ring?.snapshot().shown || .14 });
+  }
+  return { show, hide, destroy() {
+    if (disposed) return;
+    for (const unsub of unsubs) if (typeof unsub === 'function') unsub();
+    unsubscribePaint(); unsubscribeWork(); cancelRevealWait(); clearWork();
+    if (hideTimer !== null) clearTimeout(hideTimer);
+    hideTimer = null; detachPointer(); (terminalArt || NO_ART).destroy();
+    terminalArt = null; retainedCanvas = null; ring?.destroy(); disposed = true;
+  } };
 }
-

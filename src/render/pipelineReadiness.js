@@ -1,4 +1,5 @@
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 
@@ -96,6 +97,7 @@ export function recordOpeningCookStep(render, step, startedMs, outcome, detail =
     }
   }
   ledger.push(row);
+  reportBootWork(render, { kind: 'cook-step', ...row });
   return row;
 }
 

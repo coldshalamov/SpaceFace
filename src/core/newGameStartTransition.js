@@ -46,6 +46,8 @@ export async function runNewGameStartTransition(options = {}) {
     if (!current()) return stale();
 
     publishProgress(reportProgress, current, 'authored-library', 0.25, 'Loading the ships');
+    if (typeof yieldForPresentation === 'function') await yieldForPresentation();
+    if (!current()) return stale();
     const libraryReady = await waitForLibrary();
     if (!current()) return stale();
     if (!libraryReady) {
@@ -57,6 +59,8 @@ export async function runNewGameStartTransition(options = {}) {
     }
 
     publishProgress(reportProgress, current, 'authored-visuals', 0.5, 'Building the opening scene');
+    if (typeof yieldForPresentation === 'function') await yieldForPresentation();
+    if (!current()) return stale();
     const visualsReady = await waitForVisuals();
     if (!current()) return stale();
     if (!visualsReady) {
@@ -69,6 +73,8 @@ export async function runNewGameStartTransition(options = {}) {
 
     if (typeof waitForWarmup === 'function') {
       publishProgress(reportProgress, current, 'render-pipelines', 0.78, 'Preparing the visuals');
+      if (typeof yieldForPresentation === 'function') await yieldForPresentation();
+      if (!current()) return stale();
       const warmupReady = await waitForWarmup();
       if (!current()) return stale();
       if (warmupReady === false) {
@@ -82,6 +88,8 @@ export async function runNewGameStartTransition(options = {}) {
     if (!current()) return stale();
     if (typeof waitForGpuResources === 'function') {
       publishProgress(reportProgress, current, 'gpu-resources', 0.9, 'Preparing the opening route');
+      if (typeof yieldForPresentation === 'function') await yieldForPresentation();
+      if (!current()) return stale();
       let gpuReady = await waitForGpuResources();
       if (!current()) return stale();
       let admission = typeof readPackageAdmission === 'function' ? readPackageAdmission() : null;
@@ -118,6 +126,8 @@ export async function runNewGameStartTransition(options = {}) {
       // speed and displacement exactly 0 (D26). Hand over flight only with the
       // authority already stepped-ready.
       publishProgress(reportProgress, current, 'physics-authority', 0.94, 'Preparing flight dynamics');
+      if (typeof yieldForPresentation === 'function') await yieldForPresentation();
+      if (!current()) return stale();
       const physicsReady = await waitForPhysics();
       if (!current()) return stale();
       if (physicsReady === false) {
