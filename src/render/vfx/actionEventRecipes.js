@@ -19,6 +19,9 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'salvage:cutComplete': {verb:'grind',primitive:'deposition',color:0xf3c286,life:.85,surfaceWork:true,continuous:false},
   'salvage:completed': {verb:'harvest',primitive:'deposition',color:0xc9ba98,life:1.2,continuous:false},
   'pickup:collected': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.58,continuous:false},
+  // A confirmed point-defence kill answers at the missile's own point — a brief disrupt/
+  // induction contact spark, not a kill burst. The target is already dead when this lands.
+  'pds:intercept': {verb:'disrupt',primitive:'induction',color:0xffd9a0,life:.22,continuous:false},
   'countermeasure:deployed': { verb:'fling', primitive:'pressure', color:0xdde7bb, life:1.15,
     variants:{
       chaff:{verb:'fling',primitive:'pressure',color:0xdde7bb,life:1.15},
@@ -93,6 +96,14 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     return {...p,targetId:ship.id,sourceId:ship.id,
       pos:{x:effect.originX,z:effect.originZ},attachToTarget:p.kind==='ecm',
       direction:{x:-Math.cos(ship.rot||0),z:-Math.sin(ship.rot||0)}};
+  }
+  if (name==='pds:intercept') {
+    // The intercepted shot is already retired — anchor the spark to the receipted point.
+    // A missing/non-finite point fabricates nothing rather than falling back onto the hull.
+    if (!p || !point(p.pos)) return null;
+    const out = {...p,pos:copyPoint(p.pos),sourceId:p.shipId,targetId:null,attachToTarget:false};
+    if (point(p.dir)) out.direction = copyPoint(p.dir);
+    return out;
   }
   if (name==='charge:stuck' || name==='charge:armed') {
     const charge=body(state,p.chargeId);

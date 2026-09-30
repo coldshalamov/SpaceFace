@@ -319,6 +319,12 @@ export const countermeasures = {
       this._diag.projectileCandidates += projectiles.length;
       const target = nearestInterceptableProjectile(projectiles, e, radius);
       if (!target) continue;
+      // The receipt owns the missile's own point (and motion) — the target is about to be
+      // retired, so listeners must never have to reach back through the entity index.
+      const interceptPos = { x: target.pos.x, z: target.pos.z };
+      const tv = target.vel;
+      const interceptDir = tv && Number.isFinite(tv.x) && Number.isFinite(tv.z)
+        ? { x: tv.x, z: tv.z } : undefined;
       target.alive = false;
       pds.cooldownT = Math.max(0.1, Number(cfg.cooldownS) || 1);
       this.bus.emit('pds:intercept', {
@@ -328,11 +334,8 @@ export const countermeasures = {
         missile: !!(target.data && target.data.kind === 'missile'),
         radius,
         tick: state.tick,
-      });
-      this.bus.emit('presentation:vfxCue', {
-        id: 'combat.pds.intercept', lane: 'combat', particles: 10, lights: 0,
-        magnitude: 0.5, position: { x: target.pos.x, z: target.pos.z }, material: 'impulse',
-        sourceId: e.id, targetId: null, flashReduced: false,
+        pos: interceptPos,
+        dir: interceptDir,
       });
     }
     state.countermeasureRuntime = state.countermeasureRuntime || {};

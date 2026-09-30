@@ -1820,6 +1820,14 @@ export const audio = {
     // A hostile round crossed the player's near-miss tube without hitting — physics already
     // dedupes per projectile; audio owns the supersonic crack that makes "inches" felt.
     bus.on('projectile:nearMiss', (p) => this._onNearMissAudio(p));
+    // The servo kills the shot at range — the snap belongs at the missile's point, not on the
+    // owner hull. One authored chaff crack per confirmed receipt; a receipt without a finite
+    // point fabricates nothing.
+    bus.on('pds:intercept', (p) => {
+      const pos = p && p.pos;
+      if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+      this.play('sfx_cm_chaff', { position: { x: pos.x, z: pos.z }, gain: 0.45 });
+    });
     bus.on('combat:damage', (p) => this._onDamage(p));
     // Contact sound rides whichever receipt the physics authority publishes: the live
     // rapier-dynamic backend emits only `physics:impact`, while the custom path emits
