@@ -1221,6 +1221,10 @@ export const crucibleScreen = {
           hullSentence.textContent = earn
             ? `${face} is locked — ${earn} to open it.`
             : `${face} is locked.`;
+          // The refusal reads in the body too: one horizontal shake, then it is over.
+          card.classList.remove('is-denied');
+          void card.offsetWidth;
+          card.classList.add('is-denied');
           cue('deny');
           return;
         }
