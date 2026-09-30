@@ -86,6 +86,33 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     return exp(-pow(distance / resolved, 2.0)) * width / resolved;
   }
 
+  // Rotate the structural coordinate frame, not the sphere mesh itself. That distinction keeps
+  // impact directions physically anchored while the visible membrane slowly turns under them.
+  vec3 sfShieldRotate(vec3 v, vec3 axis, float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
+  }
+
+  // Slow spin with a slowly wandering axis. The precession is deterministic and simulation-clock
+  // driven: pause freezes it, reduced motion freezes it, and no random source is consumed.
+  vec3 sfShieldWorkingFrame(vec3 dir) {
+    float clock = uShellTime;
+    vec3 precessAxis = normalize(vec3(
+      0.54 + 0.16 * sin(clock * 0.071),
+      0.73 + 0.13 * cos(clock * 0.053),
+      0.42 + 0.14 * sin(clock * 0.061 + 1.7)
+    ));
+    float spinAngle = clock * 0.105 + 0.09 * sin(clock * 0.071);
+    vec3 spun = sfShieldRotate(dir, precessAxis, spinAngle);
+
+    // A tiny second rotation makes the axis read as drifting rather than as a turntable locked to
+    // one diagonal. It is intentionally sub-dominant so the shield never looks frantic.
+    vec3 nutationAxis = normalize(vec3(0.31, 0.89, 0.34));
+    float nutation = 0.10 * sin(clock * 0.083);
+    return normalize(sfShieldRotate(spun, nutationAxis, nutation));
+  }
+
   void sfShieldAxis(vec3 dir, vec3 axis, float id, inout float best, inout float second,
                     inout float bestId, inout vec3 bestAxis, inout vec3 secondAxis) {
     float d = dot(dir, axis);
@@ -109,6 +136,7 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
   // shared wall). The along-wall coordinate is what lets charge run through the seam NETWORK
   // instead of every weld brightening at once.
   vec4 sfShieldPanels(vec3 dir) {
+    dir = sfShieldWorkingFrame(normalize(dir));
     float best = -1.0;
     float second = -1.0;
     float bestId = 0.0;
@@ -179,6 +207,14 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float coreWidth = 0.016 + age * 0.020;
     float resolvedCore = max(coreWidth, fwidth(d));
     float core = exp(-d / resolvedCore) * coreWidth / resolvedCore * w * w;
+
+    // The round does not only draw a line: the struck FACE of the dielectric loads up and briefly
+    // becomes more opaque. Keep it broad, directional and short-lived so the player can read where
+    // the shot landed without turning the whole shield into a permanent translucent ball.
+    float impactVeilWidth = 0.105 + age * 0.090;
+    float resolvedVeil = max(impactVeilWidth, fwidth(d));
+    float impactVeil = exp(-d / resolvedVeil) * w * (0.35 + 0.65 * w);
+    core = clamp(core + impactVeil * 0.46, 0.0, 1.4);
     return vec2(core, ring);
   }
 
@@ -207,6 +243,8 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float current = mix(pow(0.5 + 0.5 * cos(currentPhase), 6.0), 0.225586,
       smoothstep(0.7,3.14159,fwidth(currentPhase)));
     float breath = 0.5 + 0.5 * sin(clock * 1.7 + cell * SF_SHIELD_TAU);
+    float shellPulse = 0.88 + 0.12 * sin(clock * 1.13 + cell * SF_SHIELD_TAU * 0.37);
+    float layerPulse = 0.5 + 0.5 * sin(clock * 0.73 - cell * SF_SHIELD_TAU * 1.7);
 
     // Absorbed charge does not light every panel at once: each panel has its own place in the
     // sequence, so the lattice energises as a scatter across the shell and drains the same way.
@@ -215,8 +253,11 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float ring = clamp(contact.y, 0.0, 1.4);
     float activity = clamp(load * 4.0 + panelCharge * 2.0 + (core + ring) * 2.5 + base * 4.0, 0.0, 1.0);
 
-    // CONSTRUCTED MEMBERS. A machined frame set a little inside each weld, and a pane left clear.
+    // CONSTRUCTED MEMBERS. Three nested frame depths make the membrane read as layered machinery,
+    // not one painted sphere. Their phases are offset so the layers breathe through one another.
     float frame = sfShieldBand(inward - 0.20, 0.085);
+    float innerFrame = sfShieldBand(inward - 0.43, 0.052);
+    float outerFrame = sfShieldBand(inward - 0.66, 0.036);
     float pane = smoothstep(0.30, 0.90, inward);
 
     // A stress seam is a weld CARRYING load, and the travelling current is what says so. Without
@@ -227,15 +268,21 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     // shell's total coverage at or under what it was: the point is that the light MOVES, and a
     // shield that answered "make it alive" by getting brighter would just be a brighter bubble.
     float wallDrive = (0.22 + 0.78 * panelCharge) * (0.46 + 0.36 * circulation + 0.30 * current);
-    float wall = seam * wallDrive * activity;
-    float ribLight = frame * (0.16 + 0.60 * panelCharge) * (0.30 + 0.70 * breath) * activity;
-    float shoulder = pow(1.0 - inward, 2.4) * panelCharge * 0.24;
+    float wall = seam * wallDrive * shellPulse * activity;
+    float nestedFrames =
+      innerFrame * (0.08 + 0.34 * panelCharge) * (0.32 + 0.68 * layerPulse)
+      + outerFrame * (0.06 + 0.26 * panelCharge) * (0.32 + 0.68 * (1.0 - layerPulse));
+    float ribLight = (
+      frame * (0.16 + 0.60 * panelCharge) * (0.30 + 0.70 * breath)
+      + nestedFrames
+    ) * shellPulse * activity;
+    float shoulder = pow(1.0 - inward, 2.4) * panelCharge * 0.24 * (0.90 + 0.10 * shellPulse);
 
     // LOCAL RESPONSE. A contact energises the structure it landed on, so the impact spreads
     // through the built surface instead of floating on top of it as an unattached ring.
     float localLoad = clamp(core * 1.6 + ring * 1.1, 0.0, 1.0);
     wall += seam * localLoad * 0.85;
-    ribLight += frame * localLoad * 0.55;
+    ribLight += (frame + innerFrame * 0.55 + outerFrame * 0.35) * localLoad * 0.55;
 
     // FAILURE AND RE-KNIT. Rupture blows the weld network open in an ordered sequence rather than
     // dimming the whole shell together, and the panes go dark behind the torn welds. As the charge
