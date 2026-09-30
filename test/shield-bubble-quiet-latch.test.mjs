@@ -74,6 +74,15 @@ test('shield value change wakes quiet latch', () => {
   assert.ok(bubble.material.uniforms.uFlash.value > SHIELD_BUBBLE_PRESENTATION_EPSILON);
 });
 
+test('shield regeneration alone stays invisible', () => {
+  setShieldBubbleQuietLatchForBench(true);
+  const entity = { id: 430, shield: 50 };
+  const bubble = makeBubble(40);
+  updateEntityShieldBubblePresentation(entity, bubble, 10, 10, false, 1 / 60);
+  assert.equal(bubble.visible, false, 'passive regeneration is not a shield-hit visual');
+  assert.equal(bubble.material.uniforms.uFlash.value, 0, 'regeneration does not punch the flash channel');
+});
+
 test('shield contact wakes quiet latch', () => {
   setShieldBubbleQuietLatchForBench(true);
   clearShieldContacts();

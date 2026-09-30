@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpaceFace — Signal / Overprint review</title>
+<link rel="stylesheet" href="../../styles/intro.css">
+<style>
+:root { --bg:#080d0e; --text:#e0e8e4; --text-dim:#8faaa7; --accent:#d8ad79; }
+* { box-sizing:border-box; } body { margin:0; background:#080d0e; color:#c4d1ce; font:13px system-ui,sans-serif; }
+#boot-overlay { position:fixed; inset:0; z-index:1; }
+video,#legacy { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+#legacy { display:none; pointer-events:none; }
+.boot-wordmark { color:#e3e8e5; }
+#review { position:fixed; bottom:16px; right:18px; z-index:3000; display:flex; gap:6px; }
+#review button { color:#d9e2df; border:1px solid #465653; background:#102021dd; padding:7px 10px; cursor:pointer; }
+#review button[aria-pressed=true] { background:#b89567; color:#091113; }
+html.capture #review { display:none; }
+html.art-only .boot-lockup,html.art-only .boot-meta { display:none; }
+</style>
+</head>
+<body>
+<div id="boot-overlay">
+ <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline preload="auto" poster="../../assets/cinematics/intro-visualizer.jpg"><source src="../../assets/cinematics/intro-visualizer.mp4" type="video/mp4"></video>
+ <canvas id="legacy"></canvas>
+ <div class="boot-scrim"></div>
+ <header class="boot-meta"><span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span><span>VHL–4471–T</span></header>
+ <div class="boot-lockup"><span class="boot-wordmark">SPACEFACE</span><span class="boot-label">Establishing corridor link</span><span class="boot-detail">Contract 47-A · Open / Payment Pending</span></div>
+</div>
+<nav id="review" aria-label="Visualizer comparison">
+ <button data-view="remix" aria-pressed="true">Overprint</button><button data-view="original">Original film</button>
+ <button data-view="tableaux">Floating sculptures</button><button data-view="terminal">Terminal field</button>
+ <button id="hold">Hold / play</button>
+</nav>
+<script type="module" src="./signal-remix-preview.js"></script>
+</body></html>
