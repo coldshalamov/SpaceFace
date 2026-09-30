@@ -694,7 +694,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "ff87c2527b1c2016c2e659337b7bba45dcb14cd40739db42ee30201334c9e2ca",
+    "expectedContentHash": "cf9f43f42f474f427dc2b28476113561166d00b8cfbc6980a10ba1c178ece069",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
