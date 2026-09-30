@@ -23,7 +23,11 @@ import {
 } from '../scripts/lib/performanceDirtyRangeAcceptance.mjs';
 import browserManifest from '../scripts/validation-manifests/performance-dirty-ranges-browser.mjs';
 import electronManifest from '../scripts/validation-manifests/performance-dirty-ranges-electron.mjs';
-import { computeGateDigestsFromManifest } from '../scripts/lib/validationBroker.mjs';
+import {
+  computeGateDigestsFromManifest,
+  isEnvironmentBlockedProbeError,
+  isMeasurementIntegrityProbeError,
+} from '../scripts/lib/validationBroker.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -34,6 +38,7 @@ function windowFixture(variantId, {
   logicalBytes = 12_000,
   requestedBytes,
   driverBytes,
+  managedDriverBytes = driverBytes,
   frameP95 = 16.8,
 } = {}) {
   return {
@@ -53,6 +58,14 @@ function windowFixture(variantId, {
         requestedUploadBytes: requestedBytes,
         uploadRangeCount: 900,
         probeFullUploads: variantId === DYNAMIC_BUFFER_FULL_SPAN_VARIANT ? 900 : 0,
+      },
+      partialUploadCensus: {
+        resolvedBytes: driverBytes,
+        unresolvedBytes: 0,
+        coordinatorOwnedBytes: managedDriverBytes,
+        coordinatorOwnedFullBytes: 0,
+        coordinatorTrackedViews: 12,
+        top: [],
       },
     },
     tier1: {
@@ -428,6 +441,44 @@ test('dirty-range comparator requires causal owner and driver byte reduction at 
   );
 });
 
+test('the driver leg grades coordinator-managed bytes, not ambient foreign traffic', () => {
+  // 2026-09-25: ambient writers (SF_WeaponRibbons re-poses its whole buffers every frame
+  // regardless of upload policy) dominated the raw tier-1 total and swung the driver ratio
+  // 13.8%↔58% between identical builds — the gate measured the combat phase that landed in
+  // each window, not the feature. The census attributes every driver write to its source
+  // view; the leg compares only bytes on coordinator-tracked views.
+  const ambientHeavy = {
+    windows: [
+      windowFixture('baseline', {
+        logicalBytes: 2_000_000,
+        requestedBytes: 2_200_000,
+        driverBytes: 34_500_000,
+        managedDriverBytes: 2_400_000,
+      }),
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+        logicalBytes: 1_800_000,
+        requestedBytes: 21_750_000,
+        driverBytes: 39_150_000,
+        managedDriverBytes: 22_000_000,
+      }),
+    ],
+  };
+  const scoped = evaluateDirtyRangeComparison(ambientHeavy, { runtimeKind: 'browser' });
+  assert.equal(scoped.pass, true, `ambient-dominated totals must not fail the leg: ${scoped.failures}`);
+  assert.ok(scoped.metrics.driverUploadByteReductionFraction > 0.85);
+  assert.ok(scoped.metrics.rawDriverUploadByteReductionFraction < 0.25,
+    'the raw ambient-inclusive total stays on the record as diagnostic-only');
+
+  const noCensus = evaluateDirtyRangeComparison({
+    windows: ambientHeavy.windows.map((window) => ({
+      ...window,
+      dynamicBuffers: { ...window.dynamicBuffers, partialUploadCensus: null },
+    })),
+  }, { runtimeKind: 'browser' });
+  assert.match(noCensus.failures.join(' '), /partial-upload census/i,
+    'a window without census attribution must fail closed, not grade an unattributed total');
+});
+
 test('dirty-range comparator refuses missing and contaminated capture windows', () => {
   // The 2026-09-15 electron launch reached its route but the capture tore before
   // either variant window closed: the comparator emitted the whole missing/contaminated
@@ -493,6 +544,37 @@ test('dirty-range comparator refuses windows whose settings drifted mid-capture'
   assert.match(result.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
 });
 
+test('dirty-range comparator does not mistake hit-stop timeScale edges for settings drift', () => {
+  // combat_vfx_burst intrinsically produces hit-stop dilation (timeScale ~0.12) on kills, so
+  // window edges land at arbitrary dilation phases — the codebase itself classifies timeScale
+  // as authored transient runtime state, not a quality setting (releaseSoakProbe.mjs). The
+  // settings gate must still fire on real quality drift (video, dynResScale) while ignoring
+  // the transient field.
+  const ranged = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  ranged.settings.end = { ...ranged.settings.end, timeScale: 0.12 };
+  const fullSpan = windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+    requestedBytes: 12_000_000,
+    driverBytes: 12_200_000,
+  });
+  fullSpan.settings.start = { ...fullSpan.settings.start, timeScale: 0.12 };
+  const result = evaluateDirtyRangeComparison({ windows: [ranged, fullSpan] }, { runtimeKind: 'browser' });
+  assert.equal(
+    result.failures.some((f) => /quality\/settings/.test(f)), false,
+    `timeScale dilation must not trip the settings gate: ${result.failures.join(' | ')}`,
+  );
+  assert.equal(result.metrics.rangedTimeScaleEnd, 0.12, 'the transient stays on the record');
+  assert.equal(result.metrics.fullSpanTimeScaleStart, 0.12);
+  // A real quality change still fails even when timeScale is also dilated.
+  const drifted = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  drifted.settings.end = { ...drifted.settings.end, dynResScale: 0.5, timeScale: 0.12 };
+  const strict = evaluateDirtyRangeComparison({
+    windows: [drifted, windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+      requestedBytes: 12_000_000, driverBytes: 12_200_000,
+    })],
+  }, { runtimeKind: 'browser' });
+  assert.match(strict.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
+});
+
 test('paired dirty-range manifests bind one scenario and source candidate to distinct runtimes', async () => {
   for (const manifest of [browserManifest, electronManifest]) {
     assert.equal(manifest.mode, 'acceptance');
@@ -538,6 +620,128 @@ test('paired dirty-range manifests bind one scenario and source candidate to dis
   assert.ok(stable, 'browser and electron manifests never bound the same source candidate within 6 reads');
   assert.notEqual(browser.candidateDigest, electron.candidateDigest);
   assert.notEqual(browser.manifestDigest, electron.manifestDigest);
+});
+
+test('environment census blocks are not primary acceptance failures', () => {
+  // A census refusal fires before any measurement exists; persisting it as a
+  // primaryAcceptance failure would wedge the manifest behind a regression
+  // change no product fix can satisfy. Pin the classification seam.
+  const envBlockText = [
+    'file:///repo/scripts/lib/releaseSoakProbe.mjs:5765',
+    "      const error = new Error('PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED: performance activity census is active or unavailable');",
+    '                    ^',
+    '',
+    'Error: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED: performance activity census is active or unavailable',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isEnvironmentBlockedProbeError(envBlockText), true);
+
+  const productFailureText = [
+    '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isEnvironmentBlockedProbeError(productFailureText), false);
+  assert.equal(isEnvironmentBlockedProbeError(''), false);
+  assert.equal(isEnvironmentBlockedProbeError(null), false);
+});
+
+test('mid-capture tree mutation exits are not primary acceptance failures', () => {
+  // A concurrent commit invalidates the capture before valid evidence exists;
+  // persisting it as primaryAcceptance wedges the manifest behind a regression
+  // change no product fix can satisfy — same family as the census block above.
+  const worktreeText = [
+    '[dirty-ranges] FAIL: worktree changed during performance capture | measurement invalid: worktree-not-clean-and-stable',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(worktreeText), true);
+
+  // A claim minted before a foreign commit lands is stale at the probe's
+  // authority gate — same family: no evidence produced, cause is tree churn.
+  const staleClaimText = [
+    'Error: PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: broker-claim-stale-digest',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(staleClaimText), true);
+
+  // Boundary contamination confounds every byte count in the run — the
+  // measurement is invalid evidence, not a product verdict.
+  const contaminatedText = [
+    '[dirty-ranges] FAIL: measurement invalid: contaminating-process-or-authoring-activity | driver upload bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(contaminatedText), true);
+
+  // A tree mutation noticed during an already-failed run is the same event:
+  // the files changed mid-capture, so the failure cannot be attributed to the
+  // claimed candidate. Persisting it wedges the gate identically (2026-09-25,
+  // a mid-merge capture stored 'CSP-safe page condition timed out' as primary).
+  const mutatedFailedText = [
+    '[dirty-ranges] FAIL: CSP-safe page condition timed out after 30000ms | worktree changed during failed capture',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(mutatedFailedText), true);
+
+  const productFailureText = [
+    '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(productFailureText), false);
+  assert.equal(isMeasurementIntegrityProbeError(''), false);
+  assert.equal(isMeasurementIntegrityProbeError(null), false);
+});
+
+test('window-end pipeline drain requires a sustained empty queue, not one zero sample', async () => {
+  // Ships keep crossing mesh-build thresholds while the player moves, so the
+  // queue refills in bursts. A single zero sample raced a late burst and cost a
+  // measured acceptance run (windows[0]-pipeline-cache-mismatch, 2026-09-25).
+  // The boundary contract needs the queue to STAY empty for a beat; pin the
+  // sustained-settle loop so it cannot regress to a one-shot sample.
+  const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  const drainIndex = source.indexOf('pipelineDrainDeadline');
+  assert.notEqual(drainIndex, -1, 'window-end pipeline drain wait must exist');
+  const drainBlock = source.slice(drainIndex, drainIndex + 2400);
+  assert.match(drainBlock, /pipelineSettledSince/,
+    'drain must track a settled-since timestamp across consecutive samples');
+  assert.match(drainBlock, /meshBuildQueueRemaining\) === 0\s*&&\s*Number\(probeReadiness\?\.activeAdmissionJobs\) === 0/,
+    'drain must require both the mesh-build queue and admission jobs empty');
+  assert.match(drainBlock, /now - pipelineSettledSince >= 250/,
+    'drain must require the empty state to persist for a sustained window');
+});
+
+test('owner-gone admission classifies the flight-instance retention race', async () => {
+  // 2026-09-25 electron acceptance: an 82 MB trade-hub package lost its boundary-owner
+  // retain while the player undocked mid-admission; createFlightInstance threw "must be
+  // retained before creating a flight instance", which missed the owner-inactive family
+  // regex and warned 'no substitute visual published' instead of marking the boundary
+  // re-requestable. Both message spellings must classify as the owner-gone race.
+  const { admissionOwnerInactive } = await import('../src/render/partsLibrary.js');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package sf.render.helios-trade-hub must be retained before creating a flight instance.')),
+    true, 'flight-static retention loss is the owner-gone teardown race');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package x must be retained before creating an instance.')),
+    true, 'ordinary retention loss classifies the same way');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package x has no prepared flight records.')),
+    false, 'unrelated package errors must still warn');
+});
+
+test('the probe arms a partial-upload census that names ambient writers', async () => {
+  // Tier-1 totals can prove owners requested less but cannot name ambient
+  // bufferSubData writers — the 2026-09-25 acceptance runs showed ambient
+  // swings of 10M→37M deciding the driver gate. The census keys partial
+  // uploads by CPU view and resolves them to attributes; pin the wiring so a
+  // future refactor cannot silently disarm it.
+  const counters = await import('../src/core/perfCounters.js');
+  const api = counters.createPerfCounters();
+  assert.equal(typeof api.armPartialUploadCensus, 'function');
+  assert.equal(typeof api.collectPartialUploadCensus, 'function');
+  assert.equal(typeof api.disarmPartialUploadCensus, 'function');
+  assert.deepEqual(api.collectPartialUploadCensus(), [], 'disarmed census reports nothing');
+
+  const probeSource = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  assert.match(probeSource, /armPartialUploadCensus/, 'window open must arm the census');
+  assert.match(probeSource, /collectPartialUploadCensusReport/, 'window close must resolve it');
 });
 
 test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {
@@ -642,4 +846,31 @@ test('every committed src named import resolves to a committed export', async ()
   }
   assert.deepEqual(missing, [],
     `tracked sources import names that tracked modules do not export (module eval rejects):\n${missing.join('\n')}`);
+});
+
+test('acceptance launch and settle budgets cover a contended host without weakening the windows', async () => {
+  const { AUTHORED_FLIGHT_READY_BUDGET_MS } = await import('../scripts/lib/alphaLiveBaselineRoute.mjs');
+  const { performanceScenario, performanceScenarioPipelineSettleTimeoutMs } = await import(
+    '../scripts/lib/performanceClosureContracts.mjs'
+  );
+
+  // The launch gate waits for readiness and does not measure load speed. The packaged
+  // Electron shell measured 123s new-game -> flight-ready on a quiet host
+  // (2026-09-25T20-28-40Z) and was still compositing its loading progress at 96% when a
+  // 150s budget expired (2026-09-25T22-12-38Z): the budget, not the product, was binding.
+  assert.equal(AUTHORED_FLIGHT_READY_BUDGET_MS, 240_000);
+
+  // The settle phase waits for pipeline counters to hold stable before a window opens and
+  // measures nothing itself. At 100% host load (2026-09-26T07-18Z) background compilation
+  // outlasted the 20s default and both windows demoted pipeline-warmup-unsettled; combat
+  // scenarios use the probe's full 30s patience. A genuinely unsettled pipeline still
+  // fails the window contract, so this only widens the wait.
+  assert.equal(performanceScenarioPipelineSettleTimeoutMs('combat_vfx_burst'), 30_000);
+  assert.equal(performanceScenario('combat_vfx_burst').pipelineSettleTimeoutMs, 30_000);
+
+  // The attribution route must actually consume the scenario settle timeout.
+  assert.ok(
+    probeSource.includes('pipelineSettleTimeoutMs: performanceScenarioPipelineSettleTimeoutMs(routeTag)'),
+    'attribution windows must take their settle budget from the scenario table',
+  );
 });

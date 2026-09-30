@@ -230,6 +230,7 @@ test('loading admission releases the CPU slot after staging while exact GPU comm
       sectorId: 'sector_helios_prime',
     },
   };
+  const publishTouches = [];
   const runtimeState = {
     mode: 'loading',
     playerId: player.id,
@@ -244,6 +245,13 @@ test('loading admission releases the CPU slot after staging while exact GPU comm
         assert.ok(gate, 'each critical admission must receive one deferred pipeline gate');
         compiledRoots.push(root);
         return gate.promise;
+      },
+      touchSubjectExactTarget(root) {
+        publishTouches.push({
+          root,
+          parent: root.parent,
+          boundaryState: root.parent && root.parent.userData && root.parent.userData.authoredAssetState,
+        });
       },
     },
   };
@@ -305,6 +313,21 @@ test('loading admission releases the CPU slot after staging while exact GPU comm
     assert.equal(hubBoundary.userData.authoredAssetState, 'authored');
     assert.equal(partsLibrary.authoredCriticalVisualReadiness(runtimeState).ready, true);
     assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+
+    // The publish seam must re-touch each authored root on the exact target while it is
+    // attached and still pre-'authored': the pre-commit prepare ran while the root was
+    // detached, so this is where any residual program variant links — not in a presented pass.
+    const playerTouch = publishTouches.find((touch) => touch.parent === playerBoundary);
+    const hubTouch = publishTouches.find((touch) => touch.parent === hubBoundary);
+    assert.ok(playerTouch, 'the ship publish seam must run the exact-target touch');
+    assert.ok(hubTouch, 'the station publish seam must run the exact-target touch');
+    for (const touch of [playerTouch, hubTouch]) {
+      assert.notEqual(touch.boundaryState, 'authored',
+        'the touch must run inside the publish seam, before the authored state lands');
+      assert.ok(touch.parent && touch.parent.children.includes(touch.root),
+        'the touched root must be attached to its boundary — the detached pre-commit '
+        + 'touch is the hole this seam exists to close');
+    }
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;

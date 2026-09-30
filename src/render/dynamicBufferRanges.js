@@ -464,10 +464,19 @@ export function createDynamicBufferCoordinator(scene) {
     lastError: null,
     owners: [],
   };
+  // CPU-side views of every coordinator-tracked attribute, keyed for identity joins with the
+  // partial-upload census. Values are live TypedArray references — non-enumerable so any
+  // diagnostics serialization sees them as absent rather than embedding megabytes of floats.
+  const trackedViewCounts = new Map();
+  Object.defineProperty(diagnostics, 'trackedViews', {
+    enumerable: false,
+    get: () => new Set(trackedViewCounts.keys()),
+  });
   const coordinator = {
     scene,
     owners: [],
     attributeOwners: new WeakMap(),
+    trackedViewCounts,
     diagnostics,
     epoch: 0,
     active: false,
@@ -687,6 +696,8 @@ export function registerDynamicBufferOwner(scene, spec) {
     plannedAttributes.add(attribute);
     plannedBindings.push(binding);
     owner.capacity = Math.min(owner.capacity, itemCapacity);
+    const view = attribute.array;
+    coordinator.trackedViewCounts.set(view, (coordinator.trackedViewCounts.get(view) || 0) + 1);
   }
 
   for (let index = 0; index < plannedBindings.length; index++) {
@@ -735,6 +746,12 @@ export function unregisterDynamicBufferOwner(owner) {
     if (binding.snapshot.active) supersedeBinding(binding, 'unregister');
     coordinator.attributeOwners.delete(binding.attribute);
     if (binding.attribute.onUploadCallback === binding.callback) delete binding.attribute.onUploadCallback;
+    const view = binding.attribute && binding.attribute.array;
+    if (view) {
+      const remaining = (coordinator.trackedViewCounts.get(view) || 0) - 1;
+      if (remaining > 0) coordinator.trackedViewCounts.set(view, remaining);
+      else coordinator.trackedViewCounts.delete(view);
+    }
   }
   owner.coordinator = null;
   coordinator.diagnostics.registeredOwners = coordinator.owners.length;

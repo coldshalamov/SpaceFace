@@ -80,6 +80,12 @@ class GasVolumeField {
     this.mesh = new THREE.InstancedMesh(geometry, this.material, CAPACITY);
     this.mesh.name = 'SF_VFX_gas_volumes';
     this.mesh.count = 0;
+    // A visible count-0 InstancedMesh still reaches setProgram inside a presented pass —
+    // the boot brick measured on this field (222ms bloomScene link before the opening warm
+    // landed). Stay invisible until the first live emit; renderer.compile() traverses
+    // invisible objects, so the opening/restore warm still links the raymarch program
+    // off-present.
+    this.mesh.visible = false;
     this.mesh.frustumCulled = false;
     // Under the additive burst layer (sprite buckets are 11) so flashes read on top of the body.
     this.mesh.renderOrder = 10;
@@ -165,6 +171,10 @@ class GasVolumeField {
    * is preferred, but without this fallback the batch would silently never draw.
    */
   _publish(count) {
+    // Reveal only with live instances — an empty draw would link the march program cold
+    // (the brick this field produced at boot). Compile covers hidden meshes, so the first
+    // emit presents an already-warm program.
+    this.mesh.visible = count > 0;
     if (this.dynamicBufferOwner) {
       commitDynamicBufferOwner(this.dynamicBufferOwner, count);
       return;

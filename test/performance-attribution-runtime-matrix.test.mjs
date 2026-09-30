@@ -10,6 +10,7 @@ import {
   classifyPerformanceProcessActivity,
   collectOwnedProcessTreePids,
   inspectPerformanceContaminants,
+  inspectSystemLoad,
   performanceAttributionRuntimePlan,
   provisionPerformanceAttributionElectronRuntime,
   runPerformanceAttributionProbe,
@@ -165,6 +166,34 @@ test('preflight remains fail-closed when process churn persists through the boun
   assert.deepEqual(result.attempts.map((attempt) => attempt.reasons), [['process-churn'], ['process-churn']]);
   assert.deepEqual(result.reasons, ['process-churn']);
   assert.equal(snapshots.length, 0);
+});
+
+test('system-load leg blocks generic saturation the named-contaminant census cannot see', async () => {
+  // The contaminant census names heavyweight apps (blender/chrome/electron); another agent's
+  // git/node churn saturates the host while matching nothing. The system-CPU leg must flag it.
+  const saturated = await inspectSystemLoad({
+    platform: 'win32',
+    systemLoadReader: async () => ({ fraction: 0.97, samples: [96, 98, 97] }),
+  });
+  assert.equal(saturated.available, true);
+  assert.equal(saturated.active, true);
+  assert.deepEqual(saturated.reasons, ['system-cpu-saturated']);
+  assert.equal(saturated.systemCpuFraction, 0.97);
+
+  const quiet = await inspectSystemLoad({
+    platform: 'win32',
+    systemLoadReader: async () => ({ fraction: 0.42, samples: [40, 45, 41] }),
+  });
+  assert.equal(quiet.active, false);
+  assert.deepEqual(quiet.reasons, []);
+
+  // Fail-closed: a reader that cannot produce a fraction leaves the leg unknown, not quiet.
+  const broken = await inspectSystemLoad({
+    platform: 'win32',
+    systemLoadReader: async () => ({ fraction: null, samples: [] }),
+  });
+  assert.equal(broken.available, false);
+  assert.equal(broken.active, null);
 });
 
 test('Browser cleanup owns the complete descendant tree and waits for it before the end census', async () => {

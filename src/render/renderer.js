@@ -29,6 +29,7 @@ import {
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
 import {
+  IBL_PMREM_CUBE_SIZE,
   IBL_SOURCE_BACKGROUND,
   IBL_SOURCE_FOUNDRY,
   loadFoundryIblTexture,
@@ -2676,6 +2677,21 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.forcedNewContext = false;
   recovery.terminal = false;
   owner._contextLost = false;
+  // Authored boundaries that published while pending was set queued their exact-target
+  // touch instead of linking into the dead context. Drain them synchronously — before this
+  // tick ends and any presented frame can draw those roots cold against the fresh cache.
+  const queuedTouches = recovery.pendingExactTargetTouches;
+  recovery.pendingExactTargetTouches = null;
+  if (queuedTouches && queuedTouches.size && typeof recovery.runQueuedExactTargetTouch === 'function') {
+    for (const subject of queuedTouches) {
+      try { recovery.runQueuedExactTargetTouch(subject); }
+      catch (error) {
+        if (typeof console !== 'undefined') {
+          console.warn('[render] queued exact-target touch failed after context restore', error);
+        }
+      }
+    }
+  }
   return { ok: true };
 }
 
@@ -4929,6 +4945,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'scene', 'renderer', 'camera', 'meshes', 'cameraCtrl', 'vf', 'viewport', 'spaceBg', 'envMap',
   'gpuTimers', 'diagnostics', 'resetPostTelemetrySample', 'warmPostProcess',
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
+  'touchSubjectExactTarget',
   'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
@@ -5244,6 +5261,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._envMapTarget = null;
   owner._foundryEnvTexture = null;
   owner._envMapSource = null;
+  owner._envBakeScene = null;
   owner._lostEnvMap = null;
   owner._contextRecovery = null;
   owner._adaptive = null;
@@ -7085,6 +7103,43 @@ export const render = {
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
       return admitSubjectPipelines(subject, admissionOptions);
     };
+    state.render.touchSubjectExactTarget = (subject) => {
+      // Publish-seam warm: an authored boundary calls this on its attached, final-state root
+      // just before reveal. The pre-commit prepare touched the root while it was detached, and
+      // publish-time state can still resolve a program key the detached touch never produced
+      // (final LOD from primeAuthoredState, owner bindings, parts minted inside commit). Any
+      // residual variant links here — in the admission continuation — not inside the first
+      // presented bloom pass.
+      if (!subject || !this.scene || !cam.obj) return { skipped: true, reason: 'touch unavailable' };
+      const recovery = this._contextRecovery;
+      if (recovery && recovery.pending === true) {
+        // A touch now would link into the dead context's program cache, and the restore
+        // rebuild's whole-scene warm can outrun a publish landing mid-recovery — the ship
+        // would present with its bloom variant cold. Queue the subject into the recovery
+        // completion instead: runWebGlContextRestoreRebuild drains it on the same tick that
+        // clears pending, before any presented frame can interleave.
+        const queued = recovery.pendingExactTargetTouches
+          || (recovery.pendingExactTargetTouches = new Set());
+        queued.add(subject);
+        return { skipped: true, reason: 'context-recovery-queued' };
+      }
+      // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
+      // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
+      // the draw a silent no-op and leaves the exact variant cold for the presented pass.
+      const restore = revealSubjectWithAncestors(subject);
+      try {
+        return touchExactTargetSubject(subject);
+      } finally {
+        restore();
+      }
+    };
+    // The restore drain re-enters the public touch so the queued subject gets the same
+    // reveal/park/cull treatment — and re-queues itself if a second loss lands mid-drain.
+    if (this._contextRecovery) {
+      this._contextRecovery.runQueuedExactTargetTouch = (subject) => {
+        state.render.touchSubjectExactTarget(subject);
+      };
+    }
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
@@ -13208,10 +13263,17 @@ export const render = {
         foundryTexture: this._foundryEnvTexture,
         background: scene.background,
       });
-      if (iblSource === IBL_SOURCE_FOUNDRY) {
-        envTarget = pmrem.fromEquirectangular(this._foundryEnvTexture);
-      } else if (iblSource === IBL_SOURCE_BACKGROUND) {
-        envTarget = pmrem.fromEquirectangular(scene.background);
+      if (iblSource === IBL_SOURCE_FOUNDRY || iblSource === IBL_SOURCE_BACKGROUND) {
+        // Equirect sources must not go through fromEquirectangular: it sizes the PMREM output
+        // from the input width, and the cubeUV height sits in every lit material's program key.
+        // Baking through a fixed-size scene capture keeps the key stable across env swaps.
+        const equirect = iblSource === IBL_SOURCE_FOUNDRY ? this._foundryEnvTexture : scene.background;
+        if (!this._envBakeScene) this._envBakeScene = new THREE.Scene();
+        this._envBakeScene.background = equirect;
+        envTarget = pmrem.fromScene(
+          this._envBakeScene, 0, 0.1, 1000, { size: IBL_PMREM_CUBE_SIZE },
+        );
+        this._envBakeScene.background = null;
       } else {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
         envTarget = pmrem.fromScene(

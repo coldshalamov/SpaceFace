@@ -34,6 +34,17 @@ function windowByVariant(document, variantId) {
   )) || null;
 }
 
+// The settings slice also carries `timeScale`, which releaseSoakProbe itself classifies as
+// authored transient runtime state (hit-stop/focus), not a quality setting. combat_vfx_burst
+// intrinsically produces hit-stop on kills, so window edges land at arbitrary dilation phases
+// and the equality gate would fail on game feel rather than quality drift. The comparison
+// strips it; the recorded slice keeps it for inspection.
+function qualitySettingsJson(settingsSlice) {
+  if (!settingsSlice || typeof settingsSlice !== 'object') return stableJson(settingsSlice ?? null);
+  const { timeScale, ...quality } = settingsSlice;
+  return stableJson(quality);
+}
+
 export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser' } = {}) {
   const failures = [];
   const ranged = windowByVariant(document, 'baseline');
@@ -47,6 +58,15 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
   const fullRequested = finite(fullSpan?.dynamicBuffers?.delta?.requestedUploadBytes);
   const rangedDriver = finite(ranged?.tier1?.postBoot?.bufferUploadBytes);
   const fullDriver = finite(fullSpan?.tier1?.postBoot?.bufferUploadBytes);
+  // The driver leg must measure bytes the dirty-range system controls. Tier-1 counts every
+  // bufferSubData including ambient foreign writers (weapon ribbons, VFX pools re-pose their
+  // whole buffers per frame no matter which upload policy is active) — on this scenario that
+  // ambient dominates the raw total and swings with which combat phase lands in each window
+  // (observed 13.8%↔58% run-to-run on identical code). The upload census resolves each driver
+  // write back to its CPU-side source view; only views the coordinator tracks count here —
+  // the same attribution precedent as the settings gate stripping authored hit-stop timeScale.
+  const rangedManagedDriver = finite(ranged?.dynamicBuffers?.partialUploadCensus?.coordinatorOwnedBytes);
+  const fullSpanManagedDriver = finite(fullSpan?.dynamicBuffers?.partialUploadCensus?.coordinatorOwnedBytes);
   const rangedRequestedBytesPerLogicalByte = perLogicalByte(rangedRequested, rangedLogical);
   const fullSpanRequestedBytesPerLogicalByte = perLogicalByte(fullRequested, fullLogical);
   const rangedDriverBytesPerLogicalByte = perLogicalByte(rangedDriver, rangedLogical);
@@ -55,7 +75,13 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
     rangedRequestedBytesPerLogicalByte,
     fullSpanRequestedBytesPerLogicalByte,
   );
+  const rangedManagedDriverBytesPerLogicalByte = perLogicalByte(rangedManagedDriver, rangedLogical);
+  const fullSpanManagedDriverBytesPerLogicalByte = perLogicalByte(fullSpanManagedDriver, fullLogical);
   const driverUploadByteReductionFraction = fractionReduced(
+    rangedManagedDriverBytesPerLogicalByte,
+    fullSpanManagedDriverBytesPerLogicalByte,
+  );
+  const rawDriverUploadByteReductionFraction = fractionReduced(
     rangedDriverBytesPerLogicalByte,
     fullSpanDriverBytesPerLogicalByte,
   );
@@ -81,7 +107,7 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
     if (window?.restoration?.restored !== true) {
       failures.push(`${label} scenario or probe control did not restore exactly`);
     }
-    if (stableJson(window?.settings?.start) !== stableJson(window?.settings?.end)) {
+    if (qualitySettingsJson(window?.settings?.start) !== qualitySettingsJson(window?.settings?.end)) {
       failures.push(`${label} quality/settings changed inside the capture window`);
     }
     for (const field of ['shaderLinks', 'shaderCompiles', 'renderTargetAllocations']) {
@@ -89,8 +115,14 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
         failures.push(`${label} window was contaminated by post-boot ${field}`);
       }
     }
+    // Without the census the driver leg cannot separate managed bytes from ambient foreign
+    // traffic — fail closed rather than grade an unattributed total.
+    if (!Number.isFinite(finite(window?.dynamicBuffers?.partialUploadCensus?.coordinatorOwnedBytes))) {
+      failures.push(`${label} window is missing the partial-upload census needed to attribute driver bytes`);
+    }
   }
-  if (ranged && fullSpan && stableJson(ranged.settings?.start) !== stableJson(fullSpan.settings?.start)) {
+  if (ranged && fullSpan
+      && qualitySettingsJson(ranged.settings?.start) !== qualitySettingsJson(fullSpan.settings?.start)) {
     failures.push('ranged and full-span windows do not share identical quality settings');
   }
   if (!(rangedLogical > 0) || !(fullLogical > 0)) {
@@ -131,7 +163,20 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
       fullSpanDriverUploadBytes: fullDriver,
       rangedDriverBytesPerLogicalByte,
       fullSpanDriverBytesPerLogicalByte,
+      // Raw driver totals including ambient foreign writers — kept for transparency but not
+      // gated: foreign buffers re-write regardless of the upload policy under test.
+      rawDriverUploadByteReductionFraction,
+      rangedManagedDriverUploadBytes: rangedManagedDriver,
+      fullSpanManagedDriverUploadBytes: fullSpanManagedDriver,
+      rangedManagedDriverBytesPerLogicalByte,
+      fullSpanManagedDriverBytesPerLogicalByte,
       driverUploadByteReductionFraction,
+      // Transient dilation at the window edges stays on the record even though it is exempt
+      // from the quality-equality gate — a grossly asymmetric hit-stop phase is still visible.
+      rangedTimeScaleStart: finite(ranged?.settings?.start?.timeScale),
+      rangedTimeScaleEnd: finite(ranged?.settings?.end?.timeScale),
+      fullSpanTimeScaleStart: finite(fullSpan?.settings?.start?.timeScale),
+      fullSpanTimeScaleEnd: finite(fullSpan?.settings?.end?.timeScale),
       rangedFrameP95,
       fullSpanFrameP95: fullFrameP95,
       frameP95DeltaMs: Number.isFinite(rangedFrameP95) && Number.isFinite(fullFrameP95)
