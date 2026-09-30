@@ -43,7 +43,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `nemesisEncounter` | `systems/nemesisEncounter.js` | 9 | 0 | 0 | — |
 | `capitalBossEncounters` | `systems/capitalBossEncounters.js` | 149 | 2 | 0 | `capitalBoss:telegraphEnd`×2 |
 | `ai` | `systems/tacticalAI.js` (+ legacy) | 1266 | 2 | 0 | `ai:telegraph`×1, `ai:doctrinePhase`×1 |
-| `barkDirector` | `systems/barkDirector.js` | 1610 | 1 | 22 | `audio:cue`×1 |
+| `barkDirector` | `systems/barkDirector.js` | 1649 | 1 | 23 | `audio:cue`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 844 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
 | `beacons` | `systems/beacons.js` | 216 | 5 | 2 | `audio:cue`×3, `economy:chargeCredits`×1, `beacon:deployed`×1 |
@@ -58,7 +58,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `countermeasures` | `systems/countermeasures.js` | 549 | 5 | 3 | `audio:cue`×2, `pds:intercept`×1, `countermeasure:deployed`×1 |
 | `bombs` | `systems/bombs.js` | 1314 | 31 | 14 | `bombs:denied`×8, `economy:chargeCredits`×4, `bombs:stockChanged`×3 |
 | `emergentPrimitives` | `systems/emergentPrimitives.js` | 1151 | 2 | 0 | `emergent:audio`×1, `emergent:contact`×1 |
-| `impulseCharges` | `systems/impulseCharges.js` | 1359 | 24 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
+| `impulseCharges` | `systems/impulseCharges.js` | 1363 | 24 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
 | `hullBurst` | `systems/hullBurst.js` | 556 | 17 | 0 | `audio:cue`×6, `presentation:vfxCue`×4, `hullBurst:hit`×3 |
 | `mines` | `systems/mines.js` | 335 | 8 | 6 | `mines:armed`×2, `mines:capReached`×1, `ai:telegraph`×1 |
 | `massSeed` | `systems/massSeed.js` | 612 | 26 | 4 | `audio:cue`×6, `presentation:vfxCue`×4, `massSeed:collapsing`×4 |
@@ -76,7 +76,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `wingMorale` | `systems/wingMorale.js` | 388 | 5 | 3 | `ai:formationBroken`×1, `wingMorale:broken`×1, `ai:flee`×1 |
 | `tetherGameplay` | `systems/tetherGameplay.js` | 3687 | 39 | 9 | `tether:latchDenied`×7, `tether:releaseRated`×4, `massline:bridleEnded`×3 |
 | `surrenderRecovery` | `systems/surrenderRecovery.js` | 1329 | 0 | 14 | — |
-| `custodyConsequences` | `systems/custodyConsequences.js` | 417 | 0 | 5 | — |
+| `custodyConsequences` | `systems/custodyConsequences.js` | 419 | 0 | 5 | — |
 | `masslineTelemetry` | `systems/masslineTelemetry.js` | 528 | 2 | 0 | `tether:reelPump`×1, `tether:snapCatch`×1 |
 | `masslineThreats` | `systems/masslineThreats.js` | 400 | 1 | 0 | `massline:threat`×1 |
 | `masslineImpacts` | `systems/masslineImpacts.js` | 530 | 2 | 0 | `tether:whipImpact`×1, `massline:sweepImpact`×1 |
@@ -88,7 +88,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `jettisonImpulse` | `systems/jettisonImpulse.js` | 95 | 1 | 1 | `audio:cue`×1 |
 | `mining` | `systems/mining.js` | 3013 | 50 | 10 | `beam:denied`×5, `mining:yield`×5, `mining:start`×3 |
 | `fieldDepletion` | `systems/fieldDepletion.js` | 860 | 3 | 3 | `field:richSeamMissed`×1, `fieldDepletion:changed`×1, `field:depletedChanged`×1 |
-| `cargo` | `systems/cargo.js` | 772 | 11 | 0 | `salvage:changed`×2, `audio:cue`×2, `cargo:changed`×1 |
+| `cargo` | `systems/cargo.js` | 785 | 12 | 0 | `salvage:changed`×2, `audio:cue`×2, `cargo:changed`×1 |
 | `fragileCargo` | `systems/fragileCargo.js` | 297 | 1 | 2 | `cargo:fragileLost`×1 |
 | `automation` | `systems/automation.js` | 3207 | 35 | 9 | `automation:offlineSummary`×5, `economy:chargeCredits`×4, `economy:applyTradePressure`×3 |
 | `asteroidSites` | `systems/asteroidSites.js` | 2178 | 22 | 10 | `site:laneSpilled`×2, `worldSite:operationReceipt`×1, `worldSite:failureReceipt`×1 |
@@ -135,7 +135,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `traffic` | `systems/traffic.js` | 11050 | 33 | 28 | `field:richSeamMissed`×2, `news:publish`×2, `comms:message`×2 |
 | `drill` | `systems/drill.js` | 1460 | 23 | 0 | `drill:warn`×9, `drill:rockDepleted`×3, `drill:yield`×1 |
 | `claims` | `systems/claims.js` | 2581 | 46 | 11 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×3 |
-| `chronicler` | `systems/chronicler.js` | 350 | 0 | 0 | — |
+| `chronicler` | `systems/chronicler.js` | 354 | 0 | 0 | — |
 | `bandRadio` | `systems/bandRadio.js` | 688 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
 | `onboarding` | `systems/onboarding.js` | 3105 | 19 | 68 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
 | `masslineHud` | `ui/masslineHud.js` | 1899 | 0 | 3 | — |
@@ -148,7 +148,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `noFireAdvisory` | `data/stationBubbles.js` | 250 | 0 | 1 | — |
 | `moralTrapSystem` | *(not found)* | — | — | — | — |
 | `voiceArbiter` | `ui/voiceArbiter.js` | 452 | 4 | 2 | `voice:clear`×2, `voice:surface`×2 |
-| `save` | `save/saveSystem.js` | 4834 | 37 | 26 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
+| `save` | `save/saveSystem.js` | 4917 | 37 | 27 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
 
 ## Render-phase order (every animation frame)
 

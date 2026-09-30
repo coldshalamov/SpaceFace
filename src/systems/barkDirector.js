@@ -14,7 +14,7 @@ import {
   witnessCrimeBarkFor,
 } from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
-import { trophyFromFittings } from '../data/sectors.js';
+import { SECTORS, trophyFromFittings } from '../data/sectors.js';
 import { aceById, factionHistoryFromMemory } from '../data/namedAces.js';
 import {
   CARGO_OWNER_REACTIONS,
@@ -310,6 +310,7 @@ export const barkDirector = {
     this._onLawReportReceipt = (payload) => this._speakLawWitness(payload || {});
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
     this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
+    this._onCustodyAcknowledged = (payload) => this._speakCustodyAcknowledged(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:spawned', this._onEntitySpawnedBark);
       this.bus.on('ai:flee', this._onFlee);
@@ -330,6 +331,7 @@ export const barkDirector = {
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('bounty:cooled', this._onBountyCooled);
+      this.bus.on('law:custodyAcknowledged', this._onCustodyAcknowledged);
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
       this.bus.on('tether:released', this._onBodyReleased);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -561,6 +563,30 @@ export const barkDirector = {
     this._emit('comms:popup', {
       sender: 'BOUNTY DESK',
       text: `Payment posted — the hunt cools ${pct}%.`,
+      category: 'law',
+      ttl: 6,
+    });
+    return true;
+  },
+
+  // LAW-05: the berth answers a custody transfer in the law register — the station's own line,
+  // distinct from the CONTROL ledger voice custodyConsequences already speaks. The dedupe key
+  // mirrors the upstream settlement key so a replayed or double-fired ack cannot bark twice
+  // for one transfer.
+  _speakCustodyAcknowledged(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.entityId == null) return false;
+    const own = ensureState(state);
+    const key = `${payload.stationId || 'station'}:${payload.entityId}:${Number(payload.t) || 0}`;
+    if (own.lastCustodyAckKey === key) return false;
+    own.lastCustodyAckKey = key;
+    const repeat = Number(payload.repeatIndex) > 1;
+    const name = stationNameFor(payload.stationId);
+    this._emit('comms:popup', {
+      sender: 'BERTH CONTROL',
+      text: repeat
+        ? `Custody acknowledged${name ? ` at ${name}` : ''} — repeat profile on the pad; this crew is on file.`
+        : `Custody acknowledged${name ? ` at ${name}` : ''} — transfer logged; yard crews take the hull from here.`,
       category: 'law',
       ttl: 6,
     });
@@ -1160,6 +1186,7 @@ export const barkDirector = {
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
+      if (this._onCustodyAcknowledged) this.bus.off('law:custodyAcknowledged', this._onCustodyAcknowledged);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -1181,6 +1208,7 @@ export const barkDirector = {
     this._onLawReportReceipt = null;
     this._onHeatWantedCrossed = null;
     this._onBountyCooled = null;
+    this._onCustodyAcknowledged = null;
     this._onBodyReleased = null;
     this._onBodyShoved = null;
     this._onBodyImpact = null;
@@ -1522,6 +1550,17 @@ function eligibleShip(entity, state) {
 function humanizeId(value, fallback = 'Stunt') {
   const s = String(value || fallback).replace(/^(?:trick_|title_)/, '').replace(/_/g, ' ').trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : fallback;
+}
+
+// Custody acks name their berth when the authored geography knows the station id; unlisted or
+// dynamic stations fall back to the bare BERTH CONTROL sender.
+function stationNameFor(stationId) {
+  if (!stationId) return null;
+  for (const sector of SECTORS) {
+    const station = (sector.stations || []).find((row) => row.id === stationId);
+    if (station && station.name) return station.name;
+  }
+  return null;
 }
 
 function normalizeSituation(value) {

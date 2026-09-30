@@ -23,6 +23,9 @@ export const custodyConsequences = {
   name: 'custodyConsequences',
 
   init(ctx) {
+    // destroy-first like every other registered listener: a re-init must unsubscribe the old
+    // handlers before wiring the new ones or each event lands twice.
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
@@ -178,16 +181,15 @@ export const custodyConsequences = {
       ? `CONTROL: custody confirmed. Repeat ${record.archetype.replace(/_/g, ' ')} profile linked.`
       : 'CONTROL: custody confirmed. Hull and crew entered into the warrant ledger.';
     const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      return voice.say({
-        channel: 'info',
-        kind: 'custodyConsequences',
-        id: `custodyConsequences:${record.receiptId}`,
-        text,
-        ttl: 3,
-      });
-    }
-    this._emit('toast', { text, kind: 'good', ttl: 3 });
+    const spoken = !!(voice && typeof voice.say === 'function' && voice.say({
+      channel: 'info',
+      kind: 'custodyConsequences',
+      id: `custodyConsequences:${record.receiptId}`,
+      text,
+      ttl: 3,
+    }));
+    // A refused voice.say (arbiter busy) must not drop the line silently — fall back to toast.
+    if (!spoken) this._emit('toast', { text, kind: 'good', ttl: 3 });
     return true;
   },
 
