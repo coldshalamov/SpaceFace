@@ -45,8 +45,11 @@ test('cover UVs preserve video proportions on ultrawide and portrait screens',()
   assert(signalCover(0,0,0,0).every(Number.isFinite));
 });
 test('optional bootstrap is a caught dynamic import AFTER the original boot call',()=>{
-  const src=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-  assert(src.indexOf('bootstrapLoadingTerminal();')<src.indexOf("import('./src/ui/introSignalRemixBoot.js')"));
+  // The launcher lives in bootEntry.js (raw + retail entry). Order is still load-bearing:
+  // the artwork bootstrap runs first; the optional optics import follows it and is caught.
+  const src=readFileSync(new URL('../src/ui/bootEntry.js',import.meta.url),'utf8');
+  assert(src.includes("import('./introSignalRemixBoot.js')"));
+  assert(src.indexOf('bootstrapLoadingTerminal()')<src.indexOf("import('./introSignalRemixBoot.js')"));
   assert(src.includes('.catch(() => { /* Decoration cannot block boot. */ });'));
 });
 test('headless/unsupported hosts keep the original movie untouched',()=>{
