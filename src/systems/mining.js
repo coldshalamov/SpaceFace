@@ -203,8 +203,19 @@ export const mining = {
     bus.on('dock:docked', () => this._bankCombatLoot());
     bus.on('jump:start', () => this._bankCombatLoot());
     bus.on('sector:exit', () => this._bankCombatLoot());
-    // Fresh sector → drop the stale beam lock (world regenerates the field).
-    bus.on('sector:enter', () => { this._setLockTargetId(null); this._stopBeam(); this._resetBeamHeat(); });
+    // Fresh world context → drop the stale beam lock and vent bookkeeping (a save loaded
+    // mid-beam must not carry pulse credit or a lock target into the restored field).
+    const resetMiningSession = () => {
+      this._setLockTargetId(null);
+      this._stopBeam();
+      this._resetBeamHeat();
+      this._pulseOre = 0;
+      this._pulseTargetId = null;
+      this._pulseCommodityId = null;
+    };
+    bus.on('sector:enter', resetMiningSession);
+    bus.on('save:loaded', resetMiningSession);
+    bus.on('game:new', resetMiningSession);
   },
 
   // ---- main per-tick update -------------------------------------------------

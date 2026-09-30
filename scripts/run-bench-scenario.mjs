@@ -32,7 +32,7 @@ console.log(`ok=${result.ok} wallMs=${result.wallMs} runs=${result.runs.length} 
 let unmet = 0;
 for (const run of result.runs) {
   const m = run.metrics || {};
-  console.log(`== ${run.scenarioId}  hash ${String(run.runHash).slice(0, 12)}${run.error ? `  ERROR ${run.error}` : ''}`);
+  console.log(`== ${run.scenarioId}  hash ${String(run.runHash).slice(0, 12)}${run.runError ? `  ERROR ${run.runError}` : ''}`);
   for (const t of m.targets || []) {
     if (!t.met) unmet++;
     console.log(`  ${t.met ? 'MET    ' : 'NOT MET'} ${t.id} = ${t.value} ${t.unit || ''} | ${t.note || ''}`);

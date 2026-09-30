@@ -136,7 +136,9 @@ export async function runVerbBench({
 
   return {
     bench: 'verbs',
-    ok: true,
+    // Fail closed: a thrown scenario is a red run, and an empty result set (e.g. an id typo)
+    // must not read as a green bench.
+    ok: results.length > 0 && results.every((run) => !run.runError),
     wallMs: Date.now() - startedAt,
     runs: results,
   };
