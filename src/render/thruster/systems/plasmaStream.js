@@ -2,7 +2,9 @@
  * Player thruster — swept ribbon sheets, a recorded world-space contrail, a drive forge, and a
  * nozzle throat. These are separate owners; see the VFX technique standard E5 (jet/history handoff).
  *
- *   ribbons  Short swept plasma sheets standing off each bell: the live instantaneous jet.
+ *   ribbons  Short swept plasma sheets standing off each bell: the live instantaneous jet. Their
+ *            spine is integrated from the bell's heading history (ribbon/exhaustLag.js), so a turn
+ *            bends the jet — it flows back onto the bell instead of swinging rigidly with the hull.
  *   contrail Immutable history of positions the ship actually occupied: the long bright wake.
  *   forge    The collar at the mouth of the recorded line, with its own band flash.
  *   throat   Small billboarded discs at each bell for the searing over-range hot spot.
@@ -14,9 +16,10 @@
  */
 import * as THREE from 'three';
 import { createPathSampler } from './pathSampler.js';
-import { PlasmaRibbonPlume } from '../ribbon/plasmaRibbons.js';
+import { PlasmaRibbonPlume, STATION_COUNT } from '../ribbon/plasmaRibbons.js';
 import { ContrailTrail, resolveContrailSpin } from '../ribbon/contrailTrail.js';
 import { DriveForge } from '../ribbon/driveForge.js';
+import { createExhaustLag } from '../ribbon/exhaustLag.js';
 import {
   EMIT_FLOOR,
   createDriveEnvelope,
@@ -27,7 +30,11 @@ import { PLAYER_PLASMA_STREAM_RECIPE } from '../recipes/plasmaStreamRecipe.js';
 
 // Nozzle-interior glow: the hot throat INSIDE the bell (reference: engine cores are lit from
 // within). One camera-facing disc per socket, depth-tested so the hull occludes it from the bow;
-// additive, tight HDR core + bell-lip ring + soft halo. Not a trail billboard — the nozzle lamp.
+// additive, tight HDR core + bell-interior ring + soft halo. Not a trail billboard — the nozzle
+// lamp. v29: the interior is machinery, not a decal — the bell wall catches drive light as a
+// ring with gas spokes scrubbing it, the combustion face is mottled and slowly turns over, and
+// the whole lamp runs hotter with the envelope. Structure earns the brightness the owner asked
+// for; radius stays bound (an oversized disc reads as a white ball stuck on the hull).
 const THROAT_VERT = /* glsl */`
   varying vec2 vUv;
   void main() {
@@ -49,22 +56,26 @@ const THROAT_FRAG = /* glsl */`
     vec2 p = vUv * 2.0 - 1.0;
     float r = length(p);
     if (r > 1.0) discard;
-    // Concentric structure: searing core, bell-lip ring, breathing halo. Faded rather than clipped
-    // at the disc edge — a saturated interior against a hard r=1 cut renders as a white ball with
-    // a drawn-on rim instead of a glow inside a bell.
+    float ang = atan(p.y, p.x);
+    // Searing core: white-hot gas at the throat, saturated through the tone mapper.
     float core = exp(-r * r * 7.5);
-    // Bell-lip ring kept faint. At the strength it used to have it drew a distinct annulus, which
-    // with a saturated middle read as a hard grey-blue ball stuck on the back of the hull.
-    float ring = exp(-pow(abs(r - 0.68) * 5.5, 2.0)) * 0.14;
+    // Bell-interior wall: an annulus at the lip that only truly lights once the drive is live,
+    // broken into gas spokes scrubbing the wall. Two incommensurate spoke frequencies so it
+    // never reads as a machined spline. At idle the wall stays dark metal (ring ~0.10).
+    float ring = exp(-pow(abs(r - 0.66) * 4.2, 2.0))
+      * (0.10 + uDrive * 0.30 + uBoost * 0.14)
+      * (0.62 + 0.38 * (0.5 + 0.5 * sin(ang * 9.0 + uTime * 0.9))
+        * (0.55 + 0.45 * (0.5 + 0.5 * sin(ang * 5.0 - uTime * 0.53))));
     float halo = exp(-r * 2.6) * 0.3;
+    // Combustion face: slow mottle that turns over as the burn churns — interior detail, not a
+    // strobe (micro-flicker below stays small on purpose).
+    float mottle = 0.86 + 0.14 * sin(ang * 3.0 + uTime * 0.7 + r * 5.0);
     float rim = 1.0 - smoothstep(0.72, 1.0, r);
-    // Micro-flicker kept small (no strobe). Energy is normalized well below 1: the throat is a lamp
-    // inside the bell, not the brightest object in the frame.
     float fl = 0.94 + 0.04 * sin(uTime * 37.0) + 0.03 * sin(uTime * 91.0 + 1.7);
-    float energy = 0.22 + uDrive * 0.28 + uBoost * 0.18;
-    float i = (core * 0.8 + ring + halo) * energy * fl * rim;
+    float energy = 0.26 + uDrive * 0.62 + uBoost * 0.24;
+    float i = (core * 0.85 + ring + halo) * mottle * energy * fl * rim;
     vec3 col = mix(uColor, vec3(1.0, 0.99, 0.97), clamp(core * 1.35, 0.0, 1.0));
-    col *= min(i * uRadiance, 1.3);
+    col *= min(i * uRadiance, 1.45);
     float alpha = clamp(i * uOpacity, 0.0, 1.0);
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(col, alpha);
@@ -145,6 +156,38 @@ export class PlasmaStreamSystem {
     // One forge per line: the mouth each line is drawn out of. Paired with the trail rather than
     // with the bell, because it has to follow the line's heading, not the hull's.
     this._forges = [];
+
+    // Rotational memory of the exhaust (owner ruling 2026-09-30: the jet flows back through a
+    // turn instead of swinging rigidly with the hull). The recorder keeps the bell's heading
+    // history; each frame while firing we integrate it into the world-space spine the ribbon
+    // shader hangs its sheets on. Flight history stays the contrail's job — this remembers
+    // DIRECTIONS only, and only while the drive is live.
+    this._lag = createExhaustLag();
+    this._centerCount = this._ribbons.stations || STATION_COUNT;
+    this._centerData = new Float32Array(this._centerCount * 4);
+    this._centerTex = new this.THREE.DataTexture(
+      this._centerData, this._centerCount, 1, this.THREE.RGBAFormat, this.THREE.FloatType,
+    );
+    this._centerTex.magFilter = this.THREE.LinearFilter;
+    this._centerTex.minFilter = this.THREE.LinearFilter;
+    this._centerTex.wrapS = this.THREE.ClampToEdgeWrapping;
+    this._centerTex.wrapT = this.THREE.ClampToEdgeWrapping;
+    this._centerTex.needsUpdate = true;
+    this._lagTipBend = 0;
+    this._lagTipAgeS = 0;
+    // Shock/clump structure object fed to the ribbon material (allocated once, filled from the
+    // recipe below so look stays authored in one place).
+    this._shock = { amplitude: 0, freqPerWU: 0, decayPerWU: 0, boostGain: 0 };
+    // Sustained event-light source, refreshed every update (the hull light the bell casts).
+    this._lightSource = { x: 0, y: 0, z: 0, drive: 0, boost: 0, on: false };
+
+    const shockCfg = (this.recipe.jet || {}).shock || {};
+    this._shock.amplitude = shockCfg.pinch != null ? shockCfg.pinch : 0;
+    this._shock.freqPerWU = shockCfg.pitchWU > 1e-3 ? Math.PI * 2 / shockCfg.pitchWU : 0;
+    this._shock.decayPerWU = shockCfg.decayWU > 1e-3 ? 1 / shockCfg.decayWU : 0;
+    this._shock.boostGain = shockCfg.boostGain != null ? shockCfg.boostGain : 0;
+    this._clump = this.recipe.ribbon && this.recipe.ribbon.clump != null
+      ? this.recipe.ribbon.clump : 0;
 
     for (let i = 0; i < 4; i++) {
       this._trails.push(new ContrailTrail(this.THREE, {}));
@@ -243,6 +286,8 @@ export class PlasmaStreamSystem {
     this._pathErase = 0;
     this._ignition = 0;
     this._hasNozzle = false;
+    this._lag.reset();
+    this._lightSource.on = false;
     for (let i = 0; i < this._throats.length; i++) this._throats[i].visible = false;
     if (this._ribbons) this._ribbons.reset();
     if (this._trails) {
@@ -269,6 +314,11 @@ export class PlasmaStreamSystem {
     }
     this._contrail = null;
     this._forge = null;
+    this._lag = null;
+    if (this._centerTex) {
+      this._centerTex.dispose();
+      this._centerTex = null;
+    }
     if (this.group && this.group.parent) this.group.parent.remove(this.group);
     for (let i = 0; i < this._throats.length; i++) {
       this._throats[i].geometry.dispose();
@@ -353,13 +403,15 @@ export class PlasmaStreamSystem {
       Math.max(pathCfg.discontinuityFloorWU || 160, speed * 0.08 + 80),
     );
 
-    // Owner change or a teleport-scale jump invalidates the pose we are extrapolating from.
+    // Owner change or a teleport-scale jump invalidates the pose we are extrapolating from — and
+    // the heading memory with it: a new hull's jet must not bend around the old hull's turns.
     const ownerId = owner != null ? owner : primary;
     const jumped = this._hasNozzle
       && Math.hypot(nx - this._prevNx, nz - this._prevNz) > disc;
     if (this._owner !== ownerId || jumped) {
       this._owner = ownerId;
       this._hasNozzle = false;
+      this._lag.reset();
     }
 
     // Nothing commanded, nothing left over: go fully cold. This tests the raw COMMAND, not the smoothed
@@ -376,6 +428,10 @@ export class PlasmaStreamSystem {
       this.sampler.follow(
         nx, nz, Math.atan2(dirZ, dirX), dt, ownerId, spacing, disc, period,
       );
+      // Heading memory records ONLY while the drive is live: gas exists downstream of the bell
+      // only while there is gas coming out of it. A released brake stops extending the memory;
+      // what was recorded ages out on its own timestamps.
+      this._lag.record(this._time, Math.atan2(ez, ex));
     }
     const nSock = list ? Math.min(list.length, 4) : 1;
     const rootMul = 1 + Math.min(0.4, (nSock - 1) * 0.1);
@@ -448,6 +504,33 @@ export class PlasmaStreamSystem {
     this._ribbonShape.time = this._time;
     this._ribbonShape.recipe = this.recipe;
 
+    // EXHAUST LAG. Every drawn frame rebuilds the spine from the current bell pose plus the
+    // recorded heading history, so the root stays exactly on the bell even while the demand
+    // decays. Memory reach scales with the physical jet (a stubbier throttle jet is stiffer —
+    // less gas in flight to remember) and is capped by the recipe.
+    const lagCfg = jetCfg.lag || {};
+    const refSpeed = lagCfg.exhaustRefSpeedWU || 20;
+    const tipAge = Math.max(
+      lagCfg.minTipAgeS != null ? lagCfg.minTipAgeS : 0.12,
+      Math.min(lagCfg.maxMemoryS != null ? lagCfg.maxMemoryS : 0.85, jetLen / refSpeed),
+    );
+    this._lagTipAgeS = tipAge;
+    this._lagTipBend = this._lag.buildCenterline({
+      out: this._centerData,
+      count: this._centerCount,
+      x: nx, y: ny, z: nz,
+      heading: Math.atan2(ez, ex),
+      nowS: this._time,
+      tipAgeS: tipAge,
+      jetLength: jetLen,
+      maxBendRad: lagCfg.maxBendRad != null ? lagCfg.maxBendRad : 1.4,
+    });
+    this._centerTex.needsUpdate = true;
+    this._ribbonShape.centerTex = this._centerTex;
+    this._ribbonShape.centerCount = this._centerCount;
+    this._ribbonShape.shock = this._shock;
+    this._ribbonShape.clump = this._clump;
+
     // The jet, standing off the bell. Short by construction. Reduced motion slows the sheet's own
     // flow clock (the same 0.12 rate the retro jets use); throttle response and length stay live.
     this._ribbons.setCamera(this._camObj);
@@ -488,6 +571,17 @@ export class PlasmaStreamSystem {
       forge.update(nz, null, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
     }
     this._active = emitting || trailLive >= 2;
+
+    // Sustained event-light source: the lit bell itself, refreshed every live frame so vfx can
+    // keep the player's hull light on the exact nozzle the jet is leaving. (The family-plume
+    // light path never fires for the plasma stream — its fleet record's driveState stays zero.)
+    const ls = this._lightSource;
+    ls.on = emitting;
+    ls.x = nx;
+    ls.y = ny;
+    ls.z = nz;
+    ls.drive = activeDrive;
+    ls.boost = boostSm;
 
     // Nozzle throat glows — one per live socket, camera-billboarded, depth-tested against hull.
     const throatCfg = this.recipe.throat || {};
@@ -533,6 +627,15 @@ export class PlasmaStreamSystem {
       dash: this._env.dash,
       ignition,
     };
+  }
+
+  /**
+   * The sustained hull-light source this system owes the bell while the drive is live, or null
+   * when cold. One shared scratch record — copy out before the next update.
+   */
+  eventLightSource() {
+    if (this._disposed || !this._lightSource.on) return null;
+    return this._lightSource;
   }
 
   /**
@@ -585,6 +688,12 @@ export class PlasmaStreamSystem {
       contrail: this._contrail ? this._contrail.inspect() : null,
       forge: this._forge ? this._forge.inspect() : null,
       envelope: { spool: this._env.spool, boost: this._env.boost, dash: this._env.dash },
+      lag: {
+        stations: this._centerCount,
+        tipAgeS: this._lagTipAgeS,
+        tipBendRad: this._lagTipBend,
+        history: this._lag ? this._lag.inspect() : null,
+      },
       construction: 'swept-ribbon-sheets',
     };
   }

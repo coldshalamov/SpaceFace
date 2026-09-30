@@ -28,10 +28,16 @@ export function smoothstep(edge0, edge1, x) {
 }
 
 export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
-  id: 'player_liquid_plasma_v28.0',
+  id: 'player_liquid_plasma_v29.0',
   kind: 'raymarched_plasma_volume',
   displayName: 'Player continuous liquid plasma thruster',
-  notes: 'v28: wake rework — the recorded contrail grows a searing burn core pinned on the flown '
+  notes: 'v29: the live jet grew rotational memory (owner ruling 2026-09-30 — a turn must bend '
+    + 'the jet and let it flow back onto the bell, not swing it like a bolted tail): '
+    + 'jet.lag drives the heading-history spine in ribbon/exhaustLag.js. The column gains a '
+    + 'standing shock-cell train (jet.shock, already authored) and a petal-clumped sheet fan '
+    + '(ribbon.clump), and the bell reads as machinery: hotter structured throat, brighter forge '
+    + 'lip, and the sustained hull light that the family-plume path used to owe the bell. '
+    + 'v28: wake rework — the recorded contrail grows a searing burn core pinned on the flown '
     + 'line (the inner strand pair) inside a tighter corded sheath, and the live jet roots inside '
     + 'the bell (uEmbed) so exhaust visibly exits the throat instead of appearing beside it. '
     + 'Hotter sear phase, tighter ribbon cord, lit throat. v27: raymarched density volume notes '
@@ -60,6 +66,18 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
     },
     // One-shot ignition transient so boost reads as an event, not a width ramp.
     ignition: { decayPerS: 3.6, lengthOvershoot: 0.24, radianceOvershoot: 0.7, shockGain: 0.8 },
+    // Rotational memory of the live jet (owner ruling 2026-09-30). `exhaustRefSpeedWU` is the
+    // convection speed of the visible structure: tipAgeS = jetLength / that, so a stubbier
+    // throttle jet is stiffer and boost's longer jet lags more. `maxMemoryS` caps the reach;
+    // `maxBendRad` soft-caps the root-to-tip bend via tanh — a hard pivot corkscrews the jet,
+    // it does not knot it around the bell. The jet ROOT is always exactly on the bell; only the
+    // downstream shape carries history. Recorded flight history is the contrail's and is untouched.
+    lag: {
+      exhaustRefSpeedWU: 20,
+      maxMemoryS: 0.85,
+      minTipAgeS: 0.12,
+      maxBendRad: 1.4,
+    },
   },
 
   // ---- Exhaust volume (the raymarched plume) ------------------------------------------------
@@ -126,12 +144,16 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
   // Consumed by plasmaStream._ribbonBase -> resolvePlumeShape. A collimated hot cord: the jet
   // spears out of the bell and only shreds downstream — the earlier wide fan read as gauze
   // hanging next to the hull rather than exhaust leaving a nozzle.
+  // `clump` pulls the sheet fan toward three coarse lobes: bright folds bunched into petals with
+  // dark interior between them (the standard's engine-jet row demands exactly that read), instead
+  // of an even pinwheel that silhouettes as one solid cone.
   ribbon: {
     jetLength: 17,
     throatRadius: 1.32,
     spread: 1.7,
     radiance: 1.55,
     opacity: 0.115,
+    clump: 0.55,
   },
 
   // ---- Path-thread release --------------------------------------------------------------------
@@ -161,13 +183,15 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
 
   // Nozzle-interior glow discs (one per socket): the lit engine core inside the bell.
   // (retro jets are configured separately — PLAYER_RETRO_VOLUME_RECIPE, same ribbon family)
-  // Small and restrained now that the volume renders its own hot core — the disc only supplies the
-  // over-range pinpoint at the bell that an emission integral cannot reach on its own. Oversized,
-  // it stops reading as a throat and becomes a white ball stuck on the back of the ship.
+  // v29: brighter and structured. The owner's read on the shipped base was "cheap"; the disc now
+  // carries a drive-driven bell-interior ring with gas spokes scrubbing the wall and a mottled
+  // combustion face, so the mouth is machinery you look INTO, not a decal stuck on the hull.
+  // Still radius-bound (the oversized white ball is a documented failure) — the extra light is
+  // earned by structure, not by size.
   throat: {
     radiusWU: 1.15,
-    opacity: 0.6,
-    radiance: 2.2,
+    opacity: 0.72,
+    radiance: 2.7,
     color: [0.62, 0.93, 1.0],
   },
 });

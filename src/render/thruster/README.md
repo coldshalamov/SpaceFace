@@ -37,7 +37,8 @@ Production sockets match ContinuousPlume: **jet extends along −ax**.
 
 | Element | Module | Anchoring | Lifetime / reach is set by | Owns |
 |---|---|---|---|---|
-| plume | `ribbon/plasmaRibbons.js` | Nozzle-local, straight along −ax | Current drive, ~17 WU at full | The live jet: throat heat, collimated core, breakup into ribbons |
+| plume | `ribbon/plasmaRibbons.js` | Root on the current socket; downstream spine integrated from the bell's heading history | Current drive, ~17 WU at full | The live jet: throat heat, collimated core, breakup into ribbons — and the bend it shows through a turn |
+| lag spine | `ribbon/exhaustLag.js` | Station 0 pinned to the socket; stations behind it sample heading history at parcel age | `jet.lag` recipe block (memory, soft bend cap) | Rotational memory: the jet flows back onto the bell through a turn instead of swinging rigidly |
 | contrail | `ribbon/contrailTrail.js` | Immutable world-space nozzle samples | Each sample’s elapsed age only | The glowing burn history already left in space |
 | throat | inline quads | Nozzle-locked billboards | n/a | Bell glow, including at idle |
 
@@ -70,10 +71,15 @@ Tests in `test/plasma-stream-thruster.test.mjs` enforce these semantics directly
 - **The throttle moves live-plume length, heat and reach.** It does not rewrite recorded history.
 - **Sheets must be wide enough to overlap.** Narrow sheets read as bright wires with gaps between them; overlap builds a volume.
 - **One authority for “is the drive firing”**: `EMIT_FLOOR` in `ribbon/driveEnvelope.js`.
-- **Ordinary helm yaw may not move the jet or its history off the bell.** The tumble corkscrew
-  (`spinHelixOffset`) is dead below 4.75 rad/s and `resolveContrailSpin` only forwards
-  tumble/drift presentation. Arrow-key turns are not tumble. The live ribbon stays on the
-  current socket; recorded samples stay on the positions that socket actually occupied.
+- **The jet flows back through a turn; the history never moves at all.** Owner ruling 2026-09-30:
+  the live jet carries rotational memory (`ribbon/exhaustLag.js`). Its spine is integrated from
+  the bell's heading history at parcel age, so a turn bends the jet and it flows back onto the
+  bell, instead of swinging rigidly like a tail bolted to the hull. Two hard bounds: the jet ROOT
+  always sits exactly on the current socket (only the downstream shape carries history), and
+  translation is deliberately not remembered — modelling ship velocity would re-grow the
+  "hundreds of world units at cruise" welded-tail rejection (plasmaRibbons, rejected
+  construction 3). The recorded contrail stays fully immutable: `resolveContrailSpin` still only
+  forwards tumble/drift presentation, and no lag term ever touches a recorded sample.
 - `recipes/plasmaStreamRecipe.js` — live recipe id `player_liquid_plasma_v26.*`
 - Wired from `src/render/vfx.js` (player plasmaStream, not NPC card plume)
 
