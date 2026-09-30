@@ -15,7 +15,8 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
-import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
+import { createAsyncAdmission } from './asyncAdmission.js';
+import { createRenderPackageLoader, disposeDecodedResources, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
@@ -121,7 +122,12 @@ export class AssetContractError extends Error {
 export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
   if (!runtime || runtime.retiring) return null;
   if (!runtime.assets.has(cacheKey)) {
-    const task = Promise.resolve().then(createTask);
+    const timers = runtime.admissionTimers && typeof runtime.admissionTimers === 'object'
+      ? runtime.admissionTimers
+      : {};
+    const admission = createAsyncAdmission({ label: `authored-asset:${cacheKey}`, ...timers });
+    const inner = Promise.resolve().then(() => createTask(admission));
+    const task = admission.wait(inner).finally(() => admission.finish());
     runtime.assets.set(cacheKey, task);
     const pendingTasks = runtime.pendingAssetTasks || (runtime.pendingAssetTasks = new Set());
     pendingTasks.add(task);
@@ -143,10 +149,17 @@ export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
         if (value == null && runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
         // A re-admitted task that produced a record supersedes any failure the evicted attempt
         // recorded under this key.
-        else if (value != null && runtime.failures) runtime.failures.delete(cacheKey);
+        else if (value != null && runtime.assets.get(cacheKey) === task && runtime.failures) {
+          runtime.failures.delete(cacheKey);
+        }
       },
-      () => {
+      (error) => {
         pendingTasks.delete(task);
+        if (!runtime.retiring && runtime.failures && error
+            && (error.name === 'TimeoutError' || error.code === 'AUTHORED_ADMISSION_TIMEOUT')
+            && runtime.assets.get(cacheKey) === task) {
+          runtime.failures.set(cacheKey, error);
+        }
         if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
       },
     );
@@ -181,15 +194,31 @@ export function retireAuthoredAssetRuntime(runtime) {
  * Renderer-to-runtime ownership. Disposal detaches the renderer synchronously so later callers can
  * acquire a fresh runtime, while repeated disposal keeps the original guarded retirement Promise.
  */
-export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
+export function createAuthoredAssetRuntimeRegistry(runtimeFactory, registryOptions = {}) {
   const activeByRenderer = new WeakMap();
   const retirementByRenderer = new WeakMap();
+  const timers = registryOptions && typeof registryOptions.admissionTimers === 'object'
+    ? registryOptions.admissionTimers
+    : {};
 
   function get(renderer) {
     let runtimePromise = activeByRenderer.get(renderer);
     if (!runtimePromise) {
       retirementByRenderer.delete(renderer);
-      runtimePromise = Promise.resolve().then(() => runtimeFactory(renderer));
+      const admission = createAsyncAdmission({ label: 'authored-asset-runtime', ...timers });
+      const inner = Promise.resolve().then(() => runtimeFactory(renderer));
+      inner.then((runtime) => {
+        if (admission.signal.aborted === true
+            && activeByRenderer.get(renderer) !== runtimePromise) {
+          retireAuthoredAssetRuntime(runtime);
+        }
+      }, () => {});
+      runtimePromise = admission.wait(inner).finally(() => admission.finish());
+      runtimePromise.catch(() => {
+        if (activeByRenderer.get(renderer) === runtimePromise) {
+          activeByRenderer.delete(renderer);
+        }
+      });
       activeByRenderer.set(renderer, runtimePromise);
     }
     return runtimePromise;
@@ -358,31 +387,49 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   // would still field more busy workers than the host has spare cores. Route task intake
   // through the shared cross-decoder budget (FIFO, so the pool's own queue order is unchanged);
   // when KTX2 is the only decoder working it still uses the whole budget. Tasks still queued on
-  // the budget when the loader is disposed return their token and never dispatch, matching the
-  // stock pool's dropped-queue semantics (their callers never settle either way).
+  // the budget when the loader is disposed are aborted through the task admission — their callers
+  // reject with AbortError and the token returns to the pool's remaining live tasks.
   const decodeBudget = options.decodeBudget || sharedDecodeTaskBudget();
   const pendingPoolTasks = new Set();
   const pool = ktx2.workerPool;
+  const loaderLifetime = new AbortController();
+  const ktx2AbortError = (message) => Object.assign(new Error(message), { name: 'AbortError' });
   if (typeof pool.postMessage === 'function' && pool.spacefaceDecodeBudgetGated !== true) {
     const postTask = pool.postMessage.bind(pool);
     pool.spacefaceDecodeBudgetGated = true;
-    pool.postMessage = (msg, transfer) => decodeBudget.acquire().then((release) => {
-      if (disposed) {
-        release();
-        return new Promise(() => {});
-      }
-      const task = {};
-      task.settle = () => { if (pendingPoolTasks.delete(task)) release(); };
-      pendingPoolTasks.add(task);
-      let result;
-      try {
-        result = postTask(msg, transfer);
-      } catch (error) {
-        task.settle();
-        throw error;
-      }
-      return Promise.resolve(result).finally(task.settle);
-    });
+    pool.postMessage = (msg, transfer) => {
+      const taskAdmission = createAsyncAdmission({
+        label: 'ktx2-decode',
+        signal: loaderLifetime.signal,
+      });
+      return taskAdmission.wait(
+        decodeBudget.acquire({ signal: taskAdmission.signal }).then((release) => {
+          const retire = () => {
+            release();
+            throw taskAdmission.signal.aborted
+              ? taskAdmission.signal.reason
+              : ktx2AbortError('KTX2 loader was disposed while the decode task was queued.');
+          };
+          if (disposed || taskAdmission.signal.aborted) retire();
+          const task = {};
+          task.settle = () => {
+            if (!pendingPoolTasks.delete(task)) return;
+            taskAdmission.signal.removeEventListener('abort', task.settle);
+            release();
+          };
+          taskAdmission.signal.addEventListener('abort', task.settle);
+          pendingPoolTasks.add(task);
+          let result;
+          try {
+            result = postTask(msg, transfer);
+          } catch (error) {
+            task.settle();
+            throw error;
+          }
+          return Promise.resolve(result).finally(task.settle);
+        }),
+      ).finally(() => taskAdmission.finish());
+    };
   }
 
   ktx2.workerSourceURL = workerUrl;
@@ -391,13 +438,19 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   ktx2.init = function initCspSafeKtx2Transcoder() {
     if (disposed) return Promise.reject(new Error('KTX2 loader has been disposed.'));
     if (!this.transcoderPending) {
-      this.transcoderPending = Promise.resolve().then(async () => {
+      const admission = createAsyncAdmission({
+        label: 'ktx2-transcoder-init',
+        signal: loaderLifetime.signal,
+      });
+      const pending = admission.wait(Promise.resolve().then(async () => {
         if (typeof fetchImpl !== 'function') throw new Error('KTX2 transcoder requires fetch.');
-        const response = await fetchImpl(wasmUrl, { cache: 'force-cache' });
+        const response = await fetchImpl(wasmUrl, { cache: 'force-cache', signal: admission.signal });
+        admission.assertActive();
         if (!response || response.ok !== true) {
           throw new Error(`KTX2 transcoder fetch failed: HTTP ${response && response.status || 0} ${wasmUrl}`);
         }
         const binary = await response.arrayBuffer();
+        admission.assertActive();
         if (disposed) throw new Error('KTX2 loader was disposed during transcoder initialization.');
         this.transcoderBinary = binary;
         this.workerPool.setWorkerCreator(() => {
@@ -408,6 +461,10 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
           worker.postMessage({ type: 'init', config: this.workerConfig, transcoderBinary }, [transcoderBinary]);
           return worker;
         });
+      })).finally(() => admission.finish());
+      this.transcoderPending = pending;
+      pending.catch(() => {
+        if (this.transcoderPending === pending) this.transcoderPending = null;
       });
     }
     return this.transcoderPending;
@@ -417,7 +474,8 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
     disposed = true;
     // Terminated workers never answer, so settle gated tasks here to return their tokens;
     // without this every task in flight at dispose would leak a budget slot.
-    for (const task of pendingPoolTasks) task.settle();
+    loaderLifetime.abort(ktx2AbortError('KTX2 loader has been disposed.'));
+    for (const task of [...pendingPoolTasks]) task.settle();
     this.workerPool.dispose();
     this.transcoderBinary = null;
     this.transcoderPending = null;
@@ -560,9 +618,13 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
-  const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
+  const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
     loadGltfDocument(url, runtime.gltf)
       .then((gltf) => {
+        if (admission && admission.signal && admission.signal.aborted === true) {
+          disposeDecodedResources(gltf);
+          throw admission.signal.reason;
+        }
         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
         const tier1 = tier1CountersForRenderer(renderer);
         if (tier1) tier1.countRuntimeSemanticCompile('source-blueprint-compile', 0);
@@ -576,7 +638,7 @@ export async function loadAuthoredPart(url, options = {}) {
         });
       })
       .catch((error) => {
-        if (!runtime.retiring) {
+        if (!runtime.retiring && runtime.assets.get(cacheKey) === task) {
           runtime.failures.set(cacheKey, error);
           if (error instanceof AssetContractError) {
             if (!optional) warnOnce(cacheKey, error.message);
@@ -591,7 +653,13 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
-  const blueprint = await task;
+  let blueprint = null;
+  try {
+    blueprint = await task;
+  } catch (error) {
+    if (request) request.cancel('decode-failed');
+    return null;
+  }
   if (!blueprint) {
     if (request) request.cancel('decode-failed');
     return null;

@@ -19,31 +19,72 @@ export function resolveDecodeTaskBudgetLimit(hardwareConcurrency) {
   return Math.max(MIN_LIMIT, Math.floor(cores) - 2);
 }
 
+function abortError(reason) {
+  if (reason instanceof Error && reason.name === 'AbortError') return reason;
+  const message = reason instanceof Error
+    ? (reason.message || 'decode task budget wait aborted')
+    : (reason != null ? String(reason) : 'decode task budget wait aborted');
+  const error = new Error(message);
+  error.name = 'AbortError';
+  if (reason instanceof Error) error.cause = reason;
+  return error;
+}
+
 /**
  * FIFO semaphore. `acquire()` resolves a `release` function; release returns the token to the
- * next waiter (FIFO) or to `available`. Releasing is idempotent-free — callers must invoke a
- * release exactly once, so wrap tasks so settle paths release exactly one token.
+ * next waiter (FIFO) or to `available`. Each lease's release is idempotent — a late `finally`
+ * after an aborted or settled task cannot return the token twice. `acquire({ signal })`
+ * rejects a still-queued waiter on abort and removes its abort listener once granted.
  */
 export function createDecodeTaskBudget(limit) {
-  const size = Math.max(1, Math.floor(limit));
-  let available = size;
+  const size = Number(limit);
+  if (!Number.isFinite(size) || size <= 0) {
+    throw new RangeError(`decode task budget limit must be a finite positive number, got ${limit}`);
+  }
+  const slots = Math.max(1, Math.floor(size));
+  let available = slots;
   const waiters = [];
-  const release = () => {
-    const next = waiters.shift();
-    if (next) next(release);
-    else available += 1;
+  const grant = () => {
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const next = waiters.shift();
+      if (next) next();
+      else available += 1;
+    };
   };
-  const acquire = () => {
+  const acquire = ({ signal } = {}) => {
+    if (signal && signal.aborted) return Promise.reject(abortError(signal.reason));
     if (available > 0) {
       available -= 1;
-      return Promise.resolve(release);
+      return Promise.resolve(grant());
     }
-    return new Promise((resolve) => { waiters.push(resolve); });
+    return new Promise((resolve, reject) => {
+      const waiter = { onAbort: null };
+      const detach = () => {
+        if (waiter.onAbort) signal.removeEventListener('abort', waiter.onAbort);
+      };
+      const grantSeat = () => {
+        detach();
+        resolve(grant());
+      };
+      if (signal && typeof signal.addEventListener === 'function') {
+        waiter.onAbort = () => {
+          detach();
+          const index = waiters.indexOf(grantSeat);
+          if (index >= 0) waiters.splice(index, 1);
+          reject(abortError(signal.reason));
+        };
+        signal.addEventListener('abort', waiter.onAbort);
+      }
+      waiters.push(grantSeat);
+    });
   };
   return Object.freeze({
     acquire,
-    get limit() { return size; },
-    get inFlight() { return size - available; },
+    get limit() { return slots; },
+    get inFlight() { return slots - available; },
     get queued() { return waiters.length; },
   });
 }

@@ -19,6 +19,7 @@ import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '.
 import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
 import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine structures (doc 07)
 import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
+import { createAsyncAdmission } from './asyncAdmission.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
@@ -2529,7 +2530,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     : loadAuthoredPart;
   let record = null;
   try {
-    record = await loadPart(`${partRoot}${authoredPayloadFileForEntity(entity)}`, {
+    record = await waitForAdmissionStage(options, loadPart(`${partRoot}${authoredPayloadFileForEntity(entity)}`, {
       renderer,
       slot: authoredPayloadSlotForEntity(entity),
       optional: true,
@@ -2537,7 +2538,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
       isResidencyOwnerActive: options.isResidencyOwnerActive,
-    });
+    }));
   } catch (error) {
     return failAuthoredCargoCapsuleAdmission(
       boundary,
@@ -2545,6 +2546,18 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       entity,
       renderer,
       'load-threw',
+      error,
+    );
+  }
+  try {
+    assertAdmissionStageActive(options, 'after-payload-load');
+  } catch (error) {
+    return failAuthoredCargoCapsuleAdmission(
+      boundary,
+      fallbackRoot,
+      entity,
+      renderer,
+      'owner-inactive-after-load',
       error,
     );
   }
@@ -2613,16 +2626,30 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
     return false;
   }
-  const publicationWait = waitForOpeningGraphPublicationRelease();
+  const publicationWait = waitForOpeningGraphPublicationRelease({ expectedRender: options.residencyRender });
   if (publicationWait) {
     boundary.userData.authoredPreparePhase = 'awaiting-publication';
-    await publicationWait;
+    await waitForAdmissionStage(options, publicationWait);
+    assertAdmissionStageActive(options, 'after-publication-release');
   }
   if (!boundary.parent) {
     await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication');
     boundary.userData.authoredAssetState = 'orphaned-before-swap';
     return false;
+  }
+  try {
+    assertAdmissionStageActive(options, 'before-payload-commit');
+  } catch (error) {
+    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
+    return failAuthoredCargoCapsuleAdmission(
+      boundary,
+      fallbackRoot,
+      entity,
+      renderer,
+      'owner-inactive-before-publication',
+      error,
+    );
   }
   return commitAuthoredCargoCapsuleBoundary(
     boundary,
@@ -2680,11 +2707,16 @@ function commitAuthoredCargoCapsuleBoundary(
   delete boundary.userData.requestAuthoredUpgrade;
   delete boundary.userData.__setActiveVisualRoot;
   const publish = () => {
+    if (typeof options.isResidencyOwnerActive === 'function'
+        && options.isResidencyOwnerActive() !== true) return false;
     // Same residual-link guard as the ship commit: the exact-target prepare ran while this
     // root was detached, so pay any leftover variant here rather than in a presented pass.
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
-      catch (error) { console.warn('[partsLibrary] cargo publish touch failed', error); }
+      catch (error) {
+        if (error && error.name === 'AbortError') return false;
+        console.warn('[partsLibrary] cargo publish touch failed', error);
+      }
     }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
@@ -3143,7 +3175,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     : loadAuthoredPart;
   let record = null;
   try {
-    record = await loadPart(`${partRoot}${placeFile}`, {
+    record = await waitForAdmissionStage(options, loadPart(`${partRoot}${placeFile}`, {
       renderer,
       slot: 'place',
       optional: true,
@@ -3151,7 +3183,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
       isResidencyOwnerActive: options.isResidencyOwnerActive,
-    });
+    }));
   } catch (error) {
     handoffBootstrapIfCovered(renderer);
     if (!boundary.parent) {
@@ -3165,6 +3197,14 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     );
   }
   handoffBootstrapIfCovered(renderer);
+  try {
+    assertAdmissionStageActive(options, 'after-place-load');
+  } catch (error) {
+    return failAuthoredPlaceAdmission(
+      boundary, fallbackRoot, entity, renderer, options, setActive,
+      'place-owner-inactive-after-load', error,
+    );
+  }
   if (!record || !boundary.parent) {
     releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable');
     boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
@@ -3181,7 +3221,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const overlayFile = tradeHubOverlayFileForEntity(options.admissionEntity || entity);
   if (overlayFile) {
     try {
-      overlayRecord = await loadPart(`${partRoot}${overlayFile}`, {
+      overlayRecord = await waitForAdmissionStage(options, loadPart(`${partRoot}${overlayFile}`, {
         renderer,
         slot: 'place',
         optional: true,
@@ -3189,9 +3229,11 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
         residencyRole: options.residencyRole,
         sectorId: options.sectorId,
         isResidencyOwnerActive: options.isResidencyOwnerActive,
-      });
+      }));
     } catch (error) {
       overlayRecord = null;
+      if (error && (error.name === 'AbortError' || error.code === 'AUTHORED_ADMISSION_TIMEOUT'
+        || error.name === 'TimeoutError')) throw error;
       console.warn('[partsLibrary] trade-hub overlay unavailable; hub still publishes', error);
     }
   }
@@ -3259,15 +3301,33 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
       return false;
     }
-    const publicationWait = waitForOpeningGraphPublicationRelease();
+    const publicationWait = waitForOpeningGraphPublicationRelease({ expectedRender: options.residencyRender });
     if (publicationWait) {
       boundary.userData.authoredPreparePhase = 'awaiting-publication';
-      await publicationWait;
+      await waitForAdmissionStage(options, publicationWait);
+      assertAdmissionStageActive(options, 'after-publication-release');
     }
     if (!boundary.parent) {
       await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
       return false;
+    }
+    try {
+      assertAdmissionStageActive(options, 'before-place-commit');
+    } catch (error) {
+      try {
+        await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          'Prepared authored place cleanup failed after owner deactivation',
+          { cause: error },
+        );
+      }
+      return failAuthoredPlaceAdmission(
+        boundary, fallbackRoot, entity, renderer, options, setActive,
+        'place-owner-inactive-before-commit', error,
+      );
     }
     return commitAuthoredPlaceBoundary(
       boundary,
@@ -3282,7 +3342,9 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     const pending = completeAdmission();
     boundary.userData.authoredPipelineReady = pending;
     const onAuthoredPipelineStaged = options.onAuthoredPipelineStaged;
-    if (typeof onAuthoredPipelineStaged === 'function') {
+    if (typeof onAuthoredPipelineStaged === 'function'
+        && !(options.asyncAdmission && options.asyncAdmission.signal
+          && options.asyncAdmission.signal.aborted === true)) {
       delete options.onAuthoredPipelineStaged;
       onAuthoredPipelineStaged();
     }
@@ -3367,11 +3429,16 @@ function commitAuthoredPlaceBoundary(
   boundary.userData.__socketCache = new Map();
 
   const publish = () => {
+    if (typeof options.isResidencyOwnerActive === 'function'
+        && options.isResidencyOwnerActive() !== true) return false;
     // Same residual-link guard as the ship commit: the exact-target prepare ran while this
     // root was detached, so pay any leftover variant here rather than in a presented pass.
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
-      catch (error) { console.warn('[partsLibrary] place publish touch failed', error); }
+      catch (error) {
+        if (error && error.name === 'AbortError') return false;
+        console.warn('[partsLibrary] place publish touch failed', error);
+      }
     }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
@@ -4579,6 +4646,7 @@ function upgradeQueueState(scene) {
       scene,
       jobs: [],
       running: false,
+      retired: false,
       inFlight: 0,
       frameScheduled: false,
       frameScheduleToken: 0,
@@ -4788,7 +4856,8 @@ function armStalledHogWake(state) {
   // queue state) alive.
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight'
-    && (job.serialSlotReleased !== true || job.upgradeDiagnostic?.endedAtMs == null));
+    && (job.serialSlotReleased !== true || job.upgradeDiagnostic?.endedAtMs == null
+      || (job.admission && job.admission.signal.aborted !== true)));
   if (!active.length) return;
   state.stalledHogWakeTimer = setTimeout(() => {
     state.stalledHogWakeTimer = null;
@@ -4808,7 +4877,19 @@ function armStalledHogWake(state) {
 function settleStalledUpgradeDiagnostics(state) {
   const now = monotonicNow();
   for (const job of state.byBoundary.values()) {
-    if (!jobIsStalledInFlight(job, now)) continue;
+    if (!job || job.lifecycle !== 'in-flight') continue;
+    const stalled = jobIsStalledInFlight(job, now);
+    const needed = jobStillNeeded(state, job);
+    if ((stalled || !needed) && job.admission && !job.admission.signal.aborted) {
+      job.stallAborted = stalled && needed;
+      job.admission.abort(stalled
+        ? Object.assign(
+          new Error(`authored upgrade admission exceeded the ${AUTHORED_UPGRADE_NONSHIP_STALL_MS}ms stall bound`),
+          { name: 'TimeoutError', code: 'AUTHORED_ADMISSION_TIMEOUT' },
+        )
+        : 'authored upgrade admission owner is no longer needed');
+    }
+    if (!stalled) continue;
     if (job.upgradeDiagnostic && job.upgradeDiagnostic.status === 'running') {
       job.upgradeDiagnostic.status = 'stalled-slot-released';
     }
@@ -4816,14 +4897,61 @@ function settleStalledUpgradeDiagnostics(state) {
   }
 }
 
-export function waitForOpeningGraphPublicationRelease() {
+export function cancelAuthoredUpgradeQueue(scene, reason = 'scene-retired') {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return false;
+  state.retired = true;
+  upgradeQueuesByScene.delete(scene);
+  invalidateScheduledUpgradeFrame(state);
+  if (state.heldShipWakeTimer != null) {
+    clearTimeout(state.heldShipWakeTimer);
+    state.heldShipWakeTimer = null;
+  }
+  if (state.stalledHogWakeTimer != null) {
+    clearTimeout(state.stalledHogWakeTimer);
+    state.stalledHogWakeTimer = null;
+  }
+  for (const job of [...state.jobs]) {
+    const index = state.jobs.indexOf(job);
+    if (index >= 0) state.jobs.splice(index, 1);
+    cancelQueuedJob(state, job);
+  }
+  for (const job of [...state.byBoundary.values()]) {
+    if (job && job.lifecycle === 'in-flight' && job.admission && !job.admission.signal.aborted) {
+      job.admission.abort(reason);
+    }
+  }
+  state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
+  publishUpgradeDiagnostics(state);
+  return true;
+}
+
+export function waitForOpeningGraphPublicationRelease(options = {}) {
   const render = authoredRuntimeState()?.render;
+  const expectedRender = options && options.expectedRender;
+  const staleGate = () => {
+    const error = new Error('Opening graph publication gate owner became inactive');
+    error.name = 'AbortError';
+    return Promise.reject(error);
+  };
+  if (expectedRender && render !== expectedRender) return staleGate();
   if (!render || render.openingGraphPublicationFrozen !== true) return null;
   const wait = render.waitForOpeningGraphPublicationRelease;
   if (typeof wait !== 'function') {
     return Promise.reject(new Error('Opening graph publication is frozen without a release boundary'));
   }
-  return Promise.resolve(wait());
+  const generation = render.admissionRunGeneration;
+  const nativeRenderer = render.renderer !== undefined ? render.renderer : undefined;
+  return Promise.resolve(wait()).then((value) => {
+    if (expectedRender && authoredRuntimeState()?.render !== expectedRender) return staleGate();
+    if (nativeRenderer !== undefined && render.renderer !== nativeRenderer) return staleGate();
+    if (generation !== undefined && render.admissionRunGeneration !== generation) {
+      const error = new Error('Opening graph publication gate outlived its renderer generation');
+      error.name = 'AbortError';
+      throw error;
+    }
+    return value;
+  });
 }
 
 /**
@@ -4920,6 +5048,7 @@ export function settleAuthoredShipToProceduralFallback(
 
 export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const liveState = authoredRuntimeState();
+  const render = liveState && liveState.render ? liveState.render : null;
   const data = entity && entity.data || {};
   const sectorId = data.sectorId || entity && entity.homeSectorId
     || liveState && liveState.world && liveState.world.currentSectorId
@@ -4929,35 +5058,101 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
       releaseBoundaryResidency(renderer, boundary, reason)
     );
   }
+  const capturedGeneration = render ? render.admissionRunGeneration : undefined;
+  const capturedNativeRenderer = render && render.renderer !== undefined
+    ? render.renderer
+    : undefined;
+  const capturedPorts = render ? {
+    compileObjectPipelines: render.compileObjectPipelines,
+    touchSubjectExactTarget: render.touchSubjectExactTarget,
+    prepareAuthoredGpuResidency: render.prepareAuthoredGpuResidency,
+    yieldToNextPresent: render.yieldToNextPresent,
+  } : {};
+  const renderOwnerStillActive = () => {
+    if (!render) return true;
+    const st = authoredRuntimeState();
+    const liveRender = st && st.render;
+    return !!(st === liveState && liveRender === render
+      && (capturedNativeRenderer === undefined || liveRender.renderer === capturedNativeRenderer)
+      && (capturedGeneration === undefined
+        || liveRender.admissionRunGeneration === capturedGeneration));
+  };
+  const ownerStillActive = (portName) => {
+    const liveRender = authoredRuntimeState() && authoredRuntimeState().render;
+    const captured = capturedPorts[portName];
+    return !!(renderOwnerStillActive() && typeof captured === 'function'
+      && liveRender[portName] === captured);
+  };
+  const abortInactivePort = (portName) => {
+    const error = new Error(`authored residency port ${portName} owner became inactive`);
+    error.name = 'AbortError';
+    throw error;
+  };
+  const invokePort = (portName, args) => {
+    if (!ownerStillActive(portName)) return Promise.reject(inactivePortError(portName));
+    let result;
+    try {
+      result = capturedPorts[portName].apply(render, args);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    return Promise.resolve(result).then((value) => {
+      if (!ownerStillActive(portName)) abortInactivePort(portName);
+      return value;
+    });
+  };
+  const invokePortSync = (portName, args) => {
+    if (!ownerStillActive(portName)) abortInactivePort(portName);
+    const result = capturedPorts[portName].apply(render, args);
+    if (!ownerStillActive(portName)) abortInactivePort(portName);
+    return result;
+  };
+  const inactivePortError = (portName) => {
+    const error = new Error(`authored residency port ${portName} owner became inactive`);
+    error.name = 'AbortError';
+    return error;
+  };
+  const portFn = (name) => (typeof capturedPorts[name] === 'function'
+    ? (...args) => invokePort(name, args)
+    : null);
+  const compilePort = portFn('compileObjectPipelines');
+  const touchPort = portFn('touchSubjectExactTarget');
+  const gpuResidencyPort = portFn('prepareAuthoredGpuResidency');
+  const yieldPort = portFn('yieldToNextPresent');
   return {
     residencyOwner: boundary,
     residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
     sectorId,
-    isResidencyOwnerActive: () => !!boundary && entity && entity.alive !== false,
-    prepareAuthoredPipelines: liveState && liveState.render
-      && typeof liveState.render.compileObjectPipelines === 'function'
+    isResidencyOwnerActive: () => renderOwnerStillActive()
+      && !!boundary && entity && entity.alive !== false,
+    residencyRender: render,
+    prepareAuthoredPipelines: compilePort
       // A boundary whose owner sits on the readable glass when its compile is
       // finally admitted is deadline work — it rides the urgent lane ahead of
       // queued runway/prefetch compiles instead of joining the ambient FIFO
       // behind them (D38). Evaluated at call time so a body that crossed the
       // glass while its job waited still promotes; loading-mode admissions keep
       // the ambient lane because the opening submission plan owns that order.
-      ? (root) => {
+      ? (root, compileOptions = {}) => {
           const st = authoredRuntimeState();
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return liveState.render.compileObjectPipelines(
-            root,
-            onGlass ? { urgent: true } : undefined,
+          const boundaryActive = () => renderOwnerStillActive()
+            && !!boundary && entity && entity.alive !== false;
+          const callerActive = typeof compileOptions.isActive === 'function'
+            ? compileOptions.isActive : null;
+          return invokePort(
+            'compileObjectPipelines',
+            [root, {
+              ...(onGlass ? { urgent: true } : {}),
+              isActive: (subject) => boundaryActive()
+                && (callerActive === null || callerActive(subject) === true),
+            }],
           );
         }
       : null,
-    touchAuthoredExactTarget: liveState && liveState.render
-      && typeof liveState.render.touchSubjectExactTarget === 'function'
-      ? (root) => liveState.render.touchSubjectExactTarget(root)
-      : null,
-    prepareAuthoredGpuResidency: liveState && liveState.render
-      && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
+    touchAuthoredExactTarget: touchPort ? (root) => invokePortSync('touchSubjectExactTarget', [root]) : null,
+    prepareAuthoredGpuResidency: gpuResidencyPort
       ? (root, admissionOptions = {}) => {
           const st = authoredRuntimeState();
           // Same lane rule for the texture/geometry upload pass: unSliced puts
@@ -4965,18 +5160,15 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
           // uploads already queued there.
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return liveState.render.prepareAuthoredGpuResidency(root, {
+          return invokePort('prepareAuthoredGpuResidency', [root, {
             isActive: admissionOptions.isResidencyOwnerActive,
             unSliced: admissionOptions.unSliced === true || onGlass,
-          });
+          }]);
         }
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
     yieldBetweenGpuStages: !!(liveState && liveState.mode === 'flight'),
-    yieldToNextPresent: liveState && liveState.render
-      && typeof liveState.render.yieldToNextPresent === 'function'
-      ? () => liveState.render.yieldToNextPresent()
-      : null,
+    yieldToNextPresent: yieldPort ? () => invokePort('yieldToNextPresent', []) : null,
   };
 }
 
@@ -5190,7 +5382,7 @@ function processUpgradeQueue(state) {
 }
 
 function scheduleNextUpgradeFrame(state) {
-  if (!state || state.frameScheduled || state.openingHandoffHold === true) return;
+  if (!state || state.retired === true || state.frameScheduled || state.openingHandoffHold === true) return;
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
@@ -5236,6 +5428,7 @@ function scheduleNextUpgradeFrame(state) {
 
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
+  if (state.retired === true) return null;
   const stallBypassShipPass = state.stallBypassShipPass === true;
   state.stallBypassShipPass = false;
   const live = authoredRuntimeState();
@@ -5325,6 +5518,23 @@ function admitNextUpgradeJob(state) {
   if (state.firstFlightHandoffHold === true && job.options) {
     job.options.urgentFirstFlightAdmission = true;
   }
+  const jobAdmission = createAsyncAdmission({ label: `authored-upgrade:${job.key}` });
+  job.admission = jobAdmission;
+  const admittedOptions = { ...(job.options || {}) };
+  const callerOwnerActive = typeof admittedOptions.isResidencyOwnerActive === 'function'
+    ? admittedOptions.isResidencyOwnerActive
+    : null;
+  const jobIsActive = () => (
+    !jobAdmission.signal.aborted
+    && (callerOwnerActive === null || callerOwnerActive() === true)
+    && jobStillNeeded(state, job)
+  );
+  admittedOptions.asyncAdmission = jobAdmission;
+  admittedOptions.isResidencyOwnerActive = jobIsActive;
+  admittedOptions.ownerPredicate = callerOwnerActive;
+  job.ownerPredicate = callerOwnerActive;
+  job.admittedOptions = admittedOptions;
+  job.options = admittedOptions;
   state.inFlight++;
   const diagnostic = beginUpgradeDiagnostic(state, job);
   let serialSlotReleased = false;
@@ -5345,8 +5555,14 @@ function admitNextUpgradeJob(state) {
   // One entity begins CPU admission per frame. Non-overlap jobs and custom runs that do not enter
   // an authored overlap branch keep the original single-flight semantics; loading authored jobs
   // release only this internal slot once their detached root reaches the exact pipeline/GPU gate.
+  const runContext = {
+    signal: jobAdmission.signal,
+    isActive: jobIsActive,
+    wait: (work) => jobAdmission.wait(work),
+    options: job.options,
+  };
   const run = typeof job.run === 'function'
-    ? job.run
+    ? () => job.run(runContext)
     : () => upgradeBoundary(
       job.boundary,
       job.fallbackRoot,
@@ -5359,7 +5575,7 @@ function admitNextUpgradeJob(state) {
     );
   let result = null;
   let failure = null;
-  Promise.resolve().then(run).then((value) => {
+  jobAdmission.wait(Promise.resolve().then(run)).then((value) => {
     result = value;
     // A stall-released diagnostic keeps its verdict — the boundary's own state may sit at a
     // mid-admission stage long after the watchdog closed the record.
@@ -5376,19 +5592,39 @@ function admitNextUpgradeJob(state) {
       diagnostic.status = 'fallback-after-error';
       diagnostic.error = error && error.message ? error.message : String(error);
     }
-    releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
-    if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
-      // The job's owner died under a kept boundary (save recook) — a terminal verdict would
-      // strand the restored entity that rebinds to this mesh. Readmission status re-requests.
+    const timedOut = error && (error.code === 'AUTHORED_ADMISSION_TIMEOUT'
+      || error.name === 'TimeoutError' || job.stallAborted === true);
+    const admissionAborted = jobAdmission.signal.aborted === true;
+    const liveQueue = upgradeQueuesByScene.get(state.scene) || state;
+    const stillCurrent = liveQueue === state && state.byBoundary.get(job.boundary) === job;
+    const boundaryJob = liveQueue.byBoundary.get(job.boundary);
+    if (!boundaryJob || boundaryJob === job) {
+      releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
+    }
+    if (stillCurrent && timedOut && jobStillNeeded(state, job)) {
+      if (job.boundary && job.boundary.userData) {
+        job.boundary.userData.authoredAssetState = 'unavailable';
+        job.boundary.userData.authoredFailureReason = 'admission-deadline';
+        job.boundary.userData.authoredFailureMessage = error && error.message
+          ? error.message
+          : String(error);
+      }
+      if (diagnostic.endedAtMs == null) diagnostic.status = 'unavailable';
+      console.warn('[partsLibrary] authored admission exceeded its deadline; boundary stays retriable', error);
+    } else if (stillCurrent && (admissionAborted || (job.entity && job.entity.alive === false))
+        && job.boundary && job.boundary.parent) {
       markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
       if (diagnostic.endedAtMs == null) diagnostic.status = 'awaiting-authored-admission';
       console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
-    } else {
-      job.boundary.userData.authoredAssetState = 'fallback-after-error';
+    } else if (stillCurrent) {
+      if (job.boundary && job.boundary.userData) {
+        job.boundary.userData.authoredAssetState = 'fallback-after-error';
+      }
       console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
     }
   })
     .finally(() => {
+      jobAdmission.finish();
       if (!serialSlotReleased) state.inFlight = Math.max(0, state.inFlight - 1);
       job.lifecycle = 'settled';
       finishUpgradeDiagnostic(state, job, diagnostic);
@@ -5661,6 +5897,11 @@ function jobStillNeeded(state, job) {
   // Station HLOD publishes an outer wrapper while the authored boundary remains nested below its
   // detailed root; a replaced or sector-transition boundary will no longer descend from that mesh.
   if (entity.mesh && !boundaryBelongsToEntityMesh(job.boundary, entity.mesh)) return false;
+  const predicate = job.ownerPredicate
+    || (job.options && job.options !== job.admittedOptions
+      && typeof job.options.isResidencyOwnerActive === 'function'
+      ? job.options.isResidencyOwnerActive : null);
+  if (predicate && predicate() !== true) return false;
   return true;
 }
 
@@ -6169,56 +6410,70 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   if (typeof preparePipelines !== 'function' && typeof prepareResidency !== 'function') {
     return { skipped: true, reason: 'GPU preparation unavailable' };
   }
-  // Admission must compile the exact material state used by the first visible draw. These same
-  // idempotent policies also run at the presentation boundary, but applying them only after this
-  // detached-root compile changes the program key and leaves the first draw to link synchronously.
-  assertAuthoredVisualPreparationActive(options, 'before-material-policy');
-  const policiesStartedAtMs = monotonicNow();
-  configureRealtimeCanopyMaterials(root);
-  configureTransparentSinglePassSurfaces(root);
-  canonicalizeAuthoredProgramState(root);
-  // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
-  // links) and keep each covered program key alive after the boundary's materials release.
-  const programSpecimenMount = mountCanonicalProgramSpecimens(root);
-  const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
-  const tier1 = tier1CausalCounters();
-  if (tier1) {
-    tier1.countPipelinePreparation('material-policies', 1);
-    if (typeof preparePipelines === 'function') tier1.countPipelinePreparation('compile-pipelines', 1);
-    if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
-  }
-  const compileStartedAtMs = monotonicNow();
-  let pipelines;
+  const providedAdmission = options && options.asyncAdmission;
+  const admission = providedAdmission && typeof providedAdmission.wait === 'function'
+    ? providedAdmission
+    : createAsyncAdmission({ label: 'authored-visual-preparation' });
   try {
-    pipelines = typeof preparePipelines === 'function'
-      ? await preparePipelines(root)
-      : { skipped: true, reason: 'pipeline compiler unavailable' };
+    // Admission must compile the exact material state used by the first visible draw. These same
+    // idempotent policies also run at the presentation boundary, but applying them only after this
+    // detached-root compile changes the program key and leaves the first draw to link synchronously.
+    admission.assertActive();
+    assertAuthoredVisualPreparationActive(options, 'before-material-policy');
+    const policiesStartedAtMs = monotonicNow();
+    configureRealtimeCanopyMaterials(root);
+    configureTransparentSinglePassSurfaces(root);
+    canonicalizeAuthoredProgramState(root);
+    // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
+    // links) and keep each covered program key alive after the boundary's materials release.
+    const programSpecimenMount = mountCanonicalProgramSpecimens(root);
+    const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
+    const tier1 = tier1CausalCounters();
+    if (tier1) {
+      tier1.countPipelinePreparation('material-policies', 1);
+      if (typeof preparePipelines === 'function') tier1.countPipelinePreparation('compile-pipelines', 1);
+      if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
+    }
+    const compileStartedAtMs = monotonicNow();
+    let pipelines;
+    try {
+      pipelines = typeof preparePipelines === 'function'
+        ? await admission.wait(preparePipelines(root, {
+          isActive: options.isResidencyOwnerActive,
+        }))
+        : { skipped: true, reason: 'pipeline compiler unavailable' };
+    } finally {
+      settleCanonicalProgramSpecimens(root, programSpecimenMount);
+    }
+    const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
+    admission.assertActive();
+    assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
+    if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+      await admission.wait(options.yieldToNextPresent());
+      admission.assertActive();
+      assertAuthoredVisualPreparationActive(options, 'after-present-yield');
+    }
+    const residencyStartedAtMs = monotonicNow();
+    const gpuResidency = typeof prepareResidency === 'function'
+      ? await admission.wait(prepareResidency(root, {
+          isResidencyOwnerActive: options.isResidencyOwnerActive,
+        }))
+      : { skipped: true, reason: 'GPU residency uploader unavailable' };
+    const residencyMs = Math.max(0, monotonicNow() - residencyStartedAtMs);
+    admission.assertActive();
+    assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
+    return {
+      skipped: pipelines?.skipped === true && gpuResidency?.skipped === true,
+      pipelines,
+      gpuResidency,
+      // Sub-phase evidence for the serial admission lane (frame-solid probe job phase split).
+      policiesMs: Math.round(policiesMs),
+      compileMs: Math.round(compileMs),
+      residencyMs: Math.round(residencyMs),
+    };
   } finally {
-    settleCanonicalProgramSpecimens(root, programSpecimenMount);
+    if (admission !== providedAdmission) admission.finish();
   }
-  const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
-  assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
-  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-    await options.yieldToNextPresent();
-    assertAuthoredVisualPreparationActive(options, 'after-present-yield');
-  }
-  const residencyStartedAtMs = monotonicNow();
-  const gpuResidency = typeof prepareResidency === 'function'
-    ? await prepareResidency(root, {
-        isResidencyOwnerActive: options.isResidencyOwnerActive,
-      })
-    : { skipped: true, reason: 'GPU residency uploader unavailable' };
-  const residencyMs = Math.max(0, monotonicNow() - residencyStartedAtMs);
-  assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
-  return {
-    skipped: pipelines?.skipped === true && gpuResidency?.skipped === true,
-    pipelines,
-    gpuResidency,
-    // Sub-phase evidence for the serial admission lane (frame-solid probe job phase split).
-    policiesMs: Math.round(policiesMs),
-    compileMs: Math.round(compileMs),
-    residencyMs: Math.round(residencyMs),
-  };
 }
 
 function assertAuthoredVisualPreparationActive(options, phase) {
@@ -6226,6 +6481,19 @@ function assertAuthoredVisualPreparationActive(options, phase) {
   if (typeof isActive === 'function' && isActive() !== true) {
     throw new Error(`Authored visual preparation owner became inactive ${phase}`);
   }
+}
+
+function waitForAdmissionStage(options, work) {
+  const admission = options && options.asyncAdmission;
+  return admission && typeof admission.wait === 'function'
+    ? admission.wait(work)
+    : Promise.resolve(work);
+}
+
+function assertAdmissionStageActive(options, phase) {
+  const admission = options && options.asyncAdmission;
+  if (admission && typeof admission.assertActive === 'function') admission.assertActive();
+  assertAuthoredVisualPreparationActive(options, phase);
 }
 
 async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
@@ -6292,12 +6560,14 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     const phaseTimings = beginAdmissionPhaseTimings(boundary);
     const decodeStartedAtMs = monotonicNow();
     if (prefetchedLibrary) {
-      try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
+      try { await waitForAdmissionStage(options, prefetchedLibrary); } catch { /* live admission below is authoritative */ }
     }
-    const library = await preloadAuthoredAssetsForEntity(renderer, entity, {
+    assertAdmissionStageActive(options, 'before-library-load');
+    const library = await waitForAdmissionStage(options, preloadAuthoredAssetsForEntity(renderer, entity, {
       ...options,
       admissionDeadline: true,
-    });
+    }));
+    assertAdmissionStageActive(options, 'before-ship-compose');
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
     try {
@@ -6332,7 +6602,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('pipeline-prepare');
       }
-      const pipelineResult = await pipelineReady;
+      const pipelineResult = await waitForAdmissionStage(options, pipelineReady);
       // The GPU gate's full service time (material-policy walk + program compile + residency
       // upload), not just its synchronous prologue — this is the phase the lane serializes on.
       endAdmissionPhase(phaseTimings, 'pipeline', pipelineStartedAtMs);
@@ -6342,17 +6612,21 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
           if (Number.isFinite(value)) phaseTimings[key] = value;
         }
       }
+      assertAdmissionStageActive(options, 'before-boundary-commit');
       const commitStartedAtMs = monotonicNow();
       try {
-        swapped = await commitAuthoredBoundary(
+        swapped = await waitForAdmissionStage(options, commitAuthoredBoundary(
           boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
-        );
+        ));
         if (swapped) {
           installWholeShipLodFamilyController(boundary, entity, setActive, {
             ...options,
             renderer,
             scene,
             committedAuthored: authored,
+            asyncAdmission: null,
+            isResidencyOwnerActive: options.ownerPredicate || options.isResidencyOwnerActive
+              || (() => !!boundary && entity && entity.alive !== false),
           });
         }
       } finally {
@@ -6371,7 +6645,9 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       });
       boundary.userData.authoredPipelineReady = pending;
       const onAuthoredPipelineStaged = options.onAuthoredPipelineStaged;
-      if (typeof onAuthoredPipelineStaged === 'function') {
+      if (typeof onAuthoredPipelineStaged === 'function'
+          && !(options.asyncAdmission && options.asyncAdmission.signal
+            && options.asyncAdmission.signal.aborted === true)) {
         delete options.onAuthoredPipelineStaged;
         onAuthoredPipelineStaged();
       }
@@ -6844,10 +7120,12 @@ async function commitAuthoredBoundary(
     && live && live.mode === 'flight'
     && Number.isFinite(live.render && live.render.firstPlayableFrameAt)
     && live.render.sectorShellAdmission !== true;
-  const publicationWait = urgentFlightShip ? null : waitForOpeningGraphPublicationRelease();
+  const publicationWait = urgentFlightShip ? null
+    : waitForOpeningGraphPublicationRelease({ expectedRender: options.residencyRender });
   if (publicationWait) {
     boundary.userData.authoredPreparePhase = 'awaiting-publication';
-    await publicationWait;
+    await waitForAdmissionStage(options, publicationWait);
+    assertAdmissionStageActive(options, 'after-publication-release');
   }
   if (!boundary.parent) {
     if (preparedAuthored) {
@@ -6918,13 +7196,18 @@ async function commitAuthoredBoundary(
   boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
 
   const publish = () => {
+    if (typeof options.isResidencyOwnerActive === 'function'
+        && options.isResidencyOwnerActive() !== true) return false;
     // The pre-commit prepare touched this root while it was detached; publish-time state can
     // still resolve a program key that touch never produced (final LOD from primeAuthoredState,
     // owner bindings, parts minted inside commit). Pay any residual link here — in the
     // admission continuation — instead of inside the first presented bloom pass.
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
-      catch (error) { console.warn('[partsLibrary] authored publish touch failed', error); }
+      catch (error) {
+        if (error && error.name === 'AbortError') return false;
+        console.warn('[partsLibrary] authored publish touch failed', error);
+      }
     }
     for (const admission of authored.packagePoolAdmissions || EMPTY_ARRAY) {
       activateRenderPackagePoolAdmission(admission);

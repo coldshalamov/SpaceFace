@@ -72,6 +72,7 @@ import {
   isInitialAuthoredCompositionEntity,
   preloadAuthoredAssetsForEntity,
   preloadAuthoredPartLibrary,
+  cancelAuthoredUpgradeQueue,
   pumpAuthoredUpgradeQueue,
   releaseOwnerInstances,
   prepareFirstQueuedAuthoredBoundaryForOpening,
@@ -298,6 +299,7 @@ import {
   createPipelineAdmissionTracker,
   createSlicedYield,
   formatOpeningCookLedger,
+  observePipelineAdmission,
   recordOpeningCookStep,
 } from './pipelineReadiness.js';
 import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
@@ -5173,6 +5175,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   } catch (error) {
     if (typeof console !== 'undefined') console.warn('[render] sector boundary abort failed', error);
   }
+  try { cancelAuthoredUpgradeQueue(scene, 'renderer-destroyed'); } catch (_) {}
   for (const record of [owner._incomingSectorPrewarm, owner._currentSectorPrewarm, owner._authoredSectorPrewarmPending]) {
     if (record) record.active = false;
   }
@@ -6798,8 +6801,13 @@ export const render = {
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
     const compileForCurrentTarget = (subjects, compileOptions) => {
-      const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
-      if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
+      const optionActive = compileOptions && compileOptions.isActive;
+      const isRootActive = typeof optionActive === 'function'
+        ? (root) => optionActive(root) === true
+        : () => true;
+      const batch = (Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean))
+        .filter(isRootActive);
+      if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'owner-inactive' });
       const counters = (state && state.perfRuntime && state.perfRuntime.tier1) || null;
       const priorSubject = counters ? counters.admissionSubject : null;
       if (counters) {
@@ -6821,12 +6829,14 @@ export const render = {
         // slices draws the mounted mesh's depth variant cold (the +22s GLTFKit_StaticGroup
         // links). Staging first means no presented frame can outrun the link.
         if (state.mode !== 'flight' || this._shadowSettingOn !== true) return;
+        const liveSubjects = batch.filter(isRootActive);
+        if (liveSubjects.length === 0) return;
         try {
           compileShadowDepthPipelines({
             renderer,
             light: this._keyLight,
             camera: cam.obj,
-            subjects: batch,
+            subjects: liveSubjects,
             forceEnable: false,
             THREE,
             captureObjectHome,
@@ -6844,7 +6854,7 @@ export const render = {
           // A second pass catches anything the sliced color compile mounted mid-flight
           // (async primitive instantiation inside a batch root); program-key dedupe makes it
           // near-free when the start pass already covered the batch.
-          admitFlightShadowDepth();
+          if (batch.some(isRootActive)) admitFlightShadowDepth();
           return result;
         })
         .finally(() => {
@@ -6855,10 +6865,16 @@ export const render = {
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
       })) {
-        const sliced = batch.flatMap((root) => collectCompileSubjects(root));
+        const sliced = batch.flatMap((root) => collectCompileSubjects(root)
+          .map((subject) => ({ subject, root })));
         return finish(compileSubjectsAcrossPresents(
           sliced,
-          (subject) => compileSubjectColorAndDepth(subject, route, compileOptions),
+          (entry) => {
+            if (!isRootActive(entry.root)) {
+              return Promise.resolve({ skipped: true, reason: 'owner-inactive' });
+            }
+            return compileSubjectColorAndDepth(entry.subject, route, compileOptions);
+          },
           admissionPaceYield,
         ));
       }
@@ -6931,7 +6947,7 @@ export const render = {
         urgent: unSliced,
         yieldToMain: async () => {
           if (yieldSlice) await yieldSlice();
-          if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive() !== true) {
+          if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive(subject) !== true) {
             throw new Error('Authored GPU residency owner became inactive before texture upload');
           }
         },
@@ -7019,8 +7035,8 @@ export const render = {
         ? pipelineAdmissions.compileExplicit(subject, admissionOptions)
         : (urgent
           ? pipelineAdmissions.compile(subject, { ...admissionOptions, urgent: true })
-          : pipelineAdmissions.compile(subject));
-      return compilation
+          : pipelineAdmissions.compile(subject, admissionOptions));
+      const admission = compilation
         .then((result) => {
           // A linked program still stalls inside the presented frame while its
           // textures/geometry upload. Run the residency pass behind the same
@@ -7032,7 +7048,11 @@ export const render = {
             return result;
           }
           const outstanding = gpuResidencyAdmissions.pendingFor(subject);
-          return (outstanding || gpuResidencyAdmissions.prepare(subject)).then(
+          return (outstanding || gpuResidencyAdmissions.prepare(subject, {
+            isActive: typeof admissionOptions.isActive === 'function'
+              ? () => admissionOptions.isActive(subject) === true
+              : undefined,
+          })).then(
             () => result,
             () => result,
           );
@@ -7045,6 +7065,10 @@ export const render = {
             && state.render.contextRecovery && state.render.contextRecovery.pending === true;
           if (!result || result.contextLost === true || recovering
               || !subject || !this.scene || !cam.obj) {
+            return result;
+          }
+          if (typeof admissionOptions.isActive === 'function'
+              && admissionOptions.isActive(subject) !== true) {
             return result;
           }
           // compile() resolves under the armed admission state; the presented pass can still
@@ -7096,6 +7120,9 @@ export const render = {
           if (counters) counters.admissionSubject = priorSubject;
           markSubjectPipelinesPending(subject, false);
         });
+      observePipelineAdmission(admission,
+        (error) => console.warn('[render] background pipeline admission failed', error));
+      return admission;
     };
     state.render.compileObjectPipelines = (subject, admissionOptions = {}) => {
       // Loading first-picture wait must not join this queue: captureOpeningPipelinePlan still
@@ -7177,11 +7204,11 @@ export const render = {
         if (subject) {
           markSubjectPipelinesPending(subject, true);
           const outstanding = gpuResidencyAdmissions.pendingFor(subject);
-          void (outstanding || gpuResidencyAdmissions.prepare(subject, {
+          observePipelineAdmission((outstanding || gpuResidencyAdmissions.prepare(subject, {
             isActive: options.isActive,
           }))
             .catch(() => null)
-            .finally(() => markSubjectPipelinesPending(subject, false));
+            .finally(() => markSubjectPipelinesPending(subject, false)));
         }
         return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
       }
@@ -11418,9 +11445,9 @@ export const render = {
           });
           if (this._rosterPrewarmPending) {
             this._rosterPrewarmPending.add(settled);
-            settled.finally(() => {
+            observePipelineAdmission(settled.finally(() => {
               if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
-            });
+            }));
           }
         } catch (error) {
           console.warn('[render] survival roster prewarm admission failed', spec.id, error);
@@ -11471,9 +11498,9 @@ export const render = {
         });
         if (this._rosterPrewarmPending) {
           this._rosterPrewarmPending.add(settled);
-          settled.finally(() => {
+          observePipelineAdmission(settled.finally(() => {
             if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
-          });
+          }));
         }
       } catch (error) {
         console.warn('[render] survival roster projectile warm failed', weaponId, error);
@@ -11493,9 +11520,9 @@ export const render = {
       });
       if (this._rosterPrewarmPending) {
         this._rosterPrewarmPending.add(leafSettled);
-        leafSettled.finally(() => {
+        observePipelineAdmission(leafSettled.finally(() => {
           if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(leafSettled);
-        });
+        }));
       }
     } catch (error) {
       console.warn('[render] asteroid leaf-variant warm failed', error);
@@ -11681,9 +11708,9 @@ export const render = {
             .catch(() => null);
           if (this._rosterPrewarmPending) {
             this._rosterPrewarmPending.add(poolWarm);
-            poolWarm.finally(() => {
+            observePipelineAdmission(poolWarm.finally(() => {
               if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(poolWarm);
-            });
+            }));
           }
         }
         // Compile each holder as it lands: enqueued early, the ambient drain absorbs them
@@ -11694,9 +11721,9 @@ export const render = {
           .then((result) => { catalogProgress.compiles += 1; return result; });
         if (this._rosterPrewarmPending) {
           this._rosterPrewarmPending.add(compiled);
-          compiled.finally(() => {
+          observePipelineAdmission(compiled.finally(() => {
             if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(compiled);
-          });
+          }));
         }
       }
     };
@@ -11709,9 +11736,9 @@ export const render = {
     const settled = Promise.allSettled(workers);
     if (this._rosterPrewarmPending) {
       this._rosterPrewarmPending.add(settled);
-      settled.finally(() => {
+      observePipelineAdmission(settled.finally(() => {
         if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
-      });
+      }));
     }
   },
 
@@ -11771,9 +11798,9 @@ export const render = {
       if (this._rosterPrewarmPending) {
         this._rosterPrewarmPending.add(settled);
         if (this._rosterPrewarmPendingLabels) this._rosterPrewarmPendingLabels.set(settled, label);
-        settled.finally(() => {
+        observePipelineAdmission(settled.finally(() => {
           if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
-        });
+        }));
       }
       return settled;
     };
@@ -12550,9 +12577,9 @@ export const render = {
       if (this._rosterPrewarmPending) {
         this._rosterPrewarmPending.add(settled);
         if (this._rosterPrewarmPendingLabels) this._rosterPrewarmPendingLabels.set(settled, label);
-        settled.finally(() => {
+        observePipelineAdmission(settled.finally(() => {
           if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
-        });
+        }));
       }
       return settled;
     };
@@ -16385,17 +16412,50 @@ export const render = {
     // The route is resolved before an async gap (save/Continue admission, prewarm); the post
     // chain it names can be disposed meanwhile. A stale route compiles through the native
     // target — the scene programs are what the warm is for, not the disposed pass.
-    if (route === POST_PROCESS_ROUTE.GRAPH && this._renderGraph) {
-      return compileScenePipelinesForRenderTarget(
-        this.renderer, this._renderGraph.sceneTarget, subject, camera, lightingScene, options,
-      );
+    const abortError = () => {
+      const error = new Error('post-route compile owner became inactive');
+      error.name = 'AbortError';
+      return error;
+    };
+    const capturedGeneration = this.state && this.state.render
+      ? this.state.render.admissionRunGeneration
+      : undefined;
+    const capturedRenderer = this.renderer;
+    const capturedPass = route === POST_PROCESS_ROUTE.GRAPH ? (this._renderGraph || null)
+      : route === POST_PROCESS_ROUTE.BLOOM ? (this.bloom || null)
+        : null;
+    if ((route === POST_PROCESS_ROUTE.GRAPH || route === POST_PROCESS_ROUTE.BLOOM)
+        && capturedPass === null
+        && this._selectPostRoute() !== POST_PROCESS_ROUTE.NATIVE) {
+      return Promise.reject(abortError());
     }
-    if (route === POST_PROCESS_ROUTE.BLOOM && this.bloom) {
-      return this.bloom.compileScenePipelines(subject, camera, lightingScene, options);
-    }
-    return compileScenePipelinesForRenderTarget(
-      this.renderer, null, subject, camera, lightingScene, options,
+    const isActive = options && options.isActive;
+    const ownerActive = () => (
+      this._rendererResourcesDisposed !== true && !!this.renderer
+      && this.renderer === capturedRenderer
+      && ((route !== POST_PROCESS_ROUTE.GRAPH && route !== POST_PROCESS_ROUTE.BLOOM)
+        || capturedPass === null
+        || (route === POST_PROCESS_ROUTE.GRAPH ? this._renderGraph === capturedPass
+          : this.bloom === capturedPass))
+      && (capturedGeneration === undefined
+        || (this.state && this.state.render
+          && this.state.render.admissionRunGeneration === capturedGeneration))
+      && (typeof isActive !== 'function' || isActive(subject) === true)
     );
+    if (!ownerActive()) return Promise.reject(abortError());
+    const work = route === POST_PROCESS_ROUTE.GRAPH && capturedPass
+      ? compileScenePipelinesForRenderTarget(
+        this.renderer, capturedPass.sceneTarget, subject, camera, lightingScene, options,
+      )
+      : route === POST_PROCESS_ROUTE.BLOOM && capturedPass
+        ? capturedPass.compileScenePipelines(subject, camera, lightingScene, options)
+        : compileScenePipelinesForRenderTarget(
+          this.renderer, null, subject, camera, lightingScene, options,
+        );
+    return Promise.resolve(work).then((value) => {
+      if (!ownerActive()) throw abortError();
+      return value;
+    });
   },
 
   _warmPostProcess(scene, camera) {

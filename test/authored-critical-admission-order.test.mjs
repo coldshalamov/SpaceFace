@@ -475,6 +475,7 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
     const scene = new THREE.Scene();
     const starts = [];
     const releases = new Map();
+    const completions = new Map();
     let inFlight = 0;
     let maxInFlight = 0;
     const player = { id: 'player', team: 0, pos: { x: 0, z: 0 } };
@@ -497,7 +498,7 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
       scene.add(boundary);
       const entity = { id, type, team, alive: true, pos, mesh: boundary, data };
       runtimeState.entities.set(id, entity);
-      return partsLibrary.enqueueBoundaryUpgrade(scene, {
+      const completion = partsLibrary.enqueueBoundaryUpgrade(scene, {
         boundary,
         entity,
         assetUrls: [`assets/${id}.glb`],
@@ -512,6 +513,8 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
           });
         }),
       });
+      completions.set(id, completion);
+      return completion;
     };
 
     // The busy-machine flood: five dressing jobs inside the envelope, then a queued critical hub.
@@ -557,33 +560,57 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
     await runNextFrame();
     assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0']);
 
-    // A hostile enqueued while dressing-0 holds the serial slot cannot pre-empt it: no new start
-    // is scheduled until the in-flight admission settles.
+    let dressingSettled = false;
+    completions.get('dressing-0').then(() => { dressingSettled = true; });
+
+    // One on-glass combat ship may bypass beside a non-ship job already in flight — the
+    // dressing admission is never cancelled or pre-empted, it simply runs alongside.
     enqueue({
       id: 'hostile-2', type: 'ship', team: 1, pos: { x: 210, z: 0 },
       data: { defId: 'ship_wasp' },
     });
     while (scheduledFrames.length > 0) await runNextFrame();
-    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0'],
-      'an admission already in flight is never pre-empted');
+    assert.equal(starts[3], 'hostile-2',
+      'a visible hostile rides beside the in-flight non-ship admission');
+    assert.equal(inFlight, 2, 'one ship beside one non-ship is the granted overlap');
+    assert.equal(dressingSettled, false,
+      'the in-flight dressing job was never cancelled or pre-empted');
+
+    enqueue({
+      id: 'hostile-3', type: 'ship', team: 1, pos: { x: 220, z: 0 },
+      data: { defId: 'ship_wasp' },
+    });
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0', 'hostile-2'],
+      'a second ship never overlaps the ship admission already in flight');
 
     releases.get('dressing-0')();
     await new Promise((resolve) => setImmediate(resolve));
-    await runNextFrame();
-    assert.equal(starts[3], 'hostile-2',
-      'the waiting hostile takes the freed slot ahead of older dressing jobs');
+    const dressingCompletion = await completions.get('dressing-0');
+    assert.equal(dressingCompletion.error, null);
+    assert.equal(dressingCompletion.status, 'authored');
+    assert.equal(dressingSettled, true);
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0', 'hostile-2'],
+      'with only a ship left in flight, the queued ship still waits');
 
     releases.get('hostile-2')();
     await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.equal(starts[4], 'hostile-3',
+      'the waiting hostile takes the freed slot ahead of older dressing jobs');
+
+    releases.get('hostile-3')();
+    await new Promise((resolve) => setImmediate(resolve));
     for (let index = 1; index < 5; index++) {
       await runNextFrame();
-      assert.equal(starts[3 + index], `dressing-${index}`,
+      assert.equal(starts[4 + index], `dressing-${index}`,
         'equal-priority dressing retains FIFO order');
       releases.get(`dressing-${index}`)();
       await new Promise((resolve) => setImmediate(resolve));
     }
     while (scheduledFrames.length > 0) await runNextFrame();
-    assert.equal(maxInFlight, 1, 'steady flight admission stays serial');
+    assert.equal(maxInFlight, 2, 'flight admission stays serial except the bounded visible-ship bypass');
     assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;

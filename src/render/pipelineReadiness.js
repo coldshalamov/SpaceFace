@@ -253,6 +253,40 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     }
   }
 
+  function inactiveOwnerError() {
+    const error = new Error('authored pipeline admission owner became inactive');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  function entryInactive(entry) {
+    const guard = entry && entry.compileOptions && entry.compileOptions.isActive;
+    return typeof guard === 'function' && guard(entry.subject) !== true;
+  }
+
+  function batchCompileOptions(batch) {
+    const guardsBySubject = new Map();
+    for (const entry of batch) {
+      let guards = guardsBySubject.get(entry.subject);
+      if (!guards) {
+        guards = [];
+        guardsBySubject.set(entry.subject, guards);
+      }
+      const guard = entry && entry.compileOptions && entry.compileOptions.isActive;
+      guards.push(typeof guard === 'function' ? guard : null);
+    }
+    return {
+      isActive: (subject) => {
+        const guards = guardsBySubject.get(subject);
+        if (!guards || guards.length === 0) return true;
+        for (const guard of guards) {
+          if (guard === null || guard(subject) === true) return true;
+        }
+        return false;
+      },
+    };
+  }
+
   function flushQueuedThrough(
     watermark = Number.POSITIVE_INFINITY,
     path = 'queued',
@@ -262,19 +296,33 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     const batch = [];
     const remaining = [];
     for (const entry of queued) {
-      if (entry.id <= watermark && batch.length < batchLimit) batch.push(entry);
-      else remaining.push(entry);
+      if (entry.id <= watermark && batch.length < batchLimit) {
+        if (entryInactive(entry)) {
+          entry.reject(inactiveOwnerError());
+          continue;
+        }
+        batch.push(entry);
+      } else remaining.push(entry);
     }
-    if (batch.length === 0) return compileTail;
+    if (batch.length === 0) {
+      queued = remaining;
+      if (scheduleRemaining && queued.length > 0) scheduleFlush();
+      return compileTail;
+    }
     clearTimers();
     queued = remaining;
     const subjects = batch.map((entry) => entry.subject);
-    const run = compileTail.then(() => invokeCompileBatch(subjects, path));
+    const run = compileTail.then(() => invokeCompileBatch(subjects, path, batchCompileOptions(batch)));
     // Render-target selection is global renderer state. Keep batches serialized even if a second
     // runway fills while the first one is still waiting on the graphics driver.
     compileTail = run.catch(() => null);
     run.then(
-      (result) => { for (const entry of batch) entry.resolve(result); },
+      (result) => {
+        for (const entry of batch) {
+          if (entryInactive(entry)) entry.reject(inactiveOwnerError());
+          else entry.resolve(result);
+        }
+      },
       (error) => { for (const entry of batch) entry.reject(error); },
     );
     if (scheduleRemaining && queued.length > 0) scheduleFlush();
@@ -406,7 +454,11 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         compileTail = run.catch(() => null);
         urgentRuns.set(subject, run);
         run.then(
-          (result) => { if (folded) folded.resolve(result); },
+          (result) => {
+            if (!folded) return;
+            if (entryInactive(folded)) folded.reject(inactiveOwnerError());
+            else folded.resolve(result);
+          },
           (error) => { if (folded) folded.reject(error); },
         ).finally(() => urgentRuns.delete(subject));
         return run;
@@ -417,6 +469,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       const entry = {
         id: ++nextAdmissionId,
         subject,
+        compileOptions: compileOptions || null,
         resolve,
         reject,
         completion: null,
@@ -438,17 +491,34 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       // switch. Keep that opt-in pass serialized, but never attach the startup moving-fixpoint wait.
       // The explicit caller is deadline work: fold the still-queued ambient set into this run
       // instead of flushing it as a separate tail link the deadline then has to sit behind.
-      const ambient = queued;
+      const ambient = [];
+      for (const entry of queued) {
+        if (entryInactive(entry)) entry.reject(inactiveOwnerError());
+        else ambient.push(entry);
+      }
       queued = [];
       clearTimers();
-      const merged = [subject, ...ambient.map((entry) => entry.subject)];
-      const run = compileTail.then(() => invokeCompileBatch(merged, 'explicit', compileOptions));
+      const explicitEntry = { subject, compileOptions: compileOptions || null };
+      const merged = [...new Set([subject, ...ambient.map((entry) => entry.subject)])];
+      const mergedOptions = {
+        ...(compileOptions || {}),
+        ...batchCompileOptions([explicitEntry, ...ambient]),
+      };
+      const run = compileTail.then(() => invokeCompileBatch(merged, 'explicit', mergedOptions));
       compileTail = run.catch(() => null);
       run.then(
-        (result) => { for (const entry of ambient) entry.resolve(result); },
+        (result) => {
+          for (const entry of ambient) {
+            if (entryInactive(entry)) entry.reject(inactiveOwnerError());
+            else entry.resolve(result);
+          }
+        },
         (error) => { for (const entry of ambient) entry.reject(error); },
       );
-      return run;
+      return run.then((result) => {
+        if (entryInactive(explicitEntry)) throw inactiveOwnerError();
+        return result;
+      });
     },
 
     resumeAutoFlush() {
@@ -472,6 +542,17 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     get queuedCount() { return queued.length; },
     get settledCount() { return settledAdmissions; },
   };
+}
+
+export function observePipelineAdmission(promise, onRejected = null) {
+  Promise.resolve(promise).then(undefined, (error) => {
+    if (error && error.name === 'AbortError') return;
+    if (typeof onRejected !== 'function') return;
+    try {
+      onRejected(error);
+    } catch { }
+  });
+  return promise;
 }
 
 /** Track authored-root GPU uploads independently from shader compilation. The loading route flushes

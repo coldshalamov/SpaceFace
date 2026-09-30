@@ -29,3 +29,7 @@ release manifest, and the appropriate `partsLibrary.js` map. Failure modes:
 
 No per-frame allocations in render loops. Coordinate before editing a currently owned
 release/lock/output.
+
+Authored async admissions use cancellation/deadline scopes. Observe fire-and-forget pipeline
+promises with `observePipelineAdmission` without changing the original rejection for awaited owners.
+Focused lifetime proof: `node --test test/authored-async-liveness.test.mjs test/renderer-owner-lifetime.test.mjs`.
