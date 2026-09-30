@@ -31,11 +31,11 @@ test('ANI-03 payout spins the drum and slides the hook aft, then holds', () => {
   assert.equal(c.endMode, 'hold');
   const start = delta('payout', 0, 'yard_tug_hook');
   assert.ok(Math.abs(start.translation[0]) < 1e-4, 'payout starts at rest');
-  const held = delta('payout', 1.3, 'yard_tug_hook');
-  assert.ok(held.translation[0] < -0.5, `hook slid aft (x=${held.translation[0]})`);
-  const drum = delta('payout', 1.3, 'yard_tug_winch').rotation;
+  const held = delta('payout', 1.6, 'yard_tug_hook');
+  assert.ok(held.translation[0] < -1.0, `hook slid aft past the silhouette (x=${held.translation[0]})`);
+  const drum = delta('payout', 1.6, 'yard_tug_winch').rotation;
   assert.ok(Math.abs(drum[2]) > 0.3, `drum visibly rotated (quat z=${drum[2]})`);
-  const fairlead = delta('payout', 1.3, 'yard_tug_fairlead').rotation;
+  const fairlead = delta('payout', 1.6, 'yard_tug_fairlead').rotation;
   assert.ok(Math.abs(fairlead[1]) > 0.02, 'fairlead aligned a little');
   // hold: sample past the clip's end stays at the held pose
   const past = delta('payout', 5.0, 'yard_tug_hook');
@@ -43,12 +43,12 @@ test('ANI-03 payout spins the drum and slides the hook aft, then holds', () => {
 });
 
 test('ANI-03 reel brings the hook nearly home and release parks everything', () => {
-  const reeled = delta('reel', 1.5, 'yard_tug_hook');
+  const reeled = delta('reel', 0.95, 'yard_tug_hook');
   assert.ok(reeled.translation[0] > -0.2 && reeled.translation[0] < 0,
     `line still out after reel (x=${reeled.translation[0]})`);
-  const parked = delta('release', 0.85, 'yard_tug_hook');
+  const parked = delta('release', 0.45, 'yard_tug_hook');
   assert.ok(Math.abs(parked.translation[0]) < 1e-4, 'release ends at rest');
-  const drum = delta('release', 0.85, 'yard_tug_winch').rotation;
+  const drum = delta('release', 0.45, 'yard_tug_winch').rotation;
   assert.ok(drum.every((v, i) => Math.abs(v - [0, 0, 0, 1][i]) < 1e-4), 'drum parked');
   assert.equal(clip('release').endMode, 'rest');
 });

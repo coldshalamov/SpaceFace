@@ -4434,14 +4434,14 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/yard_tug.glb",
       "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "sourceSha256": "663ed887156fdca76798fbfeb13f9f741c38c55de083f35bacf02ef3c23631a5",
-      "releaseSha256": "4f2522408f1f31e84f7546ca83041b7f6719b2ac8dec343f8eb51bae72b55070",
-      "sourceBytes": 3739612,
-      "releaseBytes": 1335840,
+      "sourceSha256": "5f56345140e6aff5ffdd1fc3364df34e747d8832982e0ea3b0632b0b927ed4a0",
+      "releaseSha256": "311a5f3197d4521b77796fedfd520fc4c7a8dd5a7cb4a2644d7c148d2f71c769",
+      "sourceBytes": 3774460,
+      "releaseBytes": 1350744,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 249,
-      "contractNodeCount": 79
+      "meshoptBufferViews": 261,
+      "contractNodeCount": 82
     }
   ]
 }

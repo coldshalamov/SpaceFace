@@ -16,7 +16,7 @@ Groups (registered on the ship before export; pivots persist into the GLB):
   yard_tug_fairlead  fairlead box + roller — small yaw align (local Z)
   yard_tug_hook      tow hook + standing cable — slides aft on payout, returns on reel
 
-Clips: payout (1.3 s hold), catch (0.5 s hold), reel (1.5 s hold), release (0.85 s rest).
+Clips: payout (1.6 s hold), catch (0.45 s hold), reel (0.95 s hold), release (0.45 s rest).
 Bank routes: tether:attached/massline:snareDeployed -> payout, tether:snapCatch -> catch,
 tether:reelPump -> reel, tether:released/massline:snareEnded/tether:latchDenied -> release.
 """
@@ -30,8 +30,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, '..')))
 import motion_bank  # noqa: E402
 
 RIG_ID = 'yard_tug_winch'
-PAYOUT_M = 0.72        # hook+cable slide aft — reaches just past the tether socket (-11.1)
-CATCH_DIP_M = 0.06     # load-reaction dip on the catch
+PAYOUT_M = 1.2         # hook+cable slide aft — the hook nub must clear the stern silhouette
+CATCH_OVER_M = 0.2     # brief overshoot aft before the snatch settles — must read at game zoom
 PAY_SPIN_RAD = 2.4     # ~137 deg of drum while paying out
 REEL_SPIN_RAD = -1.7   # winds back past zero — reads as a steady loaded reel
 
@@ -64,46 +64,46 @@ def author(bank):
     hook_rest = bank.ship.motion_pivots['yard_tug_hook'].matrix_basis.translation
     hook_at = lambda dx: (hook_rest.x + dx, hook_rest.y, hook_rest.z)
 
-    payout = bank.clip('payout', 1.3, loop=False, end_mode='hold')
+    payout = bank.clip('payout', 1.6, loop=False, end_mode='hold')
     # drum pays out: steady spin with ease-in and a taut settle
-    for t, a in [(0.0, 0.0), (0.25, 0.5), (0.7, 1.8), (1.0, 2.35), (1.15, 2.45), (1.3, PAY_SPIN_RAD)]:
+    for t, a in [(0.0, 0.0), (0.3, 0.5), (0.85, 1.8), (1.2, 2.35), (1.4, 2.45), (1.6, PAY_SPIN_RAD)]:
         payout.key('yard_tug_winch', t, rot=Euler((0.0, a, 0.0)))
     # fairlead aligns a little
-    for t, a in [(0.0, 0.0), (0.4, 0.0), (0.8, 0.16), (1.3, 0.14)]:
+    for t, a in [(0.0, 0.0), (0.5, 0.0), (1.0, 0.16), (1.6, 0.14)]:
         payout.key('yard_tug_fairlead', t, rot=Euler((0.0, 0.0, a)))
     # hook+cable slide aft through the fairlead eye
-    for t, dx in [(0.0, 0.0), (0.3, -0.05), (0.9, -0.68), (1.1, -0.74), (1.3, -PAYOUT_M)]:
+    for t, dx in [(0.0, 0.0), (0.35, -0.08), (1.1, -1.14), (1.35, -1.23), (1.6, -PAYOUT_M)]:
         payout.key('yard_tug_hook', t, loc=hook_at(dx))
 
-    catch = bank.clip('catch', 0.5, loop=False, end_mode='hold')
+    catch = bank.clip('catch', 0.45, loop=False, end_mode='hold')
     # load snatches: drum decelerates hard with one overshoot
-    for t, a in [(0.0, PAY_SPIN_RAD), (0.12, PAY_SPIN_RAD - 0.12), (0.28, PAY_SPIN_RAD - 0.02),
-                 (0.5, PAY_SPIN_RAD - 0.05)]:
+    for t, a in [(0.0, PAY_SPIN_RAD), (0.11, PAY_SPIN_RAD - 0.12), (0.26, PAY_SPIN_RAD - 0.02),
+                 (0.45, PAY_SPIN_RAD - 0.05)]:
         catch.key('yard_tug_winch', t, rot=Euler((0.0, a, 0.0)))
-    # hook pitches down under load and settles
-    for t, dx, a in [(0.0, -PAYOUT_M, 0.0), (0.15, -(PAYOUT_M + CATCH_DIP_M), 0.10),
-                     (0.35, -PAYOUT_M - 0.02, 0.06), (0.5, -PAYOUT_M - 0.02, 0.06)]:
+    # hook dips under load with a short overshoot aft before it settles
+    for t, dx, a in [(0.0, -PAYOUT_M, 0.0), (0.12, -(PAYOUT_M + CATCH_OVER_M), 0.14),
+                     (0.3, -PAYOUT_M - 0.05, 0.07), (0.45, -PAYOUT_M - 0.05, 0.06)]:
         catch.key('yard_tug_hook', t, loc=hook_at(dx), rot=Euler((0.0, a, 0.0)))
 
-    reel = bank.clip('reel', 1.5, loop=False, end_mode='hold')
-    # steady wind-in past rest — the drum reads as continuously reeling
-    for t, a in [(0.0, PAY_SPIN_RAD - 0.05), (0.4, 1.4), (1.1, -1.4), (1.35, -1.75),
-                 (1.5, REEL_SPIN_RAD)]:
+    reel = bank.clip('reel', 0.95, loop=False, end_mode='hold')
+    # steady brisk wind-in past rest — the drum reads as continuously reeling
+    for t, a in [(0.0, PAY_SPIN_RAD - 0.05), (0.25, 1.4), (0.7, -1.4), (0.85, -1.75),
+                 (0.95, REEL_SPIN_RAD)]:
         reel.key('yard_tug_winch', t, rot=Euler((0.0, a, 0.0)))
     # hook returns almost home but stays a touch out — the line is still attached
-    for t, dx, a in [(0.0, -PAYOUT_M - 0.02, 0.06), (0.5, -0.55, 0.03), (1.2, -0.08, 0.0),
-                     (1.5, -0.06, 0.0)]:
+    for t, dx, a in [(0.0, -PAYOUT_M - 0.05, 0.06), (0.3, -0.75, 0.03), (0.75, -0.1, 0.0),
+                     (0.95, -0.06, 0.0)]:
         reel.key('yard_tug_hook', t, loc=hook_at(dx), rot=Euler((0.0, a, 0.0)))
-    for t, a in [(0.0, 0.14), (1.0, 0.02), (1.5, 0.02)]:
+    for t, a in [(0.0, 0.14), (0.65, 0.02), (0.95, 0.02)]:
         reel.key('yard_tug_fairlead', t, rot=Euler((0.0, 0.0, a)))
 
-    release = bank.clip('release', 0.85, loop=False, end_mode='rest')
+    release = bank.clip('release', 0.45, loop=False, end_mode='rest')
     # slack release: the drum kicks loose and spins back to zero
-    for t, a in [(0.0, REEL_SPIN_RAD), (0.25, REEL_SPIN_RAD - 0.25), (0.55, -1.55), (0.85, 0.0)]:
+    for t, a in [(0.0, REEL_SPIN_RAD), (0.13, REEL_SPIN_RAD - 0.25), (0.3, -1.55), (0.45, 0.0)]:
         release.key('yard_tug_winch', t, rot=Euler((0.0, a, 0.0)))
-    for t, dx, a in [(0.0, -0.06, 0.0), (0.2, -0.02, -0.04), (0.85, 0.0, 0.0)]:
+    for t, dx, a in [(0.0, -0.06, 0.0), (0.11, -0.02, -0.04), (0.45, 0.0, 0.0)]:
         release.key('yard_tug_hook', t, loc=hook_at(dx), rot=Euler((0.0, a, 0.0)))
-    for t, a in [(0.0, 0.02), (0.85, 0.0)]:
+    for t, a in [(0.0, 0.02), (0.45, 0.0)]:
         release.key('yard_tug_fairlead', t, rot=Euler((0.0, 0.0, a)))
 
 

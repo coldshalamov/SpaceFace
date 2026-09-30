@@ -132,11 +132,16 @@ def build():
         F.cylinder(s, f'WinchCable{i}', (WX, y - 0.14, WZ), (WX, y + 0.14, WZ), 0.86, material='gunmetal',
                    segments=24, bevel=0.0)
     F.cylinder(s, 'WinchFlange', (WX, 1.05, WZ), (WX, 1.25, WZ), 1.16, material='hazard', segments=32, mirror=True)
+    # index blocks on the flange rims: the drum is otherwise rotationally symmetric, so a bare
+    # steel landmark per side makes its spin readable (mirrored pair keeps the look balanced)
+    F.box(s, 'WinchFlangeKey', (WX, 1.18, WZ + 0.85), (0.34, 0.22, 0.3), material='bare', bevel=0.02,
+          mirror=True)
     F.plate(s, 'WinchCheek', [(WX - 1.2, 1.25), (WX + 1.2, 1.25), (WX + 0.7, 1.55), (WX - 0.7, 1.55)], z0=1.1,
             thickness=1.75, material='paint2', chamfer=0.05, mirror=True)
     F.cylinder(s, 'WinchHub', (WX, 1.55, WZ), (WX, 1.72, WZ), 0.34, material='gunmetal', mirror=True)
-    # cable run aft to the fairlead and tow hook
-    F.cylinder(s, 'TowCable', (WX - 0.2, 0.0, WZ + 0.82), (-10.4, 0.0, 1.95), 0.11, material='gunmetal', segments=12)
+    # cable run aft to the fairlead and tow hook — its tail sits deep in the drum wrap and its
+    # tip seats inside the hook, so both ends stay engaged across the full payout travel
+    F.cylinder(s, 'TowCable', (WX + 0.05, 0.0, WZ + 0.82), (-10.85, 0.0, 1.8), 0.11, material='gunmetal', segments=12)
     F.box(s, 'Fairlead', (-10.35, 0.0, 1.7), (0.9, 1.2, 0.8), material='paint2', bevel=0.05)
     F.cylinder(s, 'FairleadRoll', (-10.35, 0.5, 2.0), (-10.35, -0.5, 2.0), 0.2, material='bare', segments=16)
     F.box(s, 'TowHook', (-10.95, 0.0, 1.6), (0.5, 0.4, 0.45), material='hazard', bevel=0.04)

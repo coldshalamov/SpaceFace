@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "267495c0d1ff8baceec00892dabcadaf44206dd3b1798253085d74bef7bf53cd",
+  "contentHash": "068b1686987624eb7a89f1f90d526138437ff44c8504e9e32c284aa8d74d4881",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -712,18 +712,18 @@
     {
       "bounds": {
         "max": [
-          13.320999145507812,
-          4.531222343444824,
-          3.9143831729888916
+          13.32105541229248,
+          4.531259536743164,
+          3.91439151763916
         ],
         "min": [
           -12.9704008102417,
-          -1.2619202136993408,
-          -3.9143831729888916
+          -1.2618952989578247,
+          -3.91439151763916
         ]
       },
       "drawMode": 4,
-      "geometryHash": "121b0c6dcffc6e0dac65b5bcfe0ce2eb6ce5e7ffbf73f5c4e8cb459d2810b428",
+      "geometryHash": "71d92db88e3c4fed0f43d51726f65be77db045f3080d959720af60e56610802f",
       "id": "sf.render.yard-tug.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -748,7 +748,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe7dfeb7c21c1c39cba235f34e835579f30154750a264c2765532a4d163fd471",
+      "geometryHash": "3ea8bf623d3d4ee96d697bc320141193ae54810cc082d691368a679f7ce552cd",
       "id": "sf.render.yard-tug.node.lod0-armor.primitive.0",
       "indexCount": 32280,
       "indexed": true,
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "375c95301bf1830ed9d22aa0866de0b17cd48b481689749e05a364ad3e299fdb",
+      "geometryHash": "d60e2817fdf3c56150629cc6670248113be7dbf920c93fbbec4f6bd317755c4b",
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -1187,18 +1187,18 @@
     {
       "bounds": {
         "max": [
-          -7.7555108070373535,
-          3.3627694845199585,
-          0.10996521264314651
+          -7.5102362632751465,
+          3.3655202388763428,
+          0.10994529724121094
         ],
         "min": [
-          -10.444488525390625,
-          1.8572307229042053,
-          -0.10996521264314651
+          -10.889764785766602,
+          1.7044799625873566,
+          -0.10994529724121094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e0ee9713853bd18d011884ded485a8beba12025976e41ba7e8ec32534c353cb",
+      "geometryHash": "1b9bd77738924fdca93f32d4550933a0280dceb500407ae0e3031573abdcbd67",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-hook-mechanical.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1208,6 +1208,31 @@
       "nodeId": "sf.render.yard-tug.node.lod0-motion-yard-tug-hook-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 200
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.430083826184273,
+          3.449916660785675,
+          1.2899999618530273
+        ],
+        "min": [
+          -7.769915983080864,
+          3.1500832438468933,
+          -1.2899999618530273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8befe42d6cec8013ead79499a89e0bf40306eb73664a906011d44b8de111f635",
+      "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-brushedmetal.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodeId": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 352
     },
     {
       "bounds": {
@@ -1323,7 +1348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b1824069a0d953c84c982209ecde0153603a562fe76c48f884e216bba68fffa",
+      "geometryHash": "c264734cca0ac5717d2723b62a5ef37a3fe05b6d307c3998909fccb2bffdd3ba",
       "id": "sf.render.yard-tug.node.lod1-armor.primitive.0",
       "indexCount": 8757,
       "indexed": true,
@@ -1387,18 +1412,18 @@
     {
       "bounds": {
         "max": [
-          -6.414133548736572,
-          2.8482554041513843,
-          -1.2509745596042139
+          -6.414230823516846,
+          2.8482757707603623,
+          -1.2511534339326504
         ],
         "min": [
-          -8.785612106323242,
-          1.1018710053792553,
-          -1.5500238897213476
+          -8.785764694213867,
+          1.1018506387702771,
+          -1.5499202364546176
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7013ae36ed6262794733cb922e6b29c504dff7847558c9bacfad0195ded6c443",
+      "geometryHash": "8175d69c321a9737343f00199809a2560d6b9a62555d323323fe5446d9ab6825",
       "id": "sf.render.yard-tug.node.lod1-hook-armor-winch-armor.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -1407,7 +1432,7 @@
       "meshName": "LOD1_HOOK_ARMOR_WINCH_Armor",
       "nodeId": "sf.render.yard-tug.node.lod1-hook-armor-winch-armor",
       "primitiveIndex": 0,
-      "vertexCount": 80
+      "vertexCount": 81
     },
     {
       "bounds": {
@@ -1762,18 +1787,18 @@
     {
       "bounds": {
         "max": [
-          -7.755109786987305,
-          3.3634719848632812,
-          0.10916845500469208
+          -7.5100789070129395,
+          3.3657835721969604,
+          0.10921347886323929
         ],
         "min": [
-          -10.44467544555664,
-          1.8569474518299103,
-          -0.10916843265295029
+          -10.88998031616211,
+          1.704147458076477,
+          -0.10905098915100098
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72922cc35e089d623775d3a9306b4dc70e6f3e1aeaad668aa9cded97e9d3d8ba",
+      "geometryHash": "4487b367543327f5e3b6a870e65587884fd2943025c582b26a6a75606d2425cd",
       "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-hook-mechanical.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -1782,82 +1807,107 @@
       "meshName": "LOD1_MOTION_YARD_TUG_HOOK_Mechanical",
       "nodeId": "sf.render.yard-tug.node.lod1-motion-yard-tug-hook-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 83
+      "vertexCount": 79
     },
     {
       "bounds": {
         "max": [
-          -6.740073084831238,
-          3.3099268078804016,
-          1.7191258668899536
+          -7.4317317456007,
+          3.4482665061950684,
+          1.2882431745529175
         ],
         "min": [
-          -8.459926724433899,
-          1.5900731682777405,
-          -1.719217300415039
+          -7.768232300877571,
+          3.152020215988159,
+          -1.2879514694213867
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb1c0e08848de157406005f895f37c88f770ae3ce84960aad19ce93edc99f99e",
+      "geometryHash": "6e02b3734c78a23a13fe3b72575e4b254f1a6ab8d7d83007ba92bca1cd3a7b90",
+      "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-brushedmetal.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodeId": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 112
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.740061700344086,
+          3.3099382519721985,
+          1.719614028930664
+        ],
+        "min": [
+          -8.459938108921051,
+          1.5900618433952332,
+          -1.719614028930664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3be4edc4f671d1f281dd3b50e2bca3186aafcab843283e3cf0c9dfbceca168d2",
       "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-mechanical.primitive.0",
-      "indexCount": 2436,
+      "indexCount": 2508,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_YARD_TUG_WINCH_Mechanical",
       "nodeId": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 886
+      "vertexCount": 898
     },
     {
       "bounds": {
         "max": [
-          -6.882731735706329,
-          3.167009949684143,
-          1.0479735136032104
+          -6.882722496986389,
+          3.166944205760956,
+          1.0495483875274658
         ],
         "min": [
-          -8.317011535167694,
-          1.7327301502227783,
-          -1.0484243631362915
+          -8.319177031517029,
+          1.7327958941459656,
+          -1.0496536493301392
         ]
       },
       "drawMode": 4,
-      "geometryHash": "213addc2a5303abed28d85ca661fe56676375b0bc7f0847257c481820be45acb",
+      "geometryHash": "cb7be59586bf6a4aabb0fab79f8be866fd5968ab0dc141c2f4266a1653e40bf5",
       "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-mechanicaldark.primitive.0",
-      "indexCount": 372,
+      "indexCount": 408,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_YARD_TUG_WINCH_MechanicalDark",
       "nodeId": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 136
+      "vertexCount": 142
     },
     {
       "bounds": {
         "max": [
-          -6.443045973777771,
-          3.607258677482605,
-          1.2482271194458008
+          -6.4408873319625854,
+          3.609151005744934,
+          1.2496217489242554
         ],
         "min": [
-          -8.756953835487366,
-          1.2927414178848267,
-          -1.2482271194458008
+          -8.759189248085022,
+          1.2908490896224976,
+          -1.2495983839035034
         ]
       },
       "drawMode": 4,
-      "geometryHash": "faed350124b28305918cdb8d55cc8d5b8e5329045438c680f45c538b23a19ef7",
+      "geometryHash": "f0fab85bcd130b6754da645f7f5d46100752877ea8156fb2cd258164c46d9a05",
       "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-warning.primitive.0",
-      "indexCount": 744,
+      "indexCount": 828,
       "indexed": true,
       "materialHash": "db01a29f151136f186c43adc8af2613f34560154eb66d3f274059077b64c7298",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_YARD_TUG_WINCH_Warning",
       "nodeId": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-warning",
       "primitiveIndex": 0,
-      "vertexCount": 272
+      "vertexCount": 286
     },
     {
       "bounds": {
@@ -1898,7 +1948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d635ff2cc8cafa1be5e3224fa30476ed68512e6b7f39adccc39393be94eb13a2",
+      "geometryHash": "60cddbd1b52161724553ff2b81ce1d1313b0016c8d1a5427156ae3f2f4bbd95c",
       "id": "sf.render.yard-tug.node.lod2-armor.primitive.0",
       "indexCount": 4818,
       "indexed": true,
@@ -1962,18 +2012,18 @@
     {
       "bounds": {
         "max": [
-          -6.412720203399658,
-          2.844038163223698,
-          -1.253252596833626
+          -6.412871837615967,
+          2.8440364179592432,
+          -1.253417961983153
         ],
         "min": [
-          -8.787034034729004,
-          1.1060001506419637,
-          -1.5500508833146893
+          -8.78718090057373,
+          1.1060018959064184,
+          -1.5499258109050307
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ec7077fbf357208cb8409525dc163fa5ef78608bece312c438a49e0ba165716",
+      "geometryHash": "7e13f9d8ce199cf51692e57f3f12980f81ecf3e033a29d13423423b274949670",
       "id": "sf.render.yard-tug.node.lod2-hook-armor-winch-armor.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -2287,18 +2337,18 @@
     {
       "bounds": {
         "max": [
-          -7.755109786987305,
-          3.362814426422119,
-          0.10726101696491241
+          -7.509364604949951,
+          3.3661413192749023,
+          0.10747351497411728
         ],
         "min": [
-          -10.445218086242676,
-          1.8563143014907837,
-          -0.10750759392976761
+          -10.890353202819824,
+          1.7039707601070404,
+          -0.10714656114578247
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23f839bdfddbaef950055d9d0baf29658bcc249f7a5fcd7ce9c30bb4f1d12670",
+      "geometryHash": "73fd950c422719b755e10260512340d35975a672911ee1cec81d5d9ecf7b079e",
       "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-hook-mechanical.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -2312,52 +2362,77 @@
     {
       "bounds": {
         "max": [
-          -6.738516807556152,
-          3.3279122710227966,
+          -7.436420947313309,
+          3.4435237050056458,
+          1.2835228443145752
+        ],
+        "min": [
+          -7.763578861951828,
+          3.156477153301239,
+          -1.2835229635238647
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c38d65a34e2d61debff33b87f2a6f61c7b3f0b65e8bce3df6679897a646f8a05",
+      "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-brushedmetal.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodeId": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.73847770690918,
+          3.3115952610969543,
           1.7183088064193726
         ],
         "min": [
-          -8.456143856048584,
-          1.5757794976234436,
+          -8.459985256195068,
+          1.575823724269867,
           -1.7183088064193726
         ]
       },
       "drawMode": 4,
-      "geometryHash": "960d7207d1f426b705eaf7106ac5a784f306e68ca93417788a40a728bc094555",
+      "geometryHash": "dd5ad8e4750d591b2dbf3b77c8996e4b7520dbc103f9fc371f4ec062554ed582",
       "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanical.primitive.0",
-      "indexCount": 1026,
+      "indexCount": 1134,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_YARD_TUG_WINCH_Mechanical",
       "nodeId": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 438
+      "vertexCount": 474
     },
     {
       "bounds": {
         "max": [
-          -6.883428514003754,
-          3.1672573685646057,
+          -6.883388578891754,
+          3.16729736328125,
           1.0474629402160645
         ],
         "min": [
-          -8.31702333688736,
-          1.7328951954841614,
-          -1.0475599765777588
+          -8.31706327199936,
+          1.732855200767517,
+          -1.0484243631362915
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a40116b9525bd3f5f42f38a8f10c8178b1976705121772f85d54c8b367fd511d",
+      "geometryHash": "3daa9ca3811f1a5a8a44d1a6b51b832c9ff37d3a717dbbc938eb2767d3671099",
       "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanicaldark.primitive.0",
-      "indexCount": 162,
+      "indexCount": 186,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_YARD_TUG_WINCH_MechanicalDark",
       "nodeId": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 66
+      "vertexCount": 74
     },
     {
       "bounds": {
@@ -3642,6 +3717,56 @@
       ]
     },
     {
+      "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodeName": "LOD0_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodePath": [
+        0,
+        49,
+        0
+      ],
+      "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.yard-tug.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.599999904632568,
+        2.450000047683716,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-mechanical",
       "localTransform": [
         1,
@@ -3667,7 +3792,7 @@
       "nodePath": [
         0,
         49,
-        0
+        1
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -3717,7 +3842,7 @@
       "nodePath": [
         0,
         49,
-        1
+        2
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -3767,7 +3892,7 @@
       "nodePath": [
         0,
         49,
-        2
+        3
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -3990,21 +4115,21 @@
     {
       "id": "sf.render.yard-tug.node.lod1-hook-armor-winch-armor",
       "localTransform": [
-        1.185739278793335,
+        1.1857669353485107,
         0,
         0,
         0,
         0,
-        1.185739278793335,
+        1.1857669353485107,
         0,
         0,
         0,
         0,
-        1.185739278793335,
+        1.1857669353485107,
         0,
-        -7.599872827529907,
+        -7.5999977588653564,
         1.9750632047653198,
-        -1.4004992246627808,
+        -1.400536835193634,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4018,21 +4143,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.yard-tug.body",
       "worldTransform": [
-        1.185739278793335,
+        1.1857669353485107,
         0,
         0,
         0,
         0,
-        1.185739278793335,
+        1.1857669353485107,
         0,
         0,
         0,
         0,
-        1.185739278793335,
+        1.1857669353485107,
         0,
-        -7.599872827529907,
+        -7.5999977588653564,
         1.9750632047653198,
-        -1.4004992246627808,
+        -1.400536835193634,
         1
       ]
     },
@@ -4776,6 +4901,56 @@
       ]
     },
     {
+      "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodeName": "LOD1_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodePath": [
+        0,
+        49,
+        4
+      ],
+      "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.yard-tug.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.599999904632568,
+        2.450000047683716,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-mechanical",
       "localTransform": [
         1,
@@ -4801,7 +4976,7 @@
       "nodePath": [
         0,
         49,
-        3
+        5
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -4851,7 +5026,7 @@
       "nodePath": [
         0,
         49,
-        4
+        6
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -4901,7 +5076,7 @@
       "nodePath": [
         0,
         49,
-        5
+        7
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -5124,21 +5299,21 @@
     {
       "id": "sf.render.yard-tug.node.lod2-hook-armor-winch-armor",
       "localTransform": [
-        1.1871569156646729,
+        1.1871545314788818,
         0,
         0,
         0,
         0,
-        1.1871569156646729,
+        1.1871545314788818,
         0,
         0,
         0,
         0,
-        1.1871569156646729,
+        1.1871545314788818,
         0,
-        -7.599877119064331,
+        -7.600026369094849,
         1.9750191569328308,
-        -1.4016517400741577,
+        -1.4016718864440918,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5152,21 +5327,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.yard-tug.body",
       "worldTransform": [
-        1.1871569156646729,
+        1.1871545314788818,
         0,
         0,
         0,
         0,
-        1.1871569156646729,
+        1.1871545314788818,
         0,
         0,
         0,
         0,
-        1.1871569156646729,
+        1.1871545314788818,
         0,
-        -7.599877119064331,
+        -7.600026369094849,
         1.9750191569328308,
-        -1.4016517400741577,
+        -1.4016718864440918,
         1
       ]
     },
@@ -5812,6 +5987,56 @@
       ]
     },
     {
+      "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodeName": "LOD2_MOTION_YARD_TUG_WINCH_BrushedMetal",
+      "nodePath": [
+        0,
+        49,
+        8
+      ],
+      "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.yard-tug.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.599999904632568,
+        2.450000047683716,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanical",
       "localTransform": [
         1,
@@ -5837,7 +6062,7 @@
       "nodePath": [
         0,
         49,
-        6
+        9
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -5887,7 +6112,7 @@
       "nodePath": [
         0,
         49,
-        7
+        10
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -5937,7 +6162,7 @@
       "nodePath": [
         0,
         49,
-        8
+        11
       ],
       "parentId": "sf.render.yard-tug.node.motion-yard-tug-winch",
       "role": "immutable",
@@ -6796,45 +7021,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "49d12b3d262867e42aa51c9a05d773c666851df23655a7f7b897962f48da932c"
+      "sha256": "6425016bef3ddcb1179c0dd08cb367ea784bcc27adbc00650d345a8036985322"
     },
     "sourceGlb": {
-      "bytes": 1335840,
-      "sha256": "4f2522408f1f31e84f7546ca83041b7f6719b2ac8dec343f8eb51bae72b55070",
+      "bytes": 1350744,
+      "sha256": "311a5f3197d4521b77796fedfd520fc4c7a8dd5a7cb4a2644d7c148d2f71c769",
       "uri": "yard_tug.glb"
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "4fd257913a2d190396acb75e6e6a33f007d0c5136bad2ce9128980b4c88af71d",
+      "sha256": "52f488391a209a6cb8232e5a7f6c122af8c999be38f82f8a036fd0df9ead1a71",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2496180,
-    "sha256": "44aa4926d5264d435657f1328f0464903d238d1640baaa35933cc036f5db571b",
+    "bytes": 2523448,
+    "sha256": "88f44db5ae2014f40ddc705bf620c53ce49bfa8845fc3927fdac8768ffa4df1a",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.17548799514770508,
-        1.6305069327354431,
+        1.630525529384613,
         0
       ],
       "max": [
         13.321646690368652,
-        4.531222343444824,
-        3.9143831729888916
+        4.531259536743164,
+        3.91439151763916
       ],
       "min": [
         -12.970670700073242,
         -1.270208477973938,
-        -3.9143831729888916
+        -3.91439151763916
       ],
       "size": [
         26.292317390441895,
-        5.801430821418762,
-        7.828766345977783
+        5.801468014717102,
+        7.82878303527832
       ]
     },
     "hidden": [
@@ -7057,7 +7282,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 73,
+        "planIndex": 76,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7109,7 +7334,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 74,
+        "planIndex": 77,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7161,7 +7386,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 75,
+        "planIndex": 78,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7213,7 +7438,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 76,
+        "planIndex": 79,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7265,7 +7490,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 77,
+        "planIndex": 80,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7317,7 +7542,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 78,
+        "planIndex": 81,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7369,7 +7594,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 79,
+        "planIndex": 82,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7421,7 +7646,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 80,
+        "planIndex": 83,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7473,7 +7698,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 81,
+        "planIndex": 84,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7525,7 +7750,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 82,
+        "planIndex": 85,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7577,7 +7802,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 83,
+        "planIndex": 86,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7629,7 +7854,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 84,
+        "planIndex": 87,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7666,7 +7891,7 @@
       "drive": 3,
       "glass": 3,
       "hull": 13,
-      "mechanical": 23,
+      "mechanical": 26,
       "signal": 17,
       "warning": 9
     },
@@ -7979,12 +8204,12 @@
       {
         "allowTextures": true,
         "planIndex": 66,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 67,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -7994,7 +8219,7 @@
       {
         "allowTextures": true,
         "planIndex": 69,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -8004,21 +8229,36 @@
       {
         "allowTextures": true,
         "planIndex": 71,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 72,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 74,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 75,
         "role": "warning"
       }
     ],
     "motionBank": {
-      "bytes": 121947,
+      "bytes": 100912,
       "rigId": "yard_tug_winch",
-      "sha256": "362666882c7a2b5b2f78c2e9244913fb2bf32a50bd616f70618206f55856a129",
+      "sha256": "2c8b0cd8d3e4d76a388b3f1a0fbfeda051d02c20f1aaa750ad327966dfc697d9",
       "uri": "assets/ships/motions/yard-tug.motion.json"
     },
-    "nodeCount": 85,
+    "nodeCount": 88,
     "primitives": [
       {
         "canopy": false,
@@ -8561,21 +8801,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.185739278793335,
+          1.1857669353485107,
           0,
           0,
           0,
           0,
-          1.185739278793335,
+          1.1857669353485107,
           0,
           0,
           0,
           0,
-          1.185739278793335,
+          1.1857669353485107,
           0,
-          -7.599872827529907,
+          -7.5999977588653564,
           1.9750632047653198,
-          -1.4004992246627808,
+          -1.400536835193634,
           1
         ],
         "name": "LOD1_HOOK_ARMOR_WINCH_Armor",
@@ -9018,21 +9258,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.1871569156646729,
+          1.1871545314788818,
           0,
           0,
           0,
           0,
-          1.1871569156646729,
+          1.1871545314788818,
           0,
           0,
           0,
           0,
-          1.1871569156646729,
+          1.1871545314788818,
           0,
-          -7.599877119064331,
+          -7.600026369094849,
           1.9750191569328308,
-          -1.4016517400741577,
+          -1.4016718864440918,
           1
         ],
         "name": "LOD2_HOOK_ARMOR_WINCH_Armor",
@@ -9700,7 +9940,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_YARD_TUG_WINCH_Mechanical",
+        "name": "LOD0_MOTION_YARD_TUG_WINCH_BrushedMetal",
         "planIndex": 64,
         "tags": {
           "canopy": false,
@@ -9728,7 +9968,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_YARD_TUG_WINCH_MechanicalDark",
+        "name": "LOD0_MOTION_YARD_TUG_WINCH_Mechanical",
         "planIndex": 65,
         "tags": {
           "canopy": false,
@@ -9756,7 +9996,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_YARD_TUG_WINCH_Warning",
+        "name": "LOD0_MOTION_YARD_TUG_WINCH_MechanicalDark",
         "planIndex": 66,
         "tags": {
           "canopy": false,
@@ -9784,11 +10024,11 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_YARD_TUG_WINCH_Mechanical",
+        "name": "LOD0_MOTION_YARD_TUG_WINCH_Warning",
         "planIndex": 67,
         "tags": {
           "canopy": false,
-          "lod": "lod1",
+          "lod": "lod0",
           "motionGroup": true
         }
       },
@@ -9812,7 +10052,7 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_YARD_TUG_WINCH_MechanicalDark",
+        "name": "LOD1_MOTION_YARD_TUG_WINCH_BrushedMetal",
         "planIndex": 68,
         "tags": {
           "canopy": false,
@@ -9840,7 +10080,7 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_YARD_TUG_WINCH_Warning",
+        "name": "LOD1_MOTION_YARD_TUG_WINCH_Mechanical",
         "planIndex": 69,
         "tags": {
           "canopy": false,
@@ -9868,8 +10108,92 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_YARD_TUG_WINCH_Mechanical",
+        "name": "LOD1_MOTION_YARD_TUG_WINCH_MechanicalDark",
         "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.599999904632568,
+          2.450000047683716,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_YARD_TUG_WINCH_Warning",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.599999904632568,
+          2.450000047683716,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_YARD_TUG_WINCH_BrushedMetal",
+        "planIndex": 72,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.599999904632568,
+          2.450000047683716,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_YARD_TUG_WINCH_Mechanical",
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -9897,7 +10221,7 @@
           1
         ],
         "name": "LOD2_MOTION_YARD_TUG_WINCH_MechanicalDark",
-        "planIndex": 71,
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -9925,7 +10249,7 @@
           1
         ],
         "name": "LOD2_MOTION_YARD_TUG_WINCH_Warning",
-        "planIndex": 72,
+        "planIndex": 75,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -9937,20 +10261,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "ee01acfeb44d8dbc49af0dd0a56fd4cb066b772931091a5fceabef98b8a2dd13",
+  "runtimeHash": "83d675d79aee2124a2f11ecc0fa4787c246de7bc43e0e6115ed03adbf14af3b8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           13.321646690368652,
-          4.531222343444824,
-          3.9143831729888916
+          4.531259536743164,
+          3.91439151763916
         ],
         "min": [
           -12.970670700073242,
           -1.270208477973938,
-          -3.9143831729888916
+          -3.91439151763916
         ]
       },
       "id": "sf.render.yard-tug.body",
@@ -9975,6 +10299,7 @@
         "sf.render.yard-tug.node.lod0-motion-yard-tug-fairlead-hook-secondary-towgear-brushedmetal",
         "sf.render.yard-tug.node.lod0-motion-yard-tug-hook-hook-secondary-towgear-warning",
         "sf.render.yard-tug.node.lod0-motion-yard-tug-hook-mechanical",
+        "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-brushedmetal",
         "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-mechanical",
         "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-mechanicaldark",
         "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-warning",
@@ -9998,6 +10323,7 @@
         "sf.render.yard-tug.node.lod1-motion-yard-tug-fairlead-hook-secondary-towgear-brushedmetal",
         "sf.render.yard-tug.node.lod1-motion-yard-tug-hook-hook-secondary-towgear-warning",
         "sf.render.yard-tug.node.lod1-motion-yard-tug-hook-mechanical",
+        "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-brushedmetal",
         "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-mechanical",
         "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-mechanicaldark",
         "sf.render.yard-tug.node.lod1-motion-yard-tug-winch-warning",
@@ -10019,6 +10345,7 @@
         "sf.render.yard-tug.node.lod2-motion-yard-tug-fairlead-hook-secondary-towgear-brushedmetal",
         "sf.render.yard-tug.node.lod2-motion-yard-tug-hook-hook-secondary-towgear-warning",
         "sf.render.yard-tug.node.lod2-motion-yard-tug-hook-mechanical",
+        "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-brushedmetal",
         "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanical",
         "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanicaldark",
         "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-warning",

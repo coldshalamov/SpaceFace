@@ -8361,8 +8361,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/yard_tug.glb",
-   "tris": 64924,
-   "bytes": 3739612,
+   "tris": 65520,
+   "bytes": 3774460,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
