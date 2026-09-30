@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "pic-10-lab-halo-geometry",
-      "date": "2026-09-22",
-      "wf": "WF-11",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Graphics lab ship/bolt glow demos restaged to additive geometry; prose names the banned camera-facing card",
-      "fingerprint": "verb=look,subject=graphics-lab,sector=none,domain=wf-11",
-      "references": [],
-      "integration": "live",
-      "commit": "49bbd51ca",
-      "verification": "focused_green"
-    },
-    {
       "id": "verb-09-helios-impulse-charge",
       "date": "2026-09-22",
       "wf": "WF-06",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "85730847d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "INST-25",
+      "date": "2026-09-30",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "An emergent tool plays its own voice once per event, including the first shot; a weapon-fire cue stays silent.",
+      "fingerprint": "verb=hear,subject=emergent-voice,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "c8c91ef1d",
       "verification": "focused_green"
     }
   ],
