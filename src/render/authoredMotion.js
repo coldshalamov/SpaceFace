@@ -92,23 +92,53 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
 
 /**
  * Wire gameplay events to bound controllers. Called once with the session bus, next to the other
- * motion-system bindEvents calls. Returns an unbind function.
+ * motion-system bindEvents calls. `clock` supplies the current sim second for event payloads that
+ * carry no simTime of their own (mining events don't). Returns an unbind function.
  */
-export function installAuthoredMotionBus(bus) {
+export function installAuthoredMotionBus(bus, { clock } = {}) {
   if (!bus || typeof bus.on !== 'function') return null;
-  const onScanPulse = (payload) => {
-    if (!payload || payload.source !== ACCEPTED_SCAN_SOURCE) return;
-    const scannerId = payload.scannerId;
-    if (scannerId == null) return;
-    for (const controller of authoredMotionControllersFor(scannerId)) {
+  const simNow = () => (typeof clock === 'function' ? Number(clock()) || 0 : 0);
+  const dispatch = (type, entityId, payload, accept) => {
+    if (entityId == null) return;
+    for (const controller of authoredMotionControllersFor(entityId)) {
+      if (!accept(controller)) continue;
       try {
-        controller.handleEvent?.('scan:pulse', payload, payload.simTime);
+        controller.handleEvent?.(type, payload, payload?.simTime ?? simNow());
       } catch (error) {
-        console.warn('[authoredMotion] scan:pulse rejected by controller', error);
+        console.warn(`[authoredMotion] ${type} rejected by controller`, error);
       }
     }
   };
-  const unsubs = [bus.on('scan:pulse', onScanPulse)];
+  const onScanPulse = (payload) => {
+    if (!payload || payload.source !== ACCEPTED_SCAN_SOURCE) return;
+    dispatch('scan:pulse', payload.scannerId, payload, () => true);
+  };
+  // ANI-02: the mining head only deploys for cutter verbs — repair/transfer locks use other
+  // tools, and salvage-pickup yields must never jab a parked head.
+  const CUTTER_VERBS = new Set(['extract', 'cut']);
+  const isCutterVerb = (payload) => CUTTER_VERBS.has(payload && payload.verb);
+  const deployed = (controller) => controller.clipActive?.('deploy') || controller.clipActive?.('bite');
+  const onMiningStart = (payload) => {
+    if (!isCutterVerb(payload)) return;
+    dispatch('mining:start', payload.minerId, payload, (c) => !deployed(c));
+  };
+  const onMiningYield = (payload) => {
+    dispatch('mining:yield', payload.minerId, payload, deployed);
+  };
+  const onMiningStop = (payload) => {
+    dispatch('mining:stop', payload.minerId, payload, deployed);
+  };
+  const onBeamDenied = (payload) => {
+    if (!isCutterVerb(payload)) return;
+    dispatch('beam:denied', payload.minerId, payload, deployed);
+  };
+  const unsubs = [
+    bus.on('scan:pulse', onScanPulse),
+    bus.on('mining:start', onMiningStart),
+    bus.on('mining:yield', onMiningYield),
+    bus.on('mining:stop', onMiningStop),
+    bus.on('beam:denied', onBeamDenied),
+  ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {
       if (typeof unsub === 'function') unsub();

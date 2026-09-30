@@ -15,6 +15,7 @@ import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_01  # noqa: E402
+import ANI_02  # noqa: E402
 
 SHIP_ID = 'kestrel'
 
@@ -82,8 +83,8 @@ def build():
     F.box(s, 'GunReceiver', (7.8, 0.0, 1.3), (1.4, 1.1, 0.42), material='gunmetal', bevel=0.03)
     # Mining head: a clamp frame with an orange cutter lens under the chin.
     F.box(s, 'MiningClamp', (11.1, 0.0, -0.95), (2.0, 0.9, 0.55), material='gunmetal', bevel=0.04, taper=0.85)
-    F.cylinder(s, 'MiningCutter', (11.9, 0.0, -1.05), (12.75, 0.0, -1.05), 0.34, 0.24, material='dark',
-               cap_material='glow_amber')
+    cutter = F.cylinder(s, 'MiningCutter', (11.9, 0.0, -1.05), (12.75, 0.0, -1.05), 0.34, 0.24, material='dark',
+                        cap_material='glow_amber')
     F.band(s, 'MiningClamp', (11.1, 0, 0), (1, 0, 0), 0.3, 'hazard')
 
     # --- canopy under the dorsal spine -------------------------------------------------------
@@ -151,6 +152,8 @@ def build():
     s.hook_part('HOOK_SENSOR_DISH', ped, stem, *dish, lens)
     ani01_bank = ANI_01.build(s, {'stem': stem, 'dish': dish, 'feed': lens},
                               source_asset_id=E_spec_asset_id())
+    # ANI-02 authors into the shared bank — one kestrel.motion.json carries every rig's clips.
+    ANI_02.build(s, {'cutter': cutter}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     s.ani01_bank = ani01_bank
 
     # --- armour plate that sheds under damage (port shoulder cap) ------------------------

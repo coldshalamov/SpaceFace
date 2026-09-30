@@ -427,9 +427,11 @@ export function bindAuthoredMotion(root, bank, options = {}) {
   for (const clip of checked.clips) clips.set(clip.name, clip);
 
   const state = {
-    clip: null,
-    clipStartS: 0,
-    rateScale: 1,
+    // Active clips, insertion-ordered by start time. Clips are independent — separate rig
+    // groups may sweep concurrently (dish scan while the mining head is deployed); two clips
+    // channeling the same group resolve latest-started-wins.
+    clips: new Map(),
+    latest: null,
     generation: -1,
     parked: true,
   };
@@ -446,19 +448,20 @@ export function bindAuthoredMotion(root, bank, options = {}) {
 
   const controller = {
     rigId: checked.rigId,
-    get state() { return state.clip ? state.clip.name : 'rest'; },
+    get state() { return state.latest || 'rest'; },
     get generation() { return state.generation; },
     get groupCount() { return groups.size; },
     groupNodeCount(id) {
       const g = groups.get(id);
       return g ? g.nodes.length : 0;
     },
+    clipActive(name) { return state.clips.has(name); },
     groups,
 
     /**
-     * Select a clip. `generation` orders duplicate events — a stale or repeated generation is
-     * ignored so an event replayed on restore cannot restart the same sweep. Passing state 'rest'
-     * or 'idle' parks the rig at its authored rest pose.
+     * Start a clip (or restart it if it is already active). `generation` orders duplicate events —
+     * a stale or repeated generation is ignored so an event replayed on restore cannot restart
+     * the same sweep. Passing state 'rest' or 'idle' parks the whole rig at its authored rest pose.
      */
     setState({ state: clipName, startTimeS, rateScale = 1, generation } = {}) {
       if (disposed) return false;
@@ -467,7 +470,8 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       }
       if (clipName === 'rest' || clipName === 'idle' || clipName == null) {
         if (generation != null) state.generation = generation;
-        state.clip = null;
+        state.clips.clear();
+        state.latest = null;
         state.parked = true;
         restAll();
         return true;
@@ -477,39 +481,55 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         throw new Error(`motion bank ${checked.rigId} has no clip "${clipName}".`);
       }
       if (generation != null) state.generation = generation;
-      state.clip = clip;
-      state.clipStartS = Number.isFinite(startTimeS) ? startTimeS : 0;
-      state.rateScale = Number.isFinite(rateScale) && rateScale > 0 ? rateScale : 1;
+      state.clips.delete(clipName);
+      state.clips.set(clipName, {
+        startS: Number.isFinite(startTimeS) ? startTimeS : 0,
+        rateScale: Number.isFinite(rateScale) && rateScale > 0 ? rateScale : 1,
+      });
+      state.latest = clipName;
       state.parked = false;
       return true;
     },
 
-    /** Advance every bound pivot to the clip pose at `timeS` (sim seconds). */
+    /** Advance every bound pivot to the merged clip pose at `timeS` (sim seconds). */
     update(timeS) {
-      if (disposed || !state.clip) return;
-      const t = (timeS - state.clipStartS) * state.rateScale;
-      const done = !state.clip.loop && t >= state.clip.durationS;
-      const deltas = evaluateMotionClip(
-        checked, state.clip, done ? state.clip.durationS : t,
-      );
+      if (disposed || !state.clips.size) return;
+      const merged = new Map();
+      for (const [name, run] of state.clips) {
+        const clip = clips.get(name);
+        const t = (timeS - run.startS) * run.rateScale;
+        if (!clip.loop && t >= clip.durationS && (clip.endMode || 'rest') === 'rest') {
+          // Rest-ended clips park this frame — their final pose is excluded from the merge so
+          // owned groups land exactly at rest (or under a still-active clip's delta).
+          state.clips.delete(name);
+          if (state.latest === name) {
+            state.latest = state.clips.size ? [...state.clips.keys()].pop() : null;
+          }
+          continue;
+        }
+        const deltas = evaluateMotionClip(
+          checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
+        );
+        // Later map entries override earlier ones per group — newest clip wins a shared group.
+        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+      }
       for (const [id, { binding, nodes }] of groups) {
-        const delta = deltas.get(id) || {};
+        const delta = merged.get(id) || {};
         const hasT = Array.isArray(delta.translation);
         const hasR = Array.isArray(delta.rotation);
-        if (!hasT && !hasR) continue;
         const restT = binding.restPose.translation;
         const restQ = binding.restPose.rotation;
         for (const node of nodes) {
-          if (!nodeHasVisibleMesh(node)) {
-            // Shed or LOD-off: a hidden part is parked at rest rather than animating a ghost.
+          if (!nodeHasVisibleMesh(node) || (!hasT && !hasR)) {
+            // No clip owns this group right now, or a hidden part: park at rest.
             node.position.set(...restT);
             node.quaternion.set(...restQ);
             continue;
           }
           node.position.set(
-            restT[0] + (hasT ? delta.translation[0] : 0),
-            restT[1] + (hasT ? delta.translation[1] : 0),
-            restT[2] + (hasT ? delta.translation[2] : 0),
+            restT[0] + delta.translation[0],
+            restT[1] + delta.translation[1],
+            restT[2] + delta.translation[2],
           );
           if (hasR) {
             const q = quatMul(restQ[0], restQ[1], restQ[2], restQ[3],
@@ -520,11 +540,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           }
         }
       }
-      if (done && (state.clip.endMode || 'rest') === 'rest') {
-        state.clip = null;
-        state.parked = true;
-        restAll();
-      }
+      if (!state.clips.size) state.parked = true;
     },
 
     /**

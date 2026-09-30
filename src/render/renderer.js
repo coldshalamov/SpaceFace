@@ -10298,7 +10298,9 @@ export const render = {
     // ANI-00: gameplay events reach entity-keyed motion controllers only through the accepted
     // source gate — a scan pulse drives the dish rig it was emitted for and nothing else.
     if (typeof this._authoredMotionUnbind === 'function') this._authoredMotionUnbind();
-    this._authoredMotionUnbind = installAuthoredMotionBus(bus);
+    this._authoredMotionUnbind = installAuthoredMotionBus(bus, {
+      clock: () => Number(state.simTime) || 0,
+    });
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
     // doesn't work" sore thumb. We forward the values to the systems that own them.
