@@ -61,5 +61,6 @@ jobs:
         with:
           name: intro-visualizer-review
           path: .intro-review/
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: error
