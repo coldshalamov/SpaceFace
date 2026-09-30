@@ -5,8 +5,14 @@
 // sim kept running. Cosmetic lanes must not strand the HUD or hit-stop clock.
 
 import { updateBombPresentation, releaseBombPresentation } from '../render/bombPresentation.js';
-import { shouldFreezeFlightSubmit } from './presentationFreeze.js';
-import { presentUiStage, releaseUiStage, uiStageResident } from '../render/uiStage.js';
+import { shouldFreezeFlightSubmit, shouldSkipFlightDraw } from './presentationFreeze.js';
+import {
+  presentUiStage,
+  releaseUiStage,
+  tickUiStagePrewarm,
+  uiStageResident,
+  warmUiStagePrewarm,
+} from '../render/uiStage.js';
 
 const VFX_ERROR_LOG_CAP = 20;
 let vfxErrorLogCount = 0;
@@ -63,10 +69,20 @@ export function runRenderUpdatePhase({
   const splitRender = !!(render
     && typeof render.prepareFrame === 'function'
     && typeof render.drawPreparedFrame === 'function');
+  // The berth prewarm (D67): a dock in range starts building the berth stage now, during the
+  // approach, so the docked frame adopts a warm stage instead of compiling one under the station
+  // screen. Its one warm-up draw is only ever taken directly ahead of a world draw in this same
+  // task — the flight picture lands over it before the browser presents anything.
+  if (state && state.mode === 'flight') {
+    try { tickUiStagePrewarm({ render, state }); }
+    catch (error) { console.error('[loop] ui stage prewarm error:', error); }
+  }
+  const worldDrawFollows = !!(state && state.mode === 'flight' && !shouldSkipFlightDraw(state));
   let renderError = null;
   try {
     if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, frameDt, presentationFrame) !== false;
     else if (render && typeof render.renderFrame === 'function') {
+      if (worldDrawFollows) warmUiStagePrewarm({ render, state });
       render.renderFrame(alpha, frameDt, presentationFrame);
     }
   } catch (err) {
@@ -90,7 +106,10 @@ export function runRenderUpdatePhase({
   if (splitRender) {
     t = clock();
     try {
-      if (!renderError && renderedPreparedScene) render.drawPreparedFrame();
+      if (!renderError && renderedPreparedScene) {
+        if (worldDrawFollows) warmUiStagePrewarm({ render, state });
+        render.drawPreparedFrame();
+      }
     } catch (err) {
       drawError = err;
     } finally {
