@@ -159,13 +159,23 @@ float bombGrazing = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);
 float bombEdge = 1.0 - bombContour(bombTar ? 0.97 : 0.94, abs(bombV), bombTar ? 0.028 : 0.048);
 float bombTips = bombTar || !bombFlowing ? 1.0
   : bombContour(0.018, bombT, 0.015) * (1.0 - bombContour(0.985, bombT, 0.012));
-float bombRadiance = bombTar ? 1.3 : !bombFlowing ? 1.9 : 2.4;
+float bombRadiance = bombTar ? 1.55 : !bombFlowing ? 1.9 : 2.4;
 vec3 bombLight = vColor.rgb;
-if (bombFlowing && !bombTar) bombLight = mix(bombLight, vec3(0.80,0.94,1.0), clamp(bombMicrofold * 0.72,0.0,0.55));
-totalEmissiveRadiance += bombLight * vBombSurface.y * (0.025 + bombMatter + bombWorking * bombRadiance) * (0.80 + 0.20 * bombGrazing);
+// Thin singularity channels compensate their own local density (floor .22, cap ~3 scaled); alpha
+// still reads bombDensity unmodified.
+float bombComp = (bombFlowing && !bombTar) ? min(3.0, 1.0 / max(0.22, bombDensity)) * 0.55 : 1.0;
+if (bombFlowing && !bombTar) {
+  // Travelling surges ride this bomb's own phase; cool-white lift stays on the sharpest crests.
+  float bombSurge = bombWave(bombT * 6.0 - bombPhase * 0.9 + bombV * 2.0, 2.0, 0.30);
+  bombWorking *= 1.0 + 0.55 * bombSurge;
+  bombLight = mix(bombLight, vec3(0.80,0.94,1.0), clamp(bombMicrofold * 0.72,0.0,0.55));
+  totalEmissiveRadiance += vec3(0.82,0.93,1.0) * vBombSurface.y
+    * pow(min(bombWorking, 1.35), 3.0) * (0.45 + 0.55 * bombSurge) * bombComp;
+}
+totalEmissiveRadiance += bombLight * vBombSurface.y * (0.025 + bombMatter + bombWorking * bombRadiance) * bombComp * (0.80 + 0.20 * bombGrazing);
 diffuseColor.a *= bombEdge * bombTips * clamp(bombDensity, 0.0, 0.72);`);
   };
-  material.customProgramCacheKey = () => 'bomb-transport-volume-v6';
+  material.customProgramCacheKey = () => 'bomb-transport-volume-v7';
   return material;
 }
 
@@ -425,6 +435,7 @@ export class BombPresentationBatch {
       // Late parcels finish their own traversal before the authoritative field expires;
       // they cannot survive as a bright cohort that vanishes at entity removal.
       p.life = Math.min(life, Math.max(.05, shutdownAge + this.releaseDuration - start - pulse * interval));
+      p.environment = this.environment;
       this.particles.emit(p);
     }
   }

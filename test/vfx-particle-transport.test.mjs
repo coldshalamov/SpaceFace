@@ -180,3 +180,20 @@ test('absolute-age emission matches stepped transport and publishes one shared b
     }
   } finally { a.dispose(); b.dispose(); }
 });
+
+test('environment snapshots never invent contacts outside the surface footprint', () => {
+  const scene = new THREE.Scene(), a = new ForceParticleFlow(scene, { capacity: 8 }),
+    b = new ForceParticleFlow(scene, { capacity: 8 });
+  const event = { kind: 'cone', x: 0, z: 0, radius: 40, halfAngle: 0.04, seed: 66, count: 8, life: 1.2 };
+  try {
+    a.emit(event);
+    // A snapshot body far outside the parcel path contributes a snapshot but no deflection.
+    b.emit({ ...event, environment: { count: 1, records: [
+      { x: 500, z: 500, radius: 4, vx: 0, vz: 0, material: 1, strength: 1 }] } });
+    a.update(0.1); b.update(0.1);
+    assert.equal(b.system.particles[0].forceContactCount, 1);
+    assert.deepEqual(sample(b), sample(a), 'distant bodies leave the transported pose untouched');
+    b.clear(); b.emit(event);
+    assert.equal(b.system.particles[0].forceContactCount, 0, 'a later emit without an environment carries no stale contacts');
+  } finally { a.dispose(); b.dispose(); }
+});

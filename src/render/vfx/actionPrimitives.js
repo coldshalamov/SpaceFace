@@ -141,6 +141,9 @@ void main(){
     edge=1.0;body=.35;dark=.6;
     hot=(band(v-.72,.15)+band(v+.72,.15))*(.32+wave(t*18.0-time*3.0+phase));
   }
+  // Slow advected heat crests ride the effect's own clock; uFlash gates the amplitude.
+  float heatCrest=wave(t*6.5-time*1.9+phase*1.31+v*1.7);
+  hot*=1.0+0.60*heatCrest*uFlash;
   float arrival=smoothstep(t-.055,t+.055,vLocal.x);
   float cutoff=smoothstep(vLocal.y-.06,vLocal.y+.06,t);
   float tip=max(.015,fwidth(t));

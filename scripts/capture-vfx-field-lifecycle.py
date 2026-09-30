@@ -46,11 +46,21 @@ TEMPORAL_PROBE = r'''kind => {
  l.sample(4.42);const dissipate=clone();
  l.sample(5.3);const quiet=clone();const quietStats=l.fields.inspect();
  const counted = p => changed(p,quiet).changed;
+ const emittedLight = p => {
+   let sum=0;
+   for(let i=0;i<p.length;i+=4){
+     sum+=Math.max(0,p[i]-quiet[i])*0.2126
+       +Math.max(0,p[i+1]-quiet[i+1])*0.7152
+       +Math.max(0,p[i+2]-quiet[i+2])*0.0722;
+   }
+   return sum;
+ };
  // Attributes at quiet retain their last retired values. Boundary disappearance is additionally
  // asserted by Node tests exactly at releaseAt; here we require all final instances gone.
  return {kind,empty,contact,flash,reduced,birthPixels:counted(birth),earlyPixels:counted(early),
    buildPixels:counted(build),sustainPixels:counted(full),releasePixels:counted(release),
    dissipatingPixels:counted(dissipate),releaseMotion:changed(release,dissipate),quietStats,
+   releaseLight:emittedLight(release),dissipatingLight:emittedLight(dissipate),
    releaseStats,shader:l.renderer.info.programs.map(p=>({name:p.name,runnable:p.diagnostics?.runnable??true})),
    api:l.fields.inspect().schema};
 }'''
@@ -71,7 +81,8 @@ def check_row(row: dict) -> list[str]:
         failures.append(f"{row['kind']}: instant full-size appearance at birth")
     if not 0 < row['earlyPixels'] < row['sustainPixels']:
         failures.append(f"{row['kind']}: birth did not grow into a fuller effect")
-    if not 0 < row['dissipatingPixels'] < row['releasePixels']:
+    # Separating pieces can cover more pixels while cooling; test their light, not a shrinking silhouette.
+    if not row['dissipatingPixels'] > 0 or not 0 < row['dissipatingLight'] < row['releaseLight']:
         failures.append(f"{row['kind']}: no visible, decaying release interval")
     if row['quietStats']['stats']['surfaces'] or row['quietStats']['instances']:
         failures.append(f"{row['kind']}: lingering instances after extinction")

@@ -73,8 +73,13 @@ const SHARD_FRAG = /* glsl */`
     // the hot front (B8). Cooling shrinks reach and heat with the age envelope in aAlpha.
     float hotTip = crease * smoothstep(0.65, 0.88, along) * pow(vShardAlpha, 3.0);
     vec3 hot = mix(vShardColor, vec3(1.0, 0.91, 0.72), hotTip * 0.45);
-    float radiance = 0.65 + hotTip * 2.4;
-    gl_FragColor = vec4(hot * intensity * radiance, intensity);
+    // Slow transported heat rides each streak's stable seed; fwidth flattens it at grazing pixels.
+    float heatWave = sin(along * 2.7 - uTrailTime * 2.2 + vShardSeed * 6.28);
+    float heatFilter = clamp(fwidth(along) * 14.0, 0.0, 0.85);
+    float heat = mix(0.5 + 0.5 * heatWave, 0.5, heatFilter);
+    float radiance = (0.65 + hotTip * 2.4) * (0.80 + 0.75 * heat);
+    // Additive already multiplies by alpha; intensity in RGB paid coverage twice.
+    gl_FragColor = vec4(hot * radiance, intensity);
   }
 `;
 

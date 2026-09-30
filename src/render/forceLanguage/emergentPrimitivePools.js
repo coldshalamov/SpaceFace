@@ -213,9 +213,9 @@ void main() {
   float cooling=smoothstep(0.40,0.99,vResponse.w);
   vec3 color=mix(vec3(0.12,0.48,1.0),vec3(0.65,0.22,0.10),cooling);
   color=mix(color,vec3(0.73,0.95,1.0),packets*0.65*(1.0-cooling));
-  color*=0.50+uFlash*heat*(0.95+packets*3.8+filaments*0.42)*core;
+  color*=0.50+uFlash*heat*(0.95+packets*4.9+filaments*0.42)*core;
   // Reserve bloom headroom inside transported charge knots, not across the whole connection.
-  color+=vec3(0.85,1.65,3.2)*packets*pow(core,4.0)*heat*uFlash;
+  color+=vec3(0.85,1.65,3.2)*packets*pow(core,4.0)*heat*uFlash*1.3;
   float density=mix(0.28+packets*0.50+filaments*0.10,
     (0.10+fold*0.25)*(0.50+packets*0.50),sheath)*sqrt(max(heat,0.0))*vStrike;
 #else
@@ -230,7 +230,7 @@ void main() {
   float tip=smoothstep(0.0,0.11,vSurface.x)*(1.0-smoothstep(0.87,1.0,vSurface.x));
   float breaks=0.42+0.58*pulseAA(vSurface.x*17.0-time*5.0+vResponse.x,0.65);
   vec3 color=mix(vec3(0.58,0.15,0.035),vec3(1.0,0.75,0.37),crest);
-  color*=0.48+heat*uFlash*(crest*4.5+hotEdge*3.0+wisps*1.9+grazing*0.22);
+  color*=0.48+heat*uFlash*(crest*5.9+hotEdge*3.9+wisps*1.9+grazing*0.22);
   color+=vec3(0.23,0.39,0.58)*skirt*heat*(0.45+uFlash*0.65);
   float density=tip*sqrt(max(heat,0.0))*(crest*breaks*0.78+wisps*0.15+skirt*0.16);
 #endif

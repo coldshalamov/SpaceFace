@@ -290,8 +290,8 @@ const FRAGMENT_SHADER = /* glsl */`
       vec3 N=normalize(cross(dFdx(vBoltWorld),dFdy(vBoltWorld)));
       float viewDepth=.72+.28*(1.0-abs(dot(N,normalize(cameraPosition-vBoltWorld))));
       vec3 colour=mix(vSheath*.36,vColor,.20+.25*patches)*body*viewDepth;
-      colour+=mix(vSheath,vColor,.58)*hot*(1.0-.65*channel)*1.5;
-      colour+=vec3(.95,.98,1.0)*pow(fold,3.0)*secondary*.40;
+      colour+=mix(vSheath,vColor,.58)*hot*(1.0-.65*channel)*1.9;
+      colour+=vec3(.95,.98,1.0)*pow(fold,3.0)*secondary*.50;
       float radiance=vIntensity*mix(.52,1.0,uBoltFlicker);
       if(uDepthEnabled>.5){
         vec2 screenUv=gl_FragCoord.xy/max(uResolution,vec2(1.0));
@@ -387,7 +387,8 @@ const FRAGMENT_SHADER = /* glsl */`
     body = mix(body, (core * 1.1 + sheath * 0.6) * (0.7 + 0.3 * flakCrawl) * flakSpit, flak);
     col = mix(col, vec3(1.0, 0.9, 0.6), core * flak * 0.8);
 
-    float radiance = body * vIntensity;
+    // The incandescent core carries a modest HDR lift; alpha and the sheath enamel are untouched.
+    float radiance = body * vIntensity * (1.0 + 0.25 * core);
     // A dark saturated outer enamel is part of the energy object. Normal blending lets
     // that lip separate it from a bright sky; only the hot fold feeds the bloom shoulder.
     float inkLip = smoothstep(0.69, 0.88, across) * (1.0 - smoothstep(0.95, 1.0, across));
