@@ -21,6 +21,7 @@ import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine s
 import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
 import { packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
   TABLE_BAND,
@@ -2408,6 +2409,12 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     const fn = active && active.userData && active.userData.updateLod;
     if (typeof fn === 'function') fn(level);
   };
+  // ANI-00: authored rigid-part motion follows the same forwarding grammar as damage/LOD —
+  // the renderer calls this on the boundary; the live authored root owns the controller set.
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+    const fn = active && active.userData && active.userData.updateAuthoredMotion;
+    if (typeof fn === 'function') fn(liveEntity, simNow);
+  };
   syncActiveSurface(boundary, active);
 
   let trigger = firstRenderable(fallbackRoot);
@@ -3075,6 +3082,10 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
   };
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+    const fn = activeRoot?.userData?.updateAuthoredMotion;
+    if (typeof fn === 'function') fn(liveEntity, simNow);
+  };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
@@ -3196,6 +3207,10 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.__setActiveVisualRoot = setActiveVisualRoot;
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
+  };
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+    const fn = activeRoot?.userData?.updateAuthoredMotion;
+    if (typeof fn === 'function') fn(liveEntity, simNow);
   };
   boundary.userData.updateWorldSitePresentation = (liveEntity, simTime, a11y) => {
     const controller = activeRoot && activeRoot.userData && activeRoot.userData.worldSitePresentationController;
@@ -8070,6 +8085,9 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   synchronizeSecondaryDrives(primaryDrive, bindings);
   installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, wholeShip);
   root.userData.updateLod('lod0');
+  // ANI-00: mount the authored-motion driver beside the damage/drive closures the renderer
+  // already calls per frame. Detachment rides the disposeObject userData-callback grammar.
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 
   // GR-5: authored compositions need the same persistent shield bubble as procedural ships so
   // syncEntityViews can toggle it from e.shield. Geometry shared via shipKit; material per-ship.
@@ -8681,6 +8699,7 @@ function instantiateFlightRootTemplate(
   synchronizeSecondaryDrives(primaryDrive, bindings);
   installAuthoredLod(root, bindings, safetyCore, new Set(entry.authoredHullLevels || EMPTY_ARRAY), entry.wholeShip === true);
   root.userData.updateLod('lod0');
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
   if (entry.producerManifest) {
     stampOpeningSubmissionPackage(root, entry.producerManifest, {
       replace: true,
@@ -8788,6 +8807,12 @@ function restoreFlightTemplateBindings(root, paths, supplemental = null) {
   }
   for (const admission of supplemental?.packagePoolAdmissions || EMPTY_ARRAY) {
     bindings.packagePoolAdmissions.add(admission);
+  }
+  // Package subtrees recreated for a template instance re-bind their motion controllers into
+  // the supplemental set — merge them so the ship driver drives the LIVE pivots, not the paths
+  // the template serialized.
+  for (const controller of supplemental?.authoredMotions || EMPTY_ARRAY) {
+    bindings.authoredMotions.push(controller);
   }
   return bindings;
 }
@@ -10484,6 +10509,12 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
   }
   const tier1 = tier1CausalCounters();
   if (tier1) tier1.countPlanInstantiation(planNodes.length - 1, 'package-instance-specialize');
+
+  // ANI-00: the package's verified motion bank binds every same-named MOTION_* pivot in this
+  // instance (one per mounted LOD file), so LOD switches never pop a transform. The template
+  // path recreates packages through this same call, so cached roots rebind identically.
+  const motionController = bindInstanceMotion(packageRoot, record.motionBank);
+  if (motionController) bindings.authoredMotions.push(motionController);
   return partRoot;
 }
 
@@ -11191,6 +11222,10 @@ function createBindings() {
     lod: { lod0: [], lod1: [], lod2: [] },
     lodDynamicDetails: [],
     packagePoolAdmissions: new Set(),
+    // ANI-00: MOTION_* pivots found while specializing (tests/debug), and the per-instance
+    // authored-motion controllers bound from the package's verified motion bank.
+    motionGroups: [],
+    authoredMotions: [],
   };
 }
 
@@ -11204,6 +11239,7 @@ function registerBinding(object, tags, bindings) {
   if (tags.damageRole === 'armor' && object.isMesh) bindings.armor.push(object);
   if (tags.damageRole === 'secondary' && renderable) bindings.secondary.push(object);
   if (tags.decal && object.isMesh) bindings.decals.push(object);
+  if (tags.motionGroup) bindings.motionGroups.push(object);
   if (tags.mount && bindings.mounts[tags.mount]) bindings.mounts[tags.mount].push(object);
   if (renderable && tags.lod && bindings.lod[tags.lod]) bindings.lod[tags.lod].push(object);
   if (renderable && isLodDynamicDetail(tags)) bindings.lodDynamicDetails.push(object);

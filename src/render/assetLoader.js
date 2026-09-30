@@ -16,6 +16,7 @@ import {
 } from './assetResidency.js';
 import { activeDecodeClass, deadlineDecodeActive, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
+import { loadMotionBank } from './authoredMotion.js';
 import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
@@ -976,7 +977,12 @@ async function createRuntime(renderer) {
     prepareDecoded(decoded, packageMetadata, renderUrl, plan) {
       const pilot = renderPackagePilotForAssetId(packageMetadata.assetId);
       if (!pilot) throw new Error(`Unknown production render package ${packageMetadata.assetId}.`);
-      return prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, { renderer, plan });
+      const prepared = prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, { renderer, plan });
+      // A package carrying runtime.motionBank attests which bank bytes it was compiled against;
+      // fetch + pin them once per package so every later instance binds synchronously.
+      const motionRef = packageMetadata.runtime && packageMetadata.runtime.motionBank;
+      if (!motionRef) return prepared;
+      return loadMotionBank(motionRef).then((motionBank) => Object.freeze({ ...prepared, motionBank }));
     },
   });
 
@@ -1543,6 +1549,10 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     metadata: Object.freeze({ ...metadata }),
     primitives: Object.freeze(primitives),
     markers: Object.freeze(markers),
+    // The package's runtime table may attest a rigid-motion bank sidecar
+    // (runtime.motionBank = {uri, sha256, bytes, rigId}); when present the prepare step fetches
+    // and verifies it, then per-instance binding rides these MOTION_* nodes.
+    motionBank: table.motionBank ? Object.freeze({ ...table.motionBank }) : null,
     bounds: Object.freeze({
       min: Object.freeze([...table.bounds.min]),
       max: Object.freeze([...table.bounds.max]),
@@ -2160,6 +2170,9 @@ function applyNodeTags(tags, node, slot, legacyPart) {
   if (name.includes('HOOK_SENSOR_')) tags.damageRole = 'sensor';
   if (name.includes('HOOK_ARMOR_')) tags.damageRole = 'armor';
   if (name.includes('HOOK_SECONDARY_')) tags.damageRole = 'secondary';
+  // MOTION_* pivots and their welded children (LOD0_MOTION_<RIG>_...) ride authored rigid-part
+  // animation — never static-batch, pool or freeze them.
+  if (name.startsWith('MOTION_') || name.includes('_MOTION_')) tags.motionGroup = true;
   if (name.includes('CANOPY') || name.includes('COCKPIT_GLASS') ||
     (legacyPart && slot === 'cockpit' && (name.includes('GLASS') || name.includes('WINDOW')))) tags.canopy = true;
   if (name.includes('DECAL')) tags.decal = true;
@@ -2400,7 +2413,8 @@ function validateNodeTransform(node, matrix, errors) {
 }
 
 function isContractMarker(node, tags) {
-  return !!(tags.socket || tags.mount || tags.drive || tags.damageRole || /^(HOOK|MOUNT)_/i.test(node.name || ''));
+  return !!(tags.socket || tags.mount || tags.drive || tags.damageRole || tags.motionGroup
+    || /^(HOOK|MOUNT|MOTION)_/i.test(node.name || ''));
 }
 
 function isCanopy(node, slot) {

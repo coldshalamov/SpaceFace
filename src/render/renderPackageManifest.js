@@ -694,32 +694,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "a03f68c274970d3a706a2f5100e9b4a146da352d5585acf34cd18383f97e91f0",
+    "expectedContentHash": "6c4a2d333062d6cf87c80d3d79868cd4720195ed8932717b511d778d6330439b",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "ddc244577e192388d2847ab87db418da29061dab4d4523d0fb5dc9c20498af11",
+    "sourceSha256": "71c1cdab6759b6788bd7f4f399575705a626b5fb1c317199da220025425f001e",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
   {
     "assetId": "sf.render.kestrel-lod1",
-    "expectedContentHash": "d7c41be8be3fe5850234ecb6b4cc655f5c315884b68e890dbb9ca2cb081ee529",
+    "expectedContentHash": "69c72d7b9bc5cb76175b97a4e2c99a8e113e9070e746c7933a37fcce5f993b06",
     "key": "kestrel-lod1",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "befd43447ac0975e1d1be9c40ff9d4484806ddbf729e310677741f181a76ec82",
+    "sourceSha256": "80a40ad27799283b1622d06531d125a828b97fb58344788110a7db105e0751d2",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
   {
     "assetId": "sf.render.kestrel-lod2",
-    "expectedContentHash": "4af50c38d53b5aab19aa3f70a7c0177d61d133a0f615bd55f75b1577cce2ba57",
+    "expectedContentHash": "a37f42a317bd5ce480ca784ac0ccb40d364c8c8168b90b29f00e1d8153d8c352",
     "key": "kestrel-lod2",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "f5ea54c96944d268a900c161d585286150c49476ade1c6fcb93b8d1dee997cc4",
+    "sourceSha256": "8fe3862bdf231d6e02c150a7ad3d2ff72b9efbebb2a5acef85151acb66e95935",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod2.glb"
   },
   {

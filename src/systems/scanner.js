@@ -961,7 +961,18 @@ export const scanner = {
       appendNonCollidingScanTargets(state, origin, profile.nearRadius, candidates);
     }
 
-    this.bus.emit('scan:pulse', { pos: origin, radius: profile.nearRadius });
+    // The scanner-owned pulse fields are the authored-motion acceptance gate: only a pulse that
+    // carries this source, the emitting scanner's entity id and a monotonically increasing
+    // sequence may retrigger the dish rig (ANI-01 — replayed or foreign pulses never reach it).
+    this._pulseSeq = (this._pulseSeq || 0) + 1;
+    this.bus.emit('scan:pulse', {
+      pos: origin,
+      radius: profile.nearRadius,
+      source: 'player-scanner',
+      scannerId: player.id,
+      seq: this._pulseSeq,
+      simTime: now,
+    });
 
     for (const entity of candidates) {
       if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;
