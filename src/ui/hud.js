@@ -25,6 +25,7 @@ import { icon } from './station/icons.js';
 import { glyphSvg } from './glyphs.js';
 import { wantedReasonText } from './wantedReason.js';
 import { SHIPS } from '../data/ships.js';
+import { swarmStakeFor } from '../data/swarmStakes.js';
 import { catalogHullFacts } from '../systems/ships.js';
 import { salvageBayReading } from '../systems/cargo.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -1596,7 +1597,7 @@ export function createHud(ctx, alerts) {
     <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">weapons</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
     <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">tether</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden></span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">cargo</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
-    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">credits</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
+    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">credits</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span><span class="sf-stat__hint mono" data-k="stake" hidden></span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">class</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
   // Massline line-control chips — only while latched. Separate from the status value so the
   // instrument row never overflows with a tutorial paragraph of binds.
@@ -1779,6 +1780,7 @@ export function createHud(ctx, alerts) {
   const elSpeed = center.querySelector('[data-k=speed]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
+  const elStake = center.querySelector('[data-k=stake]');
   const elWeapons = center.querySelector('[data-k=weapons]');
   const elWpnstat = center.querySelector('#sf-wpnstat');
   const elRole = center.querySelector('[data-k=role]');
@@ -3930,6 +3932,15 @@ export function createHud(ctx, alerts) {
     _credT = 0;
     creditsDirty = false;
     setText(elCredits, Math.round(_credFrom).toLocaleString('en-US'));
+    // The stake sits beside the run wallet whenever the wallet speaks (swarm only — it is the
+    // run's difficulty contract, constant for the run's life).
+    if (elStake) {
+      const run = state.run || {};
+      const stakeId = run.ruleset === 'swarm' && run.telemetry ? run.telemetry.swarmStake : null;
+      const stakeLabel = stakeId ? swarmStakeFor(stakeId).label.toLowerCase() : '';
+      elStake.hidden = !stakeLabel;
+      if (stakeLabel) setText(elStake, ` ${stakeLabel}`);
+    }
     if (_credTo !== _credFrom) {
       chipShow('credits');   // money moved — surface the chip
       // Directional pulse on the readout: income reads mint, spend reads amber. Removing + reflow

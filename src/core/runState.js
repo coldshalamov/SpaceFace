@@ -45,6 +45,7 @@ export const RUN_PHASE_TRANSITIONS = Object.freeze({
   ]),
   loadout: Object.freeze([
     'arena_intro',
+    'draft', // the swarm's opening armory is a real draft before the first pack lands
     'ended', // aborted run
   ]),
   arena_intro: Object.freeze([

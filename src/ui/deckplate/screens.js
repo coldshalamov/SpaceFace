@@ -906,6 +906,24 @@ ${CRD} .sf-crd-seed .k-input--num { width:14ch; max-width:100%; text-align:left;
 ${CRD} :is(.sf-crd-records > summary, .sf-crd-practice .k-word):focus-visible {
   outline:0 solid transparent !important; background:var(--dp-bracket) no-repeat;
 }
+/* the stake row: four contracts in one row like the hull kits */
+${CRD} .sf-crd-stakes {
+  display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; width:100%;
+  align-items:stretch;
+}
+${CRD} .sf-crd-stakes > li { min-width:0; }
+${CRD} .sf-crd-stakes .fh-tile-art { min-height:0; }
+${CRD} .sf-crd-stakes .fh-tile-legend { font-size:12px; letter-spacing:.04em; line-height:1.1; }
+${CRD} .sf-crd-stake-nums {
+  display:block; font-size:12px; letter-spacing:.02em; padding-inline:4px; opacity:.75;
+  text-align:center;
+}
+/* the any-hull grid: ship names as plain words under tier marks */
+${CRD} .sf-crd-anyhull { margin-top:calc(10px * var(--k-s, 1)); }
+${CRD} .sf-crd-anyhull-cap { margin:0 0 calc(6px * var(--k-s, 1)); }
+${CRD} .sf-crd-anyhull-tier { display:flex; align-items:baseline; gap:14px; margin:2px 0; }
+${CRD} .sf-crd-anyhull-mark { min-width:26px; }
+${CRD} .sf-crd-anyhull-ships { gap:6px 18px; }
 ${CR} { background:radial-gradient(130% 100% at 30% 30%, rgb(9 10 13 / .84), rgb(5 6 9 / .92) 70%, rgb(4 5 7 / .95)); }
 ${printedKey(`${CR} .k-foot .k-word`)}
 ${printedKey(`${CR} .sf-cru-row .k-word`)}
@@ -971,6 +989,15 @@ ${CR} .sf-cru-filters .k-word:hover { color:var(--dp-ink); }
 ${CR} .sf-cru-filters .k-word[aria-pressed='true'] { color:var(--dp-ink); background:${LAMP_UNDER}; }
 ${CR} .sf-cru-filters .k-word:focus-visible { outline:0 solid transparent !important; color:var(--dp-ink); background:var(--dp-bracket); }
 ${CR} .sf-cru-filters .k-word[aria-pressed='true']:focus-visible { background:var(--dp-bracket), ${LAMP_UNDER}; }
+/* the shelf search rides the filter row — one rail under the text, no box around it */
+${CR} .sf-cru-search {
+  margin-left:auto; align-self:center; width:min(240px, 34vw);
+  font:inherit; color:var(--dp-ink); background:${INPUT_RAIL};
+  border:0; padding:2px 4px 5px; outline:none;
+}
+${CR} .sf-cru-search:focus-visible { outline:0 solid transparent !important; background:${INPUT_RAIL_LIT}; }
+${CR} .sf-cru-search::placeholder { color:var(--dp-ink-mute); opacity:.7; }
+${CR} .sf-cru-search[hidden] { display:none; }
 @media (forced-colors:active) {
   ${CR} :is(.sf-cru-stage, .sf-cru-card) { border:1px solid CanvasText; background:Canvas; box-shadow:none; }
   ${CRD} .fh-key.fh-key--hazard { background:ButtonFace; color:ButtonText; }

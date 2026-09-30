@@ -29,6 +29,7 @@
 
 import { MODULES } from '../../data/modules.js';
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
+import { SWARM_CATEGORIES } from '../../data/swarmCatalog.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
@@ -61,6 +62,11 @@ function setWordShown(button, show) {
     else li.style.setProperty('display', 'none', 'important');
   }
 }
+
+// The armory's shelf row: 'All', the six fitting shelves, then the two non-fitting counters
+// the swarm owner stocks (hull offers file under 'Hulls', service work under 'Service').
+const ARMORY_CATEGORIES = Object.freeze(['All', ...SWARM_CATEGORIES, 'Hulls', 'Service']);
+const ARMORY_CATEGORY_SET = new Set(ARMORY_CATEGORIES);
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -220,12 +226,15 @@ function railVerbDisplay(verb, compact) {
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
   if (!offer) return null;
-  const slot = Array.isArray(offer.consumes) && offer.consumes.length
-    // A synthesis says its whole trade: the parts it eats and the slot the product lands in.
-    ? `Consumes ${offer.consumes.map(fittingName).join(' + ')} — lands on hardpoint ${offer.slotIndex + 1}`
-    : offer.replaces
-      ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
-      : `Hardpoint ${offer.slotIndex + 1} — empty`;
+  const slot = typeof offer.slotLabel === 'string' && offer.slotLabel
+    // Non-fitting offers (a hull, a weld) carry their own "where it lands" line; fittings
+    // derive theirs from the hardpoint the legality pass picked.
+    ? offer.slotLabel
+    : Array.isArray(offer.consumes) && offer.consumes.length
+      ? `Consumes ${offer.consumes.map(fittingName).join(' + ')} — lands on hardpoint ${offer.slotIndex + 1}`
+      : offer.replaces
+        ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
+        : Number.isInteger(offer.slotIndex) ? `Hardpoint ${offer.slotIndex + 1} — empty` : '';
   return {
     verb: offer.verb || offer.id || '',
     name: offer.name || offer.defId || '',
@@ -618,12 +627,23 @@ export const crucibleDraftScreen = {
     filters.setAttribute('role', 'group');
     filters.setAttribute('aria-label', 'Armory category');
     this._category = 'All';
-    for (const category of ['All', 'Weapons', 'Rigs', 'Survival']) {
+    // The shelves the whole sandbox stocks — generated catalog rows file under the same
+    // words as authored cards (offer.category is stamped at draw time).
+    for (const category of ARMORY_CATEGORIES) {
       const button = word(category, 'k-word--fine');
       button.dataset.category = category;
       button.addEventListener('click', () => { this._category = category; this.refresh(ctx); });
       filters.appendChild(button);
     }
+    // A hundred-and-forty-deep shelf needs a name filter, not just a shelf picker.
+    const search = el('input', 'sf-cru-search');
+    search.type = 'search';
+    search.placeholder = 'Search the armory…';
+    search.setAttribute('aria-label', 'Search the armory');
+    this._query = '';
+    search.addEventListener('input', () => { this._query = search.value || ''; this.refresh(ctx); });
+    filters.appendChild(search);
+    this._search = search;
     this._filters = filters;
     stage.appendChild(filters);
     // the category words ride a ruled line with the amber index under the open one
@@ -659,9 +679,10 @@ export const crucibleDraftScreen = {
         compare: el('div', 'orr-armory-reading__compare'),
         budget: el('div', 'orr-armory-reading__budget'),
         buy: el('p', 'orr-armory-reading__buy', ''),
+        demo: el('p', 'orr-armory-reading__demo', ''),
       };
       const words = el('div', 'orr-armory-reading__words');
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, parts.demo);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
@@ -757,9 +778,20 @@ export const crucibleDraftScreen = {
     // leave a paused player with a key that does nothing.
     rootEl.addEventListener('keydown', (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      // While the search field owns the keyboard, the rails' keys stand down: typing 'r'
+      // must not re-roll, and Escape backs out of the field first, the shop second.
+      const inSearch = event.target === this._search;
+      if (inSearch && event.key === 'Escape') {
+        event.preventDefault();
+        this._search.value = '';
+        this._query = '';
+        this._search.blur();
+        this.refresh(ctx);
+        return;
+      }
       const all = [...cards.querySelectorAll('.sf-cru-card')];
       const index = '123'.indexOf(event.key);
-      if (index >= 0 && all[index]) {
+      if (!inSearch && index >= 0 && all[index]) {
         event.preventDefault();
         all[index].click();
         return;
@@ -769,6 +801,7 @@ export const crucibleDraftScreen = {
         skip.click();
         return;
       }
+      if (inSearch) return;
       // Not reroll.click(): the button is drawn dead when the price is out of reach, and a dead
       // button swallows a click. The owner is the authority on the refusal either way, and the
       // player gets told why instead of nothing happening.
@@ -839,8 +872,19 @@ export const crucibleDraftScreen = {
     this._title.textContent = shop ? 'Armory' : 'Rearm';
     this._filters.hidden = !shop;
     this._refitBtn.hidden = !shop;
-    const categoryFor = offer => offer.defId.startsWith('wpn_') ? 'Weapons'
-      : /engine|shield|thermal|afterburner|chaff/.test(offer.defId) ? 'Survival' : 'Rigs';
+    if (this._search) this._search.hidden = !shop;
+    // offer.category is stamped when the card is drawn; the regex stays as the fallback for
+    // any row that reaches the rail without it.
+    const categoryFor = offer => typeof offer.category === 'string' && ARMORY_CATEGORY_SET.has(offer.category)
+      ? offer.category
+      : (typeof offer.defId === 'string' && offer.defId.startsWith('wpn_') ? 'Weapons'
+        : /engine|shield|thermal|afterburner|chaff|thruster/.test(offer.defId || '') ? 'Motion' : 'Rigs');
+    const query = (this._query || '').trim().toLowerCase();
+    const matchesQuery = (offer) => !query
+      || (offer.name || '').toLowerCase().includes(query)
+      || (offer.verb || '').toLowerCase().includes(query)
+      || (offer.blurb || '').toLowerCase().includes(query)
+      || (offer.defId || '').toLowerCase().includes(query);
     for (const button of this._filters.children) {
       const category = button.dataset.category;
       button.setAttribute('aria-pressed', String(category === this._category));
@@ -866,7 +910,9 @@ export const crucibleDraftScreen = {
     const savedFocus = focusedControlId(rootEl);
     cards.innerHTML = '';
     const visibleOffers = shop
-      ? offers.filter(offer => this._category === 'All' || categoryFor(offer) === this._category)
+      ? offers
+        .filter(offer => (this._category === 'All' || categoryFor(offer) === this._category)
+          && matchesQuery(offer))
         .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))
       : offers.slice(0, SURVIVAL_DRAFT_CHOICES);
     let lastPrice = null;
@@ -962,9 +1008,16 @@ export const crucibleDraftScreen = {
   _paintReading(context, offer) {
     const r = this._reading;
     if (!r || !offer) return;
-    if (r.offerId === offer.id && r.credits === context.state?.run?.credits) return;
+    // The key must carry every field the painted copy derives from — a free demo or a free
+    // hull switch moves none of offer.id/credits, and a stale 'Demo' button is the lie.
+    if (r.offerId === offer.id && r.credits === context.state?.run?.credits
+      && r.demoed === offer.demoed && r.purchased === offer.purchased
+      && r.available === offer.available) return;
     r.offerId = offer.id;
     r.credits = context.state?.run?.credits;
+    r.demoed = offer.demoed;
+    r.purchased = offer.purchased;
+    r.available = offer.available;
     // The row being read lights its hardpoint: one ice pass along the leader beam and a pulse
     // of the node ring. Re-armed per row change; reduced motion leaves it off (bone at rest).
     const jigHost = r.parts && r.parts.jig;
@@ -1009,7 +1062,7 @@ export const crucibleDraftScreen = {
     const compare = offerCompare(offer, best);
     if (compare) parts.compare.appendChild(compare);
     parts.budget.textContent = '';
-    if (Number.isFinite(offer.price) && !offer.purchased) {
+    if (Number.isFinite(offer.price) && !offer.purchased && offer.price > 0) {
       const gauge = budgetGauge(context.state?.run?.credits, offer.price);
       if (gauge) parts.budget.appendChild(gauge);
     }
@@ -1018,10 +1071,26 @@ export const crucibleDraftScreen = {
     parts.buy.textContent = '';
     if (offer.purchased) parts.buy.textContent = 'Fitted';
     else if (offer.available) {
-      parts.buy.appendChild(el('span', 'orr-armory-reading__buy-word', `Buy \u00b7 ${offer.price} cr`));
+      parts.buy.appendChild(el('span', 'orr-armory-reading__buy-word',
+        offer.price > 0 ? `Buy \u00b7 ${offer.price} cr` : `${offer.verb || 'Take'} — free`));
       parts.buy.appendChild(el('span', 'orr-armory-keycap', 'Enter'));
     } else parts.buy.textContent = offer.unavailableReason || '';
     parts.buy.classList.toggle('is-off', !offer.available);
+    // The demo word: a fitting the reading is on can fly one round for free — the showcase half
+    // of the sandbox. Hulls and the service counter carry no hardpoint, so nothing to demo.
+    parts.demo.textContent = '';
+    if (!offer.purchased && Number.isInteger(offer.slotIndex) && typeof offer.defId === 'string'
+        && offer.kind !== 'hull' && offer.kind !== 'service') {
+      const demo = el('button', 'orr-armory-reading__demo-word');
+      demo.type = 'button';
+      demo.textContent = offer.demoed ? 'On trial' : 'Demo — fly it one round';
+      demo.disabled = offer.demoed === true;
+      demo.addEventListener('click', () => {
+        context.bus.emit('run:draftPickRequested', { offerId: offer.id, demo: true });
+        this.refresh(context);
+      });
+      parts.demo.appendChild(demo);
+    }
     // the rail's Hand sits on the row being read
     if (this._cards) {
       for (const card of this._cards.querySelectorAll('.sf-cru-card')) {

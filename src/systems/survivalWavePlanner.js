@@ -27,6 +27,7 @@ import {
   SWARM_CLEANUP_TICKS,
   SWARM_ROSTER,
   SWARM_RULESET,
+  SWARM_SPAWN_CAP,
   SWARM_WAVE_DURATION_TICKS,
   isSwarmDraftWave,
   isSwarmRefitWave,
@@ -52,6 +53,7 @@ import {
   swarmRewards,
   swarmWaveOf,
 } from '../data/swarmMode.js';
+import { swarmStakeFor } from '../data/swarmStakes.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
@@ -396,9 +398,10 @@ function biasSwarmRosterForBuild(roster, dominant) {
   return bent ? next : null;
 }
 
-function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
+function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) {
   const w = swarmWaveOf(wave);
   const list = mutatorList(mutators);
+  const stake = swarmStakeFor(swarmStake);
   const dominant = isPlainObject(buildSummary) && typeof buildSummary.dominant === 'string'
     ? buildSummary.dominant
     : null;
@@ -485,6 +488,24 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
   // The mutator owns the whole room, debut included: the newcomer's staged arrival still lands
   // alone on its own bearing, but its body joins the heavies like every other package.
   if (heaviesOnly) packages = applyHeaviesOnly(packages);
+  if (stake.pressure !== 1) {
+    // Pressure scales the opening burst itself, not just the ceiling it fills under: champion
+    // bodies are owed exactly as authored (a wing of one is never scaled to zero) and the
+    // debut stays one readable arrival, while the chaff groups thin or thicken with the
+    // contract. batchSize follows count — in an opening package one batch is one group.
+    packages = packages.map((pkg) => (pkg && (pkg.champion === true || pkg.debut === true)
+      ? pkg
+      : { ...pkg, count: Math.max(1, Math.round(pkg.count * stake.pressure)), batchSize: Math.max(1, Math.round(pkg.count * stake.pressure)) }));
+    // The spawn budget stays the hard authority: an over-asked burst trims its tail packages
+    // rather than passing the overflow to dispatch, where a refused batch is dropped not owed.
+    let burst = swarmOpeningCount(packages);
+    for (let i = packages.length - 1; i >= 0 && burst > SPAWN_BUDGET_DEFAULT_MAX; i--) {
+      const pkg = packages[i];
+      if (!pkg || pkg.champion === true || pkg.debut === true) continue;
+      const trim = Math.min(pkg.count - 1, burst - SPAWN_BUDGET_DEFAULT_MAX);
+      if (trim > 0) { pkg.count -= trim; pkg.batchSize = pkg.count; burst -= trim; }
+    }
+  }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w);
@@ -532,6 +553,21 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
       };
     }
   }
+  // The stake is the swarm's difficulty contract: pressure moves concurrency and the round
+  // quota (bodies, never stats), earn moves what a cleared round pays. Concurrency is still
+  // clamped under the arena's own cap — a stake can never ask for a room the budget refuses.
+  if (stake.pressure !== 1) {
+    swarm.concurrent = Math.max(1, Math.min(SWARM_SPAWN_CAP, Math.round(swarm.concurrent * stake.pressure)));
+    swarm.openingPressure = Math.max(1, Math.min(swarm.concurrent, swarmOpeningCount(packages)));
+    swarm.killTarget = Math.max(1, Math.round(swarm.killTarget * stake.pressure));
+    swarm.rewardReferenceKills = Math.max(1, Math.round(swarm.rewardReferenceKills * stake.pressure));
+  }
+  // The wave owner paces reinforcement arrivals off the same pressure the packages were
+  // scaled by — stamped raw so the pressure curve the stream chases is the contracted one.
+  swarm.pressureScale = stake.pressure;
+  swarm.stake = stake.id;
+  const rewards = swarmRewards(w);
+  if (stake.earn !== 1) rewards.credits = Math.max(0, Math.round(rewards.credits * stake.earn));
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
     return invalid([issue('packages', `swarm opening burst ${opening} exceeds 24`)]);
   }
@@ -545,7 +581,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary }) {
     packages,
     schedule,
     arenaPhase: swarmArenaPhase(w),
-    rewards: swarmRewards(w),
+    rewards,
     draftExpectation: isSwarmRefitWave(w)
       ? { kind: 'refit', choices: null }
       : (isSwarmDraftWave(w) ? { kind: 'draft', choices: 3 } : { kind: 'none', choices: null }),
@@ -768,6 +804,7 @@ function planWaveInner(input) {
       wave,
       mutators,
       buildSummary,
+      swarmStake: typeof input.swarmStake === 'string' ? input.swarmStake : null,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
     const finished = input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error

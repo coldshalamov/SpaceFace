@@ -308,6 +308,14 @@ export const survivalRun = {
     // Populate the real first round before GPU preparation. Intro timers are
     // useful between rounds; at launch they would hide the very hulls and rocks
     // the loading screen needs to prepare, leaving invisible pursuers in flight.
+    // The swarm is different: its opening stop is the armory, not the arena. The purse the
+    // stake bought lands in the wallet while the load screen is up, the draft card row opens
+    // on draft entry, and the tick machine carries draft→wave_intro once flight resumes —
+    // so a run can only reach wave one through the shop the way every later wave does.
+    if (isSwarmRuleset(run.ruleset)) {
+      this._requestTransition('loadout', 'draft', REASON_DRAFT_OPEN);
+      return;
+    }
     this._requestTransition('loadout', 'arena_intro', REASON_READY);
     this._requestTransition('arena_intro', 'wave_intro', REASON_INTRO_DONE);
     if (!this._planFailed) this._requestTransition('wave_intro', 'active', REASON_WAVE_START);
@@ -374,6 +382,11 @@ export const survivalRun = {
       buildSummary: summarizeRunBuild(run.modifiers),
       mode: swarm ? 'swarm' : (endless ? 'endless' : (circuit ? 'boss_circuit' : undefined)),
       ruleset: run.ruleset,
+      // The run's stake is the swarm's pressure/earn contract; the planner scales the block
+      // off it. Telemetry holds it because run state is closed schema and stakes never save.
+      swarmStake: run.telemetry && typeof run.telemetry.swarmStake === 'string'
+        ? run.telemetry.swarmStake
+        : null,
       teachOpening: swarm && nextWave === 1 && this._openingLesson === true,
     });
     if (isPlanError(plan)) {
