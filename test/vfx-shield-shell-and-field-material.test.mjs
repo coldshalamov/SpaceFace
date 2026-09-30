@@ -133,6 +133,21 @@ test('the shell owns a clock, and it is the simulation clock', () => {
   for (const term of ['circulation', 'current', 'breath']) {
     assert.ok(SHIELD_SHELL_GLSL.includes(term), `shell keeps its ${term} channel`);
   }
+
+  // The visible cage itself must turn, not merely have brightness run across a fixed cage. The
+  // impact response stays in the unrotated physical direction while only the structural sampling
+  // frame precesses, so hits do not skate around the hull as the shield spins.
+  for (const term of [
+    'sfShieldWorkingFrame', 'precessAxis', 'shellPulse', 'layerPulse',
+    'innerFrame', 'outerFrame', 'impactVeil',
+  ]) {
+    assert.ok(SHIELD_SHELL_GLSL.includes(term), `shield keeps its ${term} channel`);
+  }
+  assert.match(SHIELD_SHELL_GLSL, /dir = sfShieldWorkingFrame\(normalize\(dir\)\);/,
+    'panel structure samples the slow precessing frame');
+  assert.match(SHIELD_SHELL_GLSL, /core = clamp\(core \+ impactVeil \* 0\.46/,
+    'the hit direction gains a broad local-opacity veil instead of only a line/ring');
+
   const clockUses = SHIELD_SHELL_GLSL.split('clock').length - 1;
   assert.ok(clockUses >= 4, `the clock drives real structure, not one decorative term (${clockUses} uses)`);
 
