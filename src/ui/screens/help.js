@@ -100,7 +100,7 @@ function liveBoostLabel(state) {
 // pad map. The sheet is a PROJECTION of the resolved map on both paths: a stock map (or none)
 // renders the dual Xbox/PlayStation register, a remapped map names each action's current button,
 // and an action with no button says so honestly instead of printing a phantom one.
-const GAMEPAD_ROW_ACTIONS = Object.freeze([
+export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Fire', 'fire', (g) => g],
   ['Mine beam', 'mine', (g) => g],
   ['Boost', 'boost', (g) => g],
@@ -179,8 +179,8 @@ export function gamepadControlRows(map) {
       const shipped = gamepadButtonNames(action, GAMEPAD_DEFAULT_BINDINGS);
       return [label, null, shipped.length ? UNBOUND_BY_PLAYER : UNBOUND_BY_DESIGN];
     }
-    // ' / ' already separates an Xbox name from its PlayStation one, so a chord joins with ' or ':
-    // 'RT / R2 or RB / R1' reads; 'RT / R2 / RB / R1' does not.
+    // A dual Xbox/PlayStation spelling already uses ' / ' as its own separator, so a chord must
+    // join with ' or ' — otherwise the two separators are indistinguishable in the cell.
     return [label, null, format(labels.join(' or '))];
   });
 }

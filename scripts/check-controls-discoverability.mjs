@@ -54,8 +54,16 @@ assert.match(helpSource, /reel\/pay out\/orbit/,
   'Help must teach the line-control axes without inventing separate default keys');
 assert.match(helpSource, /resolveActionLabel/,
   'Help must resolve rebindable keys from src/systems/input.js');
-assert.match(helpSource, /\['Massline', null, 'A \/ Cross'\]/,
-  'Help must teach the gamepad Massline key');
+// TEACH-09 turned the pad sheet from a hand-typed table into a projection of the resolved map, so
+// the Massline cell no longer exists as a source literal. Assert what the sheet actually teaches
+// instead: stronger than matching a string in the file, and it still fails if the projection ever
+// stops naming the verb.
+{
+  const { gamepadControlRows } = await import('../src/ui/screens/help.js');
+  const massline = gamepadControlRows(null).find(row => row[0] === 'Massline');
+  assert.deepEqual(massline, ['Massline', null, 'A / Cross'],
+    'Help must teach the gamepad Massline key');
+}
 // aa95391f5 routed the write through the setText(el, text) helper (skip-unchanged writes); either
 // spelling is the same print.
 assert.match(hudSource, /elTetherKeys\.textContent|setText\(elTetherKeys,/,

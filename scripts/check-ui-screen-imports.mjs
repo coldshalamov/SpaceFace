@@ -242,6 +242,13 @@ if (unexpectedOwners.length) {
 }
 // Help is a kit screen (Frontend Task D): its title is the kit's `h1.k-display.k-t-title`, not the
 // legacy shell(rootEl, 'Help') plate; the contract is still that the screen is titled Help, not Codex.
+/** The Help pad sheet must name the concrete Start/Options route to the Mission Log. */
+async function padSheetDocumentsMissionLogRoute() {
+  const { gamepadControlRows } = await import('../src/ui/screens/help.js');
+  return gamepadControlRows(null)
+    .some(row => row[0] === 'Open mission log' && row[2] === 'Start / Options → Pause → Mission Log');
+}
+
 if (!/'k-display k-t-title',\s*'Help'\)/.test(helpSrc)) {
   console.log('FAIL helpScreen - kit title must be Help, not Codex');
   fail++;
@@ -342,7 +349,9 @@ if (!localizedCoreCopySrc.includes("missionLog: { label: 'Mission Log ({key})' }
     !/mk\(coreText\('missionLog', \{ key: BINDINGS\.missionLog\.label \}\), \(\) => nav\(ctx, 'pushScreen', 'missionLog'\)[,)]/.test(pauseSrc)) {
   console.log('FAIL pauseScreen - controller-friendly pause menu must expose Mission Log');
   fail++;
-} else if (!helpSrc.includes("['Open mission log', null, 'Start / Options → Pause → Mission Log']")) {
+} else if (!(await padSheetDocumentsMissionLogRoute())) {
+  // TEACH-09 made the pad sheet a projection, so this row is no longer a source literal. Ask the
+  // sheet what it prints rather than grepping the file: same requirement, proven at the surface.
   console.log('FAIL helpScreen - gamepad controls must document the concrete Mission Log route through Start/Options');
   fail++;
 } else {
