@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "world-14-research-sensor-sweep",
-      "date": "2026-09-22",
-      "wf": "WF-12",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Research stations schedule a research-only sensor_sweep side event; the dish-sweep VFX renders it",
-      "fingerprint": "verb=scan,subject=sensor-sweep,sector=veil,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "8190dd475",
-      "verification": "focused_green"
-    },
-    {
       "id": "inst-08-unknown-weapon-recipe",
       "date": "2026-09-23",
       "wf": "WF-13",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "de93113c9",
+      "verification": "focused_green"
+    },
+    {
+      "id": "VERB-19",
+      "date": "2026-09-30",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A line rebound plays one twang; strain and a near-break stay on their own voice.",
+      "fingerprint": "verb=hear,subject=tether-rebound,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "7d70da222",
       "verification": "focused_green"
     }
   ],
