@@ -18,7 +18,7 @@ concurrency:
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,6 +51,8 @@ jobs:
           "$RUNNER_TEMP/intro-tools/node_modules/.bin/playwright" install --with-deps chrome
           python3 tools/cinematic/signal-remix-server.py --port 8123 > /tmp/intro-server.log 2>&1 &
           INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
+      - name: Exact-frame motion preview (offline, not a performance benchmark)
+        run: INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-bake-preview.mjs --out .intro-review
       - uses: actions/upload-artifact@v4
         if: always()
         with:
