@@ -44,31 +44,32 @@
     "audio:cue"
   ],
   "phase0ObservedTraceCounts": {
-    "ship:boostStart": 1,
-    "ship:boostStop": 1,
     "scenario:loaded": 1,
     "scenario:factsInitialized": 1,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
-    "tether:attached": 1,
-    "tether:broken": 1,
-    "combat:fire": 17,
-    "projectile:hit": 17,
-    "combat:damage": 17,
-    "economy:tick": 2,
-    "camera:shake": 3,
-    "presentation:cameraCue": 3,
+    "ship:thrust": 720,
     "presentation:vfxCue": 5,
     "presentation:audioCue": 5,
+    "audio:cue": 6,
     "presentation:uiCue": 4,
     "presentation:caption": 4,
     "presentation:cueApplied": 22,
     "presentation:cue": 22,
-    "audio:cue": 6
+    "tether:attached": 1,
+    "presentation:cameraCue": 3,
+    "camera:shake": 3,
+    "tether:broken": 1,
+    "ship:boostStart": 1,
+    "ship:boostStop": 1,
+    "combat:fire": 17,
+    "combat:damage": 17,
+    "projectile:hit": 17,
+    "economy:tick": 2
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "3dfdeea2033b9982f628fe685d0201fd1f8675eb530c637d096e82d05116ae1b",
+    "authoritativeHash": "b7e79c70e6983f5bd5d2f8ec24242e18028fc26cd33da865bcf29ac2c708d59d",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -203,6 +204,8 @@
     "Snapshot diff at tick 720 (clean HEAD worktree vs candidate) moves exactly 12 leaves, ALL under $.economy.markets — identical stations, stocks and directions as the legacy envelope (industry is flight-model independent).",
     "Zero entity motion fields changed; trace counts and reload@60 unchanged.",
     "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves). Zero motion fields changed in the v3 envelope.",
-    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed."
+    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed.",
+    "2026-09-29 deliberate re-record after the Solid World packages (D 1639c221e / E b7b499263 / F f70aac37f) moved Rapier solver state: V3 envelope now emits ship:thrust x720 and alert x4; 17 fire/hit/damage, tether attach@4 break@190 and all ceilings unchanged.",
+    "2026-09-29 deliberate re-record after the Solid World packages (D 1639c221e / E b7b499263 / F f70aac37f) moved Rapier solver state: V3 envelope now emits ship:thrust x720 and alert x4; 17 fire/hit/damage, tether attach@4 break@190 and all ceilings unchanged."
   ]
 }

@@ -110,8 +110,13 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // sector, so authored pois 6 → 9, entities 35 → 38, byType fx 9 → 12; colliders unchanged at 190.
 // No cathedral/route/pocket geometry moved and every other assertion still passes. Prior digest
 // was 1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db.
+// 2026-09-29: re-pinned after the Solid World package wave (Package E b7b499263 fixed-vs-dynamic
+// reclassification, Package F f70aac37f craft-collision decoupling). The live collidable census
+// under the new collision model is 14 entities / 68 colliders (was 190); authored census,
+// pockets, route, exact-agreement and additive censuses all unchanged — no Ceres topology moved.
+// Prior digest was c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa';
+  '718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
