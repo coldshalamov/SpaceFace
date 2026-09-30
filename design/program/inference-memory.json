@@ -74,58 +74,6 @@
   ],
   "units": [
     {
-      "id": "tool-02-hover-tab-sounds",
-      "date": "2026-09-22",
-      "wf": "WF-13",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "sfx_ui_hover binds promoted Kenney tick_002 (20ms light tick) and sfx_ui_tab binds select_002 (40ms fuller blip); neither is ui_click",
-      "fingerprint": "verb=hear,subject=ui-hover-tab,sector=any,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "df4d6bd90",
-      "verification": "focused_green"
-    },
-    {
-      "id": "verb-03-hitch-hint-heavy-hauler",
-      "date": "2026-09-22",
-      "wf": "WF-05",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "hitch hint gate accepts any passive civilian ship_mule freighter (opening mule included), not only express-liner itineraries",
-      "fingerprint": "verb=ride,subject=hitch-hint,sector=helios,domain=verb",
-      "references": [],
-      "integration": "live",
-      "commit": "fb1c6484a",
-      "verification": "focused_green"
-    },
-    {
-      "id": "world-04-choir-tender-investigator",
-      "date": "2026-09-22",
-      "wf": "WF-04",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "claiming the Choir-Tender now draws an SCN customs cutter that offers the wreck's own report/loot audit choice",
-      "fingerprint": "verb=salvage,subject=choir-tender-investigator,sector=helios,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "eb8f3793c",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inst-04-prompt-deck-flight-cluster",
-      "date": "2026-09-22",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "prompt deck decisions/keys/chips now wear deckplate bezel + glass + lamp tokens, no 10px consumer card remains",
-      "fingerprint": "verb=read,subject=prompt-deck,sector=any,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "dc6d7d696",
-      "verification": "focused_green"
-    },
-    {
       "id": "world-11-io-named-courier",
       "date": "2026-09-22",
       "wf": "WF-01",
@@ -1659,6 +1607,32 @@
       "references": [],
       "integration": "live",
       "commit": "pending-unit-4-commit",
+      "verification": "focused_green"
+    },
+    {
+      "id": "VERB-22",
+      "date": "2026-09-30",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A re-rated moment raises the grade on the one clip already in the reel; a lower grade leaves that plate alone.",
+      "fingerprint": "verb=watch,subject=clip-grade,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "1e8dfea3a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "story-06-complication-foreshadow",
+      "date": "2026-09-30",
+      "wf": "WF-19",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "complicationScheduled was a dead audit emit; marketNews now commits one cited foreshadow line per (wreck,timer) before the fire — name without kind, deduped, ordering pinned",
+      "fingerprint": "verb=foreshadow,subject=wreck_complication,sector=story,domain=wf-19",
+      "references": [],
+      "integration": "live",
+      "commit": "b59ba8862",
       "verification": "focused_green"
     }
   ],
