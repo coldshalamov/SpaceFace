@@ -2,8 +2,9 @@
 // docs/TUNING_JOBS.md job 1) — kernel-level contract.
 //
 // "Turn NOW when I twitch." / "If I swing well, slingshot well, fly well, I EARN speed and I KEEP
-// it." (design/VISION.md). Below the cap the assist rotates the velocity vector toward the
-// commanded direction with a speed-preserving lateral force; above the cap it is zero.
+// it." (design/VISION.md). The assist rotates the velocity vector toward the commanded direction
+// with a speed-preserving lateral force; the rate settles at its cap value and holds above the
+// cap — a pure rotation cannot spend overspeed, so overspeed is not a release.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -47,12 +48,6 @@ function body(overrides = {}) {
 
 function step(profile, b, input, runtime = createPropulsionRuntime(profile)) {
   return stepPropulsion({ dt: DT, body: b, input: { assistMode: 'assisted', ...input }, profile, runtime });
-}
-
-function stripVectoring(result) {
-  const { vectoring, ...telemetry } = result.telemetry;
-  void vectoring;
-  return { ...result, telemetry };
 }
 
 function speedOf(b) { return Math.hypot(b.vel.x, b.vel.z); }
@@ -119,26 +114,37 @@ test(`opt-out is byte-identical: no flag, no vectoring key, no change — "${EAR
   assert.equal('vectoring' in explicitOff.telemetry, false);
 });
 
-test(`above the cap the assist is zero: forces identical to the unassisted kernel — "${EARNED}"`, () => {
+test(`above the cap the weld holds: overspeed steers the arc and cannot spend the speed — "${EARNED}"`, () => {
   const profile = hitchPlayerProfile();
   const cruise = profile.combatSpeed;
-  for (const speed of [cruise * 2, cruise + OVERCAP_ASSIST_BLEND_WU_S, cruise + OVERCAP_ASSIST_BLEND_WU_S + 0.001]) {
-    const make = () => body({ vel: { x: speed, z: 0 }, rot: 0.8 });
-    const input = { throttle: 1, strafe: 1, turn: 1 };
+  // The assist and the slip bound used to release past the cap: a boost or dash crossing its own
+  // raised ceiling dropped path steering in one tick, the nose ran free at maxYawRate, and once it
+  // had spun past the velocity vector the governor's backward-motion branch burned the whole
+  // impulse as a retro-burn. The vectoring force is a pure rotation and the bound only limits a
+  // yaw command — neither can spend speed — so overspeed is not a release.
+  for (const speed of [cruise * 2, cruise + OVERCAP_ASSIST_BLEND_WU_S, cruise + OVERCAP_ASSIST_BLEND_WU_S + 0.001,
+    cruise + OVERCAP_ASSIST_BLEND_WU_S / 2]) {
+    const make = () => body({ vel: { x: speed, z: 0 }, rot: 0.4 });
+    const input = { throttle: 1, turn: 1 };
     const off = step(profile, make(), input);
     const on = step(profile, make(), { ...input, velocityVectoring: true });
-    assert.deepEqual(on.force, off.force, `${EARNED} — at ${speed.toFixed(1)} WU/s the force must not change`);
-    assert.deepEqual(on.torque, off.torque);
-    assert.equal(on.telemetry.vectoring.active, false);
-    assert.equal(on.telemetry.vectoring.reason, 'above-cap');
-    assert.deepEqual(stripVectoring(on), off, 'only the shape-gated telemetry key may differ');
+    assert.equal(on.telemetry.vectoring.active, true, `at ${speed.toFixed(1)} WU/s the assist stays live`);
+    assert.ok(Math.abs(on.telemetry.vectoring.rateRadS - VELOCITY_VECTORING_DEFAULTS.rateCapRadS) < 1e-9,
+      `the rate holds its cap value above the cap — no release window (got ${on.telemetry.vectoring.rateRadS})`);
+    assert.equal(on.telemetry.vectoring.leadBounded, true,
+      `at ${speed.toFixed(1)} WU/s the slip bound still welds the nose to the path`);
+    assert.ok(Math.abs(on.telemetry.targetYawRate) < profile.maxYawRate,
+      'the yaw command stays bounded — not the free spin the release produced');
+    assert.notDeepEqual(on.force, off.force, 'the rotation is a real lateral force above the cap');
+    // Over a held-turn arc the vectoring rotation spends nothing: past the blend window (where the
+    // speed-spending assists are fully released) the speed is exactly kept; inside the window the
+    // half-scale spenders may still shave a little — the point is the impulse is never burned off.
+    const b = make();
+    simulate(profile, b, () => ({ throttle: 1, turn: 1, velocityVectoring: true }), 120);
+    const drift = speed >= cruise + OVERCAP_ASSIST_BLEND_WU_S ? 0.5 : 3;
+    assert.ok(speedOf(b) >= speed - drift && speedOf(b) <= speed + drift,
+      `${EARNED} — a held arc at ${speed.toFixed(0)} WU/s keeps the speed (ended ${speedOf(b).toFixed(1)})`);
   }
-  // Inside the blend window the rate tapers: half way through the 15 WU/s window it is half.
-  const mid = step(profile, body({ vel: { x: cruise + OVERCAP_ASSIST_BLEND_WU_S / 2, z: 0 }, rot: 0.8 }),
-    { throttle: 1, velocityVectoring: true });
-  assert.equal(mid.telemetry.vectoring.active, true);
-  assert.ok(Math.abs(mid.telemetry.vectoring.rateRadS - VELOCITY_VECTORING_DEFAULTS.rateCapRadS * 0.5) < 1e-9,
-    `blend: rate at cap+7.5 is half the cap rate (got ${mid.telemetry.vectoring.rateRadS})`);
 });
 
 test(`B1 with the assist on: earned speed kept hands-off and forward-held (2x cruise, 10 s) — "${EARNED}"`, () => {
@@ -401,6 +407,66 @@ test(`a sustained turn welds the nose to the path: the hull never parks off its 
     'slip is nose versus path, not the strafe-offset command');
   assert.equal(slid.telemetry.vectoring.leadBounded, false, 'a zero turn is not given extra yaw');
   assert.ok(Math.abs(slid.telemetry.targetYawRate) < 1e-9, 'helm-style strafe does not yaw the nose');
+});
+
+test(`boost press and release are one continuous arc — a cap crossing never switches the turn model — "${TWITCH}"`, () => {
+  // The reported bug: turning while boost lit "cut the accelerator" — the press-edge dash carried
+  // the hull over its own raised cap, the vectoring assist and the slip bound released in the same
+  // tick, the nose spun free at maxYawRate, and ~0.7 s later, once the nose had crossed the
+  // velocity vector, the governor's backward-motion branch burned the whole impulse as a
+  // retro-burn ("it snaps back to thrust"). Boost exhaustion re-armed the same discontinuity.
+  // Boost is a translational modifier: it may change the speed budget, never how the ship turns.
+  const profile = hitchPlayerProfile();
+  const deg = (r) => r * 180 / Math.PI;
+  const allowance = VECTORING_SLIP_LEAD_RAD + 0.08;
+  const b = cruiseBody(profile);
+  // Settle into the steady coordinated turn first.
+  simulate(profile, b, () => ({ throttle: 1, turn: 1, velocityVectoring: true }), 240);
+  const preBoostSpeed = speedOf(b);
+
+  const runPhase = (label, ticks, impulse = 0) => {
+    const probe = { worstSlip: 0, peakAngVel: 0, peakYawCmd: 0, minSpeed: Infinity };
+    simulate(profile, b, (i, bb) => {
+      // The press-edge dash impulse, queued by flightV3 through physics authority (starter hull
+      // dashImpulse 150) — applied to the body the same way the owner applies it.
+      if (i === 0 && impulse > 0) { bb.vel.x += Math.cos(bb.rot) * impulse; bb.vel.z += Math.sin(bb.rot) * impulse; }
+      const dashEarned = impulse > 0 && i * DT < 1.0; // the 1 s earned-momentum tag (dashMomentum)
+      return {
+        throttle: 1,
+        turn: 1,
+        boost: label === 'boost',
+        boostPressed: label === 'boost' && i === 0,
+        boostReleased: label === 'release' && i === 0,
+        physicsEarnedMomentum: dashEarned,
+        earnedMomentumAssistScale: dashEarned ? 0.24 : 1,
+        velocityVectoring: true,
+      };
+    }, ticks, (i, bb, last) => {
+      probe.worstSlip = Math.max(probe.worstSlip, Math.abs(wrap(bb.rot - headingOf(bb))));
+      probe.peakAngVel = Math.max(probe.peakAngVel, Math.abs(bb.angVel));
+      probe.peakYawCmd = Math.max(probe.peakYawCmd, Math.abs(last.telemetry.targetYawRate));
+      probe.minSpeed = Math.min(probe.minSpeed, speedOf(bb));
+      return false;
+    });
+    return probe;
+  };
+
+  const boost = runPhase('boost', 150, 150);
+  const release = runPhase('release', 150);
+  for (const [label, p] of [['boost', boost], ['release', release]]) {
+    assert.ok(p.worstSlip <= allowance,
+      `${label}: nose-vs-path lead ${deg(p.worstSlip).toFixed(1)} deg must stay welded through the transition`);
+    assert.ok(p.peakAngVel < profile.maxYawRate * 0.75,
+      `${label}: the nose must never free-spin at maxYawRate (peak ${p.peakAngVel.toFixed(2)} of ${profile.maxYawRate})`);
+    assert.ok(p.peakYawCmd < profile.maxYawRate * 0.75,
+      `${label}: the yaw command must stay welded to the path rate (peak ${p.peakYawCmd.toFixed(2)} of ${profile.maxYawRate})`);
+  }
+  // The dash is additive and kept — the backward-motion retro-burn never fires spuriously, so the
+  // boosted arc carries its speed instead of snapping back to thrust.
+  assert.ok(boost.minSpeed >= preBoostSpeed + 120,
+    `${EARNED} — the +150 WU/s dash survives the boosting arc (min ${boost.minSpeed.toFixed(0)} of ${preBoostSpeed.toFixed(0)} + 150)`);
+  assert.ok(release.minSpeed >= preBoostSpeed + 100,
+    `${EARNED} — releasing boost does not dump the earned speed (min ${release.minSpeed.toFixed(0)})`);
 });
 
 test('pilot W+A/D is a yaw turn: the nose does not park out of the trail, and reversing clears', () => {

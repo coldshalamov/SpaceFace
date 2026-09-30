@@ -98,14 +98,21 @@ export const OVERCAP_ASSIST_BLEND_WU_S = 15;
 
 /**
  * Velocity-vectoring assist (design/FEEL_CONTRACT.md §C "Velocity-vectoring assist";
- * docs/TUNING_JOBS.md job 1). Below the governed cap, while the pilot commands the main drive,
- * the assisted flight computer applies a lateral (perpendicular-to-velocity) force that ROTATES
- * the velocity vector toward the commanded direction — the nose, offset by any strafe — so the
- * path bends the moment the pilot twitches instead of the ship sliding on its old line. The rate
- * falls from `rateLowRadS` at rest to `rateCapRadS` at the cap and blends to ZERO across
- * OVERCAP_ASSIST_BLEND_WU_S above it (the same window as every other assist), so earned speed is
- * never touched. The force is a pure rotation: speed is preserved to floating-point precision,
- * which is what lets "turn NOW when I twitch" and "keep earned speed" coexist.
+ * docs/TUNING_JOBS.md job 1). While the pilot commands the main drive, the assisted flight
+ * computer applies a lateral (perpendicular-to-velocity) force that ROTATES the velocity vector
+ * toward the commanded direction — the nose, offset by any strafe — so the path bends the moment
+ * the pilot twitches instead of the ship sliding on its old line. The rate falls from
+ * `rateLowRadS` at rest to `rateCapRadS` at the governed cap and holds there above it. The force
+ * is a pure rotation: speed is preserved to floating-point precision, which is what lets
+ * "turn NOW when I twitch" and "keep earned speed" coexist.
+ *
+ * Unlike the counter-thrust, lateral kill and commanded-axis damper, this assist CANNOT spend
+ * earned speed — a rotation has no along-track component — so it does not release across
+ * OVERCAP_ASSIST_BLEND_WU_S the way the speed-spending assists do. Releasing it above the cap
+ * was the boost hard-switch: a dash/boost crossing its own raised ceiling dropped path steering
+ * and the lead bound in the same tick, the nose ran free to maxYaw, and once the nose spun past
+ * the velocity vector the governor's backward-motion branch spent the whole impulse as a
+ * retro-burn. Hands-off earned coasts never reach this code — the throttle gate is upstream.
  *
  * Opt-in per input packet (`input.velocityVectoring`: `true` for the band defaults, or an object
  * overriding these keys). The player's flight computer sets it (src/systems/flightV3.js); NPC
@@ -343,7 +350,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
   }
-  const turnBound = vectoringTurnBound(body, input, profile, governor, accel, dt);
+  const turnBound = vectoringTurnBound(body, input, profile, accel, dt);
   const yaw = computeYawControl(body, input, profile, dt, turnBound);
   if (vectoring) {
     vectoring.slipRad = turnBound ? turnBound.slip : null;
@@ -755,7 +762,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
   }
-  const turnBound = vectoringTurnBound(body, input, effective, governor, accel, dt);
+  const turnBound = vectoringTurnBound(body, input, effective, accel, dt);
   const yaw = computeYawControl(body, input, profile, dt, turnBound);
   if (vectoring) {
     vectoring.slipRad = turnBound ? turnBound.slip : null;
@@ -930,27 +937,23 @@ function velocityVectoringAcceleration(body, input, profile, limits, governor, d
   if (!(input.throttle > deadInput)) return vectoringIdle('no-throttle');
   const speed = length2(body.vel);
   if (!(speed > positive(settings.deadSpeed, 0.18))) return vectoringIdle('dead-speed');
-  // The governed cap: boost raises it, and an engaged travel burn raises it further (the burn cap
-  // IS the cap while it is on). A decaying earned cap is deliberately not a cap here — above the
-  // ordinary cap the assist lets go, exactly like the counter-thrust and lateral kill.
+  // The governed cap is only the rate schedule's reference: boost raises it, and an engaged
+  // travel burn raises it further (the burn cap IS the reference while it is on). Overspeed —
+  // from the ship's own boost/dash or an external sling — is NOT a release: a pure rotation can
+  // never spend the speed that made it. Earned momentum is likewise not muted here — muting a
+  // speed-preserving steer only reintroduces the switch-on/switch-off boundary the pilot feels.
   let cap = positive(profile.combatSpeed, 0) * (input.boost ? positive(profile.boostSpeedMult, 1.55) : 1);
   if (governor && governor.travel && governor.travel.state === 'engaged') {
     cap = Math.max(cap, finite(governor.cap, 0));
   }
   if (!(cap > 0)) return vectoringIdle('no-cap');
-  const overCapScale = 1 - smoothstep(cap, cap + OVERCAP_ASSIST_BLEND_WU_S, speed);
-  if (!(overCapScale > 0)) return vectoringIdle('above-cap');
   // The command is the nose offset by the strafe, so W+D bends the path toward the strafe side
   // instead of the assist fighting the slide the pilot asked for.
   const commandHeading = body.rot + Math.atan2(input.strafe, input.throttle);
   const error = wrapAngle(commandHeading - Math.atan2(body.vel.z, body.vel.x));
   const absError = Math.abs(error);
   const alignScale = 1 - smoothstep(tuning.fadeStartRad, tuning.fadeEndRad, absError);
-  const earnedScale = input.physicsEarnedMomentum
-    ? clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1)
-    : 1;
-  const rate = lerp(tuning.rateLowRadS, tuning.rateCapRadS, clamp(speed / cap, 0, 1))
-    * overCapScale * alignScale * earnedScale;
+  const rate = lerp(tuning.rateLowRadS, tuning.rateCapRadS, clamp(speed / cap, 0, 1)) * alignScale;
   if (!(rate > 0)) return vectoringIdle('faded');
   const requested = Math.min(absError, rate * dt);
   const authority = positive(limits && limits.forward, 0);
@@ -994,9 +997,12 @@ function vectoringIdle(reason) {
  * pathFollowRate as the nose approaches VECTORING_SLIP_LEAD_RAD, then holds it there; excess
  * lead is pulled back. Turning back toward the path is always free, and a zero turn is not
  * given yaw the pilot did not ask for. |slip| >= 90 deg returns null so flips still swing the
- * nose. Opted-out packets stay byte-identical.
+ * nose. Overspeed does not release it either: the bound only limits a yaw command and spends no
+ * speed, and pathFollowRate is measured from the real applied accel — so a boost or dash that
+ * crosses its own cap keeps the same welded arc instead of snapping the nose free.
+ * Opted-out packets stay byte-identical.
  */
-function vectoringTurnBound(body, input, profile, governor, accel, dt) {
+function vectoringTurnBound(body, input, profile, accel, dt) {
   const tuning = input.velocityVectoring;
   if (!tuning) return null;
   const settings = profile.assist || {};
@@ -1006,13 +1012,6 @@ function vectoringTurnBound(body, input, profile, governor, accel, dt) {
   if (!(input.throttle > deadInput)) return null;
   const speed = length2(body.vel);
   if (!(speed > positive(settings.deadSpeed, 0.18))) return null;
-  let cap = positive(profile.combatSpeed, 0) * (input.boost ? positive(profile.boostSpeedMult, 1.55) : 1);
-  if (governor && governor.travel && governor.travel.state === 'engaged') {
-    cap = Math.max(cap, finite(governor.cap, 0));
-  }
-  if (!(cap > 0)) return null;
-  const overCapScale = 1 - smoothstep(cap, cap + OVERCAP_ASSIST_BLEND_WU_S, speed);
-  if (!(overCapScale > 0)) return null;
   const pathHeading = Math.atan2(body.vel.z, body.vel.x);
   const slip = wrapAngle(body.rot - pathHeading);
   if (Math.abs(slip) >= Math.PI / 2) return null;
@@ -1043,12 +1042,13 @@ function normalizeVelocityVectoring(raw, out = null) {
 
 /**
  * Coast helm: idle main drive frees RCS for a ~20% yaw authority bump.
- * Gated on throttle + boost only — strafe is RCS and must not cancel the flip bonus.
+ * Gated on throttle only — strafe is RCS and must not cancel the flip bonus, and boost must not
+ * either: boost is a translational modifier, so the same coast-turn holds the same yaw authority
+ * whether the burn is lit or the tank is dry.
  */
 function coastHelmYawMultiplier(input, profile) {
   const dead = positive(profile.assist && profile.assist.deadInput, 0.025);
   if (Math.abs(finite(input.throttle, 0)) > dead) return 1;
-  if (input.boost) return 1;
   return COAST_HELM_YAW_MULT;
 }
 
