@@ -15,6 +15,9 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'ai:flee': {verb:'vent',primitive:'compression',color:0xdcb99d,life:.85,continuous:false},
   'ai:formationBroken': {verb:'disrupt',primitive:'induction',color:0xe2a983,life:.8,surfaceWork:true,continuous:false},
   'player:scannedByPatrol': {verb:'command',primitive:'induction',color:0x85d0da,life:1,surfaceWork:true,continuous:false},
+  // BREAK RANGE answers on the running hull: a drive flare at the exhaust, not the scan's
+  // induction paint it interrupts.
+  'customs:breakScan': {verb:'ignition',primitive:'compression',color:0xffc08a,life:.9,surfaceWork:true,continuous:false},
   'heat:changed': {verb:'catch',primitive:'capture',color:0xf1ac76,life:1,surfaceWork:true,surfaceCapture:true,continuous:false},
   'salvage:cutComplete': {verb:'grind',primitive:'deposition',color:0xf3c286,life:.85,surfaceWork:true,continuous:false},
   'salvage:completed': {verb:'harvest',primitive:'deposition',color:0xc9ba98,life:1.2,continuous:false},
@@ -70,7 +73,7 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     if(!point(member?.pos))return null;
     return {...p,targetId:member.id,sourceId:member.id,bodySurface:true,attachToTarget:true};
   }
-  if(name==='player:scannedByPatrol'||name==='heat:changed'){
+  if(name==='player:scannedByPatrol'||name==='heat:changed'||name==='customs:breakScan'){
     if(name==='heat:changed'&&!p.wantedCrossed)return null;
     const ship=body(state,state.playerId);if(!point(ship?.pos)||ship.alive===false)return null;
     return {...p,targetId:ship.id,sourceId:ship.id,bodySurface:true,attachToTarget:true};

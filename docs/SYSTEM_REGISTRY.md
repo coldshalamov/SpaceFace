@@ -25,7 +25,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 
 | Slot | Likely file | Lines | Emits (count) | Subscribes (count) | Top events |
 |---|---|---|---|---|---|
-| `input` | `systems/input.js` | 1843 | 1 | 0 | `input:worldGestureCancelled`×1 |
+| `input` | `systems/input.js` | 1850 | 1 | 0 | `input:worldGestureCancelled`×1 |
 | `autoTargetAssist` | `systems/autoTargetAssist.js` | 242 | 0 | 4 | — |
 | `flybyFocus` | `systems/flybyFocus.js` | 515 | 4 | 1 | `flybyFocus:end`×1, `flybyFocus:start`×1, `camera:shake`×1 |
 | `bulletTime` | `systems/bulletTime.js` | 413 | 6 | 2 | `audio:cue`×3, `bulletTime:start`×1, `bulletTime:end`×1 |
