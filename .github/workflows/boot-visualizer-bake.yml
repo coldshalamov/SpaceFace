@@ -14,7 +14,7 @@ concurrency:
 jobs:
   bake:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,11 +42,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install offline rendering tools
+      - name: Install only the offline browser client
+        timeout-minutes: 3
         run: |
-          npm install --prefix "$RUNNER_TEMP/boot-tools" --no-save --ignore-scripts playwright@1.56.1
-          "$RUNNER_TEMP/boot-tools/node_modules/.bin/playwright" install --with-deps chrome
-          command -v ffmpeg || { sudo apt-get update && sudo apt-get install -y ffmpeg; }
+          mkdir -p "$RUNNER_TEMP/boot-tools"
+          cd "$RUNNER_TEMP/boot-tools"
+          printf '{"private":true}' > package.json
+          npm install --no-save --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=60000 playwright@1.56.1
+      - name: Verify existing Chrome and video encoder
+        timeout-minutes: 3
+        run: |
+          google-chrome --version
+          ffmpeg -version
       - name: Bake normal and reduced-flash artwork
         run: BOOT_PLAYWRIGHT="$RUNNER_TEMP/boot-tools/node_modules/playwright/index.mjs" node tools/cinematic/bake-boot-visualizer.mjs
       - name: Publish only generated assets to the requested fix branch
