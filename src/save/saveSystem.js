@@ -284,6 +284,21 @@ export const save = {
       this.requestAutosave('hud_layout');
     });
     bus.on('player:respawn', () => this.requestAutosave('respawn', { force: true }));
+    // PRO-06: leaving to the main menu is the one route that used to save NOTHING. Every other
+    // progression milestone autosaves, so a player who undocked, flew a minute, and quit lost
+    // that minute — and the pause menu's own 'back to main menu' button is the most natural way
+    // to stop playing. This listener runs BEFORE main.js flips state.mode to 'menu' (systems
+    // register during init, main's handler is installed after), and it writes synchronously
+    // through save(), so the bytes are durable before the screen changes.
+    bus.on('game:exitToMenu', () => this.requestExitAutosave());
+    // PRO-06, second route: closing the tab or quitting the window is the same data loss by a
+    // different door. main.js's beforeunload tears the runtime down and writes nothing, so a player
+    // who alt-tabs out and closes the window loses the session exactly as quitting to the menu
+    // used to. Same gates, same synchronous verified write — and the save is idempotent, so a
+    // player who quit to the menu and THEN closed the tab does not pay for two.
+    // Installed through a typeof guard: init() is also driven against partial host objects in
+    // focused tests, and a convenience listener must never be what stops a save system booting.
+    if (typeof this._installUnloadExitSave === 'function') this._installUnloadExitSave();
     this._syncSharedPlayerStore();
   },
 
@@ -1404,6 +1419,76 @@ export const save = {
 
   _campaignAutosaveSuppressed() {
     return this._campaignSaveSuppressed();
+  },
+
+  /**
+   * PRO-06 — cover the other way a session ends: the tab is closed or the window quit.
+   *
+   * There is no session-end gameplay event (EVENT_TAXONOMY records that gap), so this leans on the
+   * browser lifecycle, the same way telemetry's privacy-safe flush already does. `pagehide` is the
+   * reliable one (it fires on bfcache navigation and tab close); `beforeunload` is kept as the
+   * desktop/Electron path. `visibilitychange` is deliberately NOT used: a backgrounded tab is not a
+   * finished session, and the interval autosave already owns that cadence.
+   *
+   * requestExitAutosave() is idempotent — a player who already quit to the menu is at mode 'menu'
+   * and is refused — so a player who does both pays for one write, not two.
+   */
+  _installUnloadExitSave() {
+    const hasWindow = typeof window !== 'undefined';
+    if (!hasWindow || typeof window.addEventListener !== 'function') return false;
+    const flush = () => {
+      try { this.requestExitAutosave(); } catch (err) {
+        // An unload handler that throws can cancel the unload or surface as an unhandled error in
+        // the console the player will never read. A failed final save must not block the exit.
+        console.error('[save] unload exit save failed', err);
+      }
+    };
+    try {
+      window.addEventListener('pagehide', flush);
+      window.addEventListener('beforeunload', flush);
+    } catch (err) {
+      console.error('[save] could not install unload exit save', err);
+      return false;
+    }
+    this._unloadExitFlush = flush;
+    return true;
+  },
+
+  /**
+   * PRO-06 — the last save before the game stops being the thing on screen.
+   *
+   * Deliberately NOT requestAutosave(). That path is debounced, defers on the combat calm window,
+   * and — decisively — bails when `state.mode !== 'flight'`, which is exactly the state the player
+   * is in when they pick "back to main menu" from the pause screen (mode 'paused'). Routing the
+   * exit through it would have reproduced the bug it is meant to fix.
+   *
+   * So this writes synchronously via save(), which is the same verified write the manual-save
+   * button uses: serialize → stringify → write → read-back verify, with the previous generation
+   * kept as the recovery copy. The player's last minute is durable before the menu paints.
+   *
+   * Gates, each of which is a real state this can be called from:
+   *  - an arena run is ephemeral by contract (PQ-133 ruling 2) and must never reach a campaign slot;
+   *  - a destructive restore in flight owns the route and is writing its own state;
+   *  - dead or mid-jump the live world is not a truthful snapshot of a moment worth keeping —
+   *    requestAutosave already refuses both, and this must not be the loophole that doesn't.
+   */
+  requestExitAutosave() {
+    if (this._campaignSaveSuppressed()) return false;
+    if (this._restoring) return false;
+    const state = this.state;
+    if (!state) return false;
+    if (this._playerDead) return false;
+    const jump = state.jump;
+    if (jump && (jump.state === 'CHARGING' || jump.state === 'JUMPING')) return false;
+    // Already at the menu with nothing to write (a second exit request in the same click).
+    if (state.mode === 'menu') return false;
+
+    // A queued autosave is strictly older than the state we are about to write, so drop it
+    // instead of paying for a second full write a few frames later. Its already-scheduled
+    // callback carries the stale token and becomes a no-op, same as the manual-save supersede.
+    if (this._autosavePending) this._autosavePending = null;
+
+    return this.save(AUTOSAVE_SLOT, { reason: 'exit_to_menu' });
   },
 
   /** Debounced autosave to slot 'auto'. Never mid-jump, never while restoring / dead / not flying. */
