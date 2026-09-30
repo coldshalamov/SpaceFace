@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "371b1b4e1db115196c12730dab989847095e2dd5a54094178a13d085f0daeebc",
+  "contentHash": "dbdbb350584df03e516ab5d0545cce5ad2d23aa692dc5aa6f845c5be96bb086f",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-lark.node.lod0-hook-drive-core.dynamic",
@@ -4142,7 +4142,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "f95faf0676299c62c4c7f1d9bf1a9c4a62dc70e16bfb2226206674a944fbfe60",
+      "sha256": "e4e0180ffe085306fa586fc5453907bcc2b6e0d42c0943d2e699aa1ce5459935",
       "uri": "pilots.json"
     }
   },
@@ -6009,7 +6009,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_lark.glb"
   },
-  "runtimeHash": "617b5919a4fd37cc8140df58e9616ba62632575b5954ae4b1945536aeaf1ff1a",
+  "runtimeHash": "d5baef1b520199934c3a0dcae42f5c3b7775a37f6377d2988d194568a8011da5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

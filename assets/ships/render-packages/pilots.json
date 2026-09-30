@@ -3671,8 +3671,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
-      "releaseSha256": "46ea302b99f42be9d49f6aaddaca7f993b1e84c3553868c7982a6ac2928ea236",
-      "releaseBytes": 739436,
+      "releaseSha256": "3bba82fc14f43ee007d76921a615c6dd2989b9fefded224810cf614d6ac49fb7",
+      "releaseBytes": 797584,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3692,8 +3692,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
-      "releaseSha256": "b0c07817e95937b7bd75d2eea39912aa3aa07843a0ef22aba7a70e941b95c310",
-      "releaseBytes": 536804,
+      "releaseSha256": "5a3ac0e2a2cf3d4ca438aea3b10f8e515b72f1d71819191f7d5a84d6aae5ffc9",
+      "releaseBytes": 565848,
       "rootNode": "DRIFTER_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -3713,8 +3713,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
-      "releaseSha256": "34ed07e136477a90a2f0ad50b4ff0edd83a17e98bb0712b981d74034686909de",
-      "releaseBytes": 445532,
+      "releaseSha256": "b7b251f87ba18b6ba2414c1c13f9092c30507e5e4e018e06408a8dc0938250d1",
+      "releaseBytes": 461204,
       "rootNode": "DRIFTER_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

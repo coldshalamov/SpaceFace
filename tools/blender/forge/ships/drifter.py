@@ -20,6 +20,7 @@ COLORS = {
     'dark': '#121416',
     'paint.patch': '#3d5058',    # a replacement plate in a sun-faded blue-grey
     'paint.primer': '#57554e',   # an unpainted primer-grey patch
+    'glow_cyan.copper': '#ff8a3c',  # the copper livery rings, lit
 }
 
 NY = 2.15  # nacelle centre lines
@@ -41,6 +42,10 @@ def build():
     ], material='paint', belly='gunmetal', back_material='dark', count=64)
     F.band(s, 'Hull', (7.3, 0, 0), (1, 0, 0), 0.5, 'stripe', inset=0.02, depth=0.02)
     F.band(s, 'Hull', (-5.2, 0, 0), (1, 0, 0), 0.4, 'stripe', inset=0.02, depth=0.02)
+    # Identity trim, lit: one thin copper ring beside each livery ring (nose collar, tail collar),
+    # so the lopsided hull still reads as one ship by its lights (LOOK.md: lamps are light).
+    F.band(s, 'Hull', (6.85, 0, 0), (1, 0, 0), 0.14, 'glow_cyan.copper', inset=0.01, depth=-0.02)
+    F.band(s, 'Hull', (-4.8, 0, 0), (1, 0, 0), 0.14, 'glow_cyan.copper', inset=0.01, depth=-0.02)
     # Patched plates: the jack-of-all-trades has been fixed wherever it broke.
     F.panel(s, 'Hull', (-3.2, 0.35), (1.7, 1.1), 'paint.patch', inset=0.04, depth=0.06)
     F.panel(s, 'Hull', (0.9, -0.55), (1.3, 0.8), 'paint2', inset=0.04, depth=0.05)

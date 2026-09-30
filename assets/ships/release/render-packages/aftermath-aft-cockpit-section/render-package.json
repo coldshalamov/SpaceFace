@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c4b113f428e54b89e5edebd207fa06d3512a9df2a33345cece5fa2622150ea20",
+  "contentHash": "e92397d172b6643401b96bff6fe4248025b5489ca4cbf2007b133d0b0ca87f3e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2627,7 +2627,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "f95faf0676299c62c4c7f1d9bf1a9c4a62dc70e16bfb2226206674a944fbfe60",
+      "sha256": "e4e0180ffe085306fa586fc5453907bcc2b6e0d42c0943d2e699aa1ce5459935",
       "uri": "pilots.json"
     }
   },
@@ -3748,7 +3748,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
   },
-  "runtimeHash": "62fc1a62e10b93e7d3efbe04a880c28d9061f4156de701ef2243cf3de7619975",
+  "runtimeHash": "4c1fe6e8b2ed06bd17209e9d0898037e87fe29a265b3e4d827470befbb746396",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
