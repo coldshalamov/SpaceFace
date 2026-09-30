@@ -2660,6 +2660,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       slot: authoredPayloadSlotForEntity(entity),
       optional: true,
       admissionDeadline: true,
+      admissionVisible: options.admissionVisible,
       residencyOwner: options.residencyOwner,
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
@@ -2769,11 +2770,13 @@ function failAuthoredCargoCapsuleAdmission(
   reason,
   error = null,
 ) {
-  releaseBoundaryResidency(renderer, boundary, `payload-${reason}`);
+  // Owner-inactive readmission must be decided before the residency release: releasing a
+  // still-mounted boundary marks it a dead owner forever and strands the re-admitted job.
   if (boundary.parent && admissionOwnerInactive(null, entity, error)) {
     markAuthoredBoundaryForReadmission(boundary, `payload-${reason}`);
     return false;
   }
+  releaseBoundaryResidency(renderer, boundary, `payload-${reason}`);
   fallbackRoot.visible = false;
   boundary.userData.authoredAssetState = 'unavailable';
   boundary.userData.authoredVisualRoot = reason.includes('pipeline')
@@ -3180,7 +3183,13 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   if (geologySkin) delete boundary.userData.asteroidInstanceBody;
   boundary.userData.kind = 'place';
   boundary.userData.placeId = entity.data && entity.data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
-  boundary.userData.placeTargetRadius = geologySkin ? entity.radius : null;
+  // POI places carry declared authored draw size in data.placeTargetRadius — the compose draws
+  // the envelope at ~2x it (resolvePlaceDrawScale's poi targetScale), so it is a tight upper
+  // bound for the pending-bounds stamp, never overestimating like a census radius would.
+  const poiTargetRadius = entity.data && entity.data.poi === true
+    ? Number(entity.data.placeTargetRadius) : NaN;
+  boundary.userData.placeTargetRadius = geologySkin ? entity.radius
+    : (Number.isFinite(poiTargetRadius) && poiTargetRadius > 0 ? poiTargetRadius : null);
   boundary.userData.authoredGeologySkin = geologySkin;
   stampPendingPlaceVisualBounds(boundary);
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
@@ -3294,6 +3303,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       sectorId: options.sectorId,
       isResidencyOwnerActive: options.isResidencyOwnerActive,
       admissionDeadline: true,
+      admissionVisible: options.admissionVisible,
     });
   } catch (error) {
     handoffBootstrapIfCovered(renderer);
@@ -3354,6 +3364,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
         sectorId: options.sectorId,
         isResidencyOwnerActive: options.isResidencyOwnerActive,
         admissionDeadline: true,
+        admissionVisible: options.admissionVisible,
       });
     } catch (error) {
       overlayRecord = null;
@@ -3459,15 +3470,16 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
 function failAuthoredPlaceAdmission(
   boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
 ) {
-  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason);
   const admissionEntity = options.admissionEntity || entity;
   // Owner died mid-admission but the boundary stayed mounted (kept-GPU save recook). The abort
   // is a lifecycle event, not a content verdict — leave the boundary re-requestable so the
   // restored entity's reattach admits it instead of stranding a required shell at 'unavailable'.
+  // The residency release runs only on the terminal path: a released owner can never decode.
   if (boundary.parent && admissionOwnerInactive(options, admissionEntity, error)) {
     markAuthoredBoundaryForReadmission(boundary, reason);
     return false;
   }
+  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason);
   if (boundary.parent && hasExplicitAuthoredGeologyPresentation(admissionEntity)) {
     fallbackRoot.visible = true;
     markReadableFallbackLayer(fallbackRoot);
@@ -5464,6 +5476,7 @@ function startAuthoredJobAssetPrefetch(job) {
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
       isResidencyOwnerActive: options.isResidencyOwnerActive,
+      admissionVisible: options.admissionVisible,
     }));
   }
   return chain;
@@ -5770,10 +5783,11 @@ function admitNextUpgradeJob(state) {
       diagnostic.status = 'fallback-after-error';
       diagnostic.error = error && error.message ? error.message : String(error);
     }
-    releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
     if (job.abortedStalled === true) {
       // A stall-aborted job's boundary already readmitted — the abandoned run's late verdict
       // must not stomp the fresh 'awaiting-authored-admission' state its replacement rides on.
+      // Releasing residency here would mark the boundary a dead owner forever (the released-
+      // owner set has no un-release), killing the replacement job's requests mid-decode.
     } else if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
       // The job's owner died under a kept boundary (save recook) — a terminal verdict would
       // strand the restored entity that rebinds to this mesh. Readmission status re-requests.
@@ -5781,6 +5795,7 @@ function admitNextUpgradeJob(state) {
       if (diagnostic.endedAtMs == null) diagnostic.status = 'awaiting-authored-admission';
       console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
     } else {
+      releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
       job.boundary.userData.authoredAssetState = 'fallback-after-error';
       console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
     }
