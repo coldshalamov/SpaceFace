@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "839e6ccbf9b6773f2f52f1015113ec60fe57c4849820fa72b89613a993f7b16e",
+  "contentHash": "51e3c88cbb4f502a11dd0731fb4db513c8aa6cf6adeda7d72ec0c4734087f6ae",
   "dynamicGroups": [
     {
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port.dynamic",
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f3aabffd3db66c35dfdee5a9cde7a09d9abd5d6c3b7019ea99dc8c8105f8216",
+      "geometryHash": "9f6f9866f0b61b804f55b795643dc84d7bc4ea1d7561ac0054340e29a8f1f6b7",
       "id": "sf.render.jump-ring.node.lod0-canopy.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -566,7 +566,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0e496274f2b60cee8161ea1b4dfc95735937a72ec5735118a3ddbbae405d75b",
+      "geometryHash": "973c45896eadb803e26863e7b2492b2c051a6619377b58ee6328a8d70bda9718",
       "id": "sf.render.jump-ring.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 4752,
       "indexed": true,
@@ -1205,18 +1205,18 @@
     {
       "bounds": {
         "max": [
-          9.499361038208008,
+          9.499393463134766,
           52.48189926147461,
           50.19989013671875
         ],
         "min": [
-          -9.499424934387207,
+          -9.499393463134766,
           -47.99150848388672,
           -50.199928283691406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09628ac59a9f66518e659dc4cff37d5bf83e25716c6727e4e7d4008fc4316dc4",
+      "geometryHash": "6616af6521bfb9a1379718b033984b55f7b08a59e82084c9786791451b9dd9b2",
       "id": "sf.render.jump-ring.node.lod1-armor.primitive.0",
       "indexCount": 15096,
       "indexed": true,
@@ -1255,18 +1255,18 @@
     {
       "bounds": {
         "max": [
-          8.796725273132324,
-          49.62075424194336,
-          6.9974045753479
+          -5.995967388153076,
+          49.620758056640625,
+          -3.998990297317505
         ],
         "min": [
-          5.995966911315918,
-          48.00602340698242,
-          3.998991012573242
+          -8.79672622680664,
+          48.006019592285156,
+          -6.9974045753479
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c20c5faa67a69c1111361f6918c2e693f2b149c8b21bbf35510cc49a5a5504f",
+      "geometryHash": "725c7f2340834d4a81223f19ae1638027fc4e8f83c08098cccd1a5bfa4af1fab",
       "id": "sf.render.jump-ring.node.lod1-canopy.primitive.0",
       "indexCount": 3,
       "indexed": true,
@@ -1330,18 +1330,18 @@
     {
       "bounds": {
         "max": [
-          9.491287231445312,
-          54.63319778442383,
+          9.491318702697754,
+          54.63328552246094,
           50.19361877441406
         ],
         "min": [
-          -9.491302490234375,
-          -41.11000442504883,
-          -50.19413375854492
+          -9.491304397583008,
+          -41.11009216308594,
+          -50.194313049316406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a216d677f1d02b74ccc2fb656fa54ee60e82b8b173d8c2729017f8ba3eea0337",
+      "geometryHash": "f50140827bbf3e0ca207d3b84aa4876db6f4495e69bfe2a6c2808a502adfb78b",
       "id": "sf.render.jump-ring.node.lod1-hull.primitive.0",
       "indexCount": 8103,
       "indexed": true,
@@ -1391,7 +1391,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57eb823da4a200c0f97dc881a7beb1262a2eb991adc25127220fd3e4dd7875d9",
+      "geometryHash": "46f54e596ba0e2f3caaa31b75a65c96c2a35817a989eec2dcc2d358945ad44fa",
       "id": "sf.render.jump-ring.node.lod1-lights-warm.primitive.0",
       "indexCount": 13956,
       "indexed": true,
@@ -1466,7 +1466,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66da789616ecfb6787626a8e955ace073352615e96e300e0e4b10168e458bff6",
+      "geometryHash": "01939a87235a09514c166ee43292885c73f1ec65f194275339c642c545c15abe",
       "id": "sf.render.jump-ring.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 3075,
       "indexed": true,
@@ -2105,18 +2105,18 @@
     {
       "bounds": {
         "max": [
-          9.496479988098145,
+          9.496511459350586,
           52.45142364501953,
           50.19692611694336
         ],
         "min": [
-          -9.496543884277344,
+          -9.496511459350586,
           -47.99150848388672,
           -50.196964263916016
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac3e021719e1af2a601488506f6fea8dddad12495161aa8f7c87c134212b8561",
+      "geometryHash": "fbf33179c7460427e74f4db06004bf3d33af9aef0d8274b7f61c15de1dd23be3",
       "id": "sf.render.jump-ring.node.lod2-armor.primitive.0",
       "indexCount": 8094,
       "indexed": true,
@@ -2130,18 +2130,18 @@
     {
       "bounds": {
         "max": [
-          0.4964374303817749,
+          0.4964125454425812,
           53.23506164550781,
           48.375
         ],
         "min": [
-          -6.377368450164795,
+          -6.3773932456970215,
           1.0614594221115112,
           -48.375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aba9b7539f5c04c862a984364e6dcecddf32b197128d251332a7385ad0c88408",
+      "geometryHash": "9f38be224d0b71c6db59d3c7032fd99c044448d1f323af7e576cecbe5a6398d4",
       "id": "sf.render.jump-ring.node.lod2-beacon-amber.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -2155,18 +2155,18 @@
     {
       "bounds": {
         "max": [
-          8.796725273132324,
-          49.62075424194336,
-          6.9974045753479
+          -5.995967388153076,
+          49.620758056640625,
+          -3.998990297317505
         ],
         "min": [
-          5.995966911315918,
-          48.00602340698242,
-          3.998991012573242
+          -8.79672622680664,
+          48.006019592285156,
+          -6.9974045753479
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c20c5faa67a69c1111361f6918c2e693f2b149c8b21bbf35510cc49a5a5504f",
+      "geometryHash": "725c7f2340834d4a81223f19ae1638027fc4e8f83c08098cccd1a5bfa4af1fab",
       "id": "sf.render.jump-ring.node.lod2-canopy.primitive.0",
       "indexCount": 3,
       "indexed": true,
@@ -2230,18 +2230,18 @@
     {
       "bounds": {
         "max": [
-          9.491287231445312,
-          54.60860061645508,
+          9.491318702697754,
+          54.60868453979492,
           50.19361877441406
         ],
         "min": [
-          -9.491302490234375,
-          -41.08558654785156,
-          -50.19413375854492
+          -9.491304397583008,
+          -41.085670471191406,
+          -50.194313049316406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4600e04ac4a4d6482c12610075c25f784d95fe81b6ccd040c941979a20c3fb6f",
+      "geometryHash": "bafcff760c08ed75632e2144ee726f492ae3fdba6444c6bf0027c42a50f4b3f5",
       "id": "sf.render.jump-ring.node.lod2-hull.primitive.0",
       "indexCount": 2823,
       "indexed": true,
@@ -2266,7 +2266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de75755fd237df6915172b59d1ec30934d889e58fbd825ed5dc66687a7763576",
+      "geometryHash": "fea66e01b103f880f37d0bc65468f8499a198d07e78a0c1767774d1deda32803",
       "id": "sf.render.jump-ring.node.lod2-lights-cyan.primitive.0",
       "indexCount": 7719,
       "indexed": true,
@@ -2291,7 +2291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5d9ec77fcc75148b0d53319a83db628d76eaafb3723a15cf3bc672967196947",
+      "geometryHash": "e12980c362917303a67681f51d61dffb7fdc1bd83f203f3922370b516920f020",
       "id": "sf.render.jump-ring.node.lod2-lights-warm.primitive.0",
       "indexCount": 3819,
       "indexed": true,
@@ -2366,7 +2366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ad56f7460995e4e7830b0ce35aab020da4b265a45bc7cc65f2a26ec75ec9a74",
+      "geometryHash": "2ef85a0608d6d7f33a6864b49027df13da020038bceb589fdc8ef4ef42945cae",
       "id": "sf.render.jump-ring.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1431,
       "indexed": true,
@@ -9543,19 +9543,19 @@
       "sha256": "ca708963003c456f9eee07688a4d7781693658bd93ff6efc50d8b88dc31c6fa9"
     },
     "sourceGlb": {
-      "bytes": 1965048,
-      "sha256": "60f04fb605c839a95a6d9e209094b845692814fafa1b8ac3c0769bfd316e9871",
+      "bytes": 1965148,
+      "sha256": "dc3a76db4faf1b032bfe3ce026c18b6db5aa93aba976ab5a693905a21e52ded7",
       "uri": "place_gate_jump_ring.glb"
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "23830a14488acb187218d6f71aae31be8dab95fadc974842eb49201b479fd6ae",
+      "sha256": "95fc70f9f631c515462902f533bb0da17512941df53cc08b9b8835abf2addb0a",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3704208,
-    "sha256": "f20ce434dd7098409007e01289601817e8260697773cac03775b011c39693083",
+    "bytes": 3702320,
+    "sha256": "910395f9585f3fec81986c57899a4a5811b61fd8d4278755e7c1d909cf6ce944",
     "uri": "render.glb"
   },
   "runtime": {
@@ -14117,7 +14117,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-  "runtimeHash": "279ab26f7f3a3a6a4ff306962ddd0880c1120bbfe89e6cff8429360fd31b8b9f",
+  "runtimeHash": "a0a6bf8dab60940b6efd1bfec76aecc5646170ad734571272afb0a6357c7114b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

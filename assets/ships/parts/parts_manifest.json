@@ -3266,7 +3266,7 @@
    "priority": "P0",
    "file": "places/place_gate_jump_ring.glb",
    "tris": 85442,
-   "bytes": 6277828,
+   "bytes": 6277840,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
