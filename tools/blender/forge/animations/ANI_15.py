@@ -24,7 +24,7 @@ from mathutils import Euler  # noqa: E402
 RIG_ID = 'gate_emitter_index'
 
 N_SEG = 12
-STROKE_M = 0.55   # radial inward index stroke, < one tip length (1.1)
+STROKE_M = 0.55   # radial inward index stroke, well under the 1.5 m tip length
 TIP_R = 28.35     # pivot radius of the tip carriage (matches the builder's glow tips)
 
 
@@ -34,7 +34,7 @@ def register(ship, parts):
     step = 2 * math.pi / N_SEG
     for i in range(N_SEG):
         # segment emitter centre angle matches the builder's am = gc + step/2
-        am = i * step + step / 2 - math.radians(0.0)
+        am = i * step + step / 2
         ship.motion_group(f'gate_tip_{i}', pivot=(0.0, TIP_R * math.cos(am), TIP_R * math.sin(am)),
                           objects=parts['tips'][i])
 

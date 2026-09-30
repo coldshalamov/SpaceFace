@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { evaluateMotionClip, validateMotionBank } from '../src/contracts/motionBank.js';
+import { bindAuthoredMotion, evaluateMotionClip, validateMotionBank } from '../src/contracts/motionBank.js';
 
 const BANK_PATH = 'assets/ships/motions/jump-ring.motion.json';
 const PACKAGE_PATH = 'assets/ships/release/render-packages/jump-ring/render-package.json';
@@ -82,4 +82,55 @@ test('ANI-15 reset clip returns tips to rest and events route the gate lifecycle
 
   assert.equal(bank.events['gate:index'], 'index');
   assert.equal(bank.events['gate:reset'], 'reset');
+});
+
+// Controller lifecycle: 'index' endMode 'hold' stays in the active-clip map, so a plain
+// evaluate-only test cannot see the defect — after 'reset' parks, the held index delta used
+// to re-apply and snap every tip back to the indexed pose. This drives the real
+// bindAuthoredMotion state machine over a stub node tree so the regression is locked out.
+test('ANI-15 controller lifecycle: reset stays parked and index refires', () => {
+  const mkVec = (a) => ({
+    x: a[0], y: a[1], z: a[2],
+    set(x, y, z) { this.x = x; this.y = y; this.z = z; },
+  });
+  const mkQuat = (a) => ({
+    x: a[0], y: a[1], z: a[2], w: a[3],
+    set(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; },
+  });
+  const root = { name: 'root', children: [], userData: {}, visible: true };
+  for (const binding of bank.bindings) {
+    const mesh = {
+      isMesh: true, visible: true, children: [], userData: {},
+      position: mkVec([0, 0, 0]), quaternion: mkQuat([0, 0, 0, 1]),
+    };
+    const pivot = {
+      name: binding.node, children: [mesh], userData: {}, visible: true, parent: root,
+      position: mkVec(binding.restPose.translation),
+      quaternion: mkQuat(binding.restPose.rotation),
+    };
+    mesh.parent = pivot;
+    root.children.push(pivot);
+  }
+  const controller = bindAuthoredMotion(root, bank);
+  const tip0 = root.children[0];
+  const rest = bank.bindings[0].restPose.translation;
+  const drift = () => Math.hypot(
+    tip0.position.x - rest[0], tip0.position.y - rest[1], tip0.position.z - rest[2],
+  );
+
+  controller.handleEvent('gate:index', {}, 10);
+  controller.update(10.55);
+  assert.equal(controller.clipActive('index'), true, 'index holds while the charge runs');
+  assert.ok(Math.abs(drift() - 0.55) < 0.02, `tip0 indexed (drift ${drift()})`);
+
+  controller.handleEvent('gate:reset', {}, 12);
+  controller.update(12.7);
+  assert.equal(controller.clipActive('index'), false, 'reset permanently supersedes index');
+  controller.update(15);
+  assert.ok(drift() < 1e-3, `tip0 stays parked after reset ends (drift ${drift()})`);
+
+  controller.handleEvent('gate:index', {}, 20);
+  controller.update(20.55);
+  assert.equal(controller.clipActive('index'), true, 'index refires on a later charge');
+  assert.ok(Math.abs(drift() - 0.55) < 0.02, `tip0 re-indexed (drift ${drift()})`);
 });
