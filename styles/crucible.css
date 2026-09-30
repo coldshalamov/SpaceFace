@@ -58,35 +58,6 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
 .sf-crucible-door .sf-crd-hull-sub[data-kind='earn'] {
   color: var(--dp-lamp, #e7d7a8);
 }
-/* Stake row — four contracts in one row like the hull kits. */
-.sf-crucible-door .sf-crd-stakes {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
-  align-items: stretch;
-}
-.sf-crucible-door .sf-crd-stakes > li { min-width: 0; }
-.sf-crucible-door .sf-crd-stakes .fh-tile-art { min-height: 0; }
-.sf-crucible-door .sf-crd-stakes .fh-tile-legend {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  line-height: 1.1;
-}
-.sf-crucible-door .sf-crd-stake-nums {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  padding-inline: 4px;
-  opacity: 0.75;
-  text-align: center;
-}
-/* Any-hull grid — ship names as plain words under tier marks. */
-.sf-crucible-door .sf-crd-anyhull { margin-top: calc(10px * var(--k-s, 1)); }
-.sf-crucible-door .sf-crd-anyhull-cap { margin: 0 0 calc(6px * var(--k-s, 1)); }
-.sf-crucible-door .sf-crd-anyhull-tier { display: flex; align-items: baseline; gap: 14px; margin: 2px 0; }
-.sf-crucible-door .sf-crd-anyhull-mark { min-width: 26px; }
-.sf-crucible-door .sf-crd-anyhull-ships { gap: 6px 18px; }
 /* Hull marks are inline kit glyphs (currentColor). An <img> of the same SVG paints black
    and reads as an empty square on the glass. */
 .sf-crucible-door .fh-tile { position: relative; }
@@ -138,16 +109,6 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
 }
 .sf-cru-filters { margin-bottom: 18px; }
 .sf-cru-filters[hidden] { display: none; }
-/* The search rides the filter row, same printed-field voice as the shelf words. */
-.sf-cru-search {
-  margin-left: auto; align-self: center; width: min(240px, 34vw);
-  font: inherit; color: var(--k-bone); background: transparent;
-  border: 0; border-bottom: 1px solid var(--k-rule, currentColor);
-  padding: 2px 4px 5px; outline: none;
-}
-.sf-cru-search:focus-visible { border-bottom-color: var(--k-gold, currentColor); }
-.sf-cru-search::placeholder { color: var(--k-fine, currentColor); opacity: 0.7; }
-.sf-cru-search[hidden] { display: none; }
 .sf-crucible-armory .sf-cru-card { text-align: left; min-height: 0; }
 .sf-crucible-armory .sf-cru-name { font-size: clamp(18px, 1.5vw, 24px); }
 .sf-crucible-armory .sf-cru-blurb { font-size: 15px; line-height: 1.45; }

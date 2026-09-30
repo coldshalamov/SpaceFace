@@ -1008,9 +1008,16 @@ export const crucibleDraftScreen = {
   _paintReading(context, offer) {
     const r = this._reading;
     if (!r || !offer) return;
-    if (r.offerId === offer.id && r.credits === context.state?.run?.credits) return;
+    // The key must carry every field the painted copy derives from — a free demo or a free
+    // hull switch moves none of offer.id/credits, and a stale 'Demo' button is the lie.
+    if (r.offerId === offer.id && r.credits === context.state?.run?.credits
+      && r.demoed === offer.demoed && r.purchased === offer.purchased
+      && r.available === offer.available) return;
     r.offerId = offer.id;
     r.credits = context.state?.run?.credits;
+    r.demoed = offer.demoed;
+    r.purchased = offer.purchased;
+    r.available = offer.available;
     // The row being read lights its hardpoint: one ice pass along the leader beam and a pulse
     // of the node ring. Re-armed per row change; reduced motion leaves it off (bone at rest).
     const jigHost = r.parts && r.parts.jig;

@@ -996,7 +996,7 @@ export const crucibleScreen = {
           ruleset,
           mutators: terms.challengeMutators,
           starter: starterId ?? null,
-          stake: ruleset === SWARM_RULESET ? normalizeSwarmStake(stake) : null,
+          stake: daily || ruleset !== SWARM_RULESET ? null : normalizeSwarmStake(stake),
         }),
         simulationAssistProfile: stuntAssistProfile(ctx.state),
       };

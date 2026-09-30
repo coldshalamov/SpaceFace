@@ -7,6 +7,7 @@
 // ships owns fittings. Transitions walk the same run:transitionRequested seam the phase machine
 // emits; nothing stubs the wallet or the shelf.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
@@ -551,6 +552,62 @@ test('the result revision moves on every write — a retry cannot repeat a plate
   h.bus.emit('run:ended', { outcome: 'defeat', reason: 'player_death' });
   assert.ok(survivalResults.resultRevision() > revA, 'the identical retry still moved');
   survivalResults.destroy();
+});
+
+// ── The quieter flags: collector gate, score factor, door parity, fresh reading ──
+
+test('a pod a drone ate pays nobody — the collector gate mirrors the repair cell', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'contender' });
+  h.state.run.phase = 'active';
+  h.state.playerId = 9;
+  const registry = { get: () => null };
+  const director = createSwarmEventDirector({ state: h.state, bus: h.bus, helpers: {}, registry });
+  director.init();
+  const awards = () => named(h.emitted, 'run:awardRequested')
+    .filter((e) => e.payload && e.payload.reason === 'swarm:supplyPod');
+  director._podIds.add(77);
+  h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 40 });
+  assert.equal(awards().length, 0, 'an NPC collector consumes but never pays');
+  assert.ok(!director._podIds.has(77), 'the pod is still spent');
+  // Absent claims (the publishers disagree on payload shape); the player's id claims.
+  for (const collectorId of [undefined, 9]) {
+    director._podIds.add(88);
+    const before = awards().length;
+    h.bus.emit('pickup:collected', { pickupId: 88, collectorId });
+    assert.equal(awards().length, before + 1, `collector ${collectorId} still pays`);
+  }
+  director.destroy();
+});
+
+test('the stake score factor rides every awarded point — exhibition halves, ironbound doubles', () => {
+  const scoreAfter = (stake) => {
+    const h = boot();
+    beginSwarm(h, { stake });
+    h.bus.emit('run:awardRequested', { score: 10, reason: 'kill' });
+    return h.state.run.score;
+  };
+  assert.equal(scoreAfter('ironbound'), 20, 'ironbound tallies double');
+  assert.equal(scoreAfter('exhibition'), 5, 'exhibition tallies half');
+  assert.equal(scoreAfter('contender'), 10, 'contender tallies true');
+  // A scored-ruleset run never hears of a purse: absent stake reads the 1× baseline.
+  const h = boot();
+  h.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: SEED, arenaId: ARENA });
+  h.bus.emit('run:awardRequested', { score: 10, reason: 'kill' });
+  assert.equal(h.state.run.score, 10, 'an unstaked run pays true');
+});
+
+test('the door prices ghost parity off the stake the launch will actually send', () => {
+  const DOOR = readFileSync(new URL('../src/ui/screens/crucible.js', import.meta.url), 'utf8');
+  // currentGhostRules must mirror launchCurrent: a daily rides Contender, not the picked stake.
+  assert.match(DOOR, /stake: daily \|\| ruleset !== SWARM_RULESET \? null : normalizeSwarmStake\(stake\)/,
+    'the pending-launch rules compare under the contract the run will race');
+});
+
+test('the reading repaints on a free demo — its key carries trial and bought state', () => {
+  const DRAFT = readFileSync(new URL('../src/ui/screens/crucibleDraft.js', import.meta.url), 'utf8');
+  assert.match(DRAFT, /r\.demoed === offer\.demoed/, 'the reading key knows the trial');
+  assert.match(DRAFT, /r\.purchased === offer\.purchased/, 'the reading key knows a free switch');
 });
 
 // ── S6.8 — the stake rides the run record and the ghost comparison ───────────

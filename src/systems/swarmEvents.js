@@ -264,6 +264,9 @@ export function createSwarmEventDirector(ctx) {
       const id = payload && payload.pickupId;
       if (id == null || !this._podIds.has(id)) return;
       this._podIds.delete(id);
+      // Same collector gate as the repair cell: NPC/drone collection consumes the pod but
+      // never pays the player's wallet (the publishers disagree on shape, so absent still claims).
+      if (payload.collectorId != null && this._state && payload.collectorId !== this._state.playerId) return;
       const credits = this._live && this._live.event && this._live.event.kind === 'supply'
         ? this._live.event.credits : (SWARM_EVENT_BY_ID.supply_drop && 60);
       // The run wallet takes the pod's worth — award is the only credits write path.

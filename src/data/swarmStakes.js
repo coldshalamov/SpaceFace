@@ -1,9 +1,10 @@
 // Swarm stakes (design/swarm/SWARM_PROGRAM.md §S1) — the swarm run's difficulty contract.
 //
-// A stake is three numbers and a promise: the PURSE is the run wallet the armory opens with,
-// the PRESSURE is the single multiplier on the swarm's concurrency curve and round quota, and
-// the EARN is the multiplier on what a cleared round pays. Nothing here touches hull, damage
-// or speed — pressure in this mode is concurrency, never stat inflation (see swarmMode.js).
+// A stake is four numbers and a promise: the PURSE is the run wallet the armory opens with,
+// the PRESSURE is the single multiplier on the swarm's concurrency curve and round quota, the
+// EARN is the multiplier on what a cleared round pays, and the SCORE is the multiplier on every
+// point the run tallies. Nothing here touches hull, damage or speed — pressure in this mode is
+// concurrency, never stat inflation (see swarmMode.js).
 //
 // The purse is a runway, not a power axis: it is spent inside the run's own shop and dies with
 // the run. A high purse is an exhibition — you walk in rich to learn the room or to demo a
@@ -20,6 +21,7 @@ export const SWARM_STAKES = Object.freeze([
     purse: 2400,
     pressure: 0.65,
     earn: 0.75,
+    score: 0.5,
     blurb: 'Walk in rich; the room is a classroom. Buy what you want to see.',
   }),
   Object.freeze({
@@ -28,6 +30,7 @@ export const SWARM_STAKES = Object.freeze([
     purse: 750,
     pressure: 1.0,
     earn: 1.0,
+    score: 1.0,
     blurb: 'The run the swarm was tuned for. A real stake, an honest pack.',
   }),
   Object.freeze({
@@ -36,6 +39,7 @@ export const SWARM_STAKES = Object.freeze([
     purse: 250,
     pressure: 1.15,
     earn: 1.25,
+    score: 1.5,
     blurb: 'Thin purse, thick pack. The shop is earned, not spent into.',
   }),
   Object.freeze({
@@ -44,6 +48,7 @@ export const SWARM_STAKES = Object.freeze([
     purse: 0,
     pressure: 1.3,
     earn: 1.5,
+    score: 2.0,
     blurb: 'Nothing but the hull. The purse is what you take off the pack.',
   }),
 ]);
@@ -74,7 +79,8 @@ export function swarmStakePitch(stakeId) {
     : stake.pressure < 1 ? `${Math.round(stake.pressure * 100)}% pressure`
     : `${Math.round(stake.pressure * 100)}% pressure`;
   const earn = stake.earn === 1 ? 'standard pay' : `pays ×${stake.earn}`;
-  return `${purse} · ${pressure} · ${earn}`;
+  const score = stake.score === 1 ? 'true tally' : `scores ×${stake.score}`;
+  return `${purse} · ${pressure} · ${earn} · ${score}`;
 }
 
 /** Data sanity, checkable without a DOM. */
@@ -89,6 +95,7 @@ export function validateSwarmStakes() {
     if (!Number.isInteger(stake.purse) || stake.purse < 0) issues.push(`${stake.id}: bad purse`);
     if (!(stake.pressure > 0)) issues.push(`${stake.id}: bad pressure`);
     if (!(stake.earn > 0)) issues.push(`${stake.id}: bad earn`);
+    if (!(stake.score > 0)) issues.push(`${stake.id}: bad score`);
   }
   if (!SWARM_STAKE_BY_ID[SWARM_DEFAULT_STAKE_ID]) issues.push('default stake missing');
   return { ok: issues.length === 0, issues };

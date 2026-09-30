@@ -10,7 +10,8 @@ import {
   runLevelForXp,
   validateRunState,
 } from '../core/runState.js';
-import { normalizeSwarmStake } from '../data/swarmStakes.js';
+import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
+import { isSwarmRuleset } from './survivalSwarm.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
 
@@ -36,6 +37,15 @@ function toNonNegativeInt(value) {
   if (!Number.isFinite(value)) return 0;
   const n = Math.trunc(value);
   return n > 0 ? n : 0;
+}
+
+// The stake's score factor rides every point the run tallies — kills, banks and chains all
+// pass through award, so scaling the seam scales the contract (integer-rounded, per
+// SWARM_PROGRAM.md §S1). A non-swarm or unstaked run reads 1.
+function swarmScoreScale(run) {
+  return run && isSwarmRuleset(run.ruleset)
+    ? swarmStakeFor(run.telemetry && run.telemetry.swarmStake).score
+    : 1;
 }
 
 export const runSession = {
@@ -151,7 +161,7 @@ export const runSession = {
     if (run.phase === 'inactive') return false;
     const credits = toNonNegativeInt(request && request.credits);
     const xp = toNonNegativeInt(request && request.xp);
-    const score = toNonNegativeInt(request && request.score);
+    const score = Math.round(toNonNegativeInt(request && request.score) * swarmScoreScale(run));
     if (credits === 0 && xp === 0 && score === 0) return false;
     const next = cloneRun(run);
     if (!next) return false;
