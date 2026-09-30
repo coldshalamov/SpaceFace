@@ -5399,7 +5399,7 @@
           33.128057
         ]
       },
-      "bytes": 1095548,
+      "bytes": 1116084,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -5465,8 +5465,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 2.257558,
-          "lod2": 2.257379
+          "lod1": 2.257694,
+          "lod2": 2.2585
         },
         "overTolerance": false,
         "toleranceWu": 4.200362
@@ -5510,6 +5510,14 @@
           "depthWrite": false,
           "doubleSided": false,
           "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_gold",
           "role": "emissive"
         },
         {
@@ -5583,8 +5591,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 22,
-      "nodes": 35,
+      "meshes": 23,
+      "nodes": 36,
       "note": null,
       "opening": null,
       "pivot": [
@@ -5825,7 +5833,7 @@
       ],
       "shell": {
         "boundaryEdges": 1840,
-        "inwardFaceFraction": 0.30775,
+        "inwardFaceFraction": 0.30725,
         "silhouetteRadius": 52.504529,
         "sliceY": 0
       },
@@ -5931,7 +5939,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 51960,
+      "triangles": 53340,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -44348,7 +44356,7 @@
           33.128057
         ]
       },
-      "bytes": 1095548,
+      "bytes": 1116084,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44414,8 +44422,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 1.693168,
-          "lod2": 3.44074
+          "lod1": 1.69327,
+          "lod2": 3.441416
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -44459,6 +44467,14 @@
           "depthWrite": false,
           "doubleSided": false,
           "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_gold",
           "role": "emissive"
         },
         {
@@ -44532,8 +44548,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 22,
-      "nodes": 35,
+      "meshes": 23,
+      "nodes": 36,
       "note": null,
       "opening": null,
       "pivot": [
@@ -44774,7 +44790,7 @@
       ],
       "shell": {
         "boundaryEdges": 1840,
-        "inwardFaceFraction": 0.30775,
+        "inwardFaceFraction": 0.30725,
         "silhouetteRadius": 39.378397,
         "sliceY": 0
       },
@@ -44880,7 +44896,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 51960,
+      "triangles": 53340,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],

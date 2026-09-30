@@ -7285,8 +7285,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_leviathan",
-      "tris": 51960,
-      "bytes": 3397856,
+      "tris": 53340,
+      "bytes": 3469780,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

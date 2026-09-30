@@ -23,6 +23,7 @@ COLORS = {
     'stripe': '#7e622b',   # gold (brief #a8843a, same calibration)
     'hazard': '#7e622b',
     'dark': '#13161b',
+    'glow_cyan.gold': '#ffd35a',  # gold, lit: the wing leading-edge lines
 }
 
 HULL = [
@@ -222,6 +223,10 @@ def build():
     F.band(s, 'Wing', (12.0 - ln[0] * 0.9, 5.6 - ln[1] * 0.9, 0), ln, 0.7, 'paint2', facing=(0, 0, 1), mirror=True)
     F.band(s, 'Wing', (12.0 - ln[0] * 1.55, 5.6 - ln[1] * 1.55, 0), ln, 0.14, 'stripe', facing=(0, 0, 1),
            mirror=True)
+    # Identity trim, lit: one thin gold line along each wing's leading edge, between the ivory
+    # band and the gold stripe -- the flagship's span read by its light (LOOK.md: lamps are light).
+    F.band(s, 'Wing', (12.0 - ln[0] * 1.36, 5.6 - ln[1] * 1.36, 0), ln, 0.1, 'glow_cyan.gold', facing=(0, 0, 1),
+           inset=0.01, depth=-0.02, mirror=True)
     F.panel(s, 'Wing', (-21.4, 8.2), (1.6, 3.0), 'dark', inset=0.04, depth=-0.05, mirror=True)
     for side in (1, -1):
         F.loft(s, f'Nacelle{side}', [
