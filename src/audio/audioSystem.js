@@ -2078,6 +2078,13 @@ export const audio = {
       const position = p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
       this.play(id, { position, gain: 0.7 });
     });
+    // One twang per tether:rebound. Strain (nearBreak / loaded phase) stays on the instrument.
+    bus.on('tether:rebound', (p) => {
+      const id = combatVerbRecipe('tether:rebound');
+      if (!id) return;
+      const position = p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
+      this.play(id, { position, gain: 0.7 });
+    });
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
     // The first-hour instructor speaks every tutorial line through the same radio treatment the
     // barks get — key click, one distinct register, squelch tail — on a single mic, so a beat

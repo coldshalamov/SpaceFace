@@ -79,6 +79,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'tether:broken': 'sfx_tether_crack',
   'tether:cut': 'sfx_tether_twang',
   'tether:snagged': 'sfx_tether_twang',
+  // Same twang family as a snag. The strain instrument owns nearBreak / loaded phase.
+  'tether:rebound': 'sfx_tether_twang',
   'tether:snagCleared': SILENT('A cleared snag is the reel moving again, which already has its voice.'),
   'tether:released': 'sfx_tether_twang',
   'tether:releaseRated': 'sfx_tether_twang',
