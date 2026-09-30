@@ -20,6 +20,7 @@ COLORS = {
     'hazard': '#d99a1e',
     'bare': '#868c93',     # honed ram edge
     'glow_drive': '#ff9a4a',
+    'glow_cyan.sodium': '#ff8a2a',  # Ashline identity light: the lit blade edge (family-wide)
 }
 
 
@@ -106,6 +107,11 @@ def build():
     for i in range(3):
         F.band(s, 'Shoulder', (0.0, 3.0 + i * 0.5, 0), (0.3, 1.0, 0), 0.22, 'hazard',
                facing=(1, 0, 0.3), mirror=True, min_facing=0.55)
+    # The identity line is lit: one thin sodium channel on each shoulder's outer chamfer, just inside
+    # the armour edge (-0.3,4.5)->(-5.6,5.35), so the wedge reads as a lit blade at the chase camera.
+    # Outboard normal of that port edge (0.158,0.987); the line sits 0.25 m inboard on the slope.
+    F.band(s, 'Shoulder', (-2.99, 4.678, 0), (0.158, 0.987, 0), 0.1, 'glow_cyan.sodium', facing=(0, 0, 1),
+           min_facing=0.3, inset=0.01, depth=-0.02, mirror=True, region=(('x', -5.4, -0.5),))
     pauldron = [(-7.2, 2.6), (-1.8, 2.6), (-0.6, 3.3), (-1.3, 4.3), (-5.4, 4.9), (-7.3, 4.3)]
     F.plate(s, 'Pauldron', pauldron, z0=1.5, thickness=0.45, material='paint', chamfer=0.2, mirror=True,
             side_material='gunmetal')
