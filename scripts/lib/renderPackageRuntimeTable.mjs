@@ -274,7 +274,7 @@ export async function sealMotionBankRef(pilot, metadata, { repoRoot } = {}) {
     }
   }
   return {
-    uri: `assets/ships/motions/${pilot.key}.motion.json`,
+    uri: `assets/ships/motions/${bankKey}.motion.json`,
     sha256: createHash('sha256').update(bankBytes).digest('hex'),
     bytes: bankBytes.length,
     rigId: bank.rigId,

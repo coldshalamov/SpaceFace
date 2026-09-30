@@ -534,6 +534,23 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       if (!clip) {
         throw new Error(`motion bank ${checked.rigId} has no clip "${clipName}".`);
       }
+      // A started clip permanently supersedes older clips on every group it channels.
+      // Latest-started-wins must outlive the younger clip's own rest-park — otherwise a held
+      // earlier clip (endMode 'hold', never evicted) re-applies its delta the frame the newer
+      // clip deletes, snapping the rig back to the superseded pose (breach↔seal, index↔reset).
+      const claimed = new Set(clip.channels.map((channel) => channel.group));
+      for (const [otherName, otherRun] of [...state.clips]) {
+        if (otherName === clipName) continue;
+        const other = clips.get(otherName);
+        if (!other) continue;
+        const remaining = other.channels.some((channel) => !claimed.has(channel.group));
+        if (!remaining) {
+          state.clips.delete(otherName);
+          continue;
+        }
+        const superseded = otherRun.superseded || (otherRun.superseded = new Set());
+        for (const group of claimed) superseded.add(group);
+      }
       if (generation != null) state.generation = generation;
       state.clips.delete(clipName);
       state.clips.set(clipName, {
@@ -565,7 +582,11 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
         );
         // Later map entries override earlier ones per group — newest clip wins a shared group.
-        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+        // Groups a newer clip permanently claimed stay suppressed even after that clip parks.
+        for (const [groupId, delta] of deltas) {
+          if (run.superseded && run.superseded.has(groupId)) continue;
+          merged.set(groupId, delta);
+        }
       }
       for (const [id, { binding, nodes }] of groups) {
         const delta = merged.get(id) || {};

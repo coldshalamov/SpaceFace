@@ -704,7 +704,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel-lod1",
-    "expectedContentHash": "502a6fc3feb9c894ec8b37fde485dcfa3d6702ae175f426a3c22ceca328796c9",
+    "expectedContentHash": "b9567764adb3a0ab9057a810d1a641d6f5ed9890bbdc0614ba3c49c8fbfd03d5",
     "key": "kestrel-lod1",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -714,7 +714,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel-lod2",
-    "expectedContentHash": "4df77cc25c7cf6677867a36856f1d80087a09ac7a3a4d214f684606ca5572452",
+    "expectedContentHash": "e914f70ddb7896d9dfa49dca4864192cc26b597a1710161e50592b6eb1304499",
     "key": "kestrel-lod2",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
