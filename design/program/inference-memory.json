@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "tool-03-starter-shot-audition",
-      "date": "2026-09-22",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "auditioned Kenney laserSmall_000 vs authored wpn_pulse; kept authored pulse (Kenney lighter: -5.4dB mean, less low-band)",
-      "fingerprint": "verb=hear,subject=starter-shot,sector=helios,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "50f39d8aa",
-      "verification": "focused_green"
-    },
-    {
       "id": "pic-02-rock-variant-surfaces",
       "date": "2026-09-22",
       "wf": "WF-11",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "34155f048",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pic-13-rope-glow",
+      "date": "2026-09-30",
+      "wf": "WF-12",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Rope material glows with the sim-published tether.strainGlow, so a loaded whip reads before it snaps; slack reads 0",
+      "fingerprint": "verb=lights,subject=massline rope,sector=flight,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "f00e9ba23a7791c19dd883b2598e13486add6cce",
       "verification": "focused_green"
     }
   ],
