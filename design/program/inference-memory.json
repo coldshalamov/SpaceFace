@@ -1634,6 +1634,19 @@
       "integration": "live",
       "commit": "128971f46",
       "verification": "focused_green"
+    },
+    {
+      "id": "VERB-14",
+      "date": "2026-09-30",
+      "wf": "WF-15",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "reel in/out default to BracketLeft/Right in every scheme; held winch drives reelDelta, modal-safe, rebindable",
+      "fingerprint": "verb=reel,subject=tether,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "b876631d7a11b05447f29d512dc8015d9aa7fc4a",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

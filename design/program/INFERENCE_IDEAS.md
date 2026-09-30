@@ -106,7 +106,7 @@ not to invent.
 | VERB-13 | One flight key dumps the selected lot as the payload body that already exists | `src/systems/input.js`, `src/systems/cargo.js` | The key emits `cargo:jettisoned` and a payload body exists | Add a minigame. Build the hot-dock spill (§22 F7) | SHIPPED |
 | VERB-14 | Reel in and reel out have default keys instead of empty bindings in every scheme | `src/systems/input.js`, `src/ui/screens/settings.js` | A focused test proves `reelIn`/`reelOut` resolve non-empty codes in pilot, helm-assist and classic and that they conflict with nothing; input edits carry the focused input/rebind validation the contract requires | Remove the hold grammar path. Change any other default code | SHIPPED VERB-14 |
 | VERB-15 | The velocity-vectoring assist can be turned off in Gameplay settings like the other three assists | `src/ui/screens/settings.js`, `src/systems/flightV3.js` | A focused test proves `gameplay.velocityVectoring` false disables the assist on seed 4242 and the row persists through the profile snapshot | Change the default (on). Add a strength slider | SHIPPED VERB-15 — 5d4dcc440; focused-green, settings bench exercised |
-| VERB-16 | The cruise charge has a meter on the verb shelf, so the three-second spool is visible | `src/ui/powerRail.js`, `src/systems/cruise.js` | On seed 4242 the rail model exposes `cruiseChargeProgress` rising 0→1 over the charge and the engaged state after; a focused test pins it | Change charge time. Redesign the rail (ORRERY) | OPEN |
+| VERB-16 | The cruise charge has a meter on the verb shelf, so the three-second spool is visible | `src/ui/powerRail.js`, `src/systems/cruise.js` | On seed 4242 the rail model exposes `cruiseChargeProgress` rising 0→1 over the charge and the engaged state after; a focused test pins it | Change charge time. Redesign the rail (ORRERY) | SHIPPED VERB-16 |
 | VERB-17 | Auto-target assist has an off and a strength in Gameplay settings | `src/systems/autoTargetAssist.js`, `src/ui/screens/settings.js` | A focused test proves the assist yields zero aim correction at off and the authored correction at full on seed 4242; the key persists | Change the default strength. Touch raw aim input | OPEN |
 | VERB-18 | A cancelled release gives a soft tick, distinct from a refusal | `src/systems/masslineThrow.js`, `src/audio/audioSystem.js` | On seed 4242 `massline:releaseCancelled` plays one soft cue that is not `sfx_massline_deny`; a focused test pins the id | Use the deny voice. Add a caption longer than one word | OPEN |
 | VERB-19 | A line that rebounds off its limit twangs | `src/combat/attachments.js`, `src/audio/combatVerbCues.js` | On seed 4242 `tether:rebound` plays the authored twang once per rebound through the dispatched cue table; a focused test pins one play per event | Double-voice with the strain tone. Change rebound physics | OPEN |
@@ -205,8 +205,8 @@ not to invent.
 | INST-30 | A magnet capture chimes softly, distinct from a scoop pickup | `src/systems/lootShards.js`, `src/audio/audioSystem.js` | On seed 4242 `loot:magnetCaptured` plays a recipe id different from `sfx_pickup_chime`; a focused test pins the ids differ | Chime per unit in a stream. Add samples | OPEN |
 | INST-31 | The choir bell, the nestbreaker split and the pale coil blink each have a voice | `src/systems/uniqueLootAbilities.js`, `src/audio/audioSystem.js` | On seed 4242 the three `uniqueLoot:*` events play three distinct authored cues; a focused test pins three ids | Reuse the field deploy voices. Add samples | OPEN |
 | INST-32 | A revealed build identity is heard once as a scan resolve, not read off a panel | `src/systems/buildIdentity.js`, `src/audio/audioSystem.js` | On seed 4242 `buildIdentity:revealed` plays the scan-resolve cue once per target; a focused test pins once-only | Reveal beyond the scan stage. Add samples | OPEN |
-| INST-33 | Flak has its own muzzle voice instead of sharing the autocannon's | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_flak_turret_s` fire resolves a flak recipe id and `wpn_autocannon_s` keeps `sfx_wpn_autocannon`; a focused test pins the ids differ | Add samples. Change flak damage | OPEN |
-| INST-34 | Heavy beams sound heavier than the beam laser | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_heavy_beam_l` resolves a lower-register beam recipe than `wpn_beam_laser_m`; a focused test pins the two ids and the rate order | Add samples. Change beam dps | OPEN |
+| INST-33 | Flak has its own muzzle voice instead of sharing the autocannon's | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_flak_turret_s` fire resolves a flak recipe id and `wpn_autocannon_s` keeps `sfx_wpn_autocannon`; a focused test pins the ids differ | Add samples. Change flak damage | CLAIMED 2026-09-28 infer-audio-01 |
+| INST-34 | Heavy beams sound heavier than the beam laser | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_heavy_beam_l` resolves a lower-register beam recipe than `wpn_beam_laser_m`; a focused test pins the two ids and the rate order | Add samples. Change beam dps | CLAIMED 2026-09-28 infer-audio-01 |
 
 ## NEXT WAVE 300 — pre-decided bounded assignments
 
@@ -564,6 +564,8 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
+| INST-33 | 2026-09-28 | infer-audio-01 | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` |
+| INST-34 | 2026-09-28 | infer-audio-01 | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` |
 
 ## SHIPPED
 
