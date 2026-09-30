@@ -15,6 +15,7 @@ COLORS = {
     'paint2': '#1b837f',   # courier teal
     'stripe': '#1b837f',
     'hazard': '#e0892a',
+    'glow_cyan.helios': '#3ee8dc',  # courier teal, lit: the cabin trim ring and the pod trim rings
 }
 
 
@@ -36,6 +37,9 @@ def build():
     # Courier band round the cabin and a teal dorsal stripe down the boom.
     F.band(s, 'Body', (5.6, 0, 0), (1, 0, 0), 0.7, 'paint2', inset=0.02, depth=0.015)
     F.band(s, 'Body', (-2.0, 0, 0), (0, 1, 0), 0.55, 'stripe', facing=(0, 0, 1), min_facing=0.6)
+    # Lit cabin trim: one thin ring of lit courier teal on the ivory just aft of the courier band,
+    # so the Lark reads as a light before it reads as a colour.
+    F.band(s, 'Body', (5.05, 0, 0), (1, 0, 0), 0.16, 'glow_cyan.helios', inset=0.01, depth=-0.02)
     # Raised roof hatch plates.
     F.panel(s, 'Body', (0.6, 0.0), (2.2, 1.4), 'paint', inset=0.04, depth=0.03)
     F.panel(s, 'Body', (-4.6, 0.0), (1.6, 1.0), 'dark', inset=0.03, depth=-0.03)
@@ -55,6 +59,8 @@ def build():
         dict(x=-3.0, w=0.12, ht=0.12, hb=0.12, zc=0.08, n=2.0, y=3.35),
     ], material='paint', count=40, mirror=True)
     F.band(s, 'Pod', (-5.9, 3.35, 0), (1, 0, 0), 0.5, 'stripe', mirror=True)
+    # Lit pod trim: a thin lit teal ring on the ivory just forward of each pod's stripe.
+    F.band(s, 'Pod', (-5.4, 3.35, 0), (1, 0, 0), 0.14, 'glow_cyan.helios', inset=0.01, depth=-0.02, mirror=True)
     F.nozzle(s, 'PodNozzle', (-8.55, 3.35, 0.08), 0.46, 0.7, material='gunmetal', mirror=True)
     # Main drive in the tail
     F.nozzle(s, 'MainNozzle', (-8.3, 0.0, 0.1), 0.5, 0.8, material='gunmetal')

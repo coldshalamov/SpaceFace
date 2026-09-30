@@ -23,6 +23,7 @@ COLORS = {
     'ceramic': '#1c1510',
     'ceramic.ore': '#231a12',  # ore lumps
     'ceramic.ore2': '#3a2614',  # rusty lumps
+    'glow_cyan.rust': '#ffd23a',  # Work-fleet safety yellow, lit: the hopper loading lips
 }
 
 HOPPERS = (12.0, 5.0, -2.0, -9.0)   # hopper centres (x); each 6.0 m long, 5.6 m wide
@@ -92,6 +93,11 @@ def build():
     # The four open hoppers, sunk into the deck.
     for i, x in enumerate(HOPPERS):
         F.panel(s, 'Hull', (x, 0.0), (HOPPER_LEN, HOPPER_W), 'dark', inset=0.22, depth=-1.5)
+    # Identity trim, lit: one thin safety-yellow line down each hopper lip, the full run of the four
+    # wells -- the loading edge the chase camera reads against the dark ore (LOOK.md: lamps are light).
+    for y in (3.0, -3.0):
+        F.band(s, 'Hull', (0, y, 0), (0, 1, 0), 0.14, 'glow_cyan.rust', facing=(0, 0, 1), min_facing=0.6,
+               inset=0.01, depth=-0.02, region=(('x', -12.2, 15.2),))
     # Hazard coamings across the deck between the hoppers.
     for x in (15.55, 8.5, 1.5, -5.5, -12.5):
         F.band(s, 'Hull', (x, 0, 0), (1, 0, 0), 0.55, 'hazard', facing=(0, 0, 1), min_facing=0.6, inset=0.02,
