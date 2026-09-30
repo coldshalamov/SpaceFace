@@ -694,7 +694,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "6c4a2d333062d6cf87c80d3d79868cd4720195ed8932717b511d778d6330439b",
+    "expectedContentHash": "818bd0bdeb8c971f12ac689b634ab206f846fe01782114e9fb5603c02e44faec",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -1374,7 +1374,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.yard-tug",
-    "expectedContentHash": "068b1686987624eb7a89f1f90d526138437ff44c8504e9e32c284aa8d74d4881",
+    "expectedContentHash": "0989714fdd753e020110ab521c4922494ef9b21074e929a49d3480c5e3fcb7ca",
     "key": "yard-tug",
     "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_YARD_TUG",
