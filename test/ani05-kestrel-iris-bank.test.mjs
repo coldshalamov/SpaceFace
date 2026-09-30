@@ -25,13 +25,13 @@ test('ANI-05 binds six iris petal groups alongside the dish and mining rigs', ()
   assert.equal(new Set(names).size, names.length, `duplicate clip names: ${names}`);
 });
 
-test('ANI-05 ignite drives every petal ~1.22m along its own radial', () => {
+test('ANI-05 ignite drives every petal ~0.72m along its own radial', () => {
   for (let i = 0; i < 6; i++) {
     const start = delta('irisIgnite', 0, `kestrel_iris_${i}`);
     const held = delta('irisIgnite', 0.85, `kestrel_iris_${i}`);
     const mag0 = Math.hypot(...start.translation);
     const mag1 = Math.hypot(...held.translation);
-    assert.ok(mag1 > 1.0, `petal ${i} extended (|d|=${mag1.toFixed(2)})`);
+    assert.ok(mag1 > 0.6 && mag1 < 0.85, `petal ${i} extended (|d|=${mag1.toFixed(2)})`);
     assert.ok(mag0 < mag1, 'petal travels outward-in during ignite');
     // every petal moves on its own radial — directions differ
     const dir = held.translation.map((v) => v / mag1);

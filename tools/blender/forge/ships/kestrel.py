@@ -161,10 +161,14 @@ def build():
     # glowing core. One motion group per petal so each slides along its own radial direction.
     iris_petals = []
     for i in range(ANI_05.PETALS):
+        # Alternate the plate plane a few mm so neighbouring blades never sit coplanar.
         petal = F.plate_v(s, f'IrisPetal{i}', ANI_05.petal_outline(math.radians(i * 60 + 30)),
-                          ANI_05.PETAL_X - 0.09, 0.09, plane='yz', material='gunmetal',
-                          chamfer=0.02, bevel=0.01)
+                          ANI_05.PETAL_X - 0.09 + (i % 3) * 0.012, 0.09, plane='yz',
+                          material='dark', chamfer=0.02, bevel=0.01)
         iris_petals.append(petal)
+    # Static hub the fan reads against when the iris opens — a shallow chrome dome on the axis.
+    F.cylinder(s, 'IrisHub', (ANI_05.PETAL_X - 0.16, 0, 0), (ANI_05.PETAL_X + 0.1, 0, 0),
+               0.42, 0.16, material='bare', segments=20, bevel=0.03)
     ANI_05.build(s, {'petals': iris_petals}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     s.ani01_bank = ani01_bank
 

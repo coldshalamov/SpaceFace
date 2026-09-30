@@ -30,7 +30,8 @@ import motion_bank  # noqa: E402
 
 RIG_ID = 'kestrel_iris'
 PETALS = 6
-TRAVEL_M = 1.22        # tips sweep from r~1.42 (hidden inside the throat wall) to r~0.2
+TRAVEL_M = 0.72        # tips sweep from r~1.42 (hidden inside the throat wall) to r~0.7,
+                       # leaving the chrome hub and a glow ring visible between blades
 PRIME_M = 0.4          # the pre-kick's partial extension
 PETAL_X = -13.55       # 0.05 aft of the glow disc (-13.5): blades cover the glow when extended;
 
@@ -50,7 +51,8 @@ def petal_outline(angle):
     tan = Vector((-s, c))
     p_in = dir_ * 1.42
     p_out = dir_ * 2.05
-    pts = [p_in + tan * 0.24, p_in - tan * 0.24, p_out - tan * 0.55, p_out + tan * 0.55]
+    # Narrow vanes: tips must clear the hub edge and neighbouring petals at full travel.
+    pts = [p_in + tan * 0.18, p_in - tan * 0.18, p_out - tan * 0.42, p_out + tan * 0.42]
     return [(p.x, p.y) for p in pts]
 
 

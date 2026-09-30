@@ -1,0 +1,27 @@
+/* The SIGNAL / OVERPRINT optics are already baked. Keep this a directly
+   composited video, not a filtered/read-back texture for a second renderer. */
+#boot-overlay .boot-video[data-boot-native] {
+  transform: translateZ(0);
+  will-change: transform;
+  filter: none;
+  object-fit: cover;
+}
+/* A buffered/still frame gets restrained compositor-only camera drift. The
+   state remains explicitly poster/buffering; this is not a readiness claim. */
+#boot-overlay[data-boot-visual-state="probing"] .boot-video[data-boot-native],
+#boot-overlay[data-boot-visual-state="buffering"] .boot-video[data-boot-native],
+#boot-overlay[data-boot-visual-state="poster"] .boot-video[data-boot-native] {
+  animation: boot-media-drift 12s ease-in-out infinite alternate;
+}
+@keyframes boot-media-drift {
+  from { transform: translate3d(-.7%, -.3%, 0) scale(1.025); }
+  to { transform: translate3d(.7%, .3%, 0) scale(1.055); }
+}
+#boot-overlay.hidden .boot-video[data-boot-native] { animation-play-state: paused; }
+html.sf-reduce-motion #boot-overlay[data-boot-visual-state] .boot-video[data-boot-native] { animation: none; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  #boot-overlay[data-boot-visual-state] .boot-video[data-boot-native] { animation: none; transform: none; }
+}
+@media (forced-colors: active) {
+  #boot-overlay .boot-video[data-boot-native] { opacity: .15; }
+}

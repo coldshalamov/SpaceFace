@@ -1,0 +1,199 @@
+Job: make SpaceFace look great with graphics work that costs the frame nothing, using the open
+Blender (MCP) to design, the repo's Forge kit to build, and the live renderer to judge. Four
+workflows, in ROI order. Each is the loop that gave the player hulls their lit identity trims on
+2026-09-30 (`git log --grep="feat(forge)" --since=2026-09-30`): design on the real body, write the
+recipe, look at the real picture, fix, publish, commit per body. Finish every body you can; if one
+fights back, publish the others and name the exact problem for that one.
+
+Read first: docs/visual-assets/LOOK.md (the look), tools/blender/forge/FORGE.md (the kit, look bar
+items 5 and 7), .claude/skills/forge-graphics/SKILL.md, design/program/GRAPHICS_PROGRAM.md §3 (rules)
+and §6 (how a change is judged). Reference results: tools/blender/forge/ships/kestrel.py (`glow_cyan`
+band on 'Spine'), wasp.py (leading-edge channels), pelican.py (a lit rail on a sloped edge:
+`lit_rail`), bastion.py (a lit outline along a plate edge with `region`), leviathan.py (flight-deck
+edge lights and the lit hangar maw: the station vocabulary). Blender axes: +X nose, +Y port, +Z up.
+
+=====================================================================================================
+THE PERFORMANCE CONTRACT (why the trim pass was free, and what keeps the next passes free)
+=====================================================================================================
+A forge body is one draw call per finish (~10 for a ship), one shared 1024 texture set, no
+per-frame code. The runtime never swaps a live ship to a lower LOD file (owner ruling 2026-09-29,
+src/render/wholeShipLodPolicy.js: the frame is sacred), so LOD0 is what ships at EVERY zoom; the
+in-file LOD toggles and greeble hiding still shave places when zoomed out. Therefore:
+1. Cut into existing parts (`F.band`, `F.panel`) or add parts in finishes the body already uses.
+   No new finish = no new draw call. A glow variant (`'glow_cyan.<name>': '#hex'`) is one extra
+   material = ONE extra draw call for that body; allowed once per body (twice for a station),
+   never more. Prefer the stock glows (`glow_cyan`, `glow_amber`, `glow_warm`, `glow_red`,
+   `glow_green`) when the identity colour is close enough.
+2. Never a new texture. Never noise. Never a decal. Everything is geometry plus a finish.
+3. Nothing per frame. No animation, no scripts, no runtime edits under src/ (that is a separate
+   packet with its own frame gate; do not open it here).
+4. Triangle budgets hold at LOD0 (that is the shipped cost): ships 10–45k, props ≈15k, stations
+   30–70k (trade hub 90k), landmarks 40–100k; LOD1 ≈ 40%, LOD2 ≈ 18%. `band()` re-slices the
+   whole part: two hull rings cost the Drifter +5k, so read the `[forge] ... tris=` line every build.
+   Mark greebles `s.detail = 1` (dropped at LOD2) or `s.detail = 2` (LOD0 only).
+5. Lamps are thin: strips ≤ 0.2 m, rings ≤ 0.16 m, window boxes ≈ 0.3 × 0.2. Bloom spills tens of
+   pixels on its own; a broad glow area reads as fog. Window rows stay `glow_warm` (lifted least).
+6. Nothing floats, nothing clips. The chase camera finds every gap.
+7. Gate per batch, not per body: before the first publish of a batch run
+   `node scripts/probe-frame-solid.mjs --headless` on a quiet host and keep the .json; after the
+   last publish run it again with `--compare=<that .json>`. Longest frame and p99 must not move.
+   Per body, `node scripts/look-bench.mjs --cost --bodies=<id> --moods=arcade` prints GPU ms/frame
+   for that body; a lit trim moves it by ~0.
+
+=====================================================================================================
+THE LOOP (every body, no exceptions)
+=====================================================================================================
+0. Preview: `blender -b --python tools/blender/forge/ships/<id>.py` (writes
+   assets/ships/forge/preview/<file>.glb; <file> is `file` in tools/blender/forge/fleet.json).
+1. Design in the OPEN Blender through the MCP. Do NOT call the recipe's build() there (it wipes
+   the scene). Load the kit and the preview:
+       exec(open(r'<repo>/tools/blender/forge/mcp_design_kit.py').read()); load('<file>.glb')
+   `surface_z(x, y)` gives the skin height and normal under a point; `strip(...)`/`rail(...)`
+   drop emissive candidates and report the gap to the skin (> 0.02 m = floating);
+   `chase_view(path)` renders the 60° chase angle: open that PNG and look. Read positions off
+   the placed objects (matrix_world) and copy them into the recipe. Skip the mock only for a plain
+   `band` around a loft or along a flat plate: the renderer picture is the judge anyway.
+2. Write it into the recipe (`F.band`, `F.boxes`, `F.box(..., rot=)`, `F.light`, `F.windows`).
+   Add the glow variant to COLORS only when a stock glow is wrong for the identity. Keep every
+   existing paint band. `band()` traps: the point must sit INSIDE the part (an offset on the wrong
+   side of an edge cuts nothing and the build still succeeds; for a port edge wound bow→stern the
+   outboard normal is (dy, -dx)/L); `region` bounds are shared with the mirrored cut, so never
+   y-bound a `mirror=True` band; `facing=(0,0,1)` for anything the top camera must see.
+3. Look at the real picture on the GPU:
+       blender -b --python tools/blender/forge/ships/<id>.py
+       SF_GL=d3d11 node scripts/fleet-look.mjs --file=assets/ships/forge/preview/<file>.glb --name=<id> --views=close,inspect --out=.devshots/gfx-<id>
+   (`--views=place,close` for stations/landmarks; add `--sector=<sector_id>` to judge under a
+   sector's rig). `close` is the gameplay camera. Fix until it reads as one confident line or one
+   confident lit structure, never a christmas tree. Two or three cycles. The picture decides;
+   the exit code proves nothing (Bastion cycle 1 built green and showed no line).
+4. Publish: `BLENDER="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe" node tools/blender/forge/publish.mjs <id>`
+   (~2.5 min; rewrites EVERY render package because they embed the pilots hash — expected).
+5. Checks: node scripts/check-parts-manifest.mjs · node scripts/check-render-package-pilots.mjs ·
+   node test/model-truth-census.test.mjs. Player hulls only (workflow C): silhouettes + posters +
+   hull tests as in GRAPHICS_PROGRAM.md §2.3.
+6. Commit per body with exact pathspecs right after its publish and BEFORE the next publish
+   (the next publish rewrites the packages again): the recipe, assets/ships/**,
+   src/data/modelTruthCensus.json, src/render/renderPackageManifest.js (+ for player hulls:
+   assets/ui/renders/hulls, src/data/shipSilhouettes.js). Check .git/MERGE_HEAD does not exist.
+   Never run tree-wide reset/checkout/stash/clean; the tree carries other agents' live work.
+7. Push after every few bodies. If master diverged, build the merge with
+   `git merge-tree --write-tree HEAD origin/master` + `git commit-tree` and push the sha; never
+   pull into the dirty tree (memory: push-diverged-master-without-touching-tree).
+Machine notes: background shell jobs die at 10 minutes — chain publishes as single gated jobs,
+detach poster renders with `Start-Process pwsh -File` (a -File script gets ONE positional arg:
+pass a comma list). Never run two renders of the same body at once. `SF_GL=d3d11` is seconds per
+frame; the default SwiftShader path is minutes.
+
+=====================================================================================================
+WORKFLOW A — lit identity trims on the 25 NPC hulls (highest ROI; a straight repeat)
+=====================================================================================================
+Every contact should be readable by its lights before its colour, the way the player hulls now
+are. Bodies (tools/blender/forge/ships/<id>.py; all `layout: npc`, one file with LOD0/1/2, no
+posters or silhouettes):
+  Helios civil (rounded, ivory; identity = the occupation colour; windows `glow_warm`):
+      helios_lark helios_cradle helios_span helios_arclight apron_shuttle inspection_cutter
+      helios_span_dmc helios_span_mts helios_span_reach
+  Ashline raiders (angular, rust/black; identity = sodium orange `#ff8a2a`-ish, ONE variant
+      `glow_cyan.sodium` shared by the family so the faction reads as one light):
+      ashline_dart ashline_lode ashline_rig ashline_rig_corsair_blade
+  Work fleet (chunky, safety colours; identity = hazard yellow, cf. the Yard Tug's T):
+      ore_barge repair_tender salvage_cutter survey_pin rescue_lifter prospector_skiff
+      scrap_sweeper volatiles_tanker   (yard_tug is done)
+  Wasp faction variants (wasp_scn_patrol wasp_mts_escort wasp_free_militia): they are
+      `build_variant` files over wasp.py, so the strips already exist — override the `'glow_cyan'`
+      hex in the variant's colour dict to the faction's colour (one line each) and shoot to confirm.
+Per hull: 1–3 thin strips or one lit ring where the design has an edge the top camera reads
+(spine, sponson edge, intake lip, drive collar, cargo-rail edge). Faction rule: a family shares
+one trim colour and one placement idea (raiders: a blade edge; civil: a cabin trim line; work
+fleet: a hazard bar across the working end). Contrast rule from the Yard Tug: a lit colour on
+the same paint colour vanishes — pick the family colour that contrasts with the surface it sits
+on. Done when `SF_GL=d3d11 node scripts/fleet-look.mjs --fleet --views=close` shows a lit trim
+on all 25 at the chase camera. One sitting per family; one commit per hull.
+
+=====================================================================================================
+WORKFLOW B — lit structures: stations, gates, buoys, outposts, landmarks (68 places)
+=====================================================================================================
+A station without lit windows reads as a toy; a dock mouth without lights is unreadable. Same
+loop, `--views=place,close`, sockets are copied from the live file automatically. Priority order
+(the default route first):
+  1. Seven stations + the trade hub's three faction overlays: place_station_refinery
+     place_station_mining place_station_fab place_station_military place_station_research
+     place_station_blackmarket place_station_trade_hub var_station_trade_hub_{free,mts,scn}_overlay_v01
+  2. Wayfinding: place_gate_jump_ring place_lane_beacon place_nav_buoy place_lane_pin
+     place_tally_post place_claim_mark place_ash_pin place_whistle place_worklight_tower
+     place_transponder_gate place_interdiction_buoy
+  3. Outposts and industry: place_claim_outpost_{base,bastion,catcher,fence,refinery,relay}
+     place_drill_platform place_extraction_mast place_freight_platform place_radiator_bank
+     place_slurry_tank place_transfer_arm place_maintenance_gantry place_conveyor_{barge,truss}
+     place_container_rack place_sensor_mast place_mining_drone
+  4. Landmarks and story props: place_landmark_{candle_fleet,resonant_cathedral,skerris_throne}
+     place_quiessence_freighter_{a,b,c} place_memorial_array place_station_billboard
+     place_dead_hulk place_ceres_bait_wreck place_ceres_grave_shard place_47a_rescue_capsule
+     pod_47a_evidence_spindle place_breakaway_{fork,sp07} place_cold_locker place_scrap_cage
+     place_improvised_dock place_dock_interior{,_grit,_military}
+  Skip: rocks (place_asteroid_*), place_debris_chunk, place_cargo_pod_standard, pod_cargo_container
+  (no lights on geology or loose cargo).
+Per place, in this order, stopping when it reads:
+  a. Window rows: `F.windows(...)` / `F.boxes(..., 'glow_warm')` in the hundreds on anything
+     crewed; one mesh per row (one draw). Dark hulks and derelicts get a few dead-cold windows and
+     one live one.
+  b. The dock mouth: a lit threshold bar and a static approach chase (alternating `glow_amber`
+     and `glow_cyan` boxes, 0.2 × 0.12, every ~0.9 m) running into the maw, exactly as the
+     Leviathan's flight deck does (`EdgeLight`/`CenterLight`/`Threshold`). Static boxes only;
+     the runtime chase animation is another packet.
+  c. One lit trim line in the place's occupation/faction colour along its biggest plan edge or
+     ring (a refinery's stack collar, the gate ring's inner lip, a buoy's equator).
+  d. Red port / green starboard `F.light` at the extremities, one amber beacon on the highest
+     point, `work_lamp(..., halo=True)` on anything that works (halo, because aimed-down lamps
+     show only their backs to the top camera).
+  Places must keep using the base `paint` somewhere (the station check fails otherwise) and stay
+  inside the live bounding box so the sockets land. Done when `--fleet --views=place` shows every
+  place in tiers 1–3 lit and readable at the chase tilt; tier 4 as far as the sitting allows.
+
+=====================================================================================================
+WORKFLOW C — close-zoom hero detail on the 15 player hulls (LOD0-only detail, no new finishes)
+=====================================================================================================
+At close zoom (58 WU, ship ≈ 450 px) the hulls read a little plain. Add a detail layer in finishes
+the hull already draws (gunmetal, dark, paint2), so it costs triangles and nothing else:
+  - hatch and access-panel outlines: `F.panel(..., inset=0.02, depth=-0.02)` in `dark`;
+  - fastener/rivet rows along armour edges: `F.boxes` (one mesh) of 0.05 m studs in `gunmetal`;
+  - a cockpit interior: a `dark` tub under the canopy with one thin `glow_warm` instrument strip
+    (that one uses an existing glow, still no new draw);
+  - replaceable-plate seams: thin `dark` bands with `region` so they do not wrap the whole loft;
+  - pipe runs and cable trays along sponson roots: `F.beams` / `F.sweep` in `gunmetal`.
+Mark all of it `s.detail = 2`. Budget: ≤ +6k triangles per hull and the hull stays under 45k
+(runtime LOD swap is off, so this ships at chase zoom too — that is why the cap). The no-noise
+rule still rules the chase picture: shoot `close` AND the default chase view; at 170 px the detail
+must vanish into the form, not read as speckle. Then the player-hull tail: silhouettes, posters
+(`SF_POSTER_SAMPLES=24`, ~3 min per hull, detached), `node --test test/hull-integrity.test.mjs
+test/j07-hud-contract.test.mjs`. Bodies: hornet wasp pelican mule drifter ranger ironback bastion
+atlas warden colossus leviathan saucer kestrel massline_express_liner.
+
+=====================================================================================================
+WORKFLOW D — sector mood pass (data, judged with the same picture; zero runtime cost)
+=====================================================================================================
+The same forged bodies should look different under each sector's light. Every mood value is
+owned by src/data/lookMoods.js (LOOK_MOODS, LOOK_MOOD_BY_PROFILE) and every sector rig by
+src/data/sectorVisualProfiles.js. These are uniforms; changing them costs nothing per frame.
+Targets: Vesta forge hot (forge_heat), Pallas drift cold (cold_drift), Sker Haven sodium
+(sodium_yard), Ceres belt dusty gold (dust_gold), Tethys/fringe neon noir, the anomaly void_signal.
+Judge with `node scripts/look-bench.mjs --moods=<a,b> --bodies=kestrel,hornet,leviathan
+--view=close` (one sheet, values side by side) and `SF_GL=d3d11 node scripts/fleet-look.mjs
+--fleet --views=close --sector=<sector_id>`. Rules: a mood changes the colour relationship and the
+darkness, never what a hull is made of (LOOK.md §5); two colours fight in every frame (key hue vs
+edge hue); shadow sides take the mood's shadow colour, never grey; space stays black; nav
+red/green and the HUD stay legible in every mood (accessibility contract). One commit per mood
+with the two sheets named in the message; delete the sheets after (owner capture rule).
+
+=====================================================================================================
+Order, parallelism, done
+=====================================================================================================
+Run A first (it is the same trick that just worked, on more than twice the bodies), then B tiers
+1–2, then C, then D, then B tiers 3–4. Parallel agents own one recipe file each and never touch
+the kit, fleet.json, src/, manifests, publish or git; the lead looks at each agent's PNGs itself,
+publishes, commits by pathspec, pushes (tools/blender/forge/briefs/). Three render-heavy agents is
+the ceiling on one machine. Done when: every body in the workflow shows its light at the chase
+camera in the fleet sheet, every publish check passes, the frame-solid compare shows no
+regression, and everything is committed and pushed. Report per body in one line: what was lit,
+where, the LOD0 triangle count before and after. Never report "blocked" without naming the exact
+missing file.

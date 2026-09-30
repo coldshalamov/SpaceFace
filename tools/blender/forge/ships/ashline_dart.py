@@ -18,6 +18,7 @@ COLORS = {
     'stripe': '#c9621c',   # sodium orange
     'hazard': '#d99a1e',
     'glow_drive': '#ff9a4a',  # Ashline drives burn hot orange
+    'glow_cyan.sodium': '#ff8a2a',  # Ashline identity light: the lit blade edge (family-wide)
 }
 
 
@@ -48,6 +49,11 @@ def build():
     F.band(s, 'Blade', (0, 0, 0), (0, 1, 0), 0.12, 'stripe', facing=(0, 0, 1), min_facing=0.6)
     F.band(s, 'Blade', (5.0, 0, 0), (1, 0, 0), 0.36, 'stripe', facing=(0, 0, 1), min_facing=0.2)
     F.band(s, 'Blade', (5.6, 0, 0), (1, 0, 0), 0.14, 'stripe', facing=(0, 0, 1), min_facing=0.2)
+    # The identity line is lit: one thin sodium channel just inside each flank of the blade, on the
+    # dark oxide top, from the guard to the tip bars (the lit knife edge the chase camera reads).
+    # Chord of the port edge (-0.8,1.25)->(4.6,0.8); outboard normal (0.083,0.9965); 0.2 m inboard.
+    F.band(s, 'Blade', (1.883, 0.826, 0), (0.083, 0.9965, 0), 0.1, 'glow_cyan.sodium', facing=(0, 0, 1),
+           min_facing=0.3, inset=0.01, depth=-0.02, mirror=True, region=(('x', -1.0, 4.4),))
     # Salvaged patch plate on the port blade (asymmetric, deliberate).
     F.panel(s, 'Blade', (2.4, 0.5), (1.4, 0.5), 'paint2', inset=0.03, depth=0.03)
     # Honed edge: a bright steel flange proud of the blade flanks, meeting at the point.
