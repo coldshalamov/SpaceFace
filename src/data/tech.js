@@ -32,7 +32,7 @@ export const TECH_NODES = [
   {
     id: 'tech_plasma_dynamics', name: 'Plasma Dynamics', branch: 'combat', prereqs: ['tech_kinetic_drivers', 'tech_beam_focusing'],
     cost: { credits: 10500, rp: 14 },
-    unlocks: { modules: ['wpn_plasma_cannon_m', 'wpn_emp_disruptor_m', 'wpn_rcs_disruptor_m'] },
+    unlocks: { modules: ['wpn_plasma_cannon_m', 'wpn_emp_disruptor_m', 'wpn_rcs_disruptor_m', 'mod_fire_lance_s'] },
   },
   {
     id: 'tech_deflector_theory', name: 'Deflector Theory', branch: 'combat', prereqs: [],
@@ -90,7 +90,7 @@ export const TECH_NODES = [
   {
     id: 'tech_payload_conduction', name: 'Payload Conduction', branch: 'combat', prereqs: ['tech_attack_topology', 'tech_plasma_dynamics'],
     cost: { credits: 17500, rp: 21 },
-    unlocks: { modules: ['mod_ion_payload', 'mod_incendiary_payload', 'mod_gravity_tag', 'mod_relay_arc', 'mod_conductive_path', 'mod_cryo_payload'] },
+    unlocks: { modules: ['mod_ion_payload', 'mod_incendiary_payload', 'mod_gravity_tag', 'mod_relay_arc', 'mod_conductive_path', 'mod_cryo_payload', 'mod_fire_lance_s_mk2'] },
   },
   {
     id: 'tech_orbit_cryo', name: 'Cryo Orbitals', branch: 'combat', prereqs: ['tech_payload_conduction'],
@@ -134,12 +134,12 @@ export const TECH_NODES = [
   {
     id: 'tech_impulse_ballistics', name: 'Impulse Ballistics', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 7500, rp: 10 },
-    unlocks: { modules: ['mod_charge_vector_rack'] },
+    unlocks: { modules: ['mod_charge_vector_rack', 'mod_gravity_bumper_s_mk2'] },
   },
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 9000, rp: 12 },
-    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
+    unlocks: { ships: ['ship_saucer'], modules: ['mod_engine_warp_l', 'mod_gravity_bumper_s', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],
@@ -155,12 +155,12 @@ export const TECH_NODES = [
   {
     id: 'tech_tractor_systems', name: 'Tractor Systems', branch: 'logistics', prereqs: [],
     cost: { credits: 1200, rp: 0 },
-    unlocks: { ships: ['ship_hawser'], modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_tether_capacitor', 'mod_loot_magnet_s', 'mod_mass_flail_rig_m'] },
+    unlocks: { ships: ['ship_hawser'], modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_tether_capacitor', 'mod_loot_magnet_s', 'mod_mass_flail_rig_m', 'mod_grip_bumper_s'] },
   },
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'logistics', prereqs: ['tech_tractor_systems'],
     cost: { credits: 9000, rp: 12 },
-    unlocks: { modules: ['mod_drone_bay_l'], droneTierCap: 1 },
+    unlocks: { modules: ['mod_drone_bay_l', 'mod_grip_bumper_s_mk2'], droneTierCap: 1 },
   },
   {
     id: 'tech_drone_swarm', name: 'Drone Swarm', branch: 'logistics', prereqs: ['tech_drone_control'],

@@ -8,6 +8,7 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // quotes and the route logic are untouched. Field Hardware chrome (kit plates, keys, quiet type)
 // is pinned from this module; buy/sell stay the same verbs.
 import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
+import { canLaunderSalvageAtStation } from '../../../data/salvageLegality.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
@@ -348,6 +349,18 @@ function holdArcHtml(used, cap) {
       : '')
     + `<circle cx="${r2(bx)}" cy="${r2(by)}" r="3" fill="rgb(248 244 234)"/>`
     + `</svg><span class="orr-mkt-holdarc__t">Hold<b>${fmt(used)} / ${fmt(cap)} u</b></span>`;
+}
+
+/**
+ * Ask the dock to wash papers at a black-market berth.
+ * The register does not write the ledger, the cut, or the pod.
+ */
+export function requestMarketLaunder(bus, state) {
+  if (!bus || typeof bus.emit !== 'function') return false;
+  const sid = stationId(state);
+  if (!sid || !canLaunderSalvageAtStation(sid)) return false;
+  bus.emit('dock:launder', { stationId: sid });
+  return true;
 }
 
 /** The corrupt dock owns the wash; the register only reads its durable receipt. */
@@ -1845,7 +1858,12 @@ export function createMarketScreen(ctx) {
       // (parity with the legacy market panel — without this, ui:buy/ui:sell are no-ops).
       const sid = stationId(st);
       if (ctx.bus && sid) ctx.bus.emit('economy:marketOpened', { stationId: sid });
+      requestMarketLaunder(ctx.bus, st);
       const requestedMode = open.tradeMode === 'sell' || open.tradeMode === 'buy' ? open.tradeMode : null;
+      // An explicit handoff ("Sell what I hauled") always applies its mode — even with a lot
+      // already on screen, where the implicit resume below would otherwise keep Buy and leave
+      // the hold hidden. openTradeMode itself focuses a held lot for Sell.
+      if (requestedMode) openTradeMode(requestedMode, st);
       const resume = marketResumeSelection({
         selectedId,
         qty,

@@ -3886,6 +3886,27 @@
       "sceneRoot": true
     },
     {
+      "key": "saucer-production-v1",
+      "assetId": "sf.render.saucer-production-v1",
+      "runtimeAssetId": "SF_SAUCER_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_saucer_production_v1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1.glb",
+      "releaseSha256": "2c54f9f858682b823ccf9f6895e2bc1b1a487dfd9221ac866f14520265b77b87",
+      "releaseBytes": 1142668,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/saucer-production-v1",
+      "metadataUrl": "assets/ships/release/render-packages/saucer-production-v1/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "mule-production-v1",
       "assetId": "sf.render.mule-production-v1",
       "runtimeAssetId": "SF_MULE_PRODUCTION_V1",
@@ -4822,6 +4843,48 @@
       ],
       "outputDir": "assets/ships/release/render-packages/quiessence-freighter-a",
       "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-a/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "saucer-production-v1-lod1",
+      "assetId": "sf.render.saucer-production-v1-lod1",
+      "runtimeAssetId": "SF_SAUCER_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_saucer_production_v1_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb",
+      "releaseSha256": "0ac0d0c74a60c6de99ee24dce869a676c48aa9b76e913cb7c71bae07d12cf2ee",
+      "releaseBytes": 717032,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/saucer-production-v1-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/saucer-production-v1-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "saucer-production-v1-lod2",
+      "assetId": "sf.render.saucer-production-v1-lod2",
+      "runtimeAssetId": "SF_SAUCER_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_saucer_production_v1_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1_lod2.glb",
+      "releaseSha256": "281ac6c8abc9387be647a97b98ce3a6bf7b24f27b9556b48c8d05655e2002dbd",
+      "releaseBytes": 516368,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/saucer-production-v1-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/saucer-production-v1-lod2/render-package.json",
       "sceneRoot": true
     },
     {

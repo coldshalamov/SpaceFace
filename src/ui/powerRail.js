@@ -43,7 +43,7 @@
 
 import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { fhGlyph } from './views/fhGlyphs.js';
-import { repulsionTrapFitted } from '../systems/impulseCharges.js';
+import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../systems/impulseCharges.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const BAND_ORDNANCE = 'ORDNANCE';
@@ -271,6 +271,9 @@ export function readRailModel(state, nowS) {
   const hull = s.entities?.get?.(s.playerId);
   const charges = player.cargo?.items?.cmdty_impulse_charge || 0;
   const throwCd = Math.max(0, hull?.data?.impulseCharges?.throwCdT || 0);
+  const capacity = resolveImpulseChargeCapacity(s);
+  const chargeWhy = charges <= 0 ? 'No impulse charges in cargo'
+    : throwCd > 0 ? `Arming — ${Math.ceil(throwCd)}s` : 'Ready';
   // Typed `charges` bucket, not the fat entityList (rocks/FX/wrecks all live there). The per-entity
   // predicate stays because the index-less fallback path returns the fat list.
   const armed = indexedTypeScan(s, 'charges').some(e => e.alive && e.type === 'charge'
@@ -282,8 +285,8 @@ export function readRailModel(state, nowS) {
     // empty state ("CHARGE 0" read as a broken label, not as "none left").
     1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'}${charges > 0 ? ` ×${charges}` : ''}`,
       state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
-      why: charges <= 0 ? 'No impulse charges in cargo'
-        : throwCd > 0 ? `Arming — ${Math.ceil(throwCd)}s` : 'Ready' },
+      capacity,
+      why: `${chargeWhy} · up to ${capacity}` },
     2: { state: armed || bay.armedCount > 0 ? 'armed' : 'empty',
       description: 'Detonate your armed bombs and the armed charge network. Active bomb fields finish normally.',
       why: armed || bay.armedCount > 0 ? 'Armed — press to detonate' : 'Nothing armed to detonate' },

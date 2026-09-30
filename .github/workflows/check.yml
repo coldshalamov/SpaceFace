@@ -192,17 +192,19 @@ jobs:
   # browser — the only job that installs and caches Chromium. Every command here boots the normal
   # player route through Playwright (or, for probe-authored-assets-live, a raw Chrome over CDP).
   # Sharded like `static` — the full group overran the 20-minute wall and died at the timeout rather
-  # than at an assert. Three runners put each shard near seven minutes of browser work, which also
-  # matters for survivability: master pushes cancel in-flight runs, and a shorter shard finishes in
+  # than at an assert. Four runners keep each shard near its three-way worst case: the group grew to
+  # 19 commands with three 420s probes, and shard 2/3 alone carried two of them — a ~27-minute worst
+  # case that the 25-minute cap killed mid-run (2026-09-30). Four-way splits the probes across shards
+  # and keeps survivability: master pushes cancel in-flight runs, and a shorter shard finishes in
   # the gaps between pushes that a ~10-minute shard kept dying in.
   # ---------------------------------------------------------------------------
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

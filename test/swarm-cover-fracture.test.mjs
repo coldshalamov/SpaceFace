@@ -44,6 +44,8 @@ function boot() {
   survivalRun.init(ctx);
   swarmArena.init(ctx);
   bus.emit('run:beginRequested', { kind: 'survival', ruleset: SWARM_RULESET, seed: SEED, arenaId: ARENA });
+  // The tests simulate a mid-fight impact — the wear path only runs while the run is active.
+  state.run.phase = 'active';
   return { state, bus, helpers, player, events };
 }
 
@@ -173,8 +175,9 @@ test('field rocks and out-of-run impacts never take cover wear', () => {
   assert.equal(field.alive, true);
   assert.ok(!h.events.some((e) => e.name === 'swarmArena:debrisFractured'));
 
-  // And a debris rock outside a live run is just scenery.
-  h.state.run.active = false;
+  // And a debris rock outside a live fight is just scenery — an inactive phase is the honest
+  // out-of-run state (validateRunState would reject a bogus field like `active`).
+  h.state.run.phase = 'inactive';
   const rock = addDebrisRock(h, { x: -80, z: -80 });
   impact(h, h.player.id, rock.id, { dp: 99999, speed: 80, tick: 600 });
   assert.equal(rock.hull, 400);

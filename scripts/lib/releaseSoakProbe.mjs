@@ -47,7 +47,10 @@ import {
   createStrictElectronApplicationIssueTracker,
 } from './alphaLiveBaselineElectronContracts.mjs';
 import { provisionElectronRuntime } from './electronRuntimeProvisioning.mjs';
-import { runBrowserPublicRoute } from './alphaLiveBaselineRoute.mjs';
+import {
+  AUTHORED_FLIGHT_READY_BUDGET_MS,
+  runBrowserPublicRoute,
+} from './alphaLiveBaselineRoute.mjs';
 import { acquireVisualProbeServer } from './visualProbeServer.mjs';
 import {
   PERFORMANCE_REGISTERED_SCENARIO_IDS,
@@ -89,9 +92,31 @@ export const DYNAMIC_BUFFER_FULL_SPAN_VARIANT = 'dynamic_buffer_full_span';
 export const PERFORMANCE_ACTIVITY_SAMPLE_MS = 5_000;
 export const PERFORMANCE_ACTIVITY_MAX_AGGREGATE_CPU_CORE_FRACTION = 0.125;
 export const PERFORMANCE_ACTIVITY_MAX_PROCESS_CPU_CORE_FRACTION = 0.075;
+// The named-contaminant census only sees heavyweight app classes (browsers, Blender). Generic
+// saturation — another agent's build, a runaway git/index operation, a queued node harness —
+// corrupts a measurement exactly the same while leaving zero contaminant processes. The
+// system-CPU leg closes that hole: sustained three-sample mean above this fraction blocks.
+export const PERFORMANCE_ACTIVITY_MAX_SYSTEM_CPU_FRACTION = 0.75;
 
 const PERFORMANCE_CONTAMINANT_PATTERN =
   /^(?:blender|blender-launcher|blender-mcp|chrome|msedge|msedgewebview2|electron)(?:\.exe)?$/i;
+// Host-saturation leg. Win32_Processor.LoadPercentage counts idle-priority work too, but an
+// Idle-priority process (e.g. a deprioritized git repack) only consumes cycles no normal thread
+// wants — it cannot starve the game under test. The honest load read sums per-process CPU deltas
+// for non-Idle-priority processes over short windows, normalized by logical core count.
+const PERFORMANCE_SYSTEM_LOAD_SCRIPT = [
+  "$cores=[double](Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors",
+  "$r=@()",
+  "for($i=0;$i -lt 3;$i++){",
+  "  $p1=@{}; Get-Process -ErrorAction SilentlyContinue | ForEach-Object { try { $p1[$_.Id]=@([double]$_.CPU,[string]$_.PriorityClass) } catch {} }",
+  "  Start-Sleep -Milliseconds 400",
+  "  $p2=@{}; Get-Process -ErrorAction SilentlyContinue | ForEach-Object { try { $p2[$_.Id]=[double]$_.CPU } catch {} }",
+  "  $busy=0.0",
+  "  foreach($id in $p2.Keys){ $row=$p1[$id]; if(-not $row){ continue }; if($row[1] -eq 'Idle'){ continue }; $d=$p2[$id]-$row[0]; if($d -gt 0){ $busy += $d } }",
+  "  $r += [math]::Round(($busy/0.4/[math]::Max(1,$cores))*100,1)",
+  "}",
+  "ConvertTo-Json -Compress -InputObject ([pscustomobject]@{samples=@($r); loadPercent=(($r | Measure-Object -Average).Average)})",
+].join(';');
 const PERFORMANCE_PROCESS_SNAPSHOT_SCRIPT = [
   "$names=@('blender','blender-launcher','blender-mcp','chrome','msedge','msedgewebview2','electron')",
   '$rows=@(Get-Process -ErrorAction SilentlyContinue | Where-Object { $names -contains $_.ProcessName } | ForEach-Object {',
@@ -160,7 +185,8 @@ export async function runReleaseSoakProbe({
   viewport = DEFAULT_VIEWPORT,
   outputRoot = path.join(root, '.devshots', 'spec2'),
   taskId = `release-soak-${runtime}`,
-  flightTimeoutMs = 150_000,
+  // Shared launch-readiness budget; see alphaLiveBaselineRoute.mjs for the rationale.
+  flightTimeoutMs = AUTHORED_FLIGHT_READY_BUDGET_MS,
   dockTimeoutMs = 90_000,
   cycleTimeoutMs = 300_000,
   minDurationMs = 0,
@@ -2801,6 +2827,76 @@ async function sampleRafWindow(page, {
       };
     }
 
+    // The tier-1 byte total cannot name ambient writers that bypass the dynamic-range
+    // coordinator. The armed census keys each bufferSubData payload by its CPU-side view;
+    // here we resolve those views back to geometry attributes so the report names the
+    // largest upload owners in the window.
+    function collectPartialUploadCensusReport() {
+      const perfRuntime = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      const perf = perfRuntime?.tier1 ?? perfRuntime;
+      const entries = perf && typeof perf.collectPartialUploadCensus === 'function'
+        ? perf.collectPartialUploadCensus()
+        : null;
+      if (!entries || !entries.length) return null;
+      const byView = new Map();
+      const indexView = (owner, attributeName, attribute) => {
+        const view = attribute && attribute.array;
+        if (view && ArrayBuffer.isView(view) && !byView.has(view)) {
+          byView.set(view, `${owner}.${attributeName}`);
+        }
+      };
+      const scene = state?.render?.scene ?? null;
+      if (scene && typeof scene.traverse === 'function') {
+        scene.traverse((object) => {
+          const label = object.name || object.type || 'object';
+          const attributes = object.geometry?.attributes;
+          if (attributes) {
+            for (const [name, attribute] of Object.entries(attributes)) {
+              indexView(label, name, attribute);
+            }
+          }
+          if (object.isInstancedMesh) {
+            indexView(label, 'instanceMatrix', object.instanceMatrix);
+            if (object.instanceColor) indexView(label, 'instanceColor', object.instanceColor);
+          }
+        });
+      }
+      // Views the dynamic-range coordinator tracks, exposed as a non-enumerable getter on
+      // its diagnostics object. Census rows on those views are the driver bytes the
+      // dirty-range system actually controls; everything else is ambient foreign traffic.
+      const tracked = state?.render?.dynamicBufferRanges?.trackedViews;
+      const trackedSet = tracked instanceof Set ? tracked : null;
+      let resolvedBytes = 0;
+      let unresolvedBytes = 0;
+      let coordinatorOwnedBytes = 0;
+      let coordinatorOwnedFullBytes = 0;
+      const rows = entries.map(([view, stat]) => {
+        const owner = byView.get(view) ?? null;
+        const coordinatorOwned = trackedSet ? trackedSet.has(view) : false;
+        if (owner) resolvedBytes += stat.bytes; else unresolvedBytes += stat.bytes;
+        if (coordinatorOwned) {
+          coordinatorOwnedBytes += stat.bytes;
+          coordinatorOwnedFullBytes += stat.fullBytes || 0;
+        }
+        return {
+          owner,
+          coordinatorOwned,
+          sourceLength: Number(view.length) || null,
+          calls: stat.calls,
+          bytes: stat.bytes,
+        };
+      });
+      rows.sort((a, b) => b.bytes - a.bytes);
+      return {
+        resolvedBytes,
+        unresolvedBytes,
+        coordinatorOwnedBytes,
+        coordinatorOwnedFullBytes,
+        coordinatorTrackedViews: trackedSet ? trackedSet.size : null,
+        top: rows.slice(0, 24),
+      };
+    }
+
     function readRouteProof() {
       const perf = window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.getReport === 'function'
         ? window.__SPACEFACE_PERF__.getReport()
@@ -2905,6 +3001,7 @@ async function sampleRafWindow(page, {
       gpuDrain,
       dynamicBufferStart,
       dynamicBufferEnd,
+      partialUploadCensus,
     }) {
       const perfApi = window.__SPACEFACE_PERF__ || state?.perfRuntime || null;
       const perf = perfApi && typeof perfApi.getReport === 'function'
@@ -3053,6 +3150,9 @@ async function sampleRafWindow(page, {
           start: dynamicBufferStart || null,
           end: dynamicBufferEnd || null,
           delta: metricDelta(dynamicBufferStart?.totals, dynamicBufferEnd?.totals),
+          // Names the largest ambient (non-coordinator) upload owners in this window when
+          // the diagnostic census was armed; null when disarmed or unsupported.
+          partialUploadCensus: partialUploadCensus || null,
         },
         tier1,
         capturedAt: new Date().toISOString(),
@@ -3295,6 +3395,13 @@ async function sampleRafWindow(page, {
     try {
       resetProbes();
       const dynamicBufferStart = readDynamicBufferSlice();
+      // Arm the diagnostic partial-upload census for the window so ambient (non-owner)
+      // bufferSubData traffic can be named by its owning attribute at the end slice.
+      const censusPerfRuntime = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      const censusPerf = censusPerfRuntime?.tier1 ?? censusPerfRuntime;
+      if (censusPerf && typeof censusPerf.armPartialUploadCensus === 'function') {
+        try { censusPerf.armPartialUploadCensus(); } catch (_) { /* diagnostic-only */ }
+      }
 
       try {
         longTaskObserver = new PerformanceObserver((list) => {
@@ -3474,9 +3581,47 @@ async function sampleRafWindow(page, {
         gpuDrain = { drained: false, timedOut: false, pending: null, reason: 'drain-unavailable' };
       }
 
+      // timeScale is authored hit-stop dilation — transient runtime state, not a quality
+      // setting. A window that closes while the decay is still running would falsely trip the
+      // settings-stability contract, so give it a bounded moment to return to the value the
+      // window opened with. A genuinely stuck dilation never returns and still fails.
+      if (Number.isFinite(settingsStart?.timeScale)) {
+        const timeScaleDeadline = performance.now() + 2_000;
+        while (readSettingsSlice().timeScale !== settingsStart.timeScale
+          && performance.now() < timeScaleDeadline) {
+          await raf();
+        }
+      }
       const settingsEnd = readSettingsSlice();
       const routeEnd = readRouteProof();
       const sceneEnd = collectPerformanceSceneStructure({ state });
+      // A mesh build or admission queued mid-window that drains a beat later is ambient
+      // churn, not a pipeline mismatch — the boundary contract just needs the queue empty
+      // when it is sampled. The queue must stay empty across a sustained window: a single
+      // zero sample races with burst enqueues from ships crossing build thresholds while
+      // the player keeps moving. Give it a bounded moment; work still in flight or still
+      // refilling past the deadline fails the pipeline-stable check as intended.
+      const pipelineDrainDeadline = performance.now() + 4_000;
+      let pipelineSettledSince = null;
+      for (;;) {
+        const probeReadiness = collectPerformancePipelineReadiness({
+          state,
+          registry: window.SF?.registry,
+          resourceStartTime,
+          measurementHorizonMs: admissionMeasurementHorizonMs,
+        });
+        const settled = Number(probeReadiness?.meshBuildQueueRemaining) === 0
+          && Number(probeReadiness?.activeAdmissionJobs) === 0;
+        const now = performance.now();
+        if (settled) {
+          if (pipelineSettledSince == null) pipelineSettledSince = now;
+          if (now - pipelineSettledSince >= 250) break;
+        } else {
+          pipelineSettledSince = null;
+        }
+        if (now >= pipelineDrainDeadline) break;
+        await raf();
+      }
       const pipelineEnd = collectPerformancePipelineReadiness({
         state,
         registry: window.SF?.registry,
@@ -3486,6 +3631,10 @@ async function sampleRafWindow(page, {
       const programInventoryEnd = collectPerformanceProgramInventory({ state });
       const heapEnd = readHeapSlice();
       const dynamicBufferEnd = readDynamicBufferSlice();
+      const partialUploadCensus = collectPartialUploadCensusReport();
+      if (censusPerf && typeof censusPerf.disarmPartialUploadCensus === 'function') {
+        try { censusPerf.disarmPartialUploadCensus(); } catch (_) { /* diagnostic-only */ }
+      }
 
       // Local percentile summary matching summarizeSamples contract keys.
       const values = samples.map((sample) => sample.frameMs).filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
@@ -3541,6 +3690,7 @@ async function sampleRafWindow(page, {
         gpuDrain,
         dynamicBufferStart,
         dynamicBufferEnd,
+        partialUploadCensus,
       });
       return { samples, attribution };
     } finally {
@@ -4819,15 +4969,58 @@ function withTimeout(promise, timeoutMs, label) {
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs); })]).finally(() => clearTimeout(timer));
 }
 
+async function readSystemCpuLoadFraction() {
+  const stdout = await captureProcessOutput('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    PERFORMANCE_SYSTEM_LOAD_SCRIPT,
+  ]);
+  const parsed = JSON.parse(stdout || '{}');
+  const loadPercent = Number(parsed?.loadPercent);
+  return {
+    fraction: Number.isFinite(loadPercent) ? Math.max(0, Math.min(1, loadPercent / 100)) : null,
+    samples: Array.isArray(parsed?.samples) ? parsed.samples.map(Number) : [],
+  };
+}
+
+async function inspectSystemLoad({
+  systemLoadReader = readSystemCpuLoadFraction,
+  maxSystemCpuFraction = PERFORMANCE_ACTIVITY_MAX_SYSTEM_CPU_FRACTION,
+  platform = process.platform,
+} = {}) {
+  if (platform !== 'win32') {
+    return { available: false, active: null, reasons: [`unsupported-platform:${platform}`] };
+  }
+  try {
+    const { fraction, samples } = await systemLoadReader();
+    if (!Number.isFinite(fraction)) {
+      return { available: false, active: null, reasons: ['system-load-unavailable'], samples };
+    }
+    const active = fraction > maxSystemCpuFraction;
+    return {
+      available: true,
+      active,
+      systemCpuFraction: fraction,
+      samples,
+      maxSystemCpuFraction,
+      reasons: active ? ['system-cpu-saturated'] : [],
+    };
+  } catch (error) {
+    return { available: false, active: null, reasons: [error?.message || String(error)] };
+  }
+}
+
 async function inspectPerformanceActivity(root, {
   processSampleMs = PERFORMANCE_ACTIVITY_SAMPLE_MS,
   processSnapshotReader = readPerformanceProcessSnapshot,
   processWaitFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  systemLoadReader = readSystemCpuLoadFraction,
   settleTransientProcessChurn = false,
 } = {}) {
   const lockRoot = path.join(root, 'assets', 'ships', 'release.__lock');
   const buildingPath = path.join(root, 'assets', 'ships', 'release.__building');
-  const [releaseLock, releaseBuilding, processes] = await Promise.all([
+  const [releaseLock, releaseBuilding, processes, systemCpu] = await Promise.all([
     inspectActivityPath(lockRoot, path.join(lockRoot, 'owner.json')),
     inspectActivityPath(buildingPath, buildingPath),
     inspectPerformanceContaminants({
@@ -4836,16 +5029,20 @@ async function inspectPerformanceActivity(root, {
       waitFn: processWaitFn,
       maxAttempts: settleTransientProcessChurn ? 3 : 1,
     }),
+    inspectSystemLoad({ systemLoadReader }),
   ]);
-  const active = releaseLock.active === true || releaseBuilding.active === true || processes.active === true
+  const active = releaseLock.active === true || releaseBuilding.active === true
+    || processes.active === true || systemCpu.active === true
     ? true
     : (releaseLock.active === false && releaseBuilding.active === false
-      && processes.available === true && processes.active === false ? false : null);
+      && processes.available === true && processes.active === false
+      && systemCpu.available === true && systemCpu.active === false ? false : null);
   return {
     capturedAt: new Date().toISOString(),
     releaseLock,
     releaseBuilding,
     contaminatingProcesses: processes,
+    systemCpu,
     active,
   };
 }
@@ -5763,7 +5960,8 @@ async function runPerformanceAttributionProbe({
   seed = 47,
   warmupMs = 2_000,
   sampleMs = 5_000,
-  flightTimeoutMs = 150_000,
+  // Shared launch-readiness budget; see alphaLiveBaselineRoute.mjs for the rationale.
+  flightTimeoutMs = AUTHORED_FLIGHT_READY_BUDGET_MS,
   dockTimeoutMs = 90_000,
   enableTier1Counters = false,
   activityInspector = inspectPerformanceActivity,
@@ -6171,6 +6369,7 @@ export {
   buildClosureWindows,
   inspectPerformanceActivity,
   inspectPerformanceContaminants,
+  inspectSystemLoad,
   readPerformanceRouteFailureState,
   runPerformanceAttributionProbe,
 };

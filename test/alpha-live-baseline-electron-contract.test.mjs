@@ -163,6 +163,18 @@ assert.match(helperSource, /const groupPid\s*=\s*-pid[\s\S]*killProcessGroupImpl
 assert.doesNotMatch(helperSource, /\b(?:tasklist|Stop-Process|Get-Process|wmic)\b|\/IM\b/i,
   'force-close cannot enumerate or target ambient processes by name');
 assert.match(helperSource, /listen\(context, ['"]weberror['"]/, 'context-wide renderer errors attach before firstWindow');
+
+// Dock-approach recovery completeness: the stall watchdog's own brake pulse is the public
+// autopilot disengage, so a ship left manual inside the corridor can sit above the dock speed
+// gate where neither the nudge (<12 wu/s) nor the stranded re-arm (>90 WU) applies — observed
+// as 'autopilot did not reach a physical dock prompt' with autopilot manual at 66 wu/s / 41 WU.
+// The route must brake a manual ship back under the gate so recapture or a nudge can finish.
+assert.match(routeSource,
+  /autopilot\?\.active\s*!==\s*true\s*&&\s*nearBerth\s*&&\s*manualBrakes\s*<\s*3\s*&&\s*Number\(approachSnapshot\.speed\)\s*>\s*12/,
+  'a manual ship over the dock speed gate inside the corridor is braked back under the gate');
+assert.match(routeSource,
+  /dock-corridor-manual-brake[\s\S]{0,200}?keyboard\.down\(['"]Digit0['"]\)/,
+  'the manual-ship brake recovery pulses the public brake binding and is marked in route evidence');
 assert.match(helperSource, /consoleMessages[\s\S]*pageErrors[\s\S]*requests/,
   'supported Playwright page histories are backfilled explicitly');
 assert.match(helperSource, /floor:\s*\{\s*width:\s*1280,\s*height:\s*720,\s*unit:\s*['"]css-pixels['"]/,
@@ -622,6 +634,26 @@ async function testOwnedElectronCleanup() {
   assert.deepEqual(report.processMonitor.pendingLineFragments, [],
     'owned close publishes no unflushed process fragments');
 
+  // 2026-09-25 acceptance: electronApp.close() raced the process exit — the owned app
+  // quit code 0 while Playwright's close promise never settled, and the run failed
+  // 'Electron application close timed out' on a genuinely clean teardown. The ChildProcess
+  // 'close' through the monitor is the stronger proof; reconcile on it.
+  const racedClose = cleanupFixture({ closeHang: true });
+  await delay(8);
+  const racedReport = await closeOwnedElectronRuntime(racedClose.resources, {
+    fetchImpl: async () => { throw new Error('connection refused'); },
+    timeoutSignalFactory: () => undefined,
+    appCloseTimeoutMs: 10,
+  });
+  assert.equal(racedReport.appCloseCompleted, true,
+    'a confirmed graceful process close settles the connection-close race');
+  assert.equal(racedReport.appCloseSettledBy, 'graceful-process-close');
+  assert.equal(racedReport.gracefulProcessCloseConfirmed, true);
+  assert.equal(racedReport.pass, true,
+    `connection-race teardown must pass when the owned process exited cleanly: ${racedReport.failures}`);
+  assert(!racedReport.failures.some((failure) => /application close/i.test(failure)),
+    'the stale close-timeout verdict is retracted once process close proves release');
+
   const leftAlive = cleanupFixture({ closeProcess: false });
   await delay(8);
   const processLeak = await closeOwnedElectronRuntime(leftAlive.resources, {
@@ -1042,6 +1074,7 @@ function cleanupFixture({
   closeProcess = true,
   emitClose = true,
   afterExit = null,
+  closeHang = false,
 } = {}) {
   const page = new FakePage(CANONICAL);
   const childProcess = fakeChildProcess();
@@ -1056,6 +1089,10 @@ function cleanupFixture({
       afterExit?.(childProcess);
       if (emitClose) childProcess.emit('close', 0, null);
     }
+    // Playwright's ElectronApplication.close() can stay pending forever when the app
+    // quits faster than the CDP connection drains — the 2026-09-25 acceptance run
+    // watched the owned process exit code 0 while the promise never settled.
+    if (closeHang) await new Promise(() => {});
   };
   const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, { pollIntervalMs: 2, bootstrapTimeoutMs: 60 });
   const processMonitor = createElectronProcessMonitor({ electronApp, childProcess });

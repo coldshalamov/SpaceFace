@@ -81,6 +81,17 @@ const RCS_CONTROL = Object.freeze({
   source: 'rcs_disruptor',
 });
 
+// The impulse reason each shove-class source applies its own hit under (damage.js / bombs.js /
+// impulseCharges.js / hullBurst.js). The outbound floor uses the same string so the stunt journal
+// reads hit + floor as one delivery.
+const FLOOR_REASON_BY_SOURCE = Object.freeze({
+  gun: 'weapon_hit',
+  weapon: 'weapon_hit',
+  bomb: 'bomb_blast',
+  impulse_charge: 'impulse_charge',
+  hull_burst: 'hull_burst',
+});
+
 export const tumbleStates = {
   id: 'tumbleStates',
   name: 'tumbleStates',
@@ -481,12 +492,24 @@ export const tumbleStates = {
     const impulse = { x: nx * -along * mass, y: 0, z: nz * -along * mass };
     const state = this.state;
     const tick = state.tick | 0;
+    // ONE cancel per hull per tick. Every same-tick hit is applied and then published synchronously,
+    // and the body's velocity is not folded back into entity.vel until the next step, so a second
+    // hit would re-read the same stale inbound speed and cancel it again (measured by review: three
+    // same-tick hits cancelled it three times). The first cancel already brings the hull to rest along
+    // the push; later hits in the tick simply add their own delta-V on top.
+    const seen = this._floorCancelTick || (this._floorCancelTick = new WeakMap());
+    if (seen.get(victim) === tick) return;
+    seen.set(victim, tick);
     const port = this.helpers && this.helpers.combatPhysics;
     const provenance = input.provenance && typeof input.provenance === 'object' ? input.provenance : null;
+    // The floor rides the HIT's own impulse reason, so the stunt journal groups it with the hit that
+    // caused it (same kind, same direction) instead of opening a second root that replaces the
+    // hull's recorded velocity with the post-hit reading.
+    const reason = FLOOR_REASON_BY_SOURCE[input.source] || 'hitstun_outbound_floor';
     if (port && typeof port.applyImpulse === 'function') {
-      port.applyImpulse({ entityId: victim.id, impulse, point: null, reason: 'hitstun_outbound_floor', tick, provenance });
+      port.applyImpulse({ entityId: victim.id, impulse, point: null, reason, tick, provenance });
     } else {
-      queuePhysicsImpulse(victim, impulse, { provenance, tick, kind: 'hitstun_outbound_floor' });
+      queuePhysicsImpulse(victim, impulse, { provenance, tick, kind: reason });
     }
   },
 

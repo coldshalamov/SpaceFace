@@ -1134,3 +1134,26 @@ function realPortShip(id, team, x) {
     data: {},
   };
 }
+
+// SF-056 persistence: a pack pursuer loaded with woundedFallbackSpent on self must re-arm once
+// the subsystem heals past the exit band — the rebuilt record starts armed, so the re-arm pulse
+// has to read the persisted latch too; without it the saved latch holds every retreat closed.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 11 });
+  const frame = (driveFraction, spent) => perception(
+    [shipContact(9, { x: 150 })],
+    { id: 7, subsystemFractions: { subsystem_drive: driveFraction }, woundedFallbackSpent: spent },
+  );
+
+  let result = runtime.update({
+    tick: 0, entityId: 7, doctrineId: CombatDoctrineId.PACK_PURSUIT,
+    perception: frame(0.9, true), directive: baseDirective(),
+  });
+  assert.equal(result.fallbackRearmed, true, 'a healed hull clears the saved spent latch');
+
+  result = runtime.update({
+    tick: 10, entityId: 7, doctrineId: CombatDoctrineId.PACK_PURSUIT,
+    perception: frame(0.4, false), directive: baseDirective(),
+  });
+  assert.equal(result.outcome, 'wounded_fallback', 're-wounding buys one fresh retreat');
+}

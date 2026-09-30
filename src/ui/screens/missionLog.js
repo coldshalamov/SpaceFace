@@ -1507,21 +1507,29 @@ function replayStage(state, chain, run) {
   return null;
 }
 
-function postEndingStoryAction(state) {
+/** The incomplete post-ending objective, or null once continuity is missing or finished. */
+export function postEndingContinuityObjective(state) {
   const story = state && state.story || {};
   if (!story.endgameResolved && !story.endgameChoice && !(story.flags && story.flags.sandboxContinued)) return null;
   const continuity = story.postEnding || null;
-  if (continuity && continuity.status !== 'complete') {
-    const progress = Math.max(0, Number(continuity.progress) || 0);
-    const target = Math.max(1, Number(continuity.target) || 1);
-    return {
-      tone: 'primary',
-      label: story.endgameChoice ? `ENDING ${story.endgameChoice}` : 'OPEN FRONTIER',
-      title: continuity.title || 'The work continues',
-      body: continuity.objective || 'Continue career and world activity after the final disposition.',
-      meta: `${progress}/${target} · WORLD CONTINUES`,
-    };
-  }
+  if (!continuity || continuity.status === 'complete') return null;
+  const progress = Math.max(0, Number(continuity.progress) || 0);
+  const target = Math.max(1, Number(continuity.target) || 1);
+  return {
+    tone: 'primary',
+    label: story.endgameChoice ? `ENDING ${story.endgameChoice}` : 'OPEN FRONTIER',
+    title: continuity.title || 'The work continues',
+    body: continuity.objective || 'Continue career and world activity after the final disposition.',
+    meta: `${progress}/${target} · WORLD CONTINUES`,
+  };
+}
+
+function postEndingStoryAction(state) {
+  const objective = postEndingContinuityObjective(state);
+  if (objective) return objective;
+  const story = state && state.story || {};
+  if (!story.endgameResolved && !story.endgameChoice && !(story.flags && story.flags.sandboxContinued)) return null;
+  const continuity = story.postEnding || null;
 
   const choiceId = continuity && continuity.choiceId;
   const chain = choiceId && postEndingReplayChain(choiceId);
@@ -2437,6 +2445,7 @@ export const missionLogScreen = {
     bus.on('endgame:chosen', refresh);
     bus.on('endgame:sandboxContinued', refresh);
     bus.on('story:postEndingProgress', refresh);
+    bus.on('story:postEndingContinuity', refresh);
     bus.on('story:replayHookUnlocked', refresh);
     bus.on('postEndingReplay:route', refresh);
     bus.on('postEndingReplay:cycleCompleted', refresh);

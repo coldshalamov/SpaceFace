@@ -53,7 +53,11 @@ const FIELD_NPC_MAX_ACTIVE = 4;
 const NPC_CONE_HOLD_TICKS = 180;
 // Discover new NPC field deploys on this cadence; live cone geometry stays every tick.
 const NPC_FIELD_PLAN_PERIOD_TICKS = 4;
-const FIELD_LOOSE_TYPES = new Set(['pickup', 'wreck', 'payload']);
+// SF-041 (PB-ORD-C): 'mine' rides the loose-body family — a Well/Repulsor cone moves a placed
+// mine as the physical body it is (dynamic Rapier hull, displacement only: fields never arm,
+// trigger, or damage it; the mines owner keeps that law). Displaced mines keep their owner,
+// arm clock and trigger eligibility because those ride the entity's own data.
+const FIELD_LOOSE_TYPES = new Set(['pickup', 'wreck', 'payload', 'mine']);
 // PQ-137.09 — the well's convergence term is velocity-dependent (see FIELD_DEFS.well.damping),
 // and the leaf that authored it says what it is for: "wells converge SHIPS to 30-60 WU/s
 // relative". Craft are the subject. The kernel applies the term only when a velocity sample is
@@ -770,7 +774,7 @@ export const fields = {
     const index = state && state.entityIndex;
     const lists = [];
     if (index && index.__spacefaceEntityIndexV1) {
-      lists.push(index.pickups, index.wrecks, index.payloads);
+      lists.push(index.pickups, index.wrecks, index.payloads, index.mines);
     } else {
       lists.push(state && state.entityList);
     }
@@ -933,6 +937,13 @@ export const fields = {
       fieldId,
       defKey,
       sourceId: entity.id,
+      // Spawn-time equipment: the well arms itself once the authored spinup elapses (the
+      // pre-PB-TAC-B behavior, kept for hull-only fixtures and save rebuilds). The SF-049
+      // doctrine cycle — driven through setAnchorArmed by the specialist verb — modulates
+      // `armed` per engagement: disarmed on the approach/recovery legs, re-armed with a fresh
+      // spinup only across the telegraphed commit.
+      armed: true,
+      spinupTicks,
       activateTick: (this.state.tick | 0) + spinupTicks,
       strength,
       radius,
@@ -961,9 +972,37 @@ export const fields = {
       }
       this._kernel.update(fieldId, {
         center: { x: entity.pos.x, z: entity.pos.z },
-        strength: (state.tick | 0) >= rec.activateTick ? rec.strength : 0,
+        // SF-049: `armed` is the doctrine cycle's gate (default true for hull-record rebuilds).
+        // An unarmed or still-spinning well exerts no pull — the zone bites only after its
+        // controller telegraphed the commit and the spinup elapsed.
+        strength: rec.armed !== false && (state.tick | 0) >= rec.activateTick ? rec.strength : 0,
       });
     }
+  },
+
+  /**
+   * SF-049 (PB-TAC-B): the anchor doctrine cycle's handle on its well. The specialist verb
+   * drives it per decision tick: armed across the telegraphed commit (field_spool ->
+   * anchor_hold), disarmed on every other leg, so a recovery always separates two bites and a
+   * re-arm restarts the hull's own spinup. Idempotent while the request is unchanged — an
+   * already-armed well is NOT re-spun. Returns the live record state (the owner's confirmation)
+   * or null when no well belongs to this source.
+   */
+  setAnchorArmed(state, sourceId, armed, tick = null) {
+    const s = state && state.entities ? state : this.state;
+    if (!s || sourceId == null) return null;
+    const rt = ensureRuntime(s);
+    const rec = Object.values(rt.anchored || {}).find((row) => row && row.sourceId === sourceId);
+    if (!rec) return null;
+    const want = armed === true;
+    if (rec.armed !== want) {
+      rec.armed = want;
+      if (want) {
+        const now = Number.isInteger(tick) ? tick : (s.tick | 0);
+        rec.activateTick = now + (Number(rec.spinupTicks) || 0);
+      }
+    }
+    return { fieldId: rec.fieldId, armed: rec.armed === true, activateTick: rec.activateTick, radius: rec.radius };
   },
 
   _rebuildAnchoredFieldsFromEntities() {
@@ -1523,14 +1562,15 @@ export const fields = {
     const cx = field.center.x;
     const cz = field.center.z;
     const index = state && state.entityIndex;
-    // Retained loose-list scratch: same iteration order (pickups, wrecks, payloads) without a
-    // per-field array literal each tick.
+    // Retained loose-list scratch: same iteration order (pickups, wrecks, payloads, mines)
+    // without a per-field array literal each tick.
     const lists = this._looseListsScratch;
     if (index && index.__spacefaceEntityIndexV1) {
       lists[0] = index.pickups;
       lists[1] = index.wrecks;
       lists[2] = index.payloads;
-      lists.length = 3;
+      lists[3] = index.mines;
+      lists.length = 4;
     } else {
       lists[0] = state && state.entityList;
       lists.length = 1;

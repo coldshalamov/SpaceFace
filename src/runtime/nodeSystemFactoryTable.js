@@ -58,6 +58,7 @@ import { masslineThreats } from '../systems/masslineThreats.js';
 import { masslineImpacts } from '../systems/masslineImpacts.js';
 import { masslineSnares } from '../systems/masslineSnares.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
+import { hullBurst } from '../systems/hullBurst.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
@@ -229,6 +230,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['weapons', weapons],
     ['countermeasures', countermeasures],
     ['impulseCharges', impulseCharges],
+    ['hullBurst', hullBurst],
     ['mines', mines],
     ['bombs', bombs],
     ['massSeed', massSeed],

@@ -24,7 +24,9 @@ export async function finalizeVisualProbeResources({
 async function attemptClose(resourceName, resource, failures) {
   if (!resource || typeof resource.close !== 'function') return;
   try {
-    await resource.close();
+    // Bound the close: a wedged software-GL browser or lingering keep-alive sockets must not
+    // hang the probe past the command timeout.
+    await Promise.race([resource.close(), new Promise((resolve) => setTimeout(resolve, 10_000))]);
   } catch (error) {
     failures.push({ resource: resourceName, error });
   }

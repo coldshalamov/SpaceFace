@@ -11,11 +11,18 @@ import {
   SWARM_DEBUT_DISTANCE,
   SWARM_ROSTER,
   SWARM_RULESET,
+  bindSwarmPressureContext,
   pickSwarmArchetype,
+  resetSwarmPressureState,
   swarmNewcomerFor,
   swarmOpeningCount,
 } from '../src/data/swarmMode.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
 import { mulberry32 } from '../src/core/rng.js';
+import { makeBudgetApi } from '../src/systems/spawnBudget.js';
+import { runSession } from '../src/systems/runSession.js';
+import { survivalWave } from '../src/systems/survivalWave.js';
 
 const ARENA_ID = 'helios_core';
 
@@ -70,11 +77,17 @@ test('the debut seat comes out of the opening burst — the pressure math does n
     // the opening burst + debut must not exceed the authored opening pressure.
     const debut = debutPlan.packages.find((pkg) => pkg.debut === true);
     assert.ok(debut, `wave ${w}`);
-    const total = swarmOpeningCount(debutPlan.packages.filter((p) => p.atTick < SWARM_DEBUT_TICKS));
-    const opening = swarmOpeningCount(debutPlan.packages.filter((p) => !p.debut));
-    assert.ok(
-      opening + 1 <= Math.max(debutPlan.swarm.openingPressure, total + 1),
-      `wave ${w}: debut did not inflate the opening beyond authored pressure`,
+    // The discriminating assertion: opening packages always sum to exactly the authored opening
+    // pressure, so a donor paying the seat back keeps the total flat — while a donor miss (or a
+    // removed donor rule) would push it to pressure+1 and fail here. A mass-gap wave's late wall
+    // muscle is a separate deliberate +2 on top of that authored figure.
+    const wallBonus = debutPlan.packages
+      .filter((p) => p.wall === true)
+      .reduce((sum, p) => sum + p.count, 0);
+    assert.equal(
+      swarmOpeningCount(debutPlan.packages),
+      debutPlan.swarm.openingPressure + wallBonus,
+      `wave ${w}: debut must not grow the opening budget`,
     );
   }
 });
@@ -130,5 +143,137 @@ test('debut composes with build pressure without either eating the other', () =>
 test('debut is deterministic: same seed, same plan', () => {
   for (const w of DEBUT_WAVES.slice(0, 4)) {
     assert.deepEqual(swarmPlan(w, 31), swarmPlan(w, 31));
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Runtime proof — the planner's promise is only half of SF-064. survivalWave's
+// reinforcement stream shares the roster, and the fresh-silhouette boost would
+// field the newcomer mid-room long before the staged arrival without the guard.
+// ---------------------------------------------------------------------------
+
+const DT = 1 / 60;
+
+function bootWave(seed = 9) {
+  const state = createGameState(seed);
+  const raw = createBus();
+  const emitted = [];
+  const bus = {
+    on: raw.on.bind(raw), off: raw.off.bind(raw), once: raw.once.bind(raw),
+    emit(event, payload) { emitted.push({ event, payload }); raw.emit(event, payload); },
+  };
+  const budget = makeBudgetApi(state);
+  const spawned = [];
+  const helpers = {
+    spawnBudget: budget,
+    spawnEntity(spec) {
+      const id = state.nextEntityId++;
+      const entity = {
+        ...spec, id, alive: true,
+        pos: spec.pos ? { x: spec.pos.x, z: spec.pos.z } : { x: 0, z: 0 },
+      };
+      state.entities.set(id, entity);
+      state.entityList.push(entity);
+      spawned.push(entity);
+      return entity;
+    },
+  };
+  const player = { id: state.nextEntityId++, alive: true, pos: { x: 400, z: 0 }, type: 'ship' };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  raw.on('entity:destroyed', (p) => budget.releaseEntity(p && p.id));
+  const ctx = { state, bus, helpers };
+  runSession.init(ctx);
+  survivalWave.init(ctx);
+  return { state, bus, emitted, spawned, player };
+}
+
+function beginActiveSwarm(h, seed) {
+  h.bus.emit('run:beginRequested', {
+    kind: 'survival', ruleset: SWARM_RULESET, seed, arenaId: ARENA_ID,
+  });
+  let from = 'loadout';
+  for (const next of ['arena_intro', 'wave_intro', 'active']) {
+    h.bus.emit('run:transitionRequested', {
+      expectedPhase: from, nextPhase: next, reason: 't', tick: 0,
+    });
+    from = next;
+  }
+}
+
+/** Kill live cohort bodies the way combat reports it: dead body out of the map, then receipt. */
+function killBodies(h, n) {
+  const live = h.spawned.filter((e) => e.alive && e.id !== h.player.id);
+  for (const e of live.slice(0, n)) {
+    e.alive = false;
+    h.state.entities.delete(e.id);
+    h.bus.emit('entity:killed', { id: e.id, killerId: h.player.id });
+  }
+}
+
+test('the stream cannot field the newcomer while its debut is owed, and a hold cannot drop it', () => {
+  const h = bootWave(9);
+  beginActiveSwarm(h, 9);
+  const wave = 4; // choir_zealot's unlock wave
+  const newcomer = swarmNewcomerFor(wave);
+  assert.equal(newcomer.enemyId, 'choir_zealot');
+  const plan = planWave({ seed: 9, arenaId: ARENA_ID, wave, mode: SWARM_RULESET });
+  assert.ok(plan.swarm && !plan.error);
+
+  // The arena's real census binding: the pressure reservoir only knows a hold is a hold
+  // because something alive is still out there.
+  bindSwarmPressureContext({ getAlive: () => h.spawned.filter((e) => e.alive).length - 1 });
+  try {
+    h.state.run.wave = wave;
+    h.bus.emit('run:wavePlanned', { wave, plan });
+    h.bus.emit('run:waveStarted', { wave });
+
+    // Phase 1 — the stream runs during the debut window. One kill at a time (never a
+    // substantial clear, never an empty board) keeps the ordinary top-ups rolling, and
+    // every roll is a chance the unfiltered stream would spend on the newcomer. Then a
+    // ≥SWARM_CLEAR_KILLS cull opens the reservoir's hold BEFORE the debut's tick — the
+    // staged arrival lands inside the hold and must be re-queued, not dropped.
+    for (let t = 0; t < SWARM_DEBUT_TICKS; t++) {
+      survivalWave.update(DT);
+      if (t === 19 || t === 39 || t === 59) killBodies(h, 1);
+      if (t === 79) killBodies(h, 4);
+    }
+    const earlyRefills = h.emitted.filter(
+      (e) => e.event === 'run:waveMaterialized' && e.payload.reinforcement === true,
+    );
+    assert.ok(earlyRefills.length >= 3, 'the stream actually rolled during the debut window');
+    assert.ok(
+      earlyRefills.every((e) => e.payload.enemyId !== newcomer.enemyId),
+      `stream leaked ${newcomer.enemyId} before its staged arrival`,
+    );
+    assert.ok(
+      !h.emitted.some((e) => e.event === 'run:waveMaterialized' && e.payload.enemyId === newcomer.enemyId),
+      `the debut fired during the hold — or was never owed (${newcomer.enemyId})`,
+    );
+
+    // Phase 2 — the hold is still open with the debut owed. Emptying the board is the
+    // emergency exception that calls the debt: the staged body must land now, on the
+    // far side of its tick, not have vanished at it.
+    killBodies(h, h.spawned.filter((e) => e.alive && e.id !== h.player.id).length);
+    let debutMat = null;
+    for (let t = 0; t < 120 && !debutMat; t++) {
+      survivalWave.update(DT);
+      // Only the schedule path counts: an emergency refill may now legally roll the
+      // newcomer (the debt is settled), and it must not mask a dropped debut.
+      debutMat = h.emitted.find(
+        (e) => e.event === 'run:waveMaterialized' && e.payload.enemyId === newcomer.enemyId
+          && e.payload.reinforcement !== true,
+      ) || null;
+    }
+    assert.ok(debutMat, 'the pressure hold swallowed the staged debut — it never landed');
+    assert.ok(
+      debutMat.payload.tick >= SWARM_DEBUT_TICKS,
+      'the debut arrived before its staged tick',
+    );
+    assert.ok(debutMat.payload.admitted >= 1, 'the debut body materialized');
+  } finally {
+    bindSwarmPressureContext(null);
+    resetSwarmPressureState();
   }
 });

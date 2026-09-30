@@ -25,7 +25,11 @@ export const BOMB_SHOVE_CAP = 8;
 export const BOMB_PROXY_RADIUS = 4.2;
 export const BOMB_VISUAL_RADIUS = 1.4;
 const DAMAGE_TYPES = new Set(['ship', 'drone', 'station']);
-const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload']);
+// SF-041 (PB-ORD-C): a placed mine rides the movable family — a blast SHOVES it (real impulse
+// through physicsAuthority) but never damages or triggers it: the mines owner keeps the arm,
+// trigger and shootable-hull law. Displacement preserves the mine's owner/arm/eligibility
+// because those ride the entity's own data.
+const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload', 'mine']);
 const EMPTY = Object.freeze([]);
 const simNow = state => Number.isFinite(state?.simTime) ? state.simTime : (state?.tick || 0) / 60;
 
@@ -90,14 +94,14 @@ function publishBombsQuiet(state, latched) {
   rt.quietLatched = !!latched;
 }
 // Typed buckets whose union is exactly the population the target predicate can accept:
-// DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload) for the
-// movable() branch. Craft is ship/drone, so no other entity type can ever pass — the union cannot
-// omit a valid target, including noncolliding movable cargo and wrecks. Buckets are disjoint by
-// entity type (one switch push per type in coreSystem.appendEntityIndex), so no candidate is
-// visited twice. The live predicate is still applied per candidate, so in-place deaths (alive flip
-// with no list change) filter exactly as the full scan did. Anything but a ready index with all
-// seven buckets falls back to the complete scan.
-const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads']);
+// DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload/mine) for
+// the movable() branch. Craft is ship/drone, so no other entity type can ever pass — the union
+// cannot omit a valid target, including noncolliding movable cargo and wrecks. Buckets are
+// disjoint by entity type (one switch push per type in coreSystem.appendEntityIndex), so no
+// candidate is visited twice. The live predicate is still applied per candidate, so in-place
+// deaths (alive flip with no list change) filter exactly as the full scan did. Anything but a
+// ready index with all eight buckets falls back to the complete scan.
+const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads', 'mines']);
 function bombTargetBuckets(index) {
   if (!index?.__spacefaceEntityIndexV1 || index.ready !== true) return null;
   const buckets = [];
@@ -614,15 +618,17 @@ export const bombs = {
     return count;
   },
 
-  _prime(bomb, trigger, now) {
+  _prime(bomb, trigger, now, chainFrom = null) {
     const d = bomb.data;
     if (!d || d.retired || d.phase !== 'drift') return false;
     d.phase = 'warning';
     d.trigger = trigger;
+    if (chainFrom != null) d.chainFrom = chainFrom; // immediate cause; d.ownerId stays the original dropper
     d.warningAt = now;
     d.resolveAt = Math.min(d.detonateAt, now + BOMB_DRIFT.warningS);
     this.bus.emit('bombs:primed', {
       bombId: bomb.id, payloadId: d.bombId, ownerId: d.ownerId, trigger,
+      chainFrom: chainFrom == null ? null : chainFrom,
       pos: { x: bomb.pos.x, z: bomb.pos.z }, resolveAt: d.resolveAt, radius: bombDef(d.bombId).radius,
     });
     return true;
@@ -711,6 +717,7 @@ export const bombs = {
     this.bus.emit('bombs:detonated', {
       schemaVersion: 2, bombId: bomb.id, payloadId: def.id, ownerId: d.ownerId,
       pos, vel: { x: bomb.vel.x, z: bomb.vel.z }, radius: def.radius, trigger,
+      chainFrom: d.chainFrom == null ? null : d.chainFrom,
       hits: result?.hits || EMPTY, shoves: result?.shoves || EMPTY,
     });
     const cueId = trigger === 'collapse' && def.collapseAudioCue ? def.collapseAudioCue : def.audioCue;
@@ -753,6 +760,20 @@ export const bombs = {
       }
     }
     shoves.sort((a, b) => b.mag - a.mag || compareBombEntityIds(a, b));
+    // SF-042: a blast reaches armed, still-drifting ordnance as a sympathetic primer — the
+    // dramatic delayed second consequence, deterministic and bounded. Primes resolve through
+    // the ordinary warning phase on a later tick (never same-tick recursion), each bomb can
+    // be primed exactly once (its phase leaves 'drift'), the walk follows the stable
+    // id-sorted _active order, and the world cap bounds the chain population. Unarmed
+    // capsules are NOT cooked off — the arming law matches retire('projectile').
+    for (const e of this._active) {
+      if (!e.alive || e.type !== BOMB_TYPE || e.id === originId) continue;
+      const ed = e.data;
+      if (!ed || ed.phase !== 'drift' || ed.retired || ed.triggered || !ed.armed) continue;
+      const dist = Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z);
+      if (!(bombSurfaceFalloff(dist, BOMB_PROXY_RADIUS, def.radius) > 0)) continue;
+      this._prime(e, 'chain', simNow(state), originId);
+    }
     return { hits: Object.freeze(hits), shoves: Object.freeze(shoves) };
   },
   _publishHitstun(state, victim, input) {

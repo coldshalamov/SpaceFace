@@ -12,6 +12,14 @@ export const SPECIALIST_PLANS = Object.freeze([
     verb: 'cut_line',
     telegraphKind: 'attach_spool',
     cutRangeWu: 180,
+    // SF-046 committed pass (PB-TAC-A): the blade commits once at the spool telegraph — a
+    // snapshot of the rope's anchor and bearing — and may only cut that committed geometry.
+    // Swinging the line's angle past sweepToleranceRad (or re-anchoring) turns the pass into
+    // a miss and the blade into a vulnerable recovery. 45t spans the doctrine's own clock
+    // (spool 30t + attach window 15t).
+    commitTicks: 45,
+    sweepToleranceRad: 0.6,
+    missRecoveryTicks: 120,
   }),
   Object.freeze({
     id: 'field_disruptor',
@@ -22,6 +30,12 @@ export const SPECIALIST_PLANS = Object.freeze([
     verb: 'disrupt_field',
     telegraphKind: 'weapon_charge',
     disruptRangeWu: 780,
+    // SF-047 committed working interval (PB-TAC-B): the ghost acquires at the weapon_charge
+    // telegraph and must hold that spot, unhit, for the whole wind-up before the collapse may
+    // land in the fire window. 36t spans the doctrine's own clock (charge_cue 30t + the first
+    // beats of the 18t fire window).
+    disruptWorkTicks: 36,
+    disruptHoldRadiusWu: 120,
   }),
   Object.freeze({
     id: 'anchor',

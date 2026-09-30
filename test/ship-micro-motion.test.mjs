@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { MeshStandardMaterial } from 'three';
 import {
   contactYieldImpulse,
   createShipMicroMotionTracker,
@@ -348,4 +349,110 @@ test('ship micro-motion: reduced motion suppresses high-frequency shudder', () =
   tracker.updateCraftMicroMotion(entity, mesh, 20.0, 0.016, { motionReduce: true });
   assert.equal(mesh.userData.hull.position.y, 0, 'reduced motion zeroes out idle heave and boost jitter Y');
   assert.equal(mesh.userData.hull.position.z, 0, 'reduced motion zeroes out lateral shudder Z');
+});
+
+test('ship micro-motion: engine-bell heat-skin clone preserves shader hooks (no cold program link)', () => {
+  // captureBellHeatSkin clones the bell material on the ship's first presented frame.
+  // Material.clone() drops own-property onBeforeCompile/customProgramCacheKey — without the
+  // restore the clone keys a fresh program and links it inside the bloom pass (the measured
+  // LOD0_engine_fan_Mechanical / LOD0_static_EngineCeramic GPU bricks). The thermal channel
+  // only moves emissive uniforms, so the clone must share the source's already-linked program.
+  const tracker = createShipMicroMotionTracker();
+  let cloneCalls = 0;
+  class CountedMaterial extends MeshStandardMaterial {
+    clone() { cloneCalls += 1; return super.clone(); }
+  }
+  const src = new CountedMaterial({ name: 'SF_Shared_mechanical_dark' });
+  src.onBeforeCompile = function authoredHook(shader) {
+    shader.uniforms.uIllustratedPigment = { value: 1 };
+  };
+  src.customProgramCacheKey = () => 'spaceface-authored-heat-skin-key';
+  const bellNode = {
+    name: 'LOD0_engine_fan_Mechanical',
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
+    material: src,
+    children: [],
+  };
+  const hull = {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+    children: [bellNode],
+  };
+  // mesh.children reaches hull too — the scan roots are [hull, mesh]; without the visited
+  // set every node under hull registers twice and the second entry clones the first clone
+  // (baking the hot tint into its restore base instead of the authored emissive).
+  const mesh = { userData: { hull, weapons: [] }, children: [hull] };
+  const entity = { id: 7, mass: 280, pos: { x: 0, z: 0 }, rot: 0, radius: 12, vel: { x: 60, z: 0 }, flags: { boosting: true } };
+
+  tracker.updateCraftMicroMotion(entity, mesh, 1.0, 0.016);
+
+  assert.notEqual(bellNode.material, src, 'heat skin swapped to a per-ship clone');
+  assert.equal(
+    bellNode.material.onBeforeCompile,
+    src.onBeforeCompile,
+    'clone must reuse the authored shader hook so the program key matches the warmed variant',
+  );
+  assert.equal(
+    bellNode.material.customProgramCacheKey,
+    src.customProgramCacheKey,
+    'clone must reuse the authored cache key so the presented draw resolves the already-linked program',
+  );
+  assert.equal(bellNode.material.customProgramCacheKey(), 'spaceface-authored-heat-skin-key');
+  // One capture per mesh identity: the scan roots [hull, mesh] both reach the bell — without
+  // the visited set a second entry clones the first clone (detached C1 written every frame,
+  // C2's restore base baked warm).
+  assert.equal(cloneCalls, 1, 'heat skin captured exactly once per node');
+});
+
+test('ship micro-motion: heat-skin recapture on authored-root repoint clones the new source', () => {
+  // scanMountPivots reruns when the entity's mesh/hull identity changes (authored upgrade
+  // swaps the root). The stale-heatSrc defect cloned the OLD node's material onto the new
+  // bell — a detached instance that re-links its program in a presented pass. The entry
+  // must release heatSrc with heatMats so recapture reads the live node's material.
+  const tracker = createShipMicroMotionTracker();
+  const src1 = new MeshStandardMaterial({ name: 'SF_Shared_mech_a' });
+  src1.onBeforeCompile = function hookA() {};
+  src1.customProgramCacheKey = () => 'src1-key';
+  const src2 = new MeshStandardMaterial({ name: 'SF_Shared_mech_b' });
+  src2.onBeforeCompile = function hookB() {};
+  src2.customProgramCacheKey = () => 'src2-key';
+  const mkBell = (material) => ({
+    name: 'LOD0_engine_fan_Mechanical',
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
+    material,
+    children: [],
+  });
+  const mkHull = (bell) => ({
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+    children: [bell],
+  });
+  const bell1 = mkBell(src1);
+  const hull1 = mkHull(bell1);
+  const mesh1 = { userData: { hull: hull1, weapons: [] }, children: [hull1] };
+  const bell2 = mkBell(src2);
+  const hull2 = mkHull(bell2);
+  const mesh2 = { userData: { hull: hull2, weapons: [] }, children: [hull2] };
+  const entity = { id: 8, mass: 280, pos: { x: 0, z: 0 }, rot: 0, radius: 12, vel: { x: 60, z: 0 }, flags: { boosting: true } };
+
+  tracker.updateCraftMicroMotion(entity, mesh1, 1.0, 0.016);
+  assert.notEqual(bell1.material, src1, 'first capture installed a clone');
+  tracker.updateCraftMicroMotion(entity, mesh2, 1.016, 0.016);
+
+  assert.notEqual(bell2.material, src2, 'repointed bell captured a clone');
+  assert.equal(
+    bell2.material.customProgramCacheKey(),
+    'src2-key',
+    'the repointed clone must come from the new node material, not the stale heatSrc of the old tree',
+  );
+  assert.equal(
+    bell2.material.userData && bell2.material.userData.sfHeatSkinClone,
+    String(src2.uuid).slice(0, 8),
+    'clone lineage stamp names the new source',
+  );
+  assert.equal(bell2.material.onBeforeCompile, src2.onBeforeCompile, 'shader hook preserved on repoint clone');
 });

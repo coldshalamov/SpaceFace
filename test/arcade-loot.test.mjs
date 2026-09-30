@@ -27,11 +27,12 @@ function withFlag(value, fn) {
 }
 
 /** A player at the origin and one pickup. `acceptUnits` simulates the cargo owner's answer. */
-function harness({ pickupX = 1500, pickupData, acceptUnits = null } = {}) {
+function harness({ pickupX = 1500, pickupData, acceptUnits = null, port = null, body = false } = {}) {
   const player = { id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, flags: {} };
   const pickup = {
     id: 2, alive: true, type: 'pickup', pos: { x: pickupX, z: 0 }, vel: { x: 0, z: 0 }, radius: 2.2, mass: 0.1, collides: true,
     data: pickupData,
+    ...(body ? { physicsBody: { mass: 1, dynamic: true } } : {}),
   };
   const state = {
     playerId: player.id,
@@ -53,7 +54,7 @@ function harness({ pickupX = 1500, pickupData, acceptUnits = null } = {}) {
       for (const fn of listeners[type] || []) fn(payload);
     },
   };
-  mining.init({ state, bus, helpers: { spawnEntity: (spec) => { spawned.push(spec); return spec; } }, registry: { get: () => null } });
+  mining.init({ state, bus, helpers: { spawnEntity: (spec) => { spawned.push(spec); return spec; }, ...(port ? { combatPhysics: port } : {}) }, registry: { get: () => null } });
   if (acceptUnits != null) {
     // The cargo owner answers synchronously on the same payload, after mining's own listeners.
     bus.on('pickup:collected', (payload) => {
@@ -243,5 +244,30 @@ test('a Survival/Crucible run-wallet chip is combat loot for homing only; its wa
     assert.equal(h.spawned.length, 1);
     assert.equal(h.spawned[0].data.combatLoot, true, 'it homes like any kill loot');
     assert.equal(h.spawned[0].data.wallet, 'run', 'and still settles into the run wallet, never the campaign purse');
+  });
+});
+
+test('whether a pickup HAS a body is the physics owner answer: the port takes the homing impulse, a refusal means it is stepped directly, never both', () => {
+  withFlag(true, () => {
+    // A body inside the physics ring: the port accepts the impulse and the pickup is NOT also stepped
+    // (a direct step plus the owner's pose resync would move it twice: found in review, 2x speed).
+    const calls = [];
+    const inRing = harness({ pickupX: 300, pickupData: COMBAT_ORE(), body: true, port: { applyImpulse: (input) => { calls.push(input); return true; } } });
+    inRing.state.simTime = 0.6;
+    const startX = inRing.pickup.pos.x;
+    for (let i = 0; i < 10; i++) mining.update(DT, inRing.state);
+    assert.ok(calls.length > 0, 'the homing impulse went through the port');
+    assert.equal(calls[0].reason, 'loot_homing');
+    assert.ok(calls[0].impulse.x < 0, 'toward the hull');
+    assert.equal(inRing.pickup.pos.x, startX, 'the pickup itself is not stepped: the physics owner moves it');
+
+    // Beyond the ring the owner holds no record and answers false: the pickup is stepped directly.
+    const refusals = [];
+    const far = harness({ pickupX: 1500, pickupData: COMBAT_ORE(), body: true, port: { applyImpulse: (input) => { refusals.push(input); return false; } } });
+    far.state.simTime = 0.6;
+    const farStart = far.pickup.pos.x;
+    for (let i = 0; i < 10; i++) mining.update(DT, far.state);
+    assert.ok(refusals.length > 0, 'the owner was asked first');
+    assert.ok(far.pickup.pos.x < farStart, 'and its refusal moved the pickup directly');
   });
 });

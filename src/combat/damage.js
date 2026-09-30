@@ -48,13 +48,6 @@ export function createDamageRouter(context, statusService, options = {}) {
     const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);
     if (screen && screen.id !== (input && input.targetId)) {
       input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
-      if (bus && typeof bus.emit === 'function') {
-        bus.emit('combat:warded', {
-          escortId: screen.id,
-          targetId: aimed && aimed.id,
-          attackerId: attacker && attacker.id,
-        });
-      }
     }
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
     const target = entity(input && input.targetId);
@@ -283,6 +276,18 @@ export function createDamageRouter(context, statusService, options = {}) {
 
     if (shieldBroke && bus) bus.emit('shieldDown', { combatantId: target.id, pos: packet.hit && packet.hit.pos || target.pos });
     if (bus) {
+      if (input && input.wardFromId != null) {
+        const hit = packet.hit;
+        const warded = {
+          escortId: target.id,
+          targetId: input.wardFromId,
+          attackerId: result.attackerId,
+        };
+        if (hit && hit.pos) warded.pos = { x: hit.pos.x, z: hit.pos.z };
+        if (hit && hit.normal) warded.normal = { x: hit.normal.x, z: hit.normal.z };
+        if (hit && hit.approach) warded.approach = { x: hit.approach.x, z: hit.approach.z };
+        bus.emit('combat:warded', warded);
+      }
       const empHit = isEmpDamagePacket(packet, origin);
       const weaponId = origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null;
       bus.emit('combat:damage', {

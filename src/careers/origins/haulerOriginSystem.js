@@ -72,9 +72,8 @@ export function createHaulerOriginSystem() {
       // mission:abandoned event exists on the bus.
       bus.on('mission:failed', (p) => this._onMissionFailed(p));
 
-      // Player origin UI intents (station hub / onboarding seam).
-      bus.on('career:hauler:accept', () => this.accept());
-      bus.on('career:hauler:decline', () => this.decline());
+      // The mission log's origin prompt is the only door. The old hauler-only
+      // accept/decline events had no emitter.
       bus.on('career:origin:accept', (p) => {
         if (p && p.careerId && p.careerId !== HAULER_CAREER_ID) return;
         if (!p || !p.careerId || p.careerId === HAULER_CAREER_ID) this.accept();

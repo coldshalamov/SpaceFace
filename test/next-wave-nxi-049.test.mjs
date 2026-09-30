@@ -5,6 +5,10 @@ import assert from 'node:assert/strict';
 
 import { normalizeSensorFrame } from '../src/ai/contracts.js';
 import { SquadCommander } from '../src/ai/squad.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createBus } from '../src/core/eventBus.js';
+import { core } from '../src/core/coreSystem.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
 
 const LEADER = 7;
 const WING = 8;
@@ -202,4 +206,149 @@ test('NXI-049: a normalized frame keeps a carried death flag and occupant token'
   const second = plain.update('bare', 2, frame(sensed(LEADER, later.x, later.z, {}), bareWing));
   assert.ok(dist(slotOf(second, LEADER), later) < 1e-6, 'the normalizer does not invent a token that drops the leader');
   assert.ok(dist(slotOf(second, WING), later) <= dist(slotOf(first, WING), firstPos) * 1.01);
+});
+
+function bootWing() {
+  const state = createGameState(49);
+  const bus = createBus();
+  const helpers = {};
+  const coreSys = Object.create(core);
+  coreSys.init({ state, bus, helpers });
+  const ports = Object.create(aiPorts);
+  ports.init({ state, bus, helpers, registry: { get() { return null; } } });
+  return { state, helpers, sensors: helpers.aiSensors, ports };
+}
+
+function spawnShip(helpers, pos, extra = {}) {
+  return helpers.spawnEntity({
+    type: 'ship',
+    pos: { x: pos.x, z: pos.z },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 12,
+    hull: 100,
+    hullMax: 100,
+    collides: true,
+    team: 1,
+    data: { ai: { passive: true } },
+    ...extra,
+  });
+}
+
+function copiedOwnFields(entity) {
+  const copied = {};
+  for (const key in entity) copied[key] = entity[key];
+  return copied;
+}
+
+test('NXI-049: a freeIds recycle sensed through the live sensor frame is not the formation anchor', () => {
+  const { state, helpers } = bootWing();
+  const livingPos = { x: 1000, z: 0 };
+  const wingPos = { x: 200, z: 40 };
+  const leader = spawnShip(helpers, livingPos);
+  const wing = spawnShip(helpers, wingPos);
+  assert.ok(leader.id < wing.id);
+  assert.ok(leader.occupantGeneration != null && leader.occupantGeneration !== '');
+  assert.notEqual(leader.occupantGeneration, wing.occupantGeneration);
+  assert.equal(copiedOwnFields(leader).occupantGeneration, undefined);
+
+  const commander = new SquadCommander({ seed: 49, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'wing',
+    members: [{ id: leader.id }, { id: wing.id }],
+  });
+  const livingFrames = helpers.aiSensors.liveFramesFor([leader.id, wing.id], 1);
+  const leaderLive = livingFrames.get(leader.id);
+  assert.equal(leaderLive.self.id, leader.id);
+  assert.equal(leaderLive.self.occupantGeneration, leader.occupantGeneration);
+  assert.equal(livingFrames.get(wing.id).self.occupantGeneration, wing.occupantGeneration);
+  const frozen = helpers.aiSensors.frameFor(leader.id, 1);
+  assert.equal(frozen.self.occupantGeneration, leader.occupantGeneration);
+
+  const living = commander.update('wing', 1, livingFrames);
+  assert.equal(living.directives.size, 2);
+  assert.ok(dist(slotOf(living, leader.id), livingPos) < 1e-6, 'the living leader is the anchor');
+  const livingSlot = slotOf(living, wing.id);
+  const wedgeReach = dist(livingSlot, livingPos);
+  assert.ok(wedgeReach > 1, 'the follower holds a slot off the leader');
+
+  assert.equal(helpers.removeEntity(leader.id, { immediate: true }), true);
+  assert.equal(state.freeIds[state.freeIds.length - 1], leader.id);
+  const gone = helpers.aiSensors.frameFor(leader.id, 2);
+  assert.equal(gone.self.occupantGeneration, undefined);
+
+  const recycledPos = { x: 4000, z: 4000 };
+  const carried = leader.occupantGeneration;
+  const recycled = spawnShip(helpers, recycledPos, { occupantGeneration: carried });
+  assert.equal(recycled.id, leader.id);
+  assert.notEqual(recycled.occupantGeneration, carried);
+  assert.equal(copiedOwnFields(recycled).occupantGeneration, undefined);
+
+  const recycledFrames = helpers.aiSensors.liveFramesFor([recycled.id, wing.id], 3);
+  const recycledLive = recycledFrames.get(recycled.id);
+  assert.equal(recycledLive.self.occupantGeneration, recycled.occupantGeneration);
+  assert.notEqual(recycledLive.self.occupantGeneration, carried);
+  assert.equal(helpers.aiSensors.frameFor(recycled.id, 3).self.occupantGeneration, recycled.occupantGeneration);
+
+  const after = commander.update('wing', 3, recycledFrames);
+  assert.equal(after.directives.size, 2);
+  assert.ok(commander.inspect('wing'), 'a recycled id does not dissolve the squad');
+  assert.ok(
+    dist(slotOf(after, wing.id), recycledPos) > wedgeReach * 2,
+    'followers do not sit on the recycled body or the wedge around it',
+  );
+  assert.ok(dist(slotOf(after, recycled.id), recycledPos) > wedgeReach * 2);
+});
+
+test('NXI-049: a roster rebuild during the death gap still rejects the recycled id', () => {
+  const { state, helpers } = bootWing();
+  const livingPos = { x: 1000, z: 0 };
+  const wingPos = { x: 200, z: 40 };
+  const leader = spawnShip(helpers, livingPos);
+  const wing = spawnShip(helpers, wingPos);
+  assert.ok(leader.id < wing.id);
+  const commander = new SquadCommander({ seed: 49, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'wing',
+    members: [{ id: leader.id }, { id: wing.id }],
+  });
+  const livingFrames = helpers.aiSensors.liveFramesFor([leader.id, wing.id], 1);
+  const carried = livingFrames.get(leader.id).self.occupantGeneration;
+  assert.equal(carried, leader.occupantGeneration);
+  const living = commander.update('wing', 1, livingFrames);
+  const wedgeReach = dist(slotOf(living, wing.id), livingPos);
+  assert.ok(wedgeReach > 1);
+
+  assert.equal(helpers.removeEntity(leader.id, { immediate: true }), true);
+  assert.ok(state.freeIds.includes(leader.id));
+  commander.registerSquad({
+    id: 'wing',
+    members: [{ id: wing.id }],
+  });
+  const gap = commander.update('wing', 2, helpers.aiSensors.liveFramesFor([wing.id], 2));
+  assert.ok(commander.inspect('wing'), 'dropping the leader does not dissolve the squad');
+  assert.ok(
+    dist(slotOf(gap, wing.id), wingPos) < 1e-6,
+    'the surviving wing stays the anchor through the gap',
+  );
+
+  const recycledPos = { x: 4000, z: 4000 };
+  const recycled = spawnShip(helpers, recycledPos, { occupantGeneration: carried });
+  assert.equal(recycled.id, leader.id);
+  assert.notEqual(recycled.occupantGeneration, carried);
+  commander.registerSquad({
+    id: 'wing',
+    members: [{ id: recycled.id }, { id: wing.id }],
+  });
+  const recycledFrames = helpers.aiSensors.liveFramesFor([recycled.id, wing.id], 3);
+  assert.equal(recycledFrames.get(recycled.id).self.occupantGeneration, recycled.occupantGeneration);
+  assert.notEqual(recycledFrames.get(recycled.id).self.occupantGeneration, carried);
+  const after = commander.update('wing', 3, recycledFrames);
+  assert.equal(after.directives.size, 2);
+  assert.ok(commander.inspect('wing'), 'a recycled id does not dissolve the squad');
+  assert.ok(
+    dist(slotOf(after, wing.id), recycledPos) > wedgeReach * 2,
+    'followers do not steer toward the recycled body after the roster rebuild',
+  );
 });

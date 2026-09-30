@@ -158,6 +158,32 @@ export const ENGINE_PROFILES = Object.freeze({
     plumeSwirl: 1.0,
     plumeFork: 0.9,
   }),
+  // The saucer's field sprint (design/FLYING_SAUCER_DESIGN.md): the resonator signature pushed
+  // to the boost envelope it owns — a wide cyan-white fan that reads as the whole disc lurching,
+  // not an exhaust trail.
+  engine_field_sprint: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_field_sprint',
+    style: 'resonator',
+    coreColor: '#a4f0ff',
+    tailColor: '#062a3a',
+    boostCore: '#f2feff',
+    cruiseCore: '#7ce4ff',
+    spreadMul: 1.30,
+    particleMul: 1.45,
+    streakMul: 1.60,
+    streakLenMul: 1.55,
+    plumeCore: '#4fe0ff',
+    plumeHalo: '#2ad4aa',
+    plumeWidthMul: 1.50,
+    plumeLengthMul: 1.60,
+    flowSpeed: 4.6,
+    noiseScale: 3.4,
+    coreIntensity: 10.5,
+    haloIntensity: 4.2,
+    plumeSwirl: 1.5,
+    plumeFork: 0.75,
+  }),
 });
 
 const ENGINE_FILE_BY_DEF_ID = Object.freeze({
@@ -176,9 +202,13 @@ const ENGINE_FILE_BY_DEF_ID = Object.freeze({
   ship_warden: 'engine_plasma_ring',
   ship_colossus: 'engine_plasma_ring',
   ship_leviathan: 'engine_plasma_ring',
+  // The saucer's drive glow lives in its rim light chain (design/FLYING_SAUCER_DESIGN.md);
+  // the field-sprint profile is the resonator signature opened to the mega-boost envelope.
+  ship_saucer: 'engine_field_sprint',
 });
 
 const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
+  drive_inertialess_s: 'engine_field_sprint',
   drive_reaction_s: 'engine_vector',
   drive_reaction_m: 'engine_ion_small',
   drive_reaction_l: 'engine_ion_twin',

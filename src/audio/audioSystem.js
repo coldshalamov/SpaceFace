@@ -206,6 +206,11 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
     // kiter's standoff charge, so the peel window is heard.
     recipeId: 'sfx_doctrine_ranged_charge', fireRate: 1.08, fireGain: 0.9, fireDetune: 22,
   }),
+  [CombatDoctrineId.DETONATOR_RUN]: Object.freeze({
+    // A fuse, not a gun charge: the fastest, hottest induction voice on the roster so the run
+    // reads as a burning countdown instead of another spooling weapon.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 1.42, fireGain: 0.95, fireDetune: 30,
+  }),
   [CombatDoctrineId.FIELD_ANCHOR_CONTROLLER]: Object.freeze({
     // Hold-the-ring language: lower charge than ranged, distinct from brawler growl.
     recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.7, fireGain: 0.88, fireDetune: -22,
@@ -429,13 +434,47 @@ export function isPlayerInAudioCalmZone(state, player) {
   return false;
 }
 
+// SF-297: how many live hostile hulls are COMMITTED to the player right now — their combat brain
+// targets or locks the player's hull — regardless of the beam-range scan the near count uses. The
+// same two fields the camera's threat framing reads (cameraDirector requiredThreatContextZoom's
+// `combat.targetId === player.id || combat.lockTarget === player.id`), so the picture and the mix
+// key off one truth: a hull that is still hunting you is not calm, however far out it sits.
+export const AUDIO_COMMITTED_THREAT_RANGE_WU = 2400;
+
+export function audioCommittedHostileCount(state, player, range = AUDIO_COMMITTED_THREAT_RANGE_WU, scratch = [], maxCount = Infinity) {
+  if (!state || !player || !player.pos) return 0;
+  const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
+  const candidates = queryNearbyEntities(state, player.pos, range, scratch, fallback);
+  const myTeam = player.team;
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  const r2 = range * range;
+  let count = 0;
+  for (const e of candidates) {
+    if (!e || !e.alive || e.type !== 'ship' || e.id === player.id) continue;
+    if (e.team === myTeam) continue;
+    const combat = e.data && e.data.combat;
+    if (!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz <= r2) {
+      count++;
+      if (count >= maxCount) break;
+    }
+  }
+  return count;
+}
+
 export function resolveAudioThreatContext(state, player, rt) {
   const simTime = Number(state && state.simTime) || 0;
   const lastDamageT = rt && Number.isFinite(rt._lastDamageT) ? rt._lastDamageT : -1e9;
   const recentDamage = simTime - lastDamageT < IN_COMBAT_WINDOW;
   const activeEncounter = !!(rt && rt._activeCombatEncounters && rt._activeCombatEncounters.size);
   const doctrineThreat = simTime < Number(rt && rt._doctrineThreatUntil || -1e9);
-  const engaged = recentDamage || activeEncounter || doctrineThreat;
+  const committedHostiles = audioCommittedHostileCount(
+    state, player, AUDIO_COMMITTED_THREAT_RANGE_WU, rt && rt._musicCommitScratch || [], 3,
+  );
+  const engaged = recentDamage || activeEncounter || doctrineThreat || committedHostiles > 0;
   const calmZone = isPlayerInAudioCalmZone(state, player);
   const nearbyHostiles = calmZone && !engaged
     ? 0
@@ -443,7 +482,12 @@ export function resolveAudioThreatContext(state, player, rt) {
   const shieldPct = player && player.shieldMax > 0 ? clamp(player.shield / player.shieldMax, 0, 1) : 1;
   let threat = clamp(0.5 * Math.min(nearbyHostiles, 3) / 3 + 0.5 * (1 - shieldPct) * (recentDamage ? 1 : 0), 0, 1);
   if (engaged) threat = Math.max(threat, activeEncounter || doctrineThreat ? 0.45 : 0.3);
-  return { threat, nearbyHostiles, shieldPct, calmZone, engaged };
+  // Commitment floor (SF-297): one committed hunter holds the mix at the tense band — 1-2 near
+  // hostiles used to decay into 'calm' the moment the damage window and encounter latch expired,
+  // silencing the mix while the camera still framed a combat pair. The mix relaxes only when the
+  // last commitment dies; incoming-fire warnings are separate lanes and stay untouched.
+  if (committedHostiles > 0) threat = Math.max(threat, 0.45);
+  return { threat, nearbyHostiles, shieldPct, calmZone, engaged, committedHostiles };
 }
 
 // Build a fast id->recipe lookup over the data array.
@@ -1668,6 +1712,12 @@ export const audio = {
     rt._loopPositionDirty = true;
     rt._nextLoopPositionUpdate = 0;
     rt._musicThreatScratch = [];
+    // SF-297 committed-threat ledger: the last observed hostile commitment to the player, so the
+    // committed-clear release fires only after a poll actually saw a commitment (fresh loads,
+    // quiet sectors, and sector changes never exhale).
+    rt._musicCommitScratch = [];
+    rt._committedHostiles = 0;
+    rt._committedArmed = false;
     // First-hour identity + mix hierarchy (cosmetic audio only — never mutates gameplay).
     rt._priorityBus = createCuePriorityBus();
     rt._priorityEngineProbe = { role: 'engineLoop', loop: true };
@@ -3204,6 +3254,14 @@ export const audio = {
     if (!p || !p.encounterId) return;
     this.rt._activeCombatEncounters.delete(p.encounterId);
     this._markMusicDirty();
+  },
+
+  // SF-297: the committed-clear exhale. One soft authored settle (the descending filtered sine
+  // already in the recipe book — no new sample, no banner, no toast): the release of pressure is
+  // audible breathing room, and the settle path deliberately ducks nothing. Incoming-fire alarms
+  // and priority cues keep their lanes, so a genuine clear never silences a live warning.
+  _onCommittedClearRelease() {
+    this.play('sfx_travel_settle', { gain: 0.5 });
   },
 
   _onDiscoveryUnlocked(p) {
@@ -5485,6 +5543,30 @@ export const audio = {
     let desired = theme.state || theme.musicState
       || (docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm'));
     if (theme.state === 'station') desired = 'docked';
+
+    // SF-297 breathing room: the release reads the live commitment ledger, not the encounter
+    // latch. When the last hostile committed to the player dies while the pilot is flying free,
+    // the ear exhales NOW — one soft authored settle and the calmer music state lands this tick
+    // instead of after the standard hold. A committed survivor keeps the floor and never fires
+    // the cue; defeat and docking clear the ledger silently so recovery never inherits a stale
+    // release. Debris/aftermath already carries the scene (aftermathWrecks), and incoming-fire
+    // warnings ride their own alarm lanes — untouched here.
+    if ((context.committedHostiles || 0) > 0) {
+      rt._committedHostiles = context.committedHostiles;
+      rt._committedArmed = true;
+    } else if (rt._committedArmed === true) {
+      const alive = !!(player && player.alive !== false && !(player.flags && player.flags.defeated));
+      rt._committedHostiles = 0;
+      rt._committedArmed = false;
+      if (alive && !docked) {
+        this._onCommittedClearRelease();
+        if (desired !== rt.musicState) {
+          // Earned clear lands the settle immediately rather than holding the 1.5 s hysteresis.
+          rt._pendingState = desired;
+          rt._pendingSince = nowWall - STATE_HOLD_S;
+        }
+      }
+    }
 
     if (desired === rt.musicState) { rt._pendingState = null; return; }
     // hysteresis: hold the change for STATE_HOLD_S before switching (docked is immediate)

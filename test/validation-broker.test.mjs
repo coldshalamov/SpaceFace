@@ -767,6 +767,50 @@ test('P1 FIX3: maxLaunchesPerCandidate is persisted and enforced across runs', a
   assert.equal(third.status, STATUS.PASS);
 });
 
+test('P1: env-blocked preflight refunds the candidate launch reservation', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const srcRel = 'candidate-src.js';
+  await writeFile(path.join(root, srcRel), 'env-block-v1\n', 'utf8');
+
+  const broker = createValidationBroker(testManifest('out', {
+    id: 'env-block-refund-probe',
+    productionSourcePaths: [srcRel],
+    commandArgs: ['-e', 'console.error("PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED"); process.exit(3)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 1,
+  }), { root, outputRoot });
+
+  const first = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(first.launched, true);
+  assert.notEqual(first.status, STATUS.PASS, 'env-blocked probe is not a pass');
+
+  // The census fired before any measurement existed: the reservation is
+  // refunded so a contested host cannot burn the candidate's budget.
+  const digests = await broker.computeGateDigests();
+  assert.equal(
+    await getCandidateLaunchCount(outputRoot, digests.candidateDigest),
+    0,
+    'env-blocked preflight must not consume the launch budget',
+  );
+
+  const second = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(
+    second.reason === 'max-launches-per-candidate' ? false : true,
+    true,
+    'same candidate must be allowed to retry after an env block',
+  );
+  assert.equal(second.launched, true, 'refunded candidate must launch again');
+});
+
 test('P2 FIX4: broker claim bound to candidate digests; source change rejects claim', async (t) => {
   const root = await tempRoot(t);
   const outputRoot = path.join(root, 'out');

@@ -110,7 +110,9 @@ const VERSION_TAG = PREFIX + String(COMBAT_LAB_BUILD_CODE_VERSION);
 
 export const COMBAT_LAB_CONTENT_DIGEST = CONTENT_DIGEST;
 
-const PRIOR_DIGESTS = ['0U3BLV9', '0GWHFVV', '0QYZCFO'];
+// '11E9S26' was the live digest until the saucer joined the hull catalog; codes minted on it
+// should still classify as a known prior build rather than an unrecognised one.
+const PRIOR_DIGESTS = ['0U3BLV9', '0GWHFVV', '0QYZCFO', '11E9S26'];
 export const COMBAT_LAB_KNOWN_PRIOR_DIGESTS = Object.freeze(
   PRIOR_DIGESTS.filter((digest) => digest !== CONTENT_DIGEST),
 );

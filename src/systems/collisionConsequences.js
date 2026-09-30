@@ -30,6 +30,7 @@ import {
   noteLethalBlow,
   notePendingSlam,
   resetPendingSlams,
+  spawnCollisionTearOff,
 } from './hullFracture.js';
 import { OVERKILL_ORIGIN_KINDS } from '../data/hullFractureSeams.js';
 
@@ -45,6 +46,14 @@ const TOW_FLAIL_MAX_MULT = 2.4;
 const DAMAGEABLE_MOTION = new Set(['ship', 'drone']);
 const RESOLVE_PENDING_CRAFT_CONTACT_EVENT = 'collisionConsequences:resolvePendingCraftContact';
 
+// Physical tear-off admission: only a genuinely hard hit (the kernel's spall ladder crossing
+// ~half its authored count) sheds a real plating body, per victim at most every 2 s, and the
+// global live shard count stays bounded so a brawl cannot fill the field with free debris.
+const TEAROFF_MIN_DEBRIS_COUNT = 10;
+const TEAROFF_SECOND_PIECE_COUNT = 14;
+const TEAROFF_COOLDOWN_TICKS = 120;
+const TEAROFF_LIVE_CAP = 20;
+
 export const collisionConsequences = {
   id: 'collisionConsequences',
   name: 'collisionConsequences',
@@ -54,6 +63,7 @@ export const collisionConsequences = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.registry = ctx.registry;
+    this.helpers = ctx.helpers || {};
     this._pairTicks = new Map();
     this._pendingCraftContacts = new Map();
     this._applicationEnabled = combatFlag('weaponImpulseConsequences');
@@ -86,6 +96,12 @@ export const collisionConsequences = {
     this._applicationEnabled = true;
     if (!state || state.mode !== 'flight') return;
     this._resolveStrandedCraftContactsBefore(nonNegativeTick(state.tick));
+    if (this._tearOffLive && this._tearOffLive.size) {
+      for (const id of this._tearOffLive) {
+        const entity = entityById(state, id);
+        if (!entity || entity.alive === false) this._tearOffLive.delete(id);
+      }
+    }
   },
 
   _onImpact(payload) {
@@ -341,10 +357,46 @@ export const collisionConsequences = {
           surface: receipt.surface,
           pos: receipt.pos,
           normal: receipt.normal,
+          momentum: receipt.exchangedMomentum,
           provenance: receipt.provenance,
         });
       }
+      this._maybeTearOffPlating(target, receipt, damageResult, tick);
     }
+  },
+
+  /**
+   * Shed real plating shards on hard sub-lethal hits. Lethal rams already fracture via the
+   * pending-slam note; this is the rung below — a ship that survives a slam visibly loses a
+   * physical piece that tumbles off with inherited momentum, collides, and stays salvageable.
+   * Player hulls never take this path (impact damage is NPC-only by contract), and admission
+   * requires an actually-applied damage packet so cosmetic grazes shed nothing.
+   */
+  _maybeTearOffPlating(target, receipt, damageResult, tick) {
+    if (!damageResult || damageResult.ok !== true || target.alive === false) return;
+    if (!DAMAGEABLE_MOTION.has(target.type)) return;
+    const debrisCount = Math.max(0, Number(receipt.debrisCount) || 0);
+    if (debrisCount < TEAROFF_MIN_DEBRIS_COUNT) return;
+    const last = this._tearOffTickByVictim && this._tearOffTickByVictim.get(target.id);
+    if (Number.isFinite(last) && tick - last < TEAROFF_COOLDOWN_TICKS) return;
+    if ((this._tearOffLive ? this._tearOffLive.size : 0) >= TEAROFF_LIVE_CAP) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const shards = spawnCollisionTearOff(this, {
+      victimId: target.id,
+      tick,
+      pos: receipt.pos,
+      normal: receipt.normal,
+      vel: target.vel,
+      angVel: target.angVel,
+      mass: positiveMass(target),
+      radius: target.radius,
+      momentum: receipt.exchangedMomentum,
+      closingSpeed: Number.isFinite(receipt.feelDeltaV) ? receipt.feelDeltaV : receipt.deltaV,
+      count: debrisCount >= TEAROFF_SECOND_PIECE_COUNT ? 2 : 1,
+    });
+    if (!shards || !shards.length) return;
+    this._tearOffTickByVictim.set(target.id, tick);
+    for (const shard of shards) this._tearOffLive.add(shard.id);
   },
 
   _routeImpactDamage(target, other, receipt) {
@@ -396,6 +448,8 @@ export const collisionConsequences = {
   _resetTransientState() {
     this._pairTicks = new Map();
     this._pendingCraftContacts = new Map();
+    this._tearOffTickByVictim = new Map();
+    this._tearOffLive = new Set();
     resetPendingSlams();
   },
 

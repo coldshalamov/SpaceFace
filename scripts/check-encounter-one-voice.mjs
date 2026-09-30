@@ -112,7 +112,12 @@ function assertNoModal(emitted, label) {
   // draws again — seed 8's haven schedule now fires once, all proximity-exempt. Seed 22 is the
   // only seed of 1-24 still scheduling ambush_snare inside the haven (3 fired incl. the snare).
   // Floor unchanged.
-  const SOAK_SEED = 22;
+  // 2026-09-29: 22 -> 23. Another catalog wave (through encounter 359) consumed draws again —
+  // seed 22's two-day haven schedule now holds only storyBeat-gated/proximity items, all of which
+  // legitimately defer under a beat-0 parked player. Seed 23 schedules ambush_snare inside the
+  // haven with the richest scanned two-day schedule (4 fired incl. the snare, seeds 1-24).
+  // Floor unchanged.
+  const SOAK_SEED = 23;
   const { sim, state, bus, emitted, voice } = boot(SOAK_SEED, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
   const firedKinds = [];

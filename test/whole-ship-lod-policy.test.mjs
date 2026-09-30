@@ -20,6 +20,7 @@ import {
 const FAMILY_DEF_IDS = [
   'ship_wasp', 'ship_hornet', 'ship_pelican', 'ship_mule', 'ship_drifter',
   'ship_ironback', 'ship_bastion', 'ship_atlas', 'ship_ranger', 'ship_warden',
+  'ship_saucer',
 ];
 
 test('every catalogued whole-ship family except the player is installable', () => {

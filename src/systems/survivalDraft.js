@@ -46,6 +46,7 @@ import {
   EVOLUTION_OFFER_KIND,
   evolutionOffersFor,
 } from '../data/survivalEvolutions.js';
+import { runModifierRecord, validateRunModifier } from '../data/runModifiers.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits, getDerivedStats } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
@@ -465,11 +466,11 @@ export const survivalDraft = {
       }
       this._purchased.add(pending.id);
       this._notice = `${pending.name} fitted. Buy again or launch the next round.`;
-      this._emit('run:modifierRecordRequested', {
-        record: { kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
-          slotIndex: pending.slotIndex, replaced: pending.replaces || null, wave: this._wave },
-        draft: { wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id },
-        wave: this._wave,
+      this._noteModifier({
+        kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
+        slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
+      }, {
+        wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id,
       });
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
@@ -560,22 +561,19 @@ export const survivalDraft = {
     if (applied.ok) {
       // The record is a NOTE about what the player chose. The live effect is the real fitting on
       // the run's own ephemeral hull; nothing run-shaped is written into a persistent fitting.
-      this._emit('run:modifierRecordRequested', {
-        record: {
-          kind: 'weapon',
-          offerId: offer.id,
-          verb: offer.verb,
-          defId: offer.defId,
-          slotIndex: offer.slotIndex,
-          replaced: offer.replaces || null,
-          wave: run.wave,
-        },
-        draft: {
-          wave: run.wave,
-          offered: offers.map((entry) => entry.id),
-          picked: offer.id,
-        },
+      // A note the author rejects is withheld. The fit already landed, and the draft still closes.
+      this._noteModifier({
+        kind: 'weapon',
+        offerId: offer.id,
+        verb: offer.verb,
+        defId: offer.defId,
+        slotIndex: offer.slotIndex,
+        replaced: offer.replaces ?? null,
         wave: run.wave,
+      }, {
+        wave: run.wave,
+        offered: offers.map((entry) => entry.id),
+        picked: offer.id,
       });
     } else {
       // The surface has already closed and the run is moving on, so an inline notice would never
@@ -762,14 +760,12 @@ export const survivalDraft = {
       .map((defId) => (MODULE_DEF_BY_ID.get(defId) || {}).name || defId)
       .join(' + ');
     this._notice = `${pending.name} synthesized — ${consumedNames} consumed. Buy again or launch the next round.`;
-    this._emit('run:modifierRecordRequested', {
-      record: {
-        kind: 'evolution', offerId: pending.id, verb: pending.verb, defId: pending.defId,
-        slotIndex: pending.slotIndex, replaced: null, consumes: pending.consumes.slice(),
-        wave: this._wave,
-      },
-      draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id },
+    this._noteModifier({
+      kind: 'evolution', offerId: pending.id, verb: pending.verb, defId: pending.defId,
+      slotIndex: pending.slotIndex, replaced: null, consumes: pending.consumes.slice(),
       wave: this._wave,
+    }, {
+      wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
     });
     this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
   },
@@ -1135,6 +1131,17 @@ export const survivalDraft = {
     if (!run || run.phase !== 'refit') return false;
     this._closeScreen(CRUCIBLE_REFIT_SCREEN_ID);
     this._emit('run:refitClosed', { wave: run.wave });
+    return true;
+  },
+
+  /**
+   * Ask the run to remember one pick. The author builds the note and the author
+   * refuses a malformed one. Refusal does not undo a fit that already landed.
+   */
+  _noteModifier(args, draft) {
+    const record = runModifierRecord(args);
+    if (!validateRunModifier(record).ok) return false;
+    this._emit('run:modifierRecordRequested', { record, draft, wave: record.wave });
     return true;
   },
 

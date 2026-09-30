@@ -24,6 +24,12 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-first-15-'));
 const START_TIMEOUT_MS = 90000;
+// The mounted mainMenu screen proves nothing about its buttons: they mount once the target screen
+// registers, and the click's own stability/hit-test polls need two produced frames a contended
+// software-GL host can starve for tens of seconds (the New Game click died at the bare 10 s
+// default on CI while the menu was still queued behind boot work). Same budget the sibling
+// sector-arrival probe gives menu actions.
+const MENU_CLICK_TIMEOUT_MS = 90000;
 // firstFlight historically fires after ~3s of flight; sample past that so deferral is observable.
 const B0_SAMPLE_WAIT_MS = 3800;
 const { chromium } = await loadPlaywright();
@@ -53,6 +59,7 @@ try {
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   await waitForBootOverlayGone(page);
 
+  await waitForMenuAction(page, 'newGame');
   const opened = await clickButton(page, 'New Game');
   assert.equal(opened, true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game route rail');
@@ -331,8 +338,32 @@ async function waitForVisible(page, selector, timeoutMs, label) {
 async function clickButton(page, label) {
   const button = page.getByRole('button', { name: label, exact: true }).first();
   if (await button.count() <= 0) return false;
-  await button.click({ timeout: 10000 });
+  await button.click({ timeout: MENU_CLICK_TIMEOUT_MS });
   return true;
+}
+
+// Menu readiness gate (sector-arrival probe's pattern): the menu is painted, the boot overlay has
+// released the glass, and the named action's button is mounted and armed — aria-disabled drops
+// only once its target screen is registered, so a click that lands earlier is a silent no-op.
+async function waitForMenuAction(page, action) {
+  await page.waitForFunction((actionId) => {
+    const menu = document.querySelector('[data-screen="mainMenu"]');
+    if (!menu) return false;
+    const menuStyle = getComputedStyle(menu);
+    const menuRect = menu.getBoundingClientRect();
+    if (menuStyle.display === 'none' || menuStyle.visibility === 'hidden'
+      || menuRect.width <= 20 || menuRect.height <= 10) return false;
+    const boot = document.getElementById('boot-overlay');
+    if (boot) {
+      const bootStyle = getComputedStyle(boot);
+      const bootGone = boot.classList.contains('hidden')
+        || bootStyle.pointerEvents === 'none' || bootStyle.display === 'none'
+        || bootStyle.visibility === 'hidden';
+      if (!bootGone) return false;
+    }
+    const button = menu.querySelector(`button[data-action="${actionId}"]`);
+    return !!button && button.getAttribute('aria-disabled') !== 'true';
+  }, action, { timeout: MENU_CLICK_TIMEOUT_MS });
 }
 
 // The full-screen boot overlay (z-index 2000, pointer-events:auto) intercepts clicks until

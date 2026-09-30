@@ -159,6 +159,8 @@ const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
 ]);
 // Escort screen: the warden's job is the WARD, not the kill. It holds a point between its nearest
 // friendly and the pressed threat, and darts only when the threat actually breaches the ward.
+// SF-048 (PB-TAC-B): the ward is CUSTODY — a sticky bind to an actual carrier (sensor cargo
+// band), not "whoever is nearest right now" — and the dart's chase is leashed to it.
 const ESCORT_APPROACH_RANGE_WU = 160;
 const ESCORT_APPROACH_TICKS = 60;
 const ESCORT_HOLD_TICKS = 150;
@@ -166,6 +168,11 @@ const ESCORT_DART_TICKS = 36;
 const ESCORT_REGROUP_TICKS = 45;
 const ESCORT_BREACH_WU = 260;
 const ESCORT_THREAT_RING_WU = 900;
+// The dart answers pressure on the ward, but the load outranks the chase: a lunge that would
+// drag the screen this far off its custody carrier ends and the hull returns to the hold.
+const ESCORT_DART_LEASH_WU = 420;
+// Sensor cargo bands rank actual haulers over empty hulls (contact.cargoBand).
+const CARGO_BAND_RANK = new Map([['rich', 3], ['valuable', 2], ['light', 1], ['empty', 0]]);
 const RUN_EGRESS_DISTANCE = 960;
 // Pressure break: a hurt or heat-soaked fighter diverts to its authored egress phase instead of
 // grinding one continuous attack_run until death. The break ends through the ordinary
@@ -276,6 +283,7 @@ export class CombatDoctrineRuntime {
     record.lastTick = tick;
     record.ramAuthorized = self && self.ramAuthorized === true;
     record.outcome = null;
+    record.fallbackRearmed = false;
     record.telegraphStartedTick = null;
 
     if (!target) {
@@ -559,9 +567,63 @@ function updateFieldAnchor(record, tick, self, target, distance) {
   }
 }
 
+/**
+ * SF-048 custody: the escort's ward is a sticky bind to an actual carrier, chosen from the live
+ * sensor facts — cargo band first (rich > valuable > light > empty), then nearest, then stable
+ * id. The bind survives tick-to-tick (the escort visibly guards THAT hull) and revalidates
+ * against the world every update: carrier died → next carrier; load delivered/transferred (the
+ * band flattened) → rebind; no carrier facts at all → fail closed to the plain nearest-friendly
+ * ward (the pre-SF-048 behavior).
+ */
+function escortCustody(record, perception, self) {
+  if (!perception || !Array.isArray(perception.contacts)) return escortWard(perception, self);
+  const selfPos = self && self.pos ? self.pos : perception.self && perception.self.pos;
+  const candidates = [];
+  for (const contact of perception.contacts) {
+    if (!contact || contact.kind !== ContactKind.SHIP || contact.hostile === true) continue;
+    if (contact.alive !== true || contact.visible !== true || !contact.pos) continue;
+    const d = selfPos
+      ? Math.hypot(contact.pos.x - selfPos.x, contact.pos.z - selfPos.z)
+      : 0;
+    candidates.push({ contact, d });
+  }
+  if (!candidates.length) {
+    if (record) record.custodyTargetId = null;
+    return null;
+  }
+  const rankOf = (row) => CARGO_BAND_RANK.get(row.contact.cargoBand) || 0;
+  // The bind survives tick-to-tick — but only while the bound hull still CARRIES. A delivered
+  // or transferred load ends the obligation (SF-048 revalidation): the ward rebinds, falling
+  // back to the plain nearest-friendly ward when nothing carries anymore. The comparator is
+  // idempotent while the world is unchanged, so the per-tick rebind never flaps.
+  const bound = record && record.custodyTargetId != null
+    ? candidates.find((row) => stableId(row.contact.id) === stableId(record.custodyTargetId))
+    : null;
+  if (bound && rankOf(bound) > 0) return bound.contact;
+  let best = null;
+  let bestKey = null;
+  for (const row of candidates) {
+    const key = [-rankOf(row), row.d, stableId(row.contact.id)];
+    if (!best || compareKeys(key, bestKey) < 0) {
+      best = row;
+      bestKey = key;
+    }
+  }
+  if (record) record.custodyTargetId = best ? best.contact.id : null;
+  return best ? best.contact : null;
+}
+
+function compareKeys(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] < b[i]) return -1;
+    if (a[i] > b[i]) return 1;
+  }
+  return 0;
+}
+
 function updateEscort(record, tick, perception, self, target, distance) {
   const age = tick - record.phaseStartedTick;
-  const ward = escortWard(perception, self);
+  const ward = escortCustody(record, perception, self);
   // The screen point floats between ward and threat while a ward exists. Without one the warden
   // holds a defensive orbit of the threat itself (no flightPoint, guns live in the hold) — the
   // honest fail-closed end state, not a chase/flee pendulum.
@@ -586,7 +648,12 @@ function updateEscort(record, tick, perception, self, target, distance) {
     } else if (age >= ESCORT_HOLD_TICKS) advanceCycle(record, tick, 'screen_approach');
   } else if (record.phase === 'shield_dart') {
     record.closestDistance = Math.min(record.closestDistance, distance);
-    if (age >= ESCORT_DART_TICKS || runHasPassed(record, self, target, distance)) {
+    // SF-048 leash: the load outranks the chase. A dart that would carry the screen beyond
+    // leash range of its custody carrier breaks off and re-holds — the pilot has left the
+    // cargo fight, and the escort has not.
+    const leashed = !!(ward && ward.pos && self && self.pos
+      && Math.hypot(self.pos.x - ward.pos.x, self.pos.z - ward.pos.z) > ESCORT_DART_LEASH_WU);
+    if (leashed || age >= ESCORT_DART_TICKS || runHasPassed(record, self, target, distance)) {
       enter(record, 'screen_hold', tick, null);
     }
   } else if (record.phase === 'regroup' && age >= ESCORT_REGROUP_TICKS) {
@@ -802,7 +869,15 @@ function updatePackPursuit(record, tick, self, target, distance, perception) {
   const wound = woundedSubsystemFraction(self);
   // Hysteresis: a repaired-above-exit hull re-arms its one fallback; until then the spent wound
   // cannot re-trigger, so a crippled hull fights hurt instead of flickering press/retreat.
-  if (wound >= PACK_WOUND_EXIT_FRACTION) record.fallbackArmed = true;
+  if (wound >= PACK_WOUND_EXIT_FRACTION) {
+    // The persisted latch counts as spent too: a record rebuilt after save:loaded starts armed,
+    // so without the self flag here the re-arm pulse would never fire and the saved latch would
+    // hold every later retreat closed.
+    if (record.fallbackArmed === false || (self && self.woundedFallbackSpent === true)) {
+      record.fallbackRearmed = true;
+    }
+    record.fallbackArmed = true;
+  }
   if (record.phase === 'retreat') {
     // Allies move — re-resolve the anchor from current perception every tick rather than chasing
     // the position the packmate occupied when the run began.
@@ -817,7 +892,11 @@ function updatePackPursuit(record, tick, self, target, distance, perception) {
     }
     return;
   }
-  if (record.fallbackArmed !== false && wound <= PACK_WOUND_ENTER_FRACTION) {
+  // The spent latch also lives on the entity (data.ai.woundedFallbackSpent): the doctrine record
+  // is rebuilt empty after a save/load and a still-crippled hull must not buy a second retreat.
+  const fallbackSpent = record.fallbackArmed === false
+    || (self && self.woundedFallbackSpent === true);
+  if (!fallbackSpent && wound <= PACK_WOUND_ENTER_FRACTION) {
     record.fallbackArmed = false;
     record.outcome = 'wounded_fallback';
     enter(record, 'retreat', tick, null);
@@ -1306,6 +1385,8 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     preferredRange,
     allowedActionId,
     outcome: record.outcome,
+    fallbackSpent: record.fallbackArmed === false,
+    fallbackRearmed: record.fallbackRearmed === true,
     contestKind: doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER && phase === 'control'
       ? 'tether-control-contest'
       : null,
@@ -1656,6 +1737,8 @@ function frozenRecord(record) {
     fireWindow: record.fireWindow,
     outcome: record.outcome,
     lastTick: record.lastTick,
+    // SF-048: the escort's sticky custody bind, for inspection surfaces.
+    custodyTargetId: record.custodyTargetId,
   });
 }
 

@@ -153,18 +153,18 @@ test('a debut wave under heavies_only stages the arrival as a heavy', () => {
 
 test('pressure changes the bodies a wave fields, deterministically', () => {
   // The biased roster feeds the opening packages too: same seed, different composition.
-  // Wave 24 is past every unlock — a full testing-role roster with no debut staging to flatten
-  // the measurement.
+  // Wave 23 is past every unlock and is neither a mass-gap round (its opening is deliberately
+  // fodder-first regardless of build) nor a debut — a plain wave where pressure owns the mix.
   const dominantHits = (plan) => plan.packages.filter(
     (pkg) => !pkg.champion && ['anchor', 'control', 'reach', 'support', 'elite'].includes(pkg.role),
   ).length;
   let differed = false;
   for (let seed = 1; seed <= 20 && !differed; seed++) {
-    const a = swarmPlan(24, null, seed);
-    const b = swarmPlan(24, { dominant: 'collision' }, seed);
+    const a = swarmPlan(23, null, seed);
+    const b = swarmPlan(23, { dominant: 'collision' }, seed);
     if (dominantHits(b) !== dominantHits(a)) differed = true;
     // Always deterministic: same input → same plan.
-    assert.deepEqual(swarmPlan(24, { dominant: 'collision' }, seed).packages, b.packages);
+    assert.deepEqual(swarmPlan(23, { dominant: 'collision' }, seed).packages, b.packages);
   }
   assert.ok(differed, 'at least one seed fields a different opening mix under pressure');
 });

@@ -93,16 +93,17 @@ try {
 
   // ---- implicit exit (Esc) must surface the Departure Check, never strand ----
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => !!document.querySelector('.sx-pop--dep'), null, { timeout: 5000 })
+  await page.waitForFunction(() => !!document.querySelector('.sx-pop--dep'), null, { timeout: 15000 })
     .catch(() => { throw new Error('Esc while docked must open the Departure Check (implicit exits confirm)'); });
   assert.equal(await page.evaluate(() => window.SF.state.ui.docked), true,
     'Esc must not undock immediately — it must confirm first');
 
-  // Esc again closes the check without re-opening it, and without undocking.
+  // Esc again closes the check without re-opening it, and without undocking. The dismiss runs a
+  // modal transition, so poll for the popup to clear instead of sampling once at a fixed 500ms —
+  // under SwiftShader load the transition routinely outlives the old sample.
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(500);
-  assert.equal(await page.evaluate(() => !!document.querySelector('.sx-pop--dep:not([hidden])')), false,
-    'Esc should dismiss the Departure Check');
+  await page.waitForFunction(() => !document.querySelector('.sx-pop--dep:not([hidden])'), null, { timeout: 15000 })
+    .catch(() => { throw new Error('Esc should dismiss the Departure Check'); });
   assert.equal(await page.evaluate(() => window.SF.state.ui.docked), true, 'dismissing the check should keep us docked');
 
   // ---- committed undock via the fascia launch control returns to flight ----
@@ -143,7 +144,7 @@ try {
     if (!backdrop) throw new Error('modal backdrop missing');
     backdrop.click();
   });
-  await page.waitForFunction(() => !!document.querySelector('.sx-pop--dep'), null, { timeout: 5000 })
+  await page.waitForFunction(() => !!document.querySelector('.sx-pop--dep'), null, { timeout: 15000 })
     .catch(() => { throw new Error('backdrop click while docked must open the Departure Check, not strand the player'); });
   assert.equal(await page.evaluate(() => window.SF.state.ui.docked), true,
     'backdrop click must not undock immediately — it must confirm first');

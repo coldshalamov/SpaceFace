@@ -68,8 +68,11 @@ test('production init + update order lengths match the live browser baseline', (
   // seam instrument (DOM-guarded, event-mirrored from the seams mining.js already publishes).
   // One system in both orders, same posture as the sibling DOM-guarded HUDs; its tick only
   // places the world-anchored dial and retires it when the beam stops.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 164);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 123);
+  // 164 -> 165 init / 123 -> 124 update: hullBurst (hull-burst overhaul slice C) — the Gravity
+  // Bumper's timed front wedge; one system in both orders, right after impulseCharges so both blast
+  // verbs sit before physics. Absent from the frozen legacy47a list, so the 47-A golden cannot see it.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 165);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 124);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -217,7 +220,8 @@ test('browser production system set is unchanged vs production manifest constant
   // 163 with wreckChoicePrompt (BP-01.1/PQ-138.04; event-only prompt-deck adapter).
   // 164 with miningHud (INF lane): the mining instrument joins both orders beside the
   // other DOM-guarded HUDs (massSeedHud/fieldHud/planetHud posture).
-  assert.equal(registry.systems.length, 164);
+  // 165 with hullBurst (hull-burst overhaul slice C; one system in both orders).
+  assert.equal(registry.systems.length, 165);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

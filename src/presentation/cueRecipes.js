@@ -221,7 +221,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
     tags: ['critical', 'tether', 'threat'],
   }),
-  // SF-023 (PB-MASS-A) — a committed hostile blade inside the cut window. Same lane family and
+  // SF-023 (PB-MASS-A) — a committed hostile blade inside the cut span. Same lane family and
   // material as the umbrella threat, tighter dedupe so a re-committed cutter re-speaks, and the
   // record's `position` (the bite point on the player's rope) carries the located VFX/where-to-
   // look read. The HUD's world-anchored X mark owns the persistent "cut lands HERE" signal.

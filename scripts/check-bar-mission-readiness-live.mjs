@@ -50,7 +50,10 @@ try {
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000, polling: 250 });
-  await waitForVisible(page, '[data-screen="mainMenu"]', UI_TIMEOUT_MS, 'main menu');
+  // The main menu is the first surface painted after boot — SwiftShader is still draining the
+  // serial shader-compilation backlog here, so this wait gets the boot-adjacent budget, not the
+  // warm-UI one (30 s proved short under shard contention).
+  await waitForVisible(page, '[data-screen="mainMenu"]', HEAVY_TIMEOUT_MS, 'main menu');
   await clickButton(page, 'New Game');
   await waitForVisible(page, '[data-screen="newGame"]', UI_TIMEOUT_MS, 'new game');
   await clickButton(page, 'Launch');

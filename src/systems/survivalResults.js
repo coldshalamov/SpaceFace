@@ -6,6 +6,7 @@
 //
 // It never writes state.run (runSession owns that), never spawns, and never ticks.
 
+import { COLLISION_CONSEQUENCE_LIMITS } from '../combat/impulseKernel.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { attackerLabel, weaponLabel } from '../combat/playerDefeat.js';
 import { validateRunState } from '../core/runState.js';
@@ -325,6 +326,38 @@ export function storyMomentsFor(summary = {}) {
 }
 
 /**
+ * SF-075 — the rematch line. A return to the same sea (same ruleset, arena, seed) earns one
+ * honest sentence about the run's PHYSICAL difference — hull collisions taken, kills the room
+ * did for the rope, breaths bought — never a bigger score and never a motivational message when
+ * nothing moved. Returns null when there is no real difference to name.
+ */
+export function rematchLineFor(prior, now, attempt) {
+  if (!prior || !now || typeof prior !== 'object' || typeof now !== 'object') return null;
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const clauses = [];
+  const collDelta = num(prior.collisions) - num(now.collisions);
+  if (collDelta >= 1) {
+    clauses.push(`the room hit your hull ${num(prior.collisions)} times last run — ${num(now.collisions)} this time`);
+  } else if (collDelta <= -1) {
+    clauses.push(`the room hit your hull ${num(now.collisions)} times — ${num(prior.collisions)} last run`);
+  }
+  const improvDelta = num(now.improvised) - num(prior.improvised);
+  if (improvDelta >= 1) {
+    clauses.push(`it killed ${num(now.improvised)} for you — ${num(prior.improvised)} before`);
+  }
+  // Breaths are only named when the hull count did NOT improve: buying silence is usually what
+  // produces the cleaner run, so naming both would double-report one improvement.
+  if (collDelta < 1) {
+    const breathDelta = num(now.breaths) - num(prior.breaths);
+    if (breathDelta >= 1) {
+      clauses.push(`you bought its silence ${num(now.breaths)} times — ${num(prior.breaths)} before`);
+    }
+  }
+  if (clauses.length === 0) return null;
+  return `Same sea, attempt ${attempt}: ${clauses.slice(0, 2).join('; ')}.`;
+}
+
+/**
  * The build the player converged on: the last verb over the last armed weapon. From the picks
  * the run actually recorded — never a constant.
  */
@@ -440,12 +473,17 @@ export const survivalResults = {
     this.helpers = ctx.helpers || null;
     this._unsubs = [];
     this._reset();
+    // SF-075: rematch memory is SESSION memory — it survives run:started's reset on purpose,
+    // because the comparison it exists to make is between two runs of the same sea.
+    if (!this._rematchByKey) this._rematchByKey = new Map();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:started', () => this._reset()));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
+    this._unsubs.push(this.bus.on('physics:impact', (p) => this._onCollisionTaken(p)));
+    this._unsubs.push(this.bus.on('swarm:pressureSpend', () => this._onBreathBought()));
     this._unsubs.push(this.bus.on('stunt:trickDetected', (p) => this._onTrick(p)));
     this._unsubs.push(this.bus.on('stunt:trickAmended', (p) => this._onTrick(p)));
     // PQ-174.06: the tells before a death. A death the player could not have read is a bug
@@ -533,6 +571,11 @@ export const survivalResults = {
     this._defeatReceipt = null;
     this._stuntKills = [];
     this._lastKillReplay = null;
+    this._collisionsTaken = 0;
+    this._improvisedKills = 0;
+    this._breathsBought = 0;
+    this._lastCollisionTick = -1;
+    this._lastCollisionOther = null;
   },
 
   _simNow() {
@@ -637,6 +680,14 @@ export const survivalResults = {
     const stunt = payload.stunt || (payload.presentation && payload.presentation.stunt);
     const stuntName = payload.stuntName || (stunt && stunt.name);
     const cause = payload.cause || (payload.presentation && payload.presentation.cause);
+    // SF-075: the room did the killing — a thrown hull, a slam, a rock, a well. Counted for the
+    // rematch comparison so "cleaner throws" is a number, not a vibe. In production only the two
+    // collision causes are reachable (KillCause clamps to generic/kinetic/explosive/terrain_/
+    // ship_collision); the rest are kept for forward-compat with richer kill receipts.
+    if (cause === 'throw' || cause === 'ship_collision' || cause === 'slam'
+      || cause === 'terrain_collision' || cause === 'shove' || cause === 'field') {
+      this._improvisedKills += 1;
+    }
     if (stuntName || stunt) {
       const name = stuntName || stunt.name || (stunt.trickId && TRICK_DEFINITIONS[stunt.trickId]?.name) || 'Stunt';
       this._stuntKills.push({
@@ -735,6 +786,58 @@ export const survivalResults = {
     }
   },
 
+  /**
+   * SF-075 rematch input: a hull collision the player took. The combat consequence channel
+   * never routes the player as target — the receipt that actually carries player contact is
+   * physics:impact with playerInvolved, terrain included. The damageDeltaV floor is the same
+   * one hullScars uses to decide a contact cost something; below it a graze is not a hit.
+   * The dedup is (tick, other body), not tick alone — two hulls landing in one tick are two hits.
+   */
+  _onCollisionTaken(payload) {
+    if (!payload || payload.playerInvolved !== true) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const closing = Number.isFinite(payload.preSolveClosingSpeed) ? payload.preSolveClosingSpeed : 0;
+    if (closing < COLLISION_CONSEQUENCE_LIMITS.damageDeltaV) return;
+    const tick = Number.isFinite(payload.tick) ? payload.tick : this._tickNow();
+    const other = payload.aId === this.state.playerId ? payload.bId : payload.aId;
+    if (tick === this._lastCollisionTick && other === this._lastCollisionOther) return;
+    this._lastCollisionTick = tick;
+    this._lastCollisionOther = other;
+    this._collisionsTaken += 1;
+  },
+
+  /** SF-075 rematch input: a clear-burst that bought the room's silence. */
+  _onBreathBought() {
+    if (!liveSurvivalRun(this.state)) return;
+    this._breathsBought += 1;
+  },
+
+  /**
+   * SF-075 — the rematch record. Same sea means same ruleset + arena + seed: the envelope is the
+   * comparability statement. Stores this run's snapshot for the next attempt and returns the
+   * block the result carries; the line names a real physical difference or stays silent.
+   */
+  _rematchFor(run, wave) {
+    const seed = run && Number.isInteger(run.seed) ? run.seed : null;
+    if (seed == null) return null;
+    // A run that never entered a wave was an abort, not an attempt — publishing no rematch
+    // block keeps its all-zero metrics from overwriting the sea's real baseline.
+    if (!(this._highestEntered > 0)) return null;
+    const key = `${run.ruleset || 'arc'}|${run.arenaId || ''}|${seed}`;
+    const now = {
+      collisions: this._collisionsTaken,
+      improvised: this._improvisedKills,
+      breaths: this._breathsBought,
+      wave,
+      kills: this._kills,
+    };
+    const prior = this._rematchByKey.get(key) || null;
+    const attempt = (prior && Number.isInteger(prior.attempt) ? prior.attempt : 0) + 1;
+    this._rematchByKey.set(key, { ...now, attempt });
+    if (!prior) return { attempt, prior: null, line: null };
+    return { attempt, prior, line: rematchLineFor(prior, now, attempt) };
+  },
+
   _onPlayerDeath(payload) {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
@@ -821,6 +924,7 @@ export const survivalResults = {
         wave: Number.isInteger(entry && entry.wave) ? entry.wave : null,
       }))
       : [];
+    const rematch = this._rematchFor(run, wave);
     const result = {
       outcome,
       seed: Number.isInteger(run.seed) ? run.seed : 0,
@@ -837,6 +941,9 @@ export const survivalResults = {
       xp: Number.isInteger(run.xp) ? run.xp : 0,
       level: Number.isInteger(run.level) ? run.level : 1,
       picks: pickEntries,
+      // SF-075: same-sea rematch record — attempt count, the prior run's physical metrics, and
+      // one honest difference sentence (or null when nothing real moved).
+      rematch,
       headline: this._planFailure
         ? `The arena could not build wave ${this._planFailure.wave}. The run was stopped.`
         : (outcome === 'defeat' && receipt
@@ -933,6 +1040,11 @@ export const survivalResults = {
       result.unlocksEarned = settled.unlocksEarned.slice();
     } catch {
       // A local-record failure must not swallow the results the player is owed.
+    }
+    // SF-075: the rematch sentence leads the story moments — it is the run's headline on a
+    // rematched sea. One extra row over the usual cap is the whole point of the feature.
+    if (rematch && rematch.line) {
+      result.moments = [{ text: rematch.line }, ...result.moments].slice(0, DEATH_MOMENT_LIMIT + 1);
     }
     this._result = result;
     this._resultSeq = (this._resultSeq || 0) + 1;

@@ -186,7 +186,7 @@ export function classifyBuildIdentity(input, options = {}) {
   const hasSensor = idSet.has('mod_survey_suite') || idSet.has('mod_cargo_scanner_s') || hasModValue(defs, 'scannerRadiusMult');
   const hasWinch = idSet.has('mod_winch_hd') || hasModValue(defs, 'tetherReelRateMult');
   const hasCharge = idSet.has('mod_charge_rack') || hasModValue(defs, 'impulseChargeCapacity');
-  const hasRam = idSet.has('mod_ram_plate') || hasModValue(defs, 'ramDamageDealtMult');
+  const hasRam = idSet.has('mod_ram_plate') || hasModValue(defs, 'hullBurst') || hasModValue(defs, 'ramDamageDealtMult');
   const hasSmuggler = idSet.has('mod_smuggler_hold') || defs.some((def) => def.legality === 'contraband');
 
   let def = null;

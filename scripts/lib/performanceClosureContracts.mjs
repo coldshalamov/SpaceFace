@@ -63,6 +63,17 @@ const SCENARIOS = [
   scenario('combat_vfx_burst', 'combat-vfx-burst', {
     injectedState: true,
     actualRenderedEntitiesRequired: true,
+    // The burst injects a boosting hostile fleet and then waits out authored admission before
+    // the window opens. Without a held pose the fleet drifts past the render glass (unmeshed
+    // forever) and ambient traffic kills the parked player — observed twice: the death screen's
+    // ui:pausing-screen scale:0 froze the clock and stranded every queued entity:destroyed.
+    holdsMeasuredPose: true,
+    // The settle phase waits for pipeline counters to hold stable before the window opens; it
+    // measures nothing itself. A CPU-starved host stretches background compilation past the
+    // 20s default (both windows demoted pipeline-warmup-unsettled at 100% host load,
+    // 2026-09-26T07-18Z), so grant the probe's full 30s patience. A genuinely unsettled
+    // pipeline still fails the window contract; this only widens the wait.
+    pipelineSettleTimeoutMs: 30_000,
   }),
   scenario('jump_asset_admission', 'jump-asset-admission', {
     transitionWindow: true,

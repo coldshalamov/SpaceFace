@@ -38,6 +38,8 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'optic:contact': {verb:'disrupt',primitive:'induction',color:0xbbdbff,life:.5},
   'optic:rekindled': {verb:'harvest',primitive:'deposition',color:0xecf4ff,life:1},
   'beacon:deployed': {verb:'command',primitive:'induction',color:0x80ead8,life:1.1},
+  // A warded shot's sheet lies on the aimed hull, along the hit that was absorbed.
+  'combat:warded': {verb:'cool',primitive:'deposition',color:0x8fe1fa,life:.5,continuous:false},
 });
 
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -117,6 +119,27 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     const record=Array.isArray(records)?records.find(b=>b.id===p.id):records?.get?.(p.id);
     const target=body(state,record?.entityId);
     return {...p,targetId:target?.id,pos:point(p.pos)?copyPoint(p.pos):target?.pos};
+  }
+  if (name === 'combat:warded') {
+    const aimed = body(state, p && p.targetId);
+    const normal = p && p.normal;
+    const nx = Number(normal && normal.x);
+    const nz = Number(normal && normal.z);
+    if (!aimed || aimed.alive === false || !point(aimed.pos)) return null;
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-8) return null;
+    // No surfaceWork: that would replace this normal with the escort-to-target bearing.
+    const out = {
+      targetId: aimed.id,
+      sourceId: p.escortId,
+      escortId: p.escortId,
+      attackerId: p.attackerId,
+      normal: { x: nx, z: nz },
+    };
+    if (point(p.pos)) out.pos = copyPoint(p.pos);
+    if (p.approach && Number.isFinite(Number(p.approach.x)) && Number.isFinite(Number(p.approach.z))) {
+      out.approach = { x: Number(p.approach.x), z: Number(p.approach.z) };
+    }
+    return out;
   }
   return p;
 }
