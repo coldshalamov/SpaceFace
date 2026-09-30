@@ -3986,8 +3986,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
-      "releaseSha256": "88ce2a1993fc787afde0199635eb6a73b10f9324528fd5445f7a55d396b8ff01",
-      "releaseBytes": 687648,
+      "releaseSha256": "5f304e0c6fea523138e58242c0b468efcb61cf56ecdf20ef11fff1ac4bca7f01",
+      "releaseBytes": 692072,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4574,8 +4574,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb",
-      "releaseSha256": "626e7f4bed8cc2a0e02e321bb7144c508263331f111eb6467796ec82e7a3dd8e",
-      "releaseBytes": 500640,
+      "releaseSha256": "5033221809f26701ad799b92333e3bce46e38fc1e1079e7c6d6198ac41974bce",
+      "releaseBytes": 502500,
       "rootNode": "RANGER_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4595,8 +4595,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb",
-      "releaseSha256": "0c15493a52535f4af8ebf41393ab8d9480a43d0142ab73a298151aa6ee5cdbda",
-      "releaseBytes": 421276,
+      "releaseSha256": "5252de8d55e9a2c3812dcf912a375802c005bc2b64ca1d757704eb997b264551",
+      "releaseBytes": 422444,
       "rootNode": "RANGER_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

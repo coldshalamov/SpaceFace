@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "435e966d61dcc517d3c1c2eec77d9dfa66c593d27397c17cd91f74396c3c6283",
+  "contentHash": "645a6f0e3f51f7cd5022584655936333b8c8352150065bccedfe1efedeab5710",
   "dynamicGroups": [
     {
       "id": "sf.render.survey-pin.node.lod0-hook-drive-core.dynamic",
@@ -4216,7 +4216,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "2d4205054a187e709c05c6457ee21d821401e55a46ebb606ee8ff64a2e4a4bb7",
+      "sha256": "bdc81c95bfa032efacb2f1c559098f77c4ab21c62f436e9e5c23edcec40abd2e",
       "uri": "pilots.json"
     }
   },
@@ -6115,7 +6115,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/survey_pin.glb"
   },
-  "runtimeHash": "67e5e86718bb9ff561b1a38689d5f2e3241120b9bbab3da54c1b0f134f1e49b5",
+  "runtimeHash": "947356cda130c95d86b59547e3947177456e43535dfe1a07c9775571892398d5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

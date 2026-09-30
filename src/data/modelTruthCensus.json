@@ -46015,7 +46015,7 @@
       "bounds": {
         "center": [
           0.54495,
-          1.048396,
+          1.048151,
           0
         ],
         "max": [
@@ -46025,16 +46025,16 @@
         ],
         "min": [
           -8.320138,
-          -0.649661,
+          -0.650151,
           -3.770694
         ],
         "size": [
           17.730177,
-          3.396114,
+          3.396604,
           7.541389
         ]
       },
-      "bytes": 687648,
+      "bytes": 692072,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -46206,7 +46206,7 @@
       ],
       "measuredProportions": {
         "halfWidth": 0.365794,
-        "height": 0.329456,
+        "height": 0.329504,
         "length": 1.72
       },
       "meshHash": null,
@@ -46216,7 +46216,7 @@
       "opening": null,
       "pivot": [
         0.54495,
-        1.048396,
+        1.048151,
         0
       ],
       "proposedSkin": {
@@ -46452,7 +46452,7 @@
       ],
       "shell": {
         "boundaryEdges": 540,
-        "inwardFaceFraction": 0.298,
+        "inwardFaceFraction": 0.29425,
         "silhouetteRadius": 16.431809,
         "sliceY": 0
       },
@@ -46558,14 +46558,14 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 27532,
+      "triangles": 27864,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
       "worldSize": [
         30.96,
-        5.930211,
+        5.931066,
         13.168588
       ]
     },

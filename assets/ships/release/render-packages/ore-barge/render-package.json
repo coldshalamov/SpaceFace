@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "364dede1f753ab2d6a592a3522479c176143609d83eaaf1bcbe9a8bb4ece68bb",
+  "contentHash": "67d51156d8d336baaf68c577fbbba3d0b680d180cc180ca70276447318a00bce",
   "dynamicGroups": [
     {
       "id": "sf.render.ore-barge.node.lod0-hook-drive-core.dynamic",
@@ -5190,7 +5190,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "2d4205054a187e709c05c6457ee21d821401e55a46ebb606ee8ff64a2e4a4bb7",
+      "sha256": "bdc81c95bfa032efacb2f1c559098f77c4ab21c62f436e9e5c23edcec40abd2e",
       "uri": "pilots.json"
     }
   },
@@ -7444,7 +7444,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
-  "runtimeHash": "bdb9e497d5ff05aaceb1ca98ce3e6eb1d27128ab23cc052cb6bbfae06ad4377b",
+  "runtimeHash": "d7534628080e458f524c52e17d0d215a3df5198e699eb9039eb5620b3d9e9317",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

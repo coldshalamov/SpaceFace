@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2f96fc8f96b66b63938d4253c5ba8ad9bb06203ee00ffda8a13dbbad40c87922",
+  "contentHash": "951ec067cbaed602e8d29c4dca789100a9e9f829d1f9cf0b53be7422eb02dbde",
   "dynamicGroups": [
     {
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-hook-armor-port-hull.dynamic",
@@ -2533,7 +2533,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "2d4205054a187e709c05c6457ee21d821401e55a46ebb606ee8ff64a2e4a4bb7",
+      "sha256": "bdc81c95bfa032efacb2f1c559098f77c4ab21c62f436e9e5c23edcec40abd2e",
       "uri": "pilots.json"
     }
   },
@@ -3902,7 +3902,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod1.glb"
   },
-  "runtimeHash": "67922f842664be338f96b0f186c654ce6d29a0ba599289ff9fec2f486904242f",
+  "runtimeHash": "1fd96d67970270a39c538504fe1afeed8fc056be687079302fbd0f64b3a6d4d7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

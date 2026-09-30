@@ -80,6 +80,10 @@ def build():
     F.band(s, 'Hull', (0, 0, 0), (0, 1, 0), 0.34, 'paint2', facing=(0, 0, 1), min_facing=0.55, inset=0.015,
            depth=0.015)
     F.band(s, 'Hull', (4.2, 0, 0), (1, 0, 0), 0.3, 'paint2', inset=0.015, depth=0.02)
+    # Identity trim, lit: the cyan of the sensor spear carried aft as one thin line down the
+    # centre of the ivory dorsal stripe, canopy to tail (LOOK.md: lamps are light).
+    F.band(s, 'Hull', (0, 0, 0), (0, 1, 0), 0.08, 'glow_cyan', facing=(0, 0, 1), min_facing=0.55, inset=0.01,
+           depth=-0.02, region=(('x', -6.2, 2.1),))
 
     # --- sensor spear: boom, ivory sleeves, cyan sensor rings, spearhead array --------------------
     F.cylinder(s, 'SpearShaft', (5.3, 0.0, 0.0), (8.4, 0.0, 0.0), 0.085, material='gunmetal', segments=16)
