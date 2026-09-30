@@ -932,9 +932,16 @@ function isStalePackageCacheError(error) {
   return /trust-anchor mismatch|content hash mismatch|SHA-256 mismatch|byte length mismatch/i.test(message);
 }
 
+// A hung fetch would wedge the package task forever: the cache entry only evicts on settle,
+// so an unsettled corpse pins every later request to the same dead promise. AbortSignal.timeout
+// makes the task reject — a normal failure that self-evicts and retries on re-request.
+const RENDER_PACKAGE_FETCH_TIMEOUT_MS = 90000;
+
 async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
   const read = async (cache) => {
-    const response = await fetchImpl(url, { cache });
+    const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+      ? AbortSignal.timeout(RENDER_PACKAGE_FETCH_TIMEOUT_MS) : null;
+    const response = await fetchImpl(url, signal ? { cache, signal } : { cache });
     if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
     return new Uint8Array(await response.arrayBuffer());
   };
