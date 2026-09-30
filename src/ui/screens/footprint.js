@@ -188,6 +188,15 @@ function nodeWord(node) {
   return kind || 'entry';
 }
 
+// LAW-08: the law's evidence class for an act, in the record's own words. 'direct' is the
+// default (someone saw it) and stays unmarked — only the interesting states print.
+export function actEvidenceLabel(node) {
+  const cls = node && typeof node === 'object' ? node.evidenceClass : null;
+  if (cls === 'unwitnessed') return 'unwitnessed';
+  if (cls === 'discovered') return 'wreck testified';
+  return null;
+}
+
 // Exported for the tier-2 check: nodeWhy is the enumerated phrase composer for board nodes
 // (REP_REASON_LABELS / OUTCOME_WORDS banks). Unknown kinds render '' — never invented text.
 export function nodeWhy(node) {
@@ -196,7 +205,7 @@ export function nodeWhy(node) {
   if (kind === 'act') {
     const faction = shortFactionName(asString(node.factionId));
     const outcome = outcomeWord(node.outcome);
-    return [outcome, faction].filter(Boolean).join(' · ');
+    return [outcome, faction, actEvidenceLabel(node)].filter(Boolean).join(' · ');
   }
   if (kind === 'incident') return asString(node.text) || '';
   if (kind === 'standing') {
@@ -1041,6 +1050,10 @@ export const footprintScreen = {
       meta.append(entityNode(entityLabel('station:' + stationId) || stationId, 'station:' + stationId));
     }
     if ((node.k === 'standing') && asString(node.newTier)) meta.append(` · now ${asString(node.newTier)}`);
+    if (node.k === 'act') {
+      const evidence = actEvidenceLabel(node);
+      if (evidence) meta.append(` · ${evidence}`);
+    }
     const aceId = asString(node.aceId);
     const aceRecord = aceId && state && state.aceMemory ? state.aceMemory[aceId] : null;
     if (aceId && aceRecord) {

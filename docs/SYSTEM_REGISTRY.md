@@ -28,9 +28,9 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `input` | `systems/input.js` | 1850 | 1 | 0 | `input:worldGestureCancelled`×1 |
 | `autoTargetAssist` | `systems/autoTargetAssist.js` | 242 | 0 | 4 | — |
 | `flybyFocus` | `systems/flybyFocus.js` | 515 | 4 | 1 | `flybyFocus:end`×1, `flybyFocus:start`×1, `camera:shake`×1 |
-| `bulletTime` | `systems/bulletTime.js` | 413 | 6 | 2 | `audio:cue`×3, `bulletTime:start`×1, `bulletTime:end`×1 |
+| `bulletTime` | `systems/bulletTime.js` | 429 | 6 | 2 | `audio:cue`×3, `bulletTime:start`×1, `bulletTime:end`×1 |
 | `cloak` | `systems/cloak.js` | 357 | 5 | 6 | `audio:cue`×2, `cloak:engaged`×1, `cloak:dropped`×1 |
-| `lawSecurity` | `systems/lawSecurity.js` | 5069 | 0 | 22 | — |
+| `lawSecurity` | `systems/lawSecurity.js` | 5071 | 0 | 22 | — |
 | `scanner` | `systems/scanner.js` | 1782 | 22 | 10 | `contactHail:availability`×2, `scanner:ghostEscaped`×1, `scan:pulse`×1 |
 | `scanReveal` | `systems/scanReveal.js` | 257 | 6 | 1 | `economy:grantCredits`×2, `scan:shipRevealed`×1, `scan:wreckRevealed`×1 |
 | `buildIdentity` | `systems/buildIdentity.js` | 327 | 1 | 2 | `buildIdentity:revealed`×1 |
@@ -134,7 +134,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `heat` | `systems/heat.js` | 736 | 2 | 10 | `bounty:cooled`×1, `heat:changed`×1 |
 | `traffic` | `systems/traffic.js` | 11050 | 33 | 28 | `field:richSeamMissed`×2, `news:publish`×2, `comms:message`×2 |
 | `drill` | `systems/drill.js` | 1460 | 23 | 0 | `drill:warn`×9, `drill:rockDepleted`×3, `drill:yield`×1 |
-| `claims` | `systems/claims.js` | 2581 | 46 | 11 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×3 |
+| `claims` | `systems/claims.js` | 2607 | 46 | 11 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×3 |
 | `chronicler` | `systems/chronicler.js` | 354 | 0 | 0 | — |
 | `bandRadio` | `systems/bandRadio.js` | 688 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
 | `onboarding` | `systems/onboarding.js` | 3105 | 19 | 68 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
@@ -148,7 +148,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `noFireAdvisory` | `data/stationBubbles.js` | 250 | 0 | 1 | — |
 | `moralTrapSystem` | *(not found)* | — | — | — | — |
 | `voiceArbiter` | `ui/voiceArbiter.js` | 452 | 4 | 2 | `voice:clear`×2, `voice:surface`×2 |
-| `save` | `save/saveSystem.js` | 4917 | 37 | 27 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
+| `save` | `save/saveSystem.js` | 4919 | 37 | 27 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
 
 ## Render-phase order (every animation frame)
 

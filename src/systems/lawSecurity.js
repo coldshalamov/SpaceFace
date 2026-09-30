@@ -2203,8 +2203,10 @@ export const lawSecurity = {
     // witness query. `witnessed` means a person on the list saw it. The ring and the victim's
     // network do not. evidenceClass is stamped once; a later relay must not upgrade it.
     const publishTruth = (outcome, reportId = null) => {
-      const evidenceClass = (outcome === 'charged' || outcome === 'lawful') && eyes
-        ? 'direct' : 'unwitnessed';
+      // The class answers "how is this act evidenced", not "did the file stick": a kill that
+      // eyes saw but could not be filed (no stable victim id) is still a DIRECT observation.
+      // Stamping it 'unwitnessed' would print a lie on the footprint.
+      const evidenceClass = eyes ? 'direct' : 'unwitnessed';
       const witnessed = evidenceClass === 'direct';
       this._emit('law:killedAdjudicated', {
         outcome,
