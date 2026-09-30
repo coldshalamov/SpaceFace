@@ -2541,6 +2541,62 @@ writes minutes old at checkpoint; do not touch.
 **Baseline treadmill:** race loop alive at attempt 11 (`82698b7d9`); digest drift from live
 lanes keeps killing attempts ~5 min in. Wins whenever a ~40-min quiet gap opens.
 
+#### Checkpoint 3 — repository consolidated (2026-09-29, late)
+
+Owner directed: all agents stopped; consolidate scattered work to master, park unmergeable
+in-flight work on one branch, delete orphan worktrees and process artifacts.
+
+**Worktree census — was 4 registered + ~15 stale, now 2:**
+- `SpaceFace/` (main, clean on master), `.worktrees/consolidated` (parked branch).
+- Removed: `adjudicate-phys`, `ci-repro`, `dock-probe`, `pq040-*`, `pq033-floor-v2`,
+  `skin-scope-fix`, `ci-b7d859ada`, plus detached checkouts `sf-clean-check`, `sf-hash-check`,
+  `sf-head-verify`, `sf-headcheck`, `sf-attr-check2`, `SpaceFace-f15check`,
+  `SpaceFace-verify`, `sf-d75-preperf`, `sf-sparse`, `sf-verify-head`, `scratch/assets-wt`.
+- `.worktrees/budget-shoot` stays while the baseline race loop runs; retire it with the loop.
+
+**Parked — `consolidated/inflight-2026-09-29` (pushed to origin, worktree `.worktrees/consolidated`):**
+- `0d93c19a5` — the ~950-file dirty snapshot of the shared tree: forge-fleet rebuild,
+  physics-lane adjudication hunks, ui/render/economy in-flight edits, untracked probes/tests,
+  process logs. Parked, not reviewed.
+- `6fe0255f6` — layer 2: 5 redock-stall diagnostic scripts (from `pq033-verify-evidence` tip)
+  + muse pre-cloud-merge park (sector chart webp art, deckplate token tools).
+- Pre-park dirty-worktree diffs also salvaged to `scratch/salvage/*.patch` (dead checkouts).
+- To resume parked work: check out the worktree, diff `consolidated/inflight-2026-09-29`
+  against master, and take hunks by file — treat the whole branch as WIP, not truth.
+
+**Merged to master tonight:**
+- PR #178 flying-saucer (`bde3dbe17`), PR #179 swarm crucible (`cc2334f4f`) — both were
+  conflict-free; their UNSTABLE checks are the same broken-CI group, not merge regressions.
+- `devin/pq033-floor-v2` (`16614ae4e`) — 5 §22 closures; 9 conflicts, all resolved to HEAD
+  (master strictly newer: salvage-bay cargo, quiet-latch barks, ORRERY market); branch tests
+  20/20 after merge.
+- `fleet-toys` (`eaf329eff`) — machined ordnance mine bodies survived merge (3/3 census).
+- `pq040-native` (`6d271c274`) — 65-commit dirty-range/residency campaign; 6 conflicts all
+  resolved to HEAD (extracted `materialClone.js` is master's superset of the branch's inline
+  clones; per-callsite clone stamps preserved); DEMO_READINESS union-merged — branch-unique
+  rows D38, D40–D44, D47, D48 spliced in id order.
+- Salvaged verified physics hunks (`e76c08de6`): sg06 floor 80 (hull envelope + authored
+  clearance; scatter sweep 86–141 made the old 130 pin over-tight) and the spine-aware
+  sg02 test upgrade — both green on master.
+
+**Deliberately NOT merged — preserved on origin instead:**
+- `pq033-verify-evidence` (81 commits): Sep-22/23 residency-upload work superseded by today's
+  landed PQ-040 refactor of the same subsystem; wholesale merge would regress it. Diagnostic
+  scripts already parked (above).
+- `muse/wip-park-backup-20260926`: stash-park; unique content parked (above).
+- PR #180 (intro visualizer): DRAFT — left open by design.
+
+**Artifact cleanup:** 44 uncited `.devshots` dirs deleted (~2.5 GB of superseded
+merge-check/g-*/preD/d_*/gfx11/vfx-catalog captures); all ledger/build-map-cited evidence
+kept (`scratch/cited-devshots.txt` is the citation census). `scratch/` is 35 MB;
+`check-ci-report` kept (cited by D46). Disk 6.7 GB → 103 GB free. Local branches pruned to
+`master` + `consolidated/inflight-2026-09-29`; everything else lives on origin.
+
+**Still open (unchanged):** the physics-drift cluster items above (surrender tug stall,
+envelope re-record, soak=0, save-lineage, dock clip, phase0 rows, k1, station tabs) and the
+baseline treadmill. Verified pre-existing, not merge-caused: `sim`/`sim-v3` envelope drift,
+`massline-elastic-whip-head` (43.775), `pq020-ceres-topology` structuralCostDigest.
+
 ### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
 
 Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
