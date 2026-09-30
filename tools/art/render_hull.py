@@ -2,8 +2,11 @@
 
 blender -b -P render_hull.py -- <glb> <out.png> [view] [width] [height] [samples]
   view: hero (3/4 front-left, slightly above) | side (orthographic port elevation) | top
-Transparent film, AgX, the world's light: a warm key from upper-left front, a cold rim from behind
-right, a low fill. The camera frames the hull's bounding box so every hull fills the plate the same.
+Transparent film, AgX, and the game's Look (docs/visual-assets/LOOK.md) restated for Cycles so a
+poster and the flight picture show the same ship: lacquered paint under a clear coat, a warm key
+against an electric-cyan rim, ultramarine fill, lamps lifted so they read as light, and the
+game's own reflection environment in the gloss. The camera frames the hull's bounding box so
+every hull fills the plate the same.
 Writes <out>.json with the camera framing and each named empty's projected position (for the
 shipworks jig: mount points in image space).
 """
@@ -85,14 +88,56 @@ sc.render.image_settings.compression = 90
 sc.view_settings.view_transform = 'AgX'
 sc.view_settings.exposure = EXPOSURE
 try:
-    sc.view_settings.look = 'AgX - Medium High Contrast'
+    sc.view_settings.look = 'AgX - High Contrast'
 except Exception:
     pass
 
 w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True
 bg = w.node_tree.nodes['Background']
-bg.inputs['Color'].default_value = (0.03, 0.035, 0.045, 1)
+bg.inputs['Color'].default_value = (0.02, 0.028, 0.05, 1)
 bg.inputs['Strength'].default_value = 0.35
+# The game's reflection environment (assets/background/env/deep_space_2k.hdr): the same strip
+# light and cyan rim lobe the clear coat mirrors in flight. Low strength: it shapes the gloss,
+# the area lights below do the lighting.
+import os
+_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets', 'background', 'env', 'deep_space_2k.hdr')
+if os.path.exists(_env):
+    try:
+        tex = w.node_tree.nodes.new('ShaderNodeTexEnvironment')
+        tex.image = bpy.data.images.load(_env)
+        w.node_tree.links.new(tex.outputs['Color'], bg.inputs['Color'])
+        bg.inputs['Strength'].default_value = 0.55
+    except Exception as err:
+        print('ENV_SKIPPED', err)
+
+# The Look, restated on the imported materials. Mirrors src/render/illustratedSurface.js and
+# src/data/lookMoods.js: smooth dielectric paint carries a clear coat; rough stone, dry ceramic
+# and bare metal do not; signal and drive emission is lifted (window rows least).
+LAMP_GAIN = {'glow_warm': 1.3, 'glow_drive': 1.7}
+for mat in bpy.data.materials:
+    if not mat.use_nodes:
+        continue
+    bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+    if not bsdf:
+        continue
+    finish = str(mat.get('forgeFinish', '')).split('.')[0]
+    rough = bsdf.inputs['Roughness'].default_value
+    metal = bsdf.inputs['Metallic'].default_value
+    # Texture-driven sockets read 0.5/0 here; the Forge finish names the real values.
+    forge_paint = finish in ('paint', 'paint2', 'stripe', 'hazard', 'deadmetal')
+    smooth_dielectric = (not bsdf.inputs['Roughness'].is_linked) and rough <= 0.55 and metal <= 0.4
+    if finish.startswith('glow') or mat.get('spacefaceMaterialRole') in ('signal', 'drive'):
+        gain = LAMP_GAIN.get(finish, 2.6)
+        try:
+            bsdf.inputs['Emission Strength'].default_value *= gain
+        except Exception:
+            pass
+    elif (forge_paint and finish != 'deadmetal') or (not finish and smooth_dielectric):
+        try:
+            bsdf.inputs['Coat Weight'].default_value = 1.0
+            bsdf.inputs['Coat Roughness'].default_value = 0.16
+        except Exception:
+            pass
 
 # glTF forward is -Z in glTF, imported as +Y forward? Determine the long axis: that is the hull's length.
 long_axis = max(range(3), key=lambda i: size[i])
@@ -141,10 +186,12 @@ def light(name, kind, energy, color, loc, size_=1.0):
 
 R = max(radius, 0.5)
 k = R * R  # energy scales with area of the scene
-light('key', 'AREA', 260 * k, (1.0, 0.84, 0.66), center + Vector((-R * 3.2, -R * 2.6, R * 3.4)), R * 2.2)
-light('rim', 'AREA', 380 * k, (0.60, 0.76, 1.0), center + Vector((R * 3.0, R * 3.2, R * 1.6)), R * 2.6)
-light('fill', 'AREA', 40 * k, (0.80, 0.86, 0.96), center + Vector((R * 0.5, -R * 4.5, -R * 0.4)), R * 4.0)
-light('top', 'AREA', 60 * k, (1.0, 0.95, 0.9), center + Vector((0, 0, R * 5)), R * 3.0)
+# The `arcade` mood's rig: warm-white key, electric-cyan rim from behind, ultramarine fill. A
+# smaller key than a studio softbox, so the clear coat shows a real glint instead of a wash.
+light('key', 'AREA', 250 * k, (1.0, 0.88, 0.72), center + Vector((-R * 3.2, -R * 2.6, R * 3.4)), R * 0.55)
+light('rim', 'AREA', 430 * k, (0.24, 0.70, 1.0), center + Vector((R * 3.0, R * 3.2, R * 1.6)), R * 0.9)
+light('fill', 'AREA', 30 * k, (0.34, 0.46, 1.0), center + Vector((R * 0.5, -R * 4.5, -R * 0.4)), R * 4.0)
+light('top', 'AREA', 26 * k, (1.0, 0.95, 0.9), center + Vector((0, 0, R * 5)), R * 1.4)
 
 sc.render.filepath = out
 bpy.ops.render.render(write_still=True)

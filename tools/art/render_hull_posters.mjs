@@ -48,7 +48,8 @@ async function renderHull(id, file) {
     if (!/RENDER_DONE/.test(log)) throw new Error(`${id} ${view}: render failed`);
     const meta = JSON.parse(readFileSync(raw.replace(/\.png$/, '.json'), 'utf8'));
     let marks = meta.marks;
-    let img = sharp(raw);
+    // Chroma lift to match the Look's paint saturation in flight (docs/visual-assets/LOOK.md).
+    let img = sharp(raw).modulate({ saturation: 1.2 });
     if (view === 'top') {
       // Rendered nose along +X; published nose up (90 deg counter-clockwise). Marks follow.
       img = img.rotate(-90);
@@ -85,7 +86,7 @@ async function main() {
   const ids = want.length ? want : Object.keys(PLAYER_HULLS);
   const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
   manifest.script = 'tools/art/render_hull_posters.mjs (render_hull.py, render_jig.py, jig_glyph.py, holo_glyph.py)';
-  manifest.renderer = `Blender Cycles (CPU), AgX Medium High Contrast, exposure 0.8, transparent film, ${SAMPLES} samples + denoise`;
+  manifest.renderer = `Blender Cycles (CPU), the Look restated for Cycles (clear coat, warm key / cyan rim, lamp gain, game reflection env), AgX High Contrast, exposure 0.8, transparent film, ${SAMPLES} samples + denoise, saturation x1.2`;
   for (const id of ids) {
     if (!PLAYER_HULLS[id]) throw new Error(`unknown hull ${id}`);
     process.stdout.write(`${id}\n`);
