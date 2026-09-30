@@ -2,6 +2,7 @@ import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
 import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
+import { settleOpeningCompositionTail } from './precompile.js';
 
 function gpuContextIsLost(state) {
   const render = state && state.render;
@@ -983,7 +984,7 @@ export async function settleRequiredPackageAdmission(state) {
   return render.requiredPackageAdmission || classification;
 }
 
-export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
+export async function waitForOpeningGpuResources(state, timeoutMs = 20000, options = {}) {
   const render = state && state.render;
   const sectorId = state && state.world && state.world.currentSectorId;
   const capturedGeneration = render ? render.admissionRunGeneration : undefined;
@@ -1014,6 +1015,19 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
     logOpeningCookLedger(ledger);
   };
   const publish = (classification) => rememberRequiredPackageAdmission(render, capturedGeneration, classification);
+  // Callers that await this gate opt in to the composition-tail settle so every
+  // path that holds the shell (New Game and Continue alike) finishes the serial
+  // lane's open composes/compiles/uploads behind it. Fire-and-forget callers omit
+  // it — a settle after the shell released would land the same work in flight the
+  // settle exists to keep out.
+  const settleTail = async () => {
+    if (options.settleTail !== true || !(state && state.mode === 'loading')) return;
+    const tailStarted = ledgerNow();
+    const tail = await settleOpeningCompositionTail(state, { budgetMs: 20000 });
+    if (render) render.openingCompositionTail = tail;
+    recordOpeningCookStep(render, 'opening.compositionTail', tailStarted,
+      tail && tail.skipped === true ? 'skipped' : 'resolved');
+  };
   let prepareClassification = null;
   let prepareValue = null;
 
@@ -1131,10 +1145,12 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
     if (render.requiredPackageAdmission && render.requiredPackageAdmission.generation !== capturedGeneration) {
       render.requiredPackageAdmission = null;
     }
+    await settleTail();
     return true;
   }
   if (!resident && !prepareClassification) {
     if (!presentResult.ok || lost) return false;
+    await settleTail();
     return true;
   }
   if (!presentResult.ok || lost) {
@@ -1167,5 +1183,7 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
   if (accepted.status !== 'accepted' || !sameGeneration()) return false;
   publish(accepted);
   const record = render.requiredPackageAdmission;
-  return !!(record && record.status === 'accepted' && record.ready === true && sameGeneration());
+  const ready = !!(record && record.status === 'accepted' && record.ready === true && sameGeneration());
+  if (ready) await settleTail();
+  return ready;
 }

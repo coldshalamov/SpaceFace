@@ -94,15 +94,42 @@ export function captureWorldSitePayloadState({
   if (!state || !state.entities || !manifest || !record) return { record, changed: false };
   let next = record;
   let changed = false;
+  let cloned = false;
+  // Writes go through a shallow chain — copy the record and per-payload rows lazily rather than
+  // JSON-cloning the whole site record every capture.
+  const writablePayload = (id, durable) => {
+    if (!cloned) { next = { ...record, payloads: { ...(record.payloads || {}) } }; cloned = true; }
+    if (next.payloads[id] === durable) next.payloads[id] = { ...durable };
+    return next.payloads[id];
+  };
+  // The entity index answers the payload lookup directly — payloads stamp
+  // data.worldRecordId === payload.worldObjectId — and the pickups bucket bounds the spill
+  // walk, so a forever-released pod no longer costs two full-map scans per capture.
+  const index = state.entityIndex;
+  const byWorldRecordId = index && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+  const pickupScan = index && Array.isArray(index.pickups) ? index.pickups : null;
   for (const payload of manifest.payloads) {
     const durable = record.payloads && record.payloads[payload.id];
     if (!durable || durable.status !== 'released') continue;
-    const live = [...state.entities.values()]
-      .filter((entity) => entity && entity.alive !== false && entity.data
-        && entity.data.worldSiteId === manifest.id
-        && entity.data.worldSitePayloadId === payload.id
-        && entity.data.worldRecordId === payload.worldObjectId)
-      .sort((a, b) => stableEntityId(a) - stableEntityId(b))[0];
+    let live = null;
+    let indexAnswered = false;
+    if (byWorldRecordId) {
+      const holder = byWorldRecordId.get(payload.worldObjectId);
+      if (holder) {
+        indexAnswered = true;
+        if (holder.alive !== false && holder.data
+            && holder.data.worldSiteId === manifest.id
+            && holder.data.worldSitePayloadId === payload.id) live = holder;
+      }
+    }
+    if (!live && !indexAnswered) {
+      live = [...state.entities.values()]
+        .filter((entity) => entity && entity.alive !== false && entity.data
+          && entity.data.worldSiteId === manifest.id
+          && entity.data.worldSitePayloadId === payload.id
+          && entity.data.worldRecordId === payload.worldObjectId)
+        .sort((a, b) => stableEntityId(a) - stableEntityId(b))[0] || null;
+    }
     // The released pod's live pool plus any beam-split spills carrying the same payload
     // provenance together are the durable remainder; depletion and scattering both persist.
     const mergedPool = {};
@@ -114,7 +141,7 @@ export function captureWorldSitePayloadState({
         if (commodityId && Number.isFinite(whole) && whole > 0) mergedPool[commodityId] = (mergedPool[commodityId] || 0) + whole;
       }
     }
-    for (const entity of state.entities.values()) {
+    for (const entity of (pickupScan || state.entities.values())) {
       const d = entity && entity.data;
       if (!entity || entity.alive === false || !d || entity.type !== 'pickup') continue;
       if (d.worldSiteId !== manifest.id || d.worldSitePayloadId !== payload.id) continue;
@@ -130,16 +157,15 @@ export function captureWorldSitePayloadState({
       && (!stored || !sameCommodityPool(stored, mergedPool));
     if (!live || !finitePoint(live.pos) || !finitePoint(live.vel)) {
       if (!poolChanged) continue;
-      if (!changed) next = JSON.parse(JSON.stringify(record));
-      next.payloads[payload.id].remainingPool = mergedPool;
+      writablePayload(payload.id, durable).remainingPool = mergedPool;
       changed = true;
       continue;
     }
     const motion = { pos: { x: live.pos.x, z: live.pos.z }, vel: { x: live.vel.x, z: live.vel.z } };
     if (!poolChanged && sameMotion(durable.motion, motion, force ? 0 : epsilon)) continue;
-    if (!changed) next = JSON.parse(JSON.stringify(record));
-    next.payloads[payload.id].motion = motion;
-    if (poolChanged) next.payloads[payload.id].remainingPool = mergedPool;
+    const writable = writablePayload(payload.id, durable);
+    writable.motion = motion;
+    if (poolChanged) writable.remainingPool = mergedPool;
     changed = true;
   }
   if (changed) {

@@ -75,7 +75,7 @@ test('live-sector cook drains meshes in yielded slices, not an Infinity block', 
   assert.match(renderer, /console\.info\(\s*`\[render\] opening submission post-submit validation failed/);
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /shouldAwaitOpeningGpuCook/);
-  assert.match(main, /waitForOpeningGpuResources\(state, 20000\)/);
+  assert.match(main, /waitForOpeningGpuResources\(state, 20000/);
   assert.match(main, /void cook\.catch/);
   assert.match(main, /Do not also start/);
   assert.match(main, /void waitForRenderPipelineWarmup/);

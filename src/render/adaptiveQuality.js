@@ -285,16 +285,31 @@ export function resolveFrameCap({ cap, vsync, displayHz = 60 } = {}) {
  *   120 on 144 Hz → present five of six rAFs
  *   0 / cap ≥ displayHz → present every rAF
  */
-export function stepFrameCapDebt({ cap, displayHz = 60, debt = 0 } = {}) {
+// Out-param twin for the per-frame caller: same math, no fresh {present,debt} per rAF.
+export function stepFrameCapDebtInto({ cap, displayHz = 60, debt = 0 } = {}, out) {
   const hz = Number(displayHz) > 0 ? Number(displayHz) : 60;
   const requested = Number(cap);
   const limit = Number.isFinite(requested) && requested > 0 ? requested : 0;
-  if (limit <= 0 || limit >= hz) return { present: true, debt: 0 };
+  if (limit <= 0 || limit >= hz) {
+    out.present = true;
+    out.debt = 0;
+    return out;
+  }
   let next = Number(debt);
   if (!Number.isFinite(next) || next < 0) next = 0;
   next += limit / hz;
-  if (next >= 1) return { present: true, debt: next - 1 };
-  return { present: false, debt: next };
+  if (next >= 1) {
+    out.present = true;
+    out.debt = next - 1;
+    return out;
+  }
+  out.present = false;
+  out.debt = next;
+  return out;
+}
+
+export function stepFrameCapDebt(args = {}) {
+  return stepFrameCapDebtInto(args, {});
 }
 
 export function createFrameCap({ vsync = true, displayHz = 60, apply } = {}) {

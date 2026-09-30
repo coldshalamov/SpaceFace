@@ -13,6 +13,7 @@ import {
   tableLookAtDelta,
   tablePrefetchZoomFromState,
 } from './tabletopPolicy.js';
+import { entityPresenceRadius } from '../world/activityClassification.js';
 
 export const AUTHORED_UPGRADE_STEADY_LIMIT = 1;
 export const AUTHORED_UPGRADE_OPENING_LIMIT = 2;
@@ -139,7 +140,7 @@ export function openingFrameAdmissionPriority(entity, liveState) {
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
-    radius: Math.max(0, Number(entity.radius) || 0),
+    radius: entityPresenceRadius(entity),
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: 0,
@@ -224,7 +225,7 @@ export function survivalDefersArenaDressingJob(entity, liveState) {
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
-    radius: Math.max(0, Number(entity.radius) || 0),
+    radius: entityPresenceRadius(entity),
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: TABLE_FRAME_SKIRT_WU,

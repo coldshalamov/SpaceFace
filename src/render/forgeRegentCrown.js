@@ -25,6 +25,7 @@
 // pulse to a steady glow. No per-frame allocations; deterministic seeded plate variation.
 
 import * as THREE from 'three';
+import { recordMountedRootForUnreadyScan } from './bloom.js';
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 
 const CROWN_KIND = 'forge_crown';
@@ -206,6 +207,10 @@ export function createForgeCrownTracker() {
         rec.emberRing = built.emberRing; rec.plates = built.plates; rec.emberMat = built.emberMat;
       }
       parent.add(rec.group);
+      // Nested mount under a live descendant never reaches the wrapped scene.add — record
+      // the root so the unready-drawable guard sees the crown's fresh programs (same
+      // pattern as lawArenaDressing).
+      recordMountedRootForUnreadyScan(rec.group);
       rec.boundMesh = mesh;
     }
 

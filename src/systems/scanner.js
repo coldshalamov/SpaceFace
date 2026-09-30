@@ -41,7 +41,7 @@ import {
   createContactHailResponse,
   pirateParleyDemandForHandoff,
 } from '../data/contactHail.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
@@ -105,10 +105,15 @@ export function scannerProfileForState(state) {
  * revealStage); the live entity still exists. Does not touch HUD/map — readers already honor
  * entity.data.isGhost | ghost | kind==='unknown'.
  */
+// Writers of isGhost/ghost bump this so the cadence walk can skip re-collecting when no
+// ghost flag was set or cleared since the last pass.
+let _ghostFlagSeq = 0;
+
 export function markEntityGhost(entity, opts = {}) {
   if (!entity || !entity.alive) return null;
   const data = entity.data || (entity.data = {});
   const stage = Math.max(0, Math.min(GHOST_REVEAL_STAGE_MAX - 1, (opts.revealStage | 0) || 0));
+  if (!data.isGhost && !data.ghost) _ghostFlagSeq++;
   data.isGhost = true;
   data.ghost = true;
   if (!data.kind || data.kind === 'ship') data.kind = 'unknown';
@@ -177,6 +182,7 @@ export function advanceGhostReveal(entity, state, opts = {}) {
 }
 
 function clearGhostFlags(data) {
+  if (data.isGhost || data.ghost) _ghostFlagSeq++;
   data.isGhost = false;
   data.ghost = false;
   if (data.kind === 'unknown') data.kind = 'ship';
@@ -881,13 +887,21 @@ export const scanner = {
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
     if (tick % GHOST_CONTACT_CADENCE_TICKS !== 0) return;
     const now = state.simTime || 0;
+    // Re-collect only when a ghost flag changed or the indexed actor set did — between bumps
+    // the cadence walk would push the same (usually empty) list every 8 ticks.
+    const collect = this._ghostCollect || (this._ghostCollect = { flagSeq: -1, version: -1 });
     const ghosts = this._ghostScratch || (this._ghostScratch = []);
-    ghosts.length = 0;
-    forEachLivingWorldActor(state, (entity) => {
-      if (!entity.data) return;
-      if (!entity.data.isGhost && !entity.data.ghost) return;
-      ghosts.push(entity);
-    });
+    const version = entityIndexVersion(state);
+    if (collect.flagSeq !== _ghostFlagSeq || collect.version !== version) {
+      ghosts.length = 0;
+      forEachLivingWorldActor(state, (entity) => {
+        if (!entity.data) return;
+        if (!entity.data.isGhost && !entity.data.ghost) return;
+        ghosts.push(entity);
+      });
+      collect.flagSeq = _ghostFlagSeq;
+      collect.version = version == null ? -1 : version;
+    }
     const slice = takeNearWorkSlice(state, 'scanner', ghosts);
     for (let i = 0; i < slice.length; i++) {
       const entity = slice[i];
