@@ -59,6 +59,9 @@ def build():
     ], material='paint', belly='paint2', back_material='dark', front_material='dark', count=56)
     F.band(s, 'Body', (4.8, 0, 0), (1, 0, 0), 0.6, 'stripe', inset=0.02, depth=0.02)
     F.band(s, 'Body', (-7.9, 0, 0), (1, 0, 0), 0.5, 'stripe', inset=0.02, depth=0.02)
+    # Lit cabin trim: a thin ring of lit miner amber on the ivory just aft of the cabin's ochre band
+    # (stock glow_amber is the ochre lifted to light, so no extra material).
+    F.band(s, 'Body', (4.35, 0, 0), (1, 0, 0), 0.14, 'glow_amber', inset=0.01, depth=-0.02)
     F.panel(s, 'Body', (-7.6, 0.0), (2.6, 2.4), 'dark', inset=0.05, depth=-0.06)
 
     # The ore bin: a squarish ochre tub, open on top, heaped with ore.
@@ -104,6 +107,11 @@ def build():
     F.band(s, 'Arm', (-1.0, 3.85, 0), (1, 0, 0), 1.6, 'stripe', inset=0.02, depth=0.02, mirror=True)
     F.band(s, 'Arm', (0, 4.05, 0), (0, 1, 0), 0.3, 'gunmetal', facing=(0, 0, 1), min_facing=0.7, inset=0.02,
            depth=-0.03, mirror=True)
+    # Lit arm trim: a thin lit amber line down the top of each cradle arm, inboard of the gunmetal
+    # rail, broken where it would cross the arm's ochre band (lit ochre on ochre vanishes).
+    for lo, hi in ((-5.2, -1.95), (-0.05, 2.9)):
+        F.band(s, 'Arm', (0, 3.62, 0), (0, 1, 0), 0.14, 'glow_amber', facing=(0, 0, 1), min_facing=0.7,
+               inset=0.01, depth=-0.02, mirror=True, region=(('x', lo, hi),))
     # Clamps: an ivory post off each arm up the bin wall, a gunmetal claw over the rim, a ram.
     for i, x in enumerate((-3.2, 1.2)):
         F.box(s, f'ClampPost{i}', (x, 3.28, 2.4), (1.0, 0.45, 2.2), material='paint', bevel=0.06, mirror=True)
