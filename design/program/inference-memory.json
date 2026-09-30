@@ -1634,6 +1634,19 @@
       "integration": "live",
       "commit": "5c55a8fba",
       "verification": "focused_green"
+    },
+    {
+      "id": "pic-17-detonator-commit",
+      "date": "2026-09-30",
+      "wf": "WF-17",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the weaponless detonator dart now publishes its detonation as the detonator_run doctrine's commit action through combat:fire; a duplicated kill receipt can no longer double-publish the commit, and doctrine action/aftermath cues are marked critical so the pop tick's damage noise can no longer starve the resolution beat",
+      "fingerprint": "verb=detonate,subject=detonator_dart,sector=combat,domain=wf-17",
+      "references": [],
+      "integration": "live",
+      "commit": "abcd33aaa",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
