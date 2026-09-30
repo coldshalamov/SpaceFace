@@ -132,12 +132,24 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
+  // ANI-10: the drone's grind state is sim-owned; start replays the grind cycle only when one
+  // isn't already running (the sim re-fires on the clip's cadence), stop parks the drum at rest.
+  const onGrindStart = (payload) => {
+    // Always accept: the sim refires on the clip's own cadence and a mid-flight restart is a
+    // smaller visual cost than a swallowed refire leaving the drum parked while it still grinds.
+    dispatch('drone:grindStart', payload.id, payload, () => true);
+  };
+  const onGrindStop = (payload) => {
+    dispatch('drone:grindStop', payload.id, payload, () => true);
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
+    bus.on('drone:grindStart', onGrindStart),
+    bus.on('drone:grindStop', onGrindStop),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

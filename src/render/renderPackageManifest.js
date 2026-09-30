@@ -824,12 +824,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mining-drone",
-    "expectedContentHash": "d2e3dee5dde8d1befe68cd98073f4d73d701b925a9be06b0b0de95d942baa5e3",
+    "expectedContentHash": "06dc7285f2deaacf681daebf503390229261f6e42a6892afa43cd28ee65471db",
     "key": "mining-drone",
     "metadataUrl": "assets/ships/release/render-packages/mining-drone/render-package.json",
     "runtimeAssetId": "SF_PART_PLACE_MINING_DRONE",
     "slot": "place",
-    "sourceSha256": "ef15148260f418e719078413ad4eddb92de53eea0aad7598009185fb45731ef2",
+    "sourceSha256": "8f8f40ca08f796105eb41d5831509c35feb6844592f23a1ca868668dd5e5191f",
     "sourceUrl": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
   {
