@@ -8,35 +8,35 @@ permissions:
 jobs:
   bundle:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          sparse-checkout-cone-mode: false
           sparse-checkout: |
-            src
-            styles
-            scripts
-            test
-            assets/ui
-            assets/fonts
-      - name: Pack UI source, excluding large media
+            /*
+            !/*/
+            /tools/ui-bench*
+            /tools/ui-fixtures*
+            /vendor/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned browser dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev
+      - name: Pack bench runtime
         run: |
           python3 - <<'PY'
           import pathlib, zipfile
-          root = pathlib.Path('.')
-          with zipfile.ZipFile('/tmp/crucible-review-source.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-              for path in root.rglob('*'):
-                  if not path.is_file() or '.git' in path.parts or '.github' in path.parts:
-                      continue
-                  if path.suffix.lower() in {'.glb', '.gltf', '.blend', '.mp4', '.mov', '.wav', '.ogg', '.mp3'}:
-                      continue
-                  if path.stat().st_size > 8 * 1024 * 1024:
-                      continue
-                  archive.write(path, str(path))
+          with zipfile.ZipFile('/tmp/crucible-review-runtime.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+              for folder in ['tools', 'vendor', 'node_modules']:
+                  for path in pathlib.Path(folder).rglob('*'):
+                      if path.is_file():
+                          archive.write(path, str(path))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: crucible-review-source
-          path: /tmp/crucible-review-source.zip
+          name: crucible-review-runtime
+          path: /tmp/crucible-review-runtime.zip
           retention-days: 1
