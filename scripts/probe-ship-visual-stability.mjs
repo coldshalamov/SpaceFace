@@ -20,7 +20,11 @@ const DEFAULT_MIN_INSPECTED_FRAMES = 300;
 // still unresolved, and the verdict is unchanged — still pending at the cap is a real
 // never-resolved failure, not a truncated measurement.
 const DEFAULT_RESOLVE_FRAME_CAP = 1800;
-const DEFAULT_RESOLVE_MS = 240_000;
+// 2026-09-30: 240s expired mid-drain on software-GL runners — serial shader compilation only
+// frees one admission per presented frame, so queued ships (a Pelican observed pending at the
+// cap) never resolved before the deadline though the same composition resolves in seconds on a
+// real GPU. 360s covers the drained queue with headroom; the verdict itself is unchanged.
+const DEFAULT_RESOLVE_MS = 360_000;
 const DEFAULT_PENDING_GRACE_FRAMES = 120;
 const RESOLVE_EXTENSION_TICK_MS = 250;
 const PLAYER_LOD_SETTLE_FRAMES = 30;
