@@ -37,6 +37,7 @@ import {
 import { SWARM_EVENT_BY_ID, SWARM_EVENT_TABLES } from '../../data/swarmEvents.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
+import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
 import {
@@ -706,6 +707,7 @@ export const crucibleScreen = {
 
   mount(rootEl, ctx) {
     let enterButton = null;
+    let preparation = null;
     ensurePhysicsLabRoute(ctx);
     // PQ-146 Phase 3: the Crucible play view's trick callouts mount with the door — this screen
     // family owns the layer (its own fixed overlay in src/ui/stuntCallout.js); the flight HUD is
@@ -1040,12 +1042,14 @@ export const crucibleScreen = {
       const offer = currentGhostOffer();
       sub.textContent = `Practice — seed ${launch.seed}. ${offer.available ? 'Your ghost for this seed is loaded.' : 'No ghost was recorded for this seed.'}`;
       cue('confirm');
-      if (enterButton && typeof enterButton.focus === 'function') {
+      if (preparation) preparation.focus();
+      else if (enterButton && typeof enterButton.focus === 'function') {
         try { enterButton.focus({ preventScroll: true }); } catch { try { enterButton.focus(); } catch { /* best-effort */ } }
       }
     }
 
     function syncMode() {
+      // The presentation is refreshed after the mode's own labels have settled below.
       const week = weeklyDoorCard();
       if (daily) {
         sub.textContent = DAILY_CARD.blurb;
@@ -1114,8 +1118,9 @@ export const crucibleScreen = {
       exhibition: 'credits', contender: 'boost', veteran: 'weapon', ironbound: 'hull',
     });
     function syncStake() {
+      if (preparation) preparation.update();
       const on = !daily && ruleset === SWARM_RULESET;
-      if (stakeLi && stakeLi.style) stakeLi.style.display = on ? '' : 'none';
+      if (stakeLi && stakeLi.style) { stakeLi.hidden = !on; stakeLi.style.display = on ? '' : 'none'; }
       const def = swarmStakeFor(stake);
       stakeSentence.textContent = `${def.blurb} ${swarmStakePitch(stake)}.`;
       for (const other of stakeButtons) syncChoice(other, other.dataset.stakeId === stake);
@@ -1173,6 +1178,7 @@ export const crucibleScreen = {
         hullSentence.textContent = starter ? hullBlurb(starter) : '';
       }
       }
+      if (preparation) preparation.update();
       for (const other of buttons) syncChoice(other, other.dataset.starterId === starterId);
       for (const other of hullButtons) {
         const on = other.dataset.starterId === starterId;
@@ -1311,6 +1317,7 @@ export const crucibleScreen = {
     };
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {
+      if (preparation) preparation.update();
       const described = arenaDescriptions[arenaId] || arenaDescriptions.helios_core;
       arenaSentence.textContent = ruleset === SWARM_RULESET && described[2]
         ? `${described[1]} Signature events: ${described[2]}.`
@@ -1729,15 +1736,19 @@ export const crucibleScreen = {
 
     syncMode();
     syncHull();
+    preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
+      read: () => ({ starterId, arenaId, ruleset, daily, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
+    this._preparation = preparation;
     // ORRERY: each tile row loses its cards and runs on a ruled line with the amber index under the
     // chosen tile (the tiles keep their art, their words, aria-pressed and their handlers).
-    if (ORRERY) this._stations = [modes, hulls, arenas].map((row) => createStationRow({ row }));
+    if (ORRERY && !preparation) this._stations = [modes, hulls, arenas].map((row) => createStationRow({ row }));
     this._regions = { title, stage, foot, enter };
     // data-k-ready belongs to the ScreenManager on a screen that declares `stage`: the door is not
     // ready to photograph when its words are built, it is ready when the arena behind them is lit.
     // Writing '1' here raced the stage and produced a capture of a door with nothing behind it.
 
-    if (typeof enter.focus === 'function') {
+    if (preparation) preparation.focus();
+    else if (typeof enter.focus === 'function') {
       try { enter.focus(); } catch { /* focus is best-effort */ }
     }
   },
@@ -1751,13 +1762,22 @@ export const crucibleScreen = {
       settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
       settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
     } catch { /* motion is cosmetic */ }
-    if (r.enter && typeof r.enter.focus === 'function') {
+    if (this._preparation) this._preparation.focus();
+    else if (r.enter && typeof r.enter.focus === 'function') {
       try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
   },
 
   onHide() {
     if (canAnimate()) cue('close');
+  },
+
+  dispose() {
+    this._preparation?.dispose();
+    this._preparation = null;
+    for (const station of this._stations || []) station?.dispose?.();
+    this._stations = [];
+    this._regions = null;
   },
 };
 
