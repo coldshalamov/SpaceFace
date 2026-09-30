@@ -50,8 +50,31 @@ export function createEncounterChoicePrompt(ctx = {}) {
     return !!(deck && deck.resolveDecision('encounter:' + payload.encounterId));
   };
 
+  // A choiceless observe window (E1/H6 'wait'): a bare status card so the player sees the
+  // encounter is still live while both sides fight. It retires on encounter:resolved, and
+  // its ttlAt is the same deadline the sim already enforces — no second clock.
+  const waitStarted = (payload) => {
+    if (!payload || !payload.encounterId) return false;
+    const deck = getPromptDeck();
+    if (!deck) return false;
+    return deck.offerDecision({
+      id: 'encounter:' + payload.encounterId,
+      kind: 'info',
+      sender: 'ENCOUNTER',
+      headline: 'OBSERVING',
+      detail: payload.reason === 'observe_battle'
+        ? 'Both sides are fighting. Hold position.'
+        : 'Waiting on the outcome.',
+      deadlineAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
+      ttlAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
+      choices: [],
+      onChoose: () => {},
+    });
+  };
+
   bus.on('encounter:choiceOffered', offered);
   bus.on('encounter:resolved', resolved);
+  bus.on('encounter:waitStarted', waitStarted);
   // Sector/run transitions are the deck's own subscriptions now; the old per-card
   // hide-on-sector:exit / game:new / game:load sets are retired with the cards.
 
@@ -65,6 +88,7 @@ export function createEncounterChoicePrompt(ctx = {}) {
     destroy: () => {
       try { bus.off && bus.off('encounter:choiceOffered', offered); } catch (_) {}
       try { bus.off && bus.off('encounter:resolved', resolved); } catch (_) {}
+      try { bus.off && bus.off('encounter:waitStarted', waitStarted); } catch (_) {}
     },
   };
 }

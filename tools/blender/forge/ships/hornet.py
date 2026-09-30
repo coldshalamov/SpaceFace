@@ -14,6 +14,7 @@ COLORS = {
     'paint2': '#2a2d33',   # graphite
     'stripe': '#141619',
     'hazard': '#d6951a',
+    'glow_cyan.jacket': '#ffcc2e',  # lit yellow-jacket trim: the wing leading edges
 }
 
 
@@ -50,6 +51,10 @@ def build():
     # Yellow-jacket bands: two graphite bars across each wing, cut into the wing itself.
     F.band(s, 'Wing', (-1.55, 2.4, 0), (0.62, 0.78, 0), 0.62, 'stripe', facing=(0, 0, 1), mirror=True)
     F.band(s, 'Wing', (-2.55, 3.45, 0), (0.62, 0.78, 0), 0.42, 'stripe', facing=(0, 0, 1), mirror=True)
+    # The identity line is lit: one thin yellow neon channel just inside each wing's leading edge
+    # (the V the chase camera reads first; the Look: lamps are light).
+    F.band(s, 'Wing', (-0.59, 2.14, 0), (0.674, 0.738, 0), 0.1, 'glow_cyan.jacket', facing=(0, 0, 1), inset=0.01,
+           depth=-0.02, mirror=True)
     # Canards
     F.plate(s, 'Canard', [(2.9, 0.38), (1.9, 1.5), (1.55, 1.5), (2.1, 0.38)], z0=-0.04, thickness=0.1,
             material='paint2', chamfer=0.07, mirror=True)

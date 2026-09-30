@@ -569,7 +569,15 @@ async function bootToFlight(page) {
  * report that only counted compiles would send a reader after the wrong one.
  */
 function classifyLink(stack) {
-  if (/renderBufferDirect|setProgram/.test(stack)) return 'DRAW-TIME-MISS';
+  // The designed admission tail draws the admitted subject once on the exact post target so
+  // residual variants link behind the pending latch, not in a presented frame — but that render
+  // produces an identical renderBufferDirect stack, so distinguish it before counting a miss.
+  if (/touchSubjectOnExactTarget|touchScenePipelines|withOnlySubjectsDrawable/.test(stack)) {
+    return 'admission-touch';
+  }
+  if (/renderBufferDirect|setProgram/.test(stack)) {
+    return /shadow|WebGLShadowMap/i.test(stack) ? 'shadow-depth' : 'DRAW-TIME-MISS';
+  }
   if (/prepareMaterial/.test(stack)) return 'precompile';
   return 'unclassified';
 }

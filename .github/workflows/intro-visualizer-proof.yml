@@ -29,6 +29,7 @@ jobs:
             /src/ui/introSignalRemix*
             /src/ui/loadingSignalTableaux.js
             /src/ui/loadingTerminalArt.js
+            /src/ui/bootEntry.js
             /tools/cinematic/signal-remix*
             /test/intro-signal-remix*.test.mjs
             /scripts/build-bundle.mjs

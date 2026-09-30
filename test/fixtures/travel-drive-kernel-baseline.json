@@ -1604,7 +1604,7 @@
         "desiredHeading": null,
         "headingError": 0,
         "targetYawRate": 0,
-        "coastHelm": false
+        "coastHelm": true
       }
     }
   },

@@ -213,6 +213,13 @@ export const contractClausesSystem = {
     this._helpers = ctx && ctx.helpers;
     this._onAccept = (p) => this._onMissionAccepted(p);
     this._onLegacyComplete = (p) => this._onLegacyMissionCompleted(p);
+    // Event-scoped clause index: physics:impact and combat:fire are the two highest-rate
+    // events on the bus, so scanning every clause of every mission per emit (plus cloning
+    // the active array for safety) was a constant alloc tax. Rows are rebuilt only when the
+    // active-missions array itself changes (identity or membership).
+    this._clauseIndexActive = null;
+    this._clauseIndexCount = -1;
+    this._clauseRowsByEvent = new Map();
     // ONE generic observer over N events. The subscription list is DERIVED from the two catalogs
     // rather than written out here, so authoring a condition on a new (already-emitted) event needs
     // no system edit — which is the whole point of the generalisation (grammar §9.9.1).
@@ -246,53 +253,90 @@ export const contractClausesSystem = {
     }
   },
 
+  _rebuildClauseIndex(active) {
+    this._clauseRowsByEvent.clear();
+    for (const m of active) {
+      if (!m || !m.clauses || !m.clauses.length) continue;
+      for (const c of m.clauses) {
+        if (!c || typeof c.event !== 'string' || !c.event) continue;
+        const termDef = contractTermById(c.id);
+        if (!termDef) continue;
+        let rows = this._clauseRowsByEvent.get(c.event);
+        if (!rows) {
+          rows = [];
+          this._clauseRowsByEvent.set(c.event, rows);
+        }
+        rows.push({ mission: m, clause: c, termDef });
+      }
+    }
+    this._clauseIndexActive = active;
+    this._clauseIndexCount = active.length;
+  },
+
+  _emitKilledSettlement(mission, payload) {
+    // The observer deferred the kill objective to us: a kill no clause fails still owes the
+    // mission its settlement (exempt targets, non-player killers). Forfeit-level breaches leave
+    // the contract alive, so the kill settles there too — only a fail suppresses the pass-through.
+    if (this._evalBreachFail || !this._bus || !this._bus.emit) return;
+    this._bus.emit('contract:clauseSettledKill', {
+      missionId: mission.id, entityId: payload && payload.id,
+      killerId: payload && payload.killerId, type: payload && payload.type,
+      pos: payload && payload.pos, sectorId: payload && payload.sectorId,
+    });
+  },
+
   _evaluate(eventName, payload) {
     const state = this._state;
     if (!state) return;
     const active = (state.missions && state.missions.active) || [];
+    if (active !== this._clauseIndexActive || active.length !== this._clauseIndexCount) {
+      this._rebuildClauseIndex(active);
+    }
+    const rows = this._clauseRowsByEvent.get(eventName);
+    if (!rows || !rows.length) return;
     const playerId = state.playerId || (state.player && state.player.id);
-    for (const m of [...active]) {
-      if (!m || !m.clauses || !m.clauses.length) continue;
-      if (m._clauseState && m._clauseState._completed) continue;
-      this._evalBreachFail = false;
-      for (const c of m.clauses) {
-        if (c.event !== eventName) continue;
-        const key = c.id;
-        const runtime = m._clauseState && m._clauseState[key];
-        if (runtime && (runtime.breached || runtime.satisfied)) continue; // fire once
-        const termDef = contractTermById(c.id);
-        if (!termDef) continue;
-        const ctx = {
-          playerId,
-          simTime: state.simTime || 0,
-          escorteeId: m._escorteeId || null,
-          deadline_s: (m._clauseState && m._clauseState.time_limit && m._clauseState.time_limit.deadline_s) || m.deadline_s || null,
-          mission: m,
-        };
-        // Legacy fine-print clause: one predicate, fires once, always fails the contract.
-        if (typeof termDef.breachOn === 'function') {
-          let breached = false;
-          try { breached = !!termDef.breachOn(payload, ctx); } catch (_) { breached = false; }
-          if (!breached) continue;
-          if (!m._clauseState) m._clauseState = {};
-          m._clauseState[key] = { breached: true, at: state.simTime || 0 };
-          this._emitBreach(m, c, eventName);
-          continue;
+    // Rows for one mission are contiguous (the index walks missions in order), so mission
+    // boundaries are detected by reference change — the kill settlement emits once per
+    // mission after all of that mission's clauses have scored, exactly like the old loop.
+    let lastMission = null;
+    this._evalBreachFail = false;
+    for (const row of rows) {
+      const m = row.mission;
+      if (m !== lastMission) {
+        if (lastMission && eventName === 'entity:killed') {
+          this._emitKilledSettlement(lastMission, payload);
         }
-        // Physics condition: an N-count predicate with forbid/require semantics.
-        this._scoreCondition(m, termDef, payload, ctx, eventName);
+        lastMission = m;
+        this._evalBreachFail = false;
       }
-      // The observer deferred the kill objective to us: a kill no clause fails still owes the
-      // mission its settlement (exempt targets, non-player killers). Forfeit-level breaches leave
-      // the contract alive, so the kill settles there too — only a fail suppresses the pass-through.
-      if (eventName === 'entity:killed' && !this._evalBreachFail
-        && m.clauses.some((c) => c && c.event === 'entity:killed') && this._bus && this._bus.emit) {
-        this._bus.emit('contract:clauseSettledKill', {
-          missionId: m.id, entityId: payload && payload.id,
-          killerId: payload && payload.killerId, type: payload && payload.type,
-          pos: payload && payload.pos, sectorId: payload && payload.sectorId,
-        });
+      if (m._clauseState && m._clauseState._completed) continue;
+      const c = row.clause;
+      const key = c.id;
+      const runtime = m._clauseState && m._clauseState[key];
+      if (runtime && (runtime.breached || runtime.satisfied)) continue; // fire once
+      const termDef = row.termDef;
+      const ctx = {
+        playerId,
+        simTime: state.simTime || 0,
+        escorteeId: m._escorteeId || null,
+        deadline_s: (m._clauseState && m._clauseState.time_limit && m._clauseState.time_limit.deadline_s) || m.deadline_s || null,
+        mission: m,
+      };
+      // Legacy fine-print clause: one predicate, fires once, always fails the contract.
+      if (typeof termDef.breachOn === 'function') {
+        let breached = false;
+        try { breached = !!termDef.breachOn(payload, ctx); } catch (_) { breached = false; }
+        if (!breached) continue;
+        if (!m._clauseState) m._clauseState = {};
+        m._clauseState[key] = { breached: true, at: state.simTime || 0 };
+        this._emitBreach(m, c, eventName);
+        continue;
       }
+      // Physics condition: an N-count predicate with forbid/require semantics.
+      this._scoreCondition(m, termDef, payload, ctx, eventName);
+    }
+    if (lastMission && eventName === 'entity:killed') {
+      this._emitKilledSettlement(lastMission, payload);
     }
   },
 

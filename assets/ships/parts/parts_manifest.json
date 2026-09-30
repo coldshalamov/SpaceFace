@@ -6422,8 +6422,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_atlas",
-   "tris": 37912,
-   "bytes": 2228216,
+   "tris": 38496,
+   "bytes": 2263296,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6483,8 +6483,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_bastion",
-   "tris": 29012,
-   "bytes": 1766336,
+   "tris": 33032,
+   "bytes": 1972636,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6543,8 +6543,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_colossus",
-   "tris": 58136,
-   "bytes": 3555276,
+   "tris": 59184,
+   "bytes": 3610344,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6978,8 +6978,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_hornet",
-   "tris": 12724,
-   "bytes": 882876,
+   "tris": 13728,
+   "bytes": 938188,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7092,8 +7092,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_ironback",
-   "tris": 43642,
-   "bytes": 2453484,
+   "tris": 44718,
+   "bytes": 2519832,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7124,12 +7124,12 @@
     "min": [
      -9.970046997070312,
      -1.0499999523162842,
-     -3.3908004760742188
+     -3.390800714492798
     ],
     "max": [
      9.946205139160156,
      2.7751877307891846,
-     3.390800714492798
+     3.3908004760742188
     ],
     "dimensionsM": [
      19.91625213623047,
@@ -7285,8 +7285,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_leviathan",
-   "tris": 51960,
-   "bytes": 3397856,
+   "tris": 53340,
+   "bytes": 3469780,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7471,8 +7471,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_mule",
-   "tris": 23604,
-   "bytes": 1468056,
+   "tris": 24994,
+   "bytes": 1541812,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7593,8 +7593,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_pelican",
-   "tris": 25410,
-   "bytes": 1520224,
+   "tris": 25470,
+   "bytes": 1527832,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7706,8 +7706,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_ranger",
-   "tris": 27532,
-   "bytes": 1639132,
+   "tris": 27864,
+   "bytes": 1656676,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -8082,8 +8082,8 @@
    },
    "status": "integration_candidate",
    "wiringStatus": "live_player_warden",
-   "tris": 45694,
-   "bytes": 2894744,
+   "tris": 46694,
+   "bytes": 2988576,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -8361,8 +8361,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/yard_tug.glb",
-   "tris": 64504,
-   "bytes": 3683208,
+   "tris": 64934,
+   "bytes": 3712280,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",

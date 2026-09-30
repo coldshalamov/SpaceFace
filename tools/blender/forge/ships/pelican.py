@@ -5,6 +5,7 @@ is an open-topped scoop, so the camera looks straight into its dark mouth: a too
 by an amber lamp under the short upper mandible. A cargo pouch hangs under the body, twin drive pods
 sit on the hips.
 """
+import math
 import os
 import sys
 
@@ -18,7 +19,24 @@ COLORS = {
     'stripe': '#a8521a',
     'hazard': '#b88a22',
     'dark': '#121417',
+    'glow_cyan.bill': '#ff7a1e',  # the bill's rim, lit in the identity orange
 }
+
+
+def jaw_y(x):
+    """Plan centre-line of the port jaw wall: it tapers from y=1.34 at the hinge to 1.0 at the lip."""
+    return 1.34 - 0.34 * (x - 1.0) / 5.95
+
+
+def lit_rail(s, name, pts, w, h, material, mirror=True):
+    """Local helper: a thin lit bar laid along a sloped polyline (tilted boxes, mirrored across the keel)."""
+    for i in range(len(pts) - 1):
+        (x0, y0, z0), (x1, y1, z1) = pts[i], pts[i + 1]
+        dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
+        length = math.sqrt(dx * dx + dy * dy + dz * dz)
+        F.box(s, f'{name}{i}', ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), (length, w, h), material=material,
+              bevel=0.0, rot=(0.0, -math.atan2(dz, math.hypot(dx, dy)), math.atan2(dy, dx)), mirror=mirror,
+              mirror_flip=True)
 
 
 def vwall(s, name, profile, y, thickness, material='paint2', mirror=False, bevel=0.02, y_end=None):
@@ -77,6 +95,11 @@ def build():
           'paint2', mirror=True, y_end=1.0)
     F.band(s, 'JawWall', (6.1, 0, 0), (1, 0, 0), 0.32, 'hazard', mirror=True)
     F.box(s, 'JawLip', (7.0, 0.0, -0.6), (0.36, 2.0, 0.55), material='paint2', bevel=0.06, taper=0.9)
+    # The bill's rim is lit: one thin orange line along the top edge of each jaw wall, closed across
+    # the lip — the first thing the chase camera reads (the Look: lamps are light).
+    lit_rail(s, 'JawRail', [(2.6, jaw_y(2.6), 0.50), (5.4, jaw_y(5.4), 0.24), (6.85, jaw_y(6.85), -0.30)],
+             0.11, 0.07, 'glow_cyan.bill')
+    F.box(s, 'LipBar', (7.0, 0.0, -0.30), (0.11, 1.9, 0.07), material='glow_cyan.bill', bevel=0.0)
     F.box(s, 'LipNail', (7.22, 0.0, -0.8), (0.34, 0.5, 0.32), material='gunmetal', bevel=0.04)
     # Jaw hinge knuckles where the bill meets the head.
     F.cylinder(s, 'Hinge', (1.5, 1.2, 0.05), (1.5, 1.62, 0.05), 0.3, material='gunmetal', mirror=True,

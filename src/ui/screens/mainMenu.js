@@ -511,7 +511,9 @@ export const mainMenuScreen = {
     }
     switch (action) {
       case 'continue': {
-        const latest = latestSave(readSaveIndex(ctx));
+        const latest = this._latestSave !== undefined
+          ? this._latestSave
+          : latestSave(readSaveIndex(ctx));
         if (!latest) {
           this._render(ctx);
           return;
@@ -569,6 +571,9 @@ export const mainMenuScreen = {
       return;
     }
     const latest = latestSave(readSaveIndex(ctx));
+    // Continue reads this cache instead of re-scanning localStorage on the click frame —
+    // save:store-synced/save:completed re-render refreshes it, same horizon the summary shows.
+    this._latestSave = latest;
     refs.saveSummary.classList.toggle('has-save', !!latest);
     if (latest) {
       const summary = saveSummaryText(latest.slot, latest.meta);

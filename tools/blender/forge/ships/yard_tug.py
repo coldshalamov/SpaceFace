@@ -16,6 +16,7 @@ COLORS = {
     'paint2': '#282a2f',   # graphite armour
     'stripe': '#282a2f',
     'hazard': '#c8901e',   # safety yellow, deep enough that it never clips
+    'glow_cyan.rust': '#ffd23a',  # the yard's safety yellow, lit: the T of beam bar and keel line
 }
 
 
@@ -68,6 +69,9 @@ def build():
         dict(x=10.6, w=1.7, ht=0.9, hb=0.9, zc=0.1, n=3.0),
     ], material='paint', belly='paint2', back_material='dark', count=56)
     F.band(s, 'Keel', (0, 0, 0), (0, 1, 0), 0.7, 'paint2', facing=(0, 0, 1), min_facing=0.6, inset=0.02, depth=0.02)
+    # ...and the T's stem: one thin lit rust-orange line down the graphite keel stripe, cab to winch
+    F.band(s, 'Keel', (0, 0, 0), (0, 1, 0), 0.16, 'glow_cyan.rust', facing=(0, 0, 1), min_facing=0.6, inset=0.01,
+           depth=-0.02, region=(('x', -6.3, 4.1),))
     F.band(s, 'Keel', (9.7, 0, 0), (1, 0, 0), 1.6, 'paint2')
 
     # --- Push bumper: hazard-striped graphite beam carrying a ribbed rubber D-fender --------------
@@ -75,6 +79,9 @@ def build():
     F.plate(s, 'Beam', beam, z0=-1.0, thickness=2.25, material='paint2', chamfer=0.12, chamfer_bottom=0.08)
     for i, y in enumerate((-3.3, -2.0, -0.7, 0.6, 1.9, 3.2)):
         F.band(s, 'Beam', (10.1, y, 0), (0.7, 0.71, 0), 0.42, 'hazard', facing=(0, 0, 1), min_facing=0.5)
+    # Identity trim, lit: one thin rust-orange bar along the aft edge of the beam top -- the
+    # hammerhead's cross-bar the chase camera reads first (LOOK.md: lamps are light).
+    F.box(s, 'BeamTrim', (9.55, 0.0, 1.27), (0.16, 7.2, 0.06), material='glow_cyan.rust', bevel=0.0)
     F.loft(s, 'Fender', [
         dict(x=10.7, w=3.6, ht=1.0, hb=1.0, zc=0.12, n=4.0),
         dict(x=11.4, w=3.68, ht=1.12, hb=1.12, zc=0.12, n=4.0),

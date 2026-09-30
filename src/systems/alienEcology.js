@@ -40,6 +40,7 @@ import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
@@ -723,15 +724,31 @@ export function tickAlienEcology(world, dt) {
   }
 
   // First collect fauna + relay coherence — relay severed = site record says severed.
-  const fauna = [];
-  const shepherds = [];
-  for (const e of state.entityList) {
-    if (!e || e.alive === false || e.type !== 'fauna' || !e.data || !e.data.ecology) continue;
-    if (e.homeSectorId !== sectorId) continue;
-    fauna.push(e);
-    const sp = faunaSpeciesById(e.data.ecology.speciesId);
-    if (sp && sp.relay) shepherds.push(e);
+  // The walk's gate is site presence, not membership — site-bearing sectors paid an
+  // O(entities) walk per tick forever. The entity index bumps on every indexed
+  // spawn/remove, so the sector cast is stable until the index version or sector moves.
+  const faunaCache = ae._faunaScanCache || (ae._faunaScanCache = {
+    version: -1, sectorId: null, fauna: [], shepherds: [],
+  });
+  const faunaVersion = entityIndexVersion(state);
+  // A null version means the index is not ready — walk every tick rather than cache-stale.
+  if (faunaVersion == null
+      || faunaCache.version !== faunaVersion
+      || faunaCache.sectorId !== sectorId) {
+    faunaCache.version = faunaVersion == null ? -1 : faunaVersion;
+    faunaCache.sectorId = sectorId;
+    faunaCache.fauna.length = 0;
+    faunaCache.shepherds.length = 0;
+    for (const e of state.entityList) {
+      if (!e || e.alive === false || e.type !== 'fauna' || !e.data || !e.data.ecology) continue;
+      if (e.homeSectorId !== sectorId) continue;
+      faunaCache.fauna.push(e);
+      const sp = faunaSpeciesById(e.data.ecology.speciesId);
+      if (sp && sp.relay) faunaCache.shepherds.push(e);
+    }
   }
+  const fauna = faunaCache.fauna;
+  const shepherds = faunaCache.shepherds;
   // Note: no early return on empty fauna — vignettes, tolls, and relay pulses still fire
   // in contaminated sectors whose cast is empty (falseFauna sites, harvested-out sites).
 

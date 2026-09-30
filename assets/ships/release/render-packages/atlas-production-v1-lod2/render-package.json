@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        26
+        27
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        27
+        28
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        28
+        29
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        29
+        30
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        30
+        31
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        31
+        32
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        32
+        33
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        33
+        34
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        34
+        35
       ],
       "parentNodeId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "worldTransform": [
@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a0dc4c099a362d6bfa3122d53d736de784e3ba57a0f5b8659dd770d7c1dac171",
+  "contentHash": "19478cd9e743f0a31c7659def8a538a74fcc512a7183e9add33593556a282caf",
   "dynamicGroups": [
     {
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-hook-drive-core.dynamic",
@@ -623,17 +623,17 @@
       "bounds": {
         "max": [
           11.700469970703125,
-          2.986250162124634,
+          2.9862499237060547,
           3.7894890308380127
         ],
         "min": [
           -12.02104663848877,
-          -1.4964193105697632,
+          -1.4964195489883423,
           -3.789494276046753
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f2262a4bbfb8e497ba2ebc5e9e10689c1f9e0df8915fbcd05b1a37af9224330",
+      "geometryHash": "81faa07c5223e28d430e062d593c98c71341b0592296a6ebe5942c0783d7e9b9",
       "id": "sf.render.atlas-production-v1-lod2.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -642,7 +642,7 @@
       "meshName": "COLLISION_HULL.002",
       "nodeId": "sf.render.atlas-production-v1-lod2.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 798
+      "vertexCount": 796
     },
     {
       "bounds": {
@@ -783,7 +783,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9537b20aab2db62fa5be3e96eafe7c5b2b82ec26da8aa0f024ba4910a9f13af",
+      "geometryHash": "b8eec08f1fc412beeb11b2b54a119cce30922a6de6e9afd2fea6cf67d3cec60b",
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-canopy.primitive.0",
       "indexCount": 141,
       "indexed": true,
@@ -1049,25 +1049,50 @@
         "max": [
           11.700469970703125,
           1.7995060682296753,
-          2.327153444290161
+          2.327192783355713
         ],
         "min": [
           -10.794295310974121,
           -1.39686918258667,
-          -2.327362060546875
+          -2.3273227214813232
         ]
       },
       "drawMode": 4,
-      "geometryHash": "084baa5f0fb82d38b61f450bf4fa84c810ab96094c5c877af8a0e57bdd7e9d84",
+      "geometryHash": "5fe19f0f745c8e976871c2f0c582199c7352fae31a04562d0ff89782202a1d14",
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-hull.primitive.0",
-      "indexCount": 3003,
+      "indexCount": 3159,
       "indexed": true,
       "materialHash": "0bccda5c25a860799a5e1a0af0eb0819f60574b621d09bda487abbe12b559c84",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.002",
       "nodeId": "sf.render.atlas-production-v1-lod2.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1019
+      "vertexCount": 1065
+    },
+    {
+      "bounds": {
+        "max": [
+          5.869110584259033,
+          1.0999085903167725,
+          0.01293843612074852
+        ],
+        "min": [
+          -8.300286293029785,
+          1.0566657781600952,
+          -0.39527443051338196
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "da34fe7e6a0020a9ad18be3d37feb8b75bd92173274493edcfae222bfc0df7da",
+      "id": "sf.render.atlas-production-v1-lod2.node.lod0-lights-cyan-orange.primitive.0",
+      "indexCount": 45,
+      "indexed": true,
+      "materialHash": "ab2d7dc639d182231022f878168956f0fee8bb93e92759da1ab9818c58dd59b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan_orange.002",
+      "nodeId": "sf.render.atlas-production-v1-lod2.node.lod0-lights-cyan-orange",
+      "primitiveIndex": 0,
+      "vertexCount": 31
     },
     {
       "bounds": {
@@ -1108,16 +1133,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2cca0023597769933ec5ec9023714344098f087638cf2c3659f34d9a70b7fc8",
+      "geometryHash": "ad90d15f25d9259651eb8982b693c63e3b666969db20353b8a12f9713dc66dc8",
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-livery.primitive.0",
-      "indexCount": 3768,
+      "indexCount": 3792,
       "indexed": true,
       "materialHash": "f9fc589b87ff7daf914d6ce154bf07e6f783dab843df22709ca406c093ce0083",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery.002",
       "nodeId": "sf.render.atlas-production-v1-lod2.node.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1454
+      "vertexCount": 1464
     },
     {
       "bounds": {
@@ -1133,41 +1158,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2bb5e05bec61ccdce53811615bf93c5d8465170c5be043cb5a5db5ee3c308703",
+      "geometryHash": "20420cc7f9d7ec489e3c2ee90cfc6ddbc604d88606512ac9e337362dbd92cf95",
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-mechanical.primitive.0",
-      "indexCount": 6501,
+      "indexCount": 6624,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical.002",
       "nodeId": "sf.render.atlas-production-v1-lod2.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3231
+      "vertexCount": 3272
     },
     {
       "bounds": {
         "max": [
           11.59692668914795,
-          1.6357886791229248,
+          1.6354426145553589,
           3.376518964767456
         ],
         "min": [
           -12.02104663848877,
-          -1.4232243299484253,
+          -1.4235703945159912,
           -3.376518964767456
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0bbd11d06fd76c237ff29fc688248b6b34e7a02778684a3f2cea44301381ed85",
+      "geometryHash": "9e7dd7c6c108637efd1360921a8632c5b431f756b320cd664627ad9fc8761d41",
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 2253,
+      "indexCount": 2217,
       "indexed": true,
       "materialHash": "622daa7c06922a5530af26b14d3a4a75daafe432c198272db69c64480b15458e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark.002",
       "nodeId": "sf.render.atlas-production-v1-lod2.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1172
+      "vertexCount": 1160
     },
     {
       "bounds": {
@@ -1386,6 +1411,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "ab2d7dc639d182231022f878168956f0fee8bb93e92759da1ab9818c58dd59b7",
+      "id": "material:ab2d7dc639d182231022f878",
+      "name": "Material_Emissive_Cyan_orange",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "bb683cddfa3ae35c7da44d26d06d5fef342648f79eefb160788d2607cd609066",
@@ -2462,6 +2494,55 @@
       ]
     },
     {
+      "id": "sf.render.atlas-production-v1-lod2.node.lod0-lights-cyan-orange",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan_orange",
+      "nodeName": "LOD0_Lights_Cyan_orange",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-lights-warm",
       "localTransform": [
         1,
@@ -2486,7 +2567,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2535,7 +2616,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2584,7 +2665,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2633,7 +2714,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        21
+        22
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2682,7 +2763,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        22
+        23
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2731,7 +2812,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2780,7 +2861,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2829,7 +2910,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2878,7 +2959,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        26
+        27
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2927,7 +3008,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        27
+        28
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -2976,7 +3057,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        28
+        29
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -3025,7 +3106,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        29
+        30
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -3074,7 +3155,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        30
+        31
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -3123,7 +3204,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        31
+        32
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -3172,7 +3253,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        32
+        33
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -3221,7 +3302,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        33
+        34
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -3270,7 +3351,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        34
+        35
       ],
       "parentId": "sf.render.atlas-production-v1-lod2.node.atlas-lod2-root",
       "role": "immutable",
@@ -3297,39 +3378,39 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "3cda136b5eae567bcf003e5e591e28a0d95dbe5b4c968279cd7c5449edae9118"
+      "sha256": "f236a0f7e4634bbb86793aba6bf22a4ad4abe26328eb3fe609f0cc8890b5fae5"
     },
     "sourceGlb": {
-      "bytes": 486436,
-      "sha256": "2fedad56c49da4c7f8b40a07a428bc733737ccb5b575cf65baf1dfda87197cb0",
+      "bytes": 490896,
+      "sha256": "8bda9223a7d3c83164e9e838677e57a741939473a7c28ef1a5c37e5ac24fb239",
       "uri": "atlas_production_v1_lod2.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "660cbcf72449dab6ccaa7c8b536082d2caebb4cd5a666fe4d4d8c45cf3531b78",
+      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 645416,
-    "sha256": "daa936e908fa1a9456545ebc9b61fbe72ab3d2c4ecc2eb74caa86e3d4d9aafe5",
+    "bytes": 653116,
+    "sha256": "f66454af6c7e9a3b16c2005c5ed9b7fec366fb0484c4d60001729a6c00a3d8ad",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.16028356552124023,
-        0.7449154257774353,
+        0.7449151873588562,
         0
       ],
       "max": [
         11.700479507446289,
-        2.986250162124634,
+        2.9862499237060547,
         3.789766323725785
       ],
       "min": [
         -12.02104663848877,
-        -1.4964193105697632,
+        -1.4964195489883423,
         -3.789766323725785
       ],
       "size": [
@@ -3363,7 +3444,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3415,7 +3496,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3467,7 +3548,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 27,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3519,7 +3600,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 28,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3571,7 +3652,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3623,7 +3704,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 30,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3675,7 +3756,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 31,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3727,7 +3808,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 32,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3779,7 +3860,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 33,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3831,7 +3912,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 34,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3883,7 +3964,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 35,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3935,7 +4016,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 36,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3974,7 +4055,7 @@
       "glass": 1,
       "hull": 5,
       "mechanical": 6,
-      "signal": 6,
+      "signal": 7,
       "warning": 2
     },
     "materialProfiles": [
@@ -4071,12 +4152,12 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -4086,10 +4167,15 @@
       {
         "allowTextures": true,
         "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
         "role": "warning"
       }
     ],
-    "nodeCount": 37,
+    "nodeCount": 38,
     "primitives": [
       {
         "canopy": false,
@@ -4598,7 +4684,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_Lights_Cyan_orange",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -4625,7 +4711,7 @@
           0,
           1
         ],
-        "name": "LOD0_Livery",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -4652,7 +4738,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_Livery",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -4679,7 +4765,7 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_Mechanical",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -4706,8 +4792,35 @@
           0,
           1
         ],
-        "name": "LOD0_Warning",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4718,19 +4831,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/atlas_production_v1_lod2.glb"
   },
-  "runtimeHash": "73716ff4b9a7bdf1669653e3b8c35ff01481180c849c56d9f596b2496bbc4524",
+  "runtimeHash": "5261bd5623c637a36672ba8a92c4a64c993b70842136dcfb5ed6887885279a30",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           11.700479507446289,
-          2.986250162124634,
+          2.9862499237060547,
           3.789766323725785
         ],
         "min": [
           -12.02104663848877,
-          -1.4964193105697632,
+          -1.4964195489883423,
           -3.789766323725785
         ]
       },
@@ -4755,6 +4868,7 @@
         "sf.render.atlas-production-v1-lod2.node.lod0-hook-sensor-mast-beacon-amber",
         "sf.render.atlas-production-v1-lod2.node.lod0-hook-sensor-mast-mechanical",
         "sf.render.atlas-production-v1-lod2.node.lod0-hull",
+        "sf.render.atlas-production-v1-lod2.node.lod0-lights-cyan-orange",
         "sf.render.atlas-production-v1-lod2.node.lod0-lights-warm",
         "sf.render.atlas-production-v1-lod2.node.lod0-livery",
         "sf.render.atlas-production-v1-lod2.node.lod0-mechanical",

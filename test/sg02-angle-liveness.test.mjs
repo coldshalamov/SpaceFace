@@ -66,14 +66,16 @@ function assertWrappedYaw(result, angVel) {
 test('a huge positive angular velocity completes one fixed step with a wrapped finite yaw', async () => {
   const result = await runSpin(1e30);
   assert.equal(Number.isFinite(result.angvelY), true);
-  assert.ok(Math.abs(result.angvelY) > 1e29, `the solver must see the huge rate, got ${result.angvelY}`);
+  assert.ok(Math.abs(result.angvelY) <= 6,
+    `the solver must only see a bounded rate, got ${result.angvelY}`);
   assertWrappedYaw(result, 1e30);
 });
 
 test('a huge negative angular velocity completes one fixed step with a wrapped finite yaw', async () => {
   const result = await runSpin(-1e30);
   assert.equal(Number.isFinite(result.angvelY), true);
-  assert.ok(Math.abs(result.angvelY) > 1e29, `the solver must see the huge rate, got ${result.angvelY}`);
+  assert.ok(Math.abs(result.angvelY) <= 6,
+    `the solver must only see a bounded rate, got ${result.angvelY}`);
   assertWrappedYaw(result, -1e30);
 });
 

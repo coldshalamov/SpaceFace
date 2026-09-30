@@ -6,6 +6,7 @@ import {
   normalizeActionDef,
   saturate,
   stableId,
+  wrapAngle,
 } from './contracts.js';
 import { applyDoctrineToSelection } from './doctrine.js';
 import { applyCombatDoctrineToSelection } from './combatDoctrine.js';
@@ -461,10 +462,7 @@ function compactTarget(target, freeze = Object.freeze) {
 }
 
 function wrapAngleLocal(angle) {
-  let value = angle;
-  while (value > Math.PI) value -= Math.PI * 2;
-  while (value < -Math.PI) value += Math.PI * 2;
-  return value;
+  return wrapAngle(angle);
 }
 
 function compactCandidate(candidate) {

@@ -89,6 +89,7 @@ import {
   setEntityDoctrine,
 } from '../ai/doctrine.js';
 import {
+  markMoralDebtReturned,
   nextMoralDebt,
   rememberAceMemoryTransition,
   rememberMoralDebt,
@@ -291,6 +292,7 @@ export const encounterDirector = {
       this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
       this.bus.on('moralMemory:remember', (p) => rememberMoralDebt(this.state, p || {}));
       this.bus.on('aceMemory:transition', (p) => rememberAceMemoryTransition(this.state, p || {}));
+      this.bus.on('moralMemory:vengefulReturn', (p) => markMoralDebtReturned(this.state, (p || {}).id));
       this.bus.on('poi:discovered', (p) => this._rememberPoiVisit(p));
       this.bus.on('poi:identified', (p) => this._rememberPoiVisit(p));
       this.bus.on('salvage:communicatorFound', (p) => this._routeToScript('salvageSignal', 'communicatorFound', p));

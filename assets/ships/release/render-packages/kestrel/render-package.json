@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "df537a657e7d9dccf93eb1081ec42e75154a0e64f9e8ffd52f50e01702e5a7af",
+  "contentHash": "6c4a2d333062d6cf87c80d3d79868cd4720195ed8932717b511d778d6330439b",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel.node.lod0-hook-armor-port-armor.dynamic",
@@ -483,36 +483,6 @@
       "id": "sf.render.kestrel.node.lod0-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark.dynamic",
       "kind": "moving-part",
       "nodeId": "sf.render.kestrel.node.lod0-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark"
-    },
-    {
-      "id": "sf.render.kestrel.node.lod0-motion-kestrel-mining-beacon-amber.dynamic",
-      "kind": "moving-part",
-      "nodeId": "sf.render.kestrel.node.lod0-motion-kestrel-mining-beacon-amber"
-    },
-    {
-      "id": "sf.render.kestrel.node.lod0-motion-kestrel-mining-mechanicaldark.dynamic",
-      "kind": "moving-part",
-      "nodeId": "sf.render.kestrel.node.lod0-motion-kestrel-mining-mechanicaldark"
-    },
-    {
-      "id": "sf.render.kestrel.node.motion-kestrel-dish-feed.dynamic",
-      "kind": "moving-part",
-      "nodeId": "sf.render.kestrel.node.motion-kestrel-dish-feed"
-    },
-    {
-      "id": "sf.render.kestrel.node.motion-kestrel-dish-stem.dynamic",
-      "kind": "moving-part",
-      "nodeId": "sf.render.kestrel.node.motion-kestrel-dish-stem"
-    },
-    {
-      "id": "sf.render.kestrel.node.motion-kestrel-dish.dynamic",
-      "kind": "moving-part",
-      "nodeId": "sf.render.kestrel.node.motion-kestrel-dish"
-    },
-    {
-      "id": "sf.render.kestrel.node.motion-kestrel-mining.dynamic",
-      "kind": "moving-part",
-      "nodeId": "sf.render.kestrel.node.motion-kestrel-mining"
     }
   ],
   "geometry": [
@@ -1070,17 +1040,17 @@
       "bounds": {
         "max": [
           12.75,
-          -0.7128870344154348,
-          0.33711294770317185
+          -0.7128870487213135,
+          0.3371129333972931
         ],
         "min": [
           11.899999618530273,
-          -1.3871129298217784,
-          -0.33711294770317185
+          -1.3871129155158997,
+          -0.3371129333972931
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2abd8baeb696558ec1518782d6a3ed2f4f55f429095d3f8eb8c810d293a48200",
+      "geometryHash": "49360a511f265c9b33f8eae66fab8fb9cc60fd41c91a62d3ccb7dbb11e07286a",
       "id": "sf.render.kestrel.node.lod0-motion-kestrel-mining-beacon-amber.primitive.0",
       "indexCount": 828,
       "indexed": true,
@@ -1095,17 +1065,17 @@
       "bounds": {
         "max": [
           12.74255084991455,
-          -0.7117615937413552,
-          0.3382383883772514
+          -0.7117615938186646,
+          0.338238388299942
         ],
         "min": [
           11.907448768615723,
-          -1.3882383704958579,
-          -0.3382383883772514
+          -1.3882383704185486,
+          -0.338238388299942
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab5a694d7fc6fdd649107e27c7e790d8dc415efddf07a8f2d034d50b439c266f",
+      "geometryHash": "b96585cdaccc19ce54fe47ca247264952660d062e2ce4eb3fa178c270cc29ab6",
       "id": "sf.render.kestrel.node.lod0-motion-kestrel-mining-mechanicaldark.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -2589,20 +2559,20 @@
     {
       "id": "sf.render.kestrel.node.lod0-motion-kestrel-mining-beacon-amber",
       "localTransform": [
-        0.4250001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.4250001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.4250001907348633,
+        1,
         0,
-        0.22499942779541016,
-        -2.9802322387695312e-8,
+        0,
+        0,
         0,
         1
       ],
@@ -2615,23 +2585,23 @@
         0
       ],
       "parentId": "sf.render.kestrel.node.motion-kestrel-mining",
-      "role": "dynamic",
+      "role": "immutable",
       "spatialClusterId": "sf.render.kestrel.body",
       "worldTransform": [
-        0.4250001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.4250001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.4250001907348633,
+        1,
         0,
-        12.324999809265137,
-        -1.0499999821186066,
+        12.100000381469727,
+        -1.0499999523162842,
         0,
         1
       ]
@@ -2639,20 +2609,20 @@
     {
       "id": "sf.render.kestrel.node.lod0-motion-kestrel-mining-mechanicaldark",
       "localTransform": [
-        0.41755104064941406,
+        1,
         0,
         0,
         0,
         0,
-        0.41755104064941406,
+        1,
         0,
         0,
         0,
         0,
-        0.41755104064941406,
+        1,
         0,
-        0.22499942779541016,
-        -2.9802322387695312e-8,
+        0,
+        0,
         0,
         1
       ],
@@ -2665,23 +2635,23 @@
         1
       ],
       "parentId": "sf.render.kestrel.node.motion-kestrel-mining",
-      "role": "dynamic",
+      "role": "immutable",
       "spatialClusterId": "sf.render.kestrel.body",
       "worldTransform": [
-        0.41755104064941406,
+        1,
         0,
         0,
         0,
         0,
-        0.41755104064941406,
+        1,
         0,
         0,
         0,
         0,
-        0.41755104064941406,
+        1,
         0,
-        12.324999809265137,
-        -1.0499999821186066,
+        12.100000381469727,
+        -1.0499999523162842,
         0,
         1
       ]
@@ -2763,7 +2733,7 @@
         20
       ],
       "parentId": "sf.render.kestrel.node.kestrel-v4-lod0-root",
-      "role": "dynamic",
+      "role": "immutable",
       "spatialClusterId": "sf.render.kestrel.body",
       "worldTransform": [
         1,
@@ -2814,7 +2784,7 @@
         2
       ],
       "parentId": "sf.render.kestrel.node.motion-kestrel-dish-stem",
-      "role": "dynamic",
+      "role": "immutable",
       "spatialClusterId": "sf.render.kestrel.body",
       "worldTransform": [
         1,
@@ -2864,7 +2834,7 @@
         0
       ],
       "parentId": "sf.render.kestrel.node.motion-kestrel-dish",
-      "role": "dynamic",
+      "role": "immutable",
       "spatialClusterId": "sf.render.kestrel.body",
       "worldTransform": [
         1,
@@ -2913,7 +2883,7 @@
         21
       ],
       "parentId": "sf.render.kestrel.node.kestrel-v4-lod0-root",
-      "role": "dynamic",
+      "role": "immutable",
       "spatialClusterId": "sf.render.kestrel.body",
       "worldTransform": [
         1,
@@ -3378,7 +3348,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "cb8753a6e400fc5289d657cc57cccb37ab030664831bdf0f12e4c3caa45bc790"
+      "sha256": "ffe359d0d3a7ddcf304ce538255c7308db7b2f0a2a8a87201c6b94d4d1a1ea29"
     },
     "sourceGlb": {
       "bytes": 785128,
@@ -3386,14 +3356,14 @@
       "uri": "kestrel.glb"
     },
     "sourceManifest": {
-      "bytes": 197742,
-      "sha256": "cf0f2274ac9a1bf0abe4d19cd582cdbe7dfe240fcdbd09d899be169cd6e39ae3",
+      "bytes": 197727,
+      "sha256": "9b776ba76b3f08c7f750f7b5d1327077c94ac9a7e50e523412ab94bedbf67c9a",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1323088,
-    "sha256": "c56537a474a7d8d80215349caa50bc675bf5258d08af09fe3ba0e43eb479c6c9",
+    "bytes": 1330316,
+    "sha256": "ea3f516e6d82de6ebf0b26b2b3ccf2a233d60612d8c3b55d9244ac522678cd12",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4926,20 +4896,20 @@
       {
         "canopy": false,
         "matrix": [
-          0.4250001907348633,
+          1,
           0,
           0,
           0,
           0,
-          0.4250001907348633,
+          1,
           0,
           0,
           0,
           0,
-          0.4250001907348633,
+          1,
           0,
-          12.324999809265137,
-          -1.0499999821186066,
+          12.100000381469727,
+          -1.0499999523162842,
           0,
           1
         ],
@@ -4954,20 +4924,20 @@
       {
         "canopy": false,
         "matrix": [
-          0.41755104064941406,
+          1,
           0,
           0,
           0,
           0,
-          0.41755104064941406,
+          1,
           0,
           0,
           0,
           0,
-          0.41755104064941406,
+          1,
           0,
-          12.324999809265137,
-          -1.0499999821186066,
+          12.100000381469727,
+          -1.0499999523162842,
           0,
           1
         ],
@@ -4984,7 +4954,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
-  "runtimeHash": "2e49cf352ac9f047239931748ee6080683ff4b1c4f1032d768a4ebbf4ebae63f",
+  "runtimeHash": "927448b11cd8c8bc47a0860bb145d53006f7fc67f8508848b51be4fca043ebdf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

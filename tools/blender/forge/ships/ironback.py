@@ -20,6 +20,7 @@ COLORS = {
     'stripe': '#401a14',
     'hazard': '#9c6c16',   # safety yellow, deep so the key light never clips it
     'dark': '#1a1c1f',
+    'glow_cyan.oxide': '#ff5a24',  # the dorsal seam, lit in the oxide-red identity colour
 }
 
 
@@ -80,6 +81,8 @@ def build():
         # dorsal seam: the split between the two wing cases, a sunk dark groove
         F.band(s, name, (0, 0, 0), (0, 1, 0), 0.3, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.02,
                depth=-0.05)
+        # the seam is lit: one thin oxide-red line in the bottom of the groove, shell after shell
+        F.band(s, name, (0, 0, 0), (0, 1, 0), 0.08, 'glow_cyan.oxide', facing=(0, 0, 1), min_facing=0.4)
         # oxide-red rim round the shell's skirt: the underbody colour wraps up to the overlap edge
         F.band(s, name, (0, 0, 0.42), (0, 0, 1), 0.34, 'paint2')
         # raised armour plate either side of the seam: a second layer on every shell
@@ -99,6 +102,7 @@ def build():
     ], material='paint', back_material='dark', front_material='paint2', count=52, bevel=0.04)
     F.band(s, 'Pronotum', (0, 0, 0), (0, 1, 0), 0.3, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.015,
            depth=-0.05)
+    F.band(s, 'Pronotum', (0, 0, 0), (0, 1, 0), 0.08, 'glow_cyan.oxide', facing=(0, 0, 1), min_facing=0.4)
     F.band(s, 'Pronotum', (4.45, 0, 0), (1, 0, 0), 0.3, 'hazard', inset=0.015, depth=0.02)
     F.band(s, 'Pronotum', (0, 0, 0.42), (0, 0, 1), 0.34, 'paint2')
 

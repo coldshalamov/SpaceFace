@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "aec02c7ffd2eddaaed1bb8b3f4db3f729af4994adc0de92f1e03f6228b156508",
+  "contentHash": "3aa5d0277bc68bd563355376f70d02cf1f55fe5ea460419639c80c2000b956ca",
   "dynamicGroups": [
     {
       "id": "sf.render.apron-shuttle.node.lod0-hook-drive-core.dynamic",
@@ -4142,7 +4142,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "660cbcf72449dab6ccaa7c8b536082d2caebb4cd5a666fe4d4d8c45cf3531b78",
+      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
       "uri": "pilots.json"
     }
   },
@@ -6009,7 +6009,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
-  "runtimeHash": "d9287c7526f2d11afbd297d486772a10879dbae72a9bbb208c4477ee9db2e28f",
+  "runtimeHash": "d2a090d2ea8d9e01a9dc3f3e8ad2e4ca49d58ab25044f6d3408982d9493a35fe",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -52,6 +52,7 @@ import {
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { SECTORS, dangerIndex, stationGrowthLadderFor, aceTrophyHeadByTier, aceTrophyHeadByModuleId, trophyFromFittings } from '../data/sectors.js';
 import { OUTPOSTS } from '../data/automation.js';
 import { outpostOutputGoodId } from './automation.js';
@@ -947,15 +948,13 @@ export const claims = {
     if (!anySpec) return;
     const meta = this._ensureMeta();
     meta.upkeepAccum = (meta.upkeepAccum || 0) + dt;
-    while (meta.upkeepAccum >= SPEC_UPKEEP_EVERY_S) {
-      meta.upkeepAccum -= SPEC_UPKEEP_EVERY_S;
-      this._settleUpkeep(bodies, state);
-    }
+    const upkeepDue = consumePeriodicClock(meta.upkeepAccum, 0, SPEC_UPKEEP_EVERY_S);
+    meta.upkeepAccum = upkeepDue.accumulator;
+    for (let i = 0; i < upkeepDue.steps; i++) this._settleUpkeep(bodies, state);
     meta.raidAccum = (meta.raidAccum || 0) + dt;
-    while (meta.raidAccum >= SPEC_RAID_EVERY_S) {
-      meta.raidAccum -= SPEC_RAID_EVERY_S;
-      this._rollRaids(bodies, state);
-    }
+    const raidDue = consumePeriodicClock(meta.raidAccum, 0, SPEC_RAID_EVERY_S);
+    meta.raidAccum = raidDue.accumulator;
+    for (let i = 0; i < raidDue.steps; i++) this._rollRaids(bodies, state);
   },
 
   _tickSensorPost(body, state) {
@@ -2528,7 +2527,26 @@ export const claims = {
       }
     }
     this.state.claims = { bodies, specVersion: 1 };
-    if (data.meta && typeof data.meta === 'object') this.state.claims.meta = { ...data.meta };
+    if (data.meta && typeof data.meta === 'object') {
+      this.state.claims.meta = { ...data.meta };
+      const meta = this.state.claims.meta;
+      if (meta.upkeepAccum != null) {
+        const normalized = normalizePeriodicAccumulator(meta.upkeepAccum, SPEC_UPKEEP_EVERY_S);
+        if (normalized !== meta.upkeepAccum) {
+          console.warn('[claims] save field meta.upkeepAccum was not a usable pending clock; repaired',
+            meta.upkeepAccum);
+          meta.upkeepAccum = normalized;
+        }
+      }
+      if (meta.raidAccum != null) {
+        const normalized = normalizePeriodicAccumulator(meta.raidAccum, SPEC_RAID_EVERY_S);
+        if (normalized !== meta.raidAccum) {
+          console.warn('[claims] save field meta.raidAccum was not a usable pending clock; repaired',
+            meta.raidAccum);
+          meta.raidAccum = normalized;
+        }
+      }
+    }
     if (data.legacyMigration && typeof data.legacyMigration === 'object') {
       this.state.claims.legacyMigration = { ...data.legacyMigration };
     }

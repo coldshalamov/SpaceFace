@@ -17,6 +17,7 @@ COLORS = {
     'stripe': '#958b6f',
     'hazard': '#b88a22',
     'dark': '#131416',
+    'glow_cyan.cream': '#ffe2a8',  # the cream dorsal stripe, lit
 }
 
 PY = 2.25          # saddle-pod centre line
@@ -37,6 +38,10 @@ def build():
         dict(x=3.9, w=0.95, ht=0.95, hb=0.9, zc=0.15, n=3.2),
     ], material='paint', back_material='dark', count=48)
     F.band(s, 'Spine', (0, 0, 0), (0, 1, 0), 0.34, 'stripe', facing=(0, 0, 1), min_facing=0.6)
+    # The dorsal stripe is lit down its centre: one thin cream neon line the saddle straps cross,
+    # carried onto the cab roof up to the canopy (the Look: lamps are light).
+    F.band(s, 'Spine', (0, 0, 0), (0, 1, 0), 0.12, 'glow_cyan.cream', facing=(0, 0, 1), min_facing=0.6, inset=0.01,
+           depth=-0.02)
     F.loft(s, 'Cab', [
         dict(x=3.4, w=1.0, ht=1.0, hb=0.9, zc=0.3, n=3.0),
         dict(x=5.0, w=1.45, ht=1.3, hb=1.0, zc=0.35, n=3.2),
@@ -46,6 +51,8 @@ def build():
     ], material='paint', belly='gunmetal', count=64)
     F.band(s, 'Cab', (4.4, 0, 0), (1, 0, 0), 0.5, 'paint2', inset=0.02, depth=0.02)
     F.panel(s, 'Cab', (5.6, 0.0), (1.0, 1.6), 'paint2', inset=0.04, depth=0.03)
+    F.band(s, 'Cab', (0, 0, 0), (0, 1, 0), 0.12, 'glow_cyan.cream', facing=(0, 0, 1), min_facing=0.6, inset=0.01,
+           depth=-0.02, region=(('x', 3.5, 5.75),))
     F.canopy(s, 'Canopy', x0=5.9, x1=7.35, w=1.05, h=0.38, z=1.12, peak=0.3, n=2.8)
     F.windows(s, 'CabWin', 4.9, 6.7, 1.44, 0.95, 3, size=(0.36, 0.2), mirror=True)
     # Mule ears: two swept sensor vanes on the cab roof.

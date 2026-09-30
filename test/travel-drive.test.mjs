@@ -11,6 +11,10 @@
 //      The frozen fixture below was re-frozen for exactly the eight above-cap cases on that date
 //      (reaction/{boost,unboosted,boost-just,earned-momentum}-above-cap, large-hull-above-cap,
 //      small-hull-boost, torch/{boost,unboosted}-above-cap); every other case is byte-identical.
+//      Re-frozen once more on 2026-09-30 for exactly one field on one case: pulse-plate/charging's
+//      telemetry.coastHelm flips false→true because boost no longer suppresses the coast-helm yaw
+//      bonus — boost is a translational modifier and must not switch how the ship turns (the
+//      boost-hard-switch fix; see velocity-vectoring.test.mjs "boost press and release…").
 //   3. Engaged ramps the cap monotonically toward the per-family ceiling and never past it.
 //   4. Disengaging lets earned momentum coast while the old thrust ceiling fades.
 //   5. The ceiling is drive identity: a TORCH out-travels a REACTION.

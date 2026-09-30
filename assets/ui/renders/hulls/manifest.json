@@ -216,12 +216,12 @@
   },
   "ship_pelican": {
    "sourceGlb": "assets/ships/parts/wholeships/pelican_production_v1.glb",
-   "sourceGlbSha256": "EE74783BA20753F158A98574EEFB3A2743A499CC84422A0063004B936D1F1338",
+   "sourceGlbSha256": "BF1055E0F460654AEF6E210459506872258141C7B9237CFB689B6F85690150EC",
    "hero": {
     "file": "ship_pelican.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 99178,
+    "bytes": 98580,
     "hullSize": [
      14.71,
      6.26,
@@ -300,7 +300,7 @@
     "file": "ship_pelican.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 55636,
+    "bytes": 56958,
     "hullSize": [
      14.71,
      6.26,
@@ -379,7 +379,7 @@
     "file": "ship_pelican.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 35438,
+    "bytes": 36080,
     "hullSize": [
      14.71,
      6.26,
@@ -698,12 +698,12 @@
   },
   "ship_hornet": {
    "sourceGlb": "assets/ships/parts/wholeships/hornet_production_v1.glb",
-   "sourceGlbSha256": "C86F326E46EBA2B71E61990E3ABD146A7E9FC626D5415D67E73949CAD65B45E4",
+   "sourceGlbSha256": "431ACC18B70F20771648D55E9BFE56317EDA15B7DEB5C0ACCD2A178DB24E74D9",
    "hero": {
     "file": "ship_hornet.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 104562,
+    "bytes": 107636,
     "hullSize": [
      9.84,
      8.8,
@@ -782,7 +782,7 @@
     "file": "ship_hornet.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 45104,
+    "bytes": 45636,
     "hullSize": [
      9.84,
      8.8,
@@ -861,7 +861,7 @@
     "file": "ship_hornet.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 60196,
+    "bytes": 62338,
     "hullSize": [
      9.84,
      8.8,
@@ -939,12 +939,12 @@
   },
   "ship_mule": {
    "sourceGlb": "assets/ships/parts/wholeships/mule_production_v1.glb",
-   "sourceGlbSha256": "8F5F439E6C23554A7004CB9A1B89C2CE87452FAF20AC38E657AB254CA4AD5BB8",
+   "sourceGlbSha256": "5E743DED2D2573347CBFABBBADB13B86E49EC17FB8591DFA84ECBB5E3D0F7CEB",
    "hero": {
     "file": "ship_mule.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 114060,
+    "bytes": 115334,
     "hullSize": [
      16.15,
      6.925,
@@ -1023,7 +1023,7 @@
     "file": "ship_mule.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 48798,
+    "bytes": 49208,
     "hullSize": [
      16.15,
      6.925,
@@ -1102,7 +1102,7 @@
     "file": "ship_mule.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 42920,
+    "bytes": 43326,
     "hullSize": [
      16.15,
      6.925,
@@ -1180,12 +1180,12 @@
   },
   "ship_drifter": {
    "sourceGlb": "assets/ships/parts/wholeships/drifter_production_v1.glb",
-   "sourceGlbSha256": "5DF1D830451426950B6B6FBC2BE44967DBF4EC6583CE8F5B69F08131C5A729E7",
+   "sourceGlbSha256": "3853F1DCCAAEDE86E37A1811DD62524CE59D27C21A2EE9BB0F0707ADD487086E",
    "hero": {
     "file": "ship_drifter.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 89568,
+    "bytes": 91436,
     "hullSize": [
      18.62,
      7.11,
@@ -1264,7 +1264,7 @@
     "file": "ship_drifter.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 51322,
+    "bytes": 51526,
     "hullSize": [
      18.62,
      7.11,
@@ -1343,7 +1343,7 @@
     "file": "ship_drifter.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 34744,
+    "bytes": 35336,
     "hullSize": [
      18.62,
      7.11,
@@ -1421,12 +1421,12 @@
   },
   "ship_ironback": {
    "sourceGlb": "assets/ships/parts/wholeships/ironback_production_v1.glb",
-   "sourceGlbSha256": "1D668D1FC44DE5963B5198A3D375182B0A80ECD5519FAA9D566FF47E1FC581F9",
+   "sourceGlbSha256": "102427C496A210A1C7F021AA492C6906364257389635A4FE04AE82EE5784BA72",
    "hero": {
     "file": "ship_ironback.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 103364,
+    "bytes": 104340,
     "hullSize": [
      19.916,
      6.78,
@@ -1505,7 +1505,7 @@
     "file": "ship_ironback.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 49170,
+    "bytes": 48018,
     "hullSize": [
      19.916,
      6.78,
@@ -1584,7 +1584,7 @@
     "file": "ship_ironback.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 40304,
+    "bytes": 41350,
     "hullSize": [
      19.916,
      6.78,
@@ -1662,12 +1662,12 @@
   },
   "ship_hawser": {
    "sourceGlb": "assets/ships/parts/wholeships/yard_tug.glb",
-   "sourceGlbSha256": "A1B145B8BDF7E7487FEB04712F1D2066B8050062BB0FEBE6E960613E1C11C22F",
+   "sourceGlbSha256": "3AA01310CB56E2EA64B553598FEC5FE04C3E4ECDEDB210C7F10755B5E3C13DA1",
    "hero": {
     "file": "ship_hawser.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 115356,
+    "bytes": 117842,
     "hullSize": [
      26.292,
      7.82,
@@ -1746,7 +1746,7 @@
     "file": "ship_hawser.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 71566,
+    "bytes": 72168,
     "hullSize": [
      26.292,
      7.82,
@@ -1825,7 +1825,7 @@
     "file": "ship_hawser.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 46138,
+    "bytes": 47230,
     "hullSize": [
      26.292,
      7.82,
@@ -1903,12 +1903,12 @@
   },
   "ship_bastion": {
    "sourceGlb": "assets/ships/parts/wholeships/bastion_production_v1.glb",
-   "sourceGlbSha256": "EC90E6250CD4A6C7AE32F6FFDE5D1ED34AA7CC91265E9EF498473C4604244DB6",
+   "sourceGlbSha256": "002BAFF1C8C501F0DC68CD1B702F37D9BEBC653886757D3C1E1D372E52BDF56F",
    "hero": {
     "file": "ship_bastion.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 95752,
+    "bytes": 101308,
     "hullSize": [
      21.104,
      8.6,
@@ -1987,7 +1987,7 @@
     "file": "ship_bastion.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 50454,
+    "bytes": 51854,
     "hullSize": [
      21.104,
      8.6,
@@ -2066,7 +2066,7 @@
     "file": "ship_bastion.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 35680,
+    "bytes": 39110,
     "hullSize": [
      21.104,
      8.6,
@@ -2144,12 +2144,12 @@
   },
   "ship_atlas": {
    "sourceGlb": "assets/ships/parts/wholeships/atlas_production_v1.glb",
-   "sourceGlbSha256": "E19DE165899923925BCD7983015A2851FBD6449430167BC7CAECFD2888B69138",
+   "sourceGlbSha256": "1F63A165DE53036F94574AE2FBB3E17AF642B7FFCCE9B7AFF8DA772BB12D3574",
    "hero": {
     "file": "ship_atlas.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 120494,
+    "bytes": 122580,
     "hullSize": [
      23.72,
      7.58,
@@ -2228,7 +2228,7 @@
     "file": "ship_atlas.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 61892,
+    "bytes": 59698,
     "hullSize": [
      23.72,
      7.58,
@@ -2307,7 +2307,7 @@
     "file": "ship_atlas.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 39266,
+    "bytes": 40630,
     "hullSize": [
      23.72,
      7.58,
@@ -2385,12 +2385,12 @@
   },
   "ship_ranger": {
    "sourceGlb": "assets/ships/parts/wholeships/ranger_production_v1.glb",
-   "sourceGlbSha256": "99126DAC687F88BED731F7B0E6AE70F9EF9ECCC5C140026CD0EF141CECF03B3C",
+   "sourceGlbSha256": "63D8757F65D12D8213C0C80941DEC1DEC37B44AA61D7955151F74B92B1FF03CD",
    "hero": {
     "file": "ship_ranger.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 67782,
+    "bytes": 69442,
     "hullSize": [
      17.73,
      7.541,
@@ -2469,7 +2469,7 @@
     "file": "ship_ranger.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 46406,
+    "bytes": 46726,
     "hullSize": [
      17.73,
      7.541,
@@ -2548,7 +2548,7 @@
     "file": "ship_ranger.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 33728,
+    "bytes": 34364,
     "hullSize": [
      17.73,
      7.541,
@@ -2626,12 +2626,12 @@
   },
   "ship_warden": {
    "sourceGlb": "assets/ships/parts/wholeships/warden_production_v1.glb",
-   "sourceGlbSha256": "82744849816A0C551A98FEDD694B0DDBC82AD0F0F94F7891BF7002A83179B6D3",
+   "sourceGlbSha256": "98D902751565BC4D31BF3A49BD9D24D1301BF81A1BAB02A293B4AB4FCEACCAFE",
    "hero": {
     "file": "ship_warden.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 114548,
+    "bytes": 117594,
     "hullSize": [
      42.126,
      12.5,
@@ -2710,7 +2710,7 @@
     "file": "ship_warden.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 78584,
+    "bytes": 78878,
     "hullSize": [
      42.126,
      12.5,
@@ -2789,7 +2789,7 @@
     "file": "ship_warden.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 44032,
+    "bytes": 45418,
     "hullSize": [
      42.126,
      12.5,
@@ -2867,12 +2867,12 @@
   },
   "ship_colossus": {
    "sourceGlb": "assets/ships/parts/wholeships/colossus_production_v1.glb",
-   "sourceGlbSha256": "41AE061E7EEF6231AB47B5425A4158406736FB79609F5B44E2A231DF070BC48B",
+   "sourceGlbSha256": "E04FCE61D7DB6BEB9F5EB51AD5683FAC91F6E3C2FB444C4B68E24745E1F2F499",
    "hero": {
     "file": "ship_colossus.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 133112,
+    "bytes": 133236,
     "hullSize": [
      53.5,
      26.216,
@@ -2951,7 +2951,7 @@
     "file": "ship_colossus.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 64048,
+    "bytes": 63774,
     "hullSize": [
      53.5,
      26.216,
@@ -3030,7 +3030,7 @@
     "file": "ship_colossus.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 50594,
+    "bytes": 51796,
     "hullSize": [
      53.5,
      26.216,
@@ -3108,12 +3108,12 @@
   },
   "ship_leviathan": {
    "sourceGlb": "assets/ships/parts/wholeships/leviathan_production_v1.glb",
-   "sourceGlbSha256": "4D25283FA5FAD451BBD88531D157F8D2DE4FB4ED0A076631FE7431B997AE63BD",
+   "sourceGlbSha256": "C25E0E1A340E53B4A8F776A88792DDF8314C005E9133C53407CD7559FECD28F7",
    "hero": {
     "file": "ship_leviathan.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 130392,
+    "bytes": 131202,
     "hullSize": [
      61.1,
      33.12,
@@ -3192,7 +3192,7 @@
     "file": "ship_leviathan.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 73228,
+    "bytes": 73600,
     "hullSize": [
      61.1,
      33.12,
@@ -3271,7 +3271,7 @@
     "file": "ship_leviathan.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 57476,
+    "bytes": 57784,
     "hullSize": [
      61.1,
      33.12,

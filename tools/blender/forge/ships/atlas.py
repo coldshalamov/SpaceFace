@@ -21,6 +21,7 @@ COLORS = {
     'stripe': '#b0501a',         # safety orange (brief #c05a1c)
     'hazard': '#b0501a',
     'dark': '#171a1e',
+    'glow_cyan.orange': '#ff7a1e',  # safety orange, lit: the spine line
 }
 
 ROWS = (4.1, 0.0, -4.1)      # container stack centres along X
@@ -43,6 +44,10 @@ def build():
     # crane rails along the spine roof
     F.box(s, 'Rail', (-0.6, 0.62, 1.16), (13.8, 0.14, 0.12), material='bare', mirror=True, bevel=0.01)
     F.panel(s, 'Spine', (-0.6, 0.0), (13.0, 0.8), 'dark', inset=0.03, depth=-0.04)
+    # Identity trim, lit: one thin safety-orange line down the spine channel between the racks,
+    # crossed by the crane -- the hauler's backbone read by its light (LOOK.md: lamps are light).
+    F.band(s, 'Spine', (0, 0, 0), (0, 1, 0), 0.1, 'glow_cyan.orange', facing=(0, 0, 1), min_facing=0.6,
+           region=(('x', -7.8, 5.9),))
 
     # --- container stacks in clamp frames, two high, three per side --------------------------------
     odd = {(0, 1): 'paint2.orange', (2, -1): 'paint2.orange', (1, -1): 'paint2.navy'}

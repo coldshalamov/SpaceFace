@@ -42,8 +42,108 @@ export function validateSaveJson(raw, currentVersion) {
   };
 }
 
+/**
+ * Full load-lane prepare in the worker: parse, format/version check, checksum, and the player
+ * sanity reads a title Continue used to run synchronously on the main thread. The returned
+ * envelope crosses postMessage as a fresh structured clone — the main thread's clonePlain step
+ * is redundant on this path and intentionally skipped.
+ */
+export function restorePrepareSaveJson(raw, currentVersion) {
+  if (!raw) return { ok: false, reason: 'no_save' };
+  let envelope;
+  try { envelope = JSON.parse(raw); }
+  catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
+  const versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
+  if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
+    return { ok: false, reason: 'checksum' };
+  }
+  const player = envelope.data.entities && envelope.data.entities.player;
+  if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
+  if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+  const preflight = preflightSaveImport(envelope);
+  if (!preflight.ok) return preflight;
+  return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+
+// Full-envelope graph bound in the worker so the multi-MB walk never reaches the main thread.
+// Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
+const PREFLIGHT_MAX_DEPTH = 64;
+const PREFLIGHT_MAX_NODES = 200_000;
+const PREFLIGHT_MAX_COLLECTION_ITEMS = 50_000;
+const PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2_048;
+export function preflightSaveImport(value) {
+  const persistent = value && typeof value === 'object'
+    && value.data && typeof value.data === 'object'
+    && value.data.entities && typeof value.data.entities === 'object'
+    ? value.data.entities.persistent
+    : null;
+  if (Array.isArray(persistent) && persistent.length > PREFLIGHT_MAX_PERSISTENT_ENTITIES) {
+    return { ok: false, reason: 'import_persistent_entity_limit',
+      limit: PREFLIGHT_MAX_PERSISTENT_ENTITIES, actual: persistent.length };
+  }
+  const active = new WeakSet();
+  const stack = [{ value, depth: 0, exit: false }];
+  let nodes = 0;
+  while (stack.length) {
+    const frame = stack.pop();
+    const current = frame.value;
+    if (frame.exit) {
+      active.delete(current);
+      continue;
+    }
+    if (frame.depth > PREFLIGHT_MAX_DEPTH) {
+      return { ok: false, reason: 'import_depth_limit', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    nodes++;
+    if (nodes > PREFLIGHT_MAX_NODES) {
+      return { ok: false, reason: 'import_node_limit', limit: PREFLIGHT_MAX_NODES, actual: nodes };
+    }
+    if (current === null || typeof current !== 'object') continue;
+    if (active.has(current)) {
+      return { ok: false, reason: 'import_cycle', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    active.add(current);
+    stack.push({ value: current, depth: frame.depth, exit: true });
+    if (Array.isArray(current)) {
+      if (current.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+        return { ok: false, reason: 'import_collection_limit',
+          limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: current.length };
+      }
+      for (let i = current.length - 1; i >= 0; i--) {
+        stack.push({ value: current[i], depth: frame.depth + 1, exit: false });
+      }
+      continue;
+    }
+    const keys = Object.keys(current);
+    if (keys.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+      return { ok: false, reason: 'import_collection_limit',
+        limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: keys.length };
+    }
+    for (let i = keys.length - 1; i >= 0; i--) {
+      stack.push({ value: current[keys[i]], depth: frame.depth + 1, exit: false });
+    }
+  }
+  return { ok: true, nodes };
+}
+
 export function handleSaveWorkerRequest(message) {
   const request = message || {};
+  if (request.type === 'restore_prepare') {
+    const started = workerNow();
+    let result;
+    try {
+      result = restorePrepareSaveJson(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      );
+    } catch (error) {
+      result = { ok: false, reason: 'load_failed' };
+    }
+    return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
+  }
   if (request.type === 'validate_begin') {
     validationSessions.set(request.id, {
       currentVersion: request.payload && request.payload.currentVersion,
@@ -156,6 +256,83 @@ function validateSaveJson(raw, currentVersion) {
   if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
   return { ok: true, version, savedAt: envelope.savedAt || null, checksum: envelope.checksum || null };
 }
+function restorePrepareSaveJson(raw, currentVersion) {
+  if (!raw) return { ok: false, reason: 'no_save' };
+  var envelope;
+  try { envelope = JSON.parse(raw); } catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
+  var versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
+  if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
+    return { ok: false, reason: 'checksum' };
+  }
+  var player = envelope.data.entities && envelope.data.entities.player;
+  if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
+  if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+  var preflight = preflightSaveImport(envelope);
+  if (!preflight.ok) return preflight;
+  return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+var PREFLIGHT_MAX_DEPTH = 64;
+var PREFLIGHT_MAX_NODES = 200000;
+var PREFLIGHT_MAX_COLLECTION_ITEMS = 50000;
+var PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2048;
+// Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
+function preflightSaveImport(value) {
+  var persistent = value && typeof value === 'object'
+    && value.data && typeof value.data === 'object'
+    && value.data.entities && typeof value.data.entities === 'object'
+    ? value.data.entities.persistent
+    : null;
+  if (Array.isArray(persistent) && persistent.length > PREFLIGHT_MAX_PERSISTENT_ENTITIES) {
+    return { ok: false, reason: 'import_persistent_entity_limit',
+      limit: PREFLIGHT_MAX_PERSISTENT_ENTITIES, actual: persistent.length };
+  }
+  var active = new WeakSet();
+  var stack = [{ value: value, depth: 0, exit: false }];
+  var nodes = 0;
+  while (stack.length) {
+    var frame = stack.pop();
+    var current = frame.value;
+    if (frame.exit) {
+      active.delete(current);
+      continue;
+    }
+    if (frame.depth > PREFLIGHT_MAX_DEPTH) {
+      return { ok: false, reason: 'import_depth_limit', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    nodes++;
+    if (nodes > PREFLIGHT_MAX_NODES) {
+      return { ok: false, reason: 'import_node_limit', limit: PREFLIGHT_MAX_NODES, actual: nodes };
+    }
+    if (current === null || typeof current !== 'object') continue;
+    if (active.has(current)) {
+      return { ok: false, reason: 'import_cycle', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    active.add(current);
+    stack.push({ value: current, depth: frame.depth, exit: true });
+    if (Array.isArray(current)) {
+      if (current.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+        return { ok: false, reason: 'import_collection_limit',
+          limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: current.length };
+      }
+      for (var i = current.length - 1; i >= 0; i--) {
+        stack.push({ value: current[i], depth: frame.depth + 1, exit: false });
+      }
+      continue;
+    }
+    var keys = Object.keys(current);
+    if (keys.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+      return { ok: false, reason: 'import_collection_limit',
+        limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: keys.length };
+    }
+    for (var j = keys.length - 1; j >= 0; j--) {
+      stack.push({ value: current[keys[j]], depth: frame.depth + 1, exit: false });
+    }
+  }
+  return { ok: true, nodes: nodes };
+}
 function now() {
   // Synchronous worker-task elapsed time. Do not use process/thread CPU clocks here: on Windows
   // their scheduler-quantized readings hide ordinary sub-15 ms encodes as zero.
@@ -210,6 +387,25 @@ self.addEventListener('message', function (event) {
       self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encodeSavePayload(session), {
         workerCpuMs: now() - started,
       }));
+      return;
+    }
+    if (request.type === 'restore_prepare') {
+      var startedPrepare = now();
+      var prepared;
+      try {
+        prepared = restorePrepareSaveJson(
+          request.payload && request.payload.raw,
+          request.payload && request.payload.currentVersion,
+        );
+      } catch (error) {
+        prepared = { ok: false, reason: 'load_failed' };
+      }
+      self.postMessage({
+        id: request.id,
+        type: 'restored_prepare',
+        result: prepared,
+        workerCpuMs: now() - startedPrepare,
+      });
       return;
     }
     const started = now();

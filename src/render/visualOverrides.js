@@ -423,7 +423,7 @@ function slotForPackagedFile(file) {
   return String(file || '').replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place';
 }
 
-function packagedPropSpec(entity) {
+export function packagedPropSpec(entity) {
   if (!entity || entity.alive === false) return null;
   const data = entity.data || {};
   if (data.authoredPayloadAssetId) return null;
@@ -542,18 +542,27 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   const spec = packagedPropSpec(entity);
   if (!spec || !spec.file) return root;
   const url = packagedPartUrl(spec.file);
-  const hideImmediately = spec.hideImmediately !== false;
-  if (hideImmediately) hideProceduralPropDrawables(root);
+  // Two pending families, two doctrines. hideImmediately specs (rescue hardware, explicit
+  // packagedPropFile/assetRef mappings) keep the procedural form hidden for the whole
+  // admission window — it was judged confusing, so the boundary draws nothing until the
+  // authored body lands (the publish path re-hides it at swap regardless). Non-hideImmediately
+  // specs (GENERIC_TOW) stay drawn through admission — the geology-skin precedent — with the
+  // pending stamp exempting the boundary from the authoredPending submit deny.
+  // authoredAssetState/authoredVisualRoot stamp unconditionally either way: they are what puts
+  // the root inside meshNeedsAuthoredDecode so the decode runway warms the file early.
+  if (spec.hideImmediately) {
+    hideProceduralPropDrawables(root);
+  } else {
+    root.userData.authoredPendingFallbackDrawn = true;
+  }
   root.userData.authoredPackageUrl = url;
   root.userData.authoredPackageSlot = spec.slot || slotForPackagedFile(spec.file);
-  if (hideImmediately) {
-    root.userData.authoredAssetState = 'awaiting-authored-admission';
-    root.userData.authoredVisualRoot = 'none-pending-admission';
-  }
+  root.userData.authoredAssetState = 'awaiting-authored-admission';
+  root.userData.authoredVisualRoot = 'none-pending-admission';
   root.userData.renderContract = {
     ...(root.userData.renderContract || {}),
     assetBoundary: 'packaged 47-A / TOW body',
-    gracefulFallback: hideImmediately !== true,
+    gracefulFallback: spec.hideImmediately !== true,
   };
   const start = (renderer, scene, requestOptions = {}) => {
     const state = root.userData.authoredAssetState;
@@ -580,6 +589,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
       optional: true,
+      // Same deadline class as the boundary packaged path: an un-warmed scenario prop
+      // otherwise queues behind ambient decodes while its mount point shows nothing.
+      admissionDeadline: true,
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {

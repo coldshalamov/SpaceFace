@@ -37,6 +37,17 @@ const VIEWS = { hero: [2400, 1350], side: [2400, 1100], top: [1024, 1024] };
 
 const BLENDER = process.env.BLENDER || 'blender';
 const PYTHON = process.env.PYTHON || 'python3';
+// Windows indexers/AV briefly lock a just-written file (errno -4094 UNKNOWN); a lost manifest write
+// throws away a six-minute render, so retry the write a few times before giving up.
+function writeRetry(file, text, tries = 6) {
+  for (let i = 0; ; i += 1) {
+    try { return writeFileSync(file, text); } catch (err) {
+      if (i >= tries - 1) throw err;
+      const until = Date.now() + 500 * (i + 1);
+      while (Date.now() < until) { /* spin: the script is synchronous */ }
+    }
+  }
+}
 const run = (cmd, args) => execFileSync(cmd, args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 26 }).toString();
 
 async function renderHull(id, file) {
@@ -91,7 +102,7 @@ async function main() {
     if (!PLAYER_HULLS[id]) throw new Error(`unknown hull ${id}`);
     process.stdout.write(`${id}\n`);
     manifest.hulls[id] = await renderHull(id, PLAYER_HULLS[id]);
-    writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 1)}\n`);
+    writeRetry(MANIFEST, `${JSON.stringify(manifest, null, 1)}\n`);
   }
   const published = Object.keys(PLAYER_HULLS).filter((id) => manifest.hulls[id]);
   // src/ui is the ORRERY lane's (AGENTS.md): only rewrite the poster table when asked to.

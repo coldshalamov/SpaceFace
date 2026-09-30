@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "065eea2723dc22d13938240562dfb86416de3454e5d7bcef6d44f504752f0322",
+  "contentHash": "4dcd305354a4e3901dbe18f1781588459632c8d3e16fbb71db0e04cc83427387",
   "dynamicGroups": [
     {
       "id": "sf.render.repair-tender.node.lod0-hook-drive-core.dynamic",
@@ -4724,7 +4724,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "660cbcf72449dab6ccaa7c8b536082d2caebb4cd5a666fe4d4d8c45cf3531b78",
+      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
       "uri": "pilots.json"
     }
   },
@@ -6816,7 +6816,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/repair_tender.glb"
   },
-  "runtimeHash": "6029925fb033eb02a81c6164a29905d9f2ece5c58f3f6802aa3c121a95a6935c",
+  "runtimeHash": "da4d78d887b81fe6b71a0ec05532f6166a57c28c4911a94fc5bf9484643ee970",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

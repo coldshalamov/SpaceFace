@@ -60,6 +60,7 @@ import {
   megaHeistById,
   buildMegaHeistOffer,
   missionMinRepForRisk,
+  missionStandingGateForMinRep,
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
@@ -176,7 +177,7 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
-import { forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
@@ -1181,6 +1182,7 @@ export const missions = {
     // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
     // their existing consumers and cannot accidentally become malformed board entries.
     bus.on('mission:offered', (p) => this._onExternalBoardOffer(p));
+    bus.on('jump:chargeStart', (p) => this._projectMissionTargetDecodes(p && p.targetSectorId));
     bus.on('poi:identified', (p) => this._reconcileLandmarkQuestOffers(p || {}));
 
     // ── Docking: refresh expired boards, run delivery/passenger/escort/salvage objectives ────
@@ -2421,10 +2423,11 @@ export const missions = {
       // A board may declare one defining live job. This is data-owned rather than inferred from its
       // physical station type, so Charon can remain a real refinery while its hunter exchange never
       // opens on a bounty-free epoch.
-      const typeId = i === 0 && info.boardAnchorType
+      const anchored = i === 0 && !!info.boardAnchorType;
+      const typeId = anchored
         ? info.boardAnchorType
         : this._pickType(weights, rng, repBoost, profile, historyTier);
-      const offer = this._rollOffer(typeId, info, rng, epoch, i);
+      const offer = this._rollOffer(typeId, info, rng, epoch, i, { anchor: anchored });
       if (offer) offers.push(offer);
     }
     const bulkHaul = this._rollBulkHaulOffer(info, rng, epoch, 'bulk');
@@ -2540,7 +2543,15 @@ export const missions = {
       sectorRisk = destSector ? dangerTier(destSector) : 1;
     }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
-    const riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
+    let riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
+    // D85: a board's ANCHORED defining job (the writ walls' bounty exchange) stays inside the
+    // standing band a rep-0 operator can accept while that board's faction has not Accepted them,
+    // so the wall never opens on an epoch whose only writ is rep-gated out of reach — and the
+    // entry writ retires (risk resumes scaling with destination danger) before it can be farmed.
+    // Non-anchored slots always keep scaling with destination danger.
+    if (options.anchor === true && this._repOf(info.factionId) < 30) {
+      riskTier = Math.min(riskTier, missionStandingGateForMinRep(0).maxRisk);
+    }
     // D59: a bounty pays the boarding board's local rate — the board sector's own tier and danger —
     // while standing and the destination's danger escalate the MARK (riskTier above: harder, longer
     // fights, more return fire), never the priced rate. Pricing destination/standing escalation into
@@ -3053,6 +3064,7 @@ export const missions = {
       causeFingerprint: inst.cause && inst.cause.fingerprint || undefined,
       ...setPieceEventFields(inst),
     });
+    this._emitMissionTargetProjection(inst);
     this.bus.emit('mission:updated', { missionId: inst.id });
     // The physics terms ride in the SAME accept toast rather than a second one — the voice arbiter
     // already owns the objective line and the transaction lane owns this one. A player who skipped
@@ -7245,6 +7257,39 @@ export const missions = {
   // =========================================================================================
   // MISSION-TARGET SPAWNING (lazy, deterministic, no spawn:request consumer exists)
   // =========================================================================================
+  /**
+   * Enemy-catalog archetypes a target-spawning mission can roll at its destination. The exact
+   * roster is rolled at spawn, but the POOL is fixed at accept — warming the pool (≤4 unique
+   * hulls) covers every roll, plus the escort/claim hauler and ghost-pack nest ids.
+   */
+  _missionTargetArchetypes(m) {
+    const archetypes = new Set(markArchetypePoolFor(m && m.riskTier));
+    if (m && m.storyTarget && m.storyTarget.archetype) archetypes.add(m.storyTarget.archetype);
+    if (m && (m.type === 'escort' || m.type === 'salvage_retrieval')) archetypes.add('mule_trader');
+    if (m && m.params && m.params.ghostConvoy) { archetypes.add('reaver_pirate'); archetypes.add('wasp_swarmer'); }
+    return [...archetypes];
+  },
+
+  /** Publish the hull set a mission will need so the render lane decodes it before arrival. */
+  _emitMissionTargetProjection(m) {
+    if (!m || !m.needsTargets) return;
+    const archetypes = this._missionTargetArchetypes(m);
+    if (!archetypes.length) return;
+    this.bus.emit('mission:targetsProjected', {
+      missionId: m.id, destSectorId: m.destSectorId || null, archetypes,
+    });
+  },
+
+  /** On jump intent, project every active mission whose targets live at the charge target. */
+  _projectMissionTargetDecodes(targetSectorId) {
+    const active = (this.state.missions && this.state.missions.active) || [];
+    for (const m of active) {
+      if (!m || m.status !== 'active' || !m.needsTargets) continue;
+      if (String(m.destSectorId || '') !== String(targetSectorId || '')) continue;
+      this._emitMissionTargetProjection(m);
+    }
+  },
+
   /** Spawn bounty/patrol hostiles or the escortee if the player is in the mission's target sector. */
   _ensureMissionTargets(m) {
     if (!m.needsTargets) return;
@@ -8639,6 +8684,34 @@ export const missions = {
 
   spawnTargetsForSector(sectorId) {
     if (!sectorId) return;
+    // Continue runs this pass twice — restore step 13 and the save:loaded navigation refresh —
+    // each O(missions × living-actors) via _adoptLiveMissionTargets. When the mission fields the
+    // body reads and the entity index both sit unchanged since the previous pass, a repeat can
+    // only reach the same adopt/spawn decisions, so it is skipped. The signature deliberately
+    // excludes targetEntityIds (the pass itself grows it); the version latch records the index
+    // state AFTER the pass so the pass's own spawns do not invalidate the dedupe.
+    const active = this.state.missions && this.state.missions.active;
+    let passKey = null;
+    if (Array.isArray(active)) {
+      let sig = '';
+      for (const m of active) {
+        if (m.status !== 'active' || !m.needsTargets || m.destSectorId !== sectorId) continue;
+        sig += `${m.id}:${m.objectiveProgress}:${m.objectiveTarget}|`;
+      }
+      passKey = {
+        sectorId,
+        count: active.length,
+        sig,
+        version: entityIndexVersion(this.state),
+      };
+      const prev = this._spawnTargetsPassKey;
+      if (prev && Number.isFinite(passKey.version)
+          && prev.sectorId === passKey.sectorId && prev.count === passKey.count
+          && prev.sig === passKey.sig && prev.version === passKey.version) {
+        return;
+      }
+      this._spawnTargetsPassKey = passKey;
+    }
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
     // Continue order: world rematerializes mission_target records first; adopt those live IDs
     // before any fresh spawn so targetEntityIds (cleared on deserialize) do not duplicate.
@@ -8653,6 +8726,7 @@ export const missions = {
         this._spawnTargetsFor(m);
       }
     }
+    if (passKey) passKey.version = entityIndexVersion(this.state);
   },
 
   _onSectorExit(p) {
