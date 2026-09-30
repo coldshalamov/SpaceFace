@@ -18,7 +18,7 @@ import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } f
 import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
 import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
 import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine structures (doc 07)
-import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
+import { dropWedgedAuthoredTasks, invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
 import { packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
@@ -2674,6 +2674,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       'load-threw',
       error,
+      options.admissionEpoch,
     );
   }
   if (!record) {
@@ -2683,6 +2684,8 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       entity,
       renderer,
       'load-unavailable',
+      null,
+      options.admissionEpoch,
     );
   }
   if (!boundary.parent) {
@@ -2702,6 +2705,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       'build-threw',
       error,
+      options.admissionEpoch,
     );
   }
   registerPreparedAuthoredAdmission(scene, boundary, authored);
@@ -2733,6 +2737,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       'pipeline-compile-failed',
       error,
+      options.admissionEpoch,
     );
   }
   if (!boundary.parent) {
@@ -2769,6 +2774,7 @@ function failAuthoredCargoCapsuleAdmission(
   renderer,
   reason,
   error = null,
+  admissionEpoch = null,
 ) {
   // Owner-inactive readmission must be decided before the residency release: releasing a
   // still-mounted boundary marks it a dead owner forever and strands the re-admitted job.
@@ -2776,7 +2782,7 @@ function failAuthoredCargoCapsuleAdmission(
     markAuthoredBoundaryForReadmission(boundary, `payload-${reason}`);
     return false;
   }
-  releaseBoundaryResidency(renderer, boundary, `payload-${reason}`);
+  releaseBoundaryResidency(renderer, boundary, `payload-${reason}`, admissionEpoch);
   fallbackRoot.visible = false;
   boundary.userData.authoredAssetState = 'unavailable';
   boundary.userData.authoredVisualRoot = reason.includes('pipeline')
@@ -3479,7 +3485,9 @@ function failAuthoredPlaceAdmission(
     markAuthoredBoundaryForReadmission(boundary, reason);
     return false;
   }
-  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason);
+  if (!flags.residencyReleased) {
+    releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
+  }
   if (boundary.parent && hasExplicitAuthoredGeologyPresentation(admissionEntity)) {
     fallbackRoot.visible = true;
     markReadableFallbackLayer(fallbackRoot);
@@ -4990,6 +4998,9 @@ const AUTHORED_UPGRADE_NONSHIP_STALL_MS = 120000;
 // ambient stall bound behind a wedged job. The serial-slot invariant still only yields to
 // dead lanes — this tightens how long 'plausibly alive' lasts when the picture is missing.
 const AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS = 30000;
+// Stall aborts re-admit for a fresh decode; a genuinely wedged decoder produces the same hang
+// every cycle, so the abort+re-admit loop is capped and the boundary settles on its fallback.
+const AUTHORED_UPGRADE_STALL_ABORT_LIMIT = 3;
 const STALLED_HOG_WAKE_MS = 5000;
 
 function jobIsStalledInFlight(job, nowMs, boundMs = AUTHORED_UPGRADE_NONSHIP_STALL_MS) {
@@ -5067,7 +5078,13 @@ function settleStalledUpgradeDiagnostics(state) {
     const bound = entityIsOnReadableGlass(job.entity)
       ? AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS
       : AUTHORED_UPGRADE_NONSHIP_STALL_MS;
-    if (jobIsStalledInFlight(job, now, bound)) abortStalledUpgradeJob(state, job);
+    // A job whose serial slot already released is parked in detached GPU prep — aborting it
+    // rescues nothing (the slot is free) and would re-mark its 'authored-prepared' boundary
+    // 'awaiting-authored-admission', duplicating the whole compose+compile+upload it already
+    // paid. Only unreleased slots get the abort.
+    if (job.serialSlotReleased !== true && jobIsStalledInFlight(job, now, bound)) {
+      abortStalledUpgradeJob(state, job);
+    }
   }
 }
 
@@ -5080,10 +5097,27 @@ function abortStalledUpgradeJob(state, job) {
   job.serialSlotReleased = true;
   state.inFlight = Math.max(0, state.inFlight - 1);
   cleanupQueuedJob(state, job);
-  if (job.boundary && job.boundary.parent) {
+  // The abandoned run may sit on a decoder task that will never settle — every later request
+  // deduping onto it wedges identically. Drop the unfinished task entries (and the boundary's
+  // pending requests on them) so the readmission decodes fresh.
+  dropWedgedAuthoredTasks(job.renderer, authoredUpgradeAssetUrls(job), job.boundary);
+  const abortCount = (Number(job.boundary && job.boundary.userData.stallAbortCount) || 0) + 1;
+  if (job.boundary && job.boundary.userData) job.boundary.userData.stallAbortCount = abortCount;
+  if (job.boundary && job.boundary.parent && abortCount <= AUTHORED_UPGRADE_STALL_ABORT_LIMIT) {
     markAuthoredBoundaryForReadmission(job.boundary, 'upgrade-stall-abort');
+  } else if (job.boundary && job.boundary.parent) {
+    // Genuine decoder wedge: re-decoding produced the same hang every cycle — cap the retry
+    // loop and settle the boundary on its fallback rather than burning decode slots forever.
+    job.boundary.userData.authoredAssetState = 'unavailable';
+    job.boundary.userData.authoredFailureReason = 'upgrade-stall-abort-cap';
+    setPresentationAdmission(job.entity, PRESENTATION_ADMISSION.unavailable);
   } else if (job.boundary && job.boundary.userData) {
-    job.boundary.userData.authoredAssetState = 'aborted-stalled';
+    // A detached boundary can't mark-readmit (nothing polls a detached owner), but it may
+    // remount later — leave it re-requestable: 'aborted-stalled' is in no readmission set and
+    // the stale authoredUpgradePromise would short-circuit every future request.
+    delete job.boundary.userData.authoredUpgradePromise;
+    job.boundary.userData.authoredAssetState = 'awaiting-authored-admission';
+    job.boundary.userData.authoredReadmissionReason = 'upgrade-stall-abort-detached';
   }
   settleUpgradeJob(job, 'aborted-stalled');
   scheduleNextUpgradeFrame(state);
@@ -5199,12 +5233,22 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
     || liveState && liveState.world && liveState.world.currentSectorId
     || null;
   if (boundary && boundary.userData && renderer) {
+    // Each admission request is a fresh epoch: a stale run's late settle must not release the
+    // owner's slots under the replacement job, and a boundary whose previous epoch released
+    // residency revives here — a dead-owner mark would otherwise strand every re-admission.
+    boundary.userData.admissionEpoch = (Number(boundary.userData.admissionEpoch) || 0) + 1;
+    const residencyRegistry = getAssetResidency(renderer);
+    if (residencyRegistry && typeof residencyRegistry.reviveOwner === 'function') {
+      residencyRegistry.reviveOwner(boundary);
+    }
     boundary.userData.releaseAuthoredAssetResidency = (reason = 'boundary-disposed') => (
       releaseBoundaryResidency(renderer, boundary, reason)
     );
   }
   return {
     residencyOwner: boundary,
+    admissionEpoch: boundary && boundary.userData
+      ? (Number(boundary.userData.admissionEpoch) || 0) : 0,
     residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
     sectorId,
     isResidencyOwnerActive: () => !!boundary && entity && entity.alive !== false,
@@ -5511,8 +5555,10 @@ function cancelQueuedJob(state, job) {
   if (!job || job.lifecycle === 'in-flight' || job.lifecycle === 'settled') return false;
   job.lifecycle = 'cancelled';
   cleanupQueuedJob(state, job);
-  const residency = job && job.renderer && getAssetResidency(job.renderer);
-  if (residency && job.boundary) residency.releaseOwner(job.boundary, 'upgrade-job-cancelled');
+  // Epoch-guarded: a cancel landing after the boundary already re-admitted must not free the
+  // replacement epoch's retains — releaseBoundaryResidency skips when epochs differ.
+  releaseBoundaryResidency(job && job.renderer, job && job.boundary, 'upgrade-job-cancelled',
+    job && job.options && job.options.admissionEpoch);
   if (job.boundary) releaseOwnerInstances(job.boundary);
   if (job.boundary && job.boundary.userData) {
     job.boundary.userData.authoredAssetState = 'cancelled-before-load';
@@ -5795,7 +5841,8 @@ function admitNextUpgradeJob(state) {
       if (diagnostic.endedAtMs == null) diagnostic.status = 'awaiting-authored-admission';
       console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
     } else {
-      releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
+      releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed',
+        job.options && job.options.admissionEpoch);
       job.boundary.userData.authoredAssetState = 'fallback-after-error';
       console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
     }
@@ -6693,7 +6740,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         setActive,
         'flight-compose-gated',
       );
-      releaseBoundaryResidency(renderer, boundary, 'flight-compose-gated');
+      releaseBoundaryResidency(renderer, boundary, 'flight-compose-gated', options.admissionEpoch);
       const tier1 = tier1CausalCounters();
       if (tier1) tier1.countAuthoredAdmissionJob('flight-compose-gated');
       return false;
@@ -6724,7 +6771,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       boundary.userData.authoredAssetState = 'unavailable';
       boundary.userData.authoredVisualRoot = 'none-build-failed';
       setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
-      releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable');
+      releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable', options.admissionEpoch);
       return false;
     }
     registerPreparedAuthoredAdmission(scene, boundary, authored);
@@ -6773,12 +6820,15 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('commit');
       }
-      if (!swapped) releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed');
+      if (!swapped) {
+        releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed', options.admissionEpoch);
+      }
       return swapped;
     };
     if (options.overlapAuthoredPipelineCompile === true) {
       const pending = completeAdmission().catch(async (error) => {
-        await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored);
+        await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored,
+          options.admissionEpoch);
         return false;
       });
       boundary.userData.authoredPipelineReady = pending;
@@ -6791,14 +6841,15 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     }
     return await completeAdmission();
   } catch (error) {
-    await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored);
+    await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored,
+      options.admissionEpoch);
     return false;
   }
 }
 
-async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null) {
+async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null, admissionEpoch = null) {
   if (!swapped) {
-    releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
+    releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed', admissionEpoch);
     const cleanupErrors = [];
     const preparedDisposal = disposePreparedAuthoredBoundary(boundary);
     if (preparedDisposal !== false) {
@@ -7744,12 +7795,18 @@ function handoffBootstrapIfCovered(renderer, residency = null) {
   return handedOff;
 }
 
-export function releaseBoundaryResidency(renderer, boundary, reason) {
+export function releaseBoundaryResidency(renderer, boundary, reason, admissionEpoch = null) {
   const residency = renderer && getAssetResidency(renderer);
   // The boundary owns its composed parts' instance-pool slots. THREE's `removed` event only
   // reaches the outermost detached root, so a boundary nested under an entity mesh never gets
   // the listener drain — the slot keeps `owner -> boundary` alive and the chunk can never
   // retire. Every residency release doubles as the owner-instance drain.
+  // Epoch guard: a job-scoped release from an abandoned admission run (stall abort, owner-
+  // inactive re-attach) must not free the replacement epoch's retains — released marks on the
+  // owner are permanent until the next request revives them, and the drain below would tear
+  // the new epoch's instance slots the same way. Detach/disposal callers pass no epoch.
+  if (admissionEpoch != null && boundary && boundary.userData
+      && boundary.userData.admissionEpoch !== admissionEpoch) return 0;
   if (boundary) releaseOwnerInstances(boundary);
   return residency && boundary ? residency.releaseOwner(boundary, reason) : 0;
 }

@@ -2601,6 +2601,9 @@ function kickDecodeRunwayAssets(owner, entities) {
       const opts = wave
         ? { residencyRole: 'wave-hull-decode-runway' }
         : {};
+      // A pick already inside the urgent bound posts the 'visible' decode class — the same
+      // kickSpawnedEntityDecode grading — so its decode drains ahead of deadline-class warms.
+      if (decodeSeconds(entity) <= TABLE_BUILD_URGENT_SECONDS) opts.admissionVisible = true;
       Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
         pending.delete(entity.id);
       });
@@ -2624,7 +2627,8 @@ function kickDecodeRunwayAssets(owner, entities) {
       if (!fkey || (inFlight && inFlight.has(fkey))) continue;
       pending.add(entity.id);
       started += 1;
-      warmPackagedEntityDecode(owner, entity, resolved).finally(() => {
+      warmPackagedEntityDecode(owner, entity, resolved,
+        decodeSeconds(entity) <= TABLE_BUILD_URGENT_SECONDS).finally(() => {
         pending.delete(entity.id);
       });
     }

@@ -854,6 +854,38 @@ export async function invalidateAuthoredAsset(renderer, url = null) {
   }
 }
 
+/**
+ * Drop unfinished decode tasks for the given urls so a re-admission decodes fresh instead of
+ * deduping onto a wedged task that will never settle (the stall-abort path). Settled records
+ * stay — a produced blueprint is a valid cache hit, and a second caller deduped on the same
+ * task keeps its own Promise either way: only the cache entry is removed. The owner's pending
+ * request on each key is released so nothing re-pins the corpse.
+ */
+export function dropWedgedAuthoredTasks(renderer, urls, owner = null) {
+  const runtime = renderer && resolvedRuntimeByRenderer.get(renderer);
+  const residency = getAssetResidency(renderer);
+  if (!runtime || !Array.isArray(urls) || urls.length === 0) return 0;
+  let dropped = 0;
+  for (const url of urls) {
+    if (typeof url !== 'string' || !url) continue;
+    const prefix = `${url}::`;
+    for (const key of [...runtime.assets.keys()]) {
+      if (!key.startsWith(prefix)) continue;
+      const task = runtime.assets.get(key);
+      if (task && task.sfSettledRecord != null) continue;
+      if (residency && owner) residency.release(key, owner, 'upgrade-stall-abort');
+      runtime.assets.delete(key);
+      dropped++;
+    }
+    if (runtime.failures) {
+      for (const key of [...runtime.failures.keys()]) {
+        if (key.startsWith(prefix)) runtime.failures.delete(key);
+      }
+    }
+  }
+  return dropped;
+}
+
 export async function invalidateFailedAuthoredAssets(renderer) {
   const runtimePromise = authoredAssetRuntimeRegistry.peek(renderer);
   if (!runtimePromise) return 0;
