@@ -74,32 +74,6 @@
   ],
   "units": [
     {
-      "id": "VERB-06",
-      "date": "2026-09-22",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "opening hauler now loads cmdty_fuel_cells (explosive volatile class) with civilian jobKind so violence-spill sheds slam-cooking pods",
-      "fingerprint": "verb=cook,subject=opening-hauler-cargo,sector=helios,domain=verb",
-      "references": [],
-      "integration": "live",
-      "commit": "f6ca40d5b",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inst-02-comms-fan-power-rail",
-      "date": "2026-09-22",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "comms fan hub/wedges/haildeck links off --sf-surface fill and 6px web radius, onto deckplate bezel + glass tokens matching the power rail",
-      "fingerprint": "verb=read,subject=comms-fan,sector=any,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "5fb238ab7",
-      "verification": "focused_green"
-    },
-    {
       "id": "tool-02-hover-tab-sounds",
       "date": "2026-09-22",
       "wf": "WF-13",
@@ -1646,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "abcd33aaa",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ECON-07",
+      "date": "2026-09-30",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "An uninsured death names hull insurance and the station premium; an insured death names only the deductible.",
+      "fingerprint": "verb=die,subject=hull-insurance,sector=helios,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "4c7fca809",
       "verification": "focused_green"
     }
   ],
