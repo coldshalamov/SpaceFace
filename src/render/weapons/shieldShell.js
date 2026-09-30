@@ -372,9 +372,11 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
       + load * 0.22 + fail * 0.85, 0.0, 1.0);
     vec3 glassTint = mix(tint * vec3(0.50, 0.47, 0.94), tint, smoothstep(0.10, 0.45, heat));
     vec3 col = mix(glassTint, vec3(0.90, 0.98, 1.0), heat * heat);
-    // Deliberate bloom headroom: an impact core leaves this shader well above 1.0.
-    vec3 rgb = col * (0.85 + 0.65 * seam * panelCharge + 1.35 * core + 0.45 * ring + 0.35 * rim
-      + 0.55 * ribLight + 0.70 * fail) * (1.0 - 0.35 * pane);
+    // Lift hot impact cores and the seam current only where heat is already high, so weak
+    // contacts keep their authored restraint. Alpha and panes untouched.
+    float crestLift = smoothstep(0.30, 0.90, heat);
+    vec3 rgb = col * (0.85 + (0.65 * seam * panelCharge + 1.35 * core) * (1.0 + 0.30 * crestLift)
+      + 0.45 * ring + 0.35 * rim + 0.55 * ribLight + 0.70 * fail) * (1.0 - 0.35 * pane);
     return vec4(rgb, alpha);
   }
 `;

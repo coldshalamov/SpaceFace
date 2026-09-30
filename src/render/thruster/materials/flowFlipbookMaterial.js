@@ -560,7 +560,11 @@ ${PLUME_FOLD_FIELD_GLSL}
     float alpha = body * turb * softMask * uOpacity * (0.35 + min(intensity, 12.0) * 0.08);
 
     if (alpha < 0.004) discard;
-    gl_FragColor = vec4(col * intensity * body * turb, clamp(alpha, 0.0, 1.0));
+    // Hot crest rides the fold clock through core/inner only; vapor and sheath stay cool and
+    // reduced flash suppresses the lift outright. Alpha/envelope authored.
+    float crestRole = clamp(coreRole + innerRole, 0.0, 1.0);
+    float hotCrest = crestRole * fold * (1.0 - uReducedFlash);
+    gl_FragColor = vec4(col * intensity * body * turb * (1.0 + 0.30 * hotCrest), clamp(alpha, 0.0, 1.0));
   }
 `;
 

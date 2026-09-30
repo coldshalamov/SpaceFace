@@ -86,13 +86,18 @@ const WHOLE_SHIP_FILES = [
   'massline_express_liner_v1_lod1.glb',
   'massline_express_liner_v1_lod2.glb',
 ];
+// Place assets are owned exclusively by scripts/build-place-release-assets.mjs — the sg04
+// encoder emits every texture slot UASTC while place releases require per-role profiles
+// (albedo/emissive ETC1S+sRGB, ORM ETC1S+linear, normals UASTC). sg04 skips them entirely;
+// their last published files and manifest entries are carried forward untouched below.
+const PLACE_OWNED_CATEGORIES = new Set(['places', 'works']);
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 // A part's lodFamily siblings (lod1/lod2/…) are independent release files the distance selector
 // loads on demand. They are not top-level part rows, so without this expansion a manifest part can
 // ship a compressed lod0 while its lod1/lod2 siblings drift into release/ as raw byte-copies.
 const manifestLodSiblingFiles = new Set();
 for (const part of partManifest.parts || []) {
-  if (part.status === 'blocked' || !part.lodFamily) continue;
+  if (part.status === 'blocked' || !part.lodFamily || PLACE_OWNED_CATEGORIES.has(part.category)) continue;
   for (const file of Object.values(part.lodFamily)) {
     if (file !== part.file && !manifestPartFiles.has(file)) manifestLodSiblingFiles.add(file);
   }
@@ -105,7 +110,7 @@ const allAssets = [
     release: 'assets/ships/release/kestrel/kestrel_reference.glb',
   },
   ...(partManifest.parts || [])
-    .filter((part) => part.status !== 'blocked')
+    .filter((part) => part.status !== 'blocked' && !PLACE_OWNED_CATEGORIES.has(part.category))
     .map((part) => ({
       id: part.id,
       kind: `part:${part.category}`,
@@ -127,6 +132,14 @@ const allAssets = [
   })),
 ];
 const assets = ONLY_IDS.size ? allAssets.filter((asset) => ONLY_IDS.has(asset.id)) : allAssets;
+if (ONLY_IDS.size) {
+  const placeOnlyIds = [...ONLY_IDS].filter((id) => id.startsWith('place_'));
+  if (placeOnlyIds.length) {
+    throw new Error(
+      `place assets are owned by scripts/build-place-release-assets.mjs: ${placeOnlyIds.join(', ')}`,
+    );
+  }
+}
 if (ONLY_IDS.size && assets.length !== ONLY_IDS.size) {
   const found = new Set(assets.map((asset) => asset.id));
   const missing = [...ONLY_IDS].filter((id) => !found.has(id));
@@ -253,6 +266,24 @@ for (let index = 0; index < assets.length; index++) {
     console.error(`[sg04] failed ${index + 1}/${assets.length} ${asset.id}: ${asset.source} -> ${outputReleasePath}`);
     throw error;
   }
+}
+
+// Carry place-owned assets forward untouched: a full sg04 build must not drop the place
+// publisher's files or manifest entries, and must never re-emit them with sg04's all-UASTC
+// encoder. Whatever the place publisher last shipped survives the staged swap byte-for-byte.
+const priorReleaseManifest = existsSync(RELEASE_MANIFEST)
+  ? JSON.parse(readFileSync(RELEASE_MANIFEST, 'utf8'))
+  : null;
+for (const entry of (priorReleaseManifest && priorReleaseManifest.assets) || []) {
+  if (entry.kind !== 'part:places' || !entry.release) continue;
+  const liveAbs = resolve(ROOT, entry.release);
+  if (!existsSync(liveAbs)) continue;
+  const stagedAbs = resolve(ROOT, buildReleasePath(entry.release));
+  if (stagedAbs !== liveAbs) {
+    await mkdir(dirname(stagedAbs), { recursive: true });
+    await copyFile(liveAbs, stagedAbs);
+  }
+  if (!manifestAssets.some((asset) => asset.id === entry.id)) manifestAssets.push(entry);
 }
 
 const devDeps = packageJson.devDependencies || {};

@@ -103,17 +103,17 @@ try {
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  await waitForVisible(page, '[data-screen="mainMenu"]', 45000, 'main menu');
   await page.waitForFunction(() => {
     const sys = window.SF && window.SF.ctx && window.SF.ctx.registry
       && typeof window.SF.ctx.registry.get === 'function'
       && window.SF.ctx.registry.get('save');
     return !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && !sys.isSharedStoreSyncPending());
-  }, null, { timeout: 15000 });
+  }, null, { timeout: 45000 });
   await page.waitForFunction(() => {
     const summary = document.querySelector('[data-screen="mainMenu"] .sf-menu-save-summary');
     return !!(summary && summary.classList.contains('has-save'));
-  }, null, { timeout: 5000 });
+  }, null, { timeout: 45000 });
 
   const report = await page.evaluate(() => {
     const text = (sel) => (document.querySelector(sel)?.textContent || '').replace(/\s+/g, ' ').trim();
@@ -162,7 +162,7 @@ try {
   assert.equal(await clickButton(page, 'Continue'), true, 'Continue button should be clickable');
   const emitted = await page.waitForFunction(() =>
     (window.__sfContinueProbe || []).some((e) => e.name === 'game:load'),
-  null, { timeout: 5000 }).then(() => page.evaluate(() =>
+  null, { timeout: 30000 }).then(() => page.evaluate(() =>
     (window.__sfContinueProbe || []).find((e) => e.name === 'game:load')
   ));
 

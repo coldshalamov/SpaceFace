@@ -59,6 +59,10 @@ function trajectory(m, t, out) {
   const kind = m[0], reach = m[6], phase = m[7], variety = m[8];
   const ease = 1 - Math.pow(1 - t, 2.1), envelope = Math.sin(Math.PI * t);
   let along = 0, across = 0, height = 0;
+  // Liquid energy parcels shear gently across their own transport — a slow curl seeded by the
+  // parcel's stable phase/variety. Cone and skim keep their strict truthful footprint; goo keeps
+  // its viscous creep.
+  const liquidCurl = kind !== 2 && kind !== 3 && kind !== 9 ? 1 : 0;
   if (kind === 0 || kind === 4 || kind === 7) {
     // Captured matter accelerates inward; repair converges without a gravity orbit.
     let r = reach * (0.82 + variety * 0.16) * Math.pow(1 - t, kind === 0 ? 1.35 : 1.8);
@@ -88,9 +92,17 @@ function trajectory(m, t, out) {
     if (kind === 3) across = clamp(across, -m[14] * 0.95, m[14] * 0.95);
     height = reach * (kind === 3 ? 0.06 : 0.02) * envelope * Math.cos(t * 9 + phase);
   }
+  if (liquidCurl) {
+    across += reach * 0.045 * Math.sin(t * 2.3 + phase * 1.3 + variety * 5.0) * envelope;
+    height += reach * 0.050 * Math.sin(t * 1.7 + phase * 0.9 + variety * 2.0) * envelope;
+  }
   out.set(m[1] + m[4] * along - m[5] * across, m[2] + height,
     m[3] + m[5] * along + m[4] * across);
 }
+
+// Per-parcel environment contact snapshot: up to 3 records × 8 fields
+// (x, z, radius, vx, vz, material, strength, spare). Floats only — no live producer reference.
+const CONTACT_STRIDE = 8, CONTACT_CAPACITY = 3;
 
 class TransportBehavior {
   constructor(owner) {
@@ -101,6 +113,30 @@ class TransportBehavior {
   initialize(p) {
     const owner = this.owner, event = owner.event, ordinal = owner.ordinal++;
     const m = p.forceFlow || (p.forceFlow = new Float64Array(15));
+    const contacts = p.forceContacts || (p.forceContacts = new Float64Array(CONTACT_STRIDE * CONTACT_CAPACITY));
+    let contactCount = 0;
+    const env = event.environment;
+    if (env && env.records) {
+      // Snapshot the first CONTACT_CAPACITY valid records only. Malformed or strength-0 records
+      // must not become origin colliders or leak NaN into the transport.
+      const available = Number.isFinite(env.count) ? Math.min(env.count, env.records.length)
+        : env.records.length;
+      for (let i = 0; i < Math.min(CONTACT_CAPACITY, available); i++) {
+        const r = env.records[i];
+        if (r == null || !Number.isFinite(r.x) || !Number.isFinite(r.z)
+          || !Number.isFinite(r.radius) || !(r.radius > 0)) continue;
+        const strength = r.strength == null ? 1 : finite(r.strength);
+        if (!(strength > 0)) continue;
+        const o = contactCount * CONTACT_STRIDE;
+        contacts[o] = r.x; contacts[o + 1] = r.z; contacts[o + 2] = r.radius;
+        contacts[o + 3] = finite(r.vx); contacts[o + 4] = finite(r.vz);
+        contacts[o + 5] = finite(r.material); contacts[o + 6] = Math.min(1, strength);
+        contactCount++;
+      }
+    }
+    p.forceContactCount = contactCount;
+    p.forceContactHeat = 0;
+    p.forceFlowInit = false;
     const variety = unit(event.seed, ordinal * 3), phase = unit(event.seed, ordinal * 3 + 1) * TAU;
     m[0] = event.kind; m[1] = event.x; m[2] = event.y; m[3] = event.z;
     m[4] = event.dx; m[5] = event.dz; m[6] = event.radius; m[7] = phase; m[8] = variety;
@@ -120,28 +156,66 @@ class TransportBehavior {
     const age = Math.min(p.life, p.age + dt), t = age / p.life;
     if (!owner.reducedMotion) m[10] = Math.min(p.life, m[10] + dt);
     const travel = m[10] / p.life;
-    trajectory(m, travel, p.position);
-    trajectory(m, Math.min(1, travel + 0.005), this.next);
-    this.axis.copy(this.next).sub(p.position);
-    if (this.axis.lengthSq() > 1e-10) {
-      this.axis.normalize(); p.rotation.setFromUnitVectors(this.forward, this.axis);
+    const viscous = m[0] === 9, shape = travel, stretch = Math.sin(shape * Math.PI);
+    // Reduced motion freezes the fully adjusted pose — trajectory, contact deflection, size and
+    // orientation — bitwise. Recomputing the same pose could flip a ulp and break exact rebases.
+    if (!(owner.reducedMotion && p.forceFlowInit)) {
+      trajectory(m, travel, p.position);
+      p.forceContactHeat = this.deflect(p, m, p.position);
+      trajectory(m, Math.min(1, travel + 0.005), this.next);
+      this.deflect(p, m, this.next);
+      this.axis.copy(this.next).sub(p.position);
+      if (this.axis.lengthSq() > 1e-10) {
+        this.axis.normalize(); p.rotation.setFromUnitVectors(this.forward, this.axis);
+      }
+      // Width/length follow the transported parcel, independent of lifecycle fade under reduced
+      // motion. Differential stretch broadens energy parcels mid-flight while staying streaks.
+      const bulge = viscous ? 0 : 0.38 * stretch;
+      p.size.set(m[11] * (0.78 + 0.46 * stretch) * (1 - shape * 0.43) * (1 + bulge * 0.55),
+        m[12] * (1 - shape * 0.56) * (1 + bulge), m[12] * (1 - shape * 0.56) * (1 + bulge));
+      if (viscous) {
+        // Stretch the lifted neck while narrowing its cross-section, then flatten on rejoining.
+        p.size.set(m[11] * (0.80 + stretch * 1.15), m[12] / (1 + stretch * 0.75),
+          m[12] / (1 + stretch * 0.75));
+      }
+      p.forceFlowInit = true;
     }
     const cooling = Math.pow(1 - t, 1.6), launch = Math.min(1, 0.22 + t * 12);
-    // Width/length follow the transported parcel, independent of lifecycle fade under reduced motion.
-    const shape = travel;
-    p.size.set(m[11] * (0.78 + 0.46 * Math.sin(shape * Math.PI)) * (1 - shape * 0.43),
-      m[12] * (1 - shape * 0.56), m[12] * (1 - shape * 0.56));
-    const viscous = m[0] === 9, stretch = Math.sin(shape * Math.PI);
-    if (viscous) {
-      // Stretch the lifted neck while narrowing its cross-section, then flatten on rejoining.
-      p.size.set(m[11] * (0.80 + stretch * 1.15), m[12] / (1 + stretch * 0.75),
-        m[12] / (1 + stretch * 0.75));
-    }
-    const rgb = COLORS[m[0]], hot = (viscous ? 0.22 + cooling * 0.72 + stretch * 0.26 : 0.24 + cooling * 2.3)
+    // A single slow flare crests once per parcel then cools — no strobing. Surface contact
+    // adds local heat where the parcel actually touches a body snapshot.
+    const flare = Math.exp(-Math.pow((t - (0.18 + m[8] * 0.22)) / 0.14, 2));
+    const rgb = COLORS[m[0]], hot = (viscous
+      ? 0.22 + cooling * 0.72 + stretch * 0.26
+      : (0.24 + cooling * 2.3) * (1 + flare * 0.9) + p.forceContactHeat * 1.1)
       * m[9] * (owner.reducedFlash ? 0.36 : 1);
     const ember = m[0] === 5 ? t : 0;
     p.color.set(rgb[0] * hot, rgb[1] * hot * (1 - ember * 0.65),
       rgb[2] * hot * (1 - ember * 0.85), launch * cooling * (0.52 + m[8] * 0.22));
+  }
+  // One bounded surface contact per parcel: push pos onto the deepest snapshot surface and slide
+  // along its tangent. Pure function of (trajectory, snapshot, pose) — the m trajectory is
+  // untouched and nothing accumulates. Returns the contact heat at pos; lift bounded at 4 like
+  // the FlowEnvironment displacement it mirrors.
+  deflect(p, m, pos) {
+    const n = p.forceContactCount | 0, c = p.forceContacts;
+    let best = -1, pen = 0;
+    for (let i = 0; i < n; i++) {
+      const o = i * CONTACT_STRIDE, r = c[o + 2];
+      if (!(r > 0) || !(c[o + 6] > 0)) continue;
+      const overlap = r - Math.hypot(pos.x - c[o], pos.z - c[o + 1]);
+      if (overlap > pen) { pen = overlap; best = i; }
+    }
+    if (best < 0) return 0;
+    const o = best * CONTACT_STRIDE;
+    const dx = pos.x - c[o], dz = pos.z - c[o + 1], d = Math.hypot(dx, dz);
+    let nx, nz;
+    if (d > 1e-6) { nx = dx / d; nz = dz / d; } else { nx = m[4]; nz = m[5]; }
+    const rel = (m[4] - c[o + 3]) * -nz + (m[5] - c[o + 4]) * nx;
+    const side = rel >= 0 ? 1 : -1;
+    pos.x += nx * pen - nz * side * pen * 0.45;
+    pos.y += Math.min(pen * 0.10, 4);
+    pos.z += nz * pen + nx * side * pen * 0.45;
+    return Math.min(1, pen / c[o + 2]) * c[o + 6] * (0.55 + 0.45 * Math.min(1, c[o + 5]));
   }
   frameUpdate() {} reset() {}
 }
@@ -152,7 +226,7 @@ export class ForceParticleFlow {
     this.capacity = clamp(Math.floor(finite(capacity, 384)), 1, 2048);
     this.disposed = false; this.ordinal = 0; this.reducedMotion = false; this.reducedFlash = false;
     this.event = { kind: 0, x: 0, y: 0.5, z: 0, dx: 1, dz: 0, radius: 10, seed: 0, strength: 1, life: 0.8,
-      halfAngle: 0.56, halfWidth: 52, age: 0 };
+      halfAngle: 0.56, halfWidth: 52, age: 0, environment: null };
     this.geometry = streakGeometry(); this.matrix = new THREE.Matrix4();
     this.material = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false,
       blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false });
@@ -182,7 +256,12 @@ export class ForceParticleFlow {
       float tipAA = max(fwidth(vForceUv.x), 0.025);
       coverage *= smoothstep(0.0, tipAA, vForceUv.x) * (1.0 - smoothstep(1.0-tipAA, 1.0, vForceUv.x));
       diffuseColor.a *= coverage;
-      diffuseColor.rgb *= 0.48 + 0.52 * (1.0 - across * across);`);
+      diffuseColor.rgb *= 0.48 + 0.52 * (1.0 - across * across);
+      // Small hot leading core, coloured cooling tail: the parcel reads as a transported
+      // droplet of heat rather than a uniform streak. uv.x runs tail(0) to head(1).
+      float parcelHead = smoothstep(0.15, 0.80, vForceUv.x);
+      diffuseColor.rgb *= 0.56 + 0.92 * pow(parcelHead, 1.8);
+      diffuseColor.b *= 1.0 + 0.30 * (1.0 - parcelHead);`);
     mat.needsUpdate = true;
     this.renderer.frustumCulled = false; this.batch.frustumCulled = false;
     // Warm all particle-owned memory once; bursts recycle these objects without allocations.
@@ -193,7 +272,7 @@ export class ForceParticleFlow {
   }
   get live() { return this.disposed ? 0 : this.system.particleNum; }
   emit({ kind, x, z, y = 0.5, dx = 1, dz = 0, radius = 10, seed = 0, count = 8, life = 0.8, strength = 1,
-    halfAngle = 0.56, halfWidth = 52, age = 0, deferUpload = false } = {}) {
+    halfAngle = 0.56, halfWidth = 52, age = 0, deferUpload = false, environment = null } = {}) {
     const code = KINDS.indexOf(kind);
     if (this.disposed || code < 0 || !Number.isFinite(x) || !Number.isFinite(z) || !(strength > 0)) return 0;
     const n = Math.min(this.capacity - this.live, Math.max(0, Math.floor(finite(count))));
@@ -207,6 +286,7 @@ export class ForceParticleFlow {
     event.age = Math.max(0, finite(age));
     event.halfAngle = clamp(finite(halfAngle, 0.56), 0.001, 1.55);
     event.halfWidth = Math.max(0.001, finite(halfWidth, 52));
+    event.environment = environment;
     this.ordinal = 0;
     const first = this.live;
     this.system.spawn(n, this.system.emissionState, this.matrix);
@@ -245,6 +325,9 @@ export class ForceParticleFlow {
     for (let i = 0; i < this.live; i++) {
       const p = this.system.particles[i]; p.forceFlow[1] += dx; p.forceFlow[3] += dz;
       p.position.x += dx; p.position.z += dz;
+      // Frame-local contact snapshots reproject with the trajectory origins they belong to.
+      const n = p.forceContactCount | 0, c = p.forceContacts;
+      for (let j = 0; j < n; j++) { c[j * CONTACT_STRIDE] += dx; c[j * CONTACT_STRIDE + 1] += dz; }
     }
     // Upload without advancing lifecycle or transport, including paused origin shifts.
     this.batch.update();

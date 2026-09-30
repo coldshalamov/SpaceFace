@@ -2984,7 +2984,7 @@
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
       "tris": 11128,
-      "bytes": 844472,
+      "bytes": 844316,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",

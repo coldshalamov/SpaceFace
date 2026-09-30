@@ -176,7 +176,6 @@ export function createCombatKernel(ctx, options = {}) {
       invalidateSortedCache();
       onEntityGone(payload);
     }));
-    subscriptions.push(bus.on('physics:attachmentBroken', (payload) => attachments.onPhysicsBreak(payload)));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
     subscriptions.push(bus.on('combat:routeDamage', (payload) => routeDamage(payload || {})));
     subscriptions.push(bus.on('combat:repairSubsystem', (payload) => {

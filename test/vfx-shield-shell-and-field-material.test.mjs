@@ -202,7 +202,7 @@ test('field surfaces carry authored member material in ALREADY-RESERVED floats',
 
   // Weapon sources must be untouched: their 24-float descriptor never reaches the lifecycle branch,
   // and the shader reads the two material channels as neutral when it is not on that branch.
-  assert.match(SURFACE_VERTEX, /vMaterial=vec4\(cycle \? iBehavior\.w : 1\.0, cycle \? iPivot\.z : 0\.0, cycle \? iPivot\.w : 1\.0, 0\.0\);/,
+  assert.match(SURFACE_VERTEX, /vMaterial=vec4\(cycle \? iBehavior\.w : 1\.0, cycle \? floor\(iPivot\.z\) : 0\.0, cycle \? iPivot\.w : 1\.0, 0\.0\);/,
     'a legacy weapon strip resolves to a smooth, fully hot surface');
   assert.equal(SURFACE_VERTEX.includes('`'), false, 'no backtick inside the shader source');
 

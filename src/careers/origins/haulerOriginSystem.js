@@ -99,10 +99,8 @@ export function createHaulerOriginSystem() {
         if (result.ok) emitAll(this.bus, result.intents);
       });
 
-      bus.on('career:hauler:checkSpread', () => {
-        const result = evaluateStepSignal(this.state, { kind: 'market_spread' }, simTimeOf(this.state));
-        if (result.ok) emitAll(this.bus, result.intents);
-      });
+      // The spread verdict derives only from recorded buy/sell legs, so _onTrade (which
+      // evaluates market_spread on every economy:tradeCompleted) is the sole refresh path.
     },
 
     newGame() {

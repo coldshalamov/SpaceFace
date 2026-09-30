@@ -921,8 +921,10 @@ export const crucibleDraftScreen = {
     }
 
     this._sub.textContent = offers.length
-      ? (shop ? (wave === 0 ? 'Prepare for round 1. Inspect equipment, fit your ship, then launch.' : `Round ${wave} cleared. Repair, upgrade, or save for your next round.`)
-        : `Wave ${wave} cleared. Choose a new weapon.`)
+      ? (wave === 0
+        ? 'Fit out before round 1 — the purse is already open.'
+        : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+          : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`;
 
     // INF-060: a purchase rebuilds the cards; the player stays on the same offer instead of
@@ -1051,8 +1053,16 @@ export const crucibleDraftScreen = {
   _paintReading(context, offer) {
     const r = this._reading;
     if (!r || !offer) return;
-    // A refit or free hull change can leave both id and wallet unchanged. Re-read its fit.
+    // The key must carry every field the painted copy derives from — a free demo or a free
+    // hull switch moves none of offer.id/credits, and a refit can leave both unchanged while
+    // the jig goes stale, so the fit rides the key too.
+    const fit = activeLoadout(context);
+    const fitKey = (fit.hullId || '') + '|' + fit.fittings.join(',');
+    if (r.offerId === offer.id && r.credits === context.state?.run?.credits
+      && r.demoed === offer.demoed && r.purchased === offer.purchased
+      && r.available === offer.available && r.fitKey === fitKey) return;
     r.offerId = offer.id;
+    r.fitKey = fitKey;
     r.credits = context.state?.run?.credits;
     r.demoed = offer.demoed;
     r.purchased = offer.purchased;

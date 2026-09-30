@@ -109,7 +109,9 @@ const ENERGY_FRAGMENT = /* glsl */`
 
     vec3 color = mix(uColorA, uColorB, clamp(turbulence * 0.85 + fresnel * 0.35, 0.0, 1.0));
     color += vec3(1.0, 0.92, 0.74) * pow(coreMask, 3.0) * 1.8;
-    float radiance = uIntensity * pulse * (0.35 + density * 1.8);
+    // Lift only folds that are both dense and hot.
+    float crest = smoothstep(0.55, 0.95, density) * smoothstep(0.60, 0.95, turbulence);
+    float radiance = uIntensity * pulse * (0.35 + density * 1.8) * (1.0 + 0.30 * crest);
     float alpha = density * uOpacity;
 
     if (uDepthEnabled > 0.5) {
@@ -418,7 +420,10 @@ const PLUME_FRAGMENT = /* glsl */`
     // thruster clips, so the mildest object in a game about force was the engine. The extra term is
     // gated on uBoost so a cruising ship still reads calm and only real acceleration burns white —
     // the plume becomes a throttle gauge instead of a constant blue smudge.
-    float radiance = uIntensity * pulse * (0.28 + density * 2.15 + heat * 0.42 + uBoost * density * 0.85);
+    // Lift only flame that is both dense and hot.
+    float crest = smoothstep(0.55, 0.95, density) * smoothstep(0.55, 1.05, heat);
+    float radiance = uIntensity * pulse * (0.28 + density * 2.15 + heat * 0.42 + uBoost * density * 0.85)
+      * (1.0 + 0.30 * crest);
     float alpha = density * uOpacity;
 
     if (uDepthEnabled > 0.5) {

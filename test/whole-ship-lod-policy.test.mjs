@@ -12,9 +12,12 @@ import {
   canInstallWholeShipLodFamily,
   hasWholeShipLodFamily,
   lodFileFromFamily,
+  resolveLiveWholeShipLodTransition,
   resolveWholeShipLodTransition,
+  selectPrewarmLodLevel,
   selectSpawnLodLevel,
   shouldCommitWholeShipLodLoad,
+  WHOLE_SHIP_LOD_RUNTIME_DEMOTION,
 } from '../src/render/wholeShipLodPolicy.js';
 
 const FAMILY_DEF_IDS = [
@@ -171,4 +174,25 @@ test('a resident whole-ship lod swap keeps the resolver level inside the hystere
   assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod0');
   assert.equal(boundary.userData.lod, lod0Root.userData.lod);
   assert.equal(boundary.userData.lod.resolve(110), 'lod0');
+});
+
+test('OWNER 2026-09-29: the live controller never admits a second LOD file on the glass', () => {
+  // The frame is sacred: a top-down game has nothing far enough to justify loading a separate
+  // model for a ship the player is already looking at. The pure resolver still says 'load' (the
+  // catalog and tools keep it); the live wrapper turns that into 'keep' so the ship stays on the
+  // body its admission built. Resident-level swaps stay instant and allowed.
+  assert.equal(WHOLE_SHIP_LOD_RUNTIME_DEMOTION, false);
+  const far = resolveLiveWholeShipLodTransition('lod0', 'lod2', { pendingLevel: null, residentReady: false });
+  assert.equal(far.action, 'keep');
+  assert.equal(far.level, 'lod0');
+  assert.equal(far.pendingLevel, null, 'nothing may be left pending — no load was scheduled');
+  const resident = resolveLiveWholeShipLodTransition('lod2', 'lod0', { residentReady: true });
+  assert.equal(resident.action, 'swap', 'an already-resident level still swaps in (instant, loads nothing)');
+  const detached = resolveLiveWholeShipLodTransition('lod0', 'lod2', { attached: false });
+  assert.equal(detached.action, 'drop');
+  // Prewarm decodes the body admission builds (LOD0), whatever the projected size.
+  assert.equal(selectPrewarmLodLevel(200), 'lod0');
+  assert.equal(selectPrewarmLodLevel(80), 'lod0');
+  assert.equal(selectPrewarmLodLevel(20), 'lod0');
+  assert.equal(selectPrewarmLodLevel(0), 'lod0');
 });

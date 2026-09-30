@@ -13755,6 +13755,17 @@ export const render = {
       if (holdFirstFlightBuffers || holdLiveBuildBuffers) {
         const data = m.userData || (m.userData = {});
         data.geometryPending = true;
+        // OWNER 2026-09-29 ("asteroids on screen blip gone and come back"): a dormant field row
+        // is never bound to the presentation world, so the bound-roots loop — the only other
+        // enqueue site — never handed it to the residency lane. Its geometryPending stayed true
+        // for as long as it drifted; the moment the player shot, rammed or mined it, promotion
+        // bound it and the submit gate hid it (entityMeshVisibility geometryPending) until the
+        // lane finally ran — the blink. Hand every held live build to the lane at build time,
+        // bound or not: the lane dedupes, stamps residency present-sliced, and pools the rock.
+        if (holdLiveBuildBuffers && !holdFirstFlightBuffers
+            && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt)) {
+          void this._liveGeometryAdmissions?.enqueue(e, m);
+        }
       } else {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       }
@@ -13868,11 +13879,20 @@ export const render = {
       ? this.cam.composition()
       : null;
     const liveZoom = composition && Number.isFinite(composition.zoom) ? composition.zoom : NaN;
-    const zoom = Number.isFinite(liveZoom)
+    const baseZoom = Number.isFinite(liveZoom)
       ? liveZoom
       : (Number.isFinite(cameraState.zoom)
         ? cameraState.zoom
         : Math.max(80, camObj && Number.isFinite(camObj.position && camObj.position.y) ? Math.abs(camObj.position.y) : 88));
+    // The clearance glide (cameraGlide.js) dollies the camera up and back along its own viewing
+    // ray by clearanceScale ≥ 1 — the picture on the table is exactly the picture of
+    // zoom × scale. Every consumer of liveZoom (the readable glass, the submit cull box, the
+    // residency prefetch/evict discs) must see that wider frame, or the rocks at the frame edge
+    // pop out while the shot lifts over a station and pop back as it settles.
+    const glideScale = Number.isFinite(cameraState.clearanceScale) && cameraState.clearanceScale > 1
+      ? cameraState.clearanceScale
+      : 1;
+    const zoom = baseZoom * glideScale;
     const tilt = Number.isFinite(cameraState.tilt) ? cameraState.tilt : 60;
     const fov = camObj && Number.isFinite(camObj.fov)
       ? camObj.fov
@@ -16303,7 +16323,7 @@ export const render = {
     // hide→render→restore guard here so a mid-link program cannot stall either presented path.
     const guard = this._unreadyDrawableGuard
       || (this._unreadyDrawableGuard = createUnreadyDrawableGuard(this.renderer));
-    if (route === POST_PROCESS_ROUTE.GRAPH) {
+    if (route === POST_PROCESS_ROUTE.GRAPH && this._renderGraph) {
       const frame = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
       frame.time = Number.isFinite(time) ? time : 0;
       guard.hide(scene);
@@ -16313,7 +16333,7 @@ export const render = {
         guard.restore();
       }
     }
-    if (route === POST_PROCESS_ROUTE.BLOOM) {
+    if (route === POST_PROCESS_ROUTE.BLOOM && this.bloom) {
       return this.bloom.render(scene, camera);
     }
     this._postNativeFallbackReason = this._contextLost === true
@@ -16330,12 +16350,15 @@ export const render = {
   },
 
   _compilePostRoute(route, subject, camera, lightingScene, options = {}) {
-    if (route === POST_PROCESS_ROUTE.GRAPH) {
+    // The route is resolved before an async gap (save/Continue admission, prewarm); the post
+    // chain it names can be disposed meanwhile. A stale route compiles through the native
+    // target — the scene programs are what the warm is for, not the disposed pass.
+    if (route === POST_PROCESS_ROUTE.GRAPH && this._renderGraph) {
       return compileScenePipelinesForRenderTarget(
         this.renderer, this._renderGraph.sceneTarget, subject, camera, lightingScene, options,
       );
     }
-    if (route === POST_PROCESS_ROUTE.BLOOM) {
+    if (route === POST_PROCESS_ROUTE.BLOOM && this.bloom) {
       return this.bloom.compileScenePipelines(subject, camera, lightingScene, options);
     }
     return compileScenePipelinesForRenderTarget(

@@ -436,12 +436,12 @@ export async function clauseSpilledCargo(seed, { stimulus = true } = {}) {
   //   arrived  — that NPC physically reached the pods. Also depends on how far the yard is.
   const podIds = new Set(pods.map((p) => p.id));
   // A hull that physically TAKES a spill pod is the world reaching the cargo — it is not a
-  // passer-by. Ambient NPC pickup collection is landed design (pickupAcceptance keeps a distinct
-  // NPC/drone collector eligible during the player's own embargo), and since 80ec7e10b (Helios
-  // activity pocket) the seed-4242 ambient cast routes an express liner through this spill at
-  // ~4.3 s: the pods are consumed one tick after the world's own salvor claim stamp, long before
-  // the dispatched scavenger (~19-22 s in the pre-pocket cast) can fly the distance. The take is
-  // counted as the arrival in the watch below; the scavenger/job/targeted path is unchanged.
+  // passer-by. Since D92 (src/core/pickupCustody.js) a custody pod is contact-collectable only by
+  // its owner, the salvor holding the claim, an outlaw, or the player: the seed-4242 express liner
+  // that used to sweep these pods at ~4.3 s (80ec7e10b, Helios activity pocket) now passes through
+  // and the pods stay for the dispatched cutter. A take here is therefore always a claim-holding
+  // salvor or a scavenger reaching the cargo, and is counted as the arrival in the watch below;
+  // the scavenger/job/targeted path is unchanged.
   const podTakers = new Map();
   bus.on('pickup:collected', (p) => {
     if (!p || !podIds.has(p.pickupId)) return;

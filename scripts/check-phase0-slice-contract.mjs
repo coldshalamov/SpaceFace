@@ -203,14 +203,17 @@ for (const type of Object.keys(envelope.phase0ObservedTraceCounts)) {
 }
 assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 17, 'expected telemetry should pin observed combat fire count');
 // The accepted 2026-09-04 contact-episode record in the canonical envelope moved hits/damage
-// 6 -> 4 and presentation cues 8 -> 6. These assertions consume that accepted golden; they do
-// not re-record or normalize telemetry here.
-assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 4, 'expected telemetry should pin observed projectile hit count');
-assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 4, 'expected telemetry should pin observed combat damage count');
+// 6 -> 4 and presentation cues 8 -> 6. The 2026-09-29 record under the landed physics packages
+// (C..F) moved hits/damage 4 -> 1: the scripted aim tape rides the player hull, whose replayed
+// line now drifts a few WU under the stiffened solver, and only the drift-widened wreck sits in
+// the lane. These assertions consume that accepted golden; they do not re-record it.
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 1, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 1, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 // 2026-09-25 3d6491e1e (D46) restored the authored 47-A tether warn arc, which adds one presentation cue in the
 // accepted golden (6 -> 7); the pin follows the accepted record, it does not re-record it.
-assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 7, 'expected telemetry should pin SG-08 presentation cue count');
+// 2026-09-29: same physics-package re-record as above — cue and cueApplied track the hit fanout, 7 -> 4.
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 4, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');

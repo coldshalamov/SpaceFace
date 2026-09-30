@@ -654,4 +654,50 @@ rescale. Edge-shrink still hides the off-screen seam. Lock: `npm run check:paral
 `checkWrapCellFrozenAcrossZoom`). Do not re-introduce runtime tile stepping or
 `uParallaxAuthoredTile` scaling.
 
+## 15. "The ship is a box and then it's a ship" / "asteroids on screen blip out and back" (fixed 2026-09-29)
+
+**Symptom:** A ship on the glass shows as a flat-shaded silhouette (or, before its record lands, a
+translucent flat diamond), becomes the real ship, then visibly changes body again a moment later.
+Rocks the player is looking at vanish for a few presents and return — most often the rock just
+shot, rammed or mined, or every rock of one kind at once. Rocks at the frame edge pop while the
+camera lifts over a station.
+
+**Causes (four, all in `src/render/`):**
+1. *Whole-ship separate-file LOD swap.* `installWholeShipLodFamilyController` let the per-frame
+   selector (`lod.js`: lod0→lod1 below 95 px projected radius) demote every non-player ship the
+   frame after its full body committed — at the default zoom (144) a 14 WU hull projects ~90 px,
+   so LOD1 was the *normal* state and every ship decoded, composed, compiled and swapped a second
+   GLB on screen. **Fix:** `WHOLE_SHIP_LOD_RUNTIME_DEMOTION = false` (`wholeShipLodPolicy.js`);
+   the live controller routes through `resolveLiveWholeShipLodTransition` ('load' → 'keep') and
+   prewarm decodes LOD0 (`selectPrewarmLodLevel`) because admission always builds LOD0. In-file
+   LOD toggles and HLOD greeble hiding still shave detail when zoomed out; they load nothing.
+2. *Dormant rock promotion.* A field row built mid-flight got `geometryPending = true`
+   (renderer `_drainMeshBuildQueue`) but unbound rows were never handed to the live geometry
+   admission lane (only the bound-roots loop enqueued). Promotion (`promoteAsteroidFieldRock`)
+   bound it, and `shouldSubmitEntityMesh` hid it until the lane finally ran. **Fix:** held live
+   builds enqueue at build time, bound or not.
+3. *Pool chunk growth.* `asteroidInstancePool.ensureCapacity` disposed the drawing InstancedMesh
+   and published a replacement that sat hidden behind the pipeline-admission latch (bloom's
+   unready-drawable hide) — every rock of that kind blanked together. **Fix:** the outgoing
+   batch stays as `bucket.retiring` and keeps drawing its last matrices until the replacement's
+   `pipelinesPending` clears (`settleRetiringBucketMesh`).
+4. *Glide dolly blind spot.* `cameraGlide.js` scales the camera offset by `clearanceScale`, but
+   `_entityViewCullBounds` read the composition zoom, so the readable glass, the submit cull box
+   and the residency discs under-covered the frame by that factor. **Fix:** `zoom × clearanceScale`.
+
+Also: steady flight's serial admission lane (concurrency 1) let one station/place job hold every
+ship behind it for minutes (ledger D48, the 82 MB trade hub). `steadyFlightShipCanPassBusyPlace`
+now lets one on-glass/combatant ship ride beside one non-ship job (never two ship composes).
+
+**Locks:** `test/whole-ship-lod-policy.test.mjs` (live transition never 'load'),
+`test/perf-submit-lod-archetype.test.mjs` (prewarm = LOD0), `test/asteroid-pool-admission.test.mjs`
+(growth bridge). Measure with `node scripts/probe-frame-solid.mjs` on a QUIET host — another
+lane's SwiftShader `capture-ui-matrix` run pins the CPU for hours and every browser boot then
+times out (the probe cannot tell that from a product defect).
+
+**Probe trap:** `render._cameraClearanceAt.roofAt(x, z)` takes RENDER-LOCAL coordinates (the
+chase-camera frame membrane re-origins the scene); `scripts/probe-camera-clearance.mjs` used to
+pass sim positions and reported "no roof" for a station that was right there. Cross
+`render._frameMembrane.toLocal` first.
+
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*

@@ -373,6 +373,10 @@ vec4 fieldVolume(){
   // Mature colliding streams develop secondary knots; their cadence is slower
   // than ignition and cannot appear in the build stage.
   hot+=vResponse.x*(.16*ignition*secondary)+vResponse.y*(.35+.40*ignition)*shoulder;
+  // Uneven crest pulses ride each field's own clock; uFlash gates the amplitude.
+  float crestPulse=filteredWave(t*5.0-flow*direction*1.15+phase+v*2.4)
+    *(0.30+0.70*filteredWave(t*1.9-flow*0.60+phase*1.7+2.1));
+  hot*=1.10+0.75*uFlash*crestPulse;
   float fracture=1.0;
   if(vCycle.y>0.0){
     float tear=0.55*filteredWave(t*17.0+v*3.0+phase)+0.45*filteredWave(t*9.0-v*5.0+phase*1.7);
@@ -387,13 +391,18 @@ vec4 fieldVolume(){
   // A substantial coloured body remains below the brightest folds; this is not a
   // white wire with a bloom halo. The open channels and varied section normals give depth.
   vec3 emission=vTint.rgb*(body*(0.12+0.18*heat)+hot*heat*uFlash*3.0)
-    +vec3(0.78,0.88,1.0)*pow(shoulder*0.58,3.0)*ignition*heat*uFlash*0.70;
+    +vec3(0.80,0.92,1.0)*(pow(shoulder*0.58,3.0)*ignition*(0.70+1.15*crestPulse)
+      +vResponse.y*pow(shoulder,3.0)*1.10)*heat*uFlash;
   // Hot folds carry light through thin material once, rather than disappearing
   // under a second alpha multiply. Coverage stays substantial only inside the
   // broad transported crest; background ships remain visible through the wakes.
   float crestCoverage=clamp(hot*0.14,0.0,0.30)*(0.52+0.48*innerPresence);
   absorbed=min(0.64,absorbed+crestCoverage);
-  vec3 color=body*0.22+emission/max(0.50,absorbed*2.4);
+  // Emission was divided down by this fragment's own coverage, so hot crests inside dense folds
+  // paid for the same density twice. Bounded compensation restores them; alpha still reads the
+  // uncompensated lifecycle envelope.
+  float opticalComp=min(3.0,1.0/max(0.22,absorbed));
+  vec3 color=body*0.22+emission*opticalComp;
   float alpha=edge*tips*reveal*vTint.a*vFront*fracture*absorbed;
   return vec4(color,alpha);
 }
@@ -439,7 +448,7 @@ void main(){
   float shadowPool=1.0-smoothstep(0.20,0.55,groove);
   vec3 pigment=mix(vTint.rgb,vTint.rgb*vec3(0.30,0.24,0.68),shadowPool*0.78);
   pigment=mix(pigment*vec3(0.46,0.50,0.60)+vec3(0.030,0.034,0.042),pigment,clamp(heat,0.0,1.0));
-  vec3 emission=vTint.rgb*hot*1.5+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*0.40;
+  vec3 emission=vTint.rgb*hot*(boundary?1.5:1.9)+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*(boundary?0.40:0.50);
   float coverage=boundary?0.36+0.5*max(fold,rim):0.57+0.43*max(fold,rim);
   vec3 color=pigment*body+emission;
   float alpha=edge*tips*reveal*vTint.a*vFront*coverage;

@@ -8,6 +8,10 @@ import { ciMatrixSourceCommand } from './lib/ciGateGraph.mjs';
 
 const DEFAULT_TIMEOUT_MS = 180000;
 const LONG_TIMEOUT_MS = 420000;
+const COMMAND_TIMEOUT_OVERRIDES_MS = {
+  'probe-flight-visual': 720000,
+  'probe-ship-visual-stability': 660000,
+};
 const TAIL_LIMIT = 1600;
 
 const SMOKE_COMMANDS = [
@@ -178,6 +182,13 @@ export function formatCiReportMarkdown(report) {
         || r.tail || r.stderr || r.stdout || '';
       lines.push(String(tail).trim() || '(no output captured)');
       lines.push('```');
+      if (r.failureLines) {
+        lines.push('');
+        lines.push('Failure lines:');
+        lines.push('```');
+        lines.push(r.failureLines);
+        lines.push('```');
+      }
       lines.push('');
     }
   } else {
@@ -202,9 +213,22 @@ export function buildCommandMatrix(checkCommand = '', scripts = {}) {
     const occurrence = (seenIds.get(baseId) || 0) + 1;
     seenIds.set(baseId, occurrence);
     const id = occurrence === 1 ? baseId : `${baseId}-${occurrence}`;
-    const timeoutMs = /(?:^|:)(?:long|browser|electron)(?:$|:)|flight:clean|check:art\b|check:bundle\b|playwright|\b(?:probe|capture|soak|performance)\b/i.test(command)
-      ? LONG_TIMEOUT_MS
-      : DEFAULT_TIMEOUT_MS;
+    // Timeout class is judged on the RESOLVED command, not the npm alias: `npm run check:x` hides
+    // what it runs, so a probe/capture script reached through package.json would silently take the
+    // default 180s and die mid-proof on contended software-GL hosts (observed: the sector-arrival
+    // probe printed PASS at ~360s wall, killed at 180s). Fall back to the alias itself when the
+    // script is missing so an opaque command keeps its declared class.
+    const resolvedCommand = npmScript && typeof scripts[npmScript] === 'string'
+      ? scripts[npmScript]
+      : command;
+    // Per-command overrides: a few probes legitimately outrun the 420s LONG class on shared
+    // software-GL runners (probe-flight-visual's five clean desktop+mobile rounds measure
+    // ~110s each; probe-ship-visual-stability's resolve window alone is 240s plus boot/flight
+    // budgets) — 2026-09-30 both observed killed mid-proof at the cap, not failing.
+    const timeoutMs = COMMAND_TIMEOUT_OVERRIDES_MS[id]
+      ?? (/((?:^|:)(?:long|browser|electron)(?:$|:)|flight:clean|check:art\b|check:bundle\b|playwright|\b(?:probe|capture|soak|performance)\b)/i.test(resolvedCommand)
+        ? LONG_TIMEOUT_MS
+        : DEFAULT_TIMEOUT_MS);
     return cmd(id, command, timeoutMs);
   });
 }
@@ -473,6 +497,7 @@ export function createCommandResult({
     classification,
     artifactPath,
     structured: summarizeStructured(parsedStructured),
+    failureLines: extractFailureLines(stdout),
     stdoutTail: trimTail(stdout),
     stderrTail: trimTail(stderr),
   };
@@ -903,6 +928,22 @@ function balancedObject(text) {
     }
   }
   return null;
+}
+
+// The report only prints the tail of a failing command's output, which clips the actual
+// TAP `not ok` line on verbose suites. Surface every failure marker plus its yaml block so
+// the markdown names what failed instead of just how many.
+function extractFailureLines(text, { maxLines = 80 } = {}) {
+  const lines = String(text || '').split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length && out.length < maxLines; i++) {
+    if (!/^\s*not ok\b/.test(lines[i]) && !/^\s*(FAIL|failure):/i.test(lines[i])) continue;
+    for (let j = i; j < lines.length && out.length < maxLines; j++) {
+      out.push(lines[j]);
+      if (/^\s*\.\.\.\s*$/.test(lines[j]) || j - i >= 14) break;
+    }
+  }
+  return out.join('\n');
 }
 
 function trimTail(text) {

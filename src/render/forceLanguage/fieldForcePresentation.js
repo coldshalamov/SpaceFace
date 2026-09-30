@@ -206,6 +206,7 @@ export class FieldForcePresentation {
         p.seed=s.character+Math.imul(pulse,2654435761)/4294967296;
         p.count=s.field.engaged?8:5;p.strength=s.field.engaged?1.12:.85;
         p.life=Math.min(.8,this.cycle.release*.85);
+        p.environment=s.environment;
         this.particles.emit(p);
       }
     }

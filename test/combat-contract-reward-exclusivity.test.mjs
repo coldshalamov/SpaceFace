@@ -292,23 +292,23 @@ test('pinned-only mission ownership survives saved world-record rematerializatio
   run.sim.dispose();
 });
 
-test('ambient player kill keeps its authored bounty and loot', () => {
+test('ambient hostile player kill pays only through the collectible shard burst', () => {
   const run = bootRewardScenario({ missionTarget: false });
   const repeat = bootRewardScenario({ missionTarget: false, preSpawnCount: 3 });
 
-  assert.equal(run.state.player.credits, 200);
-  assert.deepEqual(run.creditEvents.map((event) => event.reason), ['bounty', 'loot']);
-  assert.equal(run.lootDrops.length, 2);
+  // AC-01: death does not grant; collection does. A shard-owned hostile kill pays no instant
+  // bounty or loot credits, emits no authored drop or authored pickup, and publishes bountyCr:0
+  // so the "+N CR" toast never promises money that only exists inside the burst.
+  assert.equal(run.state.player.credits, 0);
+  assert.deepEqual(run.creditEvents, []);
+  assert.equal(run.killedEvents[0]?.bountyCr, 0,
+    'a shard-owned kill publishes no bounty figure the floater/toast would promise');
+  assert.equal(run.lootDrops.length, 1, 'the shard burst is the only loot:drop');
+  assert.equal(authoredDropsOf(run).length, 0, 'authored loot is reserved by the shard owner');
+  assert.equal(authoredPickupReceipts(run).length, 0, 'authored pickups are reserved by the shard owner');
 
-  const authoredDrop = run.lootDrops.find((drop) => drop.items?.some((item) => item.id));
-  const repeatAuthoredDrop = repeat.lootDrops.find((drop) => drop.items?.some((item) => item.id));
   const shardDrop = shardDropsOf(run)[0];
   const repeatShardDrop = shardDropsOf(repeat)[0];
-  assert.deepEqual(authoredDrop?.items, [{ id: 'cmdty_ore', qty: 1 }]);
-  assert.deepEqual(authoredDrop, repeatAuthoredDrop,
-    'authored loot is stable across live entity-id remaps for one durable victim identity');
-  assert.deepEqual(authoredPickupReceipts(run), authoredPickupReceipts(repeat),
-    'authored pickup placement uses the same identity-bound reward stream');
   assert.ok(shardDrop, 'live lootShards listener emits through loot:drop');
   assert.equal(shardDrop.credits, undefined, 'shards never mint credits directly');
   assert.equal(materialItemsOf(shardDrop.items).length, 6, 'light fighter burst keeps a visible material spray');
@@ -329,7 +329,7 @@ test('ambient player kill keeps its authored bounty and loot', () => {
   assert.ok(commodityValue(shardDrop.items) <= 1400, 'burst base commodity value is at most 1400cr');
 
   const pickups = run.state.entityList.filter((entity) => entity.type === 'pickup');
-  assert.equal(pickups.length, 8, 'seven shard pickups coexist with the authored loot pickup');
+  assert.equal(pickups.length, 7, 'the shard pickups are the only pickups the kill spawns');
   assert.equal(pickups.filter((entity) => (
     entity.data?.commodityId === 'cmdty_scrap_metal'
       || entity.data?.commodityId === 'cmdty_salvage_electronics'
@@ -361,8 +361,13 @@ test('hostile craft contact death enters the same multi-pickup reward fountain',
   assert.ok(shardDrop, 'hostile collision death remains reward eligible');
   assert.equal(shardDrop.items.length, 7, 'the accepted kill creates the bounded visible burst');
   assert.equal(run.state.entityList.filter((entity) => entity.type === 'pickup').length, 7);
-  assert.equal(run.state.entityList.filter((entity) => entity.type === 'wreck').length, 1,
-    'instant collision rewards preserve the durable wreck salvage route');
+  const wrecks = run.state.entityList.filter((entity) => entity.type === 'wreck');
+  assert.equal(wrecks.length, 2,
+    'a slam kill takes the authored fracture route: one hull becomes two seam pieces');
+  assert.ok(wrecks.every((entity) => entity.data?.fracturePiece && entity.data?.fractureSeamId),
+    'both wrecks are authored fracture pieces of the killed hull');
+  assert.equal(new Set(wrecks.map((entity) => entity.data.fractureSeamId)).size, 1,
+    'the two pieces come off one catalog seam');
   run.sim.dispose();
 });
 
@@ -434,12 +439,15 @@ test('authored combat loot follows current run seed and saved durable victim ide
   const originalSeed = 0x47a;
   const nextSeed = 0x47b;
   const stableIdentity = 'authored-reward-durable-victim';
-  const original = bootRewardScenario({ seed: originalSeed, stableIdentity });
-  const freshNext = bootRewardScenario({ seed: nextSeed, stableIdentity });
+  // The authored bounty/loot path stays live for NON-hostile player kills: hostile kills are
+  // shard-owned (AC-01), so pinning the seed/identity contract requires neutral victims.
+  const original = bootRewardScenario({ seed: originalSeed, stableIdentity, hostile: false });
+  const freshNext = bootRewardScenario({ seed: nextSeed, stableIdentity, hostile: false });
 
   const changed = bootRewardScenario({
     seed: originalSeed,
     stableIdentity,
+    hostile: false,
     deferKill: true,
   });
   changed.state.meta.seed = nextSeed;
@@ -457,6 +465,7 @@ test('authored combat loot follows current run seed and saved durable victim ide
   const loaded = bootRewardScenario({
     seed: nextSeed,
     stableIdentity,
+    hostile: false,
     deferKill: true,
   });
   const decoy = loaded.sim.spawn({
