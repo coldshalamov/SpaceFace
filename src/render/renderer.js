@@ -85,6 +85,8 @@ import {
   waitForOpeningCompositionSettled,
   retryAuthoredPartLibrary,
   retryFailedAuthoredAdmission,
+  authoredAdmissionRetriableStatus,
+  AUTHORED_ADMISSION_RETRY_MAX,
   syncAuthoredInstancePools,
   warmRenderPackageShipPool,
   poolWitnessPalettesForState,
@@ -157,6 +159,7 @@ import {
   enemyHullDecodeKey,
   entityMatchesWaveHullRunway,
   isPresentationLedgerRow,
+  ledgerAwarePos,
   makeWaveHullDecodeStub,
   noteWaveHullRunwayKeys,
   resolveWorldPresentationEntity,
@@ -893,25 +896,9 @@ function entityIsExplicitRenderFocus(entity, state) {
   return targetId != null && entity.id === targetId;
 }
 
-// Shelf-time pos for dormant ledger rows freezes at shelf; the sim's own freshness sweep
-// catches them up the same way — itinerary when the row carries an intent, ballistic
-// otherwise. Returns a shared scratch — callers must consume it before the next call.
-const _ledgerPredPos = { x: 0, z: 0 };
-function ledgerAwarePos(entity, state) {
-  if (!isPresentationLedgerRow(entity) || !Number.isFinite(entity.lastExactT)) return entity.pos;
-  const simTime = Number.isFinite(state && state.simTime)
-    ? state.simTime
-    : ((state && state.tick) | 0) / 60;
-  const drift = Math.max(0, simTime - entity.lastExactT);
-  if (!(drift > 0)) return entity.pos;
-  if (entity.intent) {
-    const along = itineraryPositionInto(entity.intent, simTime, _ledgerPredPos);
-    if (along) return along;
-  }
-  _ledgerPredPos.x = (Number(entity.pos.x) || 0) + (Number(entity.vel && entity.vel.x) || 0) * drift;
-  _ledgerPredPos.z = (Number(entity.pos.z) || 0) + (Number(entity.vel && entity.vel.z) || 0) * drift;
-  return _ledgerPredPos;
-}
+// Shelf-time pos for dormant ledger rows freezes at shelf; the shared ledgerAwarePos in
+// presentationSources catches them up (itinerary when the row carries an intent, ballistic
+// otherwise) — every queue-side and render-side glass verdict reads the same projection.
 
 function entityWithinPlayerRadius(entity, state, radius) {
   if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
@@ -1050,24 +1037,68 @@ function predictionVel(entity, state) {
   return { x: Number(vel && vel.x) || 0, z: Number(vel && vel.z) || 0 };
 }
 
+// An itinerary row's schedule — not its current-leg velocity — is its trajectory. Sampling
+// itineraryPositionInto over the horizon prices pre-departure waits and post-arrival stops
+// exactly the way the catch-up sweep will play them; straight-line extrapolation at the
+// current leg's cruise would over-predict both (and under-predict a leg ending inside the
+// window). Non-itinerary rows keep the closed-form quadratic.
+const _itineraryGlassScratch = { x: 0, z: 0 };
+
+function itineraryTimeToGlassSeconds(entity, env, simTime, radius, horizonS) {
+  let prevT = 0;
+  for (let i = 1; i <= 8; i += 1) {
+    const t = (horizonS * i) / 8;
+    const pos = itineraryPositionInto(entity.intent, simTime + t, _itineraryGlassScratch);
+    if (!pos) continue;
+    const dx = pos.x - (env.anchorX + env.pvx * t);
+    const dz = pos.z - (env.anchorZ + env.pvz * t);
+    if (dx * dx + dz * dz <= radius * radius) {
+      let lo = prevT;
+      let hi = t;
+      for (let j = 0; j < 6; j += 1) {
+        const mid = (lo + hi) / 2;
+        const probe = itineraryPositionInto(entity.intent, simTime + mid, _itineraryGlassScratch);
+        if (!probe) break;
+        const mx = probe.x - (env.anchorX + env.pvx * mid);
+        const mz = probe.z - (env.anchorZ + env.pvz * mid);
+        if (mx * mx + mz * mz <= radius * radius) hi = mid;
+        else lo = mid;
+      }
+      return hi;
+    }
+    prevT = t;
+  }
+  return Infinity;
+}
+
 function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_HORIZON_SECONDS, padWu = 0) {
   const pos = entity && entity.pos;
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return Infinity;
   const ledgerPos = ledgerAwarePos(entity, state);
   const ex = ledgerPos.x;
   const ez = ledgerPos.z;
-  const pvel = predictionVel(entity, state);
-  const relVx = pvel.x - env.pvx;
-  const relVz = pvel.z - env.pvz;
   // Presence radius, not the collision proxy: a big authored body's surface reaches
   // the glass long before its centre+radius math says it does.
   const visual = entityPresenceRadius(entity);
+  const radius = env.glassR + visual + (Number(padWu) || 0);
+  if (isPresentationLedgerRow(entity) && entity.intent && Number.isFinite(entity.lastExactT)) {
+    const simTime = Number.isFinite(state && state.simTime)
+      ? state.simTime
+      : ((state && state.tick) | 0) / 60;
+    const dx = ex - env.anchorX;
+    const dz = ez - env.anchorZ;
+    if (dx * dx + dz * dz <= radius * radius) return 0;
+    return itineraryTimeToGlassSeconds(entity, env, simTime, radius, horizonS);
+  }
+  const pvel = predictionVel(entity, state);
+  const relVx = pvel.x - env.pvx;
+  const relVz = pvel.z - env.pvz;
   return timeToEnterRadiusSeconds(
     ex - env.anchorX,
     ez - env.anchorZ,
     relVx,
     relVz,
-    env.glassR + visual + (Number(padWu) || 0),
+    radius,
     horizonS,
   );
 }
@@ -2406,11 +2437,29 @@ function syncResolvingMarker(mesh) {
     marker.visible = true;
     return;
   }
-  // Terminal admission failure with no other drawable: hiding the marker leaves the hull
-  // permanently invisible (a retry-capped substrate has no fallback). Keep the stand-in drawn —
-  // it is the same already-linked program it drew throughout admission, so submitting it is
-  // free and the wreck/hull never pops out of existence on the player's glass.
+  // Terminal admission failure with no other drawable: a non-required ship builds its
+  // sanctioned procedural body instead of drawing the marker forever — the same class the
+  // mid-admission fallback path publishes. Retry-armed statuses keep the marker until the
+  // cap or a non-retriable state settles the verdict.
   const parent = marker.parent;
+  const fallbackThunk = parent && parent.userData && parent.userData.admissionProceduralFallback;
+  if (fallbackThunk) {
+    const status = mesh.userData.authoredAssetState;
+    const attempts = mesh.userData.authoredAdmissionRetryCount || 0;
+    const retriable = authoredAdmissionRetriableStatus(status)
+      && attempts < AUTHORED_ADMISSION_RETRY_MAX;
+    if (!retriable) {
+      delete parent.userData.admissionProceduralFallback;
+      try {
+        const fallback = fallbackThunk();
+        if (fallback && fallback.isObject3D) {
+          parent.userData.authoredReadableFallbackRetained = true;
+          mesh.userData.authoredReadableFallbackRetained = true;
+          parent.add(fallback);
+        }
+      } catch (_) { /* the marker remains the terminal visual */ }
+    }
+  }
   marker.visible = !parent || !parent.children.some((child) => child !== marker && child.visible !== false);
 }
 
@@ -2437,6 +2486,27 @@ function authoredPendingBoundarySubmitsStandIn(mesh) {
   // through admission — it is the visible stand-in until the authored commit.
   if (userData.authoredPendingFallbackDrawn === true) return true;
   return userData.authoredGeologySkin === true;
+}
+
+/**
+ * Stage an awaiting boundary's authored upgrade job (compose+compile+upload tail) so the
+ * admission-time call resolves 'authored' and exits. Shared by the runway poll and the
+ * entity:spawned decode kick; a refused request leaves the relevance trigger armed.
+ */
+function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  const boundary = owner && owner._meshes && owner._meshes.get(entity.id);
+  const boundaryData = boundary && boundary.userData;
+  if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
+      && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
+    try {
+      requestAuthoredUpgrade(boundary, renderer, owner.scene, {
+        residencyRole,
+        sectorId: (state && state.world && state.world.currentSectorId) || null,
+      });
+    } catch (_) { /* a refused request leaves the relevance trigger armed */ }
+  }
 }
 
 function kickDecodeRunwayAssets(owner, entities) {
@@ -2497,19 +2567,8 @@ function kickDecodeRunwayAssets(owner, entities) {
   // interval for inbound traffic. Its boundary upgrade job is the same job relevance would
   // enqueue, so starting it here stages the whole pipeline tail inside the runway window;
   // the admission-time call then resolves 'authored' and exits. Shared by ships and stations.
-  const kickBoundaryUpgrade = (entity, wave) => {
-    const boundary = owner._meshes && owner._meshes.get(entity.id);
-    const boundaryData = boundary && boundary.userData;
-    if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
-        && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
-      try {
-        requestAuthoredUpgrade(boundary, renderer, owner.scene, {
-          residencyRole: wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare',
-          sectorId: (state.world && state.world.currentSectorId) || null,
-        });
-      } catch (_) { /* a refused request leaves the relevance trigger armed */ }
-    }
-  };
+  const kickBoundaryUpgrade = (entity, wave) => kickAuthoredBoundaryUpgrade(owner, entity,
+    wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare');
   let started = 0;
   for (let i = 0; i < ordered.length && started < 2; i++) {
     const entity = ordered[i];
@@ -2652,6 +2711,7 @@ function kickSpawnedEntityDecode(owner, entity) {
     })).catch(() => {}).finally(() => {
       pending.delete(entity.id);
     });
+    kickAuthoredBoundaryUpgrade(owner, entity, 'combat-spawn-decode-runway');
     warmKillHulkDecode(owner, entity);
     return;
   }
@@ -2659,6 +2719,9 @@ function kickSpawnedEntityDecode(owner, entity) {
   // so a station spawn must warm its resolved place GLB file, not an empty plan.
   if (packagedDecodeFileForEntity(entity)) {
     if (!meshNeedsAuthoredDecode(owner, entity)) return;
+    // A kicked entity sits in the pending set until its decode settles, so the poll never
+    // fires its boundary kick — stage the pipeline tail here to overlap the decode window.
+    kickAuthoredBoundaryUpgrade(owner, entity, 'combat-spawn-decode-runway');
     pending.add(entity.id);
     warmPackagedEntityDecode(owner, entity, null, admissionVisible).finally(() => {
       pending.delete(entity.id);
@@ -2749,7 +2812,10 @@ function warmKillHulkDecode(owner, entity) {
 function warmSaveEnvelopeEntityDecode(owner, entity) {
   const renderer = owner && owner.renderer;
   if (!renderer || !entity || entity.alive === false || entity.isPlayer === true) return;
-  if (entity.type === 'ship' || entity.type === 'station') {
+  // Stations ride the packaged lane: authoredPreloadPlanForEntity only plans ships, so the
+  // ship branch would warm nothing for them while packagedDecodeFileForEntity resolves
+  // their census/place file.
+  if (entity.type === 'ship') {
     Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {
       residencyRole: 'save-envelope-decode-runway',
       sectorId: null,
@@ -13577,26 +13643,32 @@ export const render = {
     const scene = this.scene;
     if (!residency || typeof residency.releaseDetachedBoundaryOwners !== 'function' || !scene) return;
     const world = this._presentationWorld;
+    // Claim scan built once per poll instead of per owner: the collectable sources
+    // (bound-mesh ancestor chains, entity mesh/view roots, world mesh refs) union into a
+    // Set, so each owner's membership test is O(1). The two opaque sources (sector
+    // preparations, authored registrations) stay as per-boundary fallbacks — identical
+    // claim semantics, order-neutral.
+    const claimed = this._detachedOwnerClaimedSet || (this._detachedOwnerClaimedSet = new Set());
+    claimed.clear();
+    for (const mesh of this._meshes.values()) {
+      for (let cur = mesh; cur; cur = cur.parent) {
+        claimed.add(cur);
+      }
+    }
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.values === 'function') {
+      for (const entity of entities.values()) {
+        if (!entity) continue;
+        if (entity.mesh) claimed.add(entity.mesh);
+        if (entity.view && entity.view.root) claimed.add(entity.view.root);
+      }
+    }
+    const refs = world && world.meshRefs;
+    if (refs) {
+      for (let i = 0; i < refs.length; i++) claimed.add(refs[i]);
+    }
     const isClaimed = (boundary) => {
-      for (const mesh of this._meshes.values()) {
-        for (let cur = mesh; cur; cur = cur.parent) {
-          if (cur === boundary) return true;
-        }
-      }
-      const entities = this.state && this.state.entities;
-      if (entities && typeof entities.values === 'function') {
-        for (const entity of entities.values()) {
-          if (entity && (entity.mesh === boundary || (entity.view && entity.view.root === boundary))) {
-            return true;
-          }
-        }
-      }
-      const refs = world && world.meshRefs;
-      if (refs) {
-        for (let i = 0; i < refs.length; i++) {
-          if (refs[i] === boundary) return true;
-        }
-      }
+      if (claimed.has(boundary)) return true;
       if (this._sectorBoundaryPreparations
           && typeof this._sectorBoundaryPreparations.isBoundaryClaimed === 'function'
           && this._sectorBoundaryPreparations.isBoundaryClaimed(boundary)) return true;

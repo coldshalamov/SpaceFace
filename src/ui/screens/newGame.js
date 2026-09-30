@@ -254,14 +254,17 @@ function randomSeedText(ctx) {
   return String(1 + Math.floor(rng() * 0xfffffffe));
 }
 
-function readNewGamePlusCandidate(ctx) {
+function readNewGamePlusCandidateAsync(ctx) {
   try {
     const save = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
-    return save && typeof save.getNewGamePlusCandidate === 'function'
+    if (save && typeof save.getNewGamePlusCandidateAsync === 'function') {
+      return save.getNewGamePlusCandidateAsync();
+    }
+    return Promise.resolve(save && typeof save.getNewGamePlusCandidate === 'function'
       ? save.getNewGamePlusCandidate()
-      : null;
+      : null);
   } catch (error) {
-    return null;
+    return Promise.resolve(null);
   }
 }
 
@@ -571,11 +574,14 @@ export const newGameScreen = {
 
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
     // selection at the transition boundary; the UI never copies a whole prior run into the event.
-    const newGamePlusCandidate = readNewGamePlusCandidate(ctx);
     let legacyOn = false;
     let legacyWords = null;
     let legacySelect = null;
-    if (newGamePlusCandidate) {
+    let newGamePlusCandidate = null;
+    // The candidate resolves through the save worker — the multi-MB envelope walk used to gate
+    // this screen's first paint for an opt-in field. Mount the field in place (before the
+    // loadout section) when the candidate lands instead.
+    const mountLegacyField = (newGamePlusCandidate, beforeEl) => {
       const legacyField = field('New Run+');
       legacyField.label.id = 'sf-ng-legacy-label';
       legacyWords = words([
@@ -614,9 +620,9 @@ export const newGameScreen = {
         legacySelect.appendChild(option);
       }
       legacyField.wrap.appendChild(legacySelect);
-      body.appendChild(legacyField.wrap);
-      body.appendChild(hairline());
-    }
+      body.insertBefore(legacyField.wrap, beforeEl);
+      body.insertBefore(hairline(), beforeEl);
+    };
 
     // Loadout: the picked starter's fitted modules as quiet words. Not buttons — nothing here
     // is chosen; the starter row above is the picker and rewrites this list on every pick.
@@ -642,6 +648,11 @@ export const newGameScreen = {
     loadoutField.wrap.appendChild(loadout);
     body.appendChild(loadoutField.wrap);
     body.appendChild(hairline());
+    readNewGamePlusCandidateAsync(ctx).then((candidate) => {
+      if (!candidate) return;
+      newGamePlusCandidate = candidate;
+      mountLegacyField(candidate, loadoutField.wrap);
+    });
 
     // The first fifteen minutes: four static rows under the loadout.
     const route = el('div', 'sf-ng-route');

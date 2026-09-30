@@ -1284,8 +1284,13 @@ export const save = {
     return { sig: parts.join('|'), raws };
   },
 
-  _slotIndexWithFallback() {
-    const { sig, raws } = this._slotStoreSignature();
+  // `burst` shares one signature walk across a single call chain (a Continue click resolves
+  // through _newerUnplayableSkip → _latestSlot → the index scan). Callers own the object and
+  // never let it outlive the chain — nothing stale can be served, because a burst is only
+  // ever fed by reads that happened inside the same synchronous descent.
+  _slotIndexWithFallback(burst = null) {
+    const { sig, raws } = burst && burst.sig != null ? burst
+      : (burst ? Object.assign(burst, this._slotStoreSignature()) : this._slotStoreSignature());
     const cache = this._slotIndexCache;
     if (cache && cache.sig === sig) return { ...cache.merged };
     const indexed = normalizeSlotIndex(this._readIndex());
@@ -1316,6 +1321,31 @@ export const save = {
     return { ...merged };
   },
 
+  // Metadata-read path for index scans: the full _prepareEnvelope validation chain (parse →
+  // format → version → bounds → checksum → migrate → normalize — the hiding contract, so a
+  // checksum-valid but non-restorable blob is still never advertised) minus the one step whose
+  // output a slot card never reads: clonePlain. The scanned env is a scratch parse owned by the
+  // caller, so migrations mutate it in place; a real load still re-validates everything through
+  // _prepareEnvelopeString before a single byte is restored.
+  _prepareEnvelopeMeta(raw) {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+      if (saveImportByteLength(raw) > SAVE_IMPORT_MAX_BYTES) return null;
+      const env = JSON.parse(raw);
+      if (!env || env.fmt !== FMT) return null;
+      const versionRead = readSaveVersion(env.version);
+      if (!versionRead.ok) return null;
+      if (!env.data || typeof env.data !== 'object') return null;
+      if (!preflightSaveImport(env).ok) return null;
+      if (env.checksum && fnv1a(safeStringify(env.data)) !== env.checksum) return null;
+      if (!runMigrations(env.data, versionRead.version)) return null;
+      if (!normalizeRestorableData(env.data).ok) return null;
+      return env;
+    } catch (err) {
+      return null;
+    }
+  },
+
   _scanStoredSlots(indexed = {}, raws = null) {
     const out = {};
     if (raws == null && typeof localStorage === 'undefined') return out;
@@ -1344,9 +1374,12 @@ export const save = {
           out[slot] = trusted;
           continue;
         }
-        const prepared = this._prepareEnvelopeString(raw);
-        if (!prepared.ok) continue;
-        const meta = slotMetaFromEnvelope(slot, prepared.env);
+        const env = this._prepareEnvelopeMeta(raw);
+        if (!env) continue;
+        // Card straight off the envelope: _prepareEnvelopeMeta already ran the checksum before
+        // migrating in place, so slotMetaFromEnvelope's duplicate re-verify would read the
+        // post-migration bytes and always fail.
+        const meta = slotCardFromEnvelopeData(slot, env, null);
         if (meta) out[slot] = meta;
       }
     } catch (err) {
@@ -1369,9 +1402,9 @@ export const save = {
         if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
         const slot = key.slice(RECOVERY_PREFIX.length);
         if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
-        const prepared = this._prepareEnvelopeString(raw);
-        if (!prepared.ok) continue;
-        const meta = slotMetaFromEnvelope(slot, prepared.env);
+        const env = this._prepareEnvelopeMeta(raw);
+        if (!env) continue;
+        const meta = slotCardFromEnvelopeData(slot, env, null);
         if (meta) out[slot] = meta;
       }
     } catch (err) {
@@ -1406,6 +1439,48 @@ export const save = {
     return null;
   },
 
+  // Async twin of getNewGamePlusCandidate for menu mount paths: the candidate list resolves
+  // synchronously (index metadata only), then each eligible slot's envelope prepares through
+  // the save worker — the multi-MB parse + checksum walks leave the screen's first-paint path.
+  // Same candidate semantics and same failure vocabulary as the sync read.
+  async getNewGamePlusCandidateAsync(slot = 'latest') {
+    const requested = slot && slot !== 'latest' ? String(slot) : null;
+    const candidates = requested
+      ? [{ slot: requested }]
+      : Object.values(this._slotIndexWithFallback())
+        .filter((meta) => completedEndingChoiceFromStory({
+          endgameChoice: meta && meta.endingChoice,
+          endgameResolved: true,
+        }))
+        .sort(compareOccupiedSlotNewestFirst);
+    for (const meta of candidates) {
+      const prepared = await this._prepareNewGamePlusSlotAsync(meta && meta.slot);
+      if (!prepared) continue;
+      const candidate = buildNewGamePlusCandidate(prepared.data, {
+        slot: prepared.slot,
+        savedAt: prepared.env && prepared.env.savedAt,
+      });
+      if (candidate) return candidate;
+    }
+    return null;
+  },
+
+  async _prepareNewGamePlusSlotAsync(slot) {
+    if (!slot || isUnsafePlainKey(slot) || typeof localStorage === 'undefined') return null;
+    let primaryRaw = null;
+    let recoveryRaw = null;
+    try {
+      primaryRaw = localStorage.getItem(LS_PREFIX + slot);
+      recoveryRaw = localStorage.getItem(RECOVERY_PREFIX + slot);
+    } catch (err) {
+      return null;
+    }
+    const primary = await this._prepareEnvelopeStringAsync(primaryRaw);
+    if (primary.ok) return { ...primary, slot };
+    const recovery = await this._prepareEnvelopeStringAsync(recoveryRaw);
+    return recovery.ok ? { ...recovery, slot } : null;
+  },
+
   /** Revalidate the selected source at launch and return only the bounded carry-over projection. */
   prepareNewGamePlus(selection = {}) {
     const slot = selection && selection.slot ? String(selection.slot) : null;
@@ -1435,8 +1510,8 @@ export const save = {
   },
 
   /** Resolve a 'latest' request to the newest slot in the index (used by Continue / mainMenu). */
-  _latestSlot() {
-    const idx = this._slotIndexWithFallback();
+  _latestSlot(burst = null) {
+    const idx = this._slotIndexWithFallback(burst);
     return selectLatestOccupiedSlot(idx);
   },
 
@@ -1445,7 +1520,7 @@ export const save = {
   // slot has no playable generation in either copy, else null. Both generations are re-validated
   // here (never trusted from meta), transient storage failures yield null rather than a verdict,
   // and no bytes are touched — the dead copies stay on disk for forensics/manual export.
-  _newerUnplayableSkip() {
+  _newerUnplayableSkip(burst = null) {
     let raw = null;
     try {
       if (typeof localStorage === 'undefined') return null;
@@ -1453,7 +1528,7 @@ export const save = {
     } catch (err) { return null; }
     const best = selectLatestOccupiedSlot(raw);
     if (!best) return null;
-    if (this._latestSlot() === best) return null; // newest is playable — no skip
+    if (this._latestSlot(burst) === best) return null; // newest is playable — no skip
     let primaryRaw = null, backupRaw = null;
     try {
       primaryRaw = localStorage.getItem(LS_PREFIX + best);
@@ -2816,8 +2891,9 @@ export const save = {
     // BEFORE resolving so both the loaded receipt and the failure below can name it explicitly.
     let skippedNewer = null;
     if (slot === 'latest') {
-      try { skippedNewer = this._newerUnplayableSkip(); } catch (err) { skippedNewer = null; }
-      const resolved = this._latestSlot();
+      const slotBurst = {};
+      try { skippedNewer = this._newerUnplayableSkip(slotBurst); } catch (err) { skippedNewer = null; }
+      const resolved = this._latestSlot(slotBurst);
       if (!resolved) {
         this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
           skippedNewer ? { skippedNewer } : null));
@@ -2879,8 +2955,9 @@ export const save = {
     slot = slot || 'quick';
     let skippedNewer = null;
     if (slot === 'latest') {
-      try { skippedNewer = this._newerUnplayableSkip(); } catch (err) { skippedNewer = null; }
-      const resolved = this._latestSlot();
+      const slotBurst = {};
+      try { skippedNewer = this._newerUnplayableSkip(slotBurst); } catch (err) { skippedNewer = null; }
+      const resolved = this._latestSlot(slotBurst);
       if (!resolved) {
         this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
           skippedNewer ? { skippedNewer } : null));
@@ -2898,7 +2975,7 @@ export const save = {
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (this._hasPlayerEntity()) {
-      try { rollbackSnapshot = this._captureRollbackSnapshot(); }
+      try { rollbackSnapshot = await this._captureRollbackSnapshotAsync(); }
       catch (err) { rollbackSnapshotError = err; }
     } else {
       rollbackSnapshot = { notNeeded: true };
@@ -3266,6 +3343,51 @@ export const save = {
     return { data: prepared.data, slot };
   },
 
+  // Async twin for the worker-backed load lane: serializeData stays one coherent task — live-state
+  // readers cannot split across future ticks and remain an authoritative snapshot — but every pass
+  // after it walks the detached copy, so clone → migrate → normalize yield a frame between them
+  // (same pacing _prepareEnvelopeStringAsync uses) instead of extending the capture brick.
+  async _captureRollbackSnapshotAsync() {
+    const state = this.state;
+    const slot = state && state.save && state.save.currentSlot
+      ? state.save.currentSlot
+      : 'quick';
+    const previousStrict = this._rollbackCaptureActive;
+    this._rollbackCaptureActive = true;
+    let data;
+    try {
+      data = this.serializeData();
+    } finally {
+      this._rollbackCaptureActive = previousStrict;
+    }
+    if (!data || typeof data !== 'object') throw new Error('rollback_snapshot_empty');
+    const env = {
+      fmt: FMT,
+      version: CURRENT_VERSION,
+      savedAt: new Date().toISOString(),
+      playtimeS: Math.floor((state && state.meta && state.meta.playtimeS) || 0),
+      slot,
+      data,
+    };
+    try {
+      const versionRead = readSaveVersion(env.version);
+      if (!versionRead.ok) throw new Error('rollback_snapshot_invalid:' + (versionRead.reason || 'version'));
+      const ver = versionRead.version;
+      const preflight = preflightSaveImport(env);
+      if (!preflight.ok) throw new Error('rollback_snapshot_invalid:' + preflight.reason);
+      await this._restoreFrameYield();
+      const migrated = clonePlain(env.data);
+      if (!runMigrations(migrated, ver)) throw new Error('rollback_snapshot_invalid:migration_failed');
+      await this._restoreFrameYield();
+      const normalized = normalizeRestorableData(migrated);
+      if (!normalized.ok) throw new Error('rollback_snapshot_invalid:' + normalized.reason);
+      return { data: migrated, slot };
+    } catch (err) {
+      if (err && /^rollback_snapshot_/.test(err.message)) throw err;
+      throw new Error('rollback_snapshot_invalid:' + (err && err.message ? err.message : 'load_failed'));
+    }
+  },
+
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
   // pause → clear old mission runtime/transient entities → restore meta/player/cargo/economy/factions/world
   // → spawn the saved player → re-enter the sector (regenerates NPCs/stations/asteroids) →
@@ -3591,6 +3713,10 @@ export const save = {
       // absent key (pre-docket saves) clears both ledgers — an honest empty case file.
       this._callDeserialize('lawSecurity', data.lawSecurity);
       this._callDeserialize('fieldDepletion', data.fieldDepletion);
+      // Interleave frame releases between independent deserializes: each group above owns a
+      // disjoint ledger, so a yield here can't reorder anything the sim observes — it only keeps
+      // the restore progress ring painting instead of freezing inside a long await window.
+      yield 'deserialized-ledgers';
       // Genie 01: world memory. deserialize() validates a detached candidate and re-derives its
       // graph BEFORE adopting; null/absent starts an empty archive (old saves migrate cleanly).
       this._callDeserialize('chronicler', data.chronicler);
@@ -3617,6 +3743,7 @@ export const save = {
       yield 'deserialized-campaign';
       this._callDeserialize('nemesis', data.nemesis);
       this._callDeserialize('nemesisEncounter', data.nemesisDeployment);
+      yield 'deserialized-nemesis';
       // Enemy Mind cognition namespace (version 1). Absent in older saves → cleared, so cognition
       // starts fresh at the resumed clock (the port lazily re-creates it). A future unknown
       // version throws rather than corrupting the runtime mid-sim.
@@ -3647,6 +3774,7 @@ export const save = {
       // died in the rebuild must be allowed to call again — while a caller whose squad actually
       // arrived keeps the once-ever contract.
       this._reconcileReinforcementLatches(entityIdRemap);
+      yield 'deserialized-transients';
       this._reportRestoreProgress(0.235, 'Restoring flight deck state');
       yield 'deserialized-flight';
       this._restoreFlight(data.flight);
@@ -3655,6 +3783,7 @@ export const save = {
       this._restoreScreenMemory(data.uiScreenMemory);
       this._restoreWatchlist(data.uiWatchlist);
       this._reconcileFlightReadyAfterLoad();
+      yield 'deserialized-flight-inputs';
 
       // 14. rebuild master RNG from serialized CONTINUATION (H9), not seed alone.
       // simTime/tick were restored before spawn so sector rebuild sees the saved clock.

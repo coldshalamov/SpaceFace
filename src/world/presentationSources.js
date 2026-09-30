@@ -20,6 +20,7 @@ import {
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
 import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
+import { itineraryPositionInto } from './worldCatchup.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 
 const _farPromoteScratch = [];
@@ -44,6 +45,26 @@ export function isPresentationLedgerRow(entity) {
     || entity.fieldResident === true
     || entity.dressingResident === true
   ));
+}
+
+// Shelf-time pos for dormant ledger rows freezes at shelf; the sim's own freshness sweep
+// catches them up the same way — itinerary when the row carries an intent, ballistic
+// otherwise. Returns a shared scratch — callers must consume it before the next call.
+const _ledgerPredPos = { x: 0, z: 0 };
+export function ledgerAwarePos(entity, state) {
+  if (!isPresentationLedgerRow(entity) || !Number.isFinite(entity.lastExactT)) return entity.pos;
+  const simTime = Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : ((state && state.tick) | 0) / 60;
+  const drift = Math.max(0, simTime - entity.lastExactT);
+  if (!(drift > 0)) return entity.pos;
+  if (entity.intent) {
+    const along = itineraryPositionInto(entity.intent, simTime, _ledgerPredPos);
+    if (along) return along;
+  }
+  _ledgerPredPos.x = (Number(entity.pos.x) || 0) + (Number(entity.vel && entity.vel.x) || 0) * drift;
+  _ledgerPredPos.z = (Number(entity.pos.z) || 0) + (Number(entity.vel && entity.vel.z) || 0) * drift;
+  return _ledgerPredPos;
 }
 
 export function resolveWorldPresentationEntity(state, id) {
@@ -360,6 +381,9 @@ export function makeWaveHullDecodeStub(hullKey) {
   const silhouette = typeof hullKey.silhouette === 'string' ? hullKey.silhouette : '';
   const data = { defId: hullKey.defId };
   if (silhouette) data.silhouette = silhouette;
+  // Live spawns resolve whole ships by lootTableId before silhouette — carry the enemy id so
+  // the stub's authoredPreloadPlan follows the same selection.
+  if (typeof hullKey.enemyId === 'string' && hullKey.enemyId) data.lootTableId = hullKey.enemyId;
   return {
     id: `wave-hull-decode:${hullKey.key || hullKey.defId}`,
     type: 'ship',
