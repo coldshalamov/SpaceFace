@@ -261,6 +261,15 @@ export const physics = {
     }
   },
 
+  // True once a backend owner object exists. A pre-restore warm-up must only ever start the
+  // module init — calling prepareBackend while `_sg02` is live would sync and step the outgoing
+  // run's entities into the authority (and drain stale contact receipts) before the incoming
+  // save replaces them. With no owner the same call stops at init, which is the only overlap
+  // the early lane wants.
+  hasResolvedSg02Owner() {
+    return this._sg02 != null;
+  },
+
   async prepareBackend(state, options = {}) {
     const reset = options.reset === true;
     if (!usesSg02DynamicAuthority(state)) {

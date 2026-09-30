@@ -5,6 +5,10 @@ import { yieldForBootPaint } from '../core/bootScheduler.js';
 
 async function start() {
   const overlay = document.getElementById('boot-overlay');
+  // The critical-path import starts first and resolves in parallel with the decorative ring's
+  // handshake — a contended worker can no longer serialize up to its full deadline ahead of it.
+  const mainImport = import('../main.js');
+  mainImport.catch(() => { /* handled at the await below */ });
   let ring = null;
   try {
     ring = mountBootRing(document, overlay);
@@ -22,7 +26,7 @@ async function start() {
   // block boot; its observers catch the intro video hosts whenever they mount.
   void import('./introSignalRemixBoot.js').then((module) => module.installIntroSignalRemix())
     .catch(() => { /* Decoration cannot block boot. */ });
-  try { await import('../main.js'); }
+  try { await mainImport; }
   catch (error) {
     ring?.stop();
     if (overlay) {

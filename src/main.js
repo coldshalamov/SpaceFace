@@ -174,6 +174,13 @@ async function boot() {
       if (state.mode === 'flight') return;
       const physicsSystem = registry.get('physics');
       if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
+      // Only a cold authority may prep early: with an owner already resolved, prepareBackend
+      // would sync+step the outgoing run's entities before the restore swaps them. Module
+      // init is the whole point of the early kick, and it already runs whenever no owner
+      // exists. The finalize-time non-reset prep then does the first real sync against the
+      // restored world exactly as before.
+      if (typeof physicsSystem.hasResolvedSg02Owner === 'function'
+          && physicsSystem.hasResolvedSg02Owner()) return;
       earlyContinuePhysicsPrep = Promise.resolve()
         .then(() => physicsSystem.prepareBackend(state));
       earlyContinuePhysicsPrep.catch(() => {});
@@ -531,7 +538,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Let the loading shell paint the "preparing" stage between the synchronous chunks —
       // the bar's smoothing loop only moves when the compositor gets a frame.
-      await nextPaint();
+      await nextPaintSliced();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       const resetCompleted = resetFreshRunSystems(registry, {
@@ -595,7 +602,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         }
       }
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      await nextPaint();
+      await nextPaintSliced();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       // Create the canonical player and starting sector before readiness waits. This gives the
@@ -735,7 +742,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       detail: loadingDetailForStage(stage),
       transition: 'new-game',
     }),
-    yieldForPresentation: nextPaint,
+    yieldForPresentation: nextPaintSliced,
     enterFlight() {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
@@ -874,7 +881,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     });
     // Paint the stage boundary before the wait's synchronous prefix — the loader's easing
     // loop only moves when the compositor gets a frame.
-    await nextPaint();
+    await nextPaintSliced();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     const stopLibraryPulse = startGatePulse('authored-library', 0.25, 'Loading the ships', () => {
       const elapsed = nowMs() - gateStartedMs;
@@ -894,7 +901,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Placing ships and stations before you arrive',
       transition: 'continue',
     });
-    await nextPaint();
+    await nextPaintSliced();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     const stopVisualsPulse = startGatePulse('authored-visuals', 0.5, 'Building the opening scene', () => {
       const readiness = authoredCriticalVisualReadiness(state);
@@ -943,7 +950,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Loading the opening stretch smoothly',
       transition: 'continue',
     });
-    await nextPaint();
+    await nextPaintSliced();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     {
       const awaitCook = shouldAwaitOpeningGpuCook({
@@ -1203,6 +1210,8 @@ function nextFrame() {
   });
 }
 
+let lastPaintAt = -Infinity;
+
 function nextPaint() {
   if (typeof requestAnimationFrame !== 'function') return delay(0);
   return new Promise((resolve) => {
@@ -1210,6 +1219,7 @@ function nextPaint() {
     const finish = () => {
       if (done) return;
       done = true;
+      lastPaintAt = nowMs();
       resolve();
     };
     requestAnimationFrame(() => requestAnimationFrame(finish));
@@ -1217,6 +1227,14 @@ function nextPaint() {
     // only a starved one gives the boundary up to the timer.
     setTimeout(finish, 250);
   });
+}
+
+// A gate that resolves within a frame slice of the last real paint does not need its own
+// double-rAF — the compositor is demonstrably alive, so the progress emit runs synchronously
+// and only a genuinely un-painted stretch pays the boundary. ~2 frames each otherwise.
+function nextPaintSliced() {
+  if (lastPaintAt !== -Infinity && nowMs() - lastPaintAt < 16) return Promise.resolve();
+  return nextPaint();
 }
 
 function delay(ms) {

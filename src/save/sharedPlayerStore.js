@@ -51,8 +51,22 @@ export function collectLocalSharedStoreKeys(storage = globalThis.localStorage) {
   return keys;
 }
 
+// Both stamp fields serialize within the envelope head (fmt, version, then savedAt), so a
+// bounded scan over the first bytes answers the merge's only question without materializing a
+// multi-MB parse per blob. Anything the head doesn't explain falls back to the full parse.
+const ENVELOPE_HEAD_SCAN = 4096;
+const ENVELOPE_SAVEDAT_RE = /"savedAt"\s*:\s*"([^"]*)"/;
+const ENVELOPE_UPDATEDAT_RE = /"updatedAt"\s*:\s*"([^"]*)"/;
+
 export function envelopeTime(raw) {
   if (typeof raw !== 'string' || !raw) return 0;
+  const head = raw.length > ENVELOPE_HEAD_SCAN ? raw.slice(0, ENVELOPE_HEAD_SCAN) : raw;
+  // Same preference as the parsed path: savedAt beats updatedAt regardless of key order.
+  const quick = ENVELOPE_SAVEDAT_RE.exec(head) || ENVELOPE_UPDATEDAT_RE.exec(head);
+  if (quick) {
+    const time = Date.parse(quick[1]);
+    if (Number.isFinite(time)) return time;
+  }
   try {
     const parsed = JSON.parse(raw);
     const stamp = parsed && (parsed.savedAt || parsed.updatedAt);

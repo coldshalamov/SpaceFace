@@ -55,6 +55,9 @@
        module loader reuses the warmed response. -->
   <link rel="preload" as="style" href="./styles/hud.css" />
   <link rel="modulepreload" href="./vendor/three.module.js" />
+  <!-- 2.2 MB physics runtime — the biggest single fetch on the critical path; warm it at
+       parse instead of discovering it at the physics import inside main.js. -->
+  <link rel="modulepreload" href="./vendor/rapier3d-compat/rapier.mjs" />
   <link rel="modulepreload" href="./src/main.js" />
 </head>
 <body>

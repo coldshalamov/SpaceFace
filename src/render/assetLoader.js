@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { deadlineDecodeActive, sharedDecodeTaskBudget, withDeadlineDecodeClass } from './decodeTaskBudget.js';
+import { activeDecodeClass, deadlineDecodeActive, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import {
   renderPackagePilotForAssetId,
@@ -367,7 +367,7 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
     const postTask = pool.postMessage.bind(pool);
     pool.spacefaceDecodeBudgetGated = true;
     pool.postMessage = (msg, transfer) => decodeBudget.acquire(
-      msg && msg.spacefaceDecodeClass || (deadlineDecodeActive() ? 'deadline' : 'ambient'),
+      msg && msg.spacefaceDecodeClass || activeDecodeClass(),
     ).then((release) => {
       if (disposed) {
         release();
@@ -548,11 +548,17 @@ export async function loadAuthoredPart(url, options = {}) {
   // not by message, because the worker intakes are shared-loader internals. Computed before the
   // pilot branch: render-package pilots are the dominant decode path and must classify too.
   const deadlineClass = options.admissionDeadline === true
+    || options.admissionVisible === true
     || /runway|deadline/i.test(String(options.residencyRole || ''));
+  // admissionVisible is a deadline superset: the spawn is already at the glass, so its worker
+  // posts jump ahead of even other deadline waiters via the 'visible' budget class.
+  const wrapDecodeClass = options.admissionVisible === true
+    ? withVisibleDecodeClass
+    : (deadlineClass ? withDeadlineDecodeClass : null);
 
   const renderPackagePilot = renderPackagePilotForSourceUrl(url);
   if (renderPackagePilot) {
-    return (deadlineClass ? () => withDeadlineDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
+    return (wrapDecodeClass ? () => wrapDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
       : () => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))();
   }
   assertSourceRouteAdmitted(url);
@@ -577,7 +583,7 @@ export async function loadAuthoredPart(url, options = {}) {
   // serial lane already uses, bounded to the joined task's tail.
   const deadlineJoin = deadlineClass && runtime.assets.has(cacheKey);
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
-    (deadlineClass ? () => withDeadlineDecodeClass(() => loadGltfDocument(url, runtime.gltf))
+    (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf))
       : () => loadGltfDocument(url, runtime.gltf))()
       .then((gltf) => {
         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
@@ -608,7 +614,7 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
-  if (deadlineJoin) withDeadlineDecodeClass(() => task);
+  if (deadlineJoin) (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
   const blueprint = await task;
   if (!blueprint) {
     if (request) request.cancel('decode-failed');
@@ -628,7 +634,7 @@ export async function loadAuthoredPart(url, options = {}) {
       // Warm-purpose decodes (sector prewarm, decode runway, roster warm) speculate on future
       // use — a never-touched prewarm otherwise reads as the oldest idle entry and is the first
       // casualty of byte pressure, so the spawn it covered still pops cold.
-      decodeWarm: /warm|runway|prewarm|armory/i.test(String(options.residencyRole || '')),
+      decodeWarm: /warm|runway|prewarm|armory|predicted/i.test(String(options.residencyRole || '')),
     });
   }
   return blueprint;

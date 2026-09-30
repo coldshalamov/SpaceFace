@@ -316,8 +316,11 @@ export const save = {
     let ok = true;
     let error = null;
     try {
-      const remote = await fetchSharedPlayerStore();
+      // The local collect+string materialization is synchronous main-thread work; overlapping
+      // it with the fetch wait removes it from the pin duration Continue observes.
+      const remotePromise = fetchSharedPlayerStore();
       const local = collectLocalSharedStoreKeys();
+      const remote = await remotePromise;
       const merged = mergeSharedStoreKeys(local, remote || {});
       applySharedStoreKeys(merged);
       if (remote != null || Object.keys(local).length > 0) {
@@ -1260,9 +1263,24 @@ export const save = {
         if (!key || (!key.startsWith(LS_PREFIX) && !key.startsWith(RECOVERY_PREFIX))) continue;
         const v = localStorage.getItem(key);
         raws.set(key, v);
-        parts.push(key + ':' + (v == null ? -1 : v.length) + ':' + (v ? v.slice(0, 24) + v.slice(-24) : ''));
+        // FNV-1a over the whole blob — the raws map already holds the full string, so the
+        // only added cost is the char walk itself (still far cheaper than the parse-and-checksum
+        // this signature replaced). End-slice sampling left same-length middle edits invisible.
+        let hash = 0x811c9dc5;
+        if (v) {
+          for (let j = 0; j < v.length; j++) {
+            hash ^= v.charCodeAt(j);
+            hash = (hash * 0x01000193) | 0;
+          }
+        }
+        parts.push(key + ':' + (v == null ? -1 : v.length) + ':' + (hash >>> 0).toString(16));
       }
-    } catch (err) { /* signature is best-effort; a failed walk just misses the cache */ }
+    } catch (err) {
+      // A signature built from a partial walk could collide with a previously cached one and
+      // keep stale slot cards served while storage is actually failing. A thrown-read sig must
+      // never match — each call re-attempts the walk until the store is readable again.
+      return { sig: 'sig-error:' + (this._slotSigErrorSeq = (this._slotSigErrorSeq || 0) + 1), raws };
+    }
     return { sig: parts.join('|'), raws };
   },
 
@@ -3538,6 +3556,7 @@ export const save = {
       this._callDeserialize('careerOrigins', data.careerOrigins);
       this._callDeserialize('careerLadders', data.careerLadders);
       this._restoreScenario(data.scenario);
+      yield 'missions-restored';
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
         missionsSys.spawnTargetsForSector(sectorId);
@@ -3553,11 +3572,13 @@ export const save = {
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
       this._callDeserialize('npcJobsRuntime', data.npcJobs);
+      yield 'jobs-restored';
       // Replace outgoing-run traffic causality after world/job restore; absent or malformed input
       // clears the compact record instead of retaining a same-process handoff.
       this._callDeserialize('traffic', data.traffic);
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       this._callDeserialize('claims', data.claims);
+      yield 'claims-restored';
       this._callDeserialize('asteroidSites', data.sites);
       this._callDeserialize('asteroidFormations', data.formations);
       this._reportRestoreProgress(0.22, 'Restoring world memory');
@@ -3653,6 +3674,13 @@ export const save = {
 
       this._reportRestoreProgress(0.24, 'Priming the flight deck');
       yield 'pre-loaded';
+      // A mature save's save:loaded reconcile (economy reseed, traffic relink, navigation
+      // restore, UI closeAll) used to land as one monolithic task ahead of the visual gates.
+      // Slice it like sector:enter and drain the tail across the restore's own frame yields —
+      // listener order is preserved; the veil stays up the whole time.
+      if (typeof this.bus.setEmitSliceBudget === 'function') {
+        this.bus.setEmitSliceBudget('save:loaded', 8);
+      }
       this.bus.emit('save:loaded', {
         slot,
         visualGatePending: !!finalizeLoadedGame,
@@ -3664,6 +3692,11 @@ export const save = {
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
       });
+      while (typeof this.bus.pendingEmitSliceCount === 'function'
+          && this.bus.pendingEmitSliceCount() > 0) {
+        this.bus.drainEmitSlice(12);
+        yield 'save-loaded-drained';
+      }
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;

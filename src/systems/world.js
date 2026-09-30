@@ -162,7 +162,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
   dropAsteroidFieldSector,
@@ -5145,6 +5145,10 @@ export const world = {
     if (!entities || typeof entities.get !== 'function' || typeof entities.values !== 'function') return null;
     const cached = p._wsCarrierId != null ? entities.get(p._wsCarrierId) : null;
     if (cached && cached.alive !== false) return cached;
+    // A miss latches on the entity-index version: while the set is unchanged the walk cannot
+    // find anything new, so a site whose root never materializes doesn't re-scan every tick.
+    const indexVersion = entityIndexVersion(this.state);
+    if (indexVersion != null && p._wsCarrierMissVersion === indexVersion) return null;
     let found = null;
     for (const e of entities.values()) {
       const d = e && e.data;
@@ -5154,6 +5158,7 @@ export const world = {
       }
     }
     p._wsCarrierId = found ? found.id : null;
+    p._wsCarrierMissVersion = found || indexVersion == null ? null : indexVersion;
     return found;
   },
 

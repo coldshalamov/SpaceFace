@@ -323,21 +323,26 @@ const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
  * schedule/packages/swarm roster only (no dummy catalog). Silhouette matters:
  * wasp_swarmer decodes ashline_dart, not wasp_production.
  */
+export function enemyHullDecodeKey(enemyId) {
+  if (typeof enemyId !== 'string' || enemyId.length === 0) return null;
+  const def = ENEMY_BY_ID.get(enemyId);
+  if (!def || typeof def.shipId !== 'string' || !def.shipId) return null;
+  const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
+  const token = `${def.shipId}|${silhouette}`;
+  return Object.freeze({
+    defId: def.shipId,
+    silhouette,
+    enemyId,
+    key: token,
+  });
+}
+
 export function collectWaveHullDecodeKeys(plan) {
   const keys = new Map();
   const takeEnemy = (enemyId) => {
-    if (typeof enemyId !== 'string' || enemyId.length === 0) return;
-    const def = ENEMY_BY_ID.get(enemyId);
-    if (!def || typeof def.shipId !== 'string' || !def.shipId) return;
-    const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
-    const token = `${def.shipId}|${silhouette}`;
-    if (keys.has(token)) return;
-    keys.set(token, Object.freeze({
-      defId: def.shipId,
-      silhouette,
-      enemyId,
-      key: token,
-    }));
+    const key = enemyHullDecodeKey(enemyId);
+    if (!key || keys.has(key.key)) return;
+    keys.set(key.key, key);
   };
   if (!plan || plan.ok === false) return [];
   const schedule = Array.isArray(plan.schedule) ? plan.schedule : [];

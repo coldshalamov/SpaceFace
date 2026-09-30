@@ -154,12 +154,16 @@ import {
   clearWaveHullRunwayKeys,
   collectMeshPresentationEntities,
   collectWaveHullDecodeKeys,
+  enemyHullDecodeKey,
   entityMatchesWaveHullRunway,
   isPresentationLedgerRow,
   makeWaveHullDecodeStub,
   noteWaveHullRunwayKeys,
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
+import { NEMESIS_KITS } from '../data/nemesisRival.js';
+import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID } from '../data/heistFacilities.js';
+import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
@@ -2169,6 +2173,20 @@ export function isOnLiveCameraView(frustum, position, radius) {
 }
 
 /**
+ * The one on-live-glass verdict every urgency gauge must share: rectangle extents at the live
+ * zoom plus the frame skirt, or the camera's real frustum for envelopes whose centre left the
+ * rectangle. `radius` is the caller-resolved visual radius (skirt is added here, once).
+ */
+export function rootOnLiveGlass(bounds, frustum, position, radius) {
+  const skirted = Math.max(0, Number(radius) || 0) + TABLE_FRAME_SKIRT_WU;
+  return (bounds
+      && Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
+      && Math.abs(position.x - bounds.x) <= bounds.glassHalfX + skirted
+      && Math.abs(position.z - bounds.z) <= bounds.glassHalfZ + skirted)
+    || isOnLiveCameraView(frustum, position, skirted);
+}
+
+/**
  * Lowest camera Y at an arbitrary column — the anticipation query behind cameraGlide.js. Same
  * roofs and margin as cameraClearanceFloorAt but answered for any (x, z), not the camera's own,
  * and never short-circuited by the camera's current height. `pad` widens the coarse box test so a
@@ -2568,7 +2586,7 @@ function packagedDecodeFileForEntity(entity) {
   }
 }
 
-function warmPackagedEntityDecode(owner, entity, resolvedOverride = null) {
+function warmPackagedEntityDecode(owner, entity, resolvedOverride = null, admissionVisible = false) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
   if (!state || !renderer || !entity) return Promise.resolve();
@@ -2590,6 +2608,7 @@ function warmPackagedEntityDecode(owner, entity, resolvedOverride = null) {
     optional: true,
     residencyRole: 'packaged-decode-runway',
     sectorId,
+    admissionVisible,
   })).catch(() => {}).finally(() => {
     files.delete(key);
   });
@@ -2612,19 +2631,23 @@ function kickSpawnedEntityDecode(owner, entity) {
   // arrival order — far-field spawns nowhere near the glass included — ahead of genuinely
   // closing work the poll ordered first. Apply the poll's own eligibility so the kick only
   // accelerates true runway candidates.
+  const tGlass = entityTimeToGlassSeconds(entity, renderAdmissionEnv(state), state,
+      TABLE_DECODE_RUNWAY_SECONDS,
+      approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state)));
   const inRunway = entityMatchesWaveHullRunway(entity, state)
     || isEntityAuthoredUpgradeRelevant(entity, state)
-    || entityTimeToGlassSeconds(entity, renderAdmissionEnv(state), state,
-        TABLE_DECODE_RUNWAY_SECONDS,
-        approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state)))
-      <= TABLE_DECODE_RUNWAY_SECONDS;
+    || tGlass <= TABLE_DECODE_RUNWAY_SECONDS;
   if (!inRunway) return;
+  // A spawn already at the glass (tGlass inside the urgent bound) posts the 'visible' decode
+  // class — its worker tasks drain ahead of deadline-class runway work that still has slack.
+  const admissionVisible = tGlass <= TABLE_BUILD_URGENT_SECONDS;
   if (entity.type === 'ship') {
     if (!meshNeedsAuthoredDecode(owner, entity)) return;
     pending.add(entity.id);
     Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {
       residencyRole: 'combat-spawn-decode-runway',
       sectorId: (state.world && state.world.currentSectorId) || null,
+      admissionVisible,
     })).catch(() => {}).finally(() => {
       pending.delete(entity.id);
     });
@@ -2636,10 +2659,52 @@ function kickSpawnedEntityDecode(owner, entity) {
   if (packagedDecodeFileForEntity(entity)) {
     if (!meshNeedsAuthoredDecode(owner, entity)) return;
     pending.add(entity.id);
-    warmPackagedEntityDecode(owner, entity).finally(() => {
+    warmPackagedEntityDecode(owner, entity, null, admissionVisible).finally(() => {
       pending.delete(entity.id);
     });
   }
+}
+
+/**
+ * Decode a known future hostile roster (enemy-catalog ids) through the same authored preload
+ * path the spawn kick uses, deduped by hull key, each unique hull's kill hulk alongside.
+ * The caller supplies the roster — every call site knows its squad composition ahead of the
+ * spawn event, which is the whole point of the runway these warm.
+ */
+function warmEnemyRosterDecode(owner, enemyIds, residencyRole, sectorId = null) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || !renderer || !renderer.domElement) return;
+  const targetSector = sectorId || (state.world && state.world.currentSectorId) || null;
+  const seen = new Set();
+  for (const enemyId of enemyIds) {
+    const key = enemyHullDecodeKey(enemyId);
+    if (!key || seen.has(key.key)) continue;
+    seen.add(key.key);
+    const stub = makeWaveHullDecodeStub(key);
+    if (!stub) continue;
+    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, stub, {
+      residencyRole,
+      sectorId: targetSector,
+    })).catch(() => {});
+    warmKillHulkDecode(owner, stub);
+  }
+}
+
+/**
+ * The nemesis warning announces the exact kit roster ~6 s before the encounter host spawns it —
+ * resolve the hulls here instead of waiting for the spawn kick so the squad decodes inside the
+ * tell window. Slot math mirrors encounterHost: primary kit supplies boss + escort archetypes;
+ * a secondary kit supplies one extra escort archetype.
+ */
+function warmNemesisSquadDecode(owner, payload) {
+  if (!payload) return;
+  const archetypes = [];
+  const primary = NEMESIS_KITS[payload.kit];
+  if (primary) archetypes.push(primary.bossArchetype, primary.escortArchetype);
+  const secondary = NEMESIS_KITS[payload.secondary];
+  if (secondary) archetypes.push(secondary.escortArchetype);
+  warmEnemyRosterDecode(owner, archetypes, 'nemesis-announce-decode-runway', payload.sectorId);
 }
 
 /**
@@ -2721,8 +2786,11 @@ function kickWaveHullDecodeAssets(owner, hullKeys) {
   if (state.mode !== 'flight' && state.mode !== 'loading') return 0;
   const pending = owner._waveHullDecodePending || (owner._waveHullDecodePending = new Set());
   const list = Array.isArray(hullKeys) ? hullKeys : [];
+  // Distinct hull keys per wave plan stay small (archetype→shipId sharing leaves ~≤4 unique
+  // files even when a wave packs several enemy ids); decode the whole set in one burst —
+  // the deadline class absorbs it — rather than letting keys past the cap pop at combat spawn.
   let started = 0;
-  for (let i = 0; i < list.length && started < 2; i++) {
+  for (let i = 0; i < list.length && started < 4; i++) {
     const key = list[i];
     if (!key || typeof key.key !== 'string' || pending.has(key.key)) continue;
     const stub = makeWaveHullDecodeStub(key);
@@ -7486,14 +7554,20 @@ export const render = {
             || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
             || !root || !root.position) return false;
         const bounds = this._entityViewCullBounds();
-        if (!Number.isFinite(bounds.glassHalfX) || !Number.isFinite(bounds.glassHalfZ)) return false;
         const data = root.userData || {};
         const hlodRadius = data.hlod && Number(data.hlod.visualRadius);
         const radius = Number.isFinite(hlodRadius) && hlodRadius > 0
           ? hlodRadius
           : entityVisualCullRadius(entity, root);
-        return Math.abs(root.position.x - bounds.x) <= bounds.glassHalfX + radius
-          && Math.abs(root.position.z - bounds.z) <= bounds.glassHalfZ + radius;
+        const liveCam = this.cam && this.cam.obj;
+        let frustum = null;
+        if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
+          liveCam.updateMatrixWorld();
+          _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
+          _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
+          frustum = _liveViewFrustum;
+        }
+        return rootOnLiveGlass(bounds, frustum, root.position, radius);
       },
       // One root per present is the GPU-pacing contract; WHICH root drains next
       // is a deadline choice. Explicit focus first, then earliest
@@ -10745,7 +10819,29 @@ export const render = {
      * an aborted member would fail the sector's publication closed.
      */
     const armNearBodyEarlyPublication = (record, prepared) => {
-      if (!prepared || prepared.earlyPublishArmed === true) return;
+      if (!prepared) return;
+      if (prepared.earlyPublishArmed === true) {
+        // The settle-time verdict is not final: a body that resolved while the player was still
+        // outside the arrival band keeps its READY record, so every later staging pass re-judges
+        // the live range and reveals it the moment the band reaches it — a stalled sibling can no
+        // longer hold a ready near body behind the certified set.
+        if (record.active === true
+            && prepared.earlyPublishClaimed !== true
+            && prepared.state === SECTOR_BOUNDARY_PREPARATION_STATE.ready
+            && bodyIsInsideSectorArrivalBand(state, prepared.entity)) {
+          prepared.earlyPublishClaimed = true;
+          void this._sectorBoundaryPreparations.publishIfReady(prepared)
+            .then((published) => {
+              if (published === true) {
+                record.earlyPublished = (Number(record.earlyPublished) || 0) + 1;
+              } else {
+                prepared.earlyPublishClaimed = false;
+              }
+            })
+            .catch(() => { prepared.earlyPublishClaimed = false; });
+        }
+        return;
+      }
       prepared.earlyPublishArmed = true;
       Promise.resolve(prepared.settled)
         .catch(() => null)
@@ -11113,6 +11209,26 @@ export const render = {
       // the earliest spec — start the hull/packaged decode now (file-deduped through the same
       // pending set the poll uses) so the cohort decodes in parallel from tick zero.
       kickSpawnedEntityDecode(this, entity);
+    });
+    onBus('nemesis:announced', (payload = {}) => {
+      // The tell window is exactly long enough to decode the announced roster — start the
+      // boss/escort hulls at announcement rather than at spawn so arrival shows real models.
+      warmNemesisSquadDecode(this, payload);
+    });
+    onBus('heist:missionCue', ({ moment, variantId } = {}) => {
+      // Breakaway pressure spawns at capsule launch on a fixed 3-file roster — schedule
+      // acceptance is the earliest reliable signal, so the hulls decode during the countdown
+      // rather than in the frame the assembly goes loose.
+      if (moment !== 'accepted' || variantId !== BREAKAWAY_THIRD_SHIFT_VARIANT_ID) return;
+      warmEnemyRosterDecode(this,
+        [BREAKAWAY_PRESSURE.specialistTypeId, ...BREAKAWAY_PRESSURE.lightPool],
+        'heist-pressure-decode-runway');
+    });
+    onBus('mission:targetsProjected', ({ archetypes, destSectorId } = {}) => {
+      // The mission system publishes its fixed hull pool at accept and on jump intent —
+      // decode it into the destination sector's residency before the targets materialize.
+      if (!Array.isArray(archetypes)) return;
+      warmEnemyRosterDecode(this, archetypes, 'mission-target-decode-runway', destSectorId);
     });
     onBus('jump:arrive', ({ sectorId } = {}) => {
       const pending = this._authoredSectorPrewarmPending;
@@ -14622,10 +14738,7 @@ export const render = {
       // aspect; the live camera can be zoomed out further, putting a runway-classed hull on the
       // real screen. The presented pose inside the live glass extents wins over the runway deny.
       const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
-      const onLiveGlass = (Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
-        && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + TABLE_FRAME_SKIRT_WU + glassRadius
-        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + TABLE_FRAME_SKIRT_WU + glassRadius)
-        || isOnLiveCameraView(liveViewFrustum, mesh.position, glassRadius + TABLE_FRAME_SKIRT_WU);
+      const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
       // The live-glass deadline only exists once the live screen does: a root
       // pending behind the loading shell is not on glass yet — its clock starts
       // at the first playable frame, same gate the admission lane serves.
@@ -17246,7 +17359,10 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
     for (const material of materials) {
       if (!material || material.envMap !== previousEnvMap) continue;
       material.envMap = nextEnvMap;
-      material.needsUpdate = true;
+      // No needsUpdate: both PMREM sources bake at the same fixed cubeUV size, so the swap is
+      // program-key-stable — the next draw notices the changed envMap texture, cache-hits the
+      // same program, and uploads it as a uniform. Forcing a rebuild relinks every lit family
+      // in one frame for zero semantic difference.
     }
   };
   scene.traverse(rebind);

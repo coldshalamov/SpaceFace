@@ -3060,6 +3060,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     assetBoundary: 'GLTFKit v1 — authored station archetype',
     gracefulFallback: false,
   };
+  stampPendingPlaceVisualBounds(boundary);
 
   let activeRoot = fallbackRoot;
   const setActiveVisualRoot = (next) => {
@@ -3169,6 +3170,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.placeId = entity.data && entity.data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
   boundary.userData.placeTargetRadius = geologySkin ? entity.radius : null;
   boundary.userData.authoredGeologySkin = geologySkin;
+  stampPendingPlaceVisualBounds(boundary);
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -3290,10 +3292,11 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     );
   }
   handoffBootstrapIfCovered(renderer);
-  if (record && boundary.userData && !boundary.userData.visualBounds && record.bounds) {
+  if (record && boundary.userData && record.bounds) {
     // The pending substrate still classifies by presence radius until the authored body
     // lands — stamp the envelope the compose is about to draw at, so glass/runway tests
-    // measure the incoming body (often 2-4x the collider) during the compile window.
+    // measure the incoming body (often 2-4x the collider) during the compile window. This
+    // overwrites the queue-window estimate stamped at boundary build.
     const size = Array.isArray(record.bounds.size) ? record.bounds.size : null;
     const center = Array.isArray(record.bounds.center) ? record.bounds.center : [0, 0, 0];
     if (size) {
@@ -3537,6 +3540,26 @@ function commitAuthoredPlaceBoundary(
   try { disposeDetachedPlaceFallback(fallbackRoot); }
   catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
   return true;
+}
+
+/**
+ * Queue-window visual classification for a pending place boundary. The exact record bounds are
+ * only knowable after the GLB resolves, but the queue wait is precisely when rung ordering
+ * decides anything — a packaged prop whose drawn size far exceeds its collider would classify
+ * at presence radius for the whole wait and sit behind real glass jobs while its stand-in
+ * draws. When a target radius is declared, the compose draws the envelope at ~2× it regardless
+ * of authored units, so that envelope is stamped here; the exact record bounds overwrite the
+ * estimate in upgradePlaceBoundary.
+ */
+function stampPendingPlaceVisualBounds(boundary) {
+  if (!boundary || !boundary.userData || boundary.userData.visualBounds) return;
+  const targetRadius = Number(boundary.userData.placeTargetRadius);
+  if (!Number.isFinite(targetRadius) || targetRadius <= 0) return;
+  const diameter = targetRadius * 2;
+  boundary.userData.visualBounds = {
+    center: [0, 0, 0],
+    size: [diameter, diameter, diameter],
+  };
 }
 
 // Place draw-scale resolution. A POI's declared draw size (placeTargetRadius, else placeScale)
@@ -4919,10 +4942,13 @@ function steadyFlightShipCanPassBusyPlace(state) {
   if (!state.jobs.some((job) => queuedGlassLawJobStillNeeded(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
-  // Any count works: during the concurrency-2 opening window (or an overlap transition) a
-  // ship can sit behind two ambient jobs. Passing whenever NO slot-holder is a ship feeds
-  // the ship lane; a ship already in-flight makes the pass a no-op anyway.
-  return active.length > 0 && active.every((job) => job.entity?.type !== 'ship');
+  // Bound the grant to one overlap: a granted pass leaves the lane over-full only while the
+  // extra job still holds a serial slot, so demanding active ≤ limit makes the pass single-shot.
+  // Without it, a run of non-ship ≤1.5 jobs (critical hubs rung ahead of everything) keeps
+  // `every(non-ship)` true forever and chains N full composes — the measured combat stall the
+  // serial lane exists to prevent.
+  return active.length > 0 && active.length <= authoredUpgradeConcurrencyLimit()
+    && active.every((job) => job.entity?.type !== 'ship');
 }
 
 // Steady flight runs the serial lane at concurrency 1, so a job whose inner await never settles
@@ -7443,7 +7469,7 @@ function admitEntityPlan(renderer, options, library, plan) {
   }
   return new Promise((resolve, reject) => {
     const entry = {
-      deadline: options && options.admissionDeadline === true,
+      deadline: options && (options.admissionDeadline === true || options.admissionVisible === true),
       run: async () => {
         // Re-check only after earlier demand has committed its records. Checking before joining
         // the lane permits duplicate decodes; copying slot arrays outside the lane permits
@@ -7537,6 +7563,7 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
         sectorId: options.sectorId,
         isResidencyOwnerActive: options.isResidencyOwnerActive,
         admissionDeadline: options.admissionDeadline,
+        admissionVisible: options.admissionVisible,
       });
     } finally {
       finishDecodeAdmission(renderer, diagnostic);

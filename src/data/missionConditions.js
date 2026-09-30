@@ -499,11 +499,13 @@ export const MISSION_CONDITIONS = Object.freeze({
         ids = null;
       } else if (!ids
           || mission._wreckWakesIdsSource !== mission.targetEntityIds
+          || mission._wreckWakesIdsLength !== (mission.targetEntityIds ? mission.targetEntityIds.length : 0)
           || mission._wreckWakesIdsEscortee !== mission._escorteeId) {
         ids = new Set(mission.targetEntityIds || []);
         if (mission._escorteeId != null) ids.add(mission._escorteeId);
         mission._wreckWakesIds = ids;
         mission._wreckWakesIdsSource = mission.targetEntityIds;
+        mission._wreckWakesIdsLength = mission.targetEntityIds ? mission.targetEntityIds.length : 0;
         mission._wreckWakesIdsEscortee = mission._escorteeId;
       }
       if (!ids || !ids.size) {

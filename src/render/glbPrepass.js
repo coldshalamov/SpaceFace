@@ -12,7 +12,7 @@
 // (content-hash immutable, so force-cache makes the re-read cheap); a clean error reply hands the
 // GLB back inside the result so the stock parse still runs on the same bytes. When workers are
 // unavailable the prepass resolves to the input buffer untouched, which is the stock path.
-import { deadlineDecodeActive, resolveDecodeTaskBudgetLimit, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, resolveDecodeTaskBudgetLimit, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 
 const WORKER_NAME = 'spaceface-glb-prepass';
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -168,7 +168,7 @@ export function createGlbPrepasser(options = {}) {
           release: null,
           timer: null,
           decodeClass: options.decodeClass
-            || (deadlineDecodeActive() ? 'deadline' : 'ambient'),
+            || activeDecodeClass(),
         };
         if (timeoutMs > 0) {
           job.timer = setTimeout(() => {

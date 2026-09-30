@@ -20,21 +20,24 @@ export function resolveDecodeTaskBudgetLimit(hardwareConcurrency) {
 }
 
 /**
- * FIFO semaphore with a deadline class. `acquire(decodeClass)` resolves a `release` function;
- * release returns the token to the next waiter — 'deadline' waiters before 'ambient' ones,
- * FIFO within each class — or to `available`. Releasing is idempotent-free — callers must
- * invoke a release exactly once, so wrap tasks so settle paths release exactly one token.
+ * FIFO semaphore with deadline classes. `acquire(decodeClass)` resolves a `release` function;
+ * release returns the token to the next waiter — 'visible' waiters before 'deadline' waiters
+ * before 'ambient' ones, FIFO within each class — or to `available`. Releasing is
+ * idempotent-free — callers must invoke a release exactly once, so wrap tasks so settle paths
+ * release exactly one token.
  *
- * Two classes only: a deadline decode (decode-runway / wave-hull / admission-deadline work)
- * never waits behind a queued ambient warm, while ambient fairness is preserved because
- * deadline arrivals are rare and capped per poll.
+ * Three classes: a 'visible' decode (spawn already at the glass — tGlass below the urgent
+ * threshold) never waits behind runway work that still has seconds of slack; a 'deadline'
+ * decode (decode-runway / wave-hull / admission-deadline work) never waits behind a queued
+ * ambient warm; ambient fairness is preserved because the higher classes are rare and capped.
  */
 export function createDecodeTaskBudget(limit) {
   const size = Math.max(1, Math.floor(limit));
   let available = size;
   const waiters = [];
   const release = () => {
-    let idx = waiters.findIndex((w) => w.decodeClass === 'deadline');
+    let idx = waiters.findIndex((w) => w.decodeClass === 'visible');
+    if (idx < 0) idx = waiters.findIndex((w) => w.decodeClass === 'deadline');
     if (idx < 0) idx = waiters.length ? 0 : -1;
     const next = idx >= 0 ? waiters.splice(idx, 1)[0] : null;
     if (next) next.resolve(release);
@@ -62,9 +65,21 @@ export function createDecodeTaskBudget(limit) {
 // bounded to at most the co-scheduled sibling of a deadline part — strictly narrower than
 // classifying nothing.
 let deadlineDecodeDepth = 0;
+let visibleDecodeDepth = 0;
 
 export function deadlineDecodeActive() {
-  return deadlineDecodeDepth > 0;
+  // A visible decode is on the tightest clock the system models — everything deadline-scoped
+  // applies to it as well.
+  return deadlineDecodeDepth > 0 || visibleDecodeDepth > 0;
+}
+
+export function visibleDecodeActive() {
+  return visibleDecodeDepth > 0;
+}
+
+/** The class any worker-decode post made right now should carry. */
+export function activeDecodeClass() {
+  return visibleDecodeDepth > 0 ? 'visible' : (deadlineDecodeDepth > 0 ? 'deadline' : 'ambient');
 }
 
 /** Run fn with the deadline-class flag set for the duration of its settlement. */
@@ -78,7 +93,26 @@ export function withDeadlineDecodeClass(fn) {
   };
   try {
     const result = fn();
-    Promise.resolve(result).finally(settle);
+    Promise.resolve(result).then(settle, settle);
+    return result;
+  } catch (error) {
+    settle();
+    throw error;
+  }
+}
+
+/** Run fn with the visible-class flag set for the duration of its settlement. */
+export function withVisibleDecodeClass(fn) {
+  visibleDecodeDepth += 1;
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    visibleDecodeDepth -= 1;
+  };
+  try {
+    const result = fn();
+    Promise.resolve(result).then(settle, settle);
     return result;
   } catch (error) {
     settle();

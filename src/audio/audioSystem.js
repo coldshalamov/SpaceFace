@@ -5845,20 +5845,47 @@ export const audio = {
     if (now < (rt._nextRemoteEngineS || 0)) return;
     rt._nextRemoteEngineS = now + 0.1;
 
-    const list = this.state.entityList;
     const player = this._playerPos();
     const playerId = this.state.playerId;
     const rows = rt._remoteRows || (rt._remoteRows = []);
     rows.length = 0;
-    if (Array.isArray(list) && player) {
+    if (player) {
+      // Candidate membership is version-latched: engine-capable types live in the index's
+      // shipLike and radarContacts buckets (freighters only in the latter), so the 10 Hz run
+      // walks those ~small lists instead of the whole entityList. Interned id/loop keys ride a
+      // WeakMap so nothing allocates a String(entity.id) per ship per run.
+      const index = this.state.entityIndex;
+      const indexVersion = index && Number.isFinite(index.version) ? index.version : null;
+      const buckets = (index && index.shipLike && index.radarContacts) ? index : null;
+      if (indexVersion == null || rt._remoteCandVersion !== indexVersion || !buckets) {
+        rt._remoteCandVersion = indexVersion;
+        const candidates = rt._remoteCandidates || (rt._remoteCandidates = []);
+        candidates.length = 0;
+        const candSet = rt._remoteCandSet || (rt._remoteCandSet = new Set());
+        candSet.clear();
+        const take = (entity) => {
+          if (!entity || candSet.has(entity)) return;
+          if (entity.type !== 'ship' && entity.type !== 'freighter' && entity.type !== 'drone') return;
+          candSet.add(entity);
+          candidates.push(entity);
+        };
+        if (buckets) {
+          for (let i = 0; i < index.shipLike.length; i++) take(index.shipLike[i]);
+          for (let i = 0; i < index.radarContacts.length; i++) take(index.radarContacts[i]);
+        } else {
+          const list = this.state.entityList;
+          if (Array.isArray(list)) for (let i = 0; i < list.length; i++) take(list[i]);
+        }
+      }
+      const keys = rt._remoteKeys || (rt._remoteKeys = new WeakMap());
       // Row records pool across 0.1 s cadence runs: the loop stays one positional
       // index into a stable backing array instead of a fresh {id,dist,…} per ship.
       const rowPool = rt._remoteRowPool || (rt._remoteRowPool = []);
       _exactAudioOpts.playerId = playerId;
-      for (let i = 0; i < list.length; i++) {
-        const entity = list[i];
+      const candidates = rt._remoteCandidates;
+      for (let i = 0; i < candidates.length; i++) {
+        const entity = candidates[i];
         if (!entity || entity.alive === false || entity.id === playerId || !entity.pos) continue;
-        if (entity.type !== 'ship' && entity.type !== 'freighter' && entity.type !== 'drone') continue;
         const frame = entity._flightFrame;
         let throttle = 0;
         if (frame && Number.isFinite(frame.throttle)) throttle = Math.max(0, frame.throttle);
@@ -5869,9 +5896,15 @@ export const audio = {
           row = { id: null, idKey: '', engKey: '', dist: 0, throttle: 0, exact: false, entity: null };
           rowPool[rows.length] = row;
         }
+        let interned = keys.get(entity);
+        if (!interned) {
+          interned = { idKey: String(entity.id) };
+          interned.engKey = 'eng_' + interned.idKey;
+          keys.set(entity, interned);
+        }
         row.id = entity.id;
-        row.idKey = String(entity.id);
-        row.engKey = 'eng_' + row.idKey;
+        row.idKey = interned.idKey;
+        row.engKey = interned.engKey;
         row.dist = Math.hypot(entity.pos.x - player.x, entity.pos.z - player.z);
         row.throttle = throttle;
         row.exact = exact;
