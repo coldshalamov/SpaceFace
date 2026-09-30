@@ -1,0 +1,84 @@
+name: Bake authored boot visualizer
+on:
+  push:
+    branches: ['fix/boot-visualizer-media-first']
+    paths:
+      - '.github/workflows/boot-visualizer-bake.yml'
+      - 'tools/cinematic/bake-boot-visualizer.mjs'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: boot-visualizer-bake-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/ui/loading*.js
+            /src/ui/introSignalRemix*.js
+            /src/ui/boot*.js
+            /src/ui/orrery/boot*.js
+            /src/core/boot*.js
+            /src/core/eventBus.js
+            /tools/cinematic/signal-remix*
+            /tools/cinematic/bake-boot-visualizer.mjs
+            /assets/cinematics/intro-visualizer.*
+            /assets/cinematics/boot-visualizer*
+            /assets/ui/generated/emblem/emblem.thumb.webp
+            /styles/intro.css
+            /styles/boot-instrument.css
+            /styles/boot-visualizer.css
+            /index.html
+            /package.json
+            /.gitattributes
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install offline rendering tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/boot-tools" --no-save --ignore-scripts playwright@1.56.1
+          "$RUNNER_TEMP/boot-tools/node_modules/.bin/playwright" install --with-deps chrome
+          command -v ffmpeg || { sudo apt-get update && sudo apt-get install -y ffmpeg; }
+      - name: Bake normal and reduced-flash artwork
+        run: BOOT_PLAYWRIGHT="$RUNNER_TEMP/boot-tools/node_modules/playwright/index.mjs" node tools/cinematic/bake-boot-visualizer.mjs
+      - name: Publish only generated assets to the requested fix branch
+        if: github.ref_name == 'fix/boot-visualizer-media-first'
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- assets/cinematics/boot-visualizer.mp4 assets/cinematics/boot-visualizer-quiet.mp4 assets/cinematics/boot-visualizer.jpg assets/cinematics/boot-visualizer.manifest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'assets(boot): bake existing signal artwork for compositor playback'
+            git pull --rebase origin "$BRANCH"
+            git push origin "HEAD:$BRANCH"
+          fi
+      - name: Collect media and exact source fixture
+        if: always()
+        run: |
+          mkdir -p .boot-proof/assets/cinematics
+          cp assets/cinematics/boot-visualizer* .boot-proof/assets/cinematics/ 2>/dev/null || true
+          git rev-parse HEAD > .boot-proof/SOURCE_COMMIT.txt
+          python3 - <<'PY'
+          import glob, os, zipfile
+          patterns = ['src/ui/loading*.js', 'src/ui/introSignalRemix*.js', 'src/ui/boot*.js', 'src/ui/orrery/boot*.js', 'src/core/boot*.js', 'src/core/eventBus.js', 'styles/intro.css', 'styles/boot-instrument.css', 'styles/boot-visualizer.css', 'assets/ui/generated/emblem/emblem.thumb.webp', 'index.html', 'package.json', 'tools/cinematic/signal-remix*']
+          with zipfile.ZipFile('.boot-proof/runtime-source.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+              for path in sorted({p for pattern in patterns for p in glob.glob(pattern) if os.path.isfile(p)}): z.write(path)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: authored-boot-visualizer
+          path: .boot-proof/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
