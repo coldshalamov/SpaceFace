@@ -43166,7 +43166,7 @@
           6.781366
         ]
       },
-      "bytes": 904024,
+      "bytes": 920996,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -43190,7 +43190,7 @@
           12.49577,
           7.200007,
           7.466342,
-          6.94027,
+          6.940269,
           7.020311,
           6.828369,
           9.419324,
@@ -43284,6 +43284,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Cyan_oxide",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
@@ -43358,8 +43366,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 18,
-      "nodes": 31,
+      "meshes": 19,
+      "nodes": 32,
       "note": null,
       "opening": null,
       "pivot": [
@@ -43599,8 +43607,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1841,
-        "inwardFaceFraction": 0.12675,
+        "boundaryEdges": 1893,
+        "inwardFaceFraction": 0.12725,
         "silhouetteRadius": 21.283554,
         "sliceY": 0
       },
@@ -43706,7 +43714,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 43642,
+      "triangles": 44718,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],

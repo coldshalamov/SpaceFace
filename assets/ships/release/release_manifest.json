@@ -3646,20 +3646,6 @@
       "contractNodeCount": 51
     },
     {
-      "id": "wholeship_ironback_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/ironback_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
-      "sourceSha256": "1d668d1fc44de5963b5198a3d375182b0a80ecd5519faa9d566ff47e1fc581f9",
-      "releaseSha256": "b8566b3e85764c55158e90460bfb3356447dcd4abb9e35ae12c4037868ee298e",
-      "sourceBytes": 2453484,
-      "releaseBytes": 904024,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 65,
-      "contractNodeCount": 29
-    },
-    {
       "id": "wholeship_leviathan_production_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/leviathan_production_v1.glb",
@@ -4038,34 +4024,6 @@
       "contractNodeCount": 30
     },
     {
-      "id": "wholeship_ironback_production_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/ironback_production_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb",
-      "sourceSha256": "1b5843c44b33ab44d2f1c04e215269647cefbfbfcc4eced8313266f3c29190ac",
-      "releaseSha256": "178a9b62a74f460531a258bc3f947f29de185485b7adbbb6e3a421843908db0f",
-      "sourceBytes": 1199312,
-      "releaseBytes": 602876,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 65,
-      "contractNodeCount": 29
-    },
-    {
-      "id": "wholeship_ironback_production_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/ironback_production_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb",
-      "sourceSha256": "bc8d38ac681247cf83a1415b85e8aa778a8af6f043e3d0a59399856ae2f23da9",
-      "releaseSha256": "d4b7ef3c6aa1a3b6ed31b35962da672dbf73be986397908fd9758245c9a86a2c",
-      "sourceBytes": 680336,
-      "releaseBytes": 462416,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 58,
-      "contractNodeCount": 28
-    },
-    {
       "id": "wholeship_leviathan_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/leviathan_production_v1_lod1.glb",
@@ -4442,6 +4400,48 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 98,
       "contractNodeCount": 38
+    },
+    {
+      "id": "wholeship_ironback_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ironback_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
+      "sourceSha256": "102427c496a210a1c7f021aa492c6906364257389635a4fe04ae82ee5784ba72",
+      "releaseSha256": "98a2721bd759c850368785812bd9cd3c2584fe177628fadf305052119acd90e4",
+      "sourceBytes": 2519832,
+      "releaseBytes": 920996,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 69,
+      "contractNodeCount": 30
+    },
+    {
+      "id": "wholeship_ironback_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ironback_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb",
+      "sourceSha256": "a98bbdf70f842d714512b717b4aacc0ed367372c39dcd7bcdfdf1a97fc208031",
+      "releaseSha256": "0cf550b29ea5abb2ba770779519d6903e692e630b1ae6879b91e0d304bfda466",
+      "sourceBytes": 1222704,
+      "releaseBytes": 611592,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 69,
+      "contractNodeCount": 30
+    },
+    {
+      "id": "wholeship_ironback_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ironback_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb",
+      "sourceSha256": "d51278f48e7e02d9f1143d130f4800273269f81bc77bb21fcf1c22398d8e391f",
+      "releaseSha256": "c8c3d3b243ec19d17a106b6713f7af320d55933e13b8e08150fe9cf6e801798a",
+      "sourceBytes": 693464,
+      "releaseBytes": 468176,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 62,
+      "contractNodeCount": 29
     }
   ]
 }

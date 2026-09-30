@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        21
+        22
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        22
+        23
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        26
+        27
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        27
+        28
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        28
+        29
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        29
+        30
       ],
       "parentNodeId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "worldTransform": [
@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8966daffc215e998ee1997d041c888c7a5ef2213861f52c4ac8bb0ebe4f3334f",
+  "contentHash": "cf52525fea91a5260cdf3cd122db0f1d62950748a1c22a4b66417afa349315b3",
   "dynamicGroups": [
     {
       "id": "sf.render.ironback-production-v1.node.lod0-hook-drive-core.dynamic",
@@ -614,16 +614,16 @@
         "max": [
           9.946150779724121,
           2.7747724056243896,
-          3.390683174133301
+          3.3906829357147217
         ],
         "min": [
           -9.970046997070312,
           -1.0495847463607788,
-          -3.3906829357147217
+          -3.390683174133301
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a4d258cf72fdb843647eedb319aa122228b111efbafacb868129fbce740d144",
+      "geometryHash": "b0a2528585634d080ca1c6acbd13965048e7c81fa0c4e3ca2c57da6897e51249",
       "id": "sf.render.ironback-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -648,16 +648,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a875feeedcdadfeb456d683dd3adb86f6dd13a9cd32ff85117563d4890512c3d",
+      "geometryHash": "3e0ad5bcc487398557cd4df3e4663d902293884c87f6e3e7c1f36117edb95ccf",
       "id": "sf.render.ironback-production-v1.node.lod0-armor.primitive.0",
-      "indexCount": 19857,
+      "indexCount": 20079,
       "indexed": true,
       "materialHash": "cfda2f2a6b5446520f68c6d22c56977849966902e167b1dc45869a5a29b174d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 5933
+      "vertexCount": 6003
     },
     {
       "bounds": {
@@ -948,16 +948,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11b93f22e9f42f08f1afcae6b101a8d3444898fdeffaa900da81653ddb103adc",
+      "geometryHash": "1ee8b7bfe7d42d38fff2c1151784515f901072942a9b2f0d984897df9645707b",
       "id": "sf.render.ironback-production-v1.node.lod0-hull.primitive.0",
-      "indexCount": 29385,
+      "indexCount": 29937,
       "indexed": true,
       "materialHash": "30480625fa5f9da9a5caec39f910641ff82b80472f2c15db750ef8778823168d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 7941
+      "vertexCount": 8075
+    },
+    {
+      "bounds": {
+        "max": [
+          4.949517250061035,
+          1.739057183265686,
+          0.04021891951560974
+        ],
+        "min": [
+          -8.497965812683105,
+          0.898563802242279,
+          -0.04021891951560974
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3e048a45508b59b4e23affc261ffa606e7dd25f4475f7a6ea69e592f5b452c43",
+      "id": "sf.render.ironback-production-v1.node.lod0-lights-cyan-oxide.primitive.0",
+      "indexCount": 1380,
+      "indexed": true,
+      "materialHash": "9e1e328bd5e089957bf69513161a15870b5d0e066e6e6a4c962ac9786bb5794c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan_oxide",
+      "nodeId": "sf.render.ironback-production-v1.node.lod0-lights-cyan-oxide",
+      "primitiveIndex": 0,
+      "vertexCount": 528
     },
     {
       "bounds": {
@@ -1023,16 +1048,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e308699ae72f02a607b98b54647908ade7d59033e1bedf6bbc3c0873dc982da",
+      "geometryHash": "1eec6d425181ae2761630d3817f499508f20aee035140a0c8f638667c46722e0",
       "id": "sf.render.ironback-production-v1.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 43425,
+      "indexCount": 44211,
       "indexed": true,
       "materialHash": "be58dd553170ebb982eb96555febe9f43130cc62b273a3c20a919fe62b75f6e2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 13439
+      "vertexCount": 13844
     },
     {
       "bounds": {
@@ -1048,16 +1073,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d09482f0492a1ed5234afa6ec4e885936bfa4a0459f5a7425683133b7ac0cbe",
+      "geometryHash": "a8dba61c6ce732c0251851e17af10efa56f85801ddbed0292b506c7b856b050a",
       "id": "sf.render.ironback-production-v1.node.lod0-warning.primitive.0",
-      "indexCount": 6834,
+      "indexCount": 7122,
       "indexed": true,
       "materialHash": "585b10c036ff9db7ba36a835644a1e4c638ef06e4516e9bd648cebf36c52ca19",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 2149
+      "vertexCount": 2227
     }
   ],
   "hlods": [],
@@ -1192,6 +1217,13 @@
       "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "id": "material:935effa788e2e47cba8a2bfc",
       "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9e1e328bd5e089957bf69513161a15870b5d0e066e6e6a4c962ac9786bb5794c",
+      "id": "material:9e1e328bd5e089957bf69513",
+      "name": "Material_Emissive_Cyan_oxide",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -2042,6 +2074,55 @@
       ]
     },
     {
+      "id": "sf.render.ironback-production-v1.node.lod0-lights-cyan-oxide",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan_oxide",
+      "nodeName": "LOD0_Lights_Cyan_oxide",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ironback-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.ironback-production-v1.node.lod0-lights-warm",
       "localTransform": [
         1,
@@ -2066,7 +2147,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        14
+        15
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2115,7 +2196,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        15
+        16
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2164,7 +2245,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        16
+        17
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2213,7 +2294,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        17
+        18
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2262,7 +2343,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2311,7 +2392,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2360,7 +2441,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2409,7 +2490,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        21
+        22
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2458,7 +2539,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        22
+        23
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2507,7 +2588,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2556,7 +2637,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2605,7 +2686,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2654,7 +2735,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        26
+        27
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2703,7 +2784,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        27
+        28
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2752,7 +2833,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        28
+        29
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2801,7 +2882,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        29
+        30
       ],
       "parentId": "sf.render.ironback-production-v1.node.ironback-lod0-root",
       "role": "immutable",
@@ -2828,22 +2909,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "9c2f7c0fdbb4a7974228fee5f0593983c863c3848447703cab2f21339534af38"
+      "sha256": "054492815a8bd888dfaf7695bd84832ef6993140147e4cb2b9e4ef0a24b90047"
     },
     "sourceGlb": {
-      "bytes": 904024,
-      "sha256": "b8566b3e85764c55158e90460bfb3356447dcd4abb9e35ae12c4037868ee298e",
+      "bytes": 920996,
+      "sha256": "98a2721bd759c850368785812bd9cd3c2584fe177628fadf305052119acd90e4",
       "uri": "ironback_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "e4e0180ffe085306fa586fc5453907bcc2b6e0d42c0943d2e699aa1ce5459935",
+      "sha256": "b9856239464cf62cb3a92f23851838c40320680f3fbf90db4317c23ccef2c6de",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1626940,
-    "sha256": "4673bf72616ae963a03c040ffd9df201678742f6f526cc325e97ecd956967942",
+    "bytes": 1660360,
+    "sha256": "fec6e2130284cd08acce6c18d0fed3ad4d61d048dca40fbd3aec2fc506d225fd",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2851,17 +2932,17 @@
       "center": [
         -0.011920928955078125,
         0.8625127673149109,
-        1.1920928955078125e-7
+        -1.1920928955078125e-7
       ],
       "max": [
         9.946205139160156,
         2.7747724056243896,
-        3.390683174133301
+        3.3906829357147217
       ],
       "min": [
         -9.970046997070312,
         -1.0497468709945679,
-        -3.3906829357147217
+        -3.390683174133301
       ],
       "size": [
         19.91625213623047,
@@ -2894,7 +2975,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2946,7 +3027,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2998,7 +3079,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3050,7 +3131,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3102,7 +3183,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3154,7 +3235,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3206,7 +3287,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3258,7 +3339,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 27,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3310,7 +3391,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 28,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3362,7 +3443,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3414,7 +3495,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 30,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3466,7 +3547,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 31,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3504,7 +3585,7 @@
       "glass": 1,
       "hull": 2,
       "mechanical": 6,
-      "signal": 6,
+      "signal": 7,
       "warning": 1
     },
     "materialProfiles": [
@@ -3581,7 +3662,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3591,10 +3672,15 @@
       {
         "allowTextures": true,
         "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
         "role": "warning"
       }
     ],
-    "nodeCount": 32,
+    "nodeCount": 33,
     "primitives": [
       {
         "canopy": false,
@@ -3993,7 +4079,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_Lights_Cyan_oxide",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -4020,7 +4106,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -4047,7 +4133,7 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_Mechanical",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -4074,8 +4160,35 @@
           0,
           1
         ],
-        "name": "LOD0_Warning",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4086,7 +4199,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ironback_production_v1.glb"
   },
-  "runtimeHash": "d4c84a8121a55871bea4dc1414af4cd3742f1983276d1040012c998e4eac3776",
+  "runtimeHash": "bdb030f71a19124ef15a442cf0a9764438a5c6b1158f946fdce82bf21c4d7c42",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4094,12 +4207,12 @@
         "max": [
           9.946205139160156,
           2.7747724056243896,
-          3.390683174133301
+          3.3906829357147217
         ],
         "min": [
           -9.970046997070312,
           -1.0497468709945679,
-          -3.3906829357147217
+          -3.390683174133301
         ]
       },
       "id": "sf.render.ironback-production-v1.body",
@@ -4119,6 +4232,7 @@
         "sf.render.ironback-production-v1.node.lod0-hook-sensor-mast-lights-cyan",
         "sf.render.ironback-production-v1.node.lod0-hook-sensor-mast-mechanical",
         "sf.render.ironback-production-v1.node.lod0-hull",
+        "sf.render.ironback-production-v1.node.lod0-lights-cyan-oxide",
         "sf.render.ironback-production-v1.node.lod0-lights-warm",
         "sf.render.ironback-production-v1.node.lod0-mechanical",
         "sf.render.ironback-production-v1.node.lod0-mechanicaldark",

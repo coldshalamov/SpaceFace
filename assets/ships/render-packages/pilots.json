@@ -3902,8 +3902,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ironback_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
-      "releaseSha256": "b8566b3e85764c55158e90460bfb3356447dcd4abb9e35ae12c4037868ee298e",
-      "releaseBytes": 904024,
+      "releaseSha256": "98a2721bd759c850368785812bd9cd3c2584fe177628fadf305052119acd90e4",
+      "releaseBytes": 920996,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4809,8 +4809,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json",
-      "releaseBytes": 602876,
-      "releaseSha256": "178a9b62a74f460531a258bc3f947f29de185485b7adbbb6e3a421843908db0f"
+      "releaseBytes": 611592,
+      "releaseSha256": "0cf550b29ea5abb2ba770779519d6903e692e630b1ae6879b91e0d304bfda466"
     },
     {
       "key": "ironback-production-v1-lod2",
@@ -4830,8 +4830,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json",
-      "releaseBytes": 462416,
-      "releaseSha256": "d4b7ef3c6aa1a3b6ed31b35962da672dbf73be986397908fd9758245c9a86a2c"
+      "releaseBytes": 468176,
+      "releaseSha256": "c8c3d3b243ec19d17a106b6713f7af320d55933e13b8e08150fe9cf6e801798a"
     },
     {
       "key": "leviathan-production-v1-lod1",
