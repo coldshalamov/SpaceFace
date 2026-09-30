@@ -178,6 +178,13 @@ export function formatCiReportMarkdown(report) {
         || r.tail || r.stderr || r.stdout || '';
       lines.push(String(tail).trim() || '(no output captured)');
       lines.push('```');
+      if (r.failureLines) {
+        lines.push('');
+        lines.push('Failure lines:');
+        lines.push('```');
+        lines.push(r.failureLines);
+        lines.push('```');
+      }
       lines.push('');
     }
   } else {
@@ -481,6 +488,7 @@ export function createCommandResult({
     classification,
     artifactPath,
     structured: summarizeStructured(parsedStructured),
+    failureLines: extractFailureLines(stdout),
     stdoutTail: trimTail(stdout),
     stderrTail: trimTail(stderr),
   };
@@ -911,6 +919,22 @@ function balancedObject(text) {
     }
   }
   return null;
+}
+
+// The report only prints the tail of a failing command's output, which clips the actual
+// TAP `not ok` line on verbose suites. Surface every failure marker plus its yaml block so
+// the markdown names what failed instead of just how many.
+function extractFailureLines(text, { maxLines = 80 } = {}) {
+  const lines = String(text || '').split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length && out.length < maxLines; i++) {
+    if (!/^\s*not ok\b/.test(lines[i]) && !/^\s*(FAIL|failure):/i.test(lines[i])) continue;
+    for (let j = i; j < lines.length && out.length < maxLines; j++) {
+      out.push(lines[j]);
+      if (/^\s*\.\.\.\s*$/.test(lines[j]) || j - i >= 14) break;
+    }
+  }
+  return out.join('\n');
 }
 
 function trimTail(text) {
