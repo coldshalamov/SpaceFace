@@ -17,6 +17,7 @@ COLORS = {
     'paint2': '#868074',   # workshop ivory
     'stripe': '#33200f',   # dark copper livery line
     'hazard': '#c8901e',
+    'glow_cyan.rust': '#ffd23a',  # Work-fleet safety yellow, lit: the arm spines and crane rails
 }
 
 
@@ -99,6 +100,10 @@ def build():
     beam(s, 'UpperArm', SH, EL, 1.25, 0.98, 0.72, material='paint2')
     beam(s, 'UpperArmSpine', (SH[0] + 0.6, SH[1] + 0.16), (EL[0] - 0.6, EL[1] - 0.16), 1.65, 0.34, 0.16,
          material='stripe', bevel=0.01)
+    # Identity trim, lit: one thin safety-yellow line down the dark spine of each upper arm, shoulder
+    # to elbow -- the boom the chase camera reads first (LOOK.md: lamps are light).
+    beam(s, 'UpperArmTrim', (SH[0] + 0.7, SH[1] + 0.18), (EL[0] - 0.7, EL[1] - 0.18), 1.755, 0.12, 0.05,
+         material='glow_cyan.rust', bevel=0.0)
     pin(s, 'Elbow', EL, 0.8, 2.0, 0.64, material='gunmetal', cap='dark')
     pin(s, 'ElbowCap', EL, 1.95, 2.14, 0.46, material='hazard')
     # forearm folds back inboard, one level higher so the joint layering reads from above
@@ -135,6 +140,9 @@ def build():
                    mirror=True)
     # gantry crane over the roof bay
     F.box(s, 'GantryRail', (-3.4, 1.72, 2.25), (6.8, 0.2, 0.26), material='gunmetal', bevel=0.01, mirror=True)
+    # ...and the crane rails over the dark roof bay carry the same lit line
+    F.box(s, 'GantryRailTrim', (-3.4, 1.72, 2.395), (6.6, 0.1, 0.05), material='glow_cyan.rust', bevel=0.0,
+          mirror=True)
     for i, x in enumerate((-6.6, -0.2)):
         F.box(s, f'GantryFoot{i}', (x, 1.72, 2.08), (0.3, 0.3, 0.26), material='gunmetal', bevel=0.01, mirror=True)
     F.box(s, 'GantryBridge', (-4.3, 0.0, 2.42), (0.42, 3.8, 0.28), material='hazard', bevel=0.02)

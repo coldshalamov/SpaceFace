@@ -6149,8 +6149,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/apron_shuttle.glb",
-   "tris": 33304,
-   "bytes": 2070228,
+   "tris": 40832,
+   "bytes": 2489748,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6181,17 +6181,17 @@
    "bounds": {
     "min": [
      -9.670866966247559,
-     -1.2670583724975586,
+     -1.2642849683761597,
      -2.7640111446380615
     ],
     "max": [
      9.200294494628906,
-     2.3024609088897705,
+     2.3022332191467285,
      2.7640111446380615
     ],
     "dimensionsM": [
      18.871161460876465,
-     3.569519281387329,
+     3.566518187522888,
      5.528022289276123
     ]
    },
@@ -6202,8 +6202,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/ashline_dart.glb",
-   "tris": 36536,
-   "bytes": 2137364,
+   "tris": 38474,
+   "bytes": 2244640,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6255,8 +6255,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/ashline_lode.glb",
-   "tris": 31372,
-   "bytes": 1962660,
+   "tris": 32574,
+   "bytes": 2024468,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6291,12 +6291,12 @@
     ],
     "max": [
      11.199649810791016,
-     3.075606107711792,
+     3.075605869293213,
      5.510000228881836
     ],
     "dimensionsM": [
      22.12032985687256,
-     4.02605128288269,
+     4.026051044464111,
      11.020000457763672
     ]
    },
@@ -6649,8 +6649,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/helios_cradle.glb",
-   "tris": 64008,
-   "bytes": 3684852,
+   "tris": 68886,
+   "bytes": 3969672,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6682,17 +6682,17 @@
     "min": [
      -10.820595741271973,
      -3.4000000953674316,
-     -4.732181549072266
+     -4.732181072235107
     ],
     "max": [
      13.000091552734375,
      3.6992721557617188,
-     4.732181549072266
+     4.732181072235107
     ],
     "dimensionsM": [
      23.820687294006348,
      7.09927225112915,
-     9.464363098144531
+     9.464362144470215
     ]
    },
    "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Cradle, live Helios traffic role miner; explicit LOD0/1/2, 9/9/9 draws, semantic 1K PBR maps, damageable drive/gun/mining roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
@@ -6702,8 +6702,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/helios_lark.glb",
-   "tris": 21760,
-   "bytes": 1355168,
+   "tris": 29244,
+   "bytes": 1753620,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6735,17 +6735,17 @@
     "min": [
      -8.570465087890625,
      -0.730012834072113,
-     -4.011446475982666
+     -4.011444568634033
     ],
     "max": [
-     9.300183296203613,
-     2.126617431640625,
-     4.011446475982666
+     9.300114631652832,
+     2.126620054244995,
+     4.011444568634033
     ],
     "dimensionsM": [
-     17.87064838409424,
-     2.856630265712738,
-     8.022892951965332
+     17.870579719543457,
+     2.856632888317108,
+     8.022889137268066
     ]
    },
    "note": "Forge-v1 rebuild (tools/blender/forge/ships/helios_lark.py): Helios civil courier, ivory hull, teal courier band, lit cabin, swept pod drives, parcel rack."
@@ -6755,8 +6755,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/helios_span.glb",
-   "tris": 50326,
-   "bytes": 3027528,
+   "tris": 54220,
+   "bytes": 3233332,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6809,8 +6809,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/helios_span_dmc.glb",
-   "tris": 50326,
-   "bytes": 3027632,
+   "tris": 54220,
+   "bytes": 3233492,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6863,8 +6863,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/helios_span_mts.glb",
-   "tris": 50326,
-   "bytes": 3027632,
+   "tris": 54220,
+   "bytes": 3233480,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -6917,8 +6917,8 @@
    "category": "wholeships",
    "priority": "P1",
    "file": "wholeships/helios_span_reach.glb",
-   "tris": 50326,
-   "bytes": 3027692,
+   "tris": 54220,
+   "bytes": 3233744,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7031,8 +7031,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/inspection_cutter.glb",
-   "tris": 33880,
-   "bytes": 2041344,
+   "tris": 43754,
+   "bytes": 2560296,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7067,12 +7067,12 @@
      -2.720390796661377
     ],
     "max": [
-     11.30008316040039,
+     11.300076484680176,
      4.000248432159424,
      2.7203235626220703
     ],
     "dimensionsM": [
-     22.670645713806152,
+     22.670639038085938,
      6.4002485275268555,
      5.440714359283447
     ]
@@ -7524,8 +7524,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/ore_barge.glb",
-   "tris": 55228,
-   "bytes": 3464900,
+   "tris": 61168,
+   "bytes": 3795824,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7758,8 +7758,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/repair_tender.glb",
-   "tris": 52748,
-   "bytes": 3091544,
+   "tris": 52822,
+   "bytes": 3104972,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7795,12 +7795,12 @@
     ],
     "max": [
      13.220000267028809,
-     3.327272653579712,
+     3.326864719390869,
      4.963932514190674
     ],
     "dimensionsM": [
      25.590664863586426,
-     4.9474674463272095,
+     4.947059512138367,
      9.927865028381348
     ]
    },
@@ -7863,8 +7863,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/salvage_cutter.glb",
-   "tris": 35522,
-   "bytes": 2133624,
+   "tris": 37310,
+   "bytes": 2231636,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
@@ -7893,8 +7893,8 @@
    "mount": "origin",
    "bounds": {
     "min": [
-     -10.37114429473877,
-     -1.4500200748443604,
+     -10.37065601348877,
+     -1.4500352144241333,
      -3.569999933242798
     ],
     "max": [
@@ -7903,8 +7903,8 @@
      3.569999933242798
     ],
     "dimensionsM": [
-     21.12114429473877,
-     4.814251899719238,
+     21.12065601348877,
+     4.814267039299011,
      7.139999866485596
     ]
    },

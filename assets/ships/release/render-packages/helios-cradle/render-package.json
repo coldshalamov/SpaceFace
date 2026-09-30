@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b913ba5b35efafe6372612a088f5e8d988d599f8079d8b9c2fe7b71f514b2a49",
+  "contentHash": "ee4115fdf10cd91daa1414365e2416cdbba81c26e3e601a5d1a57d2f0426f24d",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-cradle.node.lod0-hook-drive-core.dynamic",
@@ -618,17 +618,17 @@
       "bounds": {
         "max": [
           12.99917221069336,
-          3.698974847793579,
+          3.6989636421203613,
           4.732670783996582
         ],
         "min": [
           -10.820108413696289,
-          -3.3994863033294678,
+          -3.3994975090026855,
           -4.732670783996582
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a66fe20d1b97ceeccd812e316eadabb5032a57579c84a31ace03f2786e316c2",
+      "geometryHash": "a84e5ec7fc59354bfde1beedf7572f8e88e2a500789338b835f1bac63ab33314",
       "id": "sf.render.helios-cradle.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -637,57 +637,57 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.helios-cradle.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 845
+      "vertexCount": 849
     },
     {
       "bounds": {
         "max": [
           9.699897766113281,
           3.3010544776916504,
-          4.577902793884277
+          4.576700687408447
         ],
         "min": [
           -9.99990463256836,
           -3.3994154930114746,
-          -4.577902793884277
+          -4.576700687408447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a76fbb2503ad1b27eb28eff1bdcb41fe30c23ad05acc02036b3b04613199e25d",
+      "geometryHash": "c8d0296628bfbca1cf52ac3b73a7f34762502efb12f9aafbf861e699081e89c5",
       "id": "sf.render.helios-cradle.node.lod0-armor.primitive.0",
-      "indexCount": 17076,
+      "indexCount": 17748,
       "indexed": true,
       "materialHash": "635f34cd461205a122c1769c11940ccf89bc9760bd66d9d28c773f2352522745",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.helios-cradle.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 4924
+      "vertexCount": 5135
     },
     {
       "bounds": {
         "max": [
           10.049999237060547,
-          1.1196990013122559,
-          0.8499740362167358
+          1.7986358404159546,
+          3.701340436935425
         ],
         "min": [
           -9,
-          0.44530102610588074,
-          -0.8499740362167358
+          -2.0965940952301025,
+          -3.701340436935425
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7116eeef814e7dbb276aff4ce8ebe040fedb5246aa2358738498b23f487e000",
+      "geometryHash": "7a9eef267d7decc506f223874a81ff7e6d70dc1656f8e64a758008a8f6415365",
       "id": "sf.render.helios-cradle.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 108,
+      "indexCount": 6888,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.helios-cradle.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 2255
     },
     {
       "bounds": {
@@ -878,16 +878,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc25eb795be479fa5a370d6d947c2319a7a46c482d7e3cd7d2c080cbc8ad0f55",
+      "geometryHash": "ee6e14ef807ad003903ed9f3d935e5a0dc6178d2fd0501d2d612b8a984f7734e",
       "id": "sf.render.helios-cradle.node.lod0-hull.primitive.0",
-      "indexCount": 21768,
+      "indexCount": 23352,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.helios-cradle.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6237
+      "vertexCount": 6770
     },
     {
       "bounds": {
@@ -953,32 +953,32 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb325e065a99e4509545bdf5318e12bf56ecaa32009fba49ed4ca4c4d401cc38",
+      "geometryHash": "1b61c30542b0ce6b6fcee7c21871c36907f9850749b41f14e89541f241417233",
       "id": "sf.render.helios-cradle.node.lod0-livery.primitive.0",
-      "indexCount": 26400,
+      "indexCount": 26628,
       "indexed": true,
       "materialHash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.helios-cradle.node.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 7994
+      "vertexCount": 8090
     },
     {
       "bounds": {
         "max": [
           13,
           3.6986806392669678,
-          4.21086311340332
+          4.209409236907959
         ],
         "min": [
           -10.819999694824219,
           -1.849408507347107,
-          -4.210862636566162
+          -4.209409236907959
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fef911b9921cc33504ec4f5b753e1b2519fd4f7899a148dd9ec19fe56ebdb2a1",
+      "geometryHash": "16fbd32efcb372f380e1859665d8440014446e3d6c2f07128df7b16b25e8a568",
       "id": "sf.render.helios-cradle.node.lod0-mechanical.primitive.0",
       "indexCount": 35784,
       "indexed": true,
@@ -1044,75 +1044,75 @@
         "max": [
           9.69998836517334,
           3.3005738258361816,
-          4.578989505767822
+          4.577943801879883
         ],
         "min": [
           -9.999990463256836,
           -3.399955987930298,
-          -4.576898574829102
+          -4.577943801879883
         ]
       },
       "drawMode": 4,
-      "geometryHash": "589332fac506f27143a8efc672480c506bb13687a3a16e1d5c8eca21c5601a5b",
+      "geometryHash": "958973a10abe1d1b595e8fe48446c70e0aa81522beb83c3c8a3b2e28d4a8b1df",
       "id": "sf.render.helios-cradle.node.lod1-armor.primitive.0",
-      "indexCount": 4701,
+      "indexCount": 4896,
       "indexed": true,
       "materialHash": "635f34cd461205a122c1769c11940ccf89bc9760bd66d9d28c773f2352522745",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.helios-cradle.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1390
+      "vertexCount": 1459
     },
     {
       "bounds": {
         "max": [
           10.049999237060547,
-          1.1196990013122559,
-          0.8499740362167358
+          1.7986488342285156,
+          3.6990153789520264
         ],
         "min": [
           -9,
-          0.44530102610588074,
-          -0.8499740362167358
+          -2.096580982208252,
+          -3.699014663696289
         ]
       },
       "drawMode": 4,
-      "geometryHash": "446195b3952d5e8fb482cd6bbaf326db82608a77fcdbee1eebc8940073b7e6a0",
+      "geometryHash": "eb5ea9d6ea50ea86030f547cc0f81102f35394b72eda372b646007c29730e455",
       "id": "sf.render.helios-cradle.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 108,
+      "indexCount": 2058,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.helios-cradle.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 764
     },
     {
       "bounds": {
         "max": [
-          0.7943492531776428,
-          2.9619486331939697,
-          4.01124906539917
+          0.794475257396698,
+          2.9618475437164307,
+          4.010713577270508
         ],
         "min": [
-          -4.6943488121032715,
-          1.4380990266799927,
-          -4.0112409591674805
+          -4.694475173950195,
+          1.4381999969482422,
+          -4.010713577270508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db114afcc5e3fc12ba4c69cf54fec97ddd9b0e10fd5c695cf47e8c583d7dde14",
+      "geometryHash": "05238def50944724e546904adb4912ceb536182c7614e506a1746d99b5f82f54",
       "id": "sf.render.helios-cradle.node.lod1-brushedmetal.primitive.0",
-      "indexCount": 1590,
+      "indexCount": 1818,
       "indexed": true,
       "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.helios-cradle.node.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 520
+      "vertexCount": 603
     },
     {
       "bounds": {
@@ -1269,25 +1269,25 @@
         "max": [
           9.700055122375488,
           3.4994280338287354,
-          4.6753644943237305
+          4.6741623878479
         ],
         "min": [
           -10.00002384185791,
           -2.8860981464385986,
-          -4.6753644943237305
+          -4.674161911010742
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8af56453b6230e0d2e95c07a0f27341ce7c7b7b828c01386dedeceeebac7287d",
+      "geometryHash": "c57e5c8a6094bba9771e49907a4c7df705f632140de2e2e54ab5761c3ebfc939",
       "id": "sf.render.helios-cradle.node.lod1-hull.primitive.0",
-      "indexCount": 9606,
+      "indexCount": 10149,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.helios-cradle.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2638
+      "vertexCount": 2851
     },
     {
       "bounds": {
@@ -1343,76 +1343,76 @@
       "bounds": {
         "max": [
           10.399999618530273,
-          1.8195289373397827,
-          4.690274238586426
+          1.8195445537567139,
+          4.690277576446533
         ],
         "min": [
           -8.150092124938965,
-          -2.4739339351654053,
-          -4.690352916717529
+          -2.4739181995391846,
+          -4.69035005569458
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ef828f0063850e767c1262e40ede6ce8fcabdfd7b7557b3fb72165f06f085d8",
+      "geometryHash": "3a6daa8098f2daaebdecdf83b6f8be194427363bf321003396ee80d0bec56547",
       "id": "sf.render.helios-cradle.node.lod1-livery.primitive.0",
-      "indexCount": 8247,
+      "indexCount": 8592,
       "indexed": true,
       "materialHash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.helios-cradle.node.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 2523
+      "vertexCount": 2879
     },
     {
       "bounds": {
         "max": [
           13.000024795532227,
           3.698615312576294,
-          4.206362724304199
+          4.206374645233154
         ],
         "min": [
           -10.819999694824219,
           -1.8494795560836792,
-          -4.206648826599121
+          -4.206636905670166
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f994b8fcbe03c4e1378712ae7b384cce203875f1ce239656ded34bf24576302d",
+      "geometryHash": "6f8dc9542b337da3df3deaf1e694bf57588ea0801bfd58b1661570c86abf1143",
       "id": "sf.render.helios-cradle.node.lod1-mechanical.primitive.0",
-      "indexCount": 15681,
+      "indexCount": 16002,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.helios-cradle.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 5478
+      "vertexCount": 5575
     },
     {
       "bounds": {
         "max": [
-          2.2500007152557373,
+          2.250000476837158,
           3.099924087524414,
-          2.1501364707946777
+          2.1501362323760986
         ],
         "min": [
-          -4.250000953674316,
+          -4.250000476837158,
           2.0501482486724854,
-          -2.1501364707946777
+          -2.1501362323760986
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3864237a927183e7887244cfe86a6202c0a43e996c22bc35ab768555d358d4f",
+      "geometryHash": "feaf5cde6d5831875115003f3c6c35bf7d7de16549682fff4acb1bbe1be1fbe8",
       "id": "sf.render.helios-cradle.node.lod1-mechanicaldark-ore.primitive.0",
-      "indexCount": 840,
+      "indexCount": 858,
       "indexed": true,
       "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark_ore",
       "nodeId": "sf.render.helios-cradle.node.lod1-mechanicaldark-ore",
       "primitiveIndex": 0,
-      "vertexCount": 260
+      "vertexCount": 265
     },
     {
       "bounds": {
@@ -1428,66 +1428,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5649fc60b71dbac4ff23fb329a7ca1d91046083ad4d758e47502c5b1eaa54d9",
+      "geometryHash": "93072cf4d90cb858ea33273dfbbc9132fa91a50c53a408bc4cfdab41ef198d15",
       "id": "sf.render.helios-cradle.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 5091,
+      "indexCount": 5193,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.helios-cradle.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1840
+      "vertexCount": 1865
     },
     {
       "bounds": {
         "max": [
           9.700065612792969,
           3.300065040588379,
-          4.575915336608887
+          4.575597286224365
         ],
         "min": [
           -10.000163078308105,
           -3.40054988861084,
-          -4.575279235839844
+          -4.575596809387207
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23b2e7f590396dd5f876026854068a4c0e6999243bbff7ba99916373b37c6321",
+      "geometryHash": "af05d6a6d096dcf8655a89730de06cca8b5d71d454d6b3399a3d3a9c054bb2e4",
       "id": "sf.render.helios-cradle.node.lod2-armor.primitive.0",
-      "indexCount": 3177,
+      "indexCount": 3282,
       "indexed": true,
       "materialHash": "635f34cd461205a122c1769c11940ccf89bc9760bd66d9d28c773f2352522745",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.helios-cradle.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1017
+      "vertexCount": 1054
     },
     {
       "bounds": {
         "max": [
           10.049999237060547,
-          1.1196990013122559,
-          0.8499740362167358
+          1.7957851886749268,
+          3.693000316619873
         ],
         "min": [
           -9,
-          0.44530102610588074,
-          -0.8499740362167358
+          -2.0971193313598633,
+          -3.69340181350708
         ]
       },
       "drawMode": 4,
-      "geometryHash": "446195b3952d5e8fb482cd6bbaf326db82608a77fcdbee1eebc8940073b7e6a0",
+      "geometryHash": "8d75f9fec762721964dcf6be921128f605cb3f35829ddddbe72ce22849663ae6",
       "id": "sf.render.helios-cradle.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 108,
+      "indexCount": 1239,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.helios-cradle.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 491
     },
     {
       "bounds": {
@@ -1594,25 +1594,25 @@
         "max": [
           9.700132369995117,
           3.4942238330841064,
-          4.6700592041015625
+          4.6706414222717285
         ],
         "min": [
           -10.000311851501465,
           -2.97078275680542,
-          -4.671223163604736
+          -4.6706414222717285
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cda9fce0e4bddb086c22f8c790941c825040aabd64589db060426a187624370c",
+      "geometryHash": "f628881f49a7e61f8518a9041b9dacc8ff9a49ba1fcd7aac3eefe1e8e318a3f7",
       "id": "sf.render.helios-cradle.node.lod2-hull.primitive.0",
-      "indexCount": 4494,
+      "indexCount": 4749,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.helios-cradle.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1358
+      "vertexCount": 1447
     },
     {
       "bounds": {
@@ -1643,76 +1643,76 @@
       "bounds": {
         "max": [
           10.398421287536621,
-          1.8169212341308594,
-          4.68733549118042
+          1.8170126676559448,
+          4.6876606941223145
         ],
         "min": [
           -8.150132179260254,
-          -2.473921298980713,
-          -4.687985420227051
+          -2.473829984664917,
+          -4.6876606941223145
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15fa1d6975cd71743f7501132cba13426c41c7a575176c24d6d8d69b79c61754",
+      "geometryHash": "4d78131d41887f5acc0c12f6d17f1b9c12244634ae646f0f7f88e04e26bc3670",
       "id": "sf.render.helios-cradle.node.lod2-livery.primitive.0",
-      "indexCount": 4257,
+      "indexCount": 4407,
       "indexed": true,
       "materialHash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.helios-cradle.node.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1429
+      "vertexCount": 1600
     },
     {
       "bounds": {
         "max": [
           13.000091552734375,
           3.6982901096343994,
-          4.2044997215271
+          4.2045087814331055
         ],
         "min": [
           -10.820595741271973,
           -1.8499592542648315,
-          -4.205838203430176
+          -4.205828666687012
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08d790670a61101052c1cf5f6128a1455364f3ef62f6310cc62a3e638b54870a",
+      "geometryHash": "142e8464f1121162e60b25f6e734981e90e76a18e9304d6a906bac04b253394f",
       "id": "sf.render.helios-cradle.node.lod2-mechanical.primitive.0",
-      "indexCount": 5271,
+      "indexCount": 5304,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.helios-cradle.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2013
+      "vertexCount": 2019
     },
     {
       "bounds": {
         "max": [
           2.2501370906829834,
-          3.0971765518188477,
+          3.0974128246307373,
           2.149872064590454
         ],
         "min": [
           -4.250136852264404,
-          2.048943519592285,
+          2.049180030822754,
           -2.149787187576294
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f2e1cf0d97eea00013be93dd9f61c940aa53c37c0f31ba2ed71567454f9eeeb",
+      "geometryHash": "d8b36e6094b4aa2b4e7fb8b78c8e081c8b1a68c16f0ea90392aa474f58688d87",
       "id": "sf.render.helios-cradle.node.lod2-mechanicaldark-ore.primitive.0",
-      "indexCount": 420,
+      "indexCount": 414,
       "indexed": true,
       "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark_ore",
       "nodeId": "sf.render.helios-cradle.node.lod2-mechanicaldark-ore",
       "primitiveIndex": 0,
-      "vertexCount": 139
+      "vertexCount": 138
     },
     {
       "bounds": {
@@ -4930,31 +4930,31 @@
       "sha256": "b15e2e2426022bb6d3bcbcfa38c010fc4c7fda307f05d3112764f89370cec437"
     },
     "sourceGlb": {
-      "bytes": 1265876,
-      "sha256": "505175869a303145be95fe513fc1ef71bffb88052b23857a4483a629da48679b",
+      "bytes": 1341904,
+      "sha256": "a8cf1f2506dba3d185fa0542ccffe7d33c72dfa3494db5b0a25b0f2c1c1fc786",
       "uri": "helios_cradle.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2514476,
-    "sha256": "30067ecf8ed578ff5be5a6eaa63592b71a5573fba30c3c5cf2474f9c592b8d02",
+    "bytes": 2696296,
+    "sha256": "0e07c4e3352bbdb753fcc10c520805b1b7841067238be5b83431e1e83803e758",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         1.0897479057312012,
-        0.14921247959136963,
+        0.14920687675476074,
         0
       ],
       "max": [
         13.000091552734375,
-        3.698974847793579,
+        3.6989636421203613,
         4.732670783996582
       ],
       "min": [
@@ -4964,7 +4964,7 @@
       ],
       "size": [
         23.820687294006348,
-        7.099524736404419,
+        7.099513530731201,
         9.465341567993164
       ]
     },
@@ -7092,14 +7092,14 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_cradle.glb"
   },
-  "runtimeHash": "e185610291ffecf2e21dff01225053f60253e848208b6d4c79cf8113eaeee61e",
+  "runtimeHash": "ca7658b025f7a863a384dc3439ff8b33e827074448970c1115e4b0bdee75d0b7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           13.000091552734375,
-          3.698974847793579,
+          3.6989636421203613,
           4.732670783996582
         ],
         "min": [
