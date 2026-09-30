@@ -388,6 +388,26 @@ test('a displaced demo is destroyed, never shelved as a free spare', () => {
   assert.equal(activeFittings(h)[slotIndex], null, 'the slot is empty');
 });
 
+test('one trial at a time — a second demo retires the first, never refits the ship free', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  const offers = survivalDraft.currentOffers();
+  const demoables = offers.filter((o) =>
+    Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
+  assert.ok(demoables.length >= 2, 'the shelf has two fittable cards to demo');
+  h.bus.emit('run:draftPickRequested', { offerId: demoables[0].id, demo: true });
+  h.bus.emit('run:draftPickRequested', { offerId: demoables[1].id, demo: true });
+  const fittings = activeFittings(h);
+  assert.equal(fittings[demoables[1].slotIndex], demoables[1].defId, 'the new trial is fitted');
+  assert.notEqual(fittings[demoables[0].slotIndex], demoables[0].defId,
+    'the first demo came off when the second went on');
+  const inventory = h.state.player.moduleInventory || [];
+  assert.equal(inventory.filter((item) => item && item.defId === demoables[0].defId).length, 0,
+    'and the retired copy is destroyed, not shelved as an unpaid spare');
+});
+
 test('buying a hull retires the demos on the hull you are leaving', () => {
   const h = boot();
   beginSwarm(h, { stake: 'exhibition' });
@@ -566,17 +586,36 @@ test('a pod a drone ate pays nobody — the collector gate mirrors the repair ce
   director.init();
   const awards = () => named(h.emitted, 'run:awardRequested')
     .filter((e) => e.payload && e.payload.reason === 'swarm:supplyPod');
-  director._podIds.add(77);
+  director._pods.set(77, 60);
   h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 40 });
   assert.equal(awards().length, 0, 'an NPC collector consumes but never pays');
-  assert.ok(!director._podIds.has(77), 'the pod is still spent');
+  assert.ok(!director._pods.has(77), 'the pod is still spent');
   // Absent claims (the publishers disagree on payload shape); the player's id claims.
   for (const collectorId of [undefined, 9]) {
-    director._podIds.add(88);
+    director._pods.set(88, 60);
     const before = awards().length;
     h.bus.emit('pickup:collected', { pickupId: 88, collectorId });
     assert.equal(awards().length, before + 1, `collector ${collectorId} still pays`);
   }
+  director.destroy();
+});
+
+test('a pod pays its stamped amount even scooped after the wave cleared', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'contender' });
+  h.state.run.phase = 'active';
+  h.state.playerId = 9;
+  const registry = { get: () => null };
+  const director = createSwarmEventDirector({ state: h.state, bus: h.bus, helpers: {}, registry });
+  director.init();
+  // The supply card spends and finishes in one tick — _live is long gone by collect time, so
+  // the ledger carries what the pod was stamped with, not whatever event happens to be live.
+  director._pods.set(55, 90);
+  h.bus.emit('run:waveCleared', {});
+  h.bus.emit('pickup:collected', { pickupId: 55 });
+  const award = named(h.emitted, 'run:awardRequested')
+    .find((e) => e.payload && e.payload.reason === 'swarm:supplyPod');
+  assert.equal(award?.payload?.credits, 90, 'the pod pays its own stamped worth post-clear');
   director.destroy();
 });
 

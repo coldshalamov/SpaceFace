@@ -222,6 +222,18 @@ async function sampleCut(spring, options = {}) {
     });
     for (let tick = 0; tick < ticks; tick += 1) runtime.step(DT);
     const telemetry = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
+    // Release on an elastic head spends the stroke's remaining ½ks² as a closing impulse along
+    // the line (see _spendElasticWhipStoredEnergy), so a mid-stroke cut legitimately moves the
+    // owner. The contract below asserts a cut adds no launch impulse once the stroke has
+    // drained — ride out the oscillation until the stored energy is spent before cutting.
+    let restTick = 24;
+    for (let tick = 24; tick < 7200; tick += 1) {
+      runtime.step(DT);
+      restTick = tick;
+      if ((runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId })?.storedEnergy ?? 0) <= 1e-3) break;
+    }
+    const storedAtRest = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId })?.storedEnergy ?? 0;
+    assert.ok(storedAtRest <= 1e-3, `whip stroke should drain to rest within the settle window, got ${storedAtRest} at tick ${restTick}`);
     const before = { x: owner.vel.x, z: owner.vel.z };
     assert.equal(runtime.cutAttachment({ attachmentId: handle.attachmentId, reason }), true);
     runtime.step(DT);
