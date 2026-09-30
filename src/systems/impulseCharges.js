@@ -385,16 +385,28 @@ export const impulseCharges = {
     if (this._detonatedEnts.has(victim)) return;
     if (!this._pendingDetonations) this._pendingDetonations = [];
     if (this._pendingDetonations.length >= 8) return;
+    // A duplicated kill receipt for a corpse still awaiting its blast used to queue a second
+    // pending record harmlessly (the blast's once-gate refused it) — but the commit beat now
+    // publishes at queue time, so the once-gate must live here too, on the same object key.
+    if (this._pendingDetonations.some((r) => r.ent === victim)) return;
     // Snapshot the corpse's position AND object — the id may be dealt to a new hull before
     // update() runs; the object identity cannot be.
+    const pos = { x: Number(victim.pos && victim.pos.x) || 0, z: Number(victim.pos && victim.pos.z) || 0 };
     this._pendingDetonations.push({
       id: victim.id,
       ent: victim,
-      pos: { x: Number(victim.pos && victim.pos.x) || 0, z: Number(victim.pos && victim.pos.z) || 0 },
+      pos,
       spec,
       killerId: payload.killerId == null ? null : payload.killerId,
       trigger: 'death',
     });
+    // The commit beat fires here, at queue time — not at blast time. The blast resolves on the
+    // next tick, after the orchestrator's own entity:killed handler has already cleared the
+    // dart's doctrine cycle. This nested emit reaches _onCombatFire while the cycle still
+    // exists because impulseCharges' entity:killed subscription precedes it (registry order).
+    if (victim.data && victim.data.ai && victim.data.ai.combatDoctrineId === 'detonator_run') {
+      this._emitDetonatorCommit(victim.id, pos, 'death');
+    }
   },
 
   _resolveDetonatorDeaths(state) {
@@ -467,6 +479,14 @@ export const impulseCharges = {
       z: Number(rec.pos && rec.pos.z) || 0,
     };
     const creditId = killerId === state.playerId ? state.playerId : rec.id;
+    // The doctrine's commit beat precedes the victims' damage receipts: _blastVictims routes
+    // combat:damage that completes the cycle into aftermath, so the action cue must already be
+    // queued or the four-beat order inverts. Death-triggered blasts already committed when the
+    // kill was queued — the cycle is gone by blast time.
+    if (trigger === 'proximity' && ent && ent.data && ent.data.ai
+      && ent.data.ai.combatDoctrineId === 'detonator_run') {
+      this._emitDetonatorCommit(rec.id, pos, trigger);
+    }
     const result = this._blastVictims(state, {
       pos,
       ownerId: creditId,
@@ -524,6 +544,30 @@ export const impulseCharges = {
       });
     }
     return result;
+  },
+
+  /**
+   * The detonator_run doctrine's commit beat. The choreography grammar names the detonation
+   * itself as the doctrine's action, and the orchestrator's only action ingress for a
+   * weaponless hull is combat:fire — the vocabulary weapons.js already uses for deployed
+   * ordnance (deploy: true). The dart reports its commit through that channel, carrying its
+   * doctrine id so the audio signature resolves to the authored fuse register instead of a
+   * bare charge voice. Callers gate on data.ai.combatDoctrineId so a player-dropped dart (no
+   * doctrine) stays a plain detonation receipt, never a doctrine row.
+   */
+  _emitDetonatorCommit(dartId, pos, trigger) {
+    this.bus.emit('combat:fire', {
+      ownerId: dartId,
+      sourceId: dartId,
+      weaponId: 'detonator_dart',
+      doctrineId: 'detonator_run',
+      actionId: 'commit',
+      origin: pos ? { x: pos.x, z: pos.z } : null,
+      pos: pos ? { x: pos.x, z: pos.z } : null,
+      deploy: true,
+      detonation: true,
+      trigger,
+    });
   },
 
   _onLightCookoffDeath(payload) {

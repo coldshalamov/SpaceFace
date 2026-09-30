@@ -93,7 +93,10 @@ export const PRESENTATION_RECIPES = Object.freeze({
     material: 'doctrine',
     lanes: { ...laneSet('vfx.direct_combat_fire'), audio: 'audio.combat_doctrine' },
     budgets: { voices: 0 },
-    tags: ['combat', 'doctrine', 'action'],
+    // Critical: the action is the payoff of a telegraphed threat — once per cycle, never
+    // refired. On a detonation tick it shares the lane with per-hit damage noise that does
+    // refire; losing the commit beat to flavor traffic is exactly what the reserve is for.
+    tags: ['critical', 'combat', 'doctrine', 'action'],
   }),
   'combat.doctrine.aftermath': recipe({
     importance: 0.68,
@@ -101,7 +104,10 @@ export const PRESENTATION_RECIPES = Object.freeze({
     material: 'doctrine',
     lanes: { ...laneSet('vfx.direct_combat_aftermath'), audio: 'audio.combat_doctrine' },
     budgets: { voices: 0 },
-    tags: ['combat', 'doctrine', 'aftermath'],
+    // Critical, same argument: the aftermath is the cycle's terminal resolution — the dart
+    // that popped on your hull resolves its story here. action + damage.applied + player.hit
+    // fill the general audio pool on that tick and the beat silently never landed.
+    tags: ['critical', 'combat', 'doctrine', 'aftermath'],
   }),
   'combat.doctrine.break': recipe({
     importance: 0.7,

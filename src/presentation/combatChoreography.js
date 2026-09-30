@@ -30,7 +30,8 @@ const DOCTRINE_GRAMMARS = Object.freeze({
   // Warden screen: a line held between ward and threat; cold blue (guarding, not hunting).
   escort_screen: grammar('escort_screen', 'line', '#5cc8ff', 'engine_flare', 'screen_hold', 'regroup'),
   // Kamikaze run: a closing V wedge in fuse red — the "action" is the detonation itself, which
-  // impulseCharges reports as detonator:detonated; commit is the terminal approach beat.
+  // impulseCharges commits through combat:fire { doctrineId: 'detonator_run', actionId: 'commit' }
+  // (detonator:detonated remains the blast receipt); commit is the terminal approach beat.
   detonator_run: grammar('detonator_run', 'wedge', '#ff5030', 'detonator_fuse', 'commit', 'breakaway'),
 });
 

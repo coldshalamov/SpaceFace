@@ -30,6 +30,7 @@ import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
+import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { lightCookoffEligible } from '../src/combat/lightCookoff.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { resolveBossSurfaceContact } from '../src/combat/bossSurface.js';
@@ -298,9 +299,24 @@ function blastHarness({ dartAlive = true, dartX = 40, wingman = null } = {}) {
           ? Object.values(channels).reduce((sum, v) => sum + (Number(v) || 0), 0)
           : (req.packet && Number.isFinite(req.packet.damage) ? req.packet.damage : 0);
         if (target && amount > 0) {
-          target.shield = Math.max(0, (target.shield || 0) - amount);
-          const rest = Math.max(0, amount - (target.shield || 0));
-          target.hull = (target.hull || 0) - rest;
+          const preHull = target.hull || 0;
+          const preShield = target.shield || 0;
+          target.shield = Math.max(0, preShield - amount);
+          const rest = Math.max(0, amount - preShield);
+          target.hull = preHull - rest;
+          // The production router publishes combat:damage for every routed hit
+          // (src/combat/damage.js) — doctrine cycles complete on this receipt.
+          bus.emit('combat:damage', {
+            targetId: req.targetId,
+            attackerId: req.attackerId,
+            amount,
+            applied: rest,
+            hullDamage: rest,
+            shieldDamage: Math.min(preShield, amount),
+            dominantLayer: rest > 0 ? 'hull' : 'shield',
+            before: { hull: preHull, shield: preShield },
+            after: { hull: target.hull, shield: target.shield },
+          });
           if (target.hull <= 0 && target.alive !== false) {
             target.alive = false;
             bus.emit('entity:killed', { id: target.id, killerId: req.attackerId });
@@ -408,6 +424,118 @@ test('a dart does not cook off alone, and a wingman on its own team is not a fus
   h.system.update(1 / 60, h.state);
   assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 0,
     'a wingman inside the ring never triggers it — the fuse only knows hostile hulls');
+});
+
+// ── the choreography commit beat (PIC-17) ─────────────────────────────────────
+// The dart mounts no weapon, so nothing ever emitted combat:fire for it — the authored
+// detonator_run grammar reached its 'commit' action row only by comment. impulseCharges
+// now publishes the detonation itself as the doctrine's action through that same channel.
+
+function doctrineHarness(opts = {}) {
+  const h = blastHarness(opts);
+  // Doctrine darts carry their row through data.ai (makeEnemySpawnSpec pins it).
+  h.dart.data.ai = { combatDoctrineId: 'detonator_run' };
+  const orchestrator = Object.create(presentationOrchestrator);
+  orchestrator.init({ state: h.state, bus: h.bus });
+  h.orchestrator = orchestrator;
+  h.bus.emit('ai:telegraph', {
+    entityId: 7, targetId: 1,
+    doctrineId: 'detonator_run', phase: 'fuse_cue',
+    kind: 'detonator_fuse', durationTicks: 30, tick: h.state.tick,
+  });
+  // The fuse telegraph precedes the pop by ~30 ticks in production; letting the tick roll
+  // keeps the pop's commit+aftermath+damage receipts from sharing a lane budget with the
+  // setup/telegraph pair, which is arbitration pressure the live game never creates.
+  h.state.tick += 30;
+  h.state.simTime += 0.5;
+  return h;
+}
+
+const cuesOf = (h, id) =>
+  h.events.filter((e) => e.name === 'presentation:cue' && e.payload && e.payload.id === id);
+const cueIndex = (h, id) =>
+  h.events.findIndex((e) => e.name === 'presentation:cue' && e.payload && e.payload.id === id);
+const commitFires = (h) => h.events.filter((e) => e.name === 'combat:fire');
+
+test('proximity: the detonation IS the detonator_run commit beat — once, in order', () => {
+  const h = doctrineHarness({ dartX: 30 });
+  assert.equal(cuesOf(h, 'combat.doctrine.setup').length, 1, 'the telegraph staged the row');
+  assert.equal(cuesOf(h, 'combat.doctrine.telegraph').length, 1);
+
+  h.system.update(1 / 60, h.state);
+
+  const fires = commitFires(h);
+  assert.equal(fires.length, 1, 'one detonation publishes exactly one commit receipt');
+  assert.equal(fires[0].payload.ownerId, 7);
+  assert.equal(fires[0].payload.sourceId, 7);
+  assert.equal(fires[0].payload.doctrineId, 'detonator_run');
+  assert.equal(fires[0].payload.actionId, 'commit');
+  assert.equal(fires[0].payload.trigger, 'proximity');
+  assert.equal(fires[0].payload.detonation, true);
+
+  const actions = cuesOf(h, 'combat.doctrine.action');
+  assert.equal(actions.length, 1, 'the commit beat lands once');
+  const action = actions[0].payload;
+  assert.equal(action.sourceId, 7);
+  assert.equal(action.targetId, 1);
+  assert.equal(action.sourceEvent, 'combat:fire');
+  for (const tag of ['detonator_run', 'wedge', 'commit', 'action']) {
+    assert.ok(action.tags.includes(tag), `commit cue carries '${tag}'`);
+  }
+
+  // The blast still reads as ONE pop, and the four-beat row lands in authored order:
+  // setup -> telegraph -> action(commit) -> aftermath (the player's combat:damage completes
+  // the cycle). Commit must precede the receipts that resolve it.
+  assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 1);
+  assert.equal(h.events.filter((e) => e.name === 'charge:detonated').length, 1);
+  const order = ['combat.doctrine.setup', 'combat.doctrine.telegraph',
+    'combat.doctrine.action', 'combat.doctrine.aftermath'].map((id) => cueIndex(h, id));
+  assert.ok(order.every((i) => i >= 0), `all four beats emitted: ${order}`);
+  for (let i = 1; i < order.length; i += 1) {
+    assert.ok(order[i] > order[i - 1], `beat ${i} follows beat ${i - 1}: ${order}`);
+  }
+});
+
+test('death: a killed dart commits at queue time, before its cycle can be cleared', () => {
+  const h = doctrineHarness({ dartAlive: false, dartX: 40 });
+  // The kill dispatch runs impulseCharges' handler first (registry order): the commit must
+  // already be out before the orchestrator's own entity:killed listener clears the cycle.
+  h.bus.emit('entity:killed', { id: 7, killerId: 1 });
+  assert.equal(commitFires(h).length, 1, 'the commit published inside the kill dispatch');
+  assert.equal(commitFires(h)[0].payload.trigger, 'death');
+  assert.equal(cuesOf(h, 'combat.doctrine.action').length, 1,
+    'the action cue beat the entity:killed cycle clear');
+
+  h.system.update(1 / 60, h.state);
+  const receipt = h.events.find((e) => e.name === 'detonator:detonated');
+  assert.ok(receipt, 'the queued blast still resolves on the next tick');
+  assert.equal(receipt.payload.trigger, 'death');
+  assert.equal(commitFires(h).length, 1, 'the blast does not publish a second commit');
+  assert.equal(cuesOf(h, 'combat.doctrine.action').length, 1);
+});
+
+test('duplicated kill receipts publish exactly one commit and one pop', () => {
+  const h = doctrineHarness({ dartAlive: false, dartX: 40 });
+  h.bus.emit('entity:killed', { id: 7, killerId: 1 });
+  h.bus.emit('entity:killed', { id: 7, killerId: 1 });
+  h.system.update(1 / 60, h.state);
+  h.system.update(1 / 60, h.state);
+  assert.equal(commitFires(h).length, 1, 'the once-gate lives at queue time, not only blast time');
+  assert.equal(cuesOf(h, 'combat.doctrine.action').length, 1);
+  assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 1);
+});
+
+test('a doctrineless dart stays a plain detonation — no commit, no doctrine cue', () => {
+  const h = blastHarness({ dartX: 30 });
+  const orchestrator = Object.create(presentationOrchestrator);
+  orchestrator.init({ state: h.state, bus: h.bus });
+  // A player-dropped/ordinary dart carries data.detonator but no doctrine row. Even with the
+  // orchestrator live, its pop must not manufacture a doctrine action.
+  h.system.update(1 / 60, h.state);
+  assert.equal(commitFires(h).length, 0, 'no combat:fire without a detonator_run doctrine');
+  assert.equal(cuesOf(h, 'combat.doctrine.action').length, 0);
+  assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 1,
+    'the blast itself is unchanged');
 });
 
 // ── the authored route ────────────────────────────────────────────────────────
