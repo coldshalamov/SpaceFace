@@ -48,8 +48,11 @@ const player=state.entities.get(state.playerId);if(player?.alive&&valid(player.p
 // The hash narrows the domain to 600WU but returns bucket order, where the capped walk below
 // used to pick the first 8 qualifying bodies in entities insertion order. occupantGeneration is
 // stamped monotonically at every canonical insert, so a generation sort reproduces that order.
-surfaceCandidates.sort((a,b)=>(a&&a.occupantGeneration||0)-(b&&b.occupantGeneration||0));
-let count=0;for(const entity of surfaceCandidates){if(count>=8)break;if(!entity||!entity.alive||!entity.collides||!valid(entity.pos)||!materialSurface(entity)||distance(entity.pos,player.pos)>600)continue;const life=bodyLife(entity,state);const row=record.surfaceHistory[life.id]||={id:entity.id,lifeId:life.id,frames:[]};row.frames.push({tick:state.tick,pos:point(entity.pos),rot:entity.rot||0});if(row.frames.length>121)row.frames.shift();count++;}}
+// The cold-hash fallback returns entityList itself — already insertion (generation) order, so
+// the sort is hash-path only (sorting entityList in place would reorder live state).
+const surfaceHits=queryNearbyEntities(state,player.pos,600,surfaceCandidates);
+if(surfaceHits===surfaceCandidates)surfaceCandidates.sort((a,b)=>(a&&a.occupantGeneration||0)-(b&&b.occupantGeneration||0));
+let count=0;for(const entity of surfaceHits){if(count>=8)break;if(!entity||!entity.alive||!entity.collides||!valid(entity.pos)||!materialSurface(entity)||distance(entity.pos,player.pos)>600)continue;const life=bodyLife(entity,state);const row=record.surfaceHistory[life.id]||={id:entity.id,lifeId:life.id,frames:[]};row.frames.push({tick:state.tick,pos:point(entity.pos),rot:entity.rot||0});if(row.frames.length>121)row.frames.shift();count++;}}
 for(const [id,row] of Object.entries(record.surfaceHistory))if(state.tick-(row.frames.at(-1)?.tick??-Infinity)>120)delete record.surfaceHistory[id];
 for(const [id,torque] of Object.entries(record.surfaceTorques||{})){const entity=state.entities.get(torque.id);if(!entity||bodyLife(entity,state)?.id!==id||state.tick-torque.tick>120){delete record.surfaceTorques[id];continue;}const turn=Math.atan2(Math.sin((entity.rot||0)-torque.lastRot),Math.cos((entity.rot||0)-torque.lastRot)),spin=entity.angVel||0;
 if(turn*torque.delta>0)torque.ownedDegrees+=Math.abs(turn)*180/Math.PI*Math.min(1,Math.abs(torque.delta)/Math.max(Math.abs(torque.after),Math.abs(spin),1e-6));torque.lastRot=entity.rot||0;}

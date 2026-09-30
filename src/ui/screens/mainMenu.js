@@ -870,17 +870,26 @@ export const mainMenuScreen = {
         lift();
         return;
       }
-      if (typeof requestAnimationFrame === 'function') loop.rafId = requestAnimationFrame(check);
+      // One pending callback per channel: arming unconditionally stacks a new rAF chain per
+      // timer fire and a new timeout per rAF wake inside the stall window this guards. Each
+      // channel self-clears before re-entering check(), which re-arms it if still pending.
+      if (typeof requestAnimationFrame === 'function' && loop.rafId == null) {
+        loop.rafId = requestAnimationFrame(() => { loop.rafId = null; check(); });
+      }
       // The timer must re-arm on every wake, not just when rAF is missing: on a rAF-throttled
       // host (background tab) the first timer fire is the last check unless it keeps itself
       // armed — the 4s cap would never evaluate and the veil would hold indefinitely.
-      loop.timerId = setTimeout(check, 200);
+      if (loop.timerId == null) {
+        loop.timerId = setTimeout(() => { loop.timerId = null; check(); }, 200);
+      }
     };
     if (typeof requestAnimationFrame === 'function') {
-      loop.rafId = requestAnimationFrame(check);
-      loop.timerId = setTimeout(check, 200); // failsafe only: rAF-throttled hosts still lift
+      loop.rafId = requestAnimationFrame(() => { loop.rafId = null; check(); });
+      // failsafe only: rAF-throttled hosts still lift — and self-clears so check()'s guarded
+      // re-arm keeps exactly one pending per channel.
+      loop.timerId = setTimeout(() => { loop.timerId = null; check(); }, 200);
     } else {
-      loop.timerId = setTimeout(check, 200);
+      loop.timerId = setTimeout(() => { loop.timerId = null; check(); }, 200);
     }
   },
 };

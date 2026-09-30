@@ -104,6 +104,13 @@ export function entityIndexVersion(state) {
  * unready, a carrier stamped with its record id after spawn, or a duplicate keeper that
  * outlived the first holder — falls back to the same entity walk callers ran before, so no
  * record-holder is ever dropped (PERF-93). A walk hit reseeds the map; the next lookup is O(1).
+ *
+ * Latent trap for future callers: the miss path is O(N) — the map cannot cache a negative
+ * because post-spawn `data.worldRecordId` stamping (e.g. factionPresence's tender rehydrate)
+ * registers nothing with the index, so a version-keyed miss cache would close the walk's only
+ * repair path. A caller polling per tick for a possibly-absent id must bound the rescan
+ * itself — until a holder-registration pass unifies the stamp sites, no O(1)-miss cache is
+ * sound here.
  */
 export function indexedWorldRecordEntity(state, worldRecordId) {
   if (!state || worldRecordId == null || worldRecordId === '') return null;

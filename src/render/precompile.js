@@ -893,27 +893,51 @@ function addAuthoredCanopyPipelineWarmup(staging) {
   ];
   const root = new THREE.Group();
   root.name = 'SF_Precompile_Canopy_KeepAlive';
-  for (let i = 0; i < variants.length; i++) {
-    const { id, ...maps } = variants[i];
-    const material = new THREE.MeshPhysicalMaterial({
-      color: 0xd7edff,
-      metalness: 0,
-      roughness: 0.12,
-      transmission: 0.65,
-      side: THREE.DoubleSide,
-      forceSinglePass: true,
-      dithering: true,
-      ...maps,
-    });
-    material.name = `SF_Precompile_Canopy_${id}`;
-    applyRealtimeCanopyPolicy(material);
-    const geometry = new THREE.PlaneGeometry(8, 5);
-    geometry.computeTangents();
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = `SF_Precompile_Canopy_${id}`;
-    mesh.userData.precompileCanopyVariant = id;
-    mesh.position.set(i * 10, 28, 0);
-    root.add(mesh);
+  const classes = [
+    {
+      suffix: '',
+      make: (maps) => new THREE.MeshPhysicalMaterial({
+        color: 0xd7edff,
+        metalness: 0,
+        roughness: 0.12,
+        transmission: 0.65,
+        side: THREE.DoubleSide,
+        forceSinglePass: true,
+        dithering: true,
+        ...maps,
+      }),
+    },
+    // Authored canopies also arrive sourced as MeshStandardMaterial — a STANDARD-only program
+    // the transmission probes can never mint (applyRealtimeCanopyPolicy needs transmission>0),
+    // so a late spawn's first presented frame links it inside renderBufferDirect. Mirror the
+    // same three texture-slot layouts in the standard class; the policy call no-ops on them
+    // exactly as it does on the runtime variants.
+    {
+      suffix: '_Standard',
+      make: (maps) => new THREE.MeshStandardMaterial({
+        color: 0xd7edff,
+        metalness: 0,
+        roughness: 0.12,
+        side: THREE.DoubleSide,
+        dithering: true,
+        ...maps,
+      }),
+    },
+  ];
+  for (const { suffix, make } of classes) {
+    for (let i = 0; i < variants.length; i++) {
+      const { id, ...maps } = variants[i];
+      const material = make(maps);
+      material.name = `SF_Precompile_Canopy${suffix}_${id}`;
+      applyRealtimeCanopyPolicy(material);
+      const geometry = new THREE.PlaneGeometry(8, 5);
+      geometry.computeTangents();
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = `SF_Precompile_Canopy${suffix}_${id}`;
+      mesh.userData.precompileCanopyVariant = suffix ? `standard_${id}` : id;
+      mesh.position.set(i * 10, suffix ? 48 : 28, 0);
+      root.add(mesh);
+    }
   }
   staging.add(root);
   return root;
