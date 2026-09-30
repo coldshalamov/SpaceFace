@@ -126,8 +126,10 @@ export const PLAYER_FEEL_ENVELOPES = Object.freeze({
   }),
   // The saucer's field answers in every direction at once. Translation stays 1.0 — the
   // inertialess drive profile already sits past sanity, and translation scales responseHz
-  // on top of it. The shaping lives in the horizons: the ship comes off the stick and is
-  // simply stopped, and lateral error is erased before the next frame.
+  // on top of it. Only yaw carries envelope shaping: drive_inertialess_s authors no `assist`
+  // block (the servo IS the assist), so stopHorizon/brakeHorizon/lateralKill/neutralBrake/
+  // governor would be dead keys here — the stop-on-a-dime feel comes from the drive's own
+  // maxBrakeAccel and responseHz, not the envelope.
   ship_saucer: freezeEnv({
     id: 'saucer',
     translation: 1.0,
@@ -135,11 +137,6 @@ export const PLAYER_FEEL_ENVELOPES = Object.freeze({
     yawAccel: 1.30,
     yawBrake: 1.40,
     yawRate: 1.30,
-    lateralKill: 1.45,
-    stopHorizon: 0.45,
-    governor: 1.0,
-    brakeHorizon: 0.50,
-    neutralBrake: 1.30,
   }),
 });
 

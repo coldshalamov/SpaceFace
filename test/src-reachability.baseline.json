@@ -30,7 +30,9 @@
     "src/ui/orrery/flightPreview.js": "ORRERY flight preview staged alongside flightInstruments.js by the same live refactor; wire with the cluster or retire it.",
     "src/ui/virtualList.js": "PQ-184.01 list windowing kernel; long screens have not mounted it yet. Keep until that leaf wires market/contracts/ledger/codex or retires the component.",
     "src/render/glbPrepassWorker.js": "Worker loaded via new URL() from glbPrepass.js (defaultWorkerUrl); the static import graph cannot see that wire. Batch-decodes meshopt bufferViews off-thread for the GLB prepass.",
-    "src/render/vfxColorLightDirector.js": "VFX-to-light preset table staged with its color/lighting standard (7cba87298). Presenters still call vfx._flashLight with hand-tuned values; gated by scripts/audit-color-lighting.mjs and test/vfx-color-light-director.test.mjs until the flash-light path routes through presetFor()."
+    "src/render/vfxColorLightDirector.js": "VFX-to-light preset table staged with its color/lighting standard (7cba87298). Presenters still call vfx._flashLight with hand-tuned values; gated by scripts/audit-color-lighting.mjs and test/vfx-color-light-director.test.mjs until the flash-light path routes through presetFor().",
+    "src/ui/introSignalRemixBoot.js": "Boot-path dynamic import in index.html (optional intro optics; .catch() no-ops when absent). The static-import walk cannot see HTML script tags — reached before src/main.js ever loads.",
+    "src/ui/introSignalRemix.js": "Imported by introSignalRemixBoot.js and tools/cinematic/signal-remix-preview.js — reached through the index.html boot-path dynamic import, not the src/main.js graph."
   },
   "recordedAt": "2026-09-16"
 }

@@ -480,7 +480,9 @@ function makeAsteroid(id = 404, x = 24) {
     vel: { x: 0, z: 0 },
     rot: 0,
     angVel: 0,
-    data: {},
+    // Package E made non-landmark solids dynamic; only landmark rocks stay fixed, so a
+    // landmark flag is what places this fixture in the layered sync's static class.
+    data: { isLandmarkRock: true },
   };
 }
 

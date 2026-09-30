@@ -158,6 +158,10 @@ export function spawn47aScenarioCast(simOrOptions) {
     radius: 92,
     mass: 9000,
     hull: 2200,
+    // radius 92 exceeds the FIXED_BODY_RADIUS_THRESHOLD default — the hulk's authored mass and
+    // majorDebris drift are the authored intent, so the dynamic override rides the body spec
+    // rather than fighting the size heuristic.
+    physicsBody: { dynamic: true, mass: 9000 },
     data: {
       majorDebris: true,
       cameraAnchor: true,
@@ -339,13 +343,14 @@ export function configure47aTacticalAI(entity, {
   });
 }
 
-function makePassiveScenarioSpec({ type, actorId, role, assetRef, pos, rot = 0, radius, mass, hull, data = {} }) {
+function makePassiveScenarioSpec({ type, actorId, role, assetRef, pos, rot = 0, radius, mass, hull, data = {}, physicsBody = null }) {
   return {
     type,
     alive: true,
     collides: false,
     radius,
     mass,
+    physicsBody,
     pos,
     rot,
     vel: { x: 0, z: 0 },
