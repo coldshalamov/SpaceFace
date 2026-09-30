@@ -2605,6 +2605,13 @@ removed with it — down to **2 worktrees**: main checkout + `.worktrees/consoli
 22 MB playwright storage stub (PID 34688) is kernel-stuck post-kill: 0 CPU, harmless, clears
 on reboot. To resume the treadmill: re-add a worktree and run `scratch/budget-loop.ps1`.
 
+**Tree fully pushed (2026-09-29, late):** 0 uncommitted changes and 0 unpushed commits anywhere —
+master = `af8d32b0c` = origin/master; parked `consolidated/inflight-2026-09-29` tip `6fe0255f6`
+= its origin branch. Consolidated worktree's own tree is clean too. Deleted ~75 MB of ignored
+scratch litter (`.tmp-*` lane dirs, `.genie-packets`/`.genie-returns` extracts, `*TEMP*`/`nul`
+root files, `.spaceface-*`/`.massline-*`/`.capital-boss` patch backups). `.devshots/` kept — it
+holds evidence referenced by open ledger rows.
+
 **Launcher repaired (2026-09-29, late):** `SpaceFace-Desktop.bat` was failing at its `npm install`
 step — `node_modules` was an empty dir (the old junction target was gone) and the npm cache was
 corrupted during the disk-full episode (`stat _cacache` ENOENT). Fix: removed the empty dir,
