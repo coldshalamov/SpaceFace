@@ -41,8 +41,8 @@ import {
   canInstallWholeShipLodFamily,
   lodFileFromFamily,
   normalizeRequestedLod,
-  resolveWholeShipLodTransition,
-  selectSpawnLodLevel,
+  resolveLiveWholeShipLodTransition,
+  selectPrewarmLodLevel,
   shouldCommitWholeShipLodLoad,
 } from './wholeShipLodPolicy.js';
 import {
@@ -1212,7 +1212,7 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
         const dist = Math.hypot(dx, dz);
         const radius = Number(entity.radius) || 8;
         const px = (radius / Math.max(dist, 0.001)) * (Number(options.viewportHeight) || 800);
-        lodLevel = selectSpawnLodLevel(px);
+        lodLevel = selectPrewarmLodLevel(px);
       }
       plan = authoredPreloadPlanForEntity(entity, {
         ...options,
@@ -4714,6 +4714,27 @@ function firstFlightShipCanPassBusyPlace(state) {
   return active.length === 1 && active[0].entity?.type !== 'ship';
 }
 
+// OWNER 2026-09-29 ("a ship will be a box and then it'll be a ship"): in steady flight the serial
+// lane is concurrency 1, so one station / place / rock job — a trade hub is an 82 MB GLB whose
+// decode has sat in flight for minutes (ledger D48) — held every ship behind it, and the player
+// watched stand-ins for as long as it took. The first-flight hold already grants one extra ship
+// slot past a busy non-ship job; steady flight gets the same grant, but only for a ship the
+// player is already looking at or fighting (rung ≤ on-glass): a far runway ship still waits its
+// turn, so two full ship composes never overlap (the measured combat stall), and at most one
+// ship ever rides beside one non-ship job.
+const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
+function steadyFlightShipCanPassBusyPlace(state) {
+  if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true
+      || state.inFlight !== 1) return false;
+  const live = authoredRuntimeState();
+  if (!live || live.mode !== 'flight') return false;
+  if (!state.jobs.some((job) => queuedShipJobStillNeeded(state, job)
+      && authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY)) return false;
+  const active = [...state.byBoundary.values()].filter((job) =>
+    job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
+  return active.length === 1 && active[0].entity?.type !== 'ship';
+}
+
 // Steady flight runs the serial lane at concurrency 1, so a job whose inner await never settles
 // (a wedged decode/transcode/residency park — the critical-hub job sat in flight ~11 min behind
 // place_station_trade_hub.glb and starved every combat ship queued behind it) would block the
@@ -5187,10 +5208,12 @@ function scheduleNextUpgradeFrame(state) {
   if (state.firstFlightHandoffHold === true) primeNextAuthoredAssetPlan(state);
   if (state.inFlight >= authoredUpgradeConcurrencyLimit()) {
     const firstFlightPass = firstFlightShipCanPassBusyPlace(state);
-    if (!firstFlightPass && !stalledHogsCanPassShip(state)) {
+    const steadyPass = !firstFlightPass && steadyFlightShipCanPassBusyPlace(state);
+    if (!firstFlightPass && !steadyPass && !stalledHogsCanPassShip(state)) {
       armStalledHogWake(state);
       return;
     }
+    // The pass exists to feed the ship lane: hoist the needed ship to the head of the pick.
     if (!firstFlightPass) state.stallBypassShipPass = true;
   }
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
@@ -6685,7 +6708,9 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     if (!roots.lod0) return;
     const requested = normalizeRequestedLod(level);
     if (typeof baseUpdate === 'function') baseUpdate(requested);
-    const transition = resolveWholeShipLodTransition(activeLevel, requested, {
+    // Runtime demotion is off (wholeShipLodPolicy.js): a 'load' resolves to 'keep', so a live ship
+    // never admits a second file on the glass. Already-resident levels may still swap (instant).
+    const transition = resolveLiveWholeShipLodTransition(activeLevel, requested, {
       residentReady: !!roots[requested],
       pendingLevel,
       attached: !!boundary.parent,

@@ -8,6 +8,10 @@ import { ciMatrixSourceCommand } from './lib/ciGateGraph.mjs';
 
 const DEFAULT_TIMEOUT_MS = 180000;
 const LONG_TIMEOUT_MS = 420000;
+const COMMAND_TIMEOUT_OVERRIDES_MS = {
+  'probe-flight-visual': 720000,
+  'probe-ship-visual-stability': 660000,
+};
 const TAIL_LIMIT = 1600;
 
 const SMOKE_COMMANDS = [
@@ -217,9 +221,14 @@ export function buildCommandMatrix(checkCommand = '', scripts = {}) {
     const resolvedCommand = npmScript && typeof scripts[npmScript] === 'string'
       ? scripts[npmScript]
       : command;
-    const timeoutMs = /(?:^|:)(?:long|browser|electron)(?:$|:)|flight:clean|check:art\b|check:bundle\b|playwright|\b(?:probe|capture|soak|performance)\b/i.test(resolvedCommand)
-      ? LONG_TIMEOUT_MS
-      : DEFAULT_TIMEOUT_MS;
+    // Per-command overrides: a few probes legitimately outrun the 420s LONG class on shared
+    // software-GL runners (probe-flight-visual's five clean desktop+mobile rounds measure
+    // ~110s each; probe-ship-visual-stability's resolve window alone is 240s plus boot/flight
+    // budgets) — 2026-09-30 both observed killed mid-proof at the cap, not failing.
+    const timeoutMs = COMMAND_TIMEOUT_OVERRIDES_MS[id]
+      ?? (/((?:^|:)(?:long|browser|electron)(?:$|:)|flight:clean|check:art\b|check:bundle\b|playwright|\b(?:probe|capture|soak|performance)\b)/i.test(resolvedCommand)
+        ? LONG_TIMEOUT_MS
+        : DEFAULT_TIMEOUT_MS);
     return cmd(id, command, timeoutMs);
   });
 }
