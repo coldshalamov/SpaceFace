@@ -830,31 +830,41 @@ export const mainMenuScreen = {
     // timer poll can lag readiness by up to its period (~120ms of veil latency after the frame
     // already exists). rAF wakes the same frame the counter moves; a timer stays as failsafe
     // for hosts that throttle background rAF.
-    let rafId = null;
-    let timerId = null;
-    let lifted = false;
+    // The veil element is a singleton: a re-entry (a second Continue after a failed load)
+    // must retire the previous loop's arms and pending removal so they can't lift or delete
+    // the veil the new loop relies on mid-load.
+    const previous = fade._sfContinueFadeLoop;
+    if (previous) {
+      previous.stale = true;
+      if (previous.rafId != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(previous.rafId);
+      if (previous.timerId != null) clearTimeout(previous.timerId);
+      if (previous.removeTimerId != null) clearTimeout(previous.removeTimerId);
+    }
+    const loop = { stale: false, rafId: null, timerId: null, removeTimerId: null };
+    fade._sfContinueFadeLoop = loop;
     const check = () => {
-      if (lifted) return;
+      if (loop.stale) return;
       const live = ctx && ctx.state && ctx.state.mode === 'flight';
       const presented = frameAtClick == null || (frameCount() != null && frameCount() > frameAtClick);
       if ((live && presented) || Date.now() - start > 4000) {
-        lifted = true;
+        loop.stale = true;
         fade.classList.remove('open');
-        setTimeout(() => { if (fade.parentNode) fade.remove(); }, 1100);
+        loop.removeTimerId = setTimeout(() => {
+          if (fade._sfContinueFadeLoop === loop && fade.parentNode) fade.remove();
+        }, 1100);
         return;
       }
-      if (typeof requestAnimationFrame === 'function') rafId = requestAnimationFrame(check);
+      if (typeof requestAnimationFrame === 'function') loop.rafId = requestAnimationFrame(check);
       // The timer must re-arm on every wake, not just when rAF is missing: on a rAF-throttled
       // host (background tab) the first timer fire is the last check unless it keeps itself
       // armed — the 4s cap would never evaluate and the veil would hold indefinitely.
-      timerId = setTimeout(check, 200);
+      loop.timerId = setTimeout(check, 200);
     };
     if (typeof requestAnimationFrame === 'function') {
-      rafId = requestAnimationFrame(check);
-      timerId = setTimeout(check, 200); // failsafe only: rAF-throttled hosts still lift
+      loop.rafId = requestAnimationFrame(check);
+      loop.timerId = setTimeout(check, 200); // failsafe only: rAF-throttled hosts still lift
     } else {
-      timerId = setTimeout(check, 200);
+      loop.timerId = setTimeout(check, 200);
     }
-    void rafId; void timerId;
   },
 };
