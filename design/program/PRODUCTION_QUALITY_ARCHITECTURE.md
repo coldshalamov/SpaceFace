@@ -26,7 +26,10 @@ matching this list. Reuse the existing hullBurst family for its existing effects
 ## 2. Collision coverage must follow a consequential trajectory
 
 **Evidence:** the September 30 hull-burst handoff records a flung body outrunning the active body
-ring. Reproduce at current HEAD before editing. This is different from tunneling: a swept/continuous
+ring. The [deeper audit](PRODUCTION_QUALITY_SOURCE_AUDIT.md) traced the actual chain:
+`activityRuntime`/classification → `physics._syncSg02DynamicAuthorityEntities` →
+`sg02DynamicBodyOwner.syncFromEntityLayers`. Player-relative reach/pins can preserve a
+consequential hull without all of its outgoing collision neighborhood. Reproduce at current HEAD before editing. This is different from tunneling: a swept/continuous
 collision setting cannot collide with an object that was never admitted.
 
 **Selected direction if still reproduced:** extend the existing admission owner's bounded demand
@@ -70,6 +73,11 @@ existing loose cargo and an existing machinery surface. Unsupported combinations
 That is reusable consistency without demanding the cross-product of every object and weapon.
 
 ## 4. Contact-assisted redirection is not an alternate flight solver
+
+The current merged impact receipt's `normal` comes from `event.maxForceDirection()`;
+its manifold callback retains a contact point, not a stable contact episode. Do not reinterpret
+that force direction as an authoritative collider normal or use projectile-reflection receipts
+as a ready-made craft-contact API. The minimal normal/episode exposure is a prerequisite.
 
 The proposed skate reads a real contact normal and relative velocity, and produces one bounded
 authority command for the continuous contact episode. The equipped capability is necessary but
