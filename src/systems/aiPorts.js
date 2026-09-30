@@ -956,6 +956,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     // the line the pilot was shown on railgun-fast mounts.
     aimProjectileSpeed: bestAimProjectileSpeed(entity.data && entity.data.weapons),
     ramAuthorized,
+    woundedFallbackSpent: ai.woundedFallbackSpent === true,
     ...bands,
   };
   // The id allocator recycles numbers. Copy the occupant token the spawn just

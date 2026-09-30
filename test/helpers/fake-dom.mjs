@@ -12,7 +12,7 @@ export function fakeDom() {
       innerHTML: '',
       children: [],
       parentNode: null,
-      style: {},
+      style: { setProperty(name, value) { this[name] = value; } },
       dataset: {},
       attributes: {},
       listeners: {},

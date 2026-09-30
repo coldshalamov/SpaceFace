@@ -3346,6 +3346,277 @@
      ]
     }
    }
+  },
+  "ship_saucer": {
+   "sourceGlb": "assets/ships/parts/wholeships/saucer_production_v1.glb",
+   "sourceGlbSha256": "A32AA0E63F36B941A2C55CEF44ECFCD5B9C32A511AE032F5C8EE9323C01814B2",
+   "hero": {
+    "file": "ship_saucer.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 113220,
+    "hullSize": [
+     20.962,
+     22.06,
+     7.56
+    ],
+    "longAxis": 1,
+    "marks": {
+     "SAUCER_LOD0_ROOT": [
+      0.5205,
+      0.4984,
+      56.885
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5205,
+      0.4705,
+      56.682
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5202,
+      0.6025,
+      57.658
+     ],
+     "SOCKET_Engine_Main": [
+      0.52,
+      0.6668,
+      58.146
+     ],
+     "SOCKET_Mining_Front": [
+      0.2462,
+      0.3791,
+      62.647
+     ],
+     "SOCKET_RCS_Port": [
+      0.4646,
+      0.7676,
+      48.619
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.7751,
+      0.3999,
+      61.041
+     ],
+     "SOCKET_Tether_Massline": [
+      0.4981,
+      0.5906,
+      58.077
+     ],
+     "SOCKET_Trail_Main": [
+      0.7863,
+      0.653,
+      52.469
+     ],
+     "SOCKET_Trail_Port": [
+      0.6526,
+      0.7406,
+      49.887
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.8117,
+      0.5289,
+      56.622
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5208,
+      0.3914,
+      56.112
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2509,
+      0.372,
+      62.46
+     ],
+     "SOCKET_Weapon_Port": [
+      0.2846,
+      0.7212,
+      49.47
+     ],
+     "SOCKET_Weapon_Starboard": [
+      0.6838,
+      0.3092,
+      64.586
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_saucer.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 68096,
+    "hullSize": [
+     20.962,
+     22.06,
+     7.56
+    ],
+    "longAxis": 1,
+    "marks": {
+     "SAUCER_LOD0_ROOT": [
+      0.5,
+      0.4819,
+      66.911
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.44,
+      66.911
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6411,
+      66.911
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.7417,
+      66.911
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.5126,
+      56.199
+     ],
+     "SOCKET_RCS_Port": [
+      0.8189,
+      0.4903,
+      70.911
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.1811,
+      0.4903,
+      70.911
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6411,
+      66.111
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.5112,
+      75.611
+     ],
+     "SOCKET_Trail_Port": [
+      0.6729,
+      0.5112,
+      74.111
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.3271,
+      0.5112,
+      74.111
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3226,
+      66.911
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.497,
+      56.411
+     ],
+     "SOCKET_Weapon_Port": [
+      0.888,
+      0.4735,
+      66.561
+     ],
+     "SOCKET_Weapon_Starboard": [
+      0.112,
+      0.4735,
+      66.561
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_saucer.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 53664,
+    "hullSize": [
+     20.962,
+     22.06,
+     7.56
+    ],
+    "longAxis": 1,
+    "marks": {
+     "SAUCER_LOD0_ROOT": [
+      0.5,
+      0.5281,
+      65.964
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.5281,
+      65.464
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5281,
+      67.864
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.5281,
+      69.064
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.1166,
+      66.33
+     ],
+     "SOCKET_RCS_Port": [
+      0.1811,
+      0.6817,
+      66.064
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.8189,
+      0.6817,
+      66.064
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.4973,
+      67.864
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.8623,
+      66.314
+     ],
+     "SOCKET_Trail_Port": [
+      0.3271,
+      0.8047,
+      66.314
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6729,
+      0.8047,
+      66.314
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5281,
+      64.064
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.1247,
+      66.144
+     ],
+     "SOCKET_Weapon_Port": [
+      0.112,
+      0.5146,
+      65.864
+     ],
+     "SOCKET_Weapon_Starboard": [
+      0.888,
+      0.5146,
+      65.864
+     ]
+    }
+   }
   }
  }
 }

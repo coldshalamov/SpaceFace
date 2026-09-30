@@ -3359,6 +3359,13 @@ function checkHeatUsesTargetFactionContext() {
     pos: { x: 80, z: 0 }, hull: 80, hullMax: 80, radius: 8,
     data: { shipClass: 'gunship', ai: { lawful: true } },
   });
+  // The law prices what eyes saw: a second patrol on scene makes the kill witnessed, which is
+  // what lets a charge open at all. Without it the act is only a recorded unreported case.
+  sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: 120, z: 40 }, hull: 80, hullMax: 80, radius: 8,
+    data: { shipClass: 'gunship', ai: { lawful: true } },
+  });
   const receipts = [];
   lawBus.on('law:reportIncidentReceipt', (p) => receipts.push(p));
 

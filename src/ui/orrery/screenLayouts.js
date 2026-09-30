@@ -178,6 +178,24 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 /* the share and ghost codes are secondary readings: a size down from the seed */
 #screens .orr-crucible .sf-crd-share .orr-input, #screens .orr-crucible input.orr-input:not(#sf-crd-seed):not([inputmode="numeric"]) {
   font-size:clamp(16px, 2vh, 22px) !important; }
+/* the stake tile names its whole contract under its word: purse · pressure · earn */
+#screens .orr-crucible .sf-crd-stake-nums { display:block; font-family:var(--dp-face-label, "Archivo"); font-size:12px;
+  font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(232 226 212 / .55); text-align:center; }
+#screens .orr-crucible .orr-tile[aria-pressed="true"] .sf-crd-stake-nums { color:rgb(242 185 80 / .9); }
+/* the any-hull grid: a caption line, then tier marks with ship names as plain words */
+#screens .orr-crucible .sf-crd-anyhull { margin-top:10px; }
+#screens .orr-crucible .sf-crd-anyhull-cap { margin:0 0 6px; }
+#screens .orr-crucible .sf-crd-anyhull-tier { display:flex; align-items:baseline; gap:10px; margin:4px 0; }
+#screens .orr-crucible .sf-crd-anyhull-mark { min-width:26px; color:rgb(242 185 80 / .7); }
+#screens .orr-crucible .sf-crd-anyhull-ships { gap:8px; }
+#screens .orr-crucible .sf-crd-anyhull-ship { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
+  font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(232 226 212 / .6);
+  background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  min-width:0 !important; min-height:0 !important; padding:3px 2px !important; cursor:pointer; }
+#screens .orr-crucible .sf-crd-anyhull-ship:is(:hover, :focus-visible, .is-on) { color:rgb(246 241 230) !important; outline:none; }
+#screens .orr-crucible .sf-crd-anyhull-ship.is-on {
+  background-image:linear-gradient(90deg, rgb(242 185 80 / .8), rgb(242 185 80 / 0)) !important;
+  background-size:100% 1px !important; background-position:0 100% !important; background-repeat:no-repeat !important; }
 html body #screens .k-screen.orr-crucible .sf-back.k-word { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:13px !important; letter-spacing:.24em; color:rgb(232 226 212 / .7) !important; }
 html body #screens .k-screen.orr-crucible .sf-back.k-word::after { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
@@ -533,6 +551,14 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
   font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.06em; text-transform:none; font-variation-settings:normal;
   color:rgb(236 230 216 / .62); border:0; box-shadow:none; border-radius:0; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-hintword { margin:0 16px 0 4px; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
+/* the demo word rides under the buy line in the reading — the showcase verb of the sandbox.
+   Quieter than BUY: a trial is a look, not a purchase. */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo { margin:6px 0 0; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo:empty { display:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo-word { margin:0; padding:0; background:none; border:0; box-shadow:none; cursor:pointer;
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo-word:is(:hover, :focus-visible) { color:rgb(246 241 230); outline:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__demo-word:disabled { color:var(--dp-ice, #8fcbff); cursor:default; }
 /* the rail: its Hand on the row being read; that row at full bone, the rest quieter; the price only
    on the lit row (the dividers carry it for the rest), and there it says BUY and names its key */
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card { opacity:.8; transition:opacity .16s linear; }

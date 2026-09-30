@@ -84,10 +84,17 @@ test('loading prepares the real opening cohort once, without advancing combat ti
   h.bus.emit('run:loadoutReady', {});
   const time = h.state.simTime;
   h.bus.emit('run:openingPrepareRequested', {});
+  // A swarm run's opening stop is the armory — prep lands the draft and nothing spawns yet;
+  // the cohort arrives when the shop resolves and wave one plans, like every later wave.
+  assert.equal(h.state.run.phase, 'draft');
+  assert.equal(h.state.simTime, time, 'preparation does not advance combat time');
+  h.bus.emit('run:draftResolved', {});
+  tick(h, 1);
+  h.bus.emit('run:waveIntroComplete', {});
+  tick(h, 1);
   assert.equal(h.state.run.phase, 'active');
   assert.equal(h.state.run.wave, 1);
-  assert.ok(h.spawned.length > 0, 'GPU preparation sees actual enemy hulls');
-  assert.equal(h.state.simTime, time);
+  assert.ok(h.spawned.length > 0, 'the first round materializes through the real planner');
   const count = h.spawned.length;
   h.bus.emit('run:openingPrepareRequested', {});
   assert.equal(h.spawned.length, count, 'duplicate preparation does not spawn a second pack');

@@ -198,6 +198,7 @@ export function decodeShareBlock(text, expectedPrefix = null) {
  *   w  weeklyMutatorId (optional)
  *   g  ghostHash  (optional uint32 — the exporter's ghost tape hash; resolves only if the
  *      receiving machine also imported the ghost block)
+ *   t  swarmStake (optional — the swarm's purse/pressure contract; swarm only)
  * ------------------------------------------------------------------------- */
 
 function asId(value) {
@@ -265,6 +266,8 @@ export function normalizeRunShareSpec(input) {
   if (weeklyMutatorId) spec.w = weeklyMutatorId;
   const ghostHash = asHash(src.g != null ? src.g : src.ghostHash);
   if (ghostHash != null) spec.g = ghostHash;
+  const stake = asId(src.t != null ? src.t : src.stake);
+  if (stake) spec.t = stake;
   return spec;
 }
 
@@ -298,5 +301,6 @@ export function runShareSpecFields(spec) {
     dailyDateKey: asDateKey(s.d),
     weeklyMutatorId: asId(s.w),
     ghostHash: asHash(s.g),
+    stake: asId(s.t),
   };
 }

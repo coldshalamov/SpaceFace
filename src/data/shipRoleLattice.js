@@ -1,9 +1,9 @@
-// src/data/shipRoleLattice.js — Milestone-5 fourteen-ship role lattice.
+// src/data/shipRoleLattice.js — Milestone-5 fifteen-ship role lattice.
 // Pure data + pure helpers. Consumed by systems/ships.js (derived behavior authority)
 // and ui/screens/shipyard.js (why-this-ship + owned-hull compare). No Three.js, no RNG.
 //
 // Contract:
-// - Exactly one lattice row per canonical player hull in SHIPS (14).
+// - Exactly one lattice row per canonical player hull in SHIPS (15).
 // - Roles drive real derived behavior through ships.getDerivedStats (flight class +
 //   operational biases), not labels alone.
 // - Adjacency / counter / career fit are authored progression metadata; unlock truth
@@ -100,6 +100,11 @@ export const SHIP_ROLE_PATHS = Object.freeze({
     id: 'path_command_flagship', signatureVerb: 'Coordinate seven capital arcs and use the massline to shape the battlefield.',
     counterplay: 'Protect the slow core with escorts, ECM, and deliberate target order.',
     kit: Object.freeze([{ defId: 'wpn_siege_lance_l', count: 1 }, { defId: 'wpn_heavy_beam_l', count: 4 }, { defId: 'wpn_torpedo_l', count: 2 }, { defId: 'mod_massline_spool_l', count: 1 }, { defId: 'mod_targeting_computer_m', count: 1 }, { defId: 'mod_ecm_jammer_l', count: 1 }]),
+  }),
+  ship_saucer: Object.freeze({
+    id: 'path_inertialess_disc', signatureVerb: 'Stop on a dime, turn on the spot, and tow what outweighs the escorts.',
+    counterplay: 'Sustained fire bleeds the 360 boost pool; a saucer that cannot dash is heavy prey.',
+    kit: Object.freeze([{ defId: 'wpn_gravity_well_m', count: 1 }, { defId: 'wpn_momentum_sink_s', count: 1 }, { defId: 'mod_massline_spool_m', count: 1 }, { defId: 'mod_frame_coupler_m', count: 1 }]),
   }),
 });
 
@@ -408,6 +413,24 @@ const LATTICE_ROWS = Object.freeze([
     counterRoles: Object.freeze(['massed interceptors', 'kite explorers']),
     identityLine: 'The fight bends around it — escorts first, then the core.',
   }),
+  Object.freeze({
+    shipId: 'ship_saucer',
+    role: 'exotic',
+    roleLabel: 'Inertialess Disc',
+    flightClass: 'exotic',
+    shortWhy: 'The inertialess field drive — right-angle turns, dime stops, and 520 mass that drags whatever it touches.',
+    careerFit: Object.freeze({ hauler: 0.60, hunter: 0.75, prospector: 0.35 }),
+    primaryCareers: Object.freeze(['hunter', 'hauler']),
+    opMassBias: 1.20,
+    handlingBias: 1.15,
+    thrustBias: 0.85,
+    turnBias: 1.20,
+    strengths: Object.freeze(['best-in-class authority per tonne', 'turret-mounted S arc', 'tow mass far above its class']),
+    weaknesses: Object.freeze(['boost pool drains under sustained pressure', 'exotic tech gate and price', 'capacitor-bound drive']),
+    upgradeAdjacency: Object.freeze([]),
+    counterRoles: Object.freeze(['sustained focus fire', 'capacitor pressure']),
+    identityLine: 'It does not obey your momentum. It obeys you.',
+  }),
 ]);
 
 export const SHIP_ROLE_LATTICE = Object.freeze(Object.fromEntries(
@@ -654,8 +677,8 @@ export function findDominatedSameTierHulls(ships = SHIPS) {
 export function validateRoleLattice(ships = SHIPS) {
   const errors = [];
   const shipIds = ships.map((s) => s.id);
-  if (shipIds.length !== 14) errors.push('expected exactly 14 ships, got ' + shipIds.length);
-  if (LATTICE_SHIP_IDS.length !== 14) errors.push('lattice rows must be exactly 14');
+  if (shipIds.length !== 15) errors.push('expected exactly 15 ships, got ' + shipIds.length);
+  if (LATTICE_SHIP_IDS.length !== 15) errors.push('lattice rows must be exactly 15');
 
   for (const id of shipIds) {
     if (!SHIP_ROLE_LATTICE[id]) errors.push('missing lattice row for ' + id);

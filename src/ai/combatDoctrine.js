@@ -283,6 +283,7 @@ export class CombatDoctrineRuntime {
     record.lastTick = tick;
     record.ramAuthorized = self && self.ramAuthorized === true;
     record.outcome = null;
+    record.fallbackRearmed = false;
     record.telegraphStartedTick = null;
 
     if (!target) {
@@ -868,7 +869,15 @@ function updatePackPursuit(record, tick, self, target, distance, perception) {
   const wound = woundedSubsystemFraction(self);
   // Hysteresis: a repaired-above-exit hull re-arms its one fallback; until then the spent wound
   // cannot re-trigger, so a crippled hull fights hurt instead of flickering press/retreat.
-  if (wound >= PACK_WOUND_EXIT_FRACTION) record.fallbackArmed = true;
+  if (wound >= PACK_WOUND_EXIT_FRACTION) {
+    // The persisted latch counts as spent too: a record rebuilt after save:loaded starts armed,
+    // so without the self flag here the re-arm pulse would never fire and the saved latch would
+    // hold every later retreat closed.
+    if (record.fallbackArmed === false || (self && self.woundedFallbackSpent === true)) {
+      record.fallbackRearmed = true;
+    }
+    record.fallbackArmed = true;
+  }
   if (record.phase === 'retreat') {
     // Allies move — re-resolve the anchor from current perception every tick rather than chasing
     // the position the packmate occupied when the run began.
@@ -883,7 +892,11 @@ function updatePackPursuit(record, tick, self, target, distance, perception) {
     }
     return;
   }
-  if (record.fallbackArmed !== false && wound <= PACK_WOUND_ENTER_FRACTION) {
+  // The spent latch also lives on the entity (data.ai.woundedFallbackSpent): the doctrine record
+  // is rebuilt empty after a save/load and a still-crippled hull must not buy a second retreat.
+  const fallbackSpent = record.fallbackArmed === false
+    || (self && self.woundedFallbackSpent === true);
+  if (!fallbackSpent && wound <= PACK_WOUND_ENTER_FRACTION) {
     record.fallbackArmed = false;
     record.outcome = 'wounded_fallback';
     enter(record, 'retreat', tick, null);
@@ -1372,6 +1385,8 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     preferredRange,
     allowedActionId,
     outcome: record.outcome,
+    fallbackSpent: record.fallbackArmed === false,
+    fallbackRearmed: record.fallbackRearmed === true,
     contestKind: doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER && phase === 'control'
       ? 'tether-control-contest'
       : null,

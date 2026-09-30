@@ -94,6 +94,14 @@
       "part_id": "leviathan_production_v1",
       "root": "LEVIATHAN"
     },
+    "saucer": {
+      "layout": "player",
+      "file": "saucer_production_v1",
+      "asset_id": "SF_SAUCER_PRODUCTION_V1",
+      "part_id": "wholeship_saucer_production_v1",
+      "root": "SAUCER",
+      "note": "Forge-v1 production build (tools/blender/forge/ships/saucer.py): inertialess exotic player hull — lenticular gunmetal disc, cyan rim light chain, ventral drive core."
+    },
     "ashline_dart": {
       "layout": "npc",
       "file": "ashline_dart",

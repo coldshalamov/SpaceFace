@@ -26,6 +26,7 @@ import { mulberry32 } from '../core/rng.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
 import { SWARM_DRAFT_OFFERS } from './swarmDraft.js';
+import { swarmCatalogOffers, swarmCategoryFor } from './swarmCatalog.js';
 import { SWARM_RULESET } from './swarmMode.js';
 import { WEAPONS } from './weapons.js';
 import { buildSlotList, fits, outfitBudgetForFittings } from '../systems/ships.js';
@@ -370,14 +371,19 @@ function offerDraftInner(input) {
   while (fittings.length < slots.length) fittings.push(null);
   const owned = currentDefIds(fittings);
 
-  // THE SWARM POOL IS DEEPER ON PURPOSE. The arc's fourteen weapons fill a three-slot hull in three
+  // THE SWARM POOL IS THE WHOLE SHELF. The arc's fourteen weapons fill a three-slot hull in three
   // picks; an endless run needs somewhere to keep growing, so it also draws from the attack-trait
   // and support modules that land in the utility, shield and engine slots the weapon pool can
-  // never reach. `fits` still decides where a card can land, so a hull without those slots simply
+  // never reach — and past the authored set, every purchasable fitting in the game rides the
+  // generated catalog, because a sandbox where half the shelf is invisible is not a sandbox.
+  // `fits` still decides where a card can land, so a hull without those slots simply
   // never sees those cards.
-  const pool = src.ruleset === SWARM_RULESET
+  const authoredPool = src.ruleset === SWARM_RULESET
     ? SURVIVAL_DRAFT_OFFERS.concat(SWARM_DRAFT_OFFERS)
     : SURVIVAL_DRAFT_OFFERS;
+  const pool = src.ruleset === SWARM_RULESET
+    ? authoredPool.concat(swarmCatalogOffers(new Set(authoredPool.map((offer) => offer.defId))))
+    : authoredPool;
 
   const eligible = [];
   for (const offer of pool) {
@@ -398,6 +404,10 @@ function offerDraftInner(input) {
       blurb: offer.blurb,
       kind: offer.kind,
       shape: offer.shape || null,
+      // The shelf the card browses under; the screen filters on this instead of re-deriving
+      // categories from defId prefixes, so a generated row files itself correctly.
+      category: offer.category || swarmCategoryFor(def),
+      catalog: offer.catalog === true,
       slotIndex: target.slotIndex,
       replaces: target.replaces,
     });
