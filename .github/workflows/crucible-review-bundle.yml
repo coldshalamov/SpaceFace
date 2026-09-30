@@ -1,0 +1,42 @@
+name: Crucible review source bundle
+on:
+  push:
+    branches: [frontend/crucible-visual-armory]
+    paths: [.github/workflows/crucible-review-bundle.yml]
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            src
+            styles
+            scripts
+            test
+            assets/ui
+            assets/fonts
+      - name: Pack UI source, excluding large media
+        run: |
+          python3 - <<'PY'
+          import pathlib, zipfile
+          root = pathlib.Path('.')
+          with zipfile.ZipFile('/tmp/crucible-review-source.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+              for path in root.rglob('*'):
+                  if not path.is_file() or '.git' in path.parts or '.github' in path.parts:
+                      continue
+                  if path.suffix.lower() in {'.glb', '.gltf', '.blend', '.mp4', '.mov', '.wav', '.ogg', '.mp3'}:
+                      continue
+                  if path.stat().st_size > 8 * 1024 * 1024:
+                      continue
+                  archive.write(path, str(path))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crucible-review-source
+          path: /tmp/crucible-review-source.zip
+          retention-days: 1
