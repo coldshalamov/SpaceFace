@@ -3,7 +3,7 @@
 // GameState.entityList members until promote (mine / ram / tether / decode-runway traffic).
 
 import { clearEntityRuntime } from '../core/entity.js';
-import { getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
+import { ASTEROID_FIELD_CELL, getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
 import {
@@ -34,7 +34,6 @@ const _meshSpatialKey = {
   originX: NaN,
   originZ: NaN,
   radius: NaN,
-  originSeq: -1,
   fieldVersion: -1,
   farVersion: -1,
 };
@@ -124,7 +123,7 @@ function ledgerPredictedPos(rec, simTime, out) {
 
 const _ledgerPredictedScratch = { x: 0, z: 0 };
 
-function meshSpatialKeyMatches(state, origin, radius) {
+function meshSpatialKeyMatches(state, walkX, walkZ, walkRadius) {
   const world = state && state.world;
   const field = world && world.asteroidField;
   const far = world && world.farActors;
@@ -132,28 +131,28 @@ function meshSpatialKeyMatches(state, origin, radius) {
   return key.state === state
     && key.field === field
     && key.far === far
-    && key.originX === origin.x
-    && key.originZ === origin.z
-    && key.radius === radius
-    && key.originSeq === ((world && world.frameOriginSeq) | 0)
+    && key.originX === walkX
+    && key.originZ === walkZ
+    && key.radius === walkRadius
     && key.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0)
     && key.farVersion === (far && Number.isFinite(far.version) ? far.version : 0);
 }
 
-function rememberMeshSpatialKey(state, origin, radius) {
+function rememberMeshSpatialKey(state, walkX, walkZ, walkRadius) {
   const world = state && state.world;
   const field = world && world.asteroidField;
   const far = world && world.farActors;
   _meshSpatialKey.state = state;
   _meshSpatialKey.field = field;
   _meshSpatialKey.far = far;
-  _meshSpatialKey.originX = origin.x;
-  _meshSpatialKey.originZ = origin.z;
-  _meshSpatialKey.radius = radius;
-  _meshSpatialKey.originSeq = (world && world.frameOriginSeq) | 0;
+  _meshSpatialKey.originX = walkX;
+  _meshSpatialKey.originZ = walkZ;
+  _meshSpatialKey.radius = walkRadius;
   _meshSpatialKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
   _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
 }
+
+const _meshWalkOrigin = { x: 0, z: 0 };
 
 const _ledgerCollectOrigin = { x: 0, z: 0 };
 
@@ -178,10 +177,23 @@ function appendNearbyLedgerRows(state, out) {
   // decides admission, so the disc leaning wide does not wake receding traffic.
   const scanRadius = radius
     + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS;
-  if (!meshSpatialKeyMatches(state, origin, scanRadius)) {
-    queryAsteroidField(state, origin, scanRadius, _meshRockScratch);
-    queryFarActors(state, origin, scanRadius, _meshFarScratch);
-    rememberMeshSpatialKey(state, origin, scanRadius);
+  // The collect disc moves with the look-at every frame, so keying the memo on the
+  // exact origin meant it never hit while the player travelled — every poll walked
+  // every grid cell inside the multi-thousand-WU decode runway disc. Walk a quantized
+  // cell centre padded by the cell's half-diagonal instead: any live origin inside the
+  // cell is covered by the same superset, and the per-row tests below still filter
+  // against the exact origin on every call. The walk radius is bucketed the same way
+  // so small speed changes do not churn the key either.
+  const walkX = (Math.floor(origin.x / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const walkZ = (Math.floor(origin.z / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
+  const walkRadius = Math.ceil((scanRadius + radiusPad) / 500) * 500;
+  if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius)) {
+    _meshWalkOrigin.x = walkX;
+    _meshWalkOrigin.z = walkZ;
+    queryAsteroidField(state, _meshWalkOrigin, walkRadius, _meshRockScratch);
+    queryFarActors(state, _meshWalkOrigin, walkRadius, _meshFarScratch);
+    rememberMeshSpatialKey(state, walkX, walkZ, walkRadius);
   }
   const pvx = finite(player.vel && player.vel.x);
   const pvz = finite(player.vel && player.vel.z);
