@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ff290a5cfd598f116ba3802b95b14eaddc937583fe9402e24509d2eb071ea13b",
+  "contentHash": "baa4ddbef03bc4fc3b4edde13d58f22633e4be4d2b11eb3946a79d00632211c9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1638,13 +1638,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 49540,
-    "sha256": "9411e81f8e4d9d8580fffcd060c4ad2a27b765ddf0629ced63e23740e29dde2f",
+    "sha256": "6d6b3baed16e852e2dec4beda7bf552a137ab47b0c71d83089ba3d600f3ada64",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2371,7 +2371,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_crusher_module.glb"
   },
-  "runtimeHash": "2e40aa8cc33781e5d2d6ca4afdd972c73b90e64e7e439fe1275acd18f27357d8",
+  "runtimeHash": "8bdd2cac346e00cf1e7423e6565d0f2a517087bca9275130557689bbc454139f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

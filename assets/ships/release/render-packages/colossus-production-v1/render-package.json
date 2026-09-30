@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5917330bc53d28ad836bdf7dff1117838394dda0656721745533acfc69cdae35",
+  "contentHash": "d7a1c83642cfc601e21c520db756fd40ed5dd315866a2d611fc4a31f1fa4c170",
   "dynamicGroups": [
     {
       "id": "sf.render.colossus-production-v1.node.lod0-hook-armor-port-armor.dynamic",
@@ -2961,13 +2961,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 2093508,
-    "sha256": "eedca82e1b8690a47af7fc146b5a05e16a09fa4240df0e62dedd483587768346",
+    "sha256": "5ce154d56cde7cad690c4e1ac8f24c9a7d5d7a0e16297acc77ae91c53b111ff4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4276,7 +4276,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/colossus_production_v1.glb"
   },
-  "runtimeHash": "40d0a711e109324de4456f49b85385fbed787ed26505459d32371e2d49950b22",
+  "runtimeHash": "60064b39522017976cc2ade8492864810f387163ec99a24efeac74c0bab7e0f9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

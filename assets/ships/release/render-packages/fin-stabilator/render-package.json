@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f675fdce24c57a75e05a5c2a76e44ce53472befa6623a2f108de9f095eb3bab9",
+  "contentHash": "5af905d623d8b2c644d3b98a0e3f4921a0dc102863a58e6cb1904dd1ed58743f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,13 +344,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 379688,
-    "sha256": "51662fd7d12a43fc3f04f762db65e7090ca4831ace77a68d7545197d2ae2ef20",
+    "sha256": "4d357695d395125bac1714b2f2310154a0f276563da7043f9a66084c4356349a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -514,7 +514,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_stabilator.glb"
   },
-  "runtimeHash": "07420ad409c821e339773a04f9de1f5700c68305c80012ea9b921a9bc14e6705",
+  "runtimeHash": "4b3e0258301b16108b9e2c386ef2d58b329a924e0b601c5e12348708beb25f20",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

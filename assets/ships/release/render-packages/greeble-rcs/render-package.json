@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "34f9e690ff0da503da1ad522cd38dfd2e92077b7f98985762b404076ec98c921",
+  "contentHash": "29d335c97609889c9768f4c658953b5d571f3061434b2f5e9a6b0f97d6b349a4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,13 +344,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 414912,
-    "sha256": "5f49fb22bf7054dbf57322d970ffb115acd92d229f442b135e7accce0899b550",
+    "sha256": "7c0e4e5a07c7cca8f11dabc102df9079b2004792305e480097dd14cc28a75b21",
     "uri": "render.glb"
   },
   "runtime": {
@@ -514,7 +514,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_rcs.glb"
   },
-  "runtimeHash": "fe2615dcd7ac00522cf53b8449f64d79d60ae591ad0bf378878becd8f4bd5858",
+  "runtimeHash": "8feae60ec35ad718065f6523da7cd2a9b0ea8898830f037be1a05a91123d6d86",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

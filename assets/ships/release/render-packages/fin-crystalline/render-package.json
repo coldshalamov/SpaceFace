@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4e259885bca2837b4bb908ff6e74162cb4897c86dca1e6a5f15e54a5cb01fb36",
+  "contentHash": "643675cd7cae41bcd5bf254d1f11796966dbd849f9ec7f001bf4c8c5b9cd0d3b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -337,13 +337,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 377272,
-    "sha256": "6dc1fb0751218b10d10c40435841891422d1044219cdeb048244499d105be0d0",
+    "sha256": "7da0aa51c8cd60323d56def6971bafff00ea803a9a15a2bdd332f4fb2d14805b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -506,7 +506,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_crystalline.glb"
   },
-  "runtimeHash": "023e63101b236df12edf5f70da2e14d73bc76ffc1e64f62151f7f3193cafe2d2",
+  "runtimeHash": "6384b4abdca576205c341a0b7f365cd0916730b69be07a15fee99ed6208f2c0a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d940f87345f604beb1db962e054260b41a96a6412acf0901b8859c7979335722",
+  "contentHash": "0b741a37e1006d727152ae59501314348a6f6b9d73716a816ea713c33d3bd36b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1661,13 +1661,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 60932,
-    "sha256": "b1d707c6431ce6b86a90096473d365a11e3009cb0c52d6a54775f6ef538e3082",
+    "sha256": "41a16db1e2ad5ae5463d1e0bb0f775c4d75bc466162f012e9e8b83b73348295f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2387,7 +2387,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_pirate_sensor_mast.glb"
   },
-  "runtimeHash": "33a6439809809e3d8e6ea37788b383b85baddf8e7b512f3ff879d5d175f8377a",
+  "runtimeHash": "dcd9bb43d1b67d72f45dafb0a3bf9784e37d247d1399dcb95a56ed8e618f0731",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

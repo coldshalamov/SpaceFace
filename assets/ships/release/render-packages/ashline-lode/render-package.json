@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7737eb1f23f998fef91a32c69587a812d560b8bb16f6cac508c3d91b566ce496",
+  "contentHash": "07789aae11b31e24d6f7b535d9220f947b53bf730afbcecc38607210eb32fb67",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-lode.node.lod0-hook-drive-core.dynamic",
@@ -4495,13 +4495,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1437876,
-    "sha256": "b5b9aa118bf67c808e5ab2bad7e806dc084e681ed0ffe548b5d8d67ca40e22eb",
+    "sha256": "6d600d607d39f0605a71f57c880bb3a373ca1f4b213d90ce8e9c575462f7c24b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6490,7 +6490,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_lode.glb"
   },
-  "runtimeHash": "4bd7b45e7c9a85702bcee05e47d703545e72feeb23201580f6f1bdb6fa9400b9",
+  "runtimeHash": "2a412940bbabcdd01cf7ed097df820d98c7057006a2002097fb9bfdfa543acf7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

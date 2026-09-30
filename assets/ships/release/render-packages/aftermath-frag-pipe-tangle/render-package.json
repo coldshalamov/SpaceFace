@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "dd94ac24e3daaf12ca75ff467f5683714ef84dbe3e938f6320128b52ae5bc0c4",
+  "contentHash": "007d551a153666b0d64e6c7af63f3d626178e762fe2e36854295fedc2687e59f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -806,13 +806,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 131828,
-    "sha256": "e64f9c924131594257453c23439256be90df8b28e449e0196d7b6e44ef2d3fba",
+    "sha256": "2704ba5bebc843dae699c79f9cb66bf2333c658889fa9baeeb7de10259c2b678",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1141,7 +1141,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb"
   },
-  "runtimeHash": "c4b14da32acb55bb8b6de6caf26427babc4f0a42b3e4c081d2652be5f93347b9",
+  "runtimeHash": "7f4eaedd860c154b812d2d27e19f4aee565a9a8cd25b9b424cd3afd8228cee51",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

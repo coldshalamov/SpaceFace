@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0fb9ca79ae3e8ac0bcb8e21f6ab1d1dad77b800f045340c014a776068acf647a",
+  "contentHash": "04386e5ae339101491d95d6cb05ea8720efb5c150fb82e81255e0ba28651140a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -757,13 +757,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 46912,
-    "sha256": "55f94beeb9a084c2e17348e5356ea4fce55ac32229c97077459f4e5b75949825",
+    "sha256": "337f5318ef74c15cc0f45915245b464c019422d4f0a2feef5585ff54f8dc57ae",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1098,7 +1098,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_observation_blister.glb"
   },
-  "runtimeHash": "af3f734490a4999f5cf9b1e9486fe973d65a9b7772111f403b532e623744dc1f",
+  "runtimeHash": "3c5e1095f78c9a92a9bde03471bbfe501849ce34dc2572f92f1b634413a01e88",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

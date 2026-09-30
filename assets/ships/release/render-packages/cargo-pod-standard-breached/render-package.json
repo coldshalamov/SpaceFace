@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4ef349043d77c1b254e38b5fa0368f57f7ecb9f056463a110f503342a2803659",
+  "contentHash": "c5633d2377eac9174fa6a67757e7f6de3fbeb5eb852ccab5336ba3f2e0022847",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1243,13 +1243,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 31312,
-    "sha256": "775d7d923e7bcbc7925db7f2636c44d70d743a9f8e75356bf10b7fa14182e3c7",
+    "sha256": "16f797807b9261d00b1c489febb4e73dbcb385073425f7f20c497481827bc270",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1770,7 +1770,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_standard_breached.glb"
   },
-  "runtimeHash": "398e9a992120b6322dcbcb1a96e590cd54e598d5969dc200d7d1f38188ab81b4",
+  "runtimeHash": "3e1db0b8e249a1b0b9cb91864156158f6547ec0d94206c1f12541a9df6c9edab",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "609f6828814ba61ce451685ea7ea0872c2ab244d02fde15560494944a3139553",
+  "contentHash": "33748e96cb10ecedcb41bf6041eba8cff2ccd617c4a05b125db87fe34d802f3d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -626,13 +626,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 51756,
-    "sha256": "2171ea43b7fd8ebb0151ec38d7cc56b5a917d2645d89b951214cf0c76432a774",
+    "sha256": "694d535234642daf510fdbdf0735560e2d1ad26a8d7e3914097a7525dc5bbfbe",
     "uri": "render.glb"
   },
   "runtime": {
@@ -897,7 +897,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_rib_cluster.glb"
   },
-  "runtimeHash": "b3f4a0252db771c21b1753d12c310b231a7138357d7f3a92db5ae0482fa91cfd",
+  "runtimeHash": "5c552988362127a7507c8512d88ad1197036518cd817b96c0bbbc83a61bc930d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

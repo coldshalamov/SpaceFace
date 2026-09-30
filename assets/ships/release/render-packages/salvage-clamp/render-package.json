@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f7434b0ccc148b9b7aaaf7f3949f1e2adbd00444ed3f58533c09d7fb8432d3fe",
+  "contentHash": "a7cc69c100f34f1ae0ab1b359de2992109569f69008a3429fa77152566cc0301",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1492,13 +1492,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 36880,
-    "sha256": "cbdb8556e7db8c0505e5adc631b663b12f49d8bd9f73177755ed5736b8a33496",
+    "sha256": "023d83d402691d44fae04f5253bd224225db61ad9c68cce13da8506a33ee28b2",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2154,7 +2154,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_salvage_clamp.glb"
   },
-  "runtimeHash": "576d7690910d9950974fbb6e7a9edd9864d56413df314343fb5cb09775227a14",
+  "runtimeHash": "8364500cca7350c67255f72000e6e2b86daf942764e9d687ab9f4729a45ac362",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

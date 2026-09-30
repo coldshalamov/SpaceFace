@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "78660fd4f9cd94039797205c95c1bc9cec4fe3e973c383c3d9d361b67cad2dab",
+  "contentHash": "fcacab35ff22e16163b39a25d5c3f26efeb2c578919b74c9a7794ebd8b39b36a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1741,13 +1741,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 500320,
-    "sha256": "3f44ef0449f21bd69fca3c453be917d335c27bbe05c2b0ca2a906c80b7867cda",
+    "sha256": "ecd5799e9fd598ecb32bfab7493425e75d2c210c139a1c7eabd80e21248b6ad1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2227,7 +2227,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
   },
-  "runtimeHash": "6f3ff2ecacf045a5866a58975ce968e49ba0b487c0099cf03f6de76956d4b119",
+  "runtimeHash": "c441e66ecb1755d631d24f63dfdc75cacc3fdf2fccc7821ebf249af596e2ee8e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
