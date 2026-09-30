@@ -1800,6 +1800,43 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.32 },
     filterType: 'highpass', filterFreq: 480,
   },
+  // The Eighth Bell (the_eighth_bell encounter): a cathedral bell, not a UI chime — a low
+  // struck fundamental with a long ring-out and a sub-bass swing, under the high hum
+  // partial that makes it read as bronze across a whole sector.
+  {
+    id: 'sfx_eighth_bell_strike',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 147,
+    freqSweep: [147, 139],
+    sweepTimeS: 1.8,
+    gainEnvelope: { attack: 0.004, sustain: 0.12, release: 2.6 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+    distortionAmount: 0.25, distortionCurve: 'tanh',
+    subBass: { startFreq: 74, endFreq: 49, dur: 1.6, gain: 0.9 },
+    transientClick: { gain: 0.7 },
+    reverbMix: 0.45, reverbDecay: 1.6,
+  },
+  {
+    id: 'sfx_eighth_bell_hum',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1175,
+    freqSweep: [1175, 1156],
+    sweepTimeS: 1.1,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 1.4 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 2.0,
+    reverbMix: 0.5, reverbDecay: 1.2,
+  },
+  {
+    id: 'sfx_eighth_bell_toll',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_eighth_bell_strike', 'sfx_eighth_bell_hum'],
+    gainMult: 1.1,
+  },
   {
     id: 'sfx_squelch_story',
     category: 'comms',
