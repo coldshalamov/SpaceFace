@@ -627,6 +627,21 @@ const BASE_TIMEOUTS = Object.freeze({
 });
 
 /**
+ * How long the station-service click may wait for the page to acknowledge it: the WHOLE step
+ * budget, scaled like every other wait in the corridor. It used to be capped at 10 s regardless
+ * of `--timeout-scale`, and that cap — not the 60/120 s step budget — is what fired in the
+ * PQ-025 calibration "Market tab hang" (demo ledger D67): the click landed in the post-dock
+ * window where the berth stage still compiles on the main thread, the Market rendered in full
+ * (the run's failure.png shows it), and the fixed cap misreported a slow acknowledgement as a
+ * renderer hang. A page that never acknowledges still fails at the step budget and is
+ * classified as milestone-not-reached; the milestone detail now carries the measured `clickMs`.
+ */
+export function stationServiceClickBudgetMs(stepTimeoutMs) {
+  const ms = Number(stepTimeoutMs);
+  return Number.isFinite(ms) && ms > 0 ? Math.floor(ms) : BASE_TIMEOUTS.service;
+}
+
+/**
  * Drive the gold corridor with public input only.
  *
  * Returns `{ pass, milestones, actions, classification, saveSlot, screenshots }`. A route that
@@ -1205,7 +1220,12 @@ async function openStationService(page, act, timeoutMs) {
     const visible = await locator.isVisible().catch(() => false);
     if (!visible) continue;
     act('click', label, 'station-dock');
-    await locator.click({ timeout: Math.min(timeoutMs, 10_000) });
+    // The click waits the whole step budget (see stationServiceClickBudgetMs) and its wall time
+    // is recorded: right after docking the main thread is busy with the berth stage, so a slow
+    // acknowledgement is a number in the receipt, not a false "hang".
+    const clickStart = performance.now();
+    await locator.click({ timeout: stationServiceClickBudgetMs(timeoutMs) });
+    const clickMs = Math.round(performance.now() - clickStart);
     await page.waitForTimeout(600);
     const settled = await page.evaluate(() => ({
       screens: Array.from(document.querySelectorAll('[data-screen]'))
@@ -1215,7 +1235,7 @@ async function openStationService(page, act, timeoutMs) {
         .filter((entry) => entry.event === 'ui:service' || entry.event === 'economy:marketOpened')
         .length,
     }));
-    return { service: label, ...settled };
+    return { service: label, clickMs, ...settled };
   }
   throw new Error('no public station service command was visible while docked');
 }
