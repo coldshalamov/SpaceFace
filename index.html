@@ -86,6 +86,10 @@
   <script type="module">
     import { bootstrapLoadingTerminal } from './src/ui/loadingTerminalArt.js';
     bootstrapLoadingTerminal();
+    // Optional optics: preserves the existing video and both artwork fallbacks.
+    import('./src/ui/introSignalRemixBoot.js')
+      .then(({ installIntroSignalRemix }) => installIntroSignalRemix())
+      .catch(() => { /* Decoration cannot block boot. */ });
   </script>
   <script type="module" src="./src/main.js"></script>
 </body>

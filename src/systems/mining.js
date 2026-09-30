@@ -1141,6 +1141,7 @@ export const mining = {
       const combatLoot = arcadeLoot && pickupData.combatLoot === true;
       const beatPending = combatLoot && state.simTime < finiteNum(pickupData.homeAt);
       if (pickupData.anchored) continue;
+      if (e.type === 'payload' && !payloadHasCollectibleContent(pickupData)) continue;
       // A towable body (47-A evidence spindle, rescue pods, the swing-lesson rock) is moved by the
       // tether, never vacuumed: it carries no salvage to collect, so the homing write only rammed a
       // 960 t spindle into the Kestrel at spawn and pinned it there, shoving the ship ~80 WU and
@@ -2906,9 +2907,17 @@ function salvagePoolHasCargo(data) {
   const pool = data && data.salvagePool;
   if (!pool || typeof pool !== 'object') return false;
   for (const qty of Object.values(pool)) {
-    if (Number(qty) > 0) return true;
+    if (finiteWholePickupAmount(qty) > 0) return true;
   }
   return false;
+}
+
+function payloadHasCollectibleContent(data) {
+  const pool = data && data.salvagePool;
+  if (pool && typeof pool === 'object' && Object.keys(pool).length > 0) {
+    return salvagePoolHasCargo(data);
+  }
+  return !!(data && data.commodityId && finiteWholePickupAmount(data.amount) > 0);
 }
 
 export function isMasslineLatchedPickup(state, player, entity) {

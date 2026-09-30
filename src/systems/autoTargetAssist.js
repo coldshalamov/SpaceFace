@@ -62,6 +62,17 @@ function setPointerLock(enabled) {
   }
 }
 
+// The canvas lock belongs to combat-stick mode only. requestPointerLock() resolves
+// asynchronously — a request still pending when the mode toggled back (a fast second G, a
+// dock, a save/runtime reset that never touches the lock API) lands afterward as a lock
+// nothing else releases; while held it hides the OS cursor and freezes clientX/Y, which
+// pins the aim reticle dead. Skip straight out when nothing is locked so this stays a
+// cheap per-tick gate.
+function releasePointerLockIfHeld() {
+  if (typeof document === 'undefined' || !document.pointerLockElement) return;
+  setPointerLock(false);
+}
+
 export const autoTargetAssist = {
   name: 'autoTargetAssist',
 
@@ -80,6 +91,13 @@ export const autoTargetAssist = {
       // next canvas click below re-acquires the lock. The old reset here silently killed the
       // mode whenever the browser dropped the lock, leaving the player drawing into nothing.
       this._pointerLockAcquired = !!(canvas && document.pointerLockElement === canvas);
+      // The converse is not symmetric: a lock that LANDS while the mode is off (a still-pending
+      // request from before the toggle, or an autoFire reset that bypassed this module) must
+      // be released — it hides the cursor and freezes the reticle's clientX feed otherwise.
+      if (this._pointerLockAcquired && this.state?.input?.autoFire !== true) {
+        setPointerLock(false);
+        this._pointerLockAcquired = false;
+      }
     };
     // Re-arm pointer lock from the click's user activation while the mode is on. mousedown
     // (capture) runs before the fire handler and does not consume the event.
@@ -206,6 +224,10 @@ export const autoTargetAssist = {
       setPointerLock(false);
       return;
     }
+    // Reconcile the lock every tick, not just at toggle sites: writers like
+    // main.js resetCombatInputMode clear autoFire without touching the lock API, and a lock
+    // request that was pending at toggle-off lands later. Off mode must not hold it.
+    if (live?.input?.autoFire !== true) releasePointerLockIfHeld();
     const controllerToggle = live && live.input && live.input.actions
       && live.input.actions.autoTargetToggle === true;
     if (controllerToggle) {
