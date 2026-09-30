@@ -16,6 +16,7 @@ import {
   resolvePickupAcceptance,
   setPickupAcceptanceRetry,
 } from './pickupAcceptance.js';
+import { pickupCustodyAllowsCollector } from './pickupCustody.js';
 import { combatFlag } from '../data/featureFlags.js';
 import {
   ensureActivityClassified,
@@ -359,6 +360,12 @@ export const physics = {
     // drones can full-consume an ordinary pickup) leaves one in place instead of eating it.
     if (pk && pk.data && pk.data.playerCollectOnly === true
       && col && col.id !== (state && state.playerId)) return false;
+    // D92: a pod somebody has title to (freight custody annotation, salvor claim, named owner)
+    // is not free loot. Physics decides contact; the custody owners decide consumption on the
+    // receipt — but the legacy full-consume default let a passing lawful liner vacuum owned and
+    // claimed freight. Only the owner, the claim-holding salvor, an outlaw, or the player gets a
+    // receipt asked for at all; every other hull passes through and the pod stays in the world.
+    if (!pickupCustodyAllowsCollector(pk, col, state && state.playerId)) return false;
     if (pickupAcceptanceRetryBlocks(
       pk && pk.data,
       col && col.id,
