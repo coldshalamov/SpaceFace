@@ -376,7 +376,9 @@ function createGameServer(opts) {
         res.end();
         return;
       }
-      headers['Content-Length'] = stats.size;
+      const mutableText = cache.cacheControl === 'no-cache'
+        && /\.(?:html?|[cm]?js|css|json|map|svg)$/i.test(relativePath);
+      if (!mutableText) headers['Content-Length'] = stats.size;
       res.writeHead(200, headers);
       // GLBs routinely carry tens of megabytes of embedded KTX2 data. A whole-file read stages a
       // second copy in the server heap and, in packaged Electron, synchronously blocks the main
