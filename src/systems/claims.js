@@ -20,7 +20,9 @@
 //
 // Specialization behavior ticks in update():
 //   - REFINERY converts delivered ore into refined goods (REFINE_MAP truth, 2:1) into an output
-//     store the player hauls out. Its risk: upkeep + stored goods draw raiders in low-sec space.
+//     store the player hauls out. A packed output store or missing ore parks the batch in
+//     flight — idle time is never banked into free conversions. Its risk: upkeep + stored
+//     goods draw raiders in low-sec space.
 //   - RELAY dispatches scheduled convoys to the linked station and sells at the destination's REAL
 //     market price less the fee (the proven outpost autosell −20%), pressing that market honestly.
 //     No economy peer / no market price → freight is held, never converted to fabricated profit.
@@ -64,6 +66,9 @@ const REFINE_RATIO = 2;
 // Player-facing reason the refinery stopped adding goods. The operating word stays
 // 'active' so upkeep, raids, and the refine tick keep running; the readout uses this.
 const OUTPUT_STORE_FULL_LINE = 'Output store full — collect refined goods';
+// Same readout treatment for the input side: parked material or in-flight work that
+// cannot form a whole batch is a recoverable stall — say exactly what it takes.
+const INPUT_STARVED_LINE = 'Awaiting ore — next batch consumes ' + REFINE_RATIO + 'u of one refinable ore';
 const REFINE_MAP = { // raw ore -> refined commodity
   cmdty_ore_iron: 'cmdty_refined_metals',
   cmdty_ore_copper: 'cmdty_comp_circuitry',
@@ -638,13 +643,19 @@ export const claims = {
       lastEvent: spec.receipts.length ? spec.receipts[spec.receipts.length - 1] : null,
       receipts: spec.receipts.slice(),
     };
-    // A full store is a readout, not a mode change. Cold and raided sites keep their word.
-    if (def.id === 'spec_refinery' && spec.status === 'active'
-      && sumStore(spec.store.output) >= def.outputCapU) {
-      out.status = OUTPUT_STORE_FULL_LINE;
-    }
+    // A full store is a readout, not a mode change; input that cannot cover the next
+    // real conversion reads out the same way. Cold and raided sites keep their word.
     if (def.id === 'spec_refinery') {
-      out.throughput = { refineRatePerS: def.refineRatePerS, refineRatio: REFINE_RATIO };
+      const ready = this._refineryReadiness(spec, def);
+      out.throughput = {
+        refineRatePerS: def.refineRatePerS,
+        refineRatio: REFINE_RATIO,
+        nextBatch: { goodId: ready.nextOre, inputU: REFINE_RATIO, outputU: 1 },
+      };
+      if (spec.status === 'active') {
+        if (ready.outputRoomU <= 0) out.status = OUTPUT_STORE_FULL_LINE;
+        else if (ready.starved) out.status = INPUT_STARVED_LINE;
+      }
     } else if (def.id === 'spec_relay') {
       out.throughput = {
         convoyLoadU: def.convoyLoadU,
@@ -958,28 +969,53 @@ export const claims = {
     // spec_bastion has no per-tick production — its work happens in _rollRaids + the ledger.
   },
 
+  // The one readiness read shared by the tick and the ledger: which single ore the
+  // next whole batch would draw (the most plentiful that covers REFINE_RATIO), how
+  // much output room is left, and whether the site is stalled on material or work
+  // it already holds.
+  _refineryReadiness(spec, def) {
+    let nextOre = null, nextQty = 0;
+    for (const ore of REFINABLE_ORE_IDS) {
+      const have = spec.store.input[ore] || 0;
+      if (have >= REFINE_RATIO && have > nextQty) { nextQty = have; nextOre = ore; }
+    }
+    const outputRoomU = Math.max(0, def.outputCapU - sumStore(spec.store.output));
+    return {
+      nextOre,
+      outputRoomU,
+      working: !!nextOre && outputRoomU > 0,
+      // Parked freight or an in-flight partial batch with no whole conversion
+      // available is a stall; a never-stocked site simply idles.
+      starved: !nextOre && (sumStore(spec.store.input) > 0 || (spec.acc || 0) > 0),
+    };
+  },
+
   _tickSpecRefinery(body, def, dt) {
     const spec = body.spec;
     if (spec.status !== 'active') return;
+    // A blocked site (packed output store, or no whole REFINE_RATIO of any ore) is
+    // parked, not working: its meter — partial progress or legitimately saved
+    // work — stays exactly where it was until freight moves.
+    const parked = this._refineryReadiness(spec, def);
+    if (!parked.working) {
+      if (parked.outputRoomU <= 0 && !spec.outputFull) {
+        spec.outputFull = true;
+        this._receipt(body, 'output_full', OUTPUT_STORE_FULL_LINE);
+      }
+      return;
+    }
     spec.acc = (spec.acc || 0) + def.refineRatePerS * dt;
     while (spec.acc >= REFINE_RATIO) {
-      // most plentiful refinable ore with at least one whole batch
-      let bestOre = null, bestQty = 0;
-      for (const ore of REFINABLE_ORE_IDS) {
-        const have = spec.store.input[ore] || 0;
-        if (have >= REFINE_RATIO && have > bestQty) { bestQty = have; bestOre = ore; }
-      }
-      if (!bestOre) break; // starved — hold progress (bounded below)
-      if (sumStore(spec.store.output) >= def.outputCapU) {
-        if (!spec.outputFull) {
-          spec.outputFull = true;
-          this._receipt(body, 'output_full', OUTPUT_STORE_FULL_LINE);
-        }
+      const ready = this._refineryReadiness(spec, def);
+      if (!ready.working) {
+        // Capacity ran out inside this tick: the accrued remainder arrived after
+        // the last permitted batch — unused time is discarded, never banked.
+        spec.acc = 0;
         break;
       }
-      spec.store.input[bestOre] -= REFINE_RATIO;
-      if (spec.store.input[bestOre] <= 0) delete spec.store.input[bestOre];
-      const out = REFINE_MAP[bestOre];
+      spec.store.input[ready.nextOre] -= REFINE_RATIO;
+      if (spec.store.input[ready.nextOre] <= 0) delete spec.store.input[ready.nextOre];
+      const out = REFINE_MAP[ready.nextOre];
       spec.store.output[out] = (spec.store.output[out] || 0) + 1;
       spec.totals.refinedTotalU += 1;
       spec.acc -= REFINE_RATIO;
@@ -989,9 +1025,14 @@ export const claims = {
         spec.outputFull = true;
         this._receipt(body, 'output_full', OUTPUT_STORE_FULL_LINE);
       }
+      // If that conversion exhausted the input or packed the store, the tick's
+      // work is done: whatever accrual remains arrived after the stall — discard
+      // it, even a sub-batch fraction.
+      if (!this._refineryReadiness(spec, def).working) {
+        spec.acc = 0;
+        break;
+      }
     }
-    // don't bank unbounded progress while starved or full
-    if (spec.acc > REFINE_RATIO * 4) spec.acc = REFINE_RATIO * 4;
   },
 
   _tickSpecRelay(body, def, state) {

@@ -7,6 +7,15 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### NXB-033 — refinery interruption (2026-09-30)
+
+Implemented in this landing: blocked time no longer banks refinery work; existing 2:1
+material, partial progress, stores and upkeep survive interruption and reload. Proof:
+[test/next-wave-nxb-033.test.mjs](./test/next-wave-nxb-033.test.mjs) (5 cases),
+claim-specializations and next-wave-nxi-130 owner checks. Player route exercised through
+live owner APIs; browser route not exercised. No new entities or per-frame universe scans.
+Packet: [NXB-033](./design/program/next-wave-2026-09-28/build/NXB-033.md).
+
 ### PQ-206.01 — swarm first-pass combat value (2026-09-20)
 
 Landed in `724342234`: earlier target-facing warning, a short pulse burst, and corrected NPC
