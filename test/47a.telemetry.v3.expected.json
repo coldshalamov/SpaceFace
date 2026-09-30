@@ -68,7 +68,7 @@
     "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "3dfdeea2033b9982f628fe685d0201fd1f8675eb530c637d096e82d05116ae1b",
+    "authoritativeHash": "22fa4f8aadb9e3ff9551b005ac4174549545aac6cb6985864f68db708daa3c1b",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -203,6 +203,11 @@
     "Snapshot diff at tick 720 (clean HEAD worktree vs candidate) moves exactly 12 leaves, ALL under $.economy.markets — identical stations, stocks and directions as the legacy envelope (industry is flight-model independent).",
     "Zero entity motion fields changed; trace counts and reload@60 unchanged.",
     "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves). Zero motion fields changed in the v3 envelope.",
-    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed."
+    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed.",
+    "2026-09-30 re-record over d0dd52e11..f43c32dff (D83 adjudication). Prior hash was 3dfdeea2033b9982f628fe685d0201fd1f8675eb530c637d096e82d05116ae1b.",
+    "sim-golden-diff --flight-system v3 --ref d0dd52e11 reproduces the prior hash exactly; the envelope was correct and the harness deterministic.",
+    "VERDICT MOTION_CHANGED as intended: 18 motion / 51 snapshot fields moved; same three landed packages as the legacy envelope (Package D anti-tunnel, Package E dynamic solids, PR #179 swarm).",
+    "Signature: derived.hullBurstKind/Rank added; a formerly static solid now carries velocity+propulsion (Package E); worldRecordId and evidence tick churn.",
+    "Zero phase0ObservedTraceCounts moved (fire 17, hit 17, damage 17, cues unchanged); hash-only re-record. Repeat-20 and reload@60 deterministic."
   ]
 }

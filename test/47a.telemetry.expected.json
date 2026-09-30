@@ -52,8 +52,8 @@
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "combat:fire": 17,
-    "projectile:hit": 4,
-    "combat:damage": 4,
+    "projectile:hit": 1,
+    "combat:damage": 1,
     "economy:tick": 2,
     "camera:shake": 2,
     "presentation:cameraCue": 2,
@@ -61,12 +61,12 @@
     "presentation:audioCue": 3,
     "presentation:uiCue": 3,
     "presentation:caption": 3,
-    "presentation:cueApplied": 7,
-    "presentation:cue": 7,
+    "presentation:cueApplied": 4,
+    "presentation:cue": 4,
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "e78bc4eed26b875f6e3e820485b23a239d2738586280abaaae68144ce486061b",
+    "authoritativeHash": "8b15ec7f191f40b81565c837fc81a2fe017f43258200eadb8362b4c2e585d918",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -188,6 +188,15 @@
     "Repeat run is deterministic; reload@600 reproduces the uninterrupted hash exactly (industry holds no non-serialized accumulators — it re-derives each tick from market stock).",
     "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves) + 13 debris-radius rng shifts. Zero motion fields changed.",
     "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed.",
-    "2026-09-29 merge re-record on 6a3ae3265: upstream Slice-A physics (compound collider, hull-knock) drifts 35 entity motion fields; sim-golden-diff --ref b3ef08974 verdict MOTION_CHANGED. Master tip reproduces this hash; saucer packet adds zero drift."
+    "2026-09-29 merge re-record on 6a3ae3265: upstream Slice-A physics (compound collider, hull-knock) drifts 35 entity motion fields; sim-golden-diff --ref b3ef08974 verdict MOTION_CHANGED. Master tip reproduces this hash; saucer packet adds zero drift.",
+    "2026-09-30 deliberate re-record over 6a3ae3265..f43c32dff (D83 adjudication). Prior hash was e78bc4eed26b875f6e3e820485b23a239d2738586280abaaae68144ce486061b.",
+    "sim-golden-diff --ref 6a3ae3265 reproduces the prior hash exactly. check:sim was red on master: the drift shipped in three committed packages that did not re-record.",
+    "Bisected causal record (archive exports + per-commit 720-tick hash runs, 231-commit window):",
+    "  T1 e78bc4ee -> ac5abcf2 at 1639c221e feat(physics): prevent tunnelling and solid overlap across all body classes (Package D).",
+    "  T2 ac5abcf2 -> 9259a9fc at b7b499263 feat(physics): non-landmark solids dynamic with volume-proportional mass (Package E).",
+    "  T3 9259a9fc -> 8b15ec7f at cc2334f4f Merge PR #179 swarm-program (hull bursts, salvage store, armory honesty, tear-off plating).",
+    "VERDICT MOTION_CHANGED as intended: 74 motion / 211 snapshot fields moved; the packages' authored physics outcomes, matching the deliberate 2026-09-04 and 2026-09-15 re-records.",
+    "Counts moved: projectile:hit 4->1, combat:damage 4->1, presentation:cue and cueApplied 7->4. combat:fire still 17; scenario/tether/boost/camera/economy counts unchanged.",
+    "Semantic criteria hold: steering 0<=300, tether 4<=3600, repeat-20 + reload@600 deterministic (baselineSha256 equals run hash). V3 envelope re-records in the same commit."
   ]
 }
