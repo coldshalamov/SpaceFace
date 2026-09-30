@@ -132,12 +132,31 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
+  // ANI-11: the same starter beam accumulates split work against jettisoned cargo pods —
+  // the beam pries the seals, so the pod's door rig answers to events addressed at the
+  // POD (targetId), not the miner. mining:start verb 'split' fires the breach; an early
+  // disengage re-seals it.
+  const onPodMiningStart = (payload) => {
+    if (!payload || payload.verb !== 'split') return;
+    dispatch('mining:start', payload.targetId, payload, () => true);
+  };
+  const onPodBeamStop = (payload) => {
+    if (!payload || payload.targetId == null) return;
+    dispatch('mining:stop', payload.targetId, payload, (c) => c.clipActive?.('breach'));
+  };
+  const onPodBeamDenied = (payload) => {
+    if (!payload || payload.verb !== 'split' || payload.targetId == null) return;
+    dispatch('beam:denied', payload.targetId, payload, (c) => c.clipActive?.('breach'));
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
+    bus.on('mining:start', onPodMiningStart),
+    bus.on('mining:stop', onPodBeamStop),
+    bus.on('beam:denied', onPodBeamDenied),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

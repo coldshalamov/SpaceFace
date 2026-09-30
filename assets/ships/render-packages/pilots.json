@@ -137,8 +137,8 @@
    "slot": "place",
    "releaseAssetId": "place_cargo_pod_standard",
    "sourceUrl": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
-   "releaseSha256": "1495fc9a2bad5c9e8cf6fb68791536904b74faf8105826a7ee90677360126b97",
-   "releaseBytes": 502072,
+   "releaseSha256": "c3c7357284a90843f79ed2ce8ee2293ebc41363d0012b28c02e3a3d95319dcd8",
+   "releaseBytes": 406004,
    "rootNode": "SF_PLACE_CARGO_POD_STANDARD_ROOT",
    "dynamicNameIncludes": [
     "HOOK_DRIVE",

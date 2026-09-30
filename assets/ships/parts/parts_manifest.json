@@ -2062,8 +2062,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_cargo_pod_standard.glb",
-   "tris": 6964,
-   "bytes": 870816,
+   "tris": 12978,
+   "bytes": 997448,
    "textureSize": 512,
    "tintable": {
     "hull": "Material_Hull",

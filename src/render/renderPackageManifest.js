@@ -62,12 +62,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cargo-pod-standard",
-    "expectedContentHash": "e3423d001e3f6a5413da2dee86d482f2c4807b1cfa8bb506b4c7924d6d9980f4",
+    "expectedContentHash": "dee087e5272dc085efde5c4e31f0abb0de5d713f68508b3b82982addf8f20b3f",
     "key": "cargo-pod-standard",
     "metadataUrl": "assets/ships/release/render-packages/cargo-pod-standard/render-package.json",
     "runtimeAssetId": "place_cargo_pod_standard",
     "slot": "place",
-    "sourceSha256": "1495fc9a2bad5c9e8cf6fb68791536904b74faf8105826a7ee90677360126b97",
+    "sourceSha256": "c3c7357284a90843f79ed2ce8ee2293ebc41363d0012b28c02e3a3d95319dcd8",
     "sourceUrl": "assets/ships/release/parts/places/place_cargo_pod_standard.glb"
   },
   {

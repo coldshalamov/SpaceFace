@@ -46,12 +46,30 @@ def build():
         for sz in (-1, 1):
             F.box(s, f'SideRail{sy}{sz}', (0, sy * (W / 2 - 0.12), sz * (H / 2 - 0.12)), (L, 0.24, 0.24),
                   material='paint2', bevel=0.02)
-    # End doors with locking bars.
+    # End doors with locking bars. The -X end stays a sealed slab; the +X end carries
+    # the ANI-11 worked rig — two hinged leaves, two fold-down retainers, a cavity.
     for sx in (-1, 1):
-        F.box(s, f'Door{sx}', (sx * (L / 2 - 0.05), 0, 0), (0.08, W - 0.6, H - 0.6), material='paint2', bevel=0.01)
+        if sx < 0:
+            F.box(s, f'Door{sx}', (sx * (L / 2 - 0.05), 0, 0), (0.08, W - 0.6, H - 0.6), material='paint2', bevel=0.01)
         for y in (-0.7, -0.25, 0.25, 0.7):
             F.cylinder(s, f'LockBar{sx}{y}', (sx * (L / 2 + 0.02), y, -H / 2 + 0.4), (sx * (L / 2 + 0.02), y, H / 2 - 0.4),
                        0.04, material='gunmetal', segments=8, bevel=0.0)
+    # +X doorway: shallow cargo cavity behind the leaves (reads once they open), two
+    # door leaves hung on the outer end-posts, and two retainers that fold down.
+    F.box(s, 'Cavity', (L / 2 - 0.5, 0, 0), (0.72, W - 0.72, H - 0.72), material='paint2', bevel=0.01)
+    for sy in (-1, 1):
+        leaf_name = 'DoorLeafPort' if sy < 0 else 'DoorLeafStar'
+        # leaf covers half the opening; its outer edge meets the end-post hinge line
+        F.box(s, leaf_name, (L / 2 - 0.02, sy * (W / 4 - 0.02), 0),
+              (0.08, W / 2 - 0.3, H - 0.66), material='paint2', bevel=0.015)
+        # seam-side hazard strip so each leaf reads as worked hardware
+        F.box(s, f'{leaf_name}Strip', (L / 2 + 0.02, sy * 0.28, 0), (0.05, 0.12, H - 0.8),
+              material='hazard', bevel=0.005)
+        ret_name = 'RetainerPort' if sy < 0 else 'RetainerStar'
+        # retainer fills the lower part of the doorway behind the leaves; hinges at
+        # the bottom seam so it folds out into a shallow ramp
+        F.box(s, ret_name, (L / 2 - 0.06, sy * 0.82, -H / 2 + 0.55),
+              (0.06, W / 2 - 0.34, 0.8), material='paint', bevel=0.012)
     # Grapple lug on the roof (the Massline clamp point) and a status lamp.
     F.box(s, 'LugBase', (0, 0, H / 2 + 0.08), (1.4, 1.1, 0.16), material='paint2', bevel=0.02)
     F.ring(s, 'Lug', (0, 0, H / 2 + 0.42), 0.34, 0.09, axis=(0, 1, 0), material='hazard', segments=24, sides=8)
@@ -62,5 +80,21 @@ def build():
 
 if __name__ == '__main__':
     import forge_export as E
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+    import ANI_11  # noqa: E402
+    import motion_bank  # noqa: E402
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    _o = {o.name: o for o in ship.objects}
+    ship.ani11_bank = ANI_11.build(ship, {
+        'locks': [_o['LockBar1-0.7'], _o['LockBar1-0.25'], _o['LockBar10.25'], _o['LockBar10.7']],
+        'leaf_port': [_o['DoorLeafPort'], _o['DoorLeafPortStrip']],
+        'leaf_star': [_o['DoorLeafStar'], _o['DoorLeafStarStrip']],
+        'retain_port': [_o['RetainerPort']],
+        'retain_star': [_o['RetainerStar']],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani11_bank.bake(
+            [p for p, _t in written],
+            out_path=os.path.join(motion_bank.MOTIONS_DIR, 'cargo-pod-standard.motion.json'))

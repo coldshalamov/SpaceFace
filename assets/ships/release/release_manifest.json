@@ -2600,14 +2600,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_cargo_pod_standard.glb",
       "release": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
-      "sourceSha256": "a7bbff2009cde739ffafa7439ac22c873e3d80790670754f9e13bf8936bb727c",
-      "releaseSha256": "1495fc9a2bad5c9e8cf6fb68791536904b74faf8105826a7ee90677360126b97",
-      "sourceBytes": 870816,
-      "releaseBytes": 502072,
+      "sourceSha256": "2e4a00af3329a4417a5923957206fe0c405e876ad9806a36718693df7749f355",
+      "releaseSha256": "c3c7357284a90843f79ed2ce8ee2293ebc41363d0012b28c02e3a3d95319dcd8",
+      "sourceBytes": 997448,
+      "releaseBytes": 406004,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 59,
-      "contractNodeCount": 20
+      "meshoptBufferViews": 159,
+      "contractNodeCount": 50,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_ceres_bait_wreck",
