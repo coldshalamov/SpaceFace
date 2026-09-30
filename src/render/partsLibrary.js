@@ -2439,7 +2439,13 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     const existing = boundary.userData.authoredUpgradePromise;
     // A settled promise from a lifecycle-aborted admission must not gate re-admission; only an
     // in-flight or completed request is honoured.
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      if (requestOptions && requestOptions.admissionVisible === true) {
+        promoteInFlightJobAdmissionVisible(
+          upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
+      }
+      return existing;
+    }
     if (existing) delete boundary.userData.authoredUpgradePromise;
     if (!armed) {
       // One-shot disarm spent on an aborted admission re-arms for a still-mounted boundary.
@@ -2578,7 +2584,13 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   boundary.userData.requestAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      if (requestOptions && requestOptions.admissionVisible === true) {
+        promoteInFlightJobAdmissionVisible(
+          upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
+      }
+      return existing;
+    }
     if (existing) delete boundary.userData.authoredUpgradePromise;
     if (!renderer || !scene || authoredAdmissionStarted(state)) return false;
     const liveEntity = boundaryLiveEntity(boundary, entity);
@@ -3114,7 +3126,13 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      if (requestOptions && requestOptions.admissionVisible === true) {
+        promoteInFlightJobAdmissionVisible(
+          upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
+      }
+      return existing;
+    }
     if (existing) delete boundary.userData.authoredUpgradePromise;
     if (!renderer || !scene || authoredAdmissionStarted(state)) return null;
     const liveEntity = boundaryLiveEntity(boundary, options.liveEntity || entity);
@@ -3153,7 +3171,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       if (!shouldAutoTriggerAuthoredUpgrade(options.liveEntity || entity, scene)) return;
       armed = false;
       trigger.onBeforeRender = previousBeforeRender;
-      startAuthoredUpgrade(renderer, scene);
+      // onBeforeRender only fires with the fallback root inside the presented frustum — the most
+      // in-frame a pending boundary can be — so the upgrade posts at the visible decode class.
+      startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
     };
   }
 
@@ -3250,7 +3270,13 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      if (requestOptions && requestOptions.admissionVisible === true) {
+        promoteInFlightJobAdmissionVisible(
+          upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
+      }
+      return existing;
+    }
     if (existing) delete boundary.userData.authoredUpgradePromise;
     if (!renderer || !scene || authoredAdmissionStarted(state)) return null;
     const liveEntity = boundaryLiveEntity(boundary, entity);
@@ -3286,7 +3312,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
       armed = false;
       trigger.onBeforeRender = previousBeforeRender;
-      startAuthoredUpgrade(renderer, scene);
+      startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
     };
   }
 
@@ -4645,12 +4671,26 @@ function mergeQueuedJobOptions(queuedJob, request) {
   }
 }
 
+// An admitted job's option bag stays frozen except one field: a request that dedupes onto it
+// knowing the boundary is on readable glass promotes admissionVisible. The per-part prefetch
+// chain reads job.options.admissionVisible at each post, so the flag re-grades the remaining
+// decode tail visible — the per-part mirror of deadlineJoin on a single task.
+function promoteInFlightJobAdmissionVisible(existingJob, request) {
+  if (!existingJob || existingJob.lifecycle !== 'in-flight') return;
+  const target = existingJob.options;
+  if (!target || target.admissionVisible === true || !Object.isExtensible(target)) return;
+  if (request && request.options && request.options.admissionVisible === true) {
+    target.admissionVisible = true;
+  }
+}
+
 export function enqueueBoundaryUpgrade(scene, job) {
   const state = upgradeQueueState(scene);
   if (!job || !job.boundary) return Promise.resolve({ status: 'invalid-upgrade-request' });
   const boundaryJob = state.byBoundary.get(job.boundary);
   if (boundaryJob) {
     if (boundaryJob.lifecycle === 'queued') mergeQueuedJobOptions(boundaryJob, job);
+    else promoteInFlightJobAdmissionVisible(boundaryJob, job);
     return boundaryJob.completion;
   }
   if (!boundaryBelongsToScene(job.boundary, scene)) {
@@ -4681,6 +4721,7 @@ export function enqueueBoundaryUpgrade(scene, job) {
   if (keyedJob) {
     if (jobStillNeeded(state, keyedJob)) {
       if (keyedJob.lifecycle === 'queued') mergeQueuedJobOptions(keyedJob, job);
+      else promoteInFlightJobAdmissionVisible(keyedJob, job);
       return keyedJob.completion;
     }
     if (keyedJob.lifecycle === 'queued') {
