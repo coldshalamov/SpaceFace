@@ -68,7 +68,7 @@
     "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "3dfdeea2033b9982f628fe685d0201fd1f8675eb530c637d096e82d05116ae1b",
+    "authoritativeHash": "22fa4f8aadb9e3ff9551b005ac4174549545aac6cb6985864f68db708daa3c1b",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -203,6 +203,13 @@
     "Snapshot diff at tick 720 (clean HEAD worktree vs candidate) moves exactly 12 leaves, ALL under $.economy.markets — identical stations, stocks and directions as the legacy envelope (industry is flight-model independent).",
     "Zero entity motion fields changed; trace counts and reload@60 unchanged.",
     "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves). Zero motion fields changed in the v3 envelope.",
-    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed."
+    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed.",
+    "2026-09-29 adjudicated re-record (D83): prior pin 3dfdeea2 IS reproduced by a clean archive of its recording commit d0dd52e11 — a valid golden.",
+    "(cont.) The drift to 22fa4f8a rides the landed Solid-World physics packages (A-F) and Slice-A/hull-burst work between d0dd52e11 and HEAD.",
+    "sim-golden-diff --flight-system v3 --ref d0dd52e11 verdict MOTION_CHANGED, 13 entity motion fields: player endpoint ~11 wu, evidence spindle tow path shifts, carrier_wreck_bourse fixed at authored pose (was drifting at ref — Package-E rule).",
+    "(cont.) Additive leaves only: derived.hullBurstKind/Rank (hull-burst overhaul), data.ai.playerFirstHitTruth, worldRecordId on the wreck; scenario evidence tick 98 -> 93.",
+    "Every asserted phase0ObservedTraceCount is UNCHANGED: combat:fire 17, projectile:hit 17, combat:damage 17, tether:attached/broken 1/1, all presentation and scenario counts hold. Repeat-20 deterministic; reload@60 baselineSha256 equals run sha256.",
+    "Contamination check: an uncommitted foreign edit to src/core/flight/propulsionKernel.js (vectoring rework) produced 21d8be77 on the dirty tree — this pin is recorded against the CLEAN HEAD archive (22fa4f8a), the committed truth the gate should guard.",
+    "Verified by archive exports: ref (d0dd52e11) reproduces 3dfdeea2 exactly; clean HEAD produces 22fa4f8a."
   ]
 }

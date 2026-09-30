@@ -74,7 +74,7 @@ test('Elastic Whip is a reachable, exclusive, independently flagged Massline hea
   assert.match(emitted.at(-1).payload.text, /unfit .* before fitting another head/i);
 });
 
-test('Elastic Whip returns more earned spring energy without steering or a cut impulse', async () => {
+test('Elastic Whip returns more earned spring energy without steering, and a player cut spends the store', async () => {
   const standard = await sampleSpring(STANDARD.spring, 'standard');
   const whipPolicy = effectiveTetherPolicy(STANDARD, {
     data: { derived: { masslineHeadId: 'elastic_whip' } },
@@ -93,8 +93,16 @@ test('Elastic Whip returns more earned spring energy without steering or a cut i
 
   const cut = await sampleCut(whipPolicy.spring);
   assert.ok(cut.tension > 0, 'the proof cut must happen while the Whip is loaded');
-  assert.ok(cut.deltaSpeed < 1e-6,
-    `manual cut must preserve earned velocity instead of adding a launch impulse, got ${cut.deltaSpeed}`);
+  assert.ok(cut.storedEnergy > 0, 'a loaded Whip publishes real stored energy for the cut to spend');
+  const expectedSnap = Math.sqrt(2 * cut.storedEnergy * 12) / 24;
+  assert.ok(Math.abs(cut.deltaSpeed - expectedSnap) < expectedSnap * 0.05,
+    `a player cut spends the stored energy as a closing snap: expected ~${expectedSnap}, got ${cut.deltaSpeed}`);
+
+  const cleanup = await sampleCut(whipPolicy.spring, 'owner_transfer');
+  assert.ok(cleanup.tension > 0, 'the cleanup proof must also cut a loaded Whip');
+  assert.ok(cleanup.storedEnergy > 0, 'the cleanup line is just as loaded');
+  assert.ok(cleanup.deltaSpeed < 1e-6,
+    `occupational cut must preserve earned velocity instead of adding a launch impulse, got ${cleanup.deltaSpeed}`);
 });
 
 test('an active Elastic Whip snapshots through combat save and Continue', () => {
@@ -182,9 +190,9 @@ async function sampleSpring(spring, id) {
   }
 }
 
-async function sampleCut(spring) {
-  const owner = makeBody('cut-owner', 0);
-  const payload = makeBody('cut-payload', 120);
+async function sampleCut(spring, reason) {
+  const owner = makeBody(`cut-owner-${reason || 'player'}`, 0);
+  const payload = makeBody(`cut-payload-${reason || 'player'}`, 120);
   const runtime = await createSg02DynamicBodyOwner({ fixedDt: DT, quantum: 1e-5, mode: 'rapier-dynamic' });
   try {
     runtime.syncFromEntities([owner, payload]);
@@ -202,10 +210,11 @@ async function sampleCut(spring) {
     for (let tick = 0; tick < 24; tick += 1) runtime.step(DT);
     const telemetry = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
     const before = { x: owner.vel.x, z: owner.vel.z };
-    assert.equal(runtime.cutAttachment({ attachmentId: handle.attachmentId }), true);
+    assert.equal(runtime.cutAttachment({ attachmentId: handle.attachmentId, reason }), true);
     runtime.step(DT);
     return {
       tension: telemetry.tension,
+      storedEnergy: telemetry.storedEnergy,
       deltaSpeed: Math.hypot(owner.vel.x - before.x, owner.vel.z - before.z),
     };
   } finally {
