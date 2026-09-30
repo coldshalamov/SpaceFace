@@ -3818,8 +3818,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1.glb",
-      "releaseSha256": "113ff6d798a094adbcb641b6f494a0123d4cd25d3ab6ff90cce58cb83c73d838",
-      "releaseBytes": 852692,
+      "releaseSha256": "c200b8b401acc3ed10da7942373e155108d47b826afe8552365fb42470a1857f",
+      "releaseBytes": 862972,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4532,8 +4532,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb",
-      "releaseSha256": "a66e4ecec5f8eed39fbe6caa51396b1e9b862d1116b200a17044c3a44f97c78e",
-      "releaseBytes": 611276,
+      "releaseSha256": "685339f7f1edf334d433c4e08918f080df0d45d6979e717f886eeba55903c2a5",
+      "releaseBytes": 615812,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4553,8 +4553,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod2.glb",
-      "releaseSha256": "2fedad56c49da4c7f8b40a07a428bc733737ccb5b575cf65baf1dfda87197cb0",
-      "releaseBytes": 486436,
+      "releaseSha256": "8bda9223a7d3c83164e9e838677e57a741939473a7c28ef1a5c37e5ac24fb239",
+      "releaseBytes": 490896,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

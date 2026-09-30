@@ -6422,8 +6422,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
-      "tris": 37912,
-      "bytes": 2228216,
+      "tris": 38496,
+      "bytes": 2263296,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

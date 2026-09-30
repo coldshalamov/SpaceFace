@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f44552681944f89e2cad1c093982e9d671864b3f77759b41c45249b28d51b47e",
+  "contentHash": "90311d1e9a02bc58b184f3ba0f10a955c96593f86fafe21d8b157adf4f5ffd57",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1299,7 +1299,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "a27d733355a96fd25bcc033600a50f35db84dafce5d2f85f375a7e9f1c662c8b",
+      "sha256": "2d4205054a187e709c05c6457ee21d821401e55a46ebb606ee8ff64a2e4a4bb7",
       "uri": "pilots.json"
     }
   },
@@ -1731,7 +1731,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel_authored_down.glb"
   },
-  "runtimeHash": "ffa460d7831201da559a5c83544d7bbfb41eefbf3a1e9e494480e8b8d52f6c08",
+  "runtimeHash": "80672bff72f79ba37641e420cfc5c2b940544ed044bc74fb4d203aafe00f2507",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
