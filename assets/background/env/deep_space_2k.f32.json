@@ -1,0 +1,21 @@
+{
+  "schema": "spaceface.foundryIblBake.v1",
+  "width": 2048,
+  "height": 1024,
+  "channels": 4,
+  "pixelFormat": "float32-rgba",
+  "payloadBytes": 33554432,
+  "sha256": "b77bfc815f75ac4dd37950f47d297c619b68e37b746ace8180cd85635425aaf3",
+  "source": {
+    "file": "deep_space_2k.hdr",
+    "sha256": "fd03998284d79e01254301a484c4c135c18b93a3a60b8329c8a6acb497b6b9bb",
+    "provenance": "assets/background/env/PROVENANCE.md"
+  },
+  "transform": {
+    "targetMeanRadiance": 1,
+    "meanBefore": 0.18645552300077783,
+    "scaleFactor": 5.363209326847499,
+    "greenCastTexelsTouched": 3684
+  },
+  "generatedBy": "scripts/bake-foundry-ibl.mjs"
+}

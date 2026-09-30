@@ -23,27 +23,39 @@ import {
   normalizeHdrMeanRadiance,
   resolveIblSource,
 } from '../src/render/foundryEnvironment.js';
+import {
+  SPACE_REFLECTION_PMREM_CUBE_SIZE,
+} from '../src/render/spaceReflectionEnvironment.js';
 
-// AQ-LIGHT — the industrial_workshop_foundry HDRI is the image-based light for authored PBR
-// surfaces (paint, rubber, bare metal separate under one industrial light). The visible sky
-// stays the sector plate: the texture feeds scene.environment only and is never assigned to
-// scene.background. These tests pin the promoted asset, the luminance normalization that keeps
-// muzzle/engine emissives dominant, the PMREM source priority, and the renderer's lifecycle
-// wiring (load → bake → promote on unfreeze → dispose).
+// AQ-LIGHT — the authored deep-space env (scripts/generate-space-ibl.mjs) is the default
+// image-based light for authored PBR surfaces: dark sky, warm sun lobe, cool planet bounce and
+// rim fields, star-band glints. The retired Poly Haven foundry HDRI stays on disk as an
+// alternate source and still exercises the decode/normalize/neutralize transforms. The visible
+// sky stays the sector plate: the env feeds scene.environment only and is never assigned to
+// scene.background. These tests pin the promoted default asset, the luminance normalization
+// that keeps muzzle/engine emissives dominant, the PMREM source priority, and the renderer's
+// lifecycle wiring (load → bake → promote on unfreeze → dispose).
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const HDR_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.hdr');
+const HDR_PATH = resolve(REPO, 'assets/background/env/deep_space_2k.hdr');
+const FOUNDRY_HDR_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.hdr');
 const RENDERER_PATH = resolve(REPO, 'src/render/renderer.js');
 
-function parseFoundryHdr() {
+function parseHdrFile(path) {
   // HDRLoader.parse works headless on the file bytes — no fetch needed to prove the data.
   return import('three/addons/loaders/HDRLoader.js').then(({ HDRLoader }) => {
     const loader = new HDRLoader();
     loader.setDataType(THREE.FloatType);
-    const buf = readFileSync(HDR_PATH);
+    const buf = readFileSync(path);
     const bytes = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
     return loader.parse(bytes);
   });
+}
+
+function parseFoundryHdr() {
+  // The retired foundry HDRI remains the richest fixture for the transform chain (painted
+  // green floor, hot furnace peaks). The default-source tests parse HDR_PATH directly.
+  return parseHdrFile(FOUNDRY_HDR_PATH);
 }
 
 function meanLuminance(data, channels) {
@@ -58,16 +70,17 @@ function meanLuminance(data, channels) {
   return samples > 0 ? sum / samples : 0;
 }
 
-test('foundry HDRI is promoted into the runtime env dir with RGBE data and provenance', () => {
-  assert.ok(existsSync(HDR_PATH), 'assets/background/env/industrial_workshop_foundry_2k.hdr missing');
+test('default deep-space IBL is promoted into the runtime env dir with RGBE data and provenance', () => {
+  assert.ok(existsSync(HDR_PATH), 'assets/background/env/deep_space_2k.hdr missing');
   const head = readFileSync(HDR_PATH).subarray(0, 16).toString('latin1');
   assert.match(head, /^#\?/, 'HDR file lacks the Radiance RGBE magic header');
   assert.ok(
     existsSync(resolve(REPO, 'assets/background/env/PROVENANCE.md')),
     'env provenance record missing',
   );
-  // A sibling of deep-sky: the sector plate manifest/registry must stay untouched.
-  assert.equal(FOUNDRY_IBL_URL, '/assets/background/env/industrial_workshop_foundry_2k.hdr');
+  assert.equal(FOUNDRY_IBL_URL, '/assets/background/env/deep_space_2k.hdr');
+  // The retired foundry source stays available as an alternate.
+  assert.ok(existsSync(FOUNDRY_HDR_PATH), 'retired foundry .hdr missing from the env dir');
 });
 
 test('HDR parses as 2k float equirect radiance data', async () => {
@@ -165,8 +178,10 @@ test('PMREM source priority: foundry > sector plate > emissive card rig', () => 
 
 // --- baked IBL artifact (scripts/bake-foundry-ibl.mjs → .f32.bin + .f32.json) ---------------
 
-const BAKED_BIN_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.f32.bin');
-const BAKED_MANIFEST_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.f32.json');
+const BAKED_BIN_PATH = resolve(REPO, 'assets/background/env/deep_space_2k.f32.bin');
+const BAKED_MANIFEST_PATH = resolve(REPO, 'assets/background/env/deep_space_2k.f32.json');
+const FOUNDRY_BIN_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.f32.bin');
+const FOUNDRY_MANIFEST_PATH = resolve(REPO, 'assets/background/env/industrial_workshop_foundry_2k.f32.json');
 
 function sha256Hex(buf) {
   return createHash('sha256').update(buf).digest('hex');
@@ -187,10 +202,10 @@ function fileFetchImpl(url) {
 }
 
 // The bake contract: this recomputation IS the runtime algorithm (same HDRLoader decode, same
-// exported transforms, same order). If the artifact ever stops matching it, the bake script's
-// --check and this suite both fail.
+// exported transforms, same order) against the DEFAULT source the loader now serves. If the
+// artifact ever stops matching it, the bake script's --check and this suite both fail.
 function computeRuntimePixels() {
-  return parseFoundryHdr().then((parsed) => {
+  return parseHdrFile(HDR_PATH).then((parsed) => {
     const texture = new THREE.DataTexture(parsed.data, parsed.width, parsed.height);
     normalizeHdrMeanRadiance(texture, FOUNDRY_IBL_TARGET_MEAN_RADIANCE);
     neutralizeHdrGreenCast(texture);
@@ -198,9 +213,9 @@ function computeRuntimePixels() {
   });
 }
 
-test('baked foundry artifact + manifest exist and agree with each other', () => {
-  assert.ok(existsSync(BAKED_BIN_PATH), 'industrial_workshop_foundry_2k.f32.bin missing — run scripts/bake-foundry-ibl.mjs');
-  assert.ok(existsSync(BAKED_MANIFEST_PATH), 'industrial_workshop_foundry_2k.f32.json missing');
+test('baked default artifact + manifest exist and agree with each other', () => {
+  assert.ok(existsSync(BAKED_BIN_PATH), 'deep_space_2k.f32.bin missing — run scripts/bake-foundry-ibl.mjs --source=deep_space_2k');
+  assert.ok(existsSync(BAKED_MANIFEST_PATH), 'deep_space_2k.f32.json missing');
   const manifest = JSON.parse(readFileSync(BAKED_MANIFEST_PATH, 'utf8'));
   const payload = readFileSync(BAKED_BIN_PATH);
   assert.equal(manifest.schema, FOUNDRY_IBL_BAKED_SCHEMA);
@@ -211,6 +226,15 @@ test('baked foundry artifact + manifest exist and agree with each other', () => 
   assert.equal(manifest.sha256, sha256Hex(payload), 'manifest sha256 does not match the payload');
   const hdrSha = sha256Hex(readFileSync(HDR_PATH));
   assert.equal(manifest.source.sha256, hdrSha, 'manifest does not record the .hdr it was baked from — stale artifact');
+});
+
+test('retired foundry artifact stays consistent with its own source', () => {
+  assert.ok(existsSync(FOUNDRY_BIN_PATH) && existsSync(FOUNDRY_MANIFEST_PATH),
+    'retired foundry baked artifact missing');
+  const manifest = JSON.parse(readFileSync(FOUNDRY_MANIFEST_PATH, 'utf8'));
+  const payload = readFileSync(FOUNDRY_BIN_PATH);
+  assert.equal(manifest.sha256, sha256Hex(payload));
+  assert.equal(manifest.source.sha256, sha256Hex(readFileSync(FOUNDRY_HDR_PATH)));
 });
 
 test('baked artifact bytes are identical to the runtime decode + transforms', async () => {
@@ -282,12 +306,16 @@ test('renderer wires the foundry as env input only — the visible sky is never 
 // re-key and re-link every standard material inside a presented pass. All sources must go through
 // a fixed-size scene capture so the key never moves when the env texture is upgraded.
 test('every PMREM bake pins one cube size so env swaps never rekey lit programs', () => {
-  // 256 is the card rig's tuned size: SPACE_REFLECTION_PMREM_SIGMA_RADIANS sits just under the
-  // 20-tap blur ceiling at 256px — a larger pin clips the kernel and warns on every bake.
-  assert.equal(IBL_PMREM_CUBE_SIZE, 256);
+  // 512 is the card rig's tuned size: SPACE_REFLECTION_PMREM_SIGMA_RADIANS sits just under the
+  // 20-tap blur ceiling at 512px — a larger pin clips the kernel and warns on every bake.
+  assert.equal(IBL_PMREM_CUBE_SIZE, 512);
+  assert.equal(IBL_PMREM_CUBE_SIZE, SPACE_REFLECTION_PMREM_CUBE_SIZE,
+    'the IBL pin and the card-rig pin must resolve to the same cube size');
   const src = readFileSync(RENDERER_PATH, 'utf8');
   assert.doesNotMatch(src, /pmrem\.fromEquirectangular\(/,
     'equirect bakes must not size the PMREM target from the input width');
-  const bakes = src.match(/pmrem\.fromScene\([^;]*size:\s*IBL_PMREM_CUBE_SIZE/gs) || [];
+  const bakes = src.match(
+    /pmrem\.fromScene\([^;]*size:\s*(?:IBL_PMREM_CUBE_SIZE|SPACE_REFLECTION_PMREM_CUBE_SIZE)/gs,
+  ) || [];
   assert.equal(bakes.length, 2, 'both the equirect wrap scene and the card rig must bake pinned');
 });

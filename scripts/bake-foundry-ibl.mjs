@@ -37,9 +37,14 @@ import {
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENV_DIR = resolve(REPO, 'assets/background/env');
-const HDR_PATH = resolve(ENV_DIR, 'industrial_workshop_foundry_2k.hdr');
-const BIN_PATH = resolve(ENV_DIR, 'industrial_workshop_foundry_2k.f32.bin');
-const MANIFEST_PATH = resolve(ENV_DIR, 'industrial_workshop_foundry_2k.f32.json');
+// --source=<stem> selects which env triplet to bake; default remains the foundry HDRI so the
+// original command line still works. Sources live side by side under assets/background/env/
+// as <stem>.hdr / <stem>.f32.bin / <stem>.f32.json.
+const sourceArg = (process.argv.find((a) => a.startsWith('--source=')) || '--source=industrial_workshop_foundry_2k').slice('--source='.length);
+const SOURCE_STEM = sourceArg.replace(/[^a-z0-9_-]/gi, '') || 'industrial_workshop_foundry_2k';
+const HDR_PATH = resolve(ENV_DIR, `${SOURCE_STEM}.hdr`);
+const BIN_PATH = resolve(ENV_DIR, `${SOURCE_STEM}.f32.bin`);
+const MANIFEST_PATH = resolve(ENV_DIR, `${SOURCE_STEM}.f32.json`);
 const CHECK = process.argv.includes('--check');
 
 const MANIFEST_SCHEMA = 'spaceface.foundryIblBake.v1';
@@ -88,7 +93,7 @@ function buildManifest(baked, payloadSha256) {
     payloadBytes: baked.data.byteLength,
     sha256: payloadSha256,
     source: {
-      file: 'industrial_workshop_foundry_2k.hdr',
+      file: `${SOURCE_STEM}.hdr`,
       sha256: baked.sourceSha256,
       provenance: 'assets/background/env/PROVENANCE.md',
     },
@@ -103,7 +108,12 @@ function main() {
     process.exit(1);
   }
   const baked = computeBakedPixels();
-  const payload = Buffer.from(baked.data.buffer, baked.data.byteOffset, baked.data.byteLength);
+  // The runtime fast path validates payload.byteLength === width*height*4*4 exactly, so slice
+  // off any parser over-allocation (HDRLoader pads some flat-encoded sources by a few texels).
+  const exactFloats = baked.width * baked.height * 4;
+  const payload = Buffer.from(
+    baked.data.buffer, baked.data.byteOffset, exactFloats * Float32Array.BYTES_PER_ELEMENT,
+  );
   const payloadSha = sha256Hex(payload);
 
   if (CHECK) {

@@ -38,8 +38,14 @@ import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
+import { LOOK_POST_UNIFORMS } from './look.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
+// The `bloomLevels` setting is a quality tier (1 = tight glow only, 2 = the full halo), not a
+// target count. Tier 2 builds this many pyramid levels (1/2, 1/4, 1/8, 1/16): the two deep levels
+// together cover 1/51 of the scene's pixels, and they are what turns a lit strip into neon — a
+// light that spills tens of pixels, not two.
+const BLOOM_WIDE_PYRAMID_LEVELS = 4;
 // A scene pass slower than this is a brick, not a frame. 200 ms is ~12 dropped frames at 60 Hz —
 // far past anything ordinary rendering explains, so it never fires in healthy play.
 const BRICK_WARN_MS = 200;
@@ -68,7 +74,20 @@ export function resolvePostToeFloorSrgb(toe = DEFAULT_CINEMATIC_TOE) {
 // grade, toe, vignette, grain, and encoding are deliberately one implementation so route parity can
 // be claimed when AO and bloom are neutralized. Grade and vignette are multiplicative, so black stays
 // black until the one explicit, calibrated toe operation.
+//
+// The uLook* uniforms are the Look (src/data/lookMoods.js, owned at runtime by look.js). The block
+// declares them itself so both routes stay one implementation; each composite material attaches
+// the shared objects with LOOK_POST_UNIFORMS.
 export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
+  uniform vec3 uLookShadowTint;     // split-tone multiplier for dark pixels
+  uniform vec3 uLookHighlightTint;  // split-tone multiplier for bright pixels
+  uniform vec3 uLookBloomTint;      // colour of bloom spill
+  uniform vec3 uLookVignetteTint;   // corner colour at full vignette
+  uniform float uLookContrast;      // sigmoid contrast around mid-grey (1 = none)
+  uniform float uLookSaturation;    // global saturation (1 = none)
+  uniform float uLookVibrance;      // extra saturation for muted colours only
+  uniform float uLookInk;           // painted-edge deposit and value steps (0 = clean)
+
   // Edge resolve + wet-ink finish, fused into the existing composite. The scene target is
   // single-sampled by design, so this is where post-AA lives: a Lottes-style tap resolve that
   // blends only along detected contrast edges, leaving flat fields, authored texture interior,
@@ -118,7 +137,7 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     vec4 neighbours = vec4(lumaNW, lumaSE, lumaNE, lumaSW);
     vec4 shadows = smoothstep(vec4(0.16), vec4(0.58), (vec4(y) - neighbours) / (0.035 + y));
     float pool = dot(shadows, vec4(0.25));
-    float deposit = solid * clamp(ink * 0.18 + pool * 0.48, 0.0, 0.52);
+    float deposit = uLookInk * solid * clamp(ink * 0.18 + pool * 0.48, 0.0, 0.52);
     return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
   }
 
@@ -157,13 +176,27 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
   ) {
     vec3 c = max(color, vec3(0.0));
     if (gradeAmount > 0.001) {
+      // Split tone: the mood's shadow hue under its highlight hue. gradeAmount is how hard the
+      // sector wears it.
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      vec3 shadowBalance = vec3(0.88, 0.98, 1.10);
-      vec3 highlightBalance = vec3(1.10, 1.00, 0.88);
-      vec3 graded = c * mix(shadowBalance, highlightBalance, smoothstep(0.10, 0.60, luma));
-      float gradedLuma = dot(graded, vec3(0.2126, 0.7152, 0.0722));
-      graded = max(mix(vec3(gradedLuma), graded, 1.15), vec3(0.0));
+      vec3 graded = c * mix(uLookShadowTint, uLookHighlightTint, smoothstep(0.10, 0.60, luma));
       c = mix(c, graded, gradeAmount);
+      // Contrast: a sigmoid in perceptual value that pins black and white, applied as a luma
+      // ratio so hue survives. The clamp is load-bearing: bloom can push luma past 1, and
+      // pow() of the negative (1 - value) is NaN.
+      float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      float value = sqrt(clamp(y, 0.0, 1.0));
+      float rise = pow(value, uLookContrast);
+      float fall = pow(1.0 - value, uLookContrast);
+      float shaped = rise / max(rise + fall, 0.00001);
+      c *= (y > 0.00001 ? min(shaped * shaped / y, 4.0) : 1.0);
+      // Saturation, plus vibrance that lifts muted colours more than ones already at full chroma.
+      // Luma is recomputed after the contrast step and the result clamped: a dark saturated
+      // pixel pushed negative would poison the sRGB encode.
+      float peak = max(c.r, max(c.g, c.b));
+      float chroma = peak > 0.00001 ? (peak - min(c.r, min(c.g, c.b))) / peak : 0.0;
+      float satY = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = max(mix(vec3(satY), c, uLookSaturation * (1.0 + uLookVibrance * (1.0 - chroma))), vec3(0.0));
     }
     if (toeAmount > 0.0001) {
       float toeLuma = dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -174,7 +207,7 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
       vec2 d = uv - vec2(0.5);
       float dist = dot(d, d) * 2.2;
       float vig = 1.0 - smoothstep(0.25, 0.85, dist);
-      c *= mix(1.0, vig, vignetteAmount);
+      c *= mix(vec3(1.0), mix(uLookVignetteTint, vec3(1.0), vig), vignetteAmount);
     }
     return c;
   }
@@ -205,10 +238,10 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float inkBand = (floor(inkStep) + smoothstep(0.28, 0.72, fract(inkStep))) / 7.0;
     // The surface shader owns strong bands. A softer screen finish preserves painted skies,
     // thin markings and moving highlights rather than quantizing those a second time.
-    float inkMix = 0.24 * smoothstep(0.035, 0.12, inkValue);
+    float inkMix = 0.24 * uLookInk * smoothstep(0.035, 0.12, inkValue);
     float inkPaint = mix(inkValue, inkBand, inkMix);
     color *= (inkY > 0.00001 ? inkPaint * inkPaint / inkY : 1.0);
-    vec3 spill = max(bloom, vec3(0.0));
+    vec3 spill = max(bloom, vec3(0.0)) * uLookBloomTint;
     spill /= 1.0 + max(spill.r, max(spill.g, spill.b));
     color = applySpacePostPresentation(max(color + spill * (1.0 - color * 0.65), vec3(0.0)),
       uv, gradeAmount, toeAmount, vignetteAmount);
@@ -864,9 +897,10 @@ const DOWNSAMPLE_FRAG = /* glsl */`
   }
 `;
 
-// Coarse-level weight for multi-scale composite (matches the prior upsample chain's uWeight so the
-// wide halo reads the same order of magnitude without a dedicated upsample RT + pass).
-const BLOOM_COARSE_WEIGHT = 0.36;
+// Multi-scale composite weights: tight core glow (1/2 res, weight 1), body halo (1/8), wide
+// atmosphere (1/16). Each level is sampled directly with hardware bilinear — no upsample RT or pass.
+const BLOOM_MID_WEIGHT = 0.62;
+const BLOOM_WIDE_WEIGHT = 0.48;
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
@@ -880,11 +914,13 @@ const COMPOSITE_FRAG = /* glsl */`
   varying vec2 vUv;
   uniform sampler2D tScene;
   uniform sampler2D tBloom0;  // half-res bright extract (always present when bloom is on)
-  uniform sampler2D tBloom1;  // quarter-res (or same as tBloom0 when levels==1)
+  uniform sampler2D tBloom1;  // mid halo level (or same as tBloom0 when levels==1)
+  uniform sampler2D tBloom2;  // widest halo level (or same as tBloom0 when levels==1)
   uniform sampler2D tDistortion;
   uniform float uDistortion;
   uniform float uBloomW0;
   uniform float uBloomW1;
+  uniform float uBloomW2;
   uniform float uStrength;
   uniform float uBloomNorm;   // pyramid energy runs hot; normalize before perceptual strength
   uniform float uExposure;
@@ -919,7 +955,8 @@ const COMPOSITE_FRAG = /* glsl */`
     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
     // Pyramid targets share the same content/allocated ratio, so one UV remap serves all.
     vec3 bloom = texture2D(tBloom0, sceneUv).rgb * uBloomW0
-               + texture2D(tBloom1, sceneUv).rgb * uBloomW1;
+               + texture2D(tBloom1, sceneUv).rgb * uBloomW1
+               + texture2D(tBloom2, sceneUv).rgb * uBloomW2;
     vec3 spill = bloom * uStrength * uBloomNorm;
     vec3 color = composeSpacePostPresentation(
       scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
@@ -1277,7 +1314,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const halfH = Math.max(1, h >> 1);
     const cap = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, maxLevelsCap | 0));
     if (halfW < 320 || halfH < 180) return 1;
-    return cap;
+    return cap >= 2 ? BLOOM_WIDE_PYRAMID_LEVELS : cap;
   }
 
   function allocRenderTarget(w, h, opts, reason) {
@@ -1435,10 +1472,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     tScene:     { value: null },
     tBloom0:    { value: null },
     tBloom1:    { value: null },
+    tBloom2:    { value: null },
     tDistortion: { value: null },
     uDistortion: { value: 0 },
     uBloomW0:   { value: 1.0 },
     uBloomW1:   { value: 0.0 },
+    uBloomW2:   { value: 0.0 },
     uStrength:  { value: strength },
     uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
@@ -1509,6 +1548,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.tScene.value = null;
     compositeMat.uniforms.tBloom0.value = null;
     compositeMat.uniforms.tBloom1.value = null;
+    compositeMat.uniforms.tBloom2.value = null;
     compositeMat.uniforms.tDistortion.value = null;
     casMat.uniforms.tSrc.value = null;
     const glState = renderer && renderer.state;
@@ -1866,14 +1906,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
     // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
     const fine = bloomActive ? down[0].texture : rtScene.texture;
-    const coarse = bloomActive && levels > 1 ? down[levels - 1].texture : fine;
+    const mid = bloomActive && levels > 1 ? down[Math.min(2, levels - 1)].texture : fine;
+    const wide = bloomActive && levels > 2 ? down[levels - 1].texture : fine;
     compositeMat.uniforms.tScene.value = rtScene.texture;
     compositeMat.uniforms.tBloom0.value = fine;
-    compositeMat.uniforms.tBloom1.value = coarse;
+    compositeMat.uniforms.tBloom1.value = mid;
+    compositeMat.uniforms.tBloom2.value = wide;
     compositeMat.uniforms.tDistortion.value = distortionLiveCount > 0 ? rtDistortion.texture : rtScene.texture;
     compositeMat.uniforms.uDistortion.value = distortionLiveCount > 0 ? 1 : 0;
     compositeMat.uniforms.uBloomW0.value = bloomActive ? 1.0 : 0.0;
-    compositeMat.uniforms.uBloomW1.value = bloomActive && levels > 1 ? BLOOM_COARSE_WEIGHT : 0.0;
+    compositeMat.uniforms.uBloomW1.value = bloomActive && levels > 1 ? BLOOM_MID_WEIGHT : 0.0;
+    compositeMat.uniforms.uBloomW2.value = bloomActive && levels > 2 ? BLOOM_WIDE_WEIGHT : 0.0;
     compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;

@@ -51,7 +51,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       // The original stellar island and ringed planet remain the landmarks. The painted
       // estuary is distant atmosphere around them, held below the lit machinery — dimmed and
       // desaturated ~a third so the sky sits behind the opening frame instead of inside it.
-      paintedSky: { plate: 'helios-amber-estuary', strength: 0.11, parallax: 0.003, saturation: 0.68 },
+      paintedSky: { plate: 'helios-amber-estuary', strength: 0.14, parallax: 0.003, saturation: 1.0 },
       intensity: 0.55,
       nebulaOpacity: 0.0,
       structure: {
@@ -94,7 +94,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 1.02, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0, grade: 0.32, vignette: 0.12 },
+    post: { exposure: 1.02, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   core: freezeProfile({
     id: 'core',
@@ -128,7 +128,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         cometInterval: [30, 72], signatureHero: null,
       },
     },
-    post: { exposure: 0.96, bloomStrengthScale: 1.04, bloomThresholdBias: -0.02, grade: 0.24, vignette: 0.10 },
+    post: { exposure: 0.96, bloomStrengthScale: 1.04, bloomThresholdBias: -0.02 },
   }),
   belt: freezeProfile({
     id: 'belt',
@@ -165,7 +165,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         cometInterval: [22, 58], signatureHero: null,
       },
     },
-    post: { exposure: 0.95, bloomStrengthScale: 1.10, bloomThresholdBias: -0.06, grade: 0.18, vignette: 0.10 },
+    post: { exposure: 0.95, bloomStrengthScale: 1.10, bloomThresholdBias: -0.06 },
   }),
   fringe: freezeProfile({
     id: 'fringe',
@@ -214,7 +214,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.94, bloomStrengthScale: 1.08, bloomThresholdBias: -0.04, grade: 0.16, vignette: 0.12 },
+    post: { exposure: 0.94, bloomStrengthScale: 1.08, bloomThresholdBias: -0.04 },
   }),
   anomaly: freezeProfile({
     id: 'anomaly',
@@ -256,7 +256,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.95, bloomStrengthScale: 1.16, bloomThresholdBias: -0.10, grade: 0.12, vignette: 0.12 },
+    post: { exposure: 0.95, bloomStrengthScale: 1.16, bloomThresholdBias: -0.10 },
   }),
   // The sixth sky. Tethys is a junction, not a second Helios: one galactic spur, no hero planet,
   // no painted plate. Exactly this profile carries the galaxy.
@@ -298,7 +298,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         signatureHero: null,
       },
     },
-    post: { exposure: 0.93, bloomStrengthScale: 1.06, bloomThresholdBias: -0.04, grade: 0.22, vignette: 0.11 },
+    post: { exposure: 0.93, bloomStrengthScale: 1.06, bloomThresholdBias: -0.04 },
   }),
 });
 

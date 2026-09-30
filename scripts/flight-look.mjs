@@ -23,8 +23,12 @@ const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({
   headless: true,
   executablePath: process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined),
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
-    '--disable-background-timer-throttling'],
+  // SF_GL=d3d11 shoots on the machine's real GPU (seconds per frame, the shipping driver path);
+  // the default stays the software rasterizer so captures work on a GPU-less host.
+  args: process.env.SF_GL === 'd3d11'
+    ? ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu', '--disable-background-timer-throttling']
+    : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
+      '--disable-background-timer-throttling'],
 });
 
 async function clickButton(page, label) {

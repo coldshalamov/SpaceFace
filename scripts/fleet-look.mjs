@@ -88,8 +88,12 @@ const server = await startServer();
 const browser = await chromium.launch({
   headless: true,
   executablePath: process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined),
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
-    '--disable-background-timer-throttling'],
+  // SF_GL=d3d11 shoots on the machine's real GPU (seconds per frame, the shipping driver path);
+  // the default stays the software rasterizer so captures work on a GPU-less host.
+  args: process.env.SF_GL === 'd3d11'
+    ? ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu', '--disable-background-timer-throttling']
+    : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
+      '--disable-background-timer-throttling'],
 });
 const report = [];
 try {
@@ -111,6 +115,16 @@ try {
   }
   // let env map bake
   await page.waitForTimeout(3000);
+  // Look bench switches. They apply on the first shot's isolate(), so prime one frame first.
+  //   --mood=<id>            snap to a mood from src/data/lookMoods.js
+  //   --tune='{"surface":{"coat":1.4},"post":{"ink":0}}'   overwrite single Look values
+  //   --post='{"bloomStrength":0.8}'  --lights='{"key":3.0}'   raw composite / rig intensities
+  const lookSwitches = async () => {
+    if (args.mood) await page.evaluate((id) => window.SF_fleetLook.setMood(id), String(args.mood));
+    if (args.tune) await page.evaluate((p) => window.SF_fleetLook.tune(p), JSON.parse(String(args.tune)));
+    if (args.post) await page.evaluate((p) => window.SF_fleetLook.post(p), JSON.parse(String(args.post)));
+    if (args.lights) await page.evaluate((p) => window.SF_fleetLook.lights(p), JSON.parse(String(args.lights)));
+  };
 
   let targets;
   if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
@@ -125,10 +139,20 @@ try {
       let res;
       try {
         for (let attempt = 0; attempt < 4; attempt++) {
+          const shotSpec = { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0) };
+          if (args.mood || args.tune || args.post || args.lights) {
+            // isolate() re-applies the sector rig and mood on the first shot; shoot once to settle
+            // it, apply the switches over the settled state, then take the real frame.
+            if (!lookSwitches.primed) {
+              await page.evaluate((o) => window.SF_fleetLook.shoot(o), shotSpec);
+              lookSwitches.primed = true;
+            }
+            await lookSwitches();
+          }
           res = await page.evaluate(async (o) => {
             const r = await window.SF_fleetLook.shoot(o);
             return r;
-          }, { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0) });
+          }, shotSpec);
           // Under a busy CPU the first frames can present before shaders finish linking: a blank
           // frame has almost no bright pixels. Re-shoot instead of reporting an empty ship.
           const stats = await sharp(Buffer.from(res.url.split(',')[1], 'base64')).stats();

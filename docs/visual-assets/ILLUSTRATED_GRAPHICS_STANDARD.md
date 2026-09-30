@@ -1,6 +1,12 @@
 # Lacquer & Starlight
 
-Active 3D art direction, 2026-09-19. The owner asked for an artsy, beautiful, inhabited indie
+> **Superseded as direction, 2026-09-30.** The owner found this picture cheap: matte, pastel,
+> flat. The active direction is [`LOOK.md`](LOOK.md) (Neon Industrial: glossy lacquer, neon light,
+> hard colour contrast, per-sector moods). The ink contour and light bands below survive as
+> Look values at lower strength; the pastel paint lift and the violet screen ink are retired.
+> The implementation notes on models, sky, thrust, weapons and geology remain accurate.
+
+3D art direction, 2026-09-19. The owner asked for an artsy, beautiful, inhabited indie
 world: shiny edges, deep illustrated shadows, exuberant energy, and charm beyond generic metal.
 This supersedes the earlier brief's claims of frozen models or a ratified look. It is a working
 art direction, not a claim that the owner has approved a frame.

@@ -237,6 +237,8 @@ import {
 } from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
+import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
+import { beginLookMood, updateLook } from './look.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { SWARM_RULESET, swarmEligibleEnemyIds } from '../data/swarmMode.js';
@@ -10954,7 +10956,7 @@ export const render = {
       if (cam.snapToPlayer) cam.snapToPlayer();
       const sectorVisualProfile = resolveSectorVisualProfile(sector);
       this._beginSectorPaletteTransition(sector, sectorVisualProfile);
-      this.setSectorPostProfile(sectorVisualProfile && sectorVisualProfile.post);
+      this.setSectorPostProfile(resolveLookPost(sectorVisualProfile));
       // The continuous map presentation eases its palette, post, and background identity at the
       // boundary. Its resident graph is not rebaked here; continuous authored work stays on the
       // spatial runway so a whole-sector decode/shader batch cannot compete with the crossing frame.
@@ -11264,7 +11266,7 @@ export const render = {
       // Same contract as the sector:enter path above: the authored profile is required, not optional.
       const arrivalVisualProfile = resolveSectorVisualProfile(sector);
       this._beginSectorPaletteTransition(sector, arrivalVisualProfile);
-      this.setSectorPostProfile(arrivalVisualProfile && arrivalVisualProfile.post);
+      this.setSectorPostProfile(resolveLookPost(arrivalVisualProfile));
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, arrivalVisualProfile);
     });
     onBus('save:loaded', () => {
@@ -14600,7 +14602,13 @@ export const render = {
     if (!rig) return;
     const palette = sector && sector.palette ? sector.palette : SECTOR_PALETTE_CLASSES.core;
     this.state.render.sectorPalette = palette;
-    const lighting = (profile && profile.lighting) || null;
+    // The sector's mood (src/data/lookMoods.js) owns the four light colours, the surface response
+    // and the grade; the profile keeps its authored intensities. Boot and captures snap, a live
+    // jump shares the rig's lerp.
+    const lighting = profile && profile.lighting ? resolveLookLighting(profile) : null;
+    beginLookMood(resolveLookMoodId(profile),
+      this._lookMoodApplied === true && this.state.mode !== 'loading' ? SECTOR_PALETTE_LERP_SECONDS : 0);
+    this._lookMoodApplied = true;
     // The guard must consider the authored light rig too. Two sectors can share a palette class
     // while authoring different key/fill ratios, and — more importantly — the boot sector's palette
     // is already the construction-time target, so keying only on palette identity would skip the
@@ -14667,6 +14675,7 @@ export const render = {
   },
 
   _updateSectorPaletteTransition(frameDt) {
+    updateLook(frameDt);
     const rig = this._sectorPaletteRig;
     if (!rig || !rig.active) return;
     const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;

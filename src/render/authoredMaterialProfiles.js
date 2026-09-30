@@ -1,5 +1,6 @@
 import { canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { applyIllustratedMaterialResponse } from './industrialMaterialFamilies.js';
+import { LOOK_EMISSIVE_GAIN } from '../data/lookMoods.js';
 import { illustratedPigmentForMaterial } from './illustratedLivery.js';
 import { hullLayoutForAsset } from './illustratedHullLayout.js';
 
@@ -130,6 +131,16 @@ function applyForgeFinish(material, role) {
   material.dithering = true;
   if ('envMapIntensity' in material && FORGE_ENV_INTENSITY[role] != null) {
     material.envMapIntensity = FORGE_ENV_INTENSITY[role];
+  }
+  // Lamps glow (the Look). Scaled from the authored value kept on first admission, so a
+  // re-applied profile never compounds.
+  const emissiveGain = LOOK_EMISSIVE_GAIN[role];
+  if (emissiveGain && material.emissive && material.emissive.getHex() !== 0
+    && Number.isFinite(material.emissiveIntensity)) {
+    if (!Number.isFinite(material.userData.spacefaceAuthoredEmissiveIntensity)) {
+      material.userData.spacefaceAuthoredEmissiveIntensity = material.emissiveIntensity;
+    }
+    material.emissiveIntensity = material.userData.spacefaceAuthoredEmissiveIntensity * emissiveGain;
   }
   if (role !== 'glass' && role !== 'drive' && role !== 'signal'
     && globalThis.__SF_FORGE_ILLUSTRATED__ !== false) installIllustratedSurface(material);

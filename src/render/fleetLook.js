@@ -15,6 +15,8 @@ import { SECTORS } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
+import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
+import { resolveLookPost } from '../data/lookMoods.js';
 
 const RELEASE_ROOT = 'assets/ships/release/parts/';
 const TILT = 60 * Math.PI / 180;
@@ -52,10 +54,17 @@ let appliedSector = null;
 function applySectorLighting(scene, sector, profile, palette) {
   if (renderSystem && typeof renderSystem._beginSectorPaletteTransition === 'function') {
     renderSystem._beginSectorPaletteTransition(sector, profile);
-    // The harness cannot wait out the 1.5 s lerp: drive the transition to completion now so the
+    // The sector's post numbers (exposure, bloom, grade amount) are half of its look.
+    if (typeof renderSystem.setSectorPostProfile === 'function') {
+      renderSystem.setSectorPostProfile(resolveLookPost(profile));
+    }
+    // The harness cannot wait out the 1.5 s lerp: drive the transitions to completion now so the
     // still lands on the sector's authored rig rather than a mid-blend frame.
     if (typeof renderSystem._updateSectorPaletteTransition === 'function') {
       renderSystem._updateSectorPaletteTransition(Number.MAX_SAFE_INTEGER);
+    }
+    if (typeof renderSystem._updateSectorPostTransition === 'function') {
+      renderSystem._updateSectorPostTransition(Number.MAX_SAFE_INTEGER);
     }
     return;
   }
@@ -146,6 +155,7 @@ export function installFleetLook(SF) {
   holder.name = 'fleetLookHolder';
   let hidden = null;
   let savedSize = null;
+  let lastPose = null;
 
   function handles() {
     const r = state.render || {};
@@ -255,11 +265,38 @@ export function installFleetLook(SF) {
     pose();
     renderOnce(renderer, scene, cam);
     const url = renderer.domElement.toDataURL('image/png');
+    lastPose = pose;
     cam.position.copy(savedCamPos);
     return {
       url, ok, radius,
       size: box.getSize(new THREE.Vector3()).toArray(),
       materials: collectMaterials(built.root),
+    };
+  }
+
+  // GPU cost of the picture currently in the holder: draw `frames` frames through the shipping
+  // post route with a hard flush after each, and report the median. Call after shoot(); used by
+  // scripts/look-bench.mjs --cost to price a Look value on the machine it runs on.
+  async function cost(opts = {}) {
+    const { renderer, scene, camera: cam } = handles();
+    const gl = renderer.getContext();
+    const frames = Math.max(8, opts.frames | 0 || 40);
+    const samples = [];
+    for (let i = 0; i < frames + 6; i++) {
+      if (lastPose) lastPose();
+      const t0 = performance.now();
+      renderOnce(renderer, scene, cam);
+      gl.finish();
+      const dt = performance.now() - t0;
+      if (i >= 6) samples.push(dt);
+      if (i % 8 === 7) await wait(0);
+    }
+    samples.sort((a, b) => a - b);
+    return {
+      medianMs: +samples[samples.length >> 1].toFixed(3),
+      p90Ms: +samples[Math.floor(samples.length * 0.9)].toFixed(3),
+      frames: samples.length,
+      calls: renderer.info.render.calls,
     };
   }
 
@@ -286,6 +323,7 @@ export function installFleetLook(SF) {
 
   window.SF_fleetLook = {
     shoot,
+    cost,
     ships: () => SHIPS.map((s) => s.id),
     // --sector=<id>: apply that sector's authored visual-profile rig (intensity + key/fill tint +
     // signature-hero aim) to the live lights before the next shot.
@@ -293,6 +331,23 @@ export function installFleetLook(SF) {
       const sector = SECTORS.find((s) => s.id === sectorId) || null;
       if (!sector) return false;
       activeSector = sector;
+      return true;
+    },
+    // Look bench: snap to a named mood, or overwrite single Look values on the live uniforms
+    // (src/render/look.js tuneLook). Both hold until the next sector/mood change.
+    setMood: (moodId) => beginLookMood(moodId, 0),
+    mood: () => currentLookMoodId(),
+    tune: (patch) => { tuneLook(patch); return true; },
+    // Raw post/light access for A/B work: post({ bloomStrength, grade, ... }) goes straight to the
+    // live composite; lights({ key: 3.2, rim: 1.4, ... }) writes rig intensities.
+    post: (options) => { try { renderSystem?.bloom?.setOptions(options); return true; } catch (_) { return false; } },
+    lights: (values = {}) => {
+      const rig = renderSystem && renderSystem._sectorPaletteRig;
+      if (!rig) return false;
+      for (const channel of ['ambient', 'key', 'rim', 'fill']) {
+        if (Number.isFinite(values[channel])) rig.lights[channel].intensity = values[channel];
+        if (Number.isFinite(values[channel + 'Color'])) rig.lights[channel].color.setHex(values[channel + 'Color']);
+      }
       return true;
     },
   };

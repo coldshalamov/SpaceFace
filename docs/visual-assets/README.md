@@ -19,7 +19,8 @@ renderer, lights and post at the gameplay camera — not a Blender studio render
 |---|---|
 | Any ship body (player, NPC, traffic, faction variant) | [`tools/blender/forge/FORGE.md`](../../tools/blender/forge/FORGE.md) — the one kit, look bar and publish command. No ship is built any other way. |
 | Stations, places, props, wrecks, rocks | Until Forge covers them: keep each asset's existing builder, but meet the FORGE.md look bar (plan silhouette, three values, manufactured not noisy surfaces, nothing floating) and review with `scripts/fleet-look.mjs --files=places/<file>.glb`. |
-| Runtime look (lighting, post, material response) | `src/render/` — `authoredMaterialProfiles.js`, `illustratedSurface.js`, `bloom.js`, `src/data/sectorVisualProfiles.js`. Change the shared layer when the defect is shared. |
+| The vibe: lighting, shadows, grade, bloom, how every surface answers light | [`LOOK.md`](LOOK.md) — one owner (`src/data/lookMoods.js` + `src/render/look.js`), per-sector moods, and `scripts/look-bench.mjs` to judge a number by the picture. |
+| Runtime look (material response per asset) | `src/render/` — `authoredMaterialProfiles.js`, `illustratedSurface.js`, `bloom.js`, `src/data/sectorVisualProfiles.js`. Change the shared layer when the defect is shared. |
 | VFX (plumes, impacts, beams, trails) | [`VFX_TECHNIQUE_STANDARD.md`](VFX_TECHNIQUE_STANDARD.md), then [`VFX_LIFECYCLE_STANDARD.md`](VFX_LIFECYCLE_STANDARD.md). No soft square/disc stands in for an object; distant stars are the only exception. |
 | Portraits / concept art | `assets/portraits/AGENTS.md`, `assets/concept/AGENTS.md` |
 
@@ -29,7 +30,11 @@ renderer, lights and post at the gameplay camera — not a Blender studio render
 node scripts/fleet-look.mjs --file=<release path or any .glb> --views=inspect,close,top   # one model, live pipeline
 node scripts/fleet-look.mjs --fleet --views=close                                         # every live hull, contact sheet
 node scripts/flight-look.mjs [--ship=ship_<id>]                                           # real New Game flight
+node scripts/look-bench.mjs [--moods=…] [--vary=patches.json] [--cost]                    # the Look: moods x hulls, one sheet
 ```
+
+`SF_GL=d3d11` in front of `fleet-look` / `flight-look` shoots on the machine's real GPU (seconds
+per frame) instead of the software rasterizer. `look-bench` uses the GPU by default.
 
 Open the PNGs yourself. `close` is the chase camera at close zoom (the ship ≈ 450 px); `chase` is
 the default 144 WU framing. A still is a working tool, not a deliverable: delete stale ones.

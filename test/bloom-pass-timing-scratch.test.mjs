@@ -94,22 +94,19 @@ test('bloom keeps exact pass order and instrumentation without per-frame timing 
     bloom.render({ kind: 'scene' }, { kind: 'camera' });
     bloom.render({ kind: 'scene' }, { kind: 'camera' });
 
-    const twoLevelRenderEvents = [
+    // The full halo tier builds four pyramid levels: 1/2 (bright pass), 1/4, 1/8, 1/16.
+    const haloRenderEvents = [
       'render:scene:640x360',
       'render:quad:320x180',
       'render:quad:160x90',
+      'render:quad:80x45',
+      'render:quad:40x22',
       'render:quad:screen',
     ];
     assert.deepEqual(
       harness.events.filter((event) => event.startsWith('render:')),
-      [
-        ...twoLevelRenderEvents,
-        'render:scene:640x360',
-        'render:quad:320x180',
-        'render:quad:160x90',
-        'render:quad:screen',
-      ],
-      'scene, two downsample levels, and composite retain their exact targets and order',
+      [...haloRenderEvents, ...haloRenderEvents],
+      'scene, four downsample levels, and composite retain their exact targets and order',
     );
     assert.deepEqual(
       timingEvents(harness.events),
@@ -126,10 +123,14 @@ test('bloom keeps exact pass order and instrumentation without per-frame timing 
         'pixels:bloom-scene:230400',
         'pixels:bloom-downsample:57600',
         'pixels:bloom-downsample:14400',
+        'pixels:bloom-downsample:3600',
+        'pixels:bloom-downsample:880',
         'pixels:bloom-composite:230400',
         'pixels:bloom-scene:230400',
         'pixels:bloom-downsample:57600',
         'pixels:bloom-downsample:14400',
+        'pixels:bloom-downsample:3600',
+        'pixels:bloom-downsample:880',
         'pixels:bloom-composite:230400',
       ],
     );
@@ -194,7 +195,7 @@ test('every failing timed pass closes its matching GPU and CPU group exactly onc
   const cases = [
     { name: 'scene', throwOnRenderCall: 1, expected: TIMED_FRAME_EVENTS.slice(0, 3), autoClear: true },
     { name: 'downsample', throwOnRenderCall: 2, expected: TIMED_FRAME_EVENTS.slice(0, 6), autoClear: false },
-    { name: 'composite', throwOnRenderCall: 4, expected: TIMED_FRAME_EVENTS, autoClear: false },
+    { name: 'composite', throwOnRenderCall: 6, expected: TIMED_FRAME_EVENTS, autoClear: false },
   ];
   for (const candidate of cases) {
     const harness = rendererHarness({ throwOnRenderCall: candidate.throwOnRenderCall });

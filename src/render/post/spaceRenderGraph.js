@@ -18,6 +18,7 @@ import {
   SPACE_POST_PRESENTATION_GLSL,
 } from '../bloom.js';
 import { recordPostRenderTargetAllocation } from '../postTelemetry.js';
+import { LOOK_POST_UNIFORMS } from '../look.js';
 
 const POST_DEFAULTS = Object.freeze({
   bloom: true,
@@ -277,6 +278,8 @@ export class SpaceRenderGraph {
       uGrade:this.options.grade, uToe:this.options.toe,
       uVignette:this.options.vignette, uGrain:this.options.grain, uGrainFrame:0,
     });
+    // The shared presentation block reads the Look; attach the same objects the native route uses.
+    Object.assign(this.compositeMaterial.uniforms, LOOK_POST_UNIFORMS);
     this.distortionField = null;
     this.distortionProducers = null;
     this.distortionTarget = null;

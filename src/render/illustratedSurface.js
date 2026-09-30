@@ -1,8 +1,14 @@
 // Illustrated industrial surfaces: shape the light, never quantize the texture.
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
+//
+// v10 (the Look, 2026-09-30): every constant that decides the vibe is a shared Look
+// uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
+// gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
+// coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
 import { Color, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v8';
+import { LOOK_SURFACE_UNIFORMS } from './look.js';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v10';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -11,29 +17,84 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // Recover illumination independently of painted colour. This leaves markings, texture
   // gradients and material differences intact instead of posterizing final RGB.
   float sfPaintLuma = max(dot(diffuseColor.rgb * (1.0 - metalnessFactor), vec3(0.2126, 0.7152, 0.0722)), 0.025);
-  float sfLight = dot(reflectedLight.directDiffuse + reflectedLight.indirectDiffuse, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
+  vec3 sfLightRgb = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
+  float sfLight = dot(sfLightRgb, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
+  // Frequency separation. sfLow is what the SMOOTH hull form receives: the indirect
+  // irradiance plus the direct sun term rebuilt with the geometric normal through the same
+  // Lambert factor the physical shader used (v9; was: bands keyed on the full perturbed
+  // response). The difference sfResidual is everything the surface detail contributes —
+  // normal-map scratches, roughness structure, event-light pools — and it passes through
+  // unshaped. ALU only: one compile-time-unrolled pass over the directional rig, no
+  // texture fetches, no new uniforms, no new program-key tokens.
+  vec3 sfLowRgb = reflectedLight.indirectDiffuse;
+  #if NUM_DIR_LIGHTS > 0
+  for (int sfI = 0; sfI < NUM_DIR_LIGHTS; sfI++) {
+    sfLowRgb += directionalLights[sfI].color * saturate(dot(nonPerturbedNormal, directionalLights[sfI].direction)) * BRDF_Lambert(material.diffuseColor);
+  }
+  #endif
+  float sfLow = dot(sfLowRgb, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
+  float sfResidual = sfLight - sfLow;
   // Compress irradiance before shaping it: the sunlit roof receives >1.0 in the live
   // rig. Thresholding raw irradiance below 0.86 left almost the whole fleet in one band.
   // Rounded transitions describe pools of ink, with a broad lacquer light above them.
-  float sfExposure = sfLight / (0.85 + sfLight);
+  // Keyed on sfLow so a scratch can never mint a spurious band edge.
+  float sfExposure = sfLow / (0.85 + sfLow);
   float sfWidth = max(fwidth(sfExposure) * 1.25, 0.018);
   float sfPenumbra = smoothstep(0.28 - sfWidth, 0.39 + sfWidth, sfExposure);
   float sfBodyLight = smoothstep(0.47 - sfWidth, 0.56 + sfWidth, sfExposure);
   float sfSunlight = smoothstep(0.65 - sfWidth, 0.70 + sfWidth, sfExposure);
   float sfBands = 0.11 + 0.235 * sfPenumbra + 0.64 * sfBodyLight + 0.64 * sfSunlight;
-  // Keep a little continuous light so animation never becomes a hard toon switch.
-  float sfShaped = mix(sfLight, sfBands, 0.88);
-  vec3 sfInkTint = mix(vec3(0.61, 0.55, 1.13), vec3(1.11, 1.025, 0.88), sfBodyLight);
+  // The band share is a Look value (v9 shipped a fixed 0.55): the graphic pools keep the
+  // broad read while the true low-frequency response and the full residual keep PBR material
+  // response alive — highlights pool on polish, panel relief shades, flashes light.
+  float sfShaped = mix(sfLow, sfBands, sfLookBandMix) + sfResidual;
+  vec3 sfInkTint = mix(sfLookShadowTint, sfLookLightTint, sfBodyLight);
   vec3 sfLightScale = sfInkTint * (sfShaped / max(sfLight, 0.025));
   reflectedLight.directDiffuse *= sfLightScale;
   reflectedLight.indirectDiffuse *= sfLightScale;
   // Geometric normals, not normal-map scratches: contours belong to the hull form.
   float sfFacing = abs(dot(nonPerturbedNormal, geometryViewDir));
-  float sfContour = 1.0 - 0.57 * (1.0 - smoothstep(0.09, 0.38, sfFacing));
-  // Optical edge sheen: polished lacquer, ceramic coating and machined bevels catch a narrow starlight
-  // rim highlight just inside the ink contour, defining physical 3D curvature against deep space.
-  float sfGlance = pow(clamp(1.0 - sfFacing, 0.0, 1.0), 3.5) * (1.0 - clamp(roughnessFactor, 0.0, 1.0) * 0.48);
-  vec3 sfEdgeSheen = mix(vec3(0.75, 0.85, 1.10), vec3(1.15, 1.05, 0.92), sfBodyLight) * (sfGlance * 0.22 * (0.35 + 0.65 * sfShaped));
+  float sfContour = 1.0 - sfLookContour * (1.0 - smoothstep(0.09, 0.38, sfFacing));
+  float sfGrazing = clamp(1.0 - sfFacing, 0.0, 1.0);
+  // Clear coat. Smooth dielectric paint carries a lacquer layer; rough stone, dry ceramic and
+  // bare metal (which already mirrors through its base lobe) do not. The weight comes from
+  // the material's own roughness/metalness, so the panel texture's roughness structure
+  // breaks the gloss up per plate and no per-material state is needed.
+  float sfCoatWeight = sfLookCoat * (1.0 - 0.85 * metalnessFactor)
+    * (1.0 - smoothstep(0.50, 0.95, roughnessFactor));
+  vec3 sfCoatLight = vec3(0.0);
+  vec3 sfRimLight = vec3(0.0);
+  if (sfCoatWeight > 0.004) {
+    // Widen the lobe where the form curves faster than a pixel (bevels at chase zoom), the
+    // same geometric anti-aliasing the base lobe uses, so glints do not crawl.
+    vec3 sfNormalDelta = max(abs(dFdx(nonPerturbedNormal)), abs(dFdy(nonPerturbedNormal)));
+    float sfCoatRough = clamp(sfLookCoatRoughness
+      + max(max(sfNormalDelta.x, sfNormalDelta.y), sfNormalDelta.z), 0.06, 1.0);
+    float sfCoatAlpha = sfCoatRough * sfCoatRough;
+    float sfCoatAlpha2 = sfCoatAlpha * sfCoatAlpha;
+    #if NUM_DIR_LIGHTS > 0
+    for (int sfJ = 0; sfJ < NUM_DIR_LIGHTS; sfJ++) {
+      vec3 sfToLight = directionalLights[sfJ].direction;
+      float sfNoL = saturate(dot(nonPerturbedNormal, sfToLight));
+      float sfNoH = saturate(dot(nonPerturbedNormal, normalize(sfToLight + geometryViewDir)));
+      float sfLobe = sfNoH * sfNoH * (sfCoatAlpha2 - 1.0) + 1.0;
+      sfCoatLight += directionalLights[sfJ].color
+        * (sfNoL * 0.25 * sfCoatAlpha2 / (PI * sfLobe * sfLobe));
+    }
+    #endif
+    #ifdef USE_ENVMAP
+    sfCoatLight += getIBLRadiance(geometryViewDir, nonPerturbedNormal, sfCoatRough) * sfLookCoatEnv;
+    #endif
+    // Schlick over a lacquer F0: faint facing the camera, rising to the Look's edge
+    // reflectance at the limb (a physical coat reaches 1; a lower cap keeps pale paint
+    // from washing out where a wall turns away).
+    float sfCoatFresnel = 0.05 + sfLookCoatEdge * pow(sfGrazing, 5.0);
+    sfCoatLight *= sfLookCoatTint * (sfCoatWeight * sfCoatFresnel);
+    // Edge light: the hull limb picks up the mood's rim hue. Brighter on the unlit side,
+    // where it is the only thing separating a dark hull from black space.
+    sfRimLight = sfLookRim * (sfLookRimStrength * sfCoatWeight
+      * pow(sfGrazing, sfLookRimPower) * (1.0 - 0.55 * sfBodyLight));
+  }
 `;
 
 const THREE_DEFAULT_PROGRAM_KEY_PARTS = new Set([
@@ -142,6 +203,8 @@ export function installIllustratedSurface(material) {
     }
     const pigment = this.userData?.spacefaceIllustratedPigment;
     shader.uniforms ??= {};
+    // Shared objects, not copies: look.js writes one value and every hull program reads it.
+    Object.assign(shader.uniforms, LOOK_SURFACE_UNIFORMS);
     shader.uniforms.sfPaintPigment = { value: new Color(pigment?.color || '#ffffff') };
     shader.uniforms.sfPaintStrength = { value: pigment?.strength || 0 };
     const layout = this.userData?.spacefaceHullLayout;
@@ -155,6 +218,21 @@ export function installIllustratedSurface(material) {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
+        uniform float sfLookAlbedoGamma;
+        uniform float sfLookAlbedoSaturation;
+        uniform float sfLookBandMix;
+        uniform float sfLookContour;
+        uniform float sfLookCoat;
+        uniform float sfLookCoatRoughness;
+        uniform float sfLookCoatEnv;
+        uniform float sfLookCoatEdge;
+        uniform float sfLookPaintCeiling;
+        uniform float sfLookRimStrength;
+        uniform float sfLookRimPower;
+        uniform vec3 sfLookShadowTint;
+        uniform vec3 sfLookLightTint;
+        uniform vec3 sfLookCoatTint;
+        uniform vec3 sfLookRim;
         uniform vec3 sfPaintPigment;
         uniform float sfPaintStrength;
         uniform float sfLayoutKind;
@@ -196,14 +274,33 @@ export function installIllustratedSurface(material) {
           normal = normalize(max(abs(sfDet), 0.000001) * normal - sfGradient);
         }
       `)
+      // Paint value and chroma are Look values: gamma 1 shows the authored albedo (the retired
+      // pass lifted it by pow 0.80 into pastel), saturation deepens colour at constant luminance.
       // Illustrated metal retains a small diffuse response so its silhouette and paint read
       // against space even when the reflected environment is nearly black. Texture metal masks
       // still separate materials; the source assets and their calibrated values are untouched.
-      .replace('#include <lights_physical_fragment>', 'diffuseColor.rgb = pow(max(diffuseColor.rgb, vec3(0.0)), vec3(0.80));\nmetalnessFactor *= 0.80;\n#include <lights_physical_fragment>')
+      .replace('#include <lights_physical_fragment>', `
+        diffuseColor.rgb = pow(max(diffuseColor.rgb, vec3(0.0)), vec3(sfLookAlbedoGamma));
+        diffuseColor.rgb = max(mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))),
+          diffuseColor.rgb, sfLookAlbedoSaturation), vec3(0.0));
+        metalnessFactor *= 0.80;
+        #include <lights_physical_fragment>`)
       .replace(LIGHT_NEEDLE, LIGHT_NEEDLE + '\n' + ILLUSTRATED_SURFACE_GLSL)
-      // Ink belongs to paint. Keeping the optical highlight outside it lets a polished edge
-      // catch a thin bright accent over the dark contour instead of becoming dead black.
-      .replace(OUTPUT_NEEDLE, 'vec3 outgoingLight = (totalDiffuse * sfContour + sfEdgeSheen) + totalSpecular + totalEmissiveRadiance;');
+      // The contour belongs to paint. The coat and the rim sit outside it, so a polished edge
+      // catches a bright accent over the dark contour instead of becoming dead black.
+      // Paint never emits: lit pigment rolls off under the Look's ceiling, which sits below the
+      // bloom threshold, so a sunlit ivory wall keeps its form instead of glowing. Coat, rim,
+      // specular and lamps are light and stay free to bloom.
+      .replace(OUTPUT_NEEDLE, `
+        vec3 sfPaint = totalDiffuse * sfContour;
+        float sfPaintY = dot(sfPaint, vec3(0.2126, 0.7152, 0.0722));
+        float sfKnee = sfLookPaintCeiling * 0.6;
+        if (sfPaintY > sfKnee) {
+          float sfOver = sfPaintY - sfKnee;
+          float sfRoom = sfLookPaintCeiling - sfKnee;
+          sfPaint *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
+        }
+        vec3 outgoingLight = sfPaint + sfCoatLight + sfRimLight + totalSpecular + totalEmissiveRadiance;`);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   illustratedSurfaceShader[TAG] = ILLUSTRATED_SURFACE_KEY;
