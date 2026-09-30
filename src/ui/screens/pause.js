@@ -949,6 +949,10 @@ export const pauseScreen = {
     keyHint('Esc', 'Resume');
     keyHint('F5', 'Quick Save');
     keyHint('F9', 'Quick Load');
+    // the dial is two levels deep, and the strip says so: up/down steps between the categories on
+    // the rim, left/right along the one you are in. Without this the arrow keys read as a mystery.
+    keyHint('↑↓', 'Category');
+    keyHint('←→', 'Item');
     foot.appendChild(keysLine);
     const version = el('p', 'dp-etch dp-bar--end');
     version.dataset.role = 'version';

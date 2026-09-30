@@ -50,15 +50,58 @@ const CSS = `
 .orr-arcrail-host .dp-lit__item[data-awake][aria-disabled="true"] { color:rgb(232 226 212 / .7) !important; }
 .orr-arcrail-host .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important;
   text-shadow:0 0 22px rgb(255 80 56 / .36), 0 1px 0 rgb(0 0 0 / .6) !important; }
-/* a grouped dial: the group's name is a legend on its stop's line, quiet caps ahead of its verbs */
-.orr-svg text.orr-arcrail__legend { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-size: 12px; font-variation-settings:"wght" 600, "wdth" 112;
-  letter-spacing:.22em; fill:rgb(232 226 212 / .56); dominant-baseline:auto; }
+/* ── THE CATEGORY AND ITS VERBS (a grouped dial: pause) ──────────────────────────────────────
+   A grouped row is a CATEGORY and the words it owns. The category is the HEAD: the largest quiet
+   type on the dial, the brightest bone at rest, a hairline rule running out over its own row, and
+   the thing the needle's stop names. Its verbs are the small print under it, a step down in size,
+   weight and light. The head's size is written from the dial's own measured row pitch (build() sets
+   --orr-head), so the hierarchy is the same grammar at any window height. */
+.orr-svg text.orr-arcrail__legend { font-family:var(--dp-face-display, "Archivo"), sans-serif;
+  font-size:var(--orr-head, 12px); font-variation-settings:"wght" 700, "wdth" 106;
+  letter-spacing:.28em; fill:rgb(232 226 212 / .86); dominant-baseline:auto; transition:fill .18s linear; }
 /* the emblem's lettering: its name round the rim, quiet wide capitals */
 .orr-svg .orr-arcrail__lettering, .orr-svg .orr-arcrail__lettering text { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-variation-settings:"wght" 600, "wdth" 112;
   letter-spacing:.3em; fill:rgb(232 226 212 / .58); }
-.orr-svg text.orr-arcrail__legend.is-lit { fill:rgb(246 241 230 / .92); }
-/* a grouped row: the awake word lights without growing, so it never eats the gap to its neighbour */
+.orr-svg .orr-arcrail__head.is-lit text.orr-arcrail__legend { fill:rgb(250 247 239 / .99); }
+/* the rule under a head: a hairline of light that fades as it runs out over the held world, and
+   lights amber on the row the Hand is stopped on. It is the only thing in the column that says
+   "these words belong together", and it never sits behind a word. */
+.orr-svg .orr-arcrail__rule { fill:none; stroke-width:1.25; stroke-linecap:round; pointer-events:none;
+  transition:stroke-width .18s linear; }
+.orr-svg .orr-arcrail__head.is-lit .orr-arcrail__rule { stroke-width:1.9; }
+/* the head is a control, not a caption: its own band (name, rule, and the air between) takes the
+   pointer, so reaching for a category lights its whole run of verbs and swings the Hand to it. */
+.orr-svg .orr-arcrail__head { pointer-events:auto; cursor:pointer; }
+.orr-svg .orr-arcrail__headhit { fill:transparent; }
+/* the arrival: each category and its rule draw themselves down the dial, then its verbs rise under
+   them — a head always leads its own words by a beat, so the hierarchy is legible while it arrives */
+.orr-arcrail-host--arriving.orr-arcrail-host--grouped .orr-arcrail__head { animation:orr-head-in 460ms var(--dp-ease-out, cubic-bezier(.16,1,.3,1)) both; animation-delay:var(--orr-delay, 0ms); }
+.orr-arcrail-host--arriving.orr-arcrail-host--grouped .orr-arcrail__rule { stroke-dasharray:1 1; stroke-dashoffset:1;
+  animation:orr-rule-draw 560ms var(--dp-ease-out, cubic-bezier(.16,1,.3,1)) forwards; animation-delay:var(--orr-delay, 0ms); }
+.orr-arcrail-host--arriving.orr-arcrail-host--grouped > .orr-arcrail__list > li { animation:orr-row-in 400ms var(--dp-ease-out, cubic-bezier(.16,1,.3,1)) both;
+  animation-delay:calc(var(--orr-i, 0) * 42ms + 170ms); }
+@keyframes orr-head-in { from { opacity:0; } to { opacity:1; } }
+@keyframes orr-rule-draw { to { stroke-dashoffset:0; } }
+@keyframes orr-row-in { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:none; } }
+html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__head,
+html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule,
+html.sf-reduce-motion .orr-arcrail-host--arriving > .orr-arcrail__list > li { animation:none; }
+html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-dashoffset:0; }
+/* a grouped row: the awake word lights and takes its heavier instance without GROWING into the gap
+   to its neighbour; the letterform snap is part of the word's own light, not a second indicator. */
 .orr-arcrail-host--grouped .dp-lit__item[data-awake] { transform:none !important; }
+.orr-arcrail-host--grouped .dp-lit__item[data-awake]:not(.dp-lit__item--primary) { font-variation-settings:"wght" 740, "wdth" 96 !important; }
+/* the awake word keeps its lamp AND the halo of dark it needs to read over the held world: the
+   grouped halo is a later !important rule, so without this the one lit word loses its light. */
+.orr-arcrail-host--grouped .dp-lit__item[data-awake] { text-shadow:0 0 1px rgb(255 226 178 / .55), 0 0 11px rgb(255 217 140 / .26),
+  0 0 8px rgb(4 6 9 / .95), 0 0 20px rgb(4 6 9 / .85) !important; }
+.orr-arcrail-host--grouped .dp-lit__item--primary[data-awake] { text-shadow:0 0 2px rgb(255 226 178 / .6), 0 0 20px rgb(255 217 140 / .34),
+  0 0 10px rgb(4 6 9 / .95), 0 0 26px rgb(4 6 9 / .85) !important; }
+/* DANGER is the same lamp driven red, and it outranks the quiet tier's tint like everything else. */
+.orr-arcrail-host--grouped .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important; }
+/* the stacked form: the head is a line of its own above its verbs, so a verb's box is its type and
+   the air the seat gave it, nothing more. */
+.orr-arcrail-host--stacked .dp-lit__item { padding:1px 0 !important; }
 /* the extra fine row (the title's ARCHIVE and SANDBOX) is one line on its stop, one tick for both */
 .orr-arcrail-host > .orr-arcrail__extra { display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important; align-items:baseline; gap:22px !important; }
 .orr-arcrail-host > .orr-arcrail__extra > li { position:static !important; margin:0 !important; flex:0 0 auto !important; width:auto !important; }
@@ -66,13 +109,26 @@ const CSS = `
 /* a grouped row runs out over the held world: each word carries its own halo of dark (light, not a box) */
 .orr-arcrail-host--grouped .orr-arcrail__glow { background:radial-gradient(closest-side, rgb(4 6 9 / .66), rgb(4 6 9 / .6) 45%, rgb(4 6 9 / .5) 60%, rgb(4 6 9 / .18) 82%, transparent); }
 .orr-arcrail-host--grouped .dp-lit__item { text-shadow:0 0 8px rgb(4 6 9 / .95), 0 0 18px rgb(4 6 9 / .85), 0 0 32px rgb(4 6 9 / .6) !important; }
-.orr-arcrail-host--grouped .orr-svg text.orr-arcrail__legend { paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:5px; stroke-linejoin:round; }
+.orr-arcrail-host--grouped .orr-svg text.orr-arcrail__legend { paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:4px; stroke-linejoin:round; }
 /* a dense dial (pause): smaller words, the primary a size up as the one lamp key */
 .orr-arcrail-host--dense .dp-lit__item { font-size:clamp(15px, 1.95vh, 22px) !important; letter-spacing:.09em !important; }
 .orr-arcrail-host--dense .dp-lit__item--primary { font-size:clamp(28px, 3.6vh, 42px) !important; letter-spacing:.05em !important; }
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item { font-size:clamp(12px, 1.45vh, 16px) !important; letter-spacing:.14em !important;
   color:rgb(232 226 212 / .62) !important; }
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item[data-awake] { color:rgb(246 241 230) !important; }
+/* …and then the hierarchy: a grouped dial's verbs are the small print under their category's head.
+   Written after the dense sizes (and never on the primary, which stays the one lamp key) so the
+   column reads as a handful of sections instead of one undifferentiated list of words. The tint
+   runs through --orr-word so the hover lift (one property on the <li>, no specificity fight) is the
+   same lever the quiet tiers are set with. */
+.orr-arcrail-host--grouped .dp-lit__item:not(.dp-lit__item--primary) { font-size:var(--orr-verb, 15px) !important;
+  letter-spacing:.13em !important; font-variation-settings:"wght" 640, "wdth" 88 !important;
+  color:rgb(232 226 212 / var(--orr-word, .74)) !important; }
+.orr-arcrail-host--grouped li[data-tier="low"] .dp-lit__item:not(.dp-lit__item--primary) { font-size:var(--orr-verb-low, 12px) !important;
+  letter-spacing:.2em !important; font-variation-settings:"wght" 600, "wdth" 82 !important;
+  color:rgb(232 226 212 / var(--orr-word, .62)) !important; }
+.orr-arcrail-host--grouped li[data-head-hover] { --orr-word:.95; }
+.orr-arcrail-host--grouped .dp-lit__item[data-awake] { color:rgb(247 243 234) !important; }
 .orr-arcrail-host .dp-kbd { display:none !important; }
 .orr-svg text.orr-arcrail__cluster { font-size: 12px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
 .orr-svg .orr-arcrail__sector text { letter-spacing:.3em; fill:rgb(232 226 212 / .72); font-weight:700; }
@@ -90,6 +146,9 @@ const CSS = `
 @media (forced-colors: active) {
   .orr-arcrail-host [data-dp-focus]::before, .orr-arcrail-host .dp-lit__item:focus-visible::before {
     display:block !important; content:""; position:absolute; left:-10px; top:14%; bottom:14%; width:2px; background:CanvasText; }
+  /* a gradient paint server has no forced-colors equivalent, so a rule written as one would simply
+     not be drawn and the head would lose the line that ties its verbs to it: give it CanvasText */
+  .orr-svg .orr-arcrail__rule { stroke:CanvasText !important; stroke-width:2px; }
 }
 html.sf-reduce-motion .orr-arcrail__trail { display:none; }
 .orr-arcrail { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
@@ -129,6 +188,7 @@ function injectStyle(doc = globalThis.document) {
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ROW_GAP = 26;
 let clearSeq = 0;
+let ruleSeq = 0;
 
 /**
  * The dial's geometry for a host of W x H holding `count` verbs. Pure, so it is testable: the pivot
@@ -241,9 +301,19 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const homeNext = host.nextSibling;
   if (frame && host.parentNode !== frame) frame.appendChild(host);
   host.classList.add('orr-arcrail-host');
+  // the arrival runs on the HOST as well as the drawn face: the category heads, their rules and the
+  // verbs under them come up in build order, once, and never again on a resize.
+  host.classList.add('orr-arcrail-host--arriving');
   if (dense) host.classList.add('orr-arcrail-host--dense');
   if (grouped) host.classList.add('orr-arcrail-host--grouped');
   list.classList.add('orr-arcrail__list');
+  // the category heads drawn by each build, each with its row index: the Hand lights one, the pointer
+  // lifts one, and a resize replaces the list. The rule gradients are per rail, so two dials can
+  // never claim one another's id.
+  let heads = [];
+  let headSize = 20;
+  const ruleRest = `orr-rule-rest-${++ruleSeq}`;
+  const ruleLit = `orr-rule-lit-${ruleSeq}`;
 
   const root = doc.createElement('div');
   root.className = 'orr-arcrail is-arriving';
@@ -440,29 +510,107 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     beadBloom = svg('circle', { r: 8, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
     bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });
     layer.append(trailHost, tail, bladeBloom, blade, core, hub, beadBloom, bead);
-    // seat each row on its tick: the first verb starts just past the tick, its first line centred on
-    // it, and a row's further verbs follow along the line; a group's name is engraved over the row
+    // the rules fade along their own length rather than sitting on the world as a drawn line: one
+    // gradient in bone for the rest state, the same shape in amber for the row the Hand is on. Each
+    // head owns its pair, in USER space — a hairline is a horizontal path, and a horizontal path has
+    // no height, so an objectBoundingBox gradient would never render it at all.
+    const mkRule = (id, x0, x1, from) => {
+      const g = svg('linearGradient', { id, gradientUnits: 'userSpaceOnUse', x1: x0.toFixed(1), y1: '0', x2: x1.toFixed(1), y2: '0' });
+      g.append(
+        svg('stop', { offset: '0', style: `stop-color:${from}`, 'stop-opacity': '.85' }),
+        svg('stop', { offset: '.6', style: `stop-color:${from}`, 'stop-opacity': '.3' }),
+        svg('stop', { offset: '1', style: `stop-color:${from}`, 'stop-opacity': '0' }),
+      );
+      return g;
+    };
+    const ruleDefs = grouped ? svg('defs') : null;
+    if (ruleDefs) layer.appendChild(ruleDefs);
+    // ── seat each row ────────────────────────────────────────────────────────────────────────
+    // One row per group, seated on its tick. A grouped row is a CATEGORY and the words it owns:
+    // the category is a HEAD set above its verbs on its own line, ruled off from them, and its
+    // verbs are listed one step in below it. The head is a hit band (its name, its rule and the air
+    // between) that focuses the row's first verb, so a category is a place you can go, not a
+    // caption. A head is centred over the tick, so the Hand, the bead and the leader all point at
+    // the thing they name.
+    //
+    // The type is written from the dial's own measured row pitch, so the head outranks its verbs by
+    // the same grammar at any window height: a tall window gets a tall head, a short one a small
+    // head over 12 px verbs, and the two are never the same size.
+    const pitch = all.length > 1
+      ? Math.min(...all.slice(1).map((_, k) => Math.abs(geo.anchors[k + 1].y - geo.anchors[k].y)))
+      : Math.max(30, H * 0.055);
+    if (grouped) {
+      const mid = clamp(pitch * 0.3, 12, 19);
+      const low = clamp(pitch * 0.235, 12, 15.5);
+      // the head may be as tall as the row can hold above its verbs: cap ascent, a rule's air, the
+      // verbs' own line and a row's worth of air between this head and the one above it
+      headSize = Math.min(26, Math.max(12.5, (pitch - 13 - (mid + 2)) / 0.72));
+      host.style.setProperty('--orr-head', `${headSize.toFixed(1)}px`);
+      host.style.setProperty('--orr-verb', `${mid.toFixed(1)}px`);
+      host.style.setProperty('--orr-verb-low', `${low.toFixed(1)}px`);
+      host.classList.toggle('orr-arcrail-host--stacked', headSize >= 13);
+    } else {
+      host.classList.remove('orr-arcrail-host--stacked');
+    }
+    heads = [];
     all.forEach((row, i) => {
       const { x, y } = geo.anchors[i];
       let cursor = x + 6;
       let rowTop = y;
-      // grouped: the group's name is the row's legend, on the tick's own line, and its verbs follow it
+      let head = null;
+      let record = null;
+      let headW = 0;
       if (grouped && row.group) {
-        const legend = svg('text', { x: (x + 8).toFixed(1), y: (y + 4).toFixed(1), class: 'orr-arcrail__legend', 'data-row': String(i) });
+        head = svg('g', { class: 'orr-arcrail__head', 'data-row': String(i) });
+        head.style.setProperty('--orr-delay', `${100 + i * 42}ms`);
+        const legend = svg('text', { x: (x + 8).toFixed(1), y: (y - 7).toFixed(1), class: 'orr-arcrail__legend' });
         legend.textContent = String(row.group).toUpperCase();
-        layer.appendChild(legend);
-        let lw = 0; try { lw = legend.getComputedTextLength(); } catch (_) { lw = 0; }
-        cursor = x + 8 + (lw > 0 ? lw : String(row.group).length * 9) + 20;
+        head.appendChild(legend);
+        layer.appendChild(head);
+        try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
+        if (!(headW > 0)) headW = String(row.group).length * headSize * 0.86;
+        record = { node: head, row: i, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
+        cursor = x + 20;                      // its verbs are listed one step IN, under the head
       }
-      row.items.forEach((li) => {
+      let rowH = 0;
+      row.items.forEach((li, k) => {
         const button = li.querySelector('button') || li;
         const bh = button.offsetHeight || 40;
+        // under a head, the verbs sit on their own line, below the rule the head ruled off
+        const ly = head ? y + 13 : y;
         // left/top only: a screen's own arrival (kit stamp) owns the item's transform
         li.style.left = `${Math.round(cursor)}px`;
-        li.style.top = `${Math.round(y - bh / 2)}px`;
-        rowTop = Math.min(rowTop, y - bh / 2);
+        li.style.top = `${Math.round(ly - bh / 2)}px`;
+        li.dataset.row = String(i);
+        if (k === 0) li.style.setProperty('--orr-i', String(i));   // the arrival, in build order
+        rowH = Math.max(rowH, bh);
+        rowTop = Math.min(rowTop, ly - bh / 2);
         cursor += (li.offsetWidth || 120) + (grouped ? 22 : ROW_GAP);
       });
+      if (head) {
+        // the rule: out from the head's end, over the width of the verbs it owns, fading as it runs
+        // out over the held world. Its extent is the row's own, so it groups exactly these words.
+        const rx0 = x + 18 + headW;
+        const rx1 = Math.max(rx0 + 40, cursor - 22);
+        ruleDefs.append(
+          mkRule(record.rest, rx0, rx1, 'rgb(232 226 212)'),
+          mkRule(record.lit, rx0, rx1, 'var(--dp-hand, #f2b950)'),
+        );
+        head.appendChild(svg('path', {
+          class: 'orr-arcrail__rule',
+          d: `M ${rx0.toFixed(1)} ${(y + 1).toFixed(1)} L ${rx1.toFixed(1)} ${(y + 1).toFixed(1)}`,
+          'stroke-width': 1.25, pathLength: 1, stroke: `url(#${record.rest})`,
+        }));
+        // …and the head's own band: name, rule and the air between, never over its verbs' boxes, so
+        // the category is a target that focuses the row's first verb instead of a caption to read.
+        const bandTop = y - headSize - 8;
+        const bandBottom = Math.max(y - rowH / 2 + 3, y - 2);
+        head.appendChild(svg('rect', {
+          class: 'orr-arcrail__headhit', x: (x + 2).toFixed(1), y: bandTop.toFixed(1),
+          width: (rx1 + 12 - x).toFixed(1), height: Math.max(14, bandBottom - bandTop).toFixed(1), rx: 3,
+        }));
+        heads.push(record);
+      }
       if (row.group && !grouped) {
         const t = svg('text', { x: (x + 8).toFixed(1), y: (rowTop - 2).toFixed(1), 'font-size': 9, class: 'orr-arcrail__group' });
         t.textContent = String(row.group).toUpperCase();
@@ -482,8 +630,16 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   }
 
   function lightTick(index) {
-    // a grouped dial: the row the Hand stops on lights its legend, so the row itself says which it is
-    if (grouped) for (const lg of layer.querySelectorAll('text.orr-arcrail__legend')) lg.classList.toggle('is-lit', Number(lg.getAttribute('data-row')) === index);
+    // a grouped dial: the row the Hand stops on is the CATEGORY it stopped at, so that category's
+    // head goes bright and its rule lights amber — the row says which one it is before you read it
+    if (grouped) {
+      for (const head of heads) {
+        const lit = head.row === index;
+        head.node.classList.toggle('is-lit', lit);
+        const rule = head.node.querySelector('.orr-arcrail__rule');
+        if (rule) rule.setAttribute('stroke', `url(#${lit ? head.lit : head.rest})`);
+      }
+    }
     ticks.forEach((t, i) => {
       t.setAttribute('class', `orr-core ${i === index ? 'orr-hand' : 'orr-hi'} orr-arcrail__tick`);
       t.setAttribute('opacity', i === index ? '1' : '.5');
@@ -531,6 +687,48 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   };
 
   const indexOf = (node) => rows().findIndex((row) => row.items.some((li) => li.contains(node)));
+  // ── the CATEGORY is a control ────────────────────────────────────────────────────────────
+  // A head (its name, its rule, the air between) is its own target on a grouped dial. Reaching for
+  // a category lifts its whole run of verbs, swings the Hand to its stop and focuses that row's
+  // first verb — the same place ArrowDown would take you — so the hierarchy is something you move
+  // through, not something you read past. Nothing is added to the list: it is the same buttons.
+  const rowButtons = (row) => row.items.map((li) => li.querySelector('button') || li);
+  const headOf = (node) => (node && typeof node.closest === 'function' ? node.closest('.orr-arcrail__head') : null);
+  const liftRow = (index) => {
+    for (const row of rows()) for (const li of row.items) {
+      if (index >= 0 && li.dataset.row === String(index)) li.setAttribute('data-head-hover', '');
+      else li.removeAttribute('data-head-hover');
+    }
+  };
+  const onHeadOver = (e) => {
+    const head = headOf(e.target);
+    if (!head) return;
+    const i = Number(head.getAttribute('data-row'));
+    const row = rows()[i];
+    if (!row) return;
+    liftRow(i);
+    const first = rowButtons(row)[0];
+    // hover takes focus here too, so the mouse and the keyboard still share one awake word
+    if (first && doc.activeElement !== first) { try { first.focus({ preventScroll: true }); } catch (_) { first.focus(); } }
+    pointAt(i);
+  };
+  const onHeadOut = (e) => {
+    const head = headOf(e.target);
+    if (!head) return;
+    if (headOf(e.relatedTarget) === head) return;
+    // the lift belongs to the row the pointer is really over: a verb inside it, or nothing
+    const active = doc.activeElement;
+    liftRow(active ? indexOf(active) : -1);
+  };
+  const onHeadDown = (e) => {
+    const head = headOf(e.target);
+    if (!head) return;
+    const row = rows()[Number(head.getAttribute('data-row'))];
+    const first = row && rowButtons(row)[0];
+    if (!first) return;
+    e.preventDefault();
+    if (doc.activeElement !== first) { try { first.focus({ preventScroll: true }); } catch (_) { first.focus(); } }
+  };
   const restIndex = () => {
     const all = rows();
     const current = all.findIndex((row) => row.items.some((li) => li.querySelector('[aria-current="true"], .dp-lit__item--primary')));
@@ -542,33 +740,45 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     if (i < 0 || !b) return;
     // hover takes focus, so the mouse and the keyboard share the one awake word
     if (doc.activeElement !== b) { try { b.focus({ preventScroll: true }); } catch (_) {} }
+    liftRow(i);
     pointAt(i);
     wake(b);
   };
-  const onFocus = (e) => { const i = indexOf(e.target); if (i >= 0) { pointAt(i); wake(buttonOf(e.target)); } };
+  const onFocus = (e) => { const i = indexOf(e.target); if (i >= 0) { liftRow(i); pointAt(i); wake(buttonOf(e.target)); } };
   const onLeave = () => {
     const active = doc.activeElement;
     const i = active ? indexOf(active) : -1;
+    liftRow(i);
     if (i >= 0) { pointAt(i); wake(buttonOf(active)); return; }
     pointAt(restIndex());
     wake(restButton());
   };
-  // a grouped dial is a grid of stops: up/down step between rows (to the row's first verb), left/right
-  // along a row and on into the next. Capture phase, so the list's one-dimensional roving never sees it.
+  // a grouped dial is a grid of stops: up/down step between CATEGORIES (to the row's first verb),
+  // left/right along one, Home/End to the ends. Capture phase, so the list's one-dimensional roving
+  // never sees it.
   const onKey = (e) => {
-    if (!grouped || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    if (!grouped || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     const active = doc.activeElement;
     const all = rows();
     const ri0 = active ? indexOf(active) : -1;
     if (ri0 < 0) return;
-    const buttons = (row) => row.items.map((li) => li.querySelector('button') || li);
+    const buttons = rowButtons;
     const flat = all.flatMap(buttons);
     const at = flat.indexOf(buttonOf(active) || active);
     let target = null;
-    if (e.key === 'ArrowDown' && ri0 < all.length - 1) target = buttons(all[ri0 + 1])[0];
+    if (e.key === 'Home') target = buttons(all[0])[0];
+    else if (e.key === 'End') target = buttons(all[all.length - 1])[0];
+    else if (e.key === 'ArrowDown' && ri0 < all.length - 1) target = buttons(all[ri0 + 1])[0];
     else if (e.key === 'ArrowUp' && ri0 > 0) target = buttons(all[ri0 - 1])[0];
     else if (e.key === 'ArrowRight' && at >= 0 && at < flat.length - 1) target = flat[at + 1];
     else if (e.key === 'ArrowLeft' && at > 0) target = flat[at - 1];
+    // an edge of the grid is a held key, not a dead one: the needle keeps turning the short way
+    // from the row the dial would have wrapped to, so Up at the top walks back down the list.
+    if (!target) {
+      const wrapped = e.key === 'ArrowDown' ? all[0] : e.key === 'ArrowUp' ? all[all.length - 1] : null;
+      target = wrapped ? buttons(wrapped)[0] : null;
+      if (target) e.preventDefault();
+    }
     e.preventDefault();
     e.stopPropagation();
     if (target && typeof target.focus === 'function') target.focus();
@@ -638,6 +848,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   host.addEventListener('focusin', onFocus);
   host.addEventListener('pointerleave', onLeave);
   host.addEventListener('focusout', () => setTimeout(onLeave, 0));
+  if (grouped && typeof layer.addEventListener === 'function') {
+    // the heads hear the pointer on the layer they are drawn in, so a category is a target
+    layer.addEventListener('pointerover', onHeadOver);
+    layer.addEventListener('pointerout', onHeadOut);
+    layer.addEventListener('pointerdown', onHeadDown);
+  }
 
   let ro = null;
   if (typeof ResizeObserver === 'function') {
@@ -651,7 +867,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const relayout = () => { if (root.isConnected) { build(); paintHand(handSpring.value); } };
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(relayout));
   if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(relayout, () => {});
-  const arrivalTimer = setTimeout(() => root.classList.remove('is-arriving'), 1500);
+  const arrivalTimer = setTimeout(() => {
+    root.classList.remove('is-arriving');
+    // the heads, their rules and the verbs' rise are a first-open arrival: they must never replay
+    // when the rail re-seats itself on a resize or a late font
+    host.classList.remove('orr-arcrail-host--arriving');
+  }, 1500);
 
   return {
     el: root,
@@ -667,16 +888,28 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         freeTarget.removeEventListener('pointermove', onFreeMove);
         freeTarget.removeEventListener('pointerleave', onFreeLeave);
       }
+      if (grouped && typeof layer.removeEventListener === 'function') {
+        layer.removeEventListener('pointerover', onHeadOver);
+        layer.removeEventListener('pointerout', onHeadOut);
+        layer.removeEventListener('pointerdown', onHeadDown);
+      }
       host.removeEventListener('keydown', onKey, true);
       host.removeEventListener('pointerover', onOver);
       host.removeEventListener('focusin', onFocus);
       host.removeEventListener('pointerleave', onLeave);
       root.remove();
       wake(null);
-      host.classList.remove('orr-arcrail-host', 'orr-arcrail-host--dense', 'orr-arcrail-host--grouped');
+      heads = [];
+      host.classList.remove('orr-arcrail-host', 'orr-arcrail-host--dense', 'orr-arcrail-host--grouped',
+        'orr-arcrail-host--stacked', 'orr-arcrail-host--arriving');
       if (frame && home && host.parentNode === frame) home.insertBefore(host, homeNext);
       list.classList.remove('orr-arcrail__list');
-      for (const li of items()) { li.style.left = ''; li.style.top = ''; }
+      for (const li of items()) {
+        li.style.left = ''; li.style.top = '';
+        li.style.removeProperty('--orr-i');
+        li.removeAttribute('data-row');
+        li.removeAttribute('data-head-hover');
+      }
     },
   };
 }
