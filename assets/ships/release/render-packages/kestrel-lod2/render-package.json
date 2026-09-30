@@ -3167,7 +3167,6 @@
         "role": "signal"
       }
     ],
-    "motionBank": null,
     "nodeCount": 35,
     "primitives": [
       {
@@ -3747,7 +3746,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod2.glb"
   },
-  "runtimeHash": "725ff02df869066f37e51381826c698eafcc9205514c66e6cbf0c1a9cd3da959",
+  "runtimeHash": "ab8839879033b8919d4eb88eedc0e32f102be100be30d8e7548914c289789260",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
