@@ -27,7 +27,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 |---|---|---|---|---|---|
 | `input` | `systems/input.js` | 1843 | 1 | 0 | `input:worldGestureCancelled`×1 |
 | `autoTargetAssist` | `systems/autoTargetAssist.js` | 242 | 0 | 4 | — |
-| `flybyFocus` | `systems/flybyFocus.js` | 523 | 4 | 2 | `flybyFocus:end`×1, `flybyFocus:start`×1, `camera:shake`×1 |
+| `flybyFocus` | `systems/flybyFocus.js` | 515 | 4 | 1 | `flybyFocus:end`×1, `flybyFocus:start`×1, `camera:shake`×1 |
 | `bulletTime` | `systems/bulletTime.js` | 413 | 6 | 2 | `audio:cue`×3, `bulletTime:start`×1, `bulletTime:end`×1 |
 | `cloak` | `systems/cloak.js` | 357 | 5 | 6 | `audio:cue`×2, `cloak:engaged`×1, `cloak:dropped`×1 |
 | `lawSecurity` | `systems/lawSecurity.js` | 5039 | 0 | 21 | — |
@@ -55,7 +55,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `collisionConsequences` | `systems/collisionConsequences.js` | 740 | 2 | 6 | `combat:collisionConsequence`×1, `combat:collisionDebris`×1 |
 | `stuntGrammar` | `systems/stuntGrammar.js` | 217 | 7 | 0 | `stunt:styleBanked`×1, `faction:repDelta`×1, `stunt:salvageRights`×1 |
 | `weapons` | `systems/weapons.js` | 2821 | 21 | 0 | `combat:fire`×4, `presentation:vfxCue`×3, `weapons:vent`×2 |
-| `countermeasures` | `systems/countermeasures.js` | 546 | 6 | 3 | `audio:cue`×2, `pds:intercept`×1, `presentation:vfxCue`×1 |
+| `countermeasures` | `systems/countermeasures.js` | 549 | 5 | 3 | `audio:cue`×2, `pds:intercept`×1, `countermeasure:deployed`×1 |
 | `bombs` | `systems/bombs.js` | 1314 | 31 | 14 | `bombs:denied`×8, `economy:chargeCredits`×4, `bombs:stockChanged`×3 |
 | `emergentPrimitives` | `systems/emergentPrimitives.js` | 1151 | 2 | 0 | `emergent:audio`×1, `emergent:contact`×1 |
 | `impulseCharges` | `systems/impulseCharges.js` | 1319 | 23 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
@@ -69,7 +69,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `fields` | `systems/fields.js` | 2258 | 30 | 13 | `fields:deployed`×6, `audio:cue`×4, `fields:ended`×4 |
 | `planetRuntime` | `systems/planetRuntime.js` | 603 | 10 | 3 | `planet:plungeStage`×2, `planet:registered`×1, `planet:unregistered`×1 |
 | `physics` | `core/physics.js` | 1843 | 9 | 1 | `projectile:hit`×2, `dock:range`×2, `gate:range`×2 |
-| `combat` | `systems/combat.js` | 1314 | 21 | 9 | `camera:shake`×4, `player:death`×3, `economy:grantCredits`×3 |
+| `combat` | `systems/combat.js` | 1315 | 21 | 9 | `camera:shake`×4, `player:death`×3, `economy:grantCredits`×3 |
 | `combatOutcome` | `systems/combatOutcome.js` | 346 | 2 | 17 | `combat:outcome`×1, `combat:outcomeConsequence`×1 |
 | `aftermathWrecks` | `systems/aftermathWrecks.js` | 2489 | 16 | 19 | `aftermath:causeRecorded`×1, `aftermathWreck:recorded`×1, `news:headline`×1 |
 | `titles` | `systems/titles.js` | 878 | 0 | 9 | — |
@@ -83,7 +83,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `masslineSnares` | `systems/masslineSnares.js` | 682 | 7 | 5 | `massline:snareArmed`×1, `massline:snareDeployed`×1, `ai:telegraph`×1 |
 | `masslineThrow` | `systems/masslineThrow.js` | 811 | 9 | 2 | `audio:cue`×3, `massline:releaseCancelled`×1, `massline:releaseWindow`×1 |
 | `masslineImpactDamage` | `systems/masslineImpactDamage.js` | 135 | 0 | 3 | — |
-| `lootShards` | `systems/lootShards.js` | 1195 | 8 | 5 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
+| `lootShards` | `systems/lootShards.js` | 1199 | 8 | 5 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
 | `terrainAnchors` | `systems/terrainAnchors.js` | 400 | 0 | 6 | — |
 | `jettisonImpulse` | `systems/jettisonImpulse.js` | 95 | 1 | 1 | `audio:cue`×1 |
 | `mining` | `systems/mining.js` | 3013 | 50 | 10 | `beam:denied`×5, `mining:yield`×5, `mining:start`×3 |
@@ -95,7 +95,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `asteroidFormations` | `systems/asteroidFormations.js` | 311 | 1 | 3 | `formation:discovered`×1 |
 | `wingmen` | `systems/wingmen.js` | 598 | 2 | 4 | `combat:hitAsset`×1, `wingOrder:converted`×1 |
 | `crafting` | `systems/crafting.js` | 350 | 7 | 0 | `craft:queueChanged`×3, `craft:complete`×2, `audio:cue`×2 |
-| `economy` | `systems/economy.js` | 3898 | 26 | 30 | `service:completed`×3, `ecology:factionOutcome`×2, `economy:tradeFailed`×2 |
+| `economy` | `systems/economy.js` | 3894 | 26 | 29 | `service:completed`×3, `ecology:factionOutcome`×2, `economy:tradeFailed`×2 |
 | `intervention` | `systems/intervention.js` | 540 | 5 | 2 | `intervention:logged`×1, `camera:shake`×1, `intervention:available`×1 |
 | `world` | `systems/world.js` | 6596 | 74 | 51 | `poi:discovered`×5, `discovery:plateUnlocked`×4, `world:residency`×3 |
 | `heistFacilities` | `systems/heistFacilities.js` | 1908 | 13 | 6 | `heist:launchScheduleReceipt`×4, `heist:launchCue`×1, `heist:capsuleLaunched`×1 |
@@ -134,7 +134,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `heat` | `systems/heat.js` | 727 | 1 | 10 | `heat:changed`×1 |
 | `traffic` | `systems/traffic.js` | 11050 | 33 | 28 | `field:richSeamMissed`×2, `news:publish`×2, `comms:message`×2 |
 | `drill` | `systems/drill.js` | 1460 | 23 | 0 | `drill:warn`×9, `drill:rockDepleted`×3, `drill:yield`×1 |
-| `claims` | `systems/claims.js` | 2567 | 46 | 12 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×3 |
+| `claims` | `systems/claims.js` | 2563 | 46 | 11 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×3 |
 | `chronicler` | `systems/chronicler.js` | 350 | 0 | 0 | — |
 | `bandRadio` | `systems/bandRadio.js` | 688 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
 | `onboarding` | `systems/onboarding.js` | 3105 | 19 | 68 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
@@ -148,7 +148,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `noFireAdvisory` | `data/stationBubbles.js` | 250 | 0 | 1 | — |
 | `moralTrapSystem` | *(not found)* | — | — | — | — |
 | `voiceArbiter` | `ui/voiceArbiter.js` | 452 | 4 | 2 | `voice:clear`×2, `voice:surface`×2 |
-| `save` | `save/saveSystem.js` | 4833 | 37 | 26 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
+| `save` | `save/saveSystem.js` | 4834 | 37 | 26 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
 
 ## Render-phase order (every animation frame)
 

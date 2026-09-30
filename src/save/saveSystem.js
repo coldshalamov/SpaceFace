@@ -4790,6 +4790,7 @@ function profileSettingsSnapshot(settings) {
       controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
       masslineReleaseAssist: s.gameplay && s.gameplay.masslineReleaseAssist,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
+      velocityVectoring: s.gameplay?.velocityVectoring !== false,
     },
   };
 }

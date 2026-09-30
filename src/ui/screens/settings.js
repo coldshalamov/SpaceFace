@@ -485,6 +485,8 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'orbitAssistStrength', v));
+      rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
+      build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       if (massline2Flag('enabled')) {
         rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
           ['arm', 'Auto-release on solution (default)'],
