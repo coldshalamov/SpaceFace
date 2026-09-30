@@ -42,22 +42,101 @@
 /** Name of the clock uniform both shield materials must declare for the shell to be alive. */
 export const SHIELD_SHELL_TIME_UNIFORM = 'uShellTime';
 
-/** Uniform entry to merge into a shield material's `uniforms`. One float, no texture, no target. */
+export const SHIELD_SHELL_FRAME_UNIFORMS = Object.freeze([
+  'uShellFrameX', 'uShellFrameY', 'uShellFrameZ',
+]);
+
+/**
+ * Uniform bundle shared by pooled and fallback shield materials.
+ *
+ * The three frame vectors are a precomputed rotation basis. Precession used to be evaluated with
+ * several sin/cos calls in every shield fragment; computing it once here per presentation frame
+ * keeps the same motion while making the transient much cheaper on integrated GPUs.
+ */
 export function shieldShellUniforms() {
-  return { [SHIELD_SHELL_TIME_UNIFORM]: { value: 0 } };
+  return {
+    [SHIELD_SHELL_TIME_UNIFORM]: { value: 0 },
+    uShellFrameX: { value: new Float32Array([1, 0, 0]) },
+    uShellFrameY: { value: new Float32Array([0, 1, 0]) },
+    uShellFrameZ: { value: new Float32Array([0, 0, 1]) },
+  };
+}
+
+const SF_NUTATION_AXIS_X = 0.30941267335188954;
+const SF_NUTATION_AXIS_Y = 0.8883138041392957;
+const SF_NUTATION_AXIS_Z = 0.3393558352891692;
+
+// Every shield sees the same simulation timestamp. Cache that timestamp's frame once so a fleet
+// fight pays the trigonometry once, then each material only copies nine floats into its uniforms.
+let SF_FRAME_CACHE_CLOCK = Number.NaN;
+const SF_FRAME_CACHE_X = new Float32Array(3);
+const SF_FRAME_CACHE_Y = new Float32Array(3);
+const SF_FRAME_CACHE_Z = new Float32Array(3);
+
+function writeShieldFrameBasis(
+  target, x, y, z,
+  ax, ay, az, spinC, spinS,
+  nutC, nutS,
+) {
+  const spinDot = ax * x + ay * y + az * z;
+  const sx = x * spinC + (ay * z - az * y) * spinS + ax * spinDot * (1 - spinC);
+  const sy = y * spinC + (az * x - ax * z) * spinS + ay * spinDot * (1 - spinC);
+  const sz = z * spinC + (ax * y - ay * x) * spinS + az * spinDot * (1 - spinC);
+
+  const nutDot = SF_NUTATION_AXIS_X * sx + SF_NUTATION_AXIS_Y * sy + SF_NUTATION_AXIS_Z * sz;
+  target[0] = sx * nutC + (SF_NUTATION_AXIS_Y * sz - SF_NUTATION_AXIS_Z * sy) * nutS
+    + SF_NUTATION_AXIS_X * nutDot * (1 - nutC);
+  target[1] = sy * nutC + (SF_NUTATION_AXIS_Z * sx - SF_NUTATION_AXIS_X * sz) * nutS
+    + SF_NUTATION_AXIS_Y * nutDot * (1 - nutC);
+  target[2] = sz * nutC + (SF_NUTATION_AXIS_X * sy - SF_NUTATION_AXIS_Y * sx) * nutS
+    + SF_NUTATION_AXIS_Z * nutDot * (1 - nutC);
+}
+
+function updateShieldWorkingFrame(uniforms, clock) {
+  const frameX = uniforms && uniforms.uShellFrameX && uniforms.uShellFrameX.value;
+  const frameY = uniforms && uniforms.uShellFrameY && uniforms.uShellFrameY.value;
+  const frameZ = uniforms && uniforms.uShellFrameZ && uniforms.uShellFrameZ.value;
+  if (!frameX || !frameY || !frameZ) return;
+
+  if (clock !== SF_FRAME_CACHE_CLOCK) {
+    let ax = 0.54 + 0.16 * Math.sin(clock * 0.071);
+    let ay = 0.73 + 0.13 * Math.cos(clock * 0.053);
+    let az = 0.42 + 0.14 * Math.sin(clock * 0.061 + 1.7);
+    const invAxisLen = 1 / (Math.hypot(ax, ay, az) || 1);
+    ax *= invAxisLen; ay *= invAxisLen; az *= invAxisLen;
+
+    // ~28.5 s full turn: slow enough to feel massive, fast enough to move visibly during the
+    // roughly one-second post-hit presentation tail.
+    const spinAngle = clock * 0.22 + 0.12 * Math.sin(clock * 0.071);
+    const nutation = 0.13 * Math.sin(clock * 0.083);
+    const spinC = Math.cos(spinAngle), spinS = Math.sin(spinAngle);
+    const nutC = Math.cos(nutation), nutS = Math.sin(nutation);
+
+    writeShieldFrameBasis(SF_FRAME_CACHE_X, 1, 0, 0, ax, ay, az, spinC, spinS, nutC, nutS);
+    writeShieldFrameBasis(SF_FRAME_CACHE_Y, 0, 1, 0, ax, ay, az, spinC, spinS, nutC, nutS);
+    writeShieldFrameBasis(SF_FRAME_CACHE_Z, 0, 0, 1, ax, ay, az, spinC, spinS, nutC, nutS);
+    SF_FRAME_CACHE_CLOCK = clock;
+  }
+
+  frameX.set(SF_FRAME_CACHE_X);
+  frameY.set(SF_FRAME_CACHE_Y);
+  frameZ.set(SF_FRAME_CACHE_Z);
 }
 
 /**
  * Advance a shield material's shell clock.
  *
  * `simTime` is the simulation clock, so a paused game freezes the shell exactly like every other
- * effect; `motionReduce` holds the last value instead of advancing. Returns the value in force.
+ * effect; `motionReduce` holds both time and the precomputed rotation basis. Returns the value in force.
  */
 export function setShieldShellClock(material, simTime, motionReduce = false) {
-  const uniform = material && material.uniforms && material.uniforms[SHIELD_SHELL_TIME_UNIFORM];
+  const uniforms = material && material.uniforms;
+  const uniform = uniforms && uniforms[SHIELD_SHELL_TIME_UNIFORM];
   if (!uniform) return 0;
   if (motionReduce) return uniform.value;
-  uniform.value = Number.isFinite(simTime) ? simTime : uniform.value;
+  const next = Number.isFinite(simTime) ? simTime : uniform.value;
+  uniform.value = next;
+  updateShieldWorkingFrame(uniforms, next);
   return uniform.value;
 }
 
@@ -86,31 +165,19 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     return exp(-pow(distance / resolved, 2.0)) * width / resolved;
   }
 
-  // Rotate the structural coordinate frame, not the sphere mesh itself. That distinction keeps
-  // impact directions physically anchored while the visible membrane slowly turns under them.
-  vec3 sfShieldRotate(vec3 v, vec3 axis, float angle) {
-    float c = cos(angle);
-    float s = sin(angle);
-    return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
-  }
+  // The CPU-side clock owner supplies this orthonormal basis once per presentation frame. Doing
+  // the precession there rather than per fragment is materially cheaper when several shields light
+  // at once, while the result is identical for every fragment of the same membrane.
+  uniform vec3 uShellFrameX;
+  uniform vec3 uShellFrameY;
+  uniform vec3 uShellFrameZ;
 
-  // Slow spin with a slowly wandering axis. The precession is deterministic and simulation-clock
-  // driven: pause freezes it, reduced motion freezes it, and no random source is consumed.
   vec3 sfShieldWorkingFrame(vec3 dir) {
-    float clock = uShellTime;
-    vec3 precessAxis = normalize(vec3(
-      0.54 + 0.16 * sin(clock * 0.071),
-      0.73 + 0.13 * cos(clock * 0.053),
-      0.42 + 0.14 * sin(clock * 0.061 + 1.7)
-    ));
-    float spinAngle = clock * 0.105 + 0.09 * sin(clock * 0.071);
-    vec3 spun = sfShieldRotate(dir, precessAxis, spinAngle);
-
-    // A tiny second rotation makes the axis read as drifting rather than as a turntable locked to
-    // one diagonal. It is intentionally sub-dominant so the shield never looks frantic.
-    vec3 nutationAxis = normalize(vec3(0.31, 0.89, 0.34));
-    float nutation = 0.10 * sin(clock * 0.083);
-    return normalize(sfShieldRotate(spun, nutationAxis, nutation));
+    vec3 rotated = uShellFrameX * dir.x + uShellFrameY * dir.y + uShellFrameZ * dir.z;
+    float m2 = dot(rotated, rotated);
+    // Defensive compatibility: if a legacy/custom material declares the shared GLSL but does not
+    // supply the new frame uniforms, preserve the old identity-frame picture instead of normalizing zero.
+    return m2 > 1e-8 ? rotated * inversesqrt(m2) : normalize(dir);
   }
 
   void sfShieldAxis(vec3 dir, vec3 axis, float id, inout float best, inout float second,
@@ -214,7 +281,10 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float impactVeilWidth = 0.105 + age * 0.090;
     float resolvedVeil = max(impactVeilWidth, fwidth(d));
     float impactVeil = exp(-d / resolvedVeil) * w * (0.35 + 0.65 * w);
-    core = clamp(core + impactVeil * 0.46, 0.0, 1.4);
+    // Keep the veil out of the incandescent core. It is mostly opacity / dielectric loading, with
+    // only a modest radiance contribution; this makes the struck FACE denser without bleaching the
+    // whole patch white. The second channel already represents the extended surface response.
+    ring = clamp(ring + impactVeil * 0.52, 0.0, 1.4);
     return vec2(core, ring);
   }
 
@@ -243,8 +313,8 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float current = mix(pow(0.5 + 0.5 * cos(currentPhase), 6.0), 0.225586,
       smoothstep(0.7,3.14159,fwidth(currentPhase)));
     float breath = 0.5 + 0.5 * sin(clock * 1.7 + cell * SF_SHIELD_TAU);
-    float shellPulse = 0.88 + 0.12 * sin(clock * 1.13 + cell * SF_SHIELD_TAU * 0.37);
-    float layerPulse = 0.5 + 0.5 * sin(clock * 0.73 - cell * SF_SHIELD_TAU * 1.7);
+    float shellPulse = 0.84 + 0.16 * sin(clock * 2.15 + cell * SF_SHIELD_TAU * 0.37);
+    float layerPulse = 0.5 + 0.5 * sin(clock * 1.55 - cell * SF_SHIELD_TAU * 1.7);
 
     // Absorbed charge does not light every panel at once: each panel has its own place in the
     // sequence, so the lattice energises as a scatter across the shell and drains the same way.

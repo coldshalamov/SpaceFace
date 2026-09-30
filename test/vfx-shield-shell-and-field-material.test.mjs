@@ -23,7 +23,8 @@ import {
   addShieldContact, ageShieldContacts, clearShieldContacts, hasShieldContact, readShieldContacts,
 } from '../src/render/weapons/shieldContacts.js';
 import {
-  SHIELD_SHELL_GLSL, SHIELD_SHELL_TIME_UNIFORM, setShieldShellClock, shieldShellUniforms,
+  SHIELD_SHELL_FRAME_UNIFORMS, SHIELD_SHELL_GLSL, SHIELD_SHELL_TIME_UNIFORM,
+  setShieldShellClock, shieldShellUniforms,
 } from '../src/render/weapons/shieldShell.js';
 import { FIELD_SIGNATURES, SURFACE_MATERIALS } from '../src/render/forceLanguage/catalog.js';
 import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
@@ -138,15 +139,23 @@ test('the shell owns a clock, and it is the simulation clock', () => {
   // impact response stays in the unrotated physical direction while only the structural sampling
   // frame precesses, so hits do not skate around the hull as the shield spins.
   for (const term of [
-    'sfShieldWorkingFrame', 'precessAxis', 'shellPulse', 'layerPulse',
+    'sfShieldWorkingFrame', 'shellPulse', 'layerPulse',
     'innerFrame', 'outerFrame', 'impactVeil',
   ]) {
     assert.ok(SHIELD_SHELL_GLSL.includes(term), `shield keeps its ${term} channel`);
   }
+  assert.deepEqual(SHIELD_SHELL_FRAME_UNIFORMS, ['uShellFrameX', 'uShellFrameY', 'uShellFrameZ']);
+  for (const name of SHIELD_SHELL_FRAME_UNIFORMS) {
+    assert.ok(SHIELD_SHELL_GLSL.includes(`uniform vec3 ${name};`), `shader declares ${name}`);
+  }
+  assert.equal(SHIELD_SHELL_GLSL.includes('precessAxis = normalize'), false,
+    'precession trig is not paid per fragment');
+  assert.match(SHIELD_SHELL_GLSL, /m2 > 1e-8 \? rotated \* inversesqrt\(m2\) : normalize\(dir\)/,
+    'missing frame uniforms degrade to the identity frame instead of normalizing zero');
   assert.match(SHIELD_SHELL_GLSL, /dir = sfShieldWorkingFrame\(normalize\(dir\)\);/,
     'panel structure samples the slow precessing frame');
-  assert.match(SHIELD_SHELL_GLSL, /core = clamp\(core \+ impactVeil \* 0\.46/,
-    'the hit direction gains a broad local-opacity veil instead of only a line/ring');
+  assert.match(SHIELD_SHELL_GLSL, /ring = clamp\(ring \+ impactVeil \* 0\.52/,
+    'the broad impact veil loads the extended surface rather than bleaching the hot core');
 
   const clockUses = SHIELD_SHELL_GLSL.split('clock').length - 1;
   assert.ok(clockUses >= 4, `the clock drives real structure, not one decorative term (${clockUses} uses)`);
@@ -160,11 +169,29 @@ test('the shell owns a clock, and it is the simulation clock', () => {
   assert.equal(SHIELD_SHELL_GLSL.includes('`'), false, 'no backtick inside the shader source');
 
   const material = { uniforms: shieldShellUniforms() };
-  assert.ok(material.uniforms[SHIELD_SHELL_TIME_UNIFORM], 'the uniform entry is the whole hook surface');
-  assert.equal(setShieldShellClock(material, 12.5), 12.5, 'the clock follows simulation time');
-  assert.equal(setShieldShellClock(material, 12.5), 12.5, 'a paused simulation clock freezes the shell');
-  assert.equal(setShieldShellClock(material, 40, true), 12.5, 'reduced motion holds the shell still');
-  assert.equal(setShieldShellClock(material, Number.NaN), 12.5, 'a broken clock never poisons the uniform');
+  assert.ok(material.uniforms[SHIELD_SHELL_TIME_UNIFORM], 'the time uniform is present');
+  for (const name of SHIELD_SHELL_FRAME_UNIFORMS) {
+    assert.ok(material.uniforms[name]?.value instanceof Float32Array, `${name} is a zero-allocation vector uniform`);
+  }
+  assert.equal(setShieldShellClock(material, 0), 0, 'the clock follows simulation time');
+  const frame0 = Array.from(material.uniforms.uShellFrameX.value);
+  assert.equal(setShieldShellClock(material, 1.2), 1.2, 'the frame advances with simulation time');
+  const frame1 = Array.from(material.uniforms.uShellFrameX.value);
+  assert.notDeepEqual(frame1, frame0, 'the structural frame visibly turns during a post-hit tail');
+
+  const axes = SHIELD_SHELL_FRAME_UNIFORMS.map((name) => material.uniforms[name].value);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const length = (a) => Math.hypot(a[0], a[1], a[2]);
+  for (const axis of axes) assert.ok(Math.abs(length(axis) - 1) < 2e-6, 'frame basis stays unit length');
+  assert.ok(Math.abs(dot(axes[0], axes[1])) < 2e-6, 'frame X/Y stay orthogonal');
+  assert.ok(Math.abs(dot(axes[0], axes[2])) < 2e-6, 'frame X/Z stay orthogonal');
+  assert.ok(Math.abs(dot(axes[1], axes[2])) < 2e-6, 'frame Y/Z stay orthogonal');
+
+  const held = Array.from(material.uniforms.uShellFrameX.value);
+  assert.equal(setShieldShellClock(material, 40, true), 1.2, 'reduced motion holds the shell clock');
+  assert.deepEqual(Array.from(material.uniforms.uShellFrameX.value), held,
+    'reduced motion also holds the precomputed rotation basis');
+  assert.equal(setShieldShellClock(material, Number.NaN), 1.2, 'a broken clock never poisons the uniform');
   assert.equal(setShieldShellClock(null, 1), 0, 'a material without the uniform is simply inert');
 });
 
