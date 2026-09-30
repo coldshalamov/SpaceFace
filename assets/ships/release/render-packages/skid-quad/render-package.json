@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f766ee39ecb26547a3ec0c4fbcd87f125dca4c222e9e0f7385cbaadb300296bd",
+  "contentHash": "3e7290287fe93904b81b9a289f565ad2b93fc116c044999fd6ef9bad1d0535f0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,7 +344,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "7d086fd9f54684f65cd2e398c5d0bb5d7f248e193132e7e0125a5516942ca430",
+      "sha256": "85b8d054e049b2ccd7645ab3d142263d4ef757d63b7f4d4e0d492e0924cb4c57",
       "uri": "pilots.json"
     }
   },
@@ -486,7 +486,7 @@
     "slot": "gear",
     "url": "assets/ships/release/parts/gear/skid_quad.glb"
   },
-  "runtimeHash": "028889fab0651bdd3d7dc9d27e006e9219754d5407483952b6a874f1243fddd6",
+  "runtimeHash": "64e59a8588f4fb2e3f385cbe47930ffa22dec375b9342c2fff468e29d96c7bda",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

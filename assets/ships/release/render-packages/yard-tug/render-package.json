@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9710bb51e272d1e4ace7adfb128b017b1b2df9214ba57bd1a71d1c474a4d7055",
+  "contentHash": "d3f57af9fa380d74b6438667e43546812fb780d13ac96467a9a574185e9301db",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -5749,7 +5749,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "7d086fd9f54684f65cd2e398c5d0bb5d7f248e193132e7e0125a5516942ca430",
+      "sha256": "85b8d054e049b2ccd7645ab3d142263d4ef757d63b7f4d4e0d492e0924cb4c57",
       "uri": "pilots.json"
     }
   },
@@ -8275,7 +8275,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "bd6b05aa9cdcd27cb9e405fd0d066ddf95594cb43558e949382f764d5ca18f02",
+  "runtimeHash": "8c1978242e80c6e9bf42a7ca15889badcd3d1bd4f8ed6e1a6aa68cc75e835b00",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

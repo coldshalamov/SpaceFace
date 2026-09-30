@@ -6543,8 +6543,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_colossus",
-      "tris": 58136,
-      "bytes": 3555276,
+      "tris": 59184,
+      "bytes": 3610344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

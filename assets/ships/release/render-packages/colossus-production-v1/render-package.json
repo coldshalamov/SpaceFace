@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        21
+        22
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        22
+        23
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        26
+        27
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        27
+        28
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        28
+        29
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        29
+        30
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        30
+        31
       ],
       "parentNodeId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "worldTransform": [
@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "08225bd74b5b565dc58bb3c36cc09dada0733464d96c11f76ae378bb3bb02fba",
+  "contentHash": "b8f90f69024f7e0352a9e48db54f1e3d7f0c740d607008e9307aa06d9620a408",
   "dynamicGroups": [
     {
       "id": "sf.render.colossus-production-v1.node.lod0-hook-armor-port-armor.dynamic",
@@ -628,17 +628,17 @@
       "bounds": {
         "max": [
           26.58051109313965,
-          9.750739097595215,
+          9.750741004943848,
           13.108657836914062
         ],
         "min": [
           -26.92018699645996,
-          -2.312103509902954,
+          -2.312101364135742,
           -13.108593940734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9caafd1d7ada10381241d46b052b4b8ab7a8304026eac3c4af4106178d66f0f5",
+      "geometryHash": "df8a3ff87df0ba3f4ebc8df30eb89cc332d3d88bdfca5c02623e63a2b7699e6f",
       "id": "sf.render.colossus-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -663,16 +663,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9585bc4eab6570740b04e3879bee1e5374624cdef563ffe5cfb611e0731049dc",
+      "geometryHash": "0ac711e8a0fcc0a00185d186c44f8b4ab57fe3bb98633f359ed5fcf224ea7c0f",
       "id": "sf.render.colossus-production-v1.node.lod0-armor.primitive.0",
-      "indexCount": 35046,
+      "indexCount": 35154,
       "indexed": true,
       "materialHash": "878730628eea50ed4eba368aaee11a5506872be49afccbd84edc244b29666c35",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 11204
+      "vertexCount": 11248
     },
     {
       "bounds": {
@@ -813,7 +813,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ea53da06d6560cd0266174c2f1832430114317a9bd48257ca88fcb587719fb4",
+      "geometryHash": "a2bb250a246ef0b3ef1f8bf5b69b2f0e3fb97097cc393b5bba197a412fcaf9d9",
       "id": "sf.render.colossus-production-v1.node.lod0-hook-secondary-turret-armor.primitive.0",
       "indexCount": 1434,
       "indexed": true,
@@ -979,25 +979,50 @@
         "max": [
           25.18630027770996,
           6.099587917327881,
-          12.40031909942627
+          12.400311470031738
         ],
         "min": [
           -24.899526596069336,
           -2.0995259284973145,
-          -12.40031909942627
+          -12.400327682495117
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c084f553400726f5514bf654083cb92aebb5a470e0de86127a8a17c6efa6782e",
+      "geometryHash": "f7e3ed15421fb66361bd5c00ec697697dacb2fea8279947adae6d08645a03d4f",
       "id": "sf.render.colossus-production-v1.node.lod0-hull.primitive.0",
-      "indexCount": 27402,
+      "indexCount": 28344,
       "indexed": true,
       "materialHash": "3c004fd55e1f5e0bebdd261c357fed8de22b965fcb29067303fd02b15f5fa3d4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 8161
+      "vertexCount": 8449
+    },
+    {
+      "bounds": {
+        "max": [
+          15.613580703735352,
+          1.6991633176803589,
+          12.400766372680664
+        ],
+        "min": [
+          15.486419677734375,
+          -0.06291335821151733,
+          -12.400766372680664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9d179760ff06707eda3157650516a54def86c3b5384b82f0e78562471649ad0",
+      "id": "sf.render.colossus-production-v1.node.lod0-lights-cyan-crimson.primitive.0",
+      "indexCount": 2094,
+      "indexed": true,
+      "materialHash": "6800c39ab4815f9fcbab3d888b618471d10ab5f3e895af597efb9fea3dd74238",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan_crimson",
+      "nodeId": "sf.render.colossus-production-v1.node.lod0-lights-cyan-crimson",
+      "primitiveIndex": 0,
+      "vertexCount": 643
     },
     {
       "bounds": {
@@ -1038,7 +1063,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6782b98c56cadf96ef37d5689f00401c7995dac10d95329e947999a23c2a5ec7",
+      "geometryHash": "fad6a60ea9006c0bc80a9d7185a48f82a58ef3b524d69105ff75b2def573a19a",
       "id": "sf.render.colossus-production-v1.node.lod0-livery.primitive.0",
       "indexCount": 51360,
       "indexed": true,
@@ -1047,7 +1072,7 @@
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.colossus-production-v1.node.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 16342
+      "vertexCount": 16344
     },
     {
       "bounds": {
@@ -1088,7 +1113,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b6f98a15a36fcb4608b3e6e4edd4559a1402a2c9afab5d427a3c31056212247",
+      "geometryHash": "7e807dfaf3eb4c433868aff043e4e32128c34a25b80def29eb0d19eccc644a3b",
       "id": "sf.render.colossus-production-v1.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 24072,
       "indexed": true,
@@ -1142,6 +1167,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "6800c39ab4815f9fcbab3d888b618471d10ab5f3e895af597efb9fea3dd74238",
+      "id": "material:6800c39ab4815f9fcbab3d88",
+      "name": "Material_Emissive_Cyan_crimson",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -2085,6 +2117,55 @@
       ]
     },
     {
+      "id": "sf.render.colossus-production-v1.node.lod0-lights-cyan-crimson",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan_crimson",
+      "nodeName": "LOD0_Lights_Cyan_crimson",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.colossus-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.colossus-production-v1.node.lod0-lights-warm",
       "localTransform": [
         1,
@@ -2109,7 +2190,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        15
+        16
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2158,7 +2239,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        16
+        17
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2207,7 +2288,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        17
+        18
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2256,7 +2337,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2305,7 +2386,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2354,7 +2435,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2403,7 +2484,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        21
+        22
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2452,7 +2533,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        22
+        23
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2501,7 +2582,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2550,7 +2631,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2599,7 +2680,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2648,7 +2729,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        26
+        27
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2697,7 +2778,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        27
+        28
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2746,7 +2827,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        28
+        29
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2795,7 +2876,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        29
+        30
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2844,7 +2925,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        30
+        31
       ],
       "parentId": "sf.render.colossus-production-v1.node.colossus-lod0-root",
       "role": "immutable",
@@ -2871,22 +2952,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "feb582c1754fc587f0190017f81bdd10b64dcfa0318419b2626786b0a9cf684f"
+      "sha256": "23256d58b1b2c6eb513b870d0cf5dd92679e30ebaa4745cdbe8b2fc7c3e2f68d"
     },
     "sourceGlb": {
-      "bytes": 1145664,
-      "sha256": "28278b5fafb82a7222bd8bd4761e82e9279bef45e20389abdef747e9bac018da",
+      "bytes": 1159720,
+      "sha256": "270c1f511a9b1c1ce7f0758e8d987a6b75f838103a8d510cfbcf60757f04fc6a",
       "uri": "colossus_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "7d086fd9f54684f65cd2e398c5d0bb5d7f248e193132e7e0125a5516942ca430",
+      "sha256": "85b8d054e049b2ccd7645ab3d142263d4ef757d63b7f4d4e0d492e0924cb4c57",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2063852,
-    "sha256": "8e5da60168d3ccdfd85aa884da0675b6774c59b49d8937084bfd95163b70923c",
+    "bytes": 2093508,
+    "sha256": "5ce154d56cde7cad690c4e1ac8f24c9a7d5d7a0e16297acc77ae91c53b111ff4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2937,7 +3018,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2989,7 +3070,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3041,7 +3122,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3093,7 +3174,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3145,7 +3226,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3197,7 +3278,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3249,7 +3330,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 27,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3301,7 +3382,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 28,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3353,7 +3434,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3405,7 +3486,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 30,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3457,7 +3538,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 31,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3509,7 +3590,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 32,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3547,7 +3628,7 @@
       "drive": 1,
       "hull": 5,
       "mechanical": 5,
-      "signal": 5
+      "signal": 6
     },
     "materialProfiles": [
       {
@@ -3628,20 +3709,25 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 33,
+    "nodeCount": 34,
     "primitives": [
       {
         "canopy": false,
@@ -4070,7 +4156,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_Lights_Cyan_crimson",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -4097,7 +4183,7 @@
           0,
           1
         ],
-        "name": "LOD0_Livery",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -4124,7 +4210,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_Livery",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -4151,8 +4237,35 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_Mechanical",
         "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4163,7 +4276,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/colossus_production_v1.glb"
   },
-  "runtimeHash": "808062da2dd52e2e8a9ee3744bb1f0e58d4cbd53ae4db3e57c397dbf2c9d1341",
+  "runtimeHash": "d6be9be32c5b3d8bacd36a78b832bfa6164e838ff7eac7d51470432a0be81549",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4197,6 +4310,7 @@
         "sf.render.colossus-production-v1.node.lod0-hook-sensor-mast-glow-red",
         "sf.render.colossus-production-v1.node.lod0-hook-sensor-mast-mechanical",
         "sf.render.colossus-production-v1.node.lod0-hull",
+        "sf.render.colossus-production-v1.node.lod0-lights-cyan-crimson",
         "sf.render.colossus-production-v1.node.lod0-lights-warm",
         "sf.render.colossus-production-v1.node.lod0-livery",
         "sf.render.colossus-production-v1.node.lod0-mechanical",

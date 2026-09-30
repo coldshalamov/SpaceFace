@@ -40931,7 +40931,7 @@
           26.217253
         ]
       },
-      "bytes": 1145664,
+      "bytes": 1159720,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -40942,22 +40942,22 @@
           28.712718,
           16.737955,
           9.964399,
-          9.033398,
+          9.033405,
           7.15269,
-          7.861839,
-          8.18249,
-          10.555756,
+          7.861847,
+          8.182498,
+          10.555762,
           26.310678,
           27.346749,
           27.358714,
           27.360428,
           27.346749,
           26.310678,
-          10.555756,
-          8.18249,
-          7.861839,
+          10.55575,
+          8.182482,
+          7.86183,
           7.152689,
-          9.033398,
+          9.033391,
           9.964398,
           16.737955,
           28.712718,
@@ -40997,8 +40997,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.484124,
-          "lod2": 0.484391
+          "lod1": 0.484123,
+          "lod2": 0.484374
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -41026,6 +41026,14 @@
           "depthWrite": false,
           "doubleSided": false,
           "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_crimson",
           "role": "emissive"
         },
         {
@@ -41099,8 +41107,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 19,
-      "nodes": 32,
+      "meshes": 20,
+      "nodes": 33,
       "note": null,
       "opening": null,
       "pivot": [
@@ -41182,8 +41190,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.095461,
-            "bz": -0.230464,
+            "bx": 0.095462,
+            "bz": -0.230465,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.014063
@@ -41341,7 +41349,7 @@
       ],
       "shell": {
         "boundaryEdges": 906,
-        "inwardFaceFraction": 0.1405,
+        "inwardFaceFraction": 0.138,
         "silhouetteRadius": 28.712718,
         "sliceY": 0
       },
@@ -41447,7 +41455,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 58136,
+      "triangles": 59184,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],

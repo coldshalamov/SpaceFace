@@ -3860,8 +3860,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_colossus_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/colossus_production_v1.glb",
-      "releaseSha256": "28278b5fafb82a7222bd8bd4761e82e9279bef45e20389abdef747e9bac018da",
-      "releaseBytes": 1145664,
+      "releaseSha256": "270c1f511a9b1c1ce7f0758e8d987a6b75f838103a8d510cfbcf60757f04fc6a",
+      "releaseBytes": 1159720,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4767,8 +4767,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod1/render-package.json",
-      "releaseBytes": 752604,
-      "releaseSha256": "4769bbea392ee2ddfa9ee30398e3b635ee93537dcdbfc9ab82b1bdf85c2d33bb"
+      "releaseBytes": 760008,
+      "releaseSha256": "5e47618c56ec28e7b6dd946c36cf87dafe24a093db8612775081ea46327d65aa"
     },
     {
       "key": "colossus-production-v1-lod2",
@@ -4788,8 +4788,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod2/render-package.json",
-      "releaseBytes": 549028,
-      "releaseSha256": "25bb9520f39313eaf96c8b63c44680d34f96cd4c06d5e0c66681968c70440557"
+      "releaseBytes": 554320,
+      "releaseSha256": "b44193fb07bfc25eaa2e1d6d04ab44cc67855c444c1f158127bf3e068b235cf5"
     },
     {
       "key": "ironback-production-v1-lod1",

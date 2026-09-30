@@ -20,6 +20,7 @@ COLORS = {
     'stripe': '#4c0f13',   # crimson (brief #7a1f1f, authored darker: the key light lifts ~2.5x)
     'hazard': '#4c0f13',
     'dark': '#141518',
+    'glow_cyan.crimson': '#ff2040',  # crimson, lit: the hammer's spanwise line
 }
 
 NECK = [
@@ -118,6 +119,9 @@ def build():
     # crimson bands spanwise across the head and a chevron on each wing
     F.band(s, 'Head', (16.2, 0, 0), (1, 0, 0), 0.7, 'stripe', facing=(0, 0, 1), inset=0.03, depth=0.04)
     F.band(s, 'Head', (17.1, 0, 0), (1, 0, 0), 0.2, 'stripe', facing=(0, 0, 1))
+    # Identity trim, lit: one thin crimson line spanning the whole hammer head just aft of the
+    # crimson band -- the T read by its light (LOOK.md: lamps are light).
+    F.band(s, 'Head', (15.55, 0, 0), (1, 0, 0), 0.12, 'glow_cyan.crimson', facing=(0, 0, 1), inset=0.01, depth=-0.02)
     # raised armour plates on the wing tops, dark service wells inboard
     F.panel(s, 'Head', (19.0, 10.2), (3.4, 1.4), 'paint2', inset=0.06, depth=0.07)
     F.panel(s, 'Head', (19.0, -10.2), (3.4, 1.4), 'paint2', inset=0.06, depth=0.07)
