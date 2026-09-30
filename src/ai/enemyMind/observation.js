@@ -15,6 +15,13 @@ export function authorityFor(member, perception, directive) {
   const activity = self.activity?.kind || member.activity?.kind;
   if (objective === 'retreat' || activity === 'flee' || activity === 'disengage') return 'retreat';
   if (self.roe === 'hold_fire' || NONCOMBAT.has(activity)) return 'none';
+  // SF-057 search leg (D93): the squad holds this target as memory or a dispatcher's report only
+  // — no live sighting — and the commander's order is "fly the search leg, do not fire on it"
+  // (aiFireIntent already denies the shot). A pilot cannot justify a verb on a contact it cannot
+  // see, and used to force regroup + rewrite the order to hold, so a raider dispatched on a
+  // reported track parked at its formation slot instead of closing. Narrow, never promote:
+  // leave the upper layer flying the leg; the mind takes the pilot when the target is sighted.
+  if (COMBAT.has(objective) && directive.objective.targetObserved === false) return 'reserved';
   return COMBAT.has(objective) ? 'combat' : 'reserved';
 }
 

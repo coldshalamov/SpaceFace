@@ -9,6 +9,7 @@ import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js
 import { hash32 } from '../core/rng.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { isPlayerWanted } from './heat.js';
+import { authoritativeAssignmentTargetId } from '../ai/doctrine.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
 import { claimSensorPostActive } from '../data/claimableBodies.js';
@@ -1600,6 +1601,12 @@ export function isHostileToPlayer(e, playerTeam, state) {
   if (targetsPlayer) return true;
   if (intent && intent.fire && targetsPlayer) return true;
   if (ai && (ai.forcePlayerTarget || ai.huntPlayer)) return true;
+  // D93: an AUTHORITATIVE ASSIGNMENT that names the player (the PQ-195 heist pressure element's
+  // attack_run on the tug — doctrine.authoritativeAssignmentTargetId) is declared hostility,
+  // without waiting for a combat lock or a team flag. A swarmer archetype dispatched this way
+  // otherwise read the tug as neutral — threat 0, no attack action, the squad leader parked at
+  // speed 0 while its assignment said attack_run.
+  if (ai && playerId != null && authoritativeAssignmentTargetId(ai.activity) === playerId) return true;
   if (data.encounter) return true;
   // A few authored outlaw markets field armed local guards rather than unconditional encounter
   // enemies. Explicit targeting/retaliation above still wins, while live standing decides whether

@@ -117,6 +117,31 @@ export function effectiveActivityForAI(ai) {
   });
 }
 
+/**
+ * An ATTACK_RUN whose reason carries one of these prefixes is an AUTHORITATIVE ASSIGNMENT: a
+ * named target handed down by an owner that outranks the squad's advisory vote — an ambush's
+ * marked prey, CONTROL's dispatched incident offender, a WANTED warrant, or the PQ-195 heist
+ * pressure element's run on the tug (D93). Every layer that must honor such an order beyond the
+ * pilot's own sensor picture keys on this one predicate: the reported track (aiPorts), declared
+ * hostility (scanner), the FOCUS override + formation break, and the doctrine's target tag.
+ */
+const AUTHORITATIVE_ASSIGNMENT_PREFIXES = Object.freeze([
+  'ambush_snare:', 'security_response:', 'wanted_warrant:', 'heist:pressure:',
+]);
+
+export function isAuthoritativeAssignmentReason(reason) {
+  const text = String(reason || '');
+  for (const prefix of AUTHORITATIVE_ASSIGNMENT_PREFIXES) if (text.startsWith(prefix)) return true;
+  return false;
+}
+
+/** The named target of an authoritative ATTACK_RUN assignment, else null. */
+export function authoritativeAssignmentTargetId(activity) {
+  if (!activity || typeof activity !== 'object') return null;
+  if (activity.kind !== ActivityKind.ATTACK_RUN || activity.targetId == null) return null;
+  return isAuthoritativeAssignmentReason(activity.reason) ? activity.targetId : null;
+}
+
 export function normalizeRoe(value, fallback = RulesOfEngagement.WEAPONS_FREE) {
   const text = String(value || fallback);
   return ROE_VALUES.has(text) ? text : fallback;
@@ -202,8 +227,7 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
   // ambient same-squad members who never learned of the incident vote the offender non-hostile
   // (hostileVotes <= friendlyVotes), no focus ever materializes, and dispatched lawmen hold an
   // impotent guard ring around the jurisdiction anchor while the offender fires at will.
-  if ((reason.startsWith('ambush_snare:') || reason.startsWith('security_response:') || reason.startsWith('wanted_warrant:'))
-    && activity.kind === ActivityKind.ATTACK_RUN && activity.targetId != null) {
+  if (authoritativeAssignmentTargetId(activity) != null) {
     // SF-057: the rebuilt objective must keep sighting truth. Same target → carry the squad's
     // merged verdict; a re-pointed target → fall back to the member's own contact. A marked-but-
     // unseen offender (dispatchedTarget) is a search anchor, never a firing solution.
@@ -225,7 +249,9 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
           ? 'ambush_snare_prey'
           : reason.startsWith('wanted_warrant:')
             ? 'wanted_warrant_target'
-            : 'security_response_target',
+            : reason.startsWith('heist:pressure:')
+              ? 'heist_pressure_target'
+              : 'security_response_target',
       }),
     });
   }
@@ -276,7 +302,7 @@ export function perceptionForWingOrderCombatDoctrine(perception, directive, free
   const exactTargetId = directive.objective.targetId;
   if (!activity || exactTargetId == null) return perception;
   const reason = String(activity.reason || '');
-  if (reason !== 'wing_order:attack' && !reason.startsWith('ambush_snare:') && !reason.startsWith('security_response:') && !reason.startsWith('wanted_warrant:')) return perception;
+  if (reason !== 'wing_order:attack' && !isAuthoritativeAssignmentReason(reason)) return perception;
   const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
   const filtered = contacts
     .filter((contact) => contact && (contact.kind !== 'ship' || contact.id === exactTargetId))

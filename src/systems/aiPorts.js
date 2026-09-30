@@ -9,7 +9,7 @@ import {
   stableId,
   wrapAngle,
 } from '../ai/contracts.js';
-import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
+import { activityAllowsOffense, authoritativeAssignmentTargetId, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { mountFollowsAimAngle } from '../ai/fireDiscipline.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
@@ -1324,6 +1324,33 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
         threat,
         hostile,
       });
+    }
+  }
+  // D93: an AUTHORITATIVE ASSIGNMENT (doctrine.authoritativeAssignmentTargetId — the PQ-195 heist
+  // pressure element's attack_run on the tug, an ambush's marked prey, a warrant) is a
+  // dispatcher's report, not a sensor guess — the same broadcast-objective semantics as the two
+  // tracks above. Without it a raider dispatched from beyond its own sensor reach
+  // (DEFAULT_SENSOR_RANGE 1600 WU; the PQ-195 launch parks the tug ~2500 WU from the assembly)
+  // never perceives its assignment: the squad commander reads a weak contact picture, allocates
+  // HOLD, and the wedge station-keeps around the anchor — measured 1966 -> 2225 WU AWAY from the
+  // tug over 360 ticks. The track is reported (unseen, reported confidence) so a live sighting
+  // still wins outright via the guard; hostility and fire authority are resolved per contact as
+  // usual (fire needs its own sighting), and cloaking breaks it.
+  const assignedTargetId = authoritativeAssignmentTargetId(selfAi.activity);
+  const assigned = assignedTargetId != null && assignedTargetId !== self.id
+    ? getEntity(state, assignedTargetId) : null;
+  if (assigned && assigned.alive && contactKindFor(assigned) === ContactKind.SHIP
+    && !out.some(c => c.id === assigned.id) && !cloakHidesPlayerFrom(state, self, assigned)) {
+    const hostile = isHostileForAI(state, self, assigned);
+    const base = buildContactBase(state, assigned, combatRuntimeFor(state, assigned.id),
+      attachmentIndex, 'ship', freeze, cacheOwner);
+    const threat = threatFor(state, self, assigned, hostile);
+    if (records) {
+      const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, REPORTED_TRACK_CONFIDENCE, threat, hostile);
+      rec.visible = false;
+      out.push(rec);
+    } else {
+      out.push({ ...base, visible: false, confidence: REPORTED_TRACK_CONFIDENCE, threat, hostile });
     }
   }
   return out;
