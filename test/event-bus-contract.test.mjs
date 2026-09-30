@@ -93,6 +93,21 @@ test('sliced sector:enter delivers the first budget inline and the rest across d
   assert.equal(bus.pendingEmitSliceCount(), 0);
 });
 
+test('a second sliced emit drains the predecessor tail instead of dropping its listeners', () => {
+  const bus = createBus();
+  const seen = [];
+  bus.setEmitSliceBudget('sector:enter', 2);
+  for (let i = 0; i < 5; i++) bus.on('sector:enter', (p) => seen.push(`${i}:${p && p.sector}`));
+  bus.emit('sector:enter', { sector: 'a' });
+  assert.deepEqual(seen, ['0:a', '1:a'], 'first emit runs the inline slice');
+  bus.emit('sector:enter', { sector: 'b' });
+  // The 'a' tail must have been drained, not discarded — every listener still hears it.
+  assert.deepEqual(seen, ['0:a', '1:a', '2:a', '3:a', '4:a', '0:b', '1:b']);
+  bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+  assert.deepEqual(seen.slice(-3), ['2:b', '3:b', '4:b'], 'b tail drains normally');
+  assert.equal(bus.pendingEmitSliceCount(), 0);
+});
+
 test('a listener unsubscribing a LATER slice listener mid-drain still receives its own in-flight slice', () => {
   const bus = createBus();
   const seen = [];

@@ -81,6 +81,10 @@ export function createBus() {
   }
 
   function startEmitSlice(event, payload, budget) {
+    // A second sliced emit while a predecessor still has a deferred tail used to discard that
+    // tail outright — every listener past the cut never heard the first sector:enter. Drain the
+    // remainder synchronously so no listener is ever skipped; the newest emit still wins order.
+    if (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER);
     emitSlice = null;
     const fns = snapshotListeners(event);
     if (!fns) return;

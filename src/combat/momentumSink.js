@@ -102,6 +102,10 @@ function resolveFrameVelocity(state, target, active) {
         frameVelocity: { x: data.frameVelocity.x, z: data.frameVelocity.z },
       });
     }
+  } else {
+    // The anchor is dead or gone: the sink's frame dissolves instead of freezing at the
+    // corpse's last velocity, which kept dragging the victim toward a phantom vector.
+    data.frameReady = false;
   }
   return data.frameReady === true ? data.frameVelocity : null;
 }

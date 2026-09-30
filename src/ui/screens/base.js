@@ -1258,7 +1258,12 @@ export const baseScreen = {
         key.setAttribute('aria-hidden', 'true');
         key.textContent = (BINDINGS.starmap && BINDINGS.starmap.label) || 'N';
         chart.appendChild(key);
-        chart.addEventListener('click', () => { sm.pushScreen('starmap'); });
+        // Route through ui:pushScreen so the map authority hands the push to galaxyMap —
+        // legacy 'starmap' stays registered for tools/checks, not player reach.
+        chart.addEventListener('click', () => {
+          if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: 'starmap', source: 'base:chart' });
+          else sm.pushScreen('starmap');
+        });
         foot.appendChild(chart);
       }
       const esc = document.createElement('span');
