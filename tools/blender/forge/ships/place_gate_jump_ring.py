@@ -123,7 +123,12 @@ def build():
               taper=0.45, bevel=0.1)
         F.box(s, f'EmitterBase{i}', polar(32.6, am), (5.0, 4.4, 1.2), material='gunmetal',
               rot=(am + math.pi / 2, 0, 0), bevel=0.06)
-        glow_tips.append((polar(28.1, am), (1.1, 0.9, 0.9), (am + math.pi / 2, 0.0, 0.0)))
+        # ANI-15: the white tip is its own carriage block riding the prong's inner face —
+        # a separate object so the index rig can slide it radially.
+        F.box(s, f'EmitTip{i}', polar(28.35, am), (1.5, 1.05, 1.05), material='paint',
+              rot=(am + math.pi / 2, 0, 0), taper=0.6, bevel=0.06)
+        F.box(s, f'EmitTipGlow{i}', polar(27.72, am), (0.95, 0.72, 0.72), material='glow_cyan',
+              rot=(am + math.pi / 2, 0, 0), bevel=0.04)
         for sx in (1, -1):
             glow_tips.append((polar(30.4, am, sx * 1.62), (0.1, 0.5, 3.4), (am + math.pi / 2, 0.0, 0.0)))
 
@@ -255,5 +260,17 @@ def build():
 
 if __name__ == '__main__':
     import forge_export as E
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+    import ANI_15  # noqa: E402
+    import motion_bank  # noqa: E402
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    _o = {o.name: o for o in ship.objects}
+    ship.ani15_bank = ANI_15.build(ship, {
+        'tips': [[_o[f'EmitTip{i}'], _o[f'EmitTipGlow{i}']] for i in range(12)],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani15_bank.bake(
+            [p for p, _t in written],
+            out_path=os.path.join(motion_bank.MOTIONS_DIR, 'jump-ring.motion.json'))

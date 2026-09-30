@@ -684,12 +684,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.jump-ring",
-    "expectedContentHash": "5e2d0dfc954465a6e6c749a7824db186ba9a3f176383b9e66ec4f93ca0282814",
+    "expectedContentHash": "839e6ccbf9b6773f2f52f1015113ec60fe57c4849820fa72b89613a993f7b16e",
     "key": "jump-ring",
     "metadataUrl": "assets/ships/release/render-packages/jump-ring/render-package.json",
     "runtimeAssetId": "SF_PLACE_GATE_JUMP_RING",
     "slot": "place",
-    "sourceSha256": "05a3e58e038f3f51a2a7cc2c4c6058862f626ea8dec2209668c06beb5fd0c7c7",
+    "sourceSha256": "60f04fb605c839a95a6d9e209094b845692814fafa1b8ac3c0769bfd316e9871",
     "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
   {

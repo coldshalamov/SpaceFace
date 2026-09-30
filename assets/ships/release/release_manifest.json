@@ -2936,14 +2936,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_gate_jump_ring.glb",
       "release": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
-      "sourceSha256": "e1828a5bc9207b2238f831b7866cc6e4b94d598583f269d4a7e404e7d015b202",
-      "releaseSha256": "05a3e58e038f3f51a2a7cc2c4c6058862f626ea8dec2209668c06beb5fd0c7c7",
-      "sourceBytes": 5835072,
-      "releaseBytes": 1886724,
+      "sourceSha256": "431e678fa8ea7a5c4919ad834e3f42f02c1b886fe7a75d3aa89a75f52b71a658",
+      "releaseSha256": "60f04fb605c839a95a6d9e209094b845692814fafa1b8ac3c0769bfd316e9871",
+      "sourceBytes": 6277828,
+      "releaseBytes": 1965048,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 139,
-      "contractNodeCount": 41
+      "meshoptBufferViews": 427,
+      "contractNodeCount": 113,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_improvised_dock",
