@@ -2597,6 +2597,14 @@ envelope re-record, soak=0, save-lineage, dock clip, phase0 rows, k1, station ta
 baseline treadmill. Verified pre-existing, not merge-caused: `sim`/`sim-v3` envelope drift,
 `massline-elastic-whip-head` (43.775), `pq020-ceres-topology` structuralCostDigest.
 
+**Machine quiesced (2026-09-29, late):** owner directed all dev processes stopped. Killed the
+baseline race loop (`scratch/budget-loop.ps1` kept as the restart recipe), its capture+server
+children, all playwright probe chromes, 3-day-hung crucible/fun-bench nodes, orphaned
+`serve.mjs :4310`, the chrome-devtools-mcp stack, and stale agent daemons. `.worktrees/budget-shoot`
+removed with it — down to **2 worktrees**: main checkout + `.worktrees/consolidated`. One
+22 MB playwright storage stub (PID 34688) is kernel-stuck post-kill: 0 CPU, harmless, clears
+on reboot. To resume the treadmill: re-add a worktree and run `scratch/budget-loop.ps1`.
+
 ### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
 
 Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
