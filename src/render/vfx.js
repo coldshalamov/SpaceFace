@@ -2387,6 +2387,7 @@ export const vfx = {
     // emits no juice cue so cue-count contracts stay frozen.
     add('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
     add('combat:collisionDebris', (p) => this._onCollisionDebris(p));
+    add('collision:tearOff', (p) => this._onCollisionTearOff(p));
     add('combat:statusApplied', (p) => {
       this._onArcadeCausalReceipt('combat:statusApplied', p);
       // Damage-path statuses spend ≥1 tick in pendingStatuses and land via applyActive
@@ -10227,6 +10228,43 @@ export const vfx = {
           life, 1.2, 0.0, this._c0, this._c1, 2.2, 0, 0, angle,
           acc.flashOpacityScale < 1 ? 1.8 : 2.8);
       }
+    }
+    return true;
+  },
+
+  // Plating actually leaving a hull (collisionConsequences spawned the physical shards) gets a
+  // darker, heavier burst than spall: dense metal chips along the contact axis plus a few short
+  // smoking streaks. The tumbling debris bodies carry the persistent read — this sells the shear.
+  _onCollisionTearOff(p) {
+    if (!this._scene || !p || !p.pos) return false;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    const momentum = Math.max(0, Number(p.momentum) || 0);
+    const heat = Math.min(1, momentum / 22000);
+    const baseAng = this._collisionContactAxis({ aId: p.victimId, otherId: null, normal: p.normal });
+    const axisX = Math.cos(baseAng), axisZ = Math.sin(baseAng);
+    const tx = -axisZ, tz = axisX;
+    const serial = this._collisionPatternSerial({ aId: p.victimId, bId: p.victimId, tick: p.tick });
+    this._c0.set('#e8ecff');
+    this._c1.set('#4a3f2e');
+    const chips = reduced ? 3 : 4 + Math.round(heat * 4);
+    for (let i = 0; i < chips; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const spread = explosionPatternSigned(serial, 'tearoff', i, 31) * 0.55;
+      const speed = (16 + explosionPattern01(serial, 'tearoff', i, 32) * 30) * (0.7 + heat * 0.6);
+      const angle = baseAng + side * (0.5 + spread);
+      this._spawnParticle(
+        p.pos.x, p.pos.z, Math.cos(angle) * speed, Math.sin(angle) * speed,
+        0.45 + heat * 0.35, 1.6, 0.0, this._c0, this._c1, 2.8, 0, 0, angle, reduced ? 2.0 : 3.2,
+      );
+    }
+    for (const side of [-1, 1]) {
+      this._spawnProjectileTrailStreak(
+        p.pos.x + axisX * side * 0.1, 0.2, p.pos.z + axisZ * side * 0.1,
+        reduced ? 0.3 : 0.5, 0.09, (reduced ? 2.2 : 4.0) * (0.7 + heat * 0.6),
+        (reduced ? 0.3 : 0.55) * acc.flashOpacityScale,
+        '#caa06a', axisX * side * 8, axisZ * side * 8, tx * side, tz * side,
+      );
     }
     return true;
   },
