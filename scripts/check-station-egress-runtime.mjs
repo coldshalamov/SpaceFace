@@ -98,11 +98,12 @@ try {
   assert.equal(await page.evaluate(() => window.SF.state.ui.docked), true,
     'Esc must not undock immediately — it must confirm first');
 
-  // Esc again closes the check without re-opening it, and without undocking.
+  // Esc again closes the check without re-opening it, and without undocking. The dismiss runs a
+  // modal transition, so poll for the popup to clear instead of sampling once at a fixed 500ms —
+  // under SwiftShader load the transition routinely outlives the old sample.
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(500);
-  assert.equal(await page.evaluate(() => !!document.querySelector('.sx-pop--dep:not([hidden])')), false,
-    'Esc should dismiss the Departure Check');
+  await page.waitForFunction(() => !document.querySelector('.sx-pop--dep:not([hidden])'), null, { timeout: 5000 })
+    .catch(() => { throw new Error('Esc should dismiss the Departure Check'); });
   assert.equal(await page.evaluate(() => window.SF.state.ui.docked), true, 'dismissing the check should keep us docked');
 
   // ---- committed undock via the fascia launch control returns to flight ----
