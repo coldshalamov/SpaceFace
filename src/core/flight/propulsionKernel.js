@@ -30,6 +30,7 @@
 //      the latch, its timers and its bindings live with the input owner.
 
 import { drawFlightAcceleration, validDrawFlight } from './drawFlightControl.js';
+import { channelAuthorityIsFull } from './driveAuthority.js';
 import { DRIVE_FAMILIES, normalizeProfile } from './propulsionCatalog.js';
 import { travelFlag } from '../../data/featureFlags.js';
 
@@ -154,6 +155,27 @@ const TAU = Math.PI * 2;
  * @property {Object} environment optional {particulateDensity,dragCoefficient,fieldDirection,fieldStrength}
  */
 
+// Active channel scale for the step in progress. Null means full authority,
+// so every limit builder multiplies by 1 and stays byte-identical. A zero
+// channel stays zero: writing 0 into mainAccel would not, because positive()
+// treats 0 as "missing" and substitutes the catalog fallback.
+let stepAuthority = null;
+
+function channelScale(channel) {
+  const authority = stepAuthority;
+  if (!authority) return 1;
+  return clamp(finite(authority[channel], 1), 0, 1);
+}
+
+function scaleTranslationLimits(limits) {
+  if (!stepAuthority) return limits;
+  return {
+    forward: limits.forward * channelScale('forward'),
+    reverse: limits.reverse * channelScale('reverse'),
+    strafe: limits.strafe * channelScale('strafe'),
+  };
+}
+
 /** Advance one fixed propulsion tick. */
 export function stepPropulsion(args = {}) {
   const dt = clamp(finite(args.dt, 0), 0, 0.25);
@@ -163,24 +185,29 @@ export function stepPropulsion(args = {}) {
   const runtime = normalizeRuntime(args.runtime, profile, _packetRuntime);
   const environment = normalizeEnvironment(args.environment, _packetEnv, _packetEnvSubs);
 
-  if (!(dt > 0)) return idleResult(body, profile, runtime, input);
+  stepAuthority = channelAuthorityIsFull(args.authority) ? null : args.authority;
+  try {
+    if (!(dt > 0)) return idleResult(body, profile, runtime, input);
 
-  if (validDrawFlight(input.drawFlight) && !input.brake) {
-    return stepDrawFlight(body, input, profile, runtime, environment, dt);
-  }
+    if (validDrawFlight(input.drawFlight) && !input.brake) {
+      return stepDrawFlight(body, input, profile, runtime, environment, dt);
+    }
 
-  switch (profile.family) {
-    case DRIVE_FAMILIES.GRAVIMETRIC:
-      return stepGravimetric(body, input, profile, runtime, environment, dt);
-    case DRIVE_FAMILIES.PULSE_PLATE:
-      return stepPulsePlate(body, input, profile, runtime, environment, dt);
-    case DRIVE_FAMILIES.TORCH:
-      return stepTorch(body, input, profile, runtime, environment, dt);
-    case DRIVE_FAMILIES.SAIL:
-      return stepFieldSail(body, input, profile, runtime, environment, dt);
-    case DRIVE_FAMILIES.REACTION:
-    default:
-      return stepReaction(body, input, profile, runtime, environment, dt);
+    switch (profile.family) {
+      case DRIVE_FAMILIES.GRAVIMETRIC:
+        return stepGravimetric(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.PULSE_PLATE:
+        return stepPulsePlate(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.TORCH:
+        return stepTorch(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.SAIL:
+        return stepFieldSail(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.REACTION:
+      default:
+        return stepReaction(body, input, profile, runtime, environment, dt);
+    }
+  } finally {
+    stepAuthority = null;
   }
 }
 
@@ -302,6 +329,11 @@ function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt, out = nul
 // manual/AI thrust, brake, collisions, boost resource gating and environmental forces are unchanged.
 function stepDrawFlight(body, input, profile, runtime, environment, dt) {
   const motion = drawFlightAcceleration(body, input.drawFlight, profile, dt, input.boost);
+  const drive = channelScale('forward');
+  if (drive !== 1) {
+    motion.x *= drive;
+    motion.z *= drive;
+  }
   const environmental = environmentalDragAcceleration(body, environment);
   const accel = add2(motion, environmental);
   const yaw = computeHeadingControl(body, motion.targetHeading, profile, dt, input);
@@ -563,8 +595,8 @@ function stepGravimetric(body, input, profile, runtime, environment, dt) {
   }
   const braking = dot2(raw, body.vel) < -EPS;
   const accelLimit = braking
-    ? positive(profile.maxBrakeAccel, positive(profile.maxAccel, 80))
-    : positive(profile.maxAccel, 80);
+    ? positive(profile.maxBrakeAccel, positive(profile.maxAccel, 80)) * channelScale('reverse')
+    : positive(profile.maxAccel, 80) * channelScale('forward');
   let accel = clampMagnitude(raw, accelLimit);
   accel = add2(accel, environmentalDragAcceleration(body, environment));
 
@@ -658,7 +690,7 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
       positive(profile.baseImpulseDv, 25),
       positive(profile.maxImpulseDv, 200),
       Math.pow(fraction, curve)
-    );
+    ) * channelScale('forward');
     impulse = {
       x: axes.fx * firedDv * body.mass,
       y: 0,
@@ -808,12 +840,12 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
   const fieldDir = normalize2(environment.fieldDirection, FIELD_DIRECTION_DEFAULT);
   const fieldStrength = Math.max(0, finite(environment.fieldStrength, 0));
   const alignment = Math.max(0, dot2({ x: axes.fx, z: axes.fz }, fieldDir));
-  const sailAccel = positive(profile.fieldAccel, 8) * fieldStrength * deployed * alignment * Math.max(0, input.throttle);
+  const sailAccel = positive(profile.fieldAccel, 8) * fieldStrength * deployed * alignment * Math.max(0, input.throttle) * channelScale('forward');
   const sailWorld = scale2(fieldDir, sailAccel);
 
   const trim = localToWorld({
-    forward: Math.min(0, input.throttle) * positive(profile.trimAccel, 2),
-    lateral: input.strafe * positive(profile.trimAccel, 2),
+    forward: Math.min(0, input.throttle) * positive(profile.trimAccel, 2) * channelScale('reverse'),
+    lateral: input.strafe * positive(profile.trimAccel, 2) * channelScale('strafe'),
   }, axes);
   let accel = add2(add2(sailWorld, trim), environmentalDragAcceleration(body, environment));
 
@@ -1085,9 +1117,9 @@ function computeYawControl(body, input, profile, dt, turnBound = null) {
   }
   const error = targetYawRate - body.angVel;
   const accelerating = Math.abs(targetYawRate) > Math.abs(body.angVel) && Math.sign(targetYawRate) === Math.sign(error);
-  const maxAlpha = accelerating
+  const maxAlpha = (accelerating
     ? positive(profile.yawAccel, 8) * helm
-    : positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * helm;
+    : positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * helm) * channelScale('yaw');
   const angularAcceleration = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
   return { targetYawRate, angularAcceleration, coastHelm: helm > 1, leadBounded };
 }
@@ -1098,20 +1130,25 @@ function computeHeadingControl(body, desiredHeading, profile, dt, input = null) 
   const maxRate = positive(profile.maxYawRate, 2) * helm;
   const targetYawRate = clamp(error * 3.8, -maxRate, maxRate);
   const rateError = targetYawRate - body.angVel;
+  const yawScale = channelScale('yaw');
   const angularAcceleration = clamp(
     rateError / Math.max(dt, 1 / 120),
-    -positive(profile.yawBrake, 9) * helm,
-    positive(profile.yawAccel, 7) * helm
+    -positive(profile.yawBrake, 9) * helm * yawScale,
+    positive(profile.yawAccel, 7) * helm * yawScale
   );
   return { targetYawRate, angularAcceleration, coastHelm: helm > 1 };
 }
 
-function reactionLimits(profile, boostMult) {
+function reactionLimitsUnscaled(profile, boostMult) {
   return {
     forward: positive(profile.mainAccel, 40) * positive(boostMult, 1),
     reverse: positive(profile.reverseAccel, positive(profile.mainAccel, 40) * 0.5),
     strafe: positive(profile.strafeAccel, positive(profile.mainAccel, 40) * 0.45),
   };
+}
+
+function reactionLimits(profile, boostMult) {
+  return scaleTranslationLimits(reactionLimitsUnscaled(profile, boostMult));
 }
 
 function manualThrustLocal(input, limits, localVelocity, profile) {
@@ -1154,16 +1191,16 @@ function manualThrustLocal(input, limits, localVelocity, profile) {
 }
 
 function reactionBrakeLimits(profile) {
-  const base = reactionLimits(profile, 1);
+  const base = reactionLimitsUnscaled(profile, 1);
   const assist = profile.assist || {};
   const main = positive(profile.mainAccel, 40);
   const brake = positive(profile.brakeAccel, Math.max(base.reverse, main * positive(assist.pilotBrakeAccelMult, 1.35)));
   const lateral = positive(profile.brakeStrafeAccel, Math.max(base.strafe, brake * positive(assist.pilotBrakeLateralFraction, 0.85)));
-  return {
+  return scaleTranslationLimits({
     forward: Math.max(base.forward, brake),
     reverse: brake,
     strafe: lateral,
-  };
+  });
 }
 
 function clampLocalAcceleration(local, limits) {

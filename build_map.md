@@ -393,6 +393,7 @@ gone from the tables below. The inference lines are marked SHIPPED in
 - NXB-059 (`a5a33ea08`) — a save is one moment: cargo, credits, the site, and the accepted fact agree; a failed write keeps the previous slot.
 - NXB-060 (`2b83407a3`) — a rejected or replaced package is not described as ready, and New Game does not launch a run that only timed out.
 - NXB-041 (`f8a9a727d`) — an absent witness cannot accuse; a relay stays a report; a stale explanation expires without erasing settled heat, reputation, or the receipt.
+- NXB-004 — a damaged loaded ship still steers. The hurt drive pushes less; the turn thrusters do not die with it.
 
 **Inference, shipped:**
 
@@ -627,7 +628,6 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 168 | BUILD | [NXB-037](design/program/next-wave-2026-09-28/build/NXB-037.md) | Two active jobs can reference one physical object without duplicating it or its reward | NXB-025; SF-108, SF-144, SF-146, SF-278 | WAITING NXB-025 |
 | 170 | BUILD | [NXB-057](design/program/next-wave-2026-09-28/build/NXB-057.md) | Integrate the current performance branch, then fix one measured cross-feature regression | PR-174-or-equivalent-integrated; SF-256, SF-262, SF-265, SF-268, PR-174 | WAITING PR-174-or-equivalent-integrated |
 | 171 | BUILD | [NXB-058](design/program/next-wave-2026-09-28/build/NXB-058.md) | Shared render resources survive one consumer leaving and retire after the last one | Existing owners; SF-259, SF-261, SF-268, SF-270 | OPEN |
-| 174 | BUILD | [NXB-004](design/program/next-wave-2026-09-28/build/NXB-004.md) | A damaged loaded ship remains controllable through the real propulsion stack | Existing owners; SF-004, SF-005, SF-013, PQ-135 | OPEN |
 | 175 | BUILD | [NXB-005](design/program/next-wave-2026-09-28/build/NXB-005.md) | A recovered tow reaches a receiver with its custody and value intact | Existing owners; SF-029, SF-111, SF-273, SF-286 | OPEN |
 | 176 | BUILD | [NXB-007](design/program/next-wave-2026-09-28/build/NXB-007.md) | One physical kill has one readable legal and salvage aftermath | Existing owners; SF-030, SF-042, SF-159, SF-292 | OPEN |
 | 178 | BUILD | [NXB-012](design/program/next-wave-2026-09-28/build/NXB-012.md) | Countermeasures break a particular lock rather than erase every threat | Existing owners; SF-040, SF-050, SF-057 | OPEN |

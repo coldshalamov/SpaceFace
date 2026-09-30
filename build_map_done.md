@@ -7,6 +7,10 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### NXB-004 — damaged loaded ship stays controllable (2026-09-30)
+
+A hurt drive now spends the thrust it still has. The ship keeps steering, a loaded hull still accelerates less than a light one, and repairing the drive does not teleport the ship. Proof: test/next-wave-nxb-004.test.mjs. The ordinary flight route was not played in this session (`implemented / route-unproven`). Receipt: design/program/roadmap/receipts/NXB-004-DAMAGED-DRIVE-AUTHORITY.md.
+
 ### NXB-009 — atomic bomb preparation (2026-09-30).
 
 Implemented in this landing: one quoted order tops up fitted bomb families from owned
