@@ -20,10 +20,9 @@ for (const [type, data, file, radius] of [
     const entity = { id: 43, type, alive: true, radius, data };
     const original = structuredClone(entity);
     const root = factory().build(entity);
-    // The same-envelope prop stays drawn through admission (geology-skin precedent): hiding it
-    // at attach guaranteed a pop-in window while the packaged job queued/decoded/compiled.
-    assert.equal(root.children[0].visible, true);
-    assert.equal(root.userData.authoredPendingFallbackDrawn, true);
+    // hideImmediately doctrine: the procedural prop stays hidden through the whole admission
+    // window; only the authored body may ever appear (publish re-hides at swap regardless).
+    assert.equal(root.children[0].visible, false);
     assert.equal(root.userData.authoredPackageUrl, `assets/ships/release/parts/places/${file}`);
     const scene = new THREE.Scene();
     scene.add(root);
@@ -39,8 +38,6 @@ for (const [type, data, file, radius] of [
     }), true);
     assert.equal(loaded[0].slot, 'place');
     assert.equal(root.userData.authoredAssetState, 'authored');
-    // Publication re-hides the procedural fallback inside the same swap that mounts the body.
-    assert.equal(root.children[0].visible, false);
     const body = root.children.find(child => child.userData.scenarioPackagedBody);
     const size = new THREE.Box3().setFromObject(body).getSize(new THREE.Vector3());
     assert.ok(size.length() > 0);

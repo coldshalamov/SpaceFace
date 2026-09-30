@@ -571,6 +571,11 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
+  // A deadline caller joining an in-flight ambient task still sits on the player's
+  // deadline: its remaining fetch/meshopt/KTX2 posts read deadlineDecodeActive() at post
+  // time, so refcount the join for the rest of the task's settle — the same idiom the
+  // serial lane already uses, bounded to the joined task's tail.
+  const deadlineJoin = deadlineClass && runtime.assets.has(cacheKey);
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     (deadlineClass ? () => withDeadlineDecodeClass(() => loadGltfDocument(url, runtime.gltf))
       : () => loadGltfDocument(url, runtime.gltf))()
@@ -603,6 +608,7 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
+  if (deadlineJoin) withDeadlineDecodeClass(() => task);
   const blueprint = await task;
   if (!blueprint) {
     if (request) request.cancel('decode-failed');

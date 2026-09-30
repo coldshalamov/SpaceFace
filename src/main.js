@@ -186,7 +186,10 @@ async function boot() {
         detail: 'Rebuilding the saved sector',
         transition: 'continue',
       });
-      nextPaint().then(restore).catch((error) => {
+      // One rAF boundary: the 0.05 emit rides the presenter's own paint loop, so the
+      // restore only needs to leave this task — the double-rAF paint commit added ~16-33 ms
+      // of dead time before the slot scans and worker dispatch could even start.
+      nextFrame().then(restore).catch((error) => {
         console.error('[SpaceFace] deferred save restore failed', error);
         bus.emit('save:error', { slot: 'latest', reason: 'load_failed' });
       });
@@ -471,7 +474,7 @@ async function boot() {
 
 // Minimal playable scene so the engine is verifiable before subsystems exist:
 // player ship + a station + an asteroid ring.
-function bootstrapScene(state, helpers, bus, registry) {
+async function bootstrapScene(state, helpers, bus, registry, options = {}) {
   const owned = state.player.ownedShips[state.player.activeShipIndex] || null;
   const shipId = (owned && owned.defId) || NEW_GAME.shipId || 'ship_kestrel';
   const fittings = (owned && owned.fittings) || [];
@@ -497,6 +500,9 @@ function bootstrapScene(state, helpers, bus, registry) {
     helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
     for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }); }
   }
+  // Split the two heaviest scene-build halves so the 'preparing' stage gets a paint between
+  // world regen and opening composition instead of one frozen monolith.
+  if (typeof options.yield === 'function') await options.yield();
   spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
 }
 
@@ -594,7 +600,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
 
       // Create the canonical player and starting sector before readiness waits. This gives the
       // renderer real entity boundaries to upgrade while the route remains frozen in loading.
-      bootstrapScene(state, helpers, bus, registry);
+      await bootstrapScene(state, helpers, bus, registry, { yield: () => nextFrame() });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Run-specific loadouts and arena placement must exist before visual/GPU admission.
       // Installing them on game:started prepares the wrong hull, then replaces it in flight.

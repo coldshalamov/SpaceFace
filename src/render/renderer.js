@@ -162,7 +162,7 @@ import {
 } from '../world/presentationSources.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
-import { itineraryPositionInto } from '../world/worldCatchup.js';
+import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
@@ -1025,14 +1025,35 @@ function renderAdmissionEnv(state, out = _admissionEnv) {
  * rows are extrapolated ballistically first: their stored pos froze at shelf
  * time. Infinity when it never enters inside the horizon.
  */
+const _ledgerPredVel = { x: 0, z: 0 };
+
+// Prediction velocity for a ledger row: advanceWorldRecord zeroes vel on itinerary rows
+// (the schedule carries the motion, not the drift), so entity.vel would mark inbound
+// traffic as static and shrink every glass runway ~2x. Use the itinerary cruise speed
+// when the row has a live schedule; stored vel otherwise. Widens prediction only —
+// earlier admission is the safe direction.
+function predictionVel(entity, state) {
+  const vel = entity && entity.vel;
+  if (isPresentationLedgerRow(entity) && entity.intent
+      && Number.isFinite(entity.lastExactT)) {
+    const simTime = Number.isFinite(state && state.simTime)
+      ? state.simTime
+      : ((state && state.tick) | 0) / 60;
+    const along = itineraryVelocityInto(entity.intent, simTime, _ledgerPredVel);
+    if (along) return along;
+  }
+  return { x: Number(vel && vel.x) || 0, z: Number(vel && vel.z) || 0 };
+}
+
 function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_HORIZON_SECONDS, padWu = 0) {
   const pos = entity && entity.pos;
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return Infinity;
   const ledgerPos = ledgerAwarePos(entity, state);
   const ex = ledgerPos.x;
   const ez = ledgerPos.z;
-  const relVx = (Number(entity.vel && entity.vel.x) || 0) - env.pvx;
-  const relVz = (Number(entity.vel && entity.vel.z) || 0) - env.pvz;
+  const pvel = predictionVel(entity, state);
+  const relVx = pvel.x - env.pvx;
+  const relVz = pvel.z - env.pvz;
   // Presence radius, not the collision proxy: a big authored body's surface reaches
   // the glass long before its centre+radius math says it does.
   const visual = entityPresenceRadius(entity);
@@ -1878,6 +1899,8 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
  * the pending gauge's liveScreen test: a route transition carries a stale camera focus and
  * legitimately evicts off-screen roots, so only the live flight screen counts.
  */
+const _cameraOccluderOpts = { playerId: 0 };
+
 function noteOnGlassResidencyEviction(state, entity) {
   if (state.mode !== 'flight'
       || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)) return;
@@ -2418,12 +2441,22 @@ function kickDecodeRunwayAssets(owner, entities) {
     // The runway is not ship-only: wrecks/payloads/beacons carry the same GLB-decode
     // long pole on first contact (packagedPropSpec covers payload/beacon/assetRef-mapped
     // and explicit packagedPropFile props; wrecks decode a 'place'-slot hulk/aftermath
-    // body). Ship and station still take the full authored plan.
-    const wholePlan = entity.type === 'ship' || entity.type === 'station';
+    // body). Ships take the full authored plan; stations join the packaged lane because
+    // the authored preload plan is ship-only — resolvePlaceFileForEntity is total over
+    // station types, so their real place GLB decodes on the runway instead of cold
+    // inside the serial admission job.
+    const wholePlan = entity.type === 'ship';
     const resolved = wholePlan ? null : packagedDecodeFileForEntity(entity);
     if (!wholePlan && !resolved) return false;
     if (!meshNeedsAuthoredDecode(owner, entity)) return false;
     if (pending.has(entity.id)) return false;
+    // A prep-pinned entity decodes through its own boundary record's lane — a runway
+    // start here just joins the same task while burning one of the two pick slots.
+    if (owner._sectorBoundaryPreparations && owner._sectorBoundaryPreparations.has(entity.id)) return false;
+    // An in-flight boundary job already owns this entity's pipeline tail — re-picking
+    // would burn a start slot on library-deduped no-ops every poll until it settles.
+    const bd0 = owner._meshes && owner._meshes.get(entity.id);
+    if (bd0 && bd0.userData && bd0.userData.authoredUpgradePromise) return false;
     // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
     // once the schedule has named them. Other hulls earn a start either through the
     // ordinary admission policy or through the longer decode runway: the authored
@@ -2440,10 +2473,28 @@ function kickDecodeRunwayAssets(owner, entities) {
     key.seconds = seconds;
     return true;
   });
+  // The decode runway warms the LIBRARY half only — a mounted substrate would otherwise
+  // still run compose+compile+upload at admission pick, which is the dominant marker-on-glass
+  // interval for inbound traffic. Its boundary upgrade job is the same job relevance would
+  // enqueue, so starting it here stages the whole pipeline tail inside the runway window;
+  // the admission-time call then resolves 'authored' and exits. Shared by ships and stations.
+  const kickBoundaryUpgrade = (entity, wave) => {
+    const boundary = owner._meshes && owner._meshes.get(entity.id);
+    const boundaryData = boundary && boundary.userData;
+    if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
+        && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
+      try {
+        requestAuthoredUpgrade(boundary, renderer, owner.scene, {
+          residencyRole: wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare',
+          sectorId: (state.world && state.world.currentSectorId) || null,
+        });
+      } catch (_) { /* a refused request leaves the relevance trigger armed */ }
+    }
+  };
   let started = 0;
   for (let i = 0; i < ordered.length && started < 2; i++) {
     const entity = ordered[i];
-    if (entity.type === 'ship' || entity.type === 'station') {
+    if (entity.type === 'ship') {
       pending.add(entity.id);
       started += 1;
       const wave = entityMatchesWaveHullRunway(entity, state);
@@ -2453,29 +2504,19 @@ function kickDecodeRunwayAssets(owner, entities) {
       Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
         pending.delete(entity.id);
       });
-      // The decode runway warms the LIBRARY half only — a mounted substrate would otherwise
-      // still run compose+compile+upload at admission pick, which is the dominant
-      // marker-on-glass interval for inbound traffic hulls. Its boundary upgrade job is the
-      // same job relevance would enqueue, so starting it here stages the whole pipeline tail
-      // inside the runway window; the admission-time call then resolves 'authored' and exits.
-      const boundary = owner._meshes && owner._meshes.get(entity.id);
-      const boundaryData = boundary && boundary.userData;
-      if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
-          && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
-        try {
-          requestAuthoredUpgrade(boundary, renderer, owner.scene, {
-            residencyRole: wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare',
-            sectorId: (state.world && state.world.currentSectorId) || null,
-          });
-        } catch (_) { /* a refused request leaves the relevance trigger armed */ }
-      }
+      kickBoundaryUpgrade(entity, wave);
       warmKillHulkDecode(owner, entity);
     } else {
       // Non-ship packaged bodies have no authored plan — the decode is one file under its
-      // authored slot, file-deduped against the whole sector run.
+      // authored slot, file-deduped against the whole sector run. Stations ride this lane
+      // too (see the pick comment); they additionally get the boundary kick so their
+      // pipeline tail stages inside the runway like a hull's.
       const resolved = resolvedFiles.get(entity.id) || packagedDecodeFileForEntity(entity);
       const fkey = resolved && resolved.file ? `${resolved.slot}::${resolved.file}` : null;
       const inFlight = owner._decodeRunwayPackagedFiles;
+      if (entity.type === 'station') {
+        kickBoundaryUpgrade(entity, entityMatchesWaveHullRunway(entity, state));
+      }
       // A file already in flight decodes for the whole same-file cohort — claiming a start
       // slot for it would burn one of the two per-poll slots on a no-op.
       if (!fkey || (inFlight && inFlight.has(fkey))) continue;
@@ -2576,7 +2617,7 @@ function kickSpawnedEntityDecode(owner, entity) {
         approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state)))
       <= TABLE_DECODE_RUNWAY_SECONDS;
   if (!inRunway) return;
-  if (entity.type === 'ship' || entity.type === 'station') {
+  if (entity.type === 'ship') {
     if (!meshNeedsAuthoredDecode(owner, entity)) return;
     pending.add(entity.id);
     Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {
@@ -2588,6 +2629,8 @@ function kickSpawnedEntityDecode(owner, entity) {
     warmKillHulkDecode(owner, entity);
     return;
   }
+  // Stations fall through to the packaged lane: the authored preload plan is ship-only,
+  // so a station spawn must warm its resolved place GLB file, not an empty plan.
   if (packagedDecodeFileForEntity(entity)) {
     if (!meshNeedsAuthoredDecode(owner, entity)) return;
     pending.add(entity.id);
@@ -11568,8 +11611,14 @@ export const render = {
     if (!entities || typeof entities !== 'object') return;
     const persistent = Array.isArray(entities.persistent) ? entities.persistent : [];
     for (const record of persistent) warmSaveEnvelopeEntityDecode(this, record);
-    // The saved player restores through the authored-hero path; persistent NPC ships are
-    // the runway cost this warms. Stations/places ride the same record list.
+    // The saved player's hull is the one body the first frame must show — on a non-Kestrel
+    // save its decode used to start at _spawnPlayer mid-restore instead of overlapping the
+    // whole restore like every persistent actor's. Serialized records carry the live
+    // `isPlayer` flag the warm skips, so strip it for the file-level decode (the spawned
+    // entity still takes the authored-hero path, just onto a warm cache).
+    if (entities.player && typeof entities.player === 'object') {
+      warmSaveEnvelopeEntityDecode(this, Object.assign({}, entities.player, { isPlayer: false }));
+    }
   },
 
   // PQ-210.00 Crucible roster prewarm. A wave that introduces a hull the GPU has never drawn
@@ -15054,17 +15103,21 @@ export const render = {
     const focusMesh = this.state && this._meshes ? this._meshes.get(this.state.playerId) : null;
     const focusPos = focusMesh && focusMesh.position;
     if (!camPos || !focusPos) return;
+    const opts = _cameraOccluderOpts;
+    opts.playerId = this.state.playerId;
     const moved = updateCameraOccluders(
       occluders,
       this._entityFrame && this._entityFrame.records,
       camPos,
       focusPos,
       Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0,
-      { playerId: this.state.playerId },
+      opts,
     );
     if (moved && this._asteroidInstancePool) invalidateAsteroidInstancePool(this._asteroidInstancePool);
     if (this.state && this.state.render) {
-      this.state.render.cameraOccluders = cameraOccluderDiagnostics(occluders).active;
+      // occludingCount is maintained inside the pass — diagnostics() would rebuild the
+      // same number from a per-frame {active,deepest,entries[]} + per-entry allocs.
+      this.state.render.cameraOccluders = occluders.occludingCount || 0;
     }
   },
 

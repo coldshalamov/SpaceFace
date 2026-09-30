@@ -2133,6 +2133,10 @@ export function spawnableShipArchetypePrewarmUrls() {
     // is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp link).
     ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID)
       .flatMap((family) => [family.lod1, family.lod2].filter(Boolean)),
+    // File-keyed families (massline express liner) have no def-id row — a far spawn's
+    // demotion still needs the sibling GLBs resident, so list them explicitly.
+    ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_FILE)
+      .flatMap((family) => [family.lod1, family.lod2].filter(Boolean)),
   ]);
 }
 
@@ -3255,6 +3259,26 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     );
   }
   handoffBootstrapIfCovered(renderer);
+  if (record && boundary.userData && !boundary.userData.visualBounds && record.bounds) {
+    // The pending substrate still classifies by presence radius until the authored body
+    // lands — stamp the envelope the compose is about to draw at, so glass/runway tests
+    // measure the incoming body (often 2-4x the collider) during the compile window.
+    const size = Array.isArray(record.bounds.size) ? record.bounds.size : null;
+    const center = Array.isArray(record.bounds.center) ? record.bounds.center : [0, 0, 0];
+    if (size) {
+      const data = entity && entity.data || {};
+      const authoredEnvelope = Math.max(1e-6, ...size.map((value) => Number(value) || 0));
+      const pendingScale = resolvePlaceDrawScale(data, {
+        targetRadius: Number(data.placeTargetRadius),
+        authoredEnvelope,
+        censusScale: modelTruthPlaceDrawScale(entity),
+      });
+      boundary.userData.visualBounds = {
+        center: center.map((value) => (Number(value) || 0) * pendingScale),
+        size: size.map((value) => (Number(value) || 0) * pendingScale),
+      };
+    }
+  }
   if (!record || !boundary.parent) {
     releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable');
     boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
@@ -4787,6 +4811,21 @@ function firstFlightReadableShipJob(job) {
         && runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)));
 }
 
+// Same readable-glass test as the ship variant but type-agnostic: during the handoff
+// hold an on-glass station/place/capsule job is also a literal hole in the picture
+// (PQ-193.12 forbids drawing its procedural fallback), so it earns the pass behind any
+// readable ship rather than waiting out the whole ~20s hold.
+function firstFlightReadableGlassJob(job) {
+  const live = authoredRuntimeState();
+  const render = live && live.render;
+  const entity = job && job.entity;
+  return !!(live && live.mode === 'flight' && render
+    && Number.isFinite(render.firstPlayableFrameAt)
+    && render.sectorShellAdmission !== true
+    && entity && entity.alive !== false
+    && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
+}
+
 function scheduleHeldShipWake(state) {
   if (!state || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
   state.heldShipWakeTimer = setTimeout(() => {
@@ -5469,6 +5508,10 @@ function admitNextUpgradeJob(state) {
       if (stallDelta) return stallDelta;
     }
     if (state.firstFlightHandoffHold === true) {
+      // On-glass first — a parked non-ship still drawn as void beats an off-glass runway
+      // ship. Within the same glass status ships keep priority.
+      const glassDelta = Number(firstFlightReadableGlassJob(b)) - Number(firstFlightReadableGlassJob(a));
+      if (glassDelta) return glassDelta;
       const urgentDelta = Number(firstFlightReadableShipJob(b)) - Number(firstFlightReadableShipJob(a));
       if (urgentDelta) return urgentDelta;
     }
@@ -5484,7 +5527,9 @@ function admitNextUpgradeJob(state) {
     }
     return a.sequence - b.sequence;
   });
-  if (state.firstFlightHandoffHold === true && !firstFlightReadableShipJob(state.jobs[0])) {
+  if (state.firstFlightHandoffHold === true
+      && !firstFlightReadableShipJob(state.jobs[0])
+      && !firstFlightReadableGlassJob(state.jobs[0])) {
     scheduleHeldShipWake(state);
     armStalledHogWake(state);
     return null;
@@ -7340,7 +7385,15 @@ function admitEntityPlan(renderer, options, library, plan) {
         // the lane permits duplicate decodes; copying slot arrays outside the lane permits
         // last-writer data loss.
         if (!libraryHasPreloadPlan(library, plan)) {
-          await loadPlanIntoLibrary(renderer, options, library, plan);
+          // An ambient run still occupying the lane must not hold a queued deadline entry
+          // for the rest of its plan — break between files so the spliced entry runs next;
+          // the unfinished remainder re-queues through the ordinary demand path. Deadline
+          // entries keep their own run to settle (they are the presentation path).
+          const runOptions = entry.deadline === true ? options : {
+            ...options,
+            hasQueuedDeadlineEntry: () => lane.queued.some((queued) => queued.deadline === true),
+          };
+          await loadPlanIntoLibrary(renderer, runOptions, library, plan);
         }
         return library;
       },
@@ -7389,38 +7442,52 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
   // Deliberately serial. GLB fetch is local and cheap; meshopt/KTX2 decode and GPU upload are the
   // expensive resident operations. Serial admission prevents renderer + GPU memory from rising by
   // hundreds of megabytes in one task while preserving the exact source assets.
+  // Flatten the plan once so file boundaries can be counted: the terminal file must not pay
+  // a present-yield — a frame boundary after the last decode only delays the compose that
+  // follows it, which is the pop latency the boundary exists to prevent.
+  const pendingFiles = [];
+  const recordsBySlot = new Map();
   for (const [slot, files] of Object.entries(plan || {})) {
     const records = Array.isArray(library.get(slot)) ? library.get(slot).filter(recordIsResident) : [];
-    for (const file of files || []) {
-      if (records.some((record) => recordUrlEndsWith(record, file))) continue;
-      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
-      const url = `${partRoot}${file}`;
-      const diagnostic = beginDecodeAdmission(renderer, url, slot);
-      let record;
-      try {
-        record = await loadPart(url, {
-          renderer,
-          slot,
-          optional: true,
-          residencyOwner: options.residencyOwner,
-          residencyRole: options.residencyRole,
-          sectorId: options.sectorId,
-          isResidencyOwnerActive: options.isResidencyOwnerActive,
-          admissionDeadline: options.admissionDeadline,
-        });
-      } finally {
-        finishDecodeAdmission(renderer, diagnostic);
-      }
-      if (record) records.push(record);
-      // File boundary: same pacing contract as the compose/compile stages — in flight a
-      // multi-file plan must let a presented frame land between serial decode+upload units
-      // instead of stacking one uninterrupted block across a visible beat.
-      if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-        try { await options.yieldToNextPresent(); } catch (_) { /* pacing only */ }
-      }
-    }
-    library.set(slot, records);
+    recordsBySlot.set(slot, records);
+    for (const file of files || []) pendingFiles.push({ slot, file });
   }
+  for (let i = 0; i < pendingFiles.length; i++) {
+    const { slot, file } = pendingFiles[i];
+    const records = recordsBySlot.get(slot);
+    if (records.some((record) => recordUrlEndsWith(record, file))) continue;
+    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
+    // A deadline entry queued behind this ambient run takes the lane at the next file
+    // boundary; the remaining files re-admit on their own demand.
+    if (typeof options.hasQueuedDeadlineEntry === 'function' && options.hasQueuedDeadlineEntry()) break;
+    const url = `${partRoot}${file}`;
+    const diagnostic = beginDecodeAdmission(renderer, url, slot);
+    let record;
+    try {
+      record = await loadPart(url, {
+        renderer,
+        slot,
+        optional: true,
+        residencyOwner: options.residencyOwner,
+        residencyRole: options.residencyRole,
+        sectorId: options.sectorId,
+        isResidencyOwnerActive: options.isResidencyOwnerActive,
+        admissionDeadline: options.admissionDeadline,
+      });
+    } finally {
+      finishDecodeAdmission(renderer, diagnostic);
+    }
+    if (record) records.push(record);
+    // File boundary: same pacing contract as the compose/compile stages — in flight a
+    // multi-file plan must let a presented frame land between serial decode+upload units
+    // instead of stacking one uninterrupted block across a visible beat.
+    if (i < pendingFiles.length - 1
+        && options.yieldBetweenGpuStages === true
+        && typeof options.yieldToNextPresent === 'function') {
+      try { await options.yieldToNextPresent(); } catch (_) { /* pacing only */ }
+    }
+  }
+  for (const [slot, records] of recordsBySlot) library.set(slot, records);
   return library;
 }
 

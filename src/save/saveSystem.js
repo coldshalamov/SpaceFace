@@ -3279,11 +3279,19 @@ export const save = {
     const s = this._openRestoreSession(data, slot, options);
     const it = this._restoreChunks(s);
     let restoreError = null;
+    // Chunks pay a frame boundary only once the last one is at least a frame old — a
+    // sub-millisecond chunk costs a whole rAF otherwise (~9+N fixed waits ≈ 160-400 ms of
+    // pure scheduling on every Continue), while a heavy chunk still yields at paint cadence.
+    let lastRealYieldAt = -Infinity;
     try {
       for (;;) {
         const r = it.next();
         if (r.done) break;
-        await this._restoreFrameYield();
+        const t = nowMs();
+        if (lastRealYieldAt === -Infinity || t - lastRealYieldAt >= RESTORE_YIELD_SLICE_MS) {
+          await this._restoreFrameYield();
+          lastRealYieldAt = nowMs();
+        }
       }
     } catch (error) {
       restoreError = error;
@@ -3542,6 +3550,8 @@ export const save = {
       // so the owners' reconcile handlers run against the restored entity/world state. Unknown
       // future schema versions throw inside normalize (fail loudly, never erase a campaign);
       // absent slices (old saves) initialize an empty arc / empty deployment ledger.
+      this._reportRestoreProgress(0.23, 'Restoring the campaign directors');
+      yield 'deserialized-campaign';
       this._callDeserialize('nemesis', data.nemesis);
       this._callDeserialize('nemesisEncounter', data.nemesisDeployment);
       // Enemy Mind cognition namespace (version 1). Absent in older saves → cleared, so cognition
@@ -3574,6 +3584,8 @@ export const save = {
       // died in the rebuild must be allowed to call again — while a caller whose squad actually
       // arrived keeps the once-ever contract.
       this._reconcileReinforcementLatches(entityIdRemap);
+      this._reportRestoreProgress(0.235, 'Restoring flight deck state');
+      yield 'deserialized-flight';
       this._restoreFlight(data.flight);
       this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
@@ -4284,6 +4296,10 @@ export function preflightSaveImport(value, options = SAVE_IMPORT_LIMITS) {
 function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 }
+
+// Async-lane restore chunks share one frame boundary per slice of real work (~1 frame at
+// 60 Hz): cheap chunks skip their scheduled rAF entirely, heavy chunks still breathe.
+const RESTORE_YIELD_SLICE_MS = 16;
 
 function restoreErrorMessage(error) {
   if (error && typeof error.message === 'string' && error.message) return error.message;

@@ -117,6 +117,33 @@ export function itineraryPosition(intent, simTime) {
   };
 }
 
+// Schedule velocity for a moving itinerary row: (to − from)/span while en route (or yet to
+// depart — the row will move at cruise once startT passes), 0 once it has arrived. Null when
+// the intent carries no usable schedule so callers can fall back to a stored vel. The record's
+// own vel is zeroed by advanceWorldRecord[Into] for itinerary rows, so predictors that read
+// entity.vel directly treat inbound traffic as static.
+export function itineraryVelocityInto(intent, simTime, out) {
+  const spec = normalizeIntentShared(intent);
+  if (!spec || !out) return null;
+  const from = spec.parameters.from;
+  const to = spec.parameters.to;
+  if (!from || !to
+    || !Number.isFinite(from.x) || !Number.isFinite(from.z)
+    || !Number.isFinite(to.x) || !Number.isFinite(to.z)) return null;
+  const span = spec.endT - spec.startT;
+  if (!(span > 0)) {
+    out.x = 0; out.z = 0;
+    return out;
+  }
+  if (finite(simTime) >= spec.endT) {
+    out.x = 0; out.z = 0;
+    return out;
+  }
+  out.x = (finite(to.x) - finite(from.x)) / span;
+  out.z = (finite(to.z) - finite(from.z)) / span;
+  return out;
+}
+
 export function regenerateVital(current, max, rate, dt) {
   if (!Number.isFinite(current) || !Number.isFinite(max)) return current;
   const t = Math.max(0, finite(dt));
