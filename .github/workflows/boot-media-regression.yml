@@ -1,0 +1,75 @@
+name: Boot media regression
+on:
+  push:
+    branches: ['fix/boot-visualizer-media-first']
+    paths:
+      - '.github/workflows/boot-media-regression.yml'
+      - 'src/ui/boot*.js'
+      - 'src/ui/loadingPresenter.js'
+      - 'test/boot-media*.test.mjs'
+      - 'tools/cinematic/boot-media-proof*'
+  pull_request:
+    paths:
+      - 'src/ui/boot*.js'
+      - 'src/ui/loadingPresenter.js'
+      - 'test/boot-media*.test.mjs'
+      - 'tools/cinematic/boot-media-proof*'
+      - 'assets/cinematics/boot-visualizer*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: boot-media-regression-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sources-and-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/ui/loading*.js
+            /src/ui/boot*.js
+            /src/ui/introSignalRemix*.js
+            /src/ui/orrery/boot*.js
+            /src/core/boot*.js
+            /src/core/eventBus.js
+            /tools/cinematic/boot-media-proof*
+            /tools/cinematic/signal-remix*
+            /test/boot-media*.test.mjs
+            /assets/ui/generated/emblem/emblem.thumb.webp
+            /styles/intro.css
+            /styles/boot-instrument.css
+            /styles/boot-visualizer.css
+            /index.html
+            /package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check controller and lifecycle contracts
+        run: |
+          node --check src/ui/bootMediaPlayback.js
+          node --check src/ui/bootVisualizer.js
+          if compgen -G 'test/boot-media*.test.mjs' > /dev/null; then node --test test/boot-media*.test.mjs; fi
+      - name: Collect exact source fixture
+        if: always()
+        run: |
+          mkdir -p .boot-media-source
+          git rev-parse HEAD > .boot-media-source/SOURCE_COMMIT.txt
+          python3 - <<'PY'
+          import subprocess, os, zipfile
+          with zipfile.ZipFile('.boot-media-source/runtime-source.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+              for name in subprocess.check_output(['git','ls-files'],text=True).splitlines():
+                  if os.path.isfile(name): z.write(name)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boot-media-source
+          path: .boot-media-source/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
