@@ -21,6 +21,7 @@ COLORS = {
     'stripe': '#7e622b',   # gold trim (brief #b08a3c, authored darker: the key light lifts ~2.5x)
     'hazard': '#7e622b',
     'dark': '#16191e',
+    'glow_cyan.gold': '#ffd35a',  # gold trim, lit: the deck lines
 }
 
 # Hull sections (also used by helpers that sit parts on the hull skin).
@@ -133,6 +134,11 @@ def build():
     F.panel(s, 'Deck', (-17.6, 0.0), (1.2, 3.4), 'dark', inset=0.04, depth=-0.03)
     F.band(s, 'Deck', (0, 2.55, 0), (0, 1, 0), 0.16, 'stripe', facing=(0, 0, 1), min_facing=0.2)
     F.band(s, 'Deck', (0, -2.55, 0), (0, 1, 0), 0.16, 'stripe', facing=(0, 0, 1), min_facing=0.2)
+    # Identity trim, lit: one thin gold line inside each deck-edge band, bow to stern, so the
+    # turret spine is framed by two lines of light (LOOK.md: lamps are light).
+    for side in (1, -1):
+        F.band(s, 'Deck', (0, side * 2.28, 0), (0, 1, 0), 0.08, 'glow_cyan.gold', facing=(0, 0, 1), min_facing=0.2,
+               inset=0.01, depth=-0.02, region=(('x', -16.0, 11.2),))
     # forecastle: raised armour wedge over the bow in front of turret one
     F.plate(s, 'Forecastle', [(18.6, 0.35), (14.0, 1.6), (12.6, 1.5), (12.6, -1.5), (14.0, -1.6), (18.6, -0.35)],
             z0=1.1, thickness=1.05, material='paint', chamfer=0.35, side_material='paint', bevel=0.05)

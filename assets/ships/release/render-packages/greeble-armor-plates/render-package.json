@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7d70dd4e390c9ae20444aa1a43a493805da2932c6db3b17fb3d2c250739afaef",
+  "contentHash": "7648c04e43687f9c4dfc382f6ffd951d872d18b31176b14012897b1235dacedb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -263,7 +263,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "fa799cb5a406be0fde1edd0c560fd19db6f2c87c4d90927c8710a6bba49fd96c",
+      "sha256": "7d086fd9f54684f65cd2e398c5d0bb5d7f248e193132e7e0125a5516942ca430",
       "uri": "pilots.json"
     }
   },
@@ -373,7 +373,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
   },
-  "runtimeHash": "4746d974c50fcba337841b8398bce435c18c52760270a834f72d9b1084547e88",
+  "runtimeHash": "6d6f821c505c55f1b23cf36538f1418b18dc4fbbb4348dcb31c4a5686d3660ec",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

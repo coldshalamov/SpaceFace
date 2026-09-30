@@ -47155,26 +47155,26 @@
       "bounds": {
         "center": [
           -0.557233,
-          3.530053,
+          3.530067,
           0
         ],
         "max": [
           20.506462,
-          9.059725,
-          6.256667
+          9.059753,
+          6.256686
         ],
         "min": [
           -21.620928,
           -1.999618,
-          -6.256667
+          -6.256686
         ],
         "size": [
           42.12739,
-          11.059343,
-          12.513333
+          11.059371,
+          12.513372
         ]
       },
-      "bytes": 971256,
+      "bytes": 991804,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -47240,8 +47240,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.15832,
-          "lod2": 1.148076
+          "lod1": 0.158318,
+          "lod2": 1.147511
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -47277,6 +47277,14 @@
           "depthWrite": false,
           "doubleSided": false,
           "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_gold",
           "role": "emissive"
         },
         {
@@ -47346,17 +47354,17 @@
       ],
       "measuredProportions": {
         "halfWidth": 0.255451,
-        "height": 0.451537,
+        "height": 0.451538,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 20,
-      "nodes": 33,
+      "meshes": 21,
+      "nodes": 34,
       "note": null,
       "opening": null,
       "pivot": [
         -0.557233,
-        3.530053,
+        3.530067,
         0
       ],
       "proposedSkin": {
@@ -47591,8 +47599,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2081,
-        "inwardFaceFraction": 0.15975,
+        "boundaryEdges": 2004,
+        "inwardFaceFraction": 0.12325,
         "silhouetteRadius": 21.770325,
         "sliceY": 0
       },
@@ -47698,15 +47706,15 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 45694,
+      "triangles": 46694,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/warden_production_v1.glb",
       "worldSize": [
         44.72,
-        11.739959,
-        13.283431
+        11.739988,
+        13.283472
       ]
     },
     {

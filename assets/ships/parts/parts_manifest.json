@@ -8082,8 +8082,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_warden",
-      "tris": 45694,
-      "bytes": 2894744,
+      "tris": 46694,
+      "bytes": 2988576,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

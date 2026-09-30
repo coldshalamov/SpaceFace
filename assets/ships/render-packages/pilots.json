@@ -4007,8 +4007,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1.glb",
-      "releaseSha256": "4aaac3c968b88bd6a82675407bb005d0bef8ccbf9eab662007f699847a2cc4cb",
-      "releaseBytes": 971256,
+      "releaseSha256": "84fb3cf3e71dae31035fae040b16f265194e31214dbe96679dede8094ff1a157",
+      "releaseBytes": 991804,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4406,8 +4406,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod1.glb",
-      "releaseSha256": "a93c313c20da93ced2c97ebd6477821cff213be1fe50e125a7b55fd484a44a53",
-      "releaseBytes": 686228,
+      "releaseSha256": "4dfad4039fb65a9736d5be8877c6e1d61e405e3dea25ac045a65a9405186b914",
+      "releaseBytes": 700200,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4427,8 +4427,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod2.glb",
-      "releaseSha256": "447c75398da9b020d354f583f019bf8e084f8409489950a6f0a25b4490494d4d",
-      "releaseBytes": 508824,
+      "releaseSha256": "3a829129c73295c7db375d3bfdaff9ea1bab40e5aa7b9b5e72b030eb90f90b76",
+      "releaseBytes": 517500,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

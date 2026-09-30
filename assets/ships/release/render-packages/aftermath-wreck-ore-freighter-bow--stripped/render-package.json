@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "840a90c93ce3be1514ad1027d2c80f6f2141d8e12f1dbd46544c4fbdb255a1d5",
+  "contentHash": "22b3d5c0884264cad03371838734e3d5ed2a6bec93f7de28ff139963ac07b168",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -21156,7 +21156,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "fa799cb5a406be0fde1edd0c560fd19db6f2c87c4d90927c8710a6bba49fd96c",
+      "sha256": "7d086fd9f54684f65cd2e398c5d0bb5d7f248e193132e7e0125a5516942ca430",
       "uri": "pilots.json"
     }
   },
@@ -31213,7 +31213,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__stripped.glb"
   },
-  "runtimeHash": "5002f6762e10e6a5f9bc9376e41f5ca1465a6c1fb12301dc363e8774188a17a4",
+  "runtimeHash": "b2e561e465cea8346815912ffb9de2bb05b367f0ce1a3135f91e28a78893bb00",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
