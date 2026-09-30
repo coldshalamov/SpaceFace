@@ -335,7 +335,10 @@ function buildMaterials() {
     warning: standardMaterial(KESTREL_HERO_COLORS.warning, 0.66, 0.06),
     repair: standardMaterial(KESTREL_HERO_COLORS.repair, 0.72, 0.22),
     rust: standardMaterial(KESTREL_HERO_COLORS.rust, 0.86, 0.02),
-    canopy: stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    // MeshPhysicalMaterial by normalization contract: Physical at transmission=0 renders
+    // Standard-equivalent, and every canopy program lands inside the already-warmed Physical
+    // family — a Standard canopy would mint a STANDARD-define variant nothing precompiles.
+    canopy: stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
       color: KESTREL_HERO_COLORS.canopy,
       emissive: new THREE.Color('#0a3040'),
       emissiveIntensity: 0.35,
@@ -343,6 +346,7 @@ function buildMaterials() {
       metalness: 0.08,
       transparent: true,
       opacity: 0.92,
+      transmission: 0.0,
     }), SHARED_MATERIAL_ROLE.CANOPY),
     // Overnight B1: high-intensity pale emissive on box prims read as "floating white cubes".
     // Sensors stay readable cyan but stay subordinate to the hull silhouette.

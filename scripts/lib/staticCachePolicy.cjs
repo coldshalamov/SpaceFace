@@ -54,6 +54,25 @@ function resolveStaticCacheControl(relativePath) {
   return 'no-cache';
 }
 
+/**
+ * App-source paths whose bytes are fixed for the life of a packaged build. A packaged app's
+ * asar payload cannot change between launches of one build, so marking these immutable makes a
+ * warm launch skip the ~700 conditional-GET revalidations the module graph otherwise pays.
+ * index.html is deliberately NOT in this class: it stays no-cache as the launch detector — the
+ * server compares its digest-keyed ETag to decide whether to emit Clear-Site-Data for a build
+ * change, which is what makes the rest of this class safe to pin.
+ */
+function isImmutableAppSource(relativePath) {
+  const p = normalizePath(relativePath);
+  if (!p) return false;
+  if (p === 'index.html' || p.endsWith('.html') || p.endsWith('.htm')) return false;
+  if (p.startsWith('saves/') || p.includes('/saves/')) return false;
+  return p.startsWith('src/')
+    || p.startsWith('styles/')
+    || p.startsWith('node_modules/')
+    || p.startsWith('electron/');
+}
+
 function makeWeakEtag(stats) {
   if (!stats) return null;
   const size = Number(stats.size) || 0;
@@ -68,9 +87,12 @@ function ifNoneMatchSatisfied(requestEtag, etag) {
   return raw.split(',').map((part) => part.trim()).includes(etag);
 }
 
-function resolveStaticCacheHeaders(relativePath, stats, requestHeaders = {}) {
+function resolveStaticCacheHeaders(relativePath, stats, requestHeaders = {}, options = {}) {
   const etag = makeWeakEtag(stats);
-  const cacheControl = resolveStaticCacheControl(relativePath);
+  const appSourceImmutable = options && options.appSourceImmutable === true;
+  const cacheControl = appSourceImmutable && isImmutableAppSource(relativePath)
+    ? 'public, max-age=31536000, immutable'
+    : resolveStaticCacheControl(relativePath);
   const headers = {
     'Cache-Control': cacheControl,
   };
@@ -83,6 +105,7 @@ function resolveStaticCacheHeaders(relativePath, stats, requestHeaders = {}) {
 module.exports = {
   extname,
   isImmutableReleaseAsset,
+  isImmutableAppSource,
   isSaveOrMutableDocument,
   resolveStaticCacheControl,
   makeWeakEtag,

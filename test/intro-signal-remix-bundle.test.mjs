@@ -6,7 +6,7 @@ const source = readFileSync(new URL('../scripts/build-bundle.mjs', import.meta.u
 const devHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../src/ui/bootEntry.js', import.meta.url), 'utf8');
 // Exercise the ACTUAL build rewrite without executing a full multi-GB release.
-const body = source.match(/async function buildBundledHtml\(\) \{([\s\S]*?)\n\}\n\nasync function runLockedBuild/)[1];
+const body = source.match(/async function buildBundledHtml\(\) \{([\s\S]*?)\r?\n\}\r?\n\r?\nasync function runLockedBuild/)[1];
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const rewrite = new AsyncFunction('readFile', 'join', 'ROOT', body);
 
@@ -16,6 +16,8 @@ test('retail preserves the media shell and rewrites the actual lightweight entry
   const html = await rewrite(async () => devHtml, join, '/repo');
   assert(html.includes('<script type="module" src="./main.js"></script>'));
   assert(!html.includes('./src/'));
+  assert(!/<link\b[^>]*rel="modulepreload"/.test(html));
+  assert(html.includes('preload" as="style" href="./styles/hud.css'));
   assert(!/importmap/i.test(html));
   assert(html.includes('styles/boot-visualizer.css'));
   assert(html.includes('data-boot-native="true"'));

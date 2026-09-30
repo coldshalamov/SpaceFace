@@ -275,6 +275,9 @@ export const fragileCargo = {
     this.bus = ctx && ctx.bus;
     this.helpers = ctx && ctx.helpers || {};
     ensureFragileCargoState(this.state);
+    // The options literal is fixed at attach: hoisting it removes an allocation on every
+    // physics:impact, including NPC-only contacts that bail inside applyFragileCargoImpact.
+    this._impactOptions = { bus: this.bus, helpers: this.helpers };
     this._onImpact = (payload) => this.onImpact(payload || {});
     this._onNewGame = () => this.newGame();
     if (this.bus && typeof this.bus.on === 'function') {
@@ -288,9 +291,6 @@ export const fragileCargo = {
   },
 
   onImpact(payload) {
-    return applyFragileCargoImpact(this.state, payload, {
-      bus: this.bus,
-      helpers: this.helpers,
-    });
+    return applyFragileCargoImpact(this.state, payload, this._impactOptions);
   },
 };

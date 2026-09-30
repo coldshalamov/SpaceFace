@@ -4888,7 +4888,9 @@ export const vfx = {
     return presentationStyle('#ffffff', '#b060ff', SPR_RING, { radial: true, lightPeak: 3.2, lightDistance: 150, speed0: 18, speedJitter: 32 });
   },
 
-  _collisionPairKey(aId, bId) {
+  _collisionPairKey(aId, bId, payload = null) {
+    // physics:impact carries the pre-joined key; only build the string when absent.
+    if (payload && typeof payload.pairKey === 'string') return payload.pairKey;
     const a = String(aId);
     const b = String(bId);
     return a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
@@ -4916,7 +4918,7 @@ export const vfx = {
       if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
     }
     this._collisionPresentationTick = tick;
-    const key = this._collisionPairKey(p && p.aId, p && p.bId);
+    const key = this._collisionPairKey(p && p.aId, p && p.bId, p);
     const previous = this._collisionContactTicks.get(key);
     if (Number.isFinite(previous) && tick - previous < CONTACT_SPARK_COOLDOWN_TICKS) return false;
     this._boundedCollisionTickWrite(this._collisionContactTicks, key, tick);
@@ -4972,6 +4974,13 @@ export const vfx = {
 
   _collisionPatternSerial(p) {
     let hash = Math.trunc(Number(p && p.tick) || Number(this.state && this.state.tick) || 0);
+    // physics:impact already carries the joined pair string — one pass instead of two
+    // String() coercions plus a channel loop per emitted contact.
+    if (p && typeof p.pairKey === 'string') {
+      const text = p.pairKey;
+      for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+      return hash | 0;
+    }
     for (let channel = 0; channel < 2; channel++) {
       const value = channel === 0
         ? p && (p.aId ?? p.targetId)
@@ -15712,6 +15721,32 @@ export function createVfxPrecompileSalvo() {
       * PLAYER_PLASMA_STREAM_RECIPE.volume.tailFlare,
   });
   stagingVolume.group.userData.precompileStaging = true;
+
+  // The selection sigil is a bespoke ShaderMaterial nothing else can pin: a specimen here warms
+  // its exact program key so the first target select does not link inside the presented frame.
+  // The live instance starts visible=false and is skipped by the residency-leaf census, so this
+  // specimen is the only staged draw the program ever gets.
+  const sigilSpecimen = new SelectionSigil();
+  sigilSpecimen.mesh.visible = true;
+  sigilSpecimen.mesh.name = 'SF_Precompile_SelectionSigil';
+  group.add(sigilSpecimen.mesh);
+
+  // Fracture-vein strips (asteroidMotionPresentation ensureVeinRig) mount nested under an
+  // already-presented asteroid root the first time a rock cracks past 2% — outside the scene
+  // mount watch — with a program key nothing else pins: mapless MeshBasicMaterial, additive,
+  // double-sided, forceSinglePass, toneMapped:false. One strip with the byte-matched recipe
+  // stages the link at startup instead of inside a mining frame.
+  const veinSpecimenGeo = new THREE.BufferGeometry();
+  veinSpecimenGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    -0.5, 0, -14, 0.5, 0, -14, 0, 0.5, -14,
+  ]), 3));
+  const veinSpecimen = new THREE.Mesh(veinSpecimenGeo, new THREE.MeshBasicMaterial({
+    color: 0xff9a3c, transparent: true, opacity: 0.85,
+    blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true,
+    side: THREE.DoubleSide, forceSinglePass: true, toneMapped: false,
+  }));
+  veinSpecimen.name = 'SF_Precompile_FractureVein';
+  group.add(veinSpecimen);
 
   // Deliberately NO light here: precompile.js tops the scene up to the exact runtime event-light
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program

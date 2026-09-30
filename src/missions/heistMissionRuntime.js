@@ -261,6 +261,7 @@ function speakHeistLine(ctx, record, { cueId, moment, text }) {
     cueId,
     missionId: record.missionId,
     moment,
+    variantId: record.variantId || null,
     text,
     voiceId: HEIST_VOICE_ID,
     channel: HEIST_VOICE_CHANNEL,

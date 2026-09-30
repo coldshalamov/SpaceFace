@@ -15,6 +15,9 @@ async function start() {
     artwork = getBootVisualizer(document);
     artwork.start();
   } catch (error) { console.warn('[boot] artwork unavailable', error); }
+  // PR #188's index modulepreloads warm transfers in parallel. Do not start
+  // main's EVALUATION here until the movie is visible: that eager import is
+  // precisely the startup race this media-first handoff eliminates.
   // Both promises are bounded. A real pair of media frames, not play() resolving
   // or a worker heartbeat, normally releases the game import. Network/codec
   // failure still releases it, with an explicit fallback instead of a deadlock.

@@ -50,6 +50,13 @@
     }
   }
   </script>
+  <!-- Fetch-only early hints: preserve PR #188's transfer warmup without executing
+       the game graph before the native media proof in bootEntry. Retail strips
+       modulepreloads through buildBundledHtml; hud.css keeps its original cascade. -->
+  <link rel="preload" as="style" href="./styles/hud.css" />
+  <link rel="modulepreload" href="./vendor/three.module.js" />
+  <link rel="modulepreload" href="./vendor/rapier3d-compat/rapier.mjs" />
+  <link rel="modulepreload" href="./src/main.js" />
 </head>
 <body>
   <canvas id="gl-canvas"></canvas>

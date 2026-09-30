@@ -1558,6 +1558,11 @@ export const traffic = {
     if (authoredPockets.length) {
       this._materializeAuthoredActivityCast(sector, authoredPockets);
     }
+    // During a save restore the envelope respawn (persistent-spawn chunks + save:loaded's
+    // re-adopt) is authoritative for every hull the live-entry production below would mint —
+    // anything spawned now is wiped by the restore's clearStale pass anyway. Same precedent as
+    // the _maintainClaimConvoys/_maintainClaimDepotTraffic epoch guards.
+    if (this._restoreEpochPending) return;
     // Density from trafficPerMin; high-sec cores floor at CORE_MIN_TRAFFIC (spec2/04 core pocket).
     // Explicit trafficPerMin:0 still means "hollow" (frontier silence).
     const count = ambientCountForSector(sector, this.state);
