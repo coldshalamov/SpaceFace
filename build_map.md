@@ -2620,6 +2620,26 @@ for the deferred runtime binary — `electron.exe` 43.2.0 present, `node scripts
 exits 0, real window titled "SpaceFace" confirmed open. One game process is left running for the
 owner to play; nothing else.
 
+**Collision tear-off landed (2026-09-29, late):** the satisfying-collision audit found the ladder
+was ~80% built — physics receipts, momentum feel (`feel.js`), pooled contact VFX, particle debris,
+and lethal-ram seam fracture (pending-slam → `spawnFracturePieces` in mining) all already live. The
+genuine gap was the sub-lethal rung, now closed: a hard hit whose kernel `debrisCount` crosses the
+rung (≥10 of the authored 18) sheds real plating bodies — `wreck`-type entities with inherited
+victim velocity + bounded contact-axis fling (rng-symmetric side, since solver normals are unsigned
+axes), real colliders (material `debris`, so shards can crumple a third hull), scrap salvage, and
+`homeSectorId` cleanup ownership — `spawnCollisionTearOff` in `hullFracture.js`, admission gate in
+`collisionConsequences._maybeTearOffPlating` (applied damage on a surviving NPC hull only; kills
+stay with the fracture path; the player is exempt from collision damage by contract). Budgets:
+per-victim 120-tick cooldown, global live cap 20 reaped in `update()`, transient state reset on the
+existing load/flag boundary; deterministic via `state.rng`. Presentation: new `collision:tearOff`
+receipt → darker chip/streak burst in `vfx.js` (accessibility-scaled) + `sfx_hull_scrape` cue;
+`combat:collisionDebris` now carries `exchangedMomentum`. Tests: `test/collision-tearoff.test.mjs`
+4/4 (momentum inheritance, suppression rules, cooldown, cap + reap, seeded determinism); 85/85 on
+the consequence/fracture/feel neighbor suite. Flag note: the whole path rides
+`weaponImpulseConsequences` (production ON, legacy47a OFF — tests seed it). Next checkpoint: manual
+playtest read — ram a pirate at cruise and confirm plating visibly tears off and tumbles;
+heavy-vs-light hull feel tuning (`TEAROFF_*` constants in `collisionConsequences.js`) is the dial.
+
 ### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
 
 Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
