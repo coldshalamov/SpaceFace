@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c57469e5a7ab014ac22c51ca630420dbf8e81199c8e5fe9058996d1933bcd412",
+  "contentHash": "cd3633235507c7267e72aef3ca165c70854ad45c5177f9bbe156c5f01410586d",
   "dynamicGroups": [
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-hook-nav-starboard.dynamic",
@@ -127,52 +127,52 @@
     {
       "bounds": {
         "max": [
-          3.059999942779541,
-          2.400069236755371,
-          1.7001969814300537
+          3.240000009536743,
+          2.4000582695007324,
+          1.70014226436615
         ],
         "min": [
-          -3.059999942779541,
-          -1.5800691843032837,
-          -1.7001969814300537
+          -3.240000009536743,
+          -1.5800580978393555,
+          -1.70014226436615
         ]
       },
       "drawMode": 4,
-      "geometryHash": "927e2d8c3ec696320c2d39e044868686eaf0d1a8f42a35940354217cb44ed317",
+      "geometryHash": "5f1451606787b93208de222c7d3dad7850876cc2538a7bcaf26457f68e502d2c",
       "id": "sf.render.cargo-pod-standard.mesh.collision-hull.primitive.0",
-      "indexCount": 642,
+      "indexCount": 738,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.cargo-pod-standard.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 500
+      "vertexCount": 560
     },
     {
       "bounds": {
         "max": [
-          3.010000228881836,
-          1.7101603746414185,
-          1.6599231958389282
+          3.240000009536743,
+          1.7101353406906128,
+          1.6601946353912354
         ],
         "min": [
-          -3.010000228881836,
-          -1.55016028881073,
-          -1.6599231958389282
+          -3.240000009536743,
+          -1.5501352548599243,
+          -1.6601946353912354
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c14efa6bbba5d8eeb9cde9a9c4c395e47e24b776088a8690be39b7b8d20010fe",
+      "geometryHash": "c236cdb2f8dbf2fcbeb34a906a4981adb113225eb972117203baf98e0b4d9385",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-armor.primitive.0",
-      "indexCount": 8460,
+      "indexCount": 17484,
       "indexed": true,
       "materialHash": "a1ac3c1e18e4a94cde2e6f346b3a11fc6c36dde2b7762fc974dbceac3ed5e8eb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2408
+      "vertexCount": 5480
     },
     {
       "bounds": {
@@ -402,6 +402,31 @@
     {
       "bounds": {
         "max": [
+          3.1800020337104797,
+          0.5399999618530273,
+          0.7500057779252529
+        ],
+        "min": [
+          3.019997779065079,
+          0.35999998450279236,
+          0.6499941982328892
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "69238a3e13d91c802fbd42703014fa94493286826bf56379b1c87b9638a312f2",
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CARGO_LOCK_T0_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
           3.0600097477436066,
           1.149999976158142,
           0.2900097668170929
@@ -423,6 +448,31 @@
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1800020337104797,
+          0.5399999618530273,
+          0.30000579729676247
+        ],
+        "min": [
+          3.019997779065079,
+          0.35999998450279236,
+          0.19999421760439873
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6e1ff6b8409649a9d7ae3270de1297dc6b6c6557a604437cee1ca0ab0c386ea",
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CARGO_LOCK_T1_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 192
     },
     {
       "bounds": {
@@ -452,6 +502,31 @@
     {
       "bounds": {
         "max": [
+          3.1800020337104797,
+          0.5399999618530273,
+          -0.19999421760439873
+        ],
+        "min": [
+          3.019997779065079,
+          0.35999998450279236,
+          -0.30000579729676247
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f61e7b3b4e517a56bac4385211fca55fbcb1b7e3d41b8629b1813302a824112",
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CARGO_LOCK_T2_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
           3.0600097477436066,
           1.149999976158142,
           -0.6599902212619781
@@ -473,6 +548,31 @@
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1800020337104797,
+          0.5399999618530273,
+          -0.6499941982328892
+        ],
+        "min": [
+          3.019997779065079,
+          0.35999998450279236,
+          -0.7500057779252529
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed77750efbcd658b65960c16b16b06feb0502bc3f3165f224df1da9829ae7255",
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CARGO_LOCK_T3_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 192
     },
     {
       "bounds": {
@@ -527,52 +627,52 @@
     {
       "bounds": {
         "max": [
-          1.8749467134475708,
-          2.4000000953674316,
-          1.5499519109725952
+          1.875,
+          2.3999171257019043,
+          1.5499613285064697
         ],
         "min": [
-          -1.8749467134475708,
-          -1.4500000476837158,
-          -1.5499519109725952
+          -3.179999828338623,
+          -1.449917197227478,
+          -1.5499613285064697
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec0a34ad4ba7f50f89755cdf4a29f0847582ac5c0e15556fb538a9210f00d479",
+      "geometryHash": "00020a5d314edec825eac700a8d221070f04a40aeb6c624d0a0f252b44d2990f",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-warning.primitive.0",
-      "indexCount": 1344,
+      "indexCount": 3600,
       "indexed": true,
       "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 424
+      "vertexCount": 1192
     },
     {
       "bounds": {
         "max": [
-          3.008516788482666,
-          1.7089896202087402,
-          1.6583706140518188
+          3.2390520572662354,
+          1.7087706327438354,
+          1.658918023109436
         ],
         "min": [
-          -3.008516788482666,
-          -1.5489897727966309,
-          -1.6583706140518188
+          -3.2390518188476562,
+          -1.548964023590088,
+          -1.658918023109436
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7caf17961fb1146206a064f4e79c84fbb6f01d501af0fbaa4c8c6380b3496c6",
+      "geometryHash": "fa91049e84b1402d061c9840ef197052e41910c9d28435ca409bec7bee821592",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-armor.primitive.0",
-      "indexCount": 2604,
+      "indexCount": 5826,
       "indexed": true,
       "materialHash": "a1ac3c1e18e4a94cde2e6f346b3a11fc6c36dde2b7762fc974dbceac3ed5e8eb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1073
+      "vertexCount": 2224
     },
     {
       "bounds": {
@@ -627,27 +727,27 @@
     {
       "bounds": {
         "max": [
-          2.847748279571533,
-          1.508566975593567,
-          1.6086862087249756
+          2.8499999046325684,
+          1.5094118118286133,
+          1.6092623472213745
         ],
         "min": [
-          -2.847748279571533,
-          -1.508566975593567,
-          -1.6086862087249756
+          -2.8499999046325684,
+          -1.5094118118286133,
+          -1.6092623472213745
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d71fa3ba0be90c48c362bfc3c58583b4d9de3d7bc38a5f2618a04f0ac935388f",
+      "geometryHash": "49141a2f1c870a251a1f4f7369123dd53f3ed5b9fe2353668f044b0bde35658b",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-hull.primitive.0",
-      "indexCount": 1560,
+      "indexCount": 2040,
       "indexed": true,
       "materialHash": "758c196d3cee8de4a08c40105240195f9afd561509aace5bae5b60928349094c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 571
+      "vertexCount": 735
     },
     {
       "bounds": {
@@ -663,16 +763,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13f5604476f11f76e5a2f3559814bc0a64c39e4933a898db65dfa8d1edd58e2e",
+      "geometryHash": "2e5c119dbec4a86d1271c6296a10849f20d10c96aad60b79688a62fe2b7e32c1",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 2856,
+      "indexCount": 2928,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1004
+      "vertexCount": 1020
     },
     {
       "bounds": {
@@ -777,102 +877,202 @@
     {
       "bounds": {
         "max": [
-          3.05979211255908,
+          3.0600097477436066,
           1.149999976158142,
-          0.7398345321416855
+          0.7400097548961639
         ],
         "min": [
-          2.9800533540546894,
+          2.9799902141094208,
           -1.149999976158142,
-          0.6558842211961746
+          0.6599902212619781
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76653e51c8f6a9a449f5447f0174b6a8c6643d450ce6ad8c73e4d6112b3ffdf7",
+      "geometryHash": "bb5ffc12f2c99f5bc0e03106e83bb21878cce0931d142b5ffdb45aefb23dc107",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-mechanical.primitive.0",
-      "indexCount": 30,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_CARGO_LOCK_T0_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 20
+      "vertexCount": 40
     },
     {
       "bounds": {
         "max": [
-          3.0598694793879986,
-          1.149999976158142,
-          0.28983452171087265
+          3.1792973428964615,
+          0.5391556620597839,
+          0.74930414929986
         ],
         "min": [
-          2.980130720883608,
-          -1.149999976158142,
-          0.20588421076536179
+          3.0207027056603692,
+          0.3613519072532654,
+          0.6515329740941525
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1af206330e6ecbab8f7bc132523e101d3b2e0835f0dbf5d1d24e0cc278fd3836",
+      "geometryHash": "e74d503960cb700d678e1707f633ba5228ebea712fa78d1aea05781652a3b8d0",
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-warning.primitive.0",
+      "indexCount": 174,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CARGO_LOCK_T0_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 65
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0600097477436066,
+          1.149999976158142,
+          0.2900097668170929
+        ],
+        "min": [
+          2.9799902141094208,
+          -1.149999976158142,
+          0.2099902331829071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2688f2ae7901d8287ea01be08d5c0f3b7df6bfa84c6e3814b4481b19f59c48c9",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-mechanical.primitive.0",
-      "indexCount": 30,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_CARGO_LOCK_T1_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 22
+      "vertexCount": 40
     },
     {
       "bounds": {
         "max": [
-          3.0598694793879986,
-          1.149999976158142,
-          -0.21016549319028854
+          3.179219424724579,
+          0.5391556024551392,
+          0.2992966063320637
         ],
         "min": [
-          2.980130720883608,
-          -1.149999976158142,
-          -0.2941158041357994
+          3.0207026599091478,
+          0.3615363836288452,
+          0.20078128203749657
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52a5d2af4cf42841c1358fc753ba9bc22cf94bdc5c8092a62128cd4dc97bba11",
+      "geometryHash": "2cdad6b9b9297e52f6f970e4b287bfbcb0f32f158bf1305f8ab2ab38ead8b59f",
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-warning.primitive.0",
+      "indexCount": 174,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CARGO_LOCK_T1_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 63
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0600097477436066,
+          1.149999976158142,
+          -0.2099902331829071
+        ],
+        "min": [
+          2.9799902141094208,
+          -1.149999976158142,
+          -0.2900097668170929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9be7b7800c718498dc6cd51239135c2d1d71a4648d60b2c0590fbdcf1ace0163",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-mechanical.primitive.0",
-      "indexCount": 30,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_CARGO_LOCK_T2_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 22
+      "vertexCount": 40
     },
     {
       "bounds": {
         "max": [
-          3.0598694793879986,
-          1.149999976158142,
-          -0.6601655036211014
+          3.1793017983436584,
+          0.5391556620597839,
+          -0.20078127831220627
         ],
         "min": [
-          2.980130720883608,
-          -1.149999976158142,
-          -0.7441158145666122
+          3.0206982506788336,
+          0.3615363836288452,
+          -0.29929663985967636
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fcba8b31ae49fcc5ff018e7a31dfa0fd6f455877890ad34196f9d9c4a0ca235",
+      "geometryHash": "5cad3607a92d97404176cf2c89d00a49cc7e4f01fcf892209ed784f8db87910f",
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-warning.primitive.0",
+      "indexCount": 174,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CARGO_LOCK_T2_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0600097477436066,
+          1.149999976158142,
+          -0.6599902212619781
+        ],
+        "min": [
+          2.9799902141094208,
+          -1.149999976158142,
+          -0.7400097548961639
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf88fb680807f01d63f3e2c243d15db8d6697efcbc4f5f0107f7fe7300bd54d0",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-mechanical.primitive.0",
-      "indexCount": 30,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_CARGO_LOCK_T3_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 22
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          3.179298773407936,
+          0.5391556620597839,
+          -0.6513528786599636
+        ],
+        "min": [
+          3.021114451927133,
+          0.36134955286979675,
+          -0.748886588960886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "10ff3f3d969261c9363a54733febbe6fb4104711a8fb645b43a2fea5741e7f37",
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-warning.primitive.0",
+      "indexCount": 174,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CARGO_LOCK_T3_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 67
     },
     {
       "bounds": {
@@ -927,52 +1127,52 @@
     {
       "bounds": {
         "max": [
-          0.43000006675720215,
-          2.4000000953674316,
-          0.08997102081775665
+          0.4300000071525574,
+          2.4001173973083496,
+          0.7488717436790466
         ],
         "min": [
-          -0.43000006675720215,
-          1.5399999618530273,
-          -0.08997102081775665
+          -3.1793007850646973,
+          0.3612321615219116,
+          -0.7492849230766296
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9059ba0991262aa4a03fd60ff7cdb83836359dafec623e86dd1a8b14f121a282",
+      "geometryHash": "43d893cd8981ad0d986b7728b0f6361df040aaa6f1a1732f10e67adcf946fe5a",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-warning.primitive.0",
-      "indexCount": 1128,
+      "indexCount": 1866,
       "indexed": true,
       "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 308
+      "vertexCount": 572
     },
     {
       "bounds": {
         "max": [
-          3.0050952434539795,
-          1.7071301937103271,
-          1.657951831817627
+          3.2384703159332275,
+          1.706986665725708,
+          1.6578295230865479
         ],
         "min": [
-          -3.0050952434539795,
-          -1.547143816947937,
-          -1.657951831817627
+          -3.2384703159332275,
+          -1.5470002889633179,
+          -1.6578295230865479
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05f13932100de186d156bd0ab3bf7af7adcc8f68bd5e4e95818d1cb426c3534b",
+      "geometryHash": "b9d25648d48cfc4b7538b003c4b09558b1fa90253d9bb84865cea30b820f14f3",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-armor.primitive.0",
-      "indexCount": 1164,
+      "indexCount": 2406,
       "indexed": true,
       "materialHash": "a1ac3c1e18e4a94cde2e6f346b3a11fc6c36dde2b7762fc974dbceac3ed5e8eb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 556
+      "vertexCount": 1142
     },
     {
       "bounds": {
@@ -1028,26 +1228,26 @@
       "bounds": {
         "max": [
           2.8439183235168457,
-          1.505149483680725,
-          1.6051340103149414
+          1.5079267024993896,
+          1.6086057424545288
         ],
         "min": [
           -2.8439183235168457,
-          -1.505149483680725,
-          -1.6051340103149414
+          -1.5079267024993896,
+          -1.6086057424545288
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c49b93e9131f447ba068722d46012a13bcfb86f547efd7fda359f3f4301c6cc8",
+      "geometryHash": "f999cffaa5f6cf5d725603452c7d8d4a31a3a4135491465bc64091cc270689fa",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-hull.primitive.0",
-      "indexCount": 504,
+      "indexCount": 936,
       "indexed": true,
       "materialHash": "758c196d3cee8de4a08c40105240195f9afd561509aace5bae5b60928349094c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 280
+      "vertexCount": 420
     },
     {
       "bounds": {
@@ -1177,102 +1377,202 @@
     {
       "bounds": {
         "max": [
-          3.025615505874157,
+          3.05979211255908,
           1.149999976158142,
-          0.7387043349444866
+          0.7398693971335888
         ],
         "min": [
-          3.0143846943974495,
+          2.9800533540546894,
           -1.149999976158142,
-          0.6558771021664143
+          0.6601306386291981
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1382371db44caf4d772d397867a71df3497f4e9e7e1b4712ee01f5623209b5cf",
+      "geometryHash": "ff15e9ded881c50583475c1c95a9efefd35de2337bfe4907d91582ce0bdbfad9",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-mechanical.primitive.0",
-      "indexCount": 12,
+      "indexCount": 48,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_CARGO_LOCK_T0_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 8
+      "vertexCount": 28
     },
     {
       "bounds": {
         "max": [
-          3.0427426118403673,
-          1.149999976158142,
-          0.288918811827898
+          3.175810992717743,
+          0.5377195477485657,
+          0.7477087453007698
         ],
         "min": [
-          2.9972578268498182,
-          -1.149999976158142,
-          0.2058108113706112
+          3.022282181074843,
+          0.3638341426849365,
+          0.6522832438349724
         ]
       },
       "drawMode": 4,
-      "geometryHash": "583e1836309f9369e890863367575259d672c909fac31b9605a8e3e3a3338026",
+      "geometryHash": "ad57f66799021fa9a6cf7924528bf9ebc8ffc81aabb15d399b21644b0245dd8e",
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-warning.primitive.0",
+      "indexCount": 66,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CARGO_LOCK_T0_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 34
+    },
+    {
+      "bounds": {
+        "max": [
+          3.05979211255908,
+          1.149999976158142,
+          0.28986937180161476
+        ],
+        "min": [
+          2.9800533540546894,
+          -1.149999976158142,
+          0.21013061329722404
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b7f4edf6ac78f10142d82607a3e6ffccc903c1bc4d5c7da58c9461ca83eda23a",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-mechanical.primitive.0",
-      "indexCount": 12,
+      "indexCount": 42,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_CARGO_LOCK_T1_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 8
+      "vertexCount": 26
     },
     {
       "bounds": {
         "max": [
-          3.0427426118403673,
-          1.149999976158142,
-          -0.21108121052384377
+          3.1777129769325256,
+          0.5377114415168762,
+          0.29771148040890694
         ],
         "min": [
-          2.9972578268498182,
-          -1.149999976158142,
-          -0.2941892109811306
+          3.022287077270448,
+          0.3639121651649475,
+          0.20229081436991692
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c9937d7b2bf9152d36987d8e583097fe0b4a26ed7f79dc27e83b48ca589dce0b",
+      "geometryHash": "323dd467eb472fe2cb411f6754f5bf7ea1f624129db60fad944e10a54d470dbb",
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-warning.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CARGO_LOCK_T1_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.05979211255908,
+          1.149999976158142,
+          -0.21013064309954643
+        ],
+        "min": [
+          2.9800533540546894,
+          -1.149999976158142,
+          -0.28986940160393715
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c17c781a8bf0913d1f66456b2a713d7cd93d3f7376ad8f746919c93ba1c84cfe",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-mechanical.primitive.0",
-      "indexCount": 12,
+      "indexCount": 42,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_CARGO_LOCK_T2_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 8
+      "vertexCount": 26
     },
     {
       "bounds": {
         "max": [
-          3.0427426118403673,
-          1.149999976158142,
-          -0.6610812284052372
+          3.1777135729789734,
+          0.5377195477485657,
+          -0.20229005813598633
         ],
         "min": [
-          2.9972578268498182,
-          -1.149999976158142,
-          -0.744189228862524
+          3.022727308329195,
+          0.3638422191143036,
+          -0.29752008616924286
         ]
       },
       "drawMode": 4,
-      "geometryHash": "840dadb64048c135d45c06aafac6d362a771993927f8370875cbb53cdb3b8e75",
+      "geometryHash": "93c5018ff1dc1ffb612081a711d162ae73947fba83cbe7b39d3d94f19663cd10",
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-warning.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CARGO_LOCK_T2_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.05979211255908,
+          1.149999976158142,
+          -0.6601306386291981
+        ],
+        "min": [
+          2.9800533540546894,
+          -1.149999976158142,
+          -0.7398693971335888
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f91de2f58f21790d575ae8df3a5d2597f77d0b6d02b2d840a416fb72f448a712",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-mechanical.primitive.0",
-      "indexCount": 12,
+      "indexCount": 42,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_CARGO_LOCK_T3_Mechanical",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 8
+      "vertexCount": 26
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1784629076719284,
+          0.5377195477485657,
+          -0.6515360586345196
+        ],
+        "min": [
+          3.02421505888924,
+          0.3639567196369171,
+          -0.7484639771282673
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b702ea7e7cf9b273e77ce70ebfe855bf75d6fcc6a94d9c1ac6cd61a759495ad0",
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-warning.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CARGO_LOCK_T3_Warning",
+      "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 34
     },
     {
       "bounds": {
@@ -1327,27 +1627,27 @@
     {
       "bounds": {
         "max": [
-          0.43000006675720215,
-          2.4000000953674316,
-          0.09018099308013916
+          0.4300000071525574,
+          2.400022029876709,
+          0.7483996152877808
         ],
         "min": [
-          -0.43000006675720215,
-          1.5399999618530273,
-          -0.09018099308013916
+          -3.1784634590148926,
+          0.3638121783733368,
+          -0.7476475238800049
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af11b6747c19cfd87d92d80d578c533b59446f23e839cb62dba2caa3a4485760",
+      "geometryHash": "c400e8fd21ad4457417e1eac1dd3e4e08f56b32b6a567b388e8974a31df8a08c",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-warning.primitive.0",
-      "indexCount": 720,
+      "indexCount": 1080,
       "indexed": true,
       "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.cargo-pod-standard.mesh.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 203
+      "vertexCount": 366
     }
   ],
   "hlods": [],
@@ -2043,6 +2343,56 @@
       ]
     },
     {
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CARGO_LOCK_T0_Warning",
+      "nodeName": "LOD0_MOTION_CARGO_LOCK_T0_Warning",
+      "nodePath": [
+        0,
+        21,
+        1
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        0.699999988079071,
+        1
+      ]
+    },
+    {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-mechanical",
       "localTransform": [
         1,
@@ -2069,6 +2419,56 @@
         0,
         22,
         0
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        0.25,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CARGO_LOCK_T1_Warning",
+      "nodeName": "LOD0_MOTION_CARGO_LOCK_T1_Warning",
+      "nodePath": [
+        0,
+        22,
+        1
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -2143,6 +2543,56 @@
       ]
     },
     {
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CARGO_LOCK_T2_Warning",
+      "nodeName": "LOD0_MOTION_CARGO_LOCK_T2_Warning",
+      "nodePath": [
+        0,
+        23,
+        1
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        -0.25,
+        1
+      ]
+    },
+    {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-mechanical",
       "localTransform": [
         1,
@@ -2169,6 +2619,56 @@
         0,
         24,
         0
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        -0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CARGO_LOCK_T3_Warning",
+      "nodeName": "LOD0_MOTION_CARGO_LOCK_T3_Warning",
+      "nodePath": [
+        0,
+        24,
+        1
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -2812,7 +3312,57 @@
       "nodePath": [
         0,
         21,
+        2
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        0.699999988079071,
         1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CARGO_LOCK_T0_Warning",
+      "nodeName": "LOD1_MOTION_CARGO_LOCK_T0_Warning",
+      "nodePath": [
+        0,
+        21,
+        3
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -2862,7 +3412,57 @@
       "nodePath": [
         0,
         22,
+        2
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        0.25,
         1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CARGO_LOCK_T1_Warning",
+      "nodeName": "LOD1_MOTION_CARGO_LOCK_T1_Warning",
+      "nodePath": [
+        0,
+        22,
+        3
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -2912,7 +3512,57 @@
       "nodePath": [
         0,
         23,
+        2
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        -0.25,
         1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CARGO_LOCK_T2_Warning",
+      "nodeName": "LOD1_MOTION_CARGO_LOCK_T2_Warning",
+      "nodePath": [
+        0,
+        23,
+        3
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -2962,7 +3612,57 @@
       "nodePath": [
         0,
         24,
+        2
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        -0.699999988079071,
         1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CARGO_LOCK_T3_Warning",
+      "nodeName": "LOD1_MOTION_CARGO_LOCK_T3_Warning",
+      "nodePath": [
+        0,
+        24,
+        3
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -3606,7 +4306,57 @@
       "nodePath": [
         0,
         21,
-        2
+        4
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CARGO_LOCK_T0_Warning",
+      "nodeName": "LOD2_MOTION_CARGO_LOCK_T0_Warning",
+      "nodePath": [
+        0,
+        21,
+        5
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -3656,7 +4406,57 @@
       "nodePath": [
         0,
         22,
-        2
+        4
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        0.25,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CARGO_LOCK_T1_Warning",
+      "nodeName": "LOD2_MOTION_CARGO_LOCK_T1_Warning",
+      "nodePath": [
+        0,
+        22,
+        5
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -3706,7 +4506,57 @@
       "nodePath": [
         0,
         23,
-        2
+        4
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        -0.25,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CARGO_LOCK_T2_Warning",
+      "nodeName": "LOD2_MOTION_CARGO_LOCK_T2_Warning",
+      "nodePath": [
+        0,
+        23,
+        5
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -3756,7 +4606,57 @@
       "nodePath": [
         0,
         24,
-        2
+        4
+      ],
+      "parentId": "sf.render.cargo-pod-standard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0199999809265137,
+        0,
+        -0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CARGO_LOCK_T3_Warning",
+      "nodeName": "LOD2_MOTION_CARGO_LOCK_T3_Warning",
+      "nodePath": [
+        0,
+        24,
+        5
       ],
       "parentId": "sf.render.cargo-pod-standard.root",
       "role": "immutable",
@@ -4372,45 +5272,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "8fa8f871afea45d5b3254fd78514640724276ea7c331344c3ea563a39510b9f0"
+      "sha256": "f191abf6089e1f29be301bc15182e2cd4d9ea71952979cd675b6e25efb99a8c9"
     },
     "sourceGlb": {
-      "bytes": 406004,
-      "sha256": "c3c7357284a90843f79ed2ce8ee2293ebc41363d0012b28c02e3a3d95319dcd8",
+      "bytes": 538732,
+      "sha256": "e2067c1de43533121f575a67147de67d70c11bcf515ecf81894e37c09995622a",
       "uri": "place_cargo_pod_standard.glb"
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "a35111d86d0da6fa269059a8307d405b956cba539e8a0e37d1cac8a5c7d93658",
+      "sha256": "7d320cea40ae1028e00f744fab98c940e545dd3fc43debd08714ecd0d6e57113",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 685528,
-    "sha256": "49afa5293f5d0f8d216b1bac554e2be91988e01de51f0bd607252204bbe9d4c5",
+    "bytes": 981988,
+    "sha256": "5f90ffced465134a9b9956e38a50a939d41e2d2dd54f680f499a0a4f63f5decb",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000004902482032775879,
-        0.4100000262260437,
+        0,
+        0.41002964973449707,
         0
       ],
       "max": [
-        3.0600097477436066,
-        2.400069236755371,
-        1.7001969814300537
+        3.240000009536743,
+        2.4001173973083496,
+        1.70014226436615
       ],
       "min": [
-        -3.059999942779541,
-        -1.5800691843032837,
-        -1.7001969814300537
+        -3.240000009536743,
+        -1.5800580978393555,
+        -1.70014226436615
       ],
       "size": [
-        6.120009690523148,
-        3.980138421058655,
-        3.4003939628601074
+        6.480000019073486,
+        3.980175495147705,
+        3.4002845287323
       ]
     },
     "hidden": [
@@ -4633,7 +5533,7 @@
           1
         ],
         "name": "MOTION_CARGO_LOCK_T1",
-        "planIndex": 39,
+        "planIndex": 42,
         "tags": {
           "motionGroup": true
         },
@@ -4698,7 +5598,7 @@
           1
         ],
         "name": "MOTION_CARGO_LOCK_T2",
-        "planIndex": 43,
+        "planIndex": 49,
         "tags": {
           "motionGroup": true
         },
@@ -4763,7 +5663,7 @@
           1
         ],
         "name": "MOTION_CARGO_LOCK_T3",
-        "planIndex": 47,
+        "planIndex": 56,
         "tags": {
           "motionGroup": true
         },
@@ -4828,7 +5728,7 @@
           1
         ],
         "name": "MOTION_CARGO_RETAIN_PORT",
-        "planIndex": 51,
+        "planIndex": 63,
         "tags": {
           "motionGroup": true
         },
@@ -4893,7 +5793,7 @@
           1
         ],
         "name": "MOTION_CARGO_RETAIN_STAR",
-        "planIndex": 55,
+        "planIndex": 67,
         "tags": {
           "motionGroup": true
         },
@@ -4958,7 +5858,7 @@
           1
         ],
         "name": "SOCKET_Clamp_Dorsal",
-        "planIndex": 59,
+        "planIndex": 71,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4999,7 +5899,7 @@
           1
         ],
         "name": "SOCKET_Hoist_Center",
-        "planIndex": 60,
+        "planIndex": 72,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -5025,7 +5925,7 @@
       "hull": 19,
       "mechanical": 15,
       "signal": 6,
-      "warning": 9
+      "warning": 21
     },
     "materialProfiles": [
       {
@@ -5191,12 +6091,17 @@
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -5206,17 +6111,17 @@
       {
         "allowTextures": true,
         "planIndex": 41,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 42,
+        "planIndex": 43,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -5226,17 +6131,17 @@
       {
         "allowTextures": true,
         "planIndex": 46,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 48,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 49,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -5245,42 +6150,97 @@
       },
       {
         "allowTextures": true,
+        "planIndex": 51,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 52,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 53,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 54,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 56,
-        "role": "hull"
+        "planIndex": 55,
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 57,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 58,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
         "role": "hull"
       }
     ],
     "motionBank": {
-      "bytes": 428994,
+      "bytes": 426746,
       "rigId": "cargo_pod_door",
-      "sha256": "9de7363f090a62d4bb32ca799094f977c2c9e9e86440b279217ab2407bd4f559",
+      "sha256": "df23b6a3597eb0a38b5808afd611b270352f3ff88badfd72281f7a9e022be544",
       "uri": "assets/ships/motions/cargo-pod-standard.motion.json"
     },
-    "nodeCount": 61,
+    "nodeCount": 73,
     "primitives": [
       {
         "canopy": false,
@@ -6155,8 +7115,64 @@
           0.699999988079071,
           1
         ],
-        "name": "LOD1_MOTION_CARGO_LOCK_T0_Mechanical",
+        "name": "LOD0_MOTION_CARGO_LOCK_T0_Warning",
         "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD1_MOTION_CARGO_LOCK_T0_Mechanical",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD1_MOTION_CARGO_LOCK_T0_Warning",
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6184,7 +7200,35 @@
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T0_Mechanical",
-        "planIndex": 38,
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD2_MOTION_CARGO_LOCK_T0_Warning",
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6212,7 +7256,35 @@
           1
         ],
         "name": "LOD0_MOTION_CARGO_LOCK_T1_Mechanical",
-        "planIndex": 40,
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          0.25,
+          1
+        ],
+        "name": "LOD0_MOTION_CARGO_LOCK_T1_Warning",
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6240,7 +7312,35 @@
           1
         ],
         "name": "LOD1_MOTION_CARGO_LOCK_T1_Mechanical",
-        "planIndex": 41,
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          0.25,
+          1
+        ],
+        "name": "LOD1_MOTION_CARGO_LOCK_T1_Warning",
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6268,7 +7368,35 @@
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T1_Mechanical",
-        "planIndex": 42,
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          0.25,
+          1
+        ],
+        "name": "LOD2_MOTION_CARGO_LOCK_T1_Warning",
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6296,7 +7424,35 @@
           1
         ],
         "name": "LOD0_MOTION_CARGO_LOCK_T2_Mechanical",
-        "planIndex": 44,
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          -0.25,
+          1
+        ],
+        "name": "LOD0_MOTION_CARGO_LOCK_T2_Warning",
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6324,7 +7480,35 @@
           1
         ],
         "name": "LOD1_MOTION_CARGO_LOCK_T2_Mechanical",
-        "planIndex": 45,
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          -0.25,
+          1
+        ],
+        "name": "LOD1_MOTION_CARGO_LOCK_T2_Warning",
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6352,7 +7536,35 @@
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T2_Mechanical",
-        "planIndex": 46,
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          -0.25,
+          1
+        ],
+        "name": "LOD2_MOTION_CARGO_LOCK_T2_Warning",
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6380,7 +7592,35 @@
           1
         ],
         "name": "LOD0_MOTION_CARGO_LOCK_T3_Mechanical",
-        "planIndex": 48,
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          -0.699999988079071,
+          1
+        ],
+        "name": "LOD0_MOTION_CARGO_LOCK_T3_Warning",
+        "planIndex": 58,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6408,7 +7648,35 @@
           1
         ],
         "name": "LOD1_MOTION_CARGO_LOCK_T3_Mechanical",
-        "planIndex": 49,
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          -0.699999988079071,
+          1
+        ],
+        "name": "LOD1_MOTION_CARGO_LOCK_T3_Warning",
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6436,7 +7704,35 @@
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T3_Mechanical",
-        "planIndex": 50,
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0199999809265137,
+          0,
+          -0.699999988079071,
+          1
+        ],
+        "name": "LOD2_MOTION_CARGO_LOCK_T3_Warning",
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6464,7 +7760,7 @@
           1
         ],
         "name": "LOD0_MOTION_CARGO_RETAIN_PORT_Hull",
-        "planIndex": 52,
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6492,7 +7788,7 @@
           1
         ],
         "name": "LOD1_MOTION_CARGO_RETAIN_PORT_Hull",
-        "planIndex": 53,
+        "planIndex": 65,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6520,7 +7816,7 @@
           1
         ],
         "name": "LOD2_MOTION_CARGO_RETAIN_PORT_Hull",
-        "planIndex": 54,
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6548,7 +7844,7 @@
           1
         ],
         "name": "LOD0_MOTION_CARGO_RETAIN_STAR_Hull",
-        "planIndex": 56,
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6576,7 +7872,7 @@
           1
         ],
         "name": "LOD1_MOTION_CARGO_RETAIN_STAR_Hull",
-        "planIndex": 57,
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6604,7 +7900,7 @@
           1
         ],
         "name": "LOD2_MOTION_CARGO_RETAIN_STAR_Hull",
-        "planIndex": 58,
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6616,20 +7912,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_standard.glb"
   },
-  "runtimeHash": "c970bea83b9dc9685881be02815280855fa1481fb80fd6742455268e3af66cfb",
+  "runtimeHash": "cbca98d32b139d9921eefa42672f23c8098b39cad1ec4d669fe9d41bcd7c339e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
-          2.400069236755371,
-          1.7001969814300537
+          3.240000009536743,
+          2.4001173973083496,
+          1.70014226436615
         ],
         "min": [
-          -3.059999942779541,
-          -1.5800691843032837,
-          -1.7001969814300537
+          -3.240000009536743,
+          -1.5800580978393555,
+          -1.70014226436615
         ]
       },
       "id": "sf.render.cargo-pod-standard.body",
@@ -6645,9 +7941,13 @@
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-star-armor",
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-star-warning",
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-warning",
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-warning",
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-warning",
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-warning",
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-retain-port-hull",
         "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-retain-star-hull",
         "sf.render.cargo-pod-standard.mesh.lod0-warning",
@@ -6661,9 +7961,13 @@
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-star-armor",
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-star-warning",
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-warning",
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-warning",
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-warning",
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-warning",
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-retain-port-hull",
         "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-retain-star-hull",
         "sf.render.cargo-pod-standard.mesh.lod1-warning",
@@ -6677,9 +7981,13 @@
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-star-armor",
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-star-warning",
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-warning",
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-warning",
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-warning",
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-mechanical",
+        "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-warning",
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-retain-port-hull",
         "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-retain-star-hull",
         "sf.render.cargo-pod-standard.mesh.lod2-warning",

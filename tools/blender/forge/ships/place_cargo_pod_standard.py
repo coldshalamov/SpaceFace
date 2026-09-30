@@ -54,6 +54,16 @@ def build():
         for y in (-0.7, -0.25, 0.25, 0.7):
             F.cylinder(s, f'LockBar{sx}{y}', (sx * (L / 2 + 0.02), y, -H / 2 + 0.4), (sx * (L / 2 + 0.02), y, H / 2 - 0.4),
                        0.04, material='gunmetal', segments=8, bevel=0.0)
+            # Cam lug on the bar's outboard face: without it the bar's 8-segment profile is
+            # rotationally symmetric and the ANI-11 quarter-turn reads as nothing. Hazard
+            # paint makes the sweep readable even in a short glance.
+            F.box(s, f'LockBarLug{sx}{y}', (sx * (L / 2 + 0.1), y, 0.45), (0.16, 0.1, 0.18),
+                  material='hazard', bevel=0.015)
+            # Guide brackets on the end rails: the retracted bolt (x up to ~3.12 on +X)
+            # slides inside them, so a worked bar never reads as floating hardware.
+            for sz in (-1, 1):
+                F.box(s, f'LockGuide{sx}{y}{sz}', (sx * (L / 2 + 0.1), y, sz * (H / 2 - 0.28)),
+                      (0.28, 0.14, 0.2), material='paint2', bevel=0.015)
     # +X doorway: shallow cargo cavity behind the leaves (reads once they open), two
     # door leaves hung on the outer end-posts, and two retainers that fold down.
     F.box(s, 'Cavity', (L / 2 - 0.5, 0, 0), (0.72, W - 0.72, H - 0.72), material='paint2', bevel=0.01)
@@ -86,7 +96,8 @@ if __name__ == '__main__':
     ship = build().finish()
     _o = {o.name: o for o in ship.objects}
     ship.ani11_bank = ANI_11.build(ship, {
-        'locks': [_o['LockBar1-0.7'], _o['LockBar1-0.25'], _o['LockBar10.25'], _o['LockBar10.7']],
+        'locks': [[_o[f'LockBar1{y}'], _o[f'LockBarLug1{y}']]
+                  for y in (-0.7, -0.25, 0.25, 0.7)],
         'leaf_port': [_o['DoorLeafPort'], _o['DoorLeafPortStrip']],
         'leaf_star': [_o['DoorLeafStar'], _o['DoorLeafStarStrip']],
         'retain_port': [_o['RetainerPort']],

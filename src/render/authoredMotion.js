@@ -142,11 +142,23 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
   };
   const onPodBeamStop = (payload) => {
     if (!payload || payload.targetId == null) return;
-    dispatch('mining:stop', payload.targetId, payload, (c) => c.clipActive?.('breach'));
-  };
-  const onPodBeamDenied = (payload) => {
-    if (!payload || payload.verb !== 'split' || payload.targetId == null) return;
-    dispatch('beam:denied', payload.targetId, payload, (c) => c.clipActive?.('breach'));
+    const simTime = payload?.simTime ?? simNow();
+    for (const controller of authoredMotionControllersFor(payload.targetId)) {
+      if (!controller.clipActive?.('breach')) continue;
+      const elapsed = controller.clipElapsed?.('breach', simTime);
+      const duration = controller.clipDuration?.('breach');
+      try {
+        if (elapsed != null && duration != null && elapsed < duration) {
+          // Mid-flight interrupt: glide the partial pose home — the seal clip's first keys
+          // assume the fully-open pose and would teleport the rig.
+          controller.settle?.(1.4, simTime);
+        } else {
+          controller.handleEvent?.('mining:stop', payload, simTime);
+        }
+      } catch (error) {
+        console.warn('[authoredMotion] pod seal rejected by controller', error);
+      }
+    }
   };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
@@ -156,7 +168,6 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     bus.on('beam:denied', onBeamDenied),
     bus.on('mining:start', onPodMiningStart),
     bus.on('mining:stop', onPodBeamStop),
-    bus.on('beam:denied', onPodBeamDenied),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

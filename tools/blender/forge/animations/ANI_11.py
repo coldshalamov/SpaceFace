@@ -42,9 +42,11 @@ from mathutils import Euler  # noqa: E402
 RIG_ID = 'cargo_pod_door'
 
 BAR_TURN_RAD = 1.5708     # quarter turn about the bar's own axis
-BAR_PULL_M = 0.18         # bolt tips withdraw out of the leaf faces
+BAR_PULL_M = 0.10         # bolt tips withdraw out of the leaf faces; the guide brackets
+                         # on the end rails span x 2.96-3.24, so retracted bars stay captured
 LEAF_RAD = 2.01           # ~115 deg outward swing on the end-post hinges
-RETAIN_RAD = -1.4         # ~80 deg fold-down into a shallow ramp
+RETAIN_RAD = 0.825 * 1.5708  # ~74 deg full fold-down into a shallow ramp; keys below are
+                             # fractions of this fold
 
 # +X end geometry (mirrors the builder's constants: L/2=3.0, W/2=1.65, H/2=1.55)
 LOCK_X = 3.02
@@ -57,7 +59,7 @@ def register(ship, parts):
     """Register the ANI-11 groups. `parts` = the builder's +X-end door objects."""
     for i, y in enumerate(LOCK_YS):
         ship.motion_group(f'cargo_lock_t{i}', pivot=(LOCK_X, y, 0.0),
-                          objects=[parts['locks'][i]])
+                          objects=parts['locks'][i])
     ship.motion_group('cargo_door_port', pivot=(3.0, -LEAF_HINGE_Y, 0.0),
                       objects=parts['leaf_port'])
     ship.motion_group('cargo_door_star', pivot=(3.0, LEAF_HINGE_Y, 0.0),
@@ -98,12 +100,13 @@ def author(bank):
                        rot=Euler((0, 0, ang)))
 
     # door leaves: resistant latch beat, then weighted outward swing with a small
-    # overshoot settle. Port hinge at -y rotates -113 deg, star +113 deg.
+    # overshoot settle. The crack lands only after the last staggered bar seats (~0.92s),
+    # so leaf faces never interpenetrate an engaged bar.
     leaf_keys = [
-        (0.30, 0.0), (0.44, 0.07),                     # crack against the latch
-        (0.56, 0.04), (0.72, 0.18),                    # release
-        (1.10, 0.9), (1.55, 1.85), (1.95, 2.02),       # weighted swing + overshoot
-        (2.15, 1.96), (2.35, 1.97), (3.2, 1.97),       # settle held
+        (0.92, 0.0), (1.02, 0.04),                     # crack against the latch
+        (1.14, 0.025), (1.28, 0.18),                   # release
+        (1.55, 0.9), (1.85, 1.85), (2.1, 2.02),        # weighted swing + overshoot
+        (2.3, 1.96), (2.5, 1.97), (3.2, 1.97),         # settle held
     ]
     for rig, sgn in (('cargo_door_port', -1), ('cargo_door_star', 1)):
         rest = pivots[rig].matrix_basis.translation
@@ -111,25 +114,26 @@ def author(bank):
             breach.key(rig, t, loc=rest, rot=Euler((0, 0, sgn * a)))
 
     # retainers: fold down once the leaves clear the opening, soft settle into the ramp.
+    # Values are fractions of RETAIN_RAD (1.0 = full ~74 deg fold).
     retain_keys = [
-        (0.90, 0.0), (1.15, 0.12), (1.55, 0.62), (1.95, 0.86),
-        (2.25, 0.81), (2.5, 0.825), (3.2, 0.825),
+        (0.90, 0.0), (1.15, 0.145), (1.55, 0.75), (1.95, 1.04),
+        (2.25, 0.98), (2.5, 1.0), (3.2, 1.0),
     ]
     for rig in ('cargo_retain_port', 'cargo_retain_star'):
         rest = pivots[rig].matrix_basis.translation
         for t, a in retain_keys:
-            breach.key(rig, t, loc=rest, rot=Euler((0, a * 1.5708, 0)))
+            breach.key(rig, t, loc=rest, rot=Euler((0, a * RETAIN_RAD, 0)))
 
     # ---- seal ---------------------------------------------------------------
     seal = bank.clip('seal', 2.2, loop=False, end_mode='rest')
 
     # retainers lift home first (panel back in the doorway), leaves then swing shut
     # with a small clap, bars re-engage last.
-    retain_up = [(0.0, 0.825), (0.35, 0.7), (0.68, 0.06), (0.8, 0.0)]
+    retain_up = [(0.0, 1.0), (0.35, 0.85), (0.68, 0.07), (0.8, 0.0)]
     for rig in ('cargo_retain_port', 'cargo_retain_star'):
         rest = pivots[rig].matrix_basis.translation
         for t, a in retain_up:
-            seal.key(rig, t, loc=rest, rot=Euler((0, a * 1.5708, 0)))
+            seal.key(rig, t, loc=rest, rot=Euler((0, a * RETAIN_RAD, 0)))
 
     leaf_home = [
         (0.45, 1.97), (0.9, 1.7), (1.35, 0.35),
@@ -154,8 +158,9 @@ def author(bank):
 
 EVENTS = {
     'mining:start': 'breach',
+    # mining:stop fires 'seal' only when the breach is held open; a mid-flight disengage
+    # is handled by the runtime's settle blend (no snap to the clip's open-pose keys).
     'mining:stop': 'seal',
-    'beam:denied': 'seal',
 }
 
 

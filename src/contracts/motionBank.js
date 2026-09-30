@@ -456,7 +456,61 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return g ? g.nodes.length : 0;
     },
     clipActive(name) { return state.clips.has(name); },
+    clipElapsed(name, timeS) {
+      const run = state.clips.get(name);
+      if (!run) return null;
+      return (Number.isFinite(timeS) ? timeS : 0) - run.startS;
+    },
+    clipDuration(name) {
+      const clip = clips.get(name);
+      return clip ? clip.durationS : null;
+    },
     groups,
+
+    /**
+     * Blend every currently-posed group back to rest over durationS — the early-disengage
+     * path: a clip interrupted mid-flight must not teleport to another clip's first key.
+     * Synthesizes a rest-targeted clip from the live merged pose (identity rotation /
+     * zero translation at rest); 'rest' endMode parks the rig when the blend lands.
+     */
+    settle(durationS = 1.0, timeS = 0) {
+      if (disposed || !state.clips.size) return false;
+      const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
+      const merged = new Map();
+      for (const [name, run] of state.clips) {
+        const clip = clips.get(name);
+        if (!clip) continue;
+        const t = (timeS - run.startS) * run.rateScale;
+        const deltas = evaluateMotionClip(
+          checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
+        );
+        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+      }
+      const channels = [];
+      for (const [groupId, delta] of merged) {
+        if (Array.isArray(delta.translation)) {
+          channels.push({
+            group: groupId, path: 'translation', times: [0, duration],
+            values: [...delta.translation, 0, 0, 0],
+          });
+        }
+        if (Array.isArray(delta.rotation)) {
+          channels.push({
+            group: groupId, path: 'rotation', times: [0, duration],
+            values: [...delta.rotation, 0, 0, 0, 1],
+          });
+        }
+      }
+      const settleClip = {
+        name: '__settle__', durationS: duration, loop: false, endMode: 'rest', channels,
+      };
+      clips.set('__settle__', settleClip);
+      state.clips.clear();
+      state.clips.set('__settle__', { startS: timeS, rateScale: 1 });
+      state.latest = '__settle__';
+      state.parked = false;
+      return true;
+    },
 
     /**
      * Start a clip (or restart it if it is already active). `generation` orders duplicate events —

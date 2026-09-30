@@ -47,7 +47,7 @@ test('ANI-11 breach turns the bars, swings the leaves and holds the open pose', 
   const barStart = delta('breach', 0, 'cargo_lock_t0');
   assert.ok(Math.abs(barStart.rotation[1]) < 1e-4, 'bars start unrotated');
   const barEnd = delta('breach', breach.durationS, 'cargo_lock_t0');
-  assert.ok(barEnd.translation[0] > 0.1, `bar withdrawn (x=${barEnd.translation[0]})`);
+  assert.ok(barEnd.translation[0] > 0.05, `bar withdrawn (x=${barEnd.translation[0]})`);
   assert.ok(Math.abs(barEnd.rotation[1]) > 0.5, `bar quarter-turned (qy=${barEnd.rotation[1]})`);
 
   // leaves crack during the latch beat, then swing past 90 deg and hold.
@@ -82,5 +82,7 @@ test('ANI-11 seal parks everything and events map the beam lifecycle', () => {
 
   assert.equal(bank.events['mining:start'], 'breach');
   assert.equal(bank.events['mining:stop'], 'seal');
-  assert.equal(bank.events['beam:denied'], 'seal');
+  // beam:denied is not routed for pods: a mid-flight disengage settles to rest via the
+  // runtime settle blend instead of snapping into the open-pose seal keys.
+  assert.ok(!('beam:denied' in bank.events), 'no beam:denied event on the pod bank');
 });
