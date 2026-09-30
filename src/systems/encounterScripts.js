@@ -1664,7 +1664,9 @@ function freightRaiderIneligibleReason(state, raider) {
 }
 
 function respillFreightFromRaider(d, live, state, record, raider, reason) {
-  if (!record || record.terminal || record.raiderSecuredQty <= 0) return false;
+  // Escaped cargo is gone with the raider: once the leash crossing has settled the theft,
+  // no later event (drive disable inside the despawn window, entityGone) may respawn it.
+  if (!record || record.terminal || record.raiderEscaped || record.raiderSecuredQty <= 0) return false;
   const secured = record.pods
     .filter((pod) => pod.status === 'raider_secured')
     .sort((a, b) => a.podIndex - b.podIndex);
@@ -2428,6 +2430,12 @@ const convoy = {
         record.lostQty += pod.qty;
         publishFreightCustody(d, live, record, 'pod_destroyed');
       } else if (p.id === record.raiderId) {
+        if (record.raiderEscaped) {
+          // The escaped raider's scheduled despawn (set when the leash was crossed) is the
+          // theft's designed exit, not a death: the secured cargo leaves with it, so no
+          // respill and no raider_destroyed receipt may reopen the settled verdict.
+          return;
+        }
         record.raiderDead = true;
         respillFreightFromRaider(d, live, state, record, selectedFreightRaider(live, state, true) || p,
           'raider_destroyed');
