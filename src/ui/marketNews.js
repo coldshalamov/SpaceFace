@@ -38,6 +38,15 @@ const MAX_LOG = 12;            // rolling headlines kept on state.ui.marketNews.
 const MAX_TICKER_ITEMS = 8;
 const TICKER_LEGIBLE_PX = 140;    // DOM ticker cap
 
+// A scheduled wreck complication gets minutes of dread on the ticker before it fires. The lines
+// name the wreck, never the kind — the player heard the bearing rumour; this is what follows it.
+const WRECK_COMPLICATION_RUMORS = [
+  'Watch chatter is already circling the {name}.',
+  'Insurance desks quietly repriced anything touching the {name}.',
+  'A clean-hands outfit started asking who has been near the {name}.',
+  'Salvage crews say the {name} will not stay unclaimed for long.',
+];
+
 // ---- token building (pure) -----------------------------------------------------------------
 
 /** Human display name for a commodity id (falls back to a de-prefixed id). */
@@ -345,6 +354,33 @@ export function createMarketNews(ctx) {
     });
   }
 
+  // uniqueWrecks schedules a complication the moment a bearing is recorded — the emit used to be
+  // audit-only. Cite the scheduled timer once per (wreck, timer) so the foreshadow lands before
+  // the fire and a replayed emit cannot stack a second line.
+  function surfaceWreckComplicationRumor(ev) {
+    if (!ev || !ev.wreckId || !ev.timerId) return null;
+    const eventId = `uniqueWreck:complication:${ev.wreckId}:${ev.timerId}`;
+    const existing = model.log.find((rec) => rec && rec.eventId === eventId);
+    if (existing) return existing;
+    const name = ev.wreckName || ev.wreckId;
+    const headline = fillTemplate(
+      pickVariant(WRECK_COMPLICATION_RUMORS, seedOf(), eventId),
+      { name },
+    ).replace(/\s+/g, ' ').trim();
+    return commitHeadline(headline, { ...ev, kind: 'wreck_complication' }, {
+      metadata: {
+        kind: 'wreck_complication',
+        complicationKind: ev.kind || null,
+        eventId,
+        source: 'uniqueWreck:complicationScheduled',
+        sourceRef: eventId,
+        wreckId: ev.wreckId,
+        wreckName: ev.wreckName || null,
+        sectorId: ev.sectorId || null,
+      },
+    });
+  }
+
   // ---- economy subscriptions (READ-ONLY) ---------------------------------------------------
   const subs = [];
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
@@ -352,6 +388,7 @@ export function createMarketNews(ctx) {
   on('news:publish', surfacePublished);
   on('freight:loss', surfaceFreightLoss);
   on('pirateRumor:headline', surfacePirateRumor);
+  on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
   on('economy:eventStarted', (p) => {
     if (!p) return;
     surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });
