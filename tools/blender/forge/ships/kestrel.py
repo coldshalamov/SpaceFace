@@ -84,7 +84,9 @@ def build():
     for i, x in enumerate((-9.0, -6.6, -4.2, -1.8, 0.6, 3.0)):
         F.box(s, f'SpineRib{i}', (x, 0.0, 2.0), (0.26, 1.7 if x < 1 else 1.45, 0.3), material='gunmetal',
               bevel=0.02)
-    F.band(s, 'Spine', (-4.0, 0, 0), (0, 1, 0), 0.2, 'stripe', facing=(0, 0, 1))
+    # The dorsal livery line is lit: one thin neon spine in the ship's identity colour, the line
+    # the chase camera reads first (the Look: lamps are light, docs/visual-assets/LOOK.md).
+    F.band(s, 'Spine', (-4.0, 0, 0), (0, 1, 0), 0.2, 'glow_cyan', facing=(0, 0, 1))
 
     # --- shoulder sponsons: charcoal armour, cyan top band, radiator combs outboard ------------
     sponson = [(6.3, 3.0), (4.6, 6.2), (-8.8, 6.2), (-10.2, 5.2), (-10.2, 3.1), (-4.0, 2.7)]
