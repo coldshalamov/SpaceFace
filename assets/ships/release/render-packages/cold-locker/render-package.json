@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "89b2bec2635b2dbdcb156b5c6bc040855e4e11e863c6983609bffd67d41cb4fa",
+  "contentHash": "25f80cd8804a37235ef261186ca24b5fb66d6951a1a678558b142f5dc674f521",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2244,13 +2244,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 689616,
-    "sha256": "54f6a853a3ece58fa0b8804d5115c654f3abca9f74d343e2d8f95280a9676e19",
+    "sha256": "a7f019726191eeb064ce25bae98e81b78daf5ec5b721fac4f2a09544a5a137b7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3102,7 +3102,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cold_locker.glb"
   },
-  "runtimeHash": "f81420e8894876b251c77ef76dedfd6cca6165619cf61e3193e3d11edde25e00",
+  "runtimeHash": "66edc771a2286c3707226057e883c0f823470346718b6608a297830346a61d66",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

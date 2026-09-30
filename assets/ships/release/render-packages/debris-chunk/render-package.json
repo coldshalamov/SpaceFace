@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "53d9bd6c1284230a366be9e09c716923300d0fe490c48c7d4a7cbd69305d885b",
+  "contentHash": "1e15414038c58dcd4357c9d1e0f4e9f38d6b7bd26e828b86b1d9023fddd23f20",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2513,13 +2513,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 646728,
-    "sha256": "c2a1b999d03bf043661f22e779183ee0cb208339e85246485813a29276034832",
+    "sha256": "79402a439578338be25a8380896370b0972a3fa837092460e50f4b0e970dc08e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3485,7 +3485,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_debris_chunk.glb"
   },
-  "runtimeHash": "327e2121cbfebf5da7b338d1a2e6b2479b361e4fcea4f47cc4c3e897febcdbce",
+  "runtimeHash": "390832d942fa7aeb5a2231cc42cacbcddfc69ca65eac927405b80a7cfcf011ba",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

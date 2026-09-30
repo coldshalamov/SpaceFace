@@ -87,6 +87,10 @@ import {
   attachSampleLayer,
 } from './sampleLibrary.js';
 
+// Sync-read options for the 0.1 s / 0.05 s cadence loops — entityNeedsExactAudio reads
+// fields synchronously, so one shared options object serves every call site.
+const _exactAudioOpts = { playerId: null };
+
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
 const D_FAR = TABLE_HEARING_FAR_WU;     // wu — silent / culled beyond the table
@@ -572,6 +576,31 @@ function collisionAcousticMass(mass, type) {
   if (type === 'asteroid') return COLLISION_CUE.ACOUSTIC_MASS_ASTEROID;
   return Number.isFinite(mass) && mass > 0 ? mass : COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN;
 }
+
+// Contact-admission scratches — _onCollision fills these per admitted contact and every
+// callee (resolveCollisionCue, play, _applyWeightDuck) only reads fields synchronously, so
+// the literals never escape.
+const _collisionCueArg = {
+  dp: 0,
+  impulse: 0,
+  massA: null,
+  massB: null,
+  typeA: undefined,
+  typeB: undefined,
+  closingSpeed: undefined,
+  hullDamage: undefined,
+};
+const _collisionPlayOpts = {
+  position: null,
+  gain: 1,
+  rate: 1,
+  ladderId: undefined,
+};
+const _collisionDuckArg = {
+  mass: 0,
+  dp: 0,
+  importance: 0,
+};
 
 export function resolveCollisionCue(input) {
   const src = input || {};
@@ -3303,17 +3332,28 @@ export const audio = {
     }
     this._collisionCueTick = tick;
     if (p.aId == null || p.bId == null) return true;  // unidentifiable contacts stay audible
-    const a = String(p.aId);
-    const b = String(p.bId);
-    if (a === b) return true;
-    const key = a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+    // physics:impact carries the pre-joined pair key (same min\0max law); the collision
+    // twin and any older emitter may not, so keep the local build as the fallback. The
+    // self-contact check answers without stringizing when the key is already present.
+    let key = typeof p.pairKey === 'string' ? p.pairKey : null;
+    if (key == null) {
+      const a = String(p.aId);
+      const b = String(p.bId);
+      if (a === b) return true;
+      key = a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+    } else if (p.aId === p.bId) return true;
     const dp = Number.isFinite(p.dp) ? p.dp : Number.isFinite(p.impulse) ? p.impulse : 0;
     const prev = this._collisionCueContacts.get(key);
     if (prev && tick - prev.tick < COLLISION_CUE_COOLDOWN_TICKS
       && !(dp > prev.dp * COLLISION_CUE_UPGRADE_RATIO)) {
       return false;
     }
-    if (!this._collisionCueContacts.has(key) && this._collisionCueContacts.size >= COLLISION_CUE_PAIR_CAP) {
+    if (prev) {
+      prev.tick = tick;
+      prev.dp = dp;
+      return true;
+    }
+    if (this._collisionCueContacts.size >= COLLISION_CUE_PAIR_CAP) {
       const oldest = this._collisionCueContacts.keys().next();
       if (!oldest.done) this._collisionCueContacts.delete(oldest.value);
     }
@@ -3325,41 +3365,38 @@ export const audio = {
     if (!p) return;
     if (!this._admitCollisionCue(p)) return;
     const entities = this.state && this.state.entities;
-    const pick = (id) => {
-      if (!entities) return null;
-      const e = typeof entities.get === 'function' ? entities.get(id) : entities[id];
-      return e || null;
-    };
-    const a = pick(p.aId);
-    const b = pick(p.bId);
-    const cue = resolveCollisionCue({
-      dp: p.dp,
-      impulse: p.impulse,
-      massA: a && Number.isFinite(a.mass) ? a.mass : null,
-      massB: b && Number.isFinite(b.mass) ? b.mass : null,
-      typeA: a ? a.type : undefined,
-      typeB: b ? b.type : undefined,
-      // The slam-vs-kiss pitch bend reads the pre-solve closing speed; the solver's per-tick dp
-      // clamp must not flatten a 150 WU/s ram into a 40 WU/s answer.
-      closingSpeed: p.preSolveClosingSpeed,
-      hullDamage: Number.isFinite(p.hullDamage) ? p.hullDamage : undefined,
-    });
-    const voice = this.play(cue.recipeId, {
-      position: p.pos,
-      gain: cue.gain,
-      rate: cue.rate,
-      ladderId: cue.ladderId || undefined,
-    });
+    const a = !entities ? null
+      : (typeof entities.get === 'function' ? entities.get(p.aId) : entities[p.aId]) || null;
+    const b = !entities ? null
+      : (typeof entities.get === 'function' ? entities.get(p.bId) : entities[p.bId]) || null;
+    const cueArg = _collisionCueArg;
+    cueArg.dp = p.dp;
+    cueArg.impulse = p.impulse;
+    cueArg.massA = a && Number.isFinite(a.mass) ? a.mass : null;
+    cueArg.massB = b && Number.isFinite(b.mass) ? b.mass : null;
+    cueArg.typeA = a ? a.type : undefined;
+    cueArg.typeB = b ? b.type : undefined;
+    // The slam-vs-kiss pitch bend reads the pre-solve closing speed; the solver's per-tick dp
+    // clamp must not flatten a 150 WU/s ram into a 40 WU/s answer.
+    cueArg.closingSpeed = p.preSolveClosingSpeed;
+    cueArg.hullDamage = Number.isFinite(p.hullDamage) ? p.hullDamage : undefined;
+    const cue = resolveCollisionCue(cueArg);
+    const playOpts = _collisionPlayOpts;
+    playOpts.position = p.pos;
+    playOpts.gain = cue.gain;
+    playOpts.rate = cue.rate;
+    playOpts.ladderId = cue.ladderId || undefined;
+    const voice = this.play(cue.recipeId, playOpts);
     const aMass = a && Number.isFinite(a.mass) ? a.mass : 16;
     const bMass = b && Number.isFinite(b.mass) ? b.mass : 16;
     // The duck follows audibility: a contact beyond hearing range is culled inside play() and
     // must not bow the player's music for a sound nobody heard.
     if (voice) {
-      this._applyWeightDuck({
-        mass: Math.max(aMass, bMass),
-        dp: Number.isFinite(p.dp) ? p.dp : p.impulse,
-        importance: cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35,
-      });
+      const duck = _collisionDuckArg;
+      duck.mass = Math.max(aMass, bMass);
+      duck.dp = Number.isFinite(p.dp) ? p.dp : p.impulse;
+      duck.importance = cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35;
+      this._applyWeightDuck(duck);
     }
   },
 
@@ -5808,38 +5845,85 @@ export const audio = {
     if (now < (rt._nextRemoteEngineS || 0)) return;
     rt._nextRemoteEngineS = now + 0.1;
 
-    const list = this.state.entityList;
     const player = this._playerPos();
     const playerId = this.state.playerId;
     const rows = rt._remoteRows || (rt._remoteRows = []);
     rows.length = 0;
-    if (Array.isArray(list) && player) {
-      for (let i = 0; i < list.length; i++) {
-        const entity = list[i];
+    if (player) {
+      // Candidate membership is version-latched: engine-capable types live in the index's
+      // shipLike and radarContacts buckets (freighters only in the latter), so the 10 Hz run
+      // walks those ~small lists instead of the whole entityList. Interned id/loop keys ride a
+      // WeakMap so nothing allocates a String(entity.id) per ship per run.
+      const index = this.state.entityIndex;
+      const indexVersion = index && Number.isFinite(index.version) ? index.version : null;
+      const buckets = (index && index.shipLike && index.radarContacts) ? index : null;
+      if (indexVersion == null || rt._remoteCandVersion !== indexVersion || !buckets) {
+        rt._remoteCandVersion = indexVersion;
+        const candidates = rt._remoteCandidates || (rt._remoteCandidates = []);
+        candidates.length = 0;
+        const candSet = rt._remoteCandSet || (rt._remoteCandSet = new Set());
+        candSet.clear();
+        const take = (entity) => {
+          if (!entity || candSet.has(entity)) return;
+          if (entity.type !== 'ship' && entity.type !== 'freighter' && entity.type !== 'drone') return;
+          candSet.add(entity);
+          candidates.push(entity);
+        };
+        if (buckets) {
+          for (let i = 0; i < index.shipLike.length; i++) take(index.shipLike[i]);
+          for (let i = 0; i < index.radarContacts.length; i++) take(index.radarContacts[i]);
+        } else {
+          const list = this.state.entityList;
+          if (Array.isArray(list)) for (let i = 0; i < list.length; i++) take(list[i]);
+        }
+      }
+      const keys = rt._remoteKeys || (rt._remoteKeys = new WeakMap());
+      // Row records pool across 0.1 s cadence runs: the loop stays one positional
+      // index into a stable backing array instead of a fresh {id,dist,…} per ship.
+      const rowPool = rt._remoteRowPool || (rt._remoteRowPool = []);
+      _exactAudioOpts.playerId = playerId;
+      const candidates = rt._remoteCandidates;
+      for (let i = 0; i < candidates.length; i++) {
+        const entity = candidates[i];
         if (!entity || entity.alive === false || entity.id === playerId || !entity.pos) continue;
-        if (entity.type !== 'ship' && entity.type !== 'freighter' && entity.type !== 'drone') continue;
         const frame = entity._flightFrame;
         let throttle = 0;
         if (frame && Number.isFinite(frame.throttle)) throttle = Math.max(0, frame.throttle);
         else if (frame && Number.isFinite(frame.commandedThrottle)) throttle = Math.max(0, frame.commandedThrottle);
-        const exact = entityNeedsExactAudio(entity, { playerId }) === true;
-        rows.push({
-          id: entity.id,
-          dist: Math.hypot(entity.pos.x - player.x, entity.pos.z - player.z),
-          throttle,
-          exact,
-          entity,
-        });
+        const exact = entityNeedsExactAudio(entity, _exactAudioOpts) === true;
+        let row = rowPool[rows.length];
+        if (!row) {
+          row = { id: null, idKey: '', engKey: '', dist: 0, throttle: 0, exact: false, entity: null };
+          rowPool[rows.length] = row;
+        }
+        let interned = keys.get(entity);
+        if (!interned) {
+          interned = { idKey: String(entity.id) };
+          interned.engKey = 'eng_' + interned.idKey;
+          keys.set(entity, interned);
+        }
+        row.id = entity.id;
+        row.idKey = interned.idKey;
+        row.engKey = interned.engKey;
+        row.dist = Math.hypot(entity.pos.x - player.x, entity.pos.z - player.z);
+        row.throttle = throttle;
+        row.exact = exact;
+        row.entity = entity;
+        rows.push(row);
       }
     }
-    const chosen = pickRemoteEngines(rows, REMOTE_ENGINE_CAP, rt._remoteChosen || (rt._remoteChosen = []));
+    const chosen = pickRemoteEngines(
+      rows,
+      REMOTE_ENGINE_CAP,
+      rt._remoteChosen || (rt._remoteChosen = []),
+      rt._remotePickPool || (rt._remotePickPool = []),
+    );
     const want = rt._remoteWant || (rt._remoteWant = Object.create(null));
     for (const key in want) want[key] = false;
     for (let i = 0; i < chosen.length; i++) {
       const row = chosen[i];
-      const idKey = String(row.id);
-      want[idKey] = true;
-      const loopKey = 'eng_' + idKey;
+      want[row.idKey] = true;
+      const loopKey = row.engKey;
       const rate = remoteEnginePlaybackRate(row.id, row.entity.mass);
       let voice = loops[loopKey];
       if (!voice) {
@@ -5884,7 +5968,11 @@ export const audio = {
     const entities = this.state && this.state.entities;
     if (!entities || typeof entities.get !== 'function') return;
     const pp = this._playerPos();
-    const apply = (v) => {
+    _exactAudioOpts.playerId = this.state && this.state.playerId;
+    for (const k in rt.loops) this._applyLoopPosition(rt.loops[k], rt, entities, pp, now);
+  },
+
+  _applyLoopPosition(v, rt, entities, pp, now) {
       if (!v || v.trackId == null) return;
       const e = entities.get(v.trackId);
       if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) {
@@ -5901,7 +5989,7 @@ export const audio = {
         return;
       }
       const d = Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z);
-      const exact = entityNeedsExactAudio(e, { playerId: this.state && this.state.playerId });
+      const exact = entityNeedsExactAudio(e, _exactAudioOpts);
       const preserveRemote = v.busName === 'ui' || v.busName === 'combat';
       if (!preserveRemote && exact !== true) {
         if (v._audioResidencyActive !== false) {
@@ -5968,9 +6056,8 @@ export const audio = {
         const base = Number.isFinite(v._remoteRate) ? v._remoteRate : 1;
         this._setVoiceRate(v, base * factor);
       }
-    };
-    for (const k in rt.loops) apply(rt.loops[k]);
   },
+
 
   _gcVoices(now) {
     const rt = this.rt;

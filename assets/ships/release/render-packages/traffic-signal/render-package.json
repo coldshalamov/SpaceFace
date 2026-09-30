@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bb8ad44890ae7091520d78d54fd9d6b99e3ffee9716b8d9b2e06d61550d016df",
+  "contentHash": "aed857392f00ce7826bb3fd64019cdb587593373994a72b78e8086122bbc3d5a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -919,13 +919,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 25804,
-    "sha256": "e44d2227d92a73306de97001ef7b63218c363d3043f7f9d233d91f9391f9db82",
+    "sha256": "75d4e83a21a662b5b02c220180019d80acd2c4d10fbf3150f4c297e8b597b3c9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1326,7 +1326,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_traffic_signal.glb"
   },
-  "runtimeHash": "75d0816098a14fe53ec17e26c593caa6bc990af43771fcd283e90b88ab93e4e9",
+  "runtimeHash": "5ef01170e09a74465b6eed54caaaad846192863e20ab9d0d795d0d27c4bc9db5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

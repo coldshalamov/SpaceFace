@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7737eb1f23f998fef91a32c69587a812d560b8bb16f6cac508c3d91b566ce496",
+  "contentHash": "71cd42b54d1bf1b7653cd7b8ab204304a56d19dbaab5e9c85e37b45c359716d4",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-lode.node.lod0-hook-drive-core.dynamic",
@@ -4490,18 +4490,18 @@
     },
     "sourceGlb": {
       "bytes": 848364,
-      "sha256": "f362edff3ec41e8b9b80b2bb816e1c008ce4f890e3522bec5d9f3e4d4ebae182",
+      "sha256": "9f34866112b95c07005072eea1004e50b7be92cc0f6bbbe9bbfee7cb84d30a7a",
       "uri": "ashline_lode.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1437876,
-    "sha256": "b5b9aa118bf67c808e5ab2bad7e806dc084e681ed0ffe548b5d8d67ca40e22eb",
+    "sha256": "6d600d607d39f0605a71f57c880bb3a373ca1f4b213d90ce8e9c575462f7c24b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6490,7 +6490,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_lode.glb"
   },
-  "runtimeHash": "4bd7b45e7c9a85702bcee05e47d703545e72feeb23201580f6f1bdb6fa9400b9",
+  "runtimeHash": "c8cd6bab2242ab9e1e7f23b318e6b4ddba9445ddc81a3fdde0200663ec998ede",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

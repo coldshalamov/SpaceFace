@@ -51,8 +51,22 @@ export function collectLocalSharedStoreKeys(storage = globalThis.localStorage) {
   return keys;
 }
 
+// Both stamp fields serialize within the envelope head (fmt, version, then savedAt), so a
+// bounded scan over the first bytes answers the merge's only question without materializing a
+// multi-MB parse per blob. Anything the head doesn't explain falls back to the full parse.
+const ENVELOPE_HEAD_SCAN = 4096;
+const ENVELOPE_SAVEDAT_RE = /"savedAt"\s*:\s*"([^"]*)"/;
+const ENVELOPE_UPDATEDAT_RE = /"updatedAt"\s*:\s*"([^"]*)"/;
+
 export function envelopeTime(raw) {
   if (typeof raw !== 'string' || !raw) return 0;
+  const head = raw.length > ENVELOPE_HEAD_SCAN ? raw.slice(0, ENVELOPE_HEAD_SCAN) : raw;
+  // Same preference as the parsed path: savedAt beats updatedAt regardless of key order.
+  const quick = ENVELOPE_SAVEDAT_RE.exec(head) || ENVELOPE_UPDATEDAT_RE.exec(head);
+  if (quick) {
+    const time = Date.parse(quick[1]);
+    if (Number.isFinite(time)) return time;
+  }
   try {
     const parsed = JSON.parse(raw);
     const stamp = parsed && (parsed.savedAt || parsed.updatedAt);
@@ -99,7 +113,7 @@ export function mergeSharedStoreKeys(localKeys = {}, remoteKeys = {}) {
       out[key] = remote;
       continue;
     }
-    if (remote == null) {
+    if (remote == null || local === remote) {
       out[key] = local;
       continue;
     }
@@ -118,6 +132,9 @@ export function applySharedStoreKeys(keys, storage = globalThis.localStorage) {
   for (const [key, value] of Object.entries(keys || {})) {
     if (!isSharedPlayerStoreKey(key) || typeof value !== 'string') continue;
     try {
+      // A storage write of an identical ~220 KB envelope still pays the synchronous commit;
+      // the read+compare is the cheap side of the same string.
+      if (typeof storage.getItem === 'function' && storage.getItem(key) === value) continue;
       storage.setItem(key, value);
       written += 1;
     } catch {

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./styles/menu.css" />
   <link rel="stylesheet" href="./styles/intro.css" />
   <link rel="stylesheet" href="./styles/boot-instrument.css" />
+  <link rel="stylesheet" href="./styles/boot-visualizer.css" />
   <link rel="stylesheet" href="./styles/asteroid-ops.css" />
   <link rel="stylesheet" href="styles/accessibility.css">
   <!-- hud.css is NOT linked here: styles/ui.css @imports it, which is how every other page
@@ -49,6 +50,13 @@
     }
   }
   </script>
+  <!-- Fetch-only early hints: preserve PR #188's transfer warmup without executing
+       the game graph before the native media proof in bootEntry. Retail strips
+       modulepreloads through buildBundledHtml; hud.css keeps its original cascade. -->
+  <link rel="preload" as="style" href="./styles/hud.css" />
+  <link rel="modulepreload" href="./vendor/three.module.js" />
+  <link rel="modulepreload" href="./vendor/rapier3d-compat/rapier.mjs" />
+  <link rel="modulepreload" href="./src/main.js" />
 </head>
 <body>
   <canvas id="gl-canvas"></canvas>
@@ -64,9 +72,11 @@
     <div id="alerts"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
       <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
+      <!-- Select the motion/flash variant before downloading. Native media is the
+           artwork; never put the live JS remix canvas over this loading surface. -->
       <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline
-             preload="auto" poster="assets/cinematics/intro-visualizer.jpg" aria-hidden="true">
-        <source src="assets/cinematics/intro-visualizer.mp4" type="video/mp4" />
+             preload="none" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
+        <source src="assets/cinematics/boot-visualizer.mp4" type="video/mp4" />
       </video>
       <div class="boot-scrim" aria-hidden="true"></div>
       <header class="boot-meta" aria-hidden="true">

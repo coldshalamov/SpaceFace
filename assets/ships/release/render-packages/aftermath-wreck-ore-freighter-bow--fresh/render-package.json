@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d56896a3175d5697a9feef3686a6477220597a7534454724ca6c3b45090acdd1",
+  "contentHash": "5202b5eb6ad49f104d35d6c6cb22586fd5afa1abdc7e4550bbf88f39fdd084a2",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -10281,13 +10281,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 871344,
-    "sha256": "5b8be86bc305dca50120816494db9a7c262ca548af409bc3999aef19a60f66de",
+    "sha256": "5e61503c92a425352cc31c3d1d8d6943434fc9ec3e608e265099162eaa8d4166",
     "uri": "render.glb"
   },
   "runtime": {
@@ -15858,7 +15858,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__fresh.glb"
   },
-  "runtimeHash": "28de8aceec4d2cfbe406e7869a440a4f49c43da2f37063aaa59aee8085bda580",
+  "runtimeHash": "f5d87f9b33c6b5003dc63b03fc646e320c28b3b864d3cd598d454b041422974a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

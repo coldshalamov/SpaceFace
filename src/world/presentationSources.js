@@ -3,11 +3,12 @@
 // GameState.entityList members until promote (mine / ram / tether / decode-runway traffic).
 
 import { clearEntityRuntime } from '../core/entity.js';
-import { getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
+import { ASTEROID_FIELD_CELL, getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
 import {
   authoredPrefetchRadius,
+  farLedgerScanRadius,
   glassCornerWu,
   residencyPrefetchRadius,
   tableLookAtOrigin,
@@ -16,7 +17,6 @@ import {
   timeToEnterRadiusSeconds,
   TABLE_COLLECT_HORIZON_SECONDS,
   TABLE_DECODE_RUNWAY_SECONDS,
-  TABLE_INBOUND_APPROACH_WU,
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
 import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
@@ -34,7 +34,6 @@ const _meshSpatialKey = {
   originX: NaN,
   originZ: NaN,
   radius: NaN,
-  originSeq: -1,
   fieldVersion: -1,
   farVersion: -1,
 };
@@ -124,7 +123,7 @@ function ledgerPredictedPos(rec, simTime, out) {
 
 const _ledgerPredictedScratch = { x: 0, z: 0 };
 
-function meshSpatialKeyMatches(state, origin, radius) {
+function meshSpatialKeyMatches(state, walkX, walkZ, walkRadius) {
   const world = state && state.world;
   const field = world && world.asteroidField;
   const far = world && world.farActors;
@@ -132,28 +131,28 @@ function meshSpatialKeyMatches(state, origin, radius) {
   return key.state === state
     && key.field === field
     && key.far === far
-    && key.originX === origin.x
-    && key.originZ === origin.z
-    && key.radius === radius
-    && key.originSeq === ((world && world.frameOriginSeq) | 0)
+    && key.originX === walkX
+    && key.originZ === walkZ
+    && key.radius === walkRadius
     && key.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0)
     && key.farVersion === (far && Number.isFinite(far.version) ? far.version : 0);
 }
 
-function rememberMeshSpatialKey(state, origin, radius) {
+function rememberMeshSpatialKey(state, walkX, walkZ, walkRadius) {
   const world = state && state.world;
   const field = world && world.asteroidField;
   const far = world && world.farActors;
   _meshSpatialKey.state = state;
   _meshSpatialKey.field = field;
   _meshSpatialKey.far = far;
-  _meshSpatialKey.originX = origin.x;
-  _meshSpatialKey.originZ = origin.z;
-  _meshSpatialKey.radius = radius;
-  _meshSpatialKey.originSeq = (world && world.frameOriginSeq) | 0;
+  _meshSpatialKey.originX = walkX;
+  _meshSpatialKey.originZ = walkZ;
+  _meshSpatialKey.radius = walkRadius;
   _meshSpatialKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
   _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
 }
+
+const _meshWalkOrigin = { x: 0, z: 0 };
 
 const _ledgerCollectOrigin = { x: 0, z: 0 };
 
@@ -170,18 +169,30 @@ function appendNearbyLedgerRows(state, out) {
   const origin = tableLookAtOrigin(state, player.pos, _ledgerCollectOrigin);
   const radius = presentationCollectRadius(state);
   if (!(radius > 0)) return;
-  const travel = tableTravelSpeed(state);
   // The scan disc must hold every row that can still reach the glass inside the
   // longest admit window — hulls ride the decode runway, which exceeds both the
   // collect and promote horizons, so sizing to either would strand a fast inbound
   // ship between "scannable" and "admissible". The per-row time-to-glass test below
-  // decides admission, so the disc leaning wide does not wake receding traffic.
-  const scanRadius = radius
-    + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS;
-  if (!meshSpatialKeyMatches(state, origin, scanRadius)) {
-    queryAsteroidField(state, origin, scanRadius, _meshRockScratch);
-    queryFarActors(state, origin, scanRadius, _meshFarScratch);
-    rememberMeshSpatialKey(state, origin, scanRadius);
+  // decides admission, so the disc leaning wide does not wake receding traffic. The
+  // far table's freshness sweep keys this same disc so collect and sim stay in step.
+  const scanRadius = farLedgerScanRadius(state);
+  // The collect disc moves with the look-at every frame, so keying the memo on the
+  // exact origin meant it never hit while the player travelled — every poll walked
+  // every grid cell inside the multi-thousand-WU decode runway disc. Walk a quantized
+  // cell centre padded by the cell's half-diagonal instead: any live origin inside the
+  // cell is covered by the same superset, and the per-row tests below still filter
+  // against the exact origin on every call. The walk radius is bucketed the same way
+  // so small speed changes do not churn the key either.
+  const walkX = (Math.floor(origin.x / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const walkZ = (Math.floor(origin.z / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
+  const walkRadius = Math.ceil((scanRadius + radiusPad) / 500) * 500;
+  if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius)) {
+    _meshWalkOrigin.x = walkX;
+    _meshWalkOrigin.z = walkZ;
+    queryAsteroidField(state, _meshWalkOrigin, walkRadius, _meshRockScratch);
+    queryFarActors(state, _meshWalkOrigin, walkRadius, _meshFarScratch);
+    rememberMeshSpatialKey(state, walkX, walkZ, walkRadius);
   }
   const pvx = finite(player.vel && player.vel.x);
   const pvz = finite(player.vel && player.vel.z);
@@ -191,15 +202,22 @@ function appendNearbyLedgerRows(state, out) {
   for (let i = 0; i < _meshRockScratch.length; i++) {
     const rec = _meshRockScratch[i];
     if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
-    const relX = rec.pos.x - origin.x;
-    const relZ = rec.pos.z - origin.z;
+    // Shelf-time pos + "static row" relative velocity was wrong for drifting rocks: the record
+    // carries vel/lastExactT (asteroidField) but the test measured from the frozen pos and
+    // ignored the rock's own motion, so a rock already closing fast read as stationary and
+    // admitted late. Same ballistic extrapolation the far-actor branch uses; vel=0 rocks
+    // reduce to the old math exactly.
+    const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
+    const relX = eff.x - origin.x;
+    const relZ = eff.z - origin.z;
     if (relX * relX + relZ * relZ <= radius2) {
       out.push(rec);
       continue;
     }
-    // A static row only earns early residency on the player's own approach.
+    const relVx = finite(rec.vel && rec.vel.x) - pvx;
+    const relVz = finite(rec.vel && rec.vel.z) - pvz;
     const tEnter = timeToEnterRadiusSeconds(
-      relX, relZ, -pvx, -pvz,
+      relX, relZ, relVx, relVz,
       glassR + finite(rec.radius),
       TABLE_COLLECT_HORIZON_SECONDS,
     );
@@ -305,21 +323,26 @@ const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
  * schedule/packages/swarm roster only (no dummy catalog). Silhouette matters:
  * wasp_swarmer decodes ashline_dart, not wasp_production.
  */
+export function enemyHullDecodeKey(enemyId) {
+  if (typeof enemyId !== 'string' || enemyId.length === 0) return null;
+  const def = ENEMY_BY_ID.get(enemyId);
+  if (!def || typeof def.shipId !== 'string' || !def.shipId) return null;
+  const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
+  const token = `${def.shipId}|${silhouette}`;
+  return Object.freeze({
+    defId: def.shipId,
+    silhouette,
+    enemyId,
+    key: token,
+  });
+}
+
 export function collectWaveHullDecodeKeys(plan) {
   const keys = new Map();
   const takeEnemy = (enemyId) => {
-    if (typeof enemyId !== 'string' || enemyId.length === 0) return;
-    const def = ENEMY_BY_ID.get(enemyId);
-    if (!def || typeof def.shipId !== 'string' || !def.shipId) return;
-    const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
-    const token = `${def.shipId}|${silhouette}`;
-    if (keys.has(token)) return;
-    keys.set(token, Object.freeze({
-      defId: def.shipId,
-      silhouette,
-      enemyId,
-      key: token,
-    }));
+    const key = enemyHullDecodeKey(enemyId);
+    if (!key || keys.has(key.key)) return;
+    keys.set(key.key, key);
   };
   if (!plan || plan.ok === false) return [];
   const schedule = Array.isArray(plan.schedule) ? plan.schedule : [];

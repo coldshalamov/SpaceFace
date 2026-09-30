@@ -1,0 +1,134 @@
+name: Boot media regression
+on:
+  push:
+    branches: ['fix/boot-visualizer-media-first']
+    paths:
+      - '.github/workflows/boot-media-regression.yml'
+      - 'src/ui/boot*.js'
+      - 'src/ui/loadingPresenter.js'
+      - 'test/boot-media*.test.mjs'
+      - 'tools/cinematic/boot-media-proof*'
+      - 'tools/cinematic/check-boot-media-assets.mjs'
+      - 'docs/BOOT_VISUALIZER.md'
+  pull_request:
+    paths:
+      - 'src/ui/boot*.js'
+      - 'src/ui/loadingPresenter.js'
+      - 'test/boot-media*.test.mjs'
+      - 'tools/cinematic/boot-media-proof*'
+      - 'tools/cinematic/check-boot-media-assets.mjs'
+      - 'assets/cinematics/boot-visualizer*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: boot-media-regression-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sources-and-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/ui/loading*.js
+            /src/ui/boot*.js
+            /src/ui/introSignalRemix*.js
+            /src/ui/orrery/boot*.js
+            /src/core/boot*.js
+            /src/core/eventBus.js
+            /tools/cinematic/boot-media-proof*
+            /tools/cinematic/bake-boot-visualizer.mjs
+            /tools/cinematic/check-boot-media-assets.mjs
+            /tools/cinematic/signal-remix*
+            /test/boot-media*.test.mjs
+            /test/intro-signal-remix*.test.mjs
+            /scripts/build-bundle.mjs
+            /assets/ui/generated/emblem/emblem.thumb.webp
+            /styles/intro.css
+            /styles/boot-instrument.css
+            /styles/boot-visualizer.css
+            /docs/BOOT_VISUALIZER.md
+            /index.html
+            /package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check controller and lifecycle contracts
+        run: |
+          node --check src/ui/bootMediaPlayback.js
+          node --check src/ui/bootVisualizer.js
+          node --test test/boot-media*.test.mjs test/intro-signal-remix*.test.mjs
+      - name: Collect exact source fixture
+        if: always()
+        run: |
+          mkdir -p .boot-media-source
+          git rev-parse HEAD > .boot-media-source/SOURCE_COMMIT.txt
+          python3 - <<'PY'
+          import subprocess, os, zipfile
+          with zipfile.ZipFile('.boot-media-source/runtime-source.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+              for name in subprocess.check_output(['git','ls-files'],text=True).splitlines():
+                  if os.path.isfile(name): z.write(name)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boot-media-source
+          path: .boot-media-source/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
+  compositor-pixels:
+    # One browser pass per PR update, not duplicate push and pull_request runs.
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/ui/loading*.js
+            /src/ui/boot*.js
+            /src/ui/introSignalRemix*.js
+            /src/ui/orrery/boot*.js
+            /src/core/boot*.js
+            /src/core/eventBus.js
+            /tools/cinematic/boot-media-proof*
+            /tools/cinematic/bake-boot-visualizer.mjs
+            /tools/cinematic/check-boot-media-assets.mjs
+            /tools/cinematic/signal-remix*
+            /assets/cinematics/boot-visualizer*
+            /assets/cinematics/intro-visualizer.*
+            /assets/ui/generated/emblem/emblem.thumb.webp
+            /styles/intro.css
+            /styles/boot-instrument.css
+            /styles/boot-visualizer.css
+            /index.html
+            /package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify complete, current and streamable media
+        run: node tools/cinematic/check-boot-media-assets.mjs
+      - name: Install browser client without touching game dependencies
+        timeout-minutes: 3
+        run: |
+          mkdir -p "$RUNNER_TEMP/boot-tools"
+          cd "$RUNNER_TEMP/boot-tools"
+          printf '{"private":true}' > package.json
+          npm install --no-save --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=60000 playwright@1.56.1
+          google-chrome --version
+      - name: Capture changing artwork pixels strictly inside main-thread stalls
+        run: BOOT_PLAYWRIGHT="$RUNNER_TEMP/boot-tools/node_modules/playwright/index.mjs" node tools/cinematic/boot-media-proof.mjs --out "$RUNNER_TEMP/boot-media-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boot-media-compositor-evidence
+          path: ${{ runner.temp }}/boot-media-evidence/
+          retention-days: 7
+          if-no-files-found: error

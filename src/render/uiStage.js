@@ -337,6 +337,10 @@ export function uiStageResident() {
 export function uiStageRequestFor(state) {
   if (!state || !state.ui) return null;
   if (canvasIsProtectedDuringFreeze(state)) return null;
+  // The opaque Continue veil owns the whole window while a restore runs underneath it — the
+  // title's stage scene draws behind it for nothing. When the veil is up there is no stage
+  // request; if the load fails, the menu re-requests through syncVisibility as usual.
+  if (typeof document !== 'undefined' && document.querySelector('.sf-continue-fade')) return null;
   const request = state.ui.stageRequest;
   if (!request || typeof request !== 'object') return null;
   const scene = typeof request.scene === 'string' ? request.scene : null;

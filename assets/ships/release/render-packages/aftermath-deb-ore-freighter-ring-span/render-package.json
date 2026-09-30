@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "84c0f359478956cd55678bae4533c4be9714986e2071100195060520eff6da20",
+  "contentHash": "a7804e7cd83d27cdaea41a20f26cb2aeb6b493f61c6078669701666d4551ce65",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -732,13 +732,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 133324,
-    "sha256": "83ebc3e44888a1a60870016b7b1d2223ad1372bc04785d0728f42a428014c71d",
+    "sha256": "b56d3c19455c2a07309a2c66275d8f44a8c102a3e1258970ca1832e8e8b20080",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1035,7 +1035,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_ring_span.glb"
   },
-  "runtimeHash": "16ccf34d0d1475834952acd35421e22281ba0849ce5fc067ea410df6be16a0b3",
+  "runtimeHash": "cd81782a488bdaedaf610bdf2b197b3c8946714242aad4886f75a947017b1192",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

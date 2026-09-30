@@ -93,7 +93,7 @@ export function createBus() {
 
   function emit(event, payload) {
     const budget = sliceBudgets.get(event) | 0;
-    if (budget > 0 && event === 'sector:enter') {
+    if (budget > 0 && (event === 'sector:enter' || event === 'save:loaded')) {
       startEmitSlice(event, payload, budget);
       return;
     }

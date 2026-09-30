@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "52669c103f85caca47151e0a161e183ab4f834eba8a602ec99e9459125c25677",
+  "contentHash": "1e1df91d9e1ef06a4e06217d66d7dfb166613af511afeaaa15ad8106ff60a69c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -562,13 +562,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 514928,
-    "sha256": "4208ec775b2d0db81e902703e3c7025e2951757b2a777aaebbce8c845166e7ee",
+    "sha256": "e20ac6e7cca4d3b118785ecd0d09bdbe49e0226db4f15cacbe7ab0209e18fff9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -874,7 +874,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_lane_junction.glb"
   },
-  "runtimeHash": "bea0521067eb054cafcdd7b742758232dba8d855fb4470de5b57b2a2d2d5acb2",
+  "runtimeHash": "4a57dba09cd76b4a8c4e17d3dd1c6075c2145f6c848d9391de6dcc8e4867b53c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

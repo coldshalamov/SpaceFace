@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9c02c810b6b33c793bd48b981b8c5261afdc6cd8c7a28a947d6293203b78abd1",
+  "contentHash": "4f21b971adf6df48c6646c56300d1ffb893ee005c71bac330c466ada2739e5b0",
   "dynamicGroups": [
     {
       "id": "sf.render.repair-tender.node.lod0-hook-drive-core.dynamic",
@@ -4948,18 +4948,18 @@
     },
     "sourceGlb": {
       "bytes": 1119500,
-      "sha256": "69ee2d784263a3817b4dcd98c3f66090be0840fa68a9460df5c34c85471431b0",
+      "sha256": "83d5493d7cc8dfa9ad5d364d9ee1db295e1d28ad6104d6e28239d0fc38cdf75f",
       "uri": "repair_tender.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 2086796,
-    "sha256": "1cebef8e1291cde9e208b2062110c66d85023fad0f3fa6e2d3ecfadab0eed0b8",
+    "sha256": "85f26f56697122f72dcb564dc0950f68a12416d61755629efbf7cb0426da5546",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7141,7 +7141,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/repair_tender.glb"
   },
-  "runtimeHash": "a387b8a18618db205e57eb1607f1ca1c058eb66ba3790c7b4010702b4150db35",
+  "runtimeHash": "4f20c86b15bb4c419627257ebab05619f3f85f92c844edbaa01ab63879ff85d4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

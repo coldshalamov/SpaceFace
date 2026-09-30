@@ -97,21 +97,22 @@ export function remoteEnginePlaybackRate(entityId, mass) {
  * Nearest thrusting glass-tier ships, capped. `rows` are { id, dist, throttle, exact }.
  * Returns the chosen rows in near-to-far order. Does not allocate when `out` is supplied.
  */
-export function pickRemoteEngines(rows, cap = REMOTE_ENGINE_CAP, out = null) {
+export function pickRemoteEngines(rows, cap = REMOTE_ENGINE_CAP, out = null, pool = null) {
   const chosen = out || [];
   chosen.length = 0;
   if (!Array.isArray(rows) || rows.length === 0) return chosen;
   const limit = cap > 0 ? cap : 0;
-  const pool = [];
+  const scratch = pool || [];
+  scratch.length = 0;
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row || row.exact !== true) continue;
     if (!(Number(row.throttle) >= REMOTE_ENGINE_THROTTLE_MIN)) continue;
     if (!(Number(row.dist) >= 0)) continue;
-    pool.push(row);
+    scratch.push(row);
   }
-  pool.sort((a, b) => a.dist - b.dist);
-  const n = Math.min(limit, pool.length);
-  for (let i = 0; i < n; i++) chosen.push(pool[i]);
+  scratch.sort((a, b) => a.dist - b.dist);
+  const n = Math.min(limit, scratch.length);
+  for (let i = 0; i < n; i++) chosen.push(scratch[i]);
   return chosen;
 }

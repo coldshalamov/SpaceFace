@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "77d8c58988388bd09f363155589f13d3d3bb0e61b5f8db6886b394166bb0c289",
+  "contentHash": "3ad3d64f74e46e52779d78c047013acddd58bd0a66f29f023c6001c1902154b3",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-dart.node.lod0-hook-drive-core.dynamic",
@@ -4719,18 +4719,18 @@
     },
     "sourceGlb": {
       "bytes": 894676,
-      "sha256": "05db1f8e33fda12cbc3591333db345736a5d4640e2034c62529e45b4e77f7d64",
+      "sha256": "885bc7b5f95ebb719b42ff0333abb918b3d622c9716e9577813b55eb21d69494",
       "uri": "ashline_dart.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1584864,
-    "sha256": "76f44793c6959c172766c230a6120471ef6bcc9991da39822b6b7cd47b12c14a",
+    "sha256": "3ea9d54e1cefb5935cb2d9ac955e063b7be9c554d229e62c03c4563dfa4ebe6c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6816,7 +6816,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart.glb"
   },
-  "runtimeHash": "afab831c284b97fbeb387a314b65e8c88046f93cdfa962e644187837cc225093",
+  "runtimeHash": "dac405d1a1cb18e06e15c41fdf5e8f87c0ae2676f0548783683c79fdc9f96656",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

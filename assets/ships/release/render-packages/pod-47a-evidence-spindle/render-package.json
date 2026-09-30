@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b765bdac48ffa6ad837ef96e845aff344caa1d01a7b0056493dc2c71c790108a",
+  "contentHash": "ce2f00a35906e2d7ebad6791442a6fe3c22b34f739cc8ece0b638021c0e532e0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -661,13 +661,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 640700,
-    "sha256": "5472f9ecc62e41b5ee408548e62303e28be35d5cf703cb66f1298c57ee786407",
+    "sha256": "bcf26606c4af0b5c2c7537cbe8b7d08cc91dda8bd764f01516f5a4c8d49c6669",
     "uri": "render.glb"
   },
   "runtime": {
@@ -879,7 +879,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb"
   },
-  "runtimeHash": "20db5dc396254abe7cf0f668b2e0bea1b8daeb5ac0cbf2317e539d7a48eecc0d",
+  "runtimeHash": "0defc411b1e4acf5970231929becf8c4b8b71c1c42e1cfd409e4adbf86b05f3a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

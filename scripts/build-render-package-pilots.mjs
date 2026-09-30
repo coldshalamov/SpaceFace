@@ -15,7 +15,10 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { compileRenderPackage, writeFileWithRetry } from './lib/renderPackageCompiler.mjs';
-import { buildRuntimeTableForRenderGlb } from './lib/renderPackageRuntimeTable.mjs';
+import {
+  buildRuntimeTableForRenderGlb,
+  sealMotionBankRef,
+} from './lib/renderPackageRuntimeTable.mjs';
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const DEFAULT_MANIFEST = 'assets/ships/render-packages/pilots.json';
@@ -80,7 +83,7 @@ export async function buildRenderPackagePilots(options = {}) {
         semanticManifest,
         outputDir,
       });
-      await attachRuntimeTable(outputDir, pilot, result.package);
+      await attachRuntimeTable(outputDir, pilot, result.package, repoRoot);
       if (check) await assertPackageMatches(outputDir, resolve(repoRoot, pilot.outputDir), pilot.key);
 
     }
@@ -282,7 +285,12 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
   const semanticNodes = descendants.map((node) => {
     const nodeName = node.getName();
     const mesh = node.getMesh();
-    const dynamic = !!mesh && (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
+    // MOTION_* pivots are dynamic even with no mesh of their own — they carry the authored
+    // transform their welded children ride (ANI-00 rigid motion groups).
+    const motionGroup = nodeName.includes('MOTION_')
+      && (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
+    const dynamic = (!!mesh || motionGroup)
+      && (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
     const blend = !!mesh && /glass|canopy/i.test(nodeName);
     const parent = node.getParentNode();
     const lane = pilot.flightStaticV3 === true && mesh
@@ -317,7 +325,9 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
     .map((record) => ({
       id: `${record.id}.dynamic`,
       nodeId: record.id,
-      kind: 'dynamic-surface',
+      // A MOTION_* semantic node is a moving-part pivot, not a sheddable surface; the runtime
+      // binds the motion bank onto it rather than treating it as damage geometry.
+      kind: record.node.includes('MOTION_') ? 'moving-part' : 'dynamic-surface',
     }));
   const collision = byNodeName.get('COLLISION_HULL');
   const mergeGroups = pilot.flightStaticV3 === true
@@ -577,7 +587,7 @@ function sha256(bytes) {
  * the offline graph rebuild carries placeholder geometry with no vertices, so its own bounds are
  * meaningless. Deriving them from real accessors is the only correct source.
  */
-async function attachRuntimeTable(outputDir, pilot, compiledPackage) {
+async function attachRuntimeTable(outputDir, pilot, compiledPackage, repoRoot = REPO_ROOT) {
   const metadataPath = join(outputDir, 'render-package.json');
   const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
   const table = await buildRuntimeTableForRenderGlb(join(outputDir, 'render.glb'), {
@@ -586,6 +596,8 @@ async function attachRuntimeTable(outputDir, pilot, compiledPackage) {
     assetId: pilot.runtimeAssetId,
     boundsOverride: unionGeometryBounds(compiledPackage.geometry),
   });
+  const motionBank = await sealMotionBankRef(pilot, metadata, { repoRoot });
+  if (motionBank) table.motionBank = motionBank;
   metadata.runtime = table;
   metadata.runtimeHash = await computeRenderPackageRuntimeHash(metadata, { digest: sha256 });
   await writeFileWithRetry(metadataPath, `${stableJsonStringify(metadata, 2)}\n`);

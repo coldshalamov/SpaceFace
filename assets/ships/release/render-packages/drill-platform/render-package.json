@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1121ed21fbd01e449c66959c73e50d361fc6eb65d5e44dc6b80fa7b49ca6c0e7",
+  "contentHash": "d1664fd6e6c60401539a03eca827a2b311d8363a6a19acac61ce39050c2ecfad",
   "dynamicGroups": [
     {
       "id": "sf.render.drill-platform.mesh.lod0-hook-nav-port.dynamic",
@@ -2656,13 +2656,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 790128,
-    "sha256": "c1f8f51375557da5e93ce722a358304ea993f55642c860e7aae7677403331bd3",
+    "sha256": "d9181c646b1cb085abaa636c189fd0b0a7638816115b1a89ab005e78854ce4aa",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3727,7 +3727,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform.glb"
   },
-  "runtimeHash": "0c8dcbebbbb2d43c6a1464bca480e0d2cf98882a3e7796c23849c2f1c926f426",
+  "runtimeHash": "7b03368883ca1e24f2cf49155cea7e7735afc02bbffa55f098d8b07b1dfd427b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

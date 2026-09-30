@@ -1,10 +1,10 @@
-/** Optional shared decoration for the two existing intro video hosts.
- * Does not own boot, progress, autoplay, dismissal, keyboard input or audio.
- * Lazily allocates after video playback; hidden/detached hosts spend no frames.
+/** Optional live decoration for title and legacy video hosts.
+ * Native boot media already contains these optics. It MUST stay out of this
+ * main-thread renderer, or a frozen canvas masks an otherwise playing movie.
  */
 import { attachIntroSignalRemix } from './introSignalRemix.js';
 const installed = new WeakMap();
-const selector = '#boot-intro-video, #cinematic-splash .cine-video';
+const selector = '#boot-intro-video:not([data-boot-native]), #cinematic-splash .cine-video';
 
 export function installIntroSignalRemix(document = globalThis.document, env = globalThis) {
   if (!document?.querySelectorAll || !document.body || typeof env.MutationObserver !== 'function') return null;
@@ -30,6 +30,7 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
   }
   function reconcile(entry) {
     if (disposed || entry.dead) return;
+    if (entry.video.hasAttribute?.('data-boot-native')) { remove(entry); return; }
     if (!entry.video.isConnected) { remove(entry); return; }
     const show = visible(entry), reduced = motion();
     // The existing video controllers own play/pause. We only pause a movie
@@ -55,6 +56,7 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     const init = () => {
       entry.idle = null;
       if (entry.dead || disposed || !visible(entry) || motion() || entry.video.paused) return;
+      if (entry.video.hasAttribute?.('data-boot-native')) { remove(entry); return; }
       try { entry.ctl = attachIntroSignalRemix(entry.video, { document, env }); } catch {}
       if (!entry.ctl) { entry.failed = true; return; }
       entry.ctl.preferences({ motion: false, flash: flash() });
@@ -70,7 +72,7 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     entry.ctl?.destroy(); entries.delete(entry.video);
   }
   function add(video) {
-    if (entries.has(video) || !video.isConnected) return;
+    if (entries.has(video) || !video.isConnected || video.hasAttribute?.('data-boot-native')) return;
     const root = video.closest('#boot-overlay, #cinematic-splash');
     if (!root) return;
     const entry = { video, root, ctl: null, idle: null, failed: false, dead: false,

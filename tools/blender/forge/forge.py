@@ -559,6 +559,9 @@ class Ship:
         self.hooks = {}
         # detail level stamped on parts added while set: 1 = omitted at LOD2, 2 = omitted at LOD1+
         self.detail = 0
+        # ANI-00 rigid motion groups: see tools/blender/forge/motion.py
+        self.motion_groups = []
+        self.motion_pivots = {}
 
     def mat(self, finish):
         if finish not in self._mats:
@@ -584,6 +587,15 @@ class Ship:
         """Keep these parts as their own mesh named LOD0_<hook>_... (damage/drive role binding)."""
         for o in objs:
             o['forge_hook'] = hook
+
+    def motion_group(self, rig_id, pivot, objects=(), parent=None, rotation=None):
+        """Declare a rigid motion group: exports as MOTION_<ID> pivot + welded children.
+
+        The pivot survives into the GLB as a rigid node; the baked action rides it at runtime via
+        the motion bank (src/contracts/motionBank.js). See tools/blender/forge/motion.py.
+        """
+        from motion import register_motion_group
+        return register_motion_group(self, rig_id, pivot, objects, parent=parent, rotation=rotation)
 
     def socket(self, name, pos, forward=(1, 0, 0)):
         self.sockets[name] = (tuple(pos), tuple(forward))

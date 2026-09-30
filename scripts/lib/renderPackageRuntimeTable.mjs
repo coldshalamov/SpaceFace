@@ -19,7 +19,10 @@
 // flat instance plan built from the genuinely decoded graph. A wrong reconstruction fails loudly on
 // first load rather than binding the wrong node.
 
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import * as THREE from 'three';
 
@@ -207,4 +210,105 @@ export async function buildRuntimeTableForRenderGlb(renderGlbPath, options = {})
   });
   if (options.boundsOverride) table.bounds = options.boundsOverride;
   return table;
+}
+
+/**
+ * Seal a motion-bank reference into the runtime table (ANI-00 authored rigid-part motion).
+ *
+ * A compiled package that still carries MOTION_ pivots is telling the runtime "these nodes are
+ * owned by an authored clip bank" — so the bank MUST exist and MUST describe this exact node
+ * graph. Every binding node must be present in the compiled package and its sealed rest pose
+ * must match the compiled local transform (within float drift); the uri/sha256/bytes are then
+ * sealed under runtimeHash. Fails closed: MOTION_ pivots with no usable bank are a build error,
+ * never a silent runtime skip.
+ *
+ * Shared by the package compiler and the release/bundle verifier so the expected runtime table
+ * is derived the same way on both sides of the equality check.
+ */
+export async function sealMotionBankRef(pilot, metadata, { repoRoot } = {}) {
+  const motionNodes = (metadata.nodes || [])
+    .filter((node) => String(node.nodeName || '').startsWith('MOTION_'));
+  const bankPath = join(repoRoot, 'assets/ships/motions', `${pilot.key}.motion.json`);
+  if (motionNodes.length === 0) return null;
+  if (!existsSync(bankPath)) {
+    throw new Error(
+      `${pilot.key}: compiled GLB declares ${motionNodes.length} MOTION_ pivot(s) but no bank exists at ${bankPath}`,
+    );
+  }
+  const bankBytes = await readFile(bankPath);
+  let bank;
+  try {
+    bank = JSON.parse(bankBytes.toString('utf8'));
+  } catch (error) {
+    throw new Error(`${pilot.key}: motion bank is not valid JSON: ${error.message}`);
+  }
+  if (bank.schema !== 'spaceface.rigidMotionBank.v1' || !Array.isArray(bank.bindings)) {
+    throw new Error(`${pilot.key}: motion bank schema mismatch at ${bankPath}`);
+  }
+  const EPS = 1e-4;
+  const near = (a, b) => Math.abs((a || 0) - (b || 0)) <= EPS;
+  const byName = new Map((metadata.nodes || []).map((node) => [node.nodeName, node]));
+  for (const binding of bank.bindings) {
+    const node = byName.get(binding.node);
+    if (!node) {
+      throw new Error(`${pilot.key}: bank binding ${binding.node} has no node in the compiled package`);
+    }
+    const trs = decomposeLocalTrs(node.localTransform);
+    const rest = binding.restPose || {};
+    const restT = rest.translation || [0, 0, 0];
+    const restS = rest.scale || [1, 1, 1];
+    const restR = rest.rotation || [0, 0, 0, 1];
+    if (!restT.every((v, i) => near(v, trs.t[i])) || !restS.every((v, i) => near(v, trs.s[i]))) {
+      throw new Error(
+        `${pilot.key}: bank rest pose for ${binding.node} drifts from the compiled GLB local transform`,
+      );
+    }
+    // q ≡ -q: compare absolute components.
+    if (!restR.every((v, i) => near(Math.abs(v), Math.abs(trs.q[i])))) {
+      throw new Error(
+        `${pilot.key}: bank rest rotation for ${binding.node} drifts from the compiled GLB local transform`,
+      );
+    }
+  }
+  return {
+    uri: `assets/ships/motions/${pilot.key}.motion.json`,
+    sha256: createHash('sha256').update(bankBytes).digest('hex'),
+    bytes: bankBytes.length,
+    rigId: bank.rigId,
+  };
+}
+
+function decomposeLocalTrs(m) {
+  const t = [m[12], m[13], m[14]];
+  const c0 = [m[0], m[1], m[2]];
+  const c1 = [m[4], m[5], m[6]];
+  const c2 = [m[8], m[9], m[10]];
+  const s = [len3(c0), len3(c1), len3(c2)];
+  const det = c0[0] * (c1[1] * c2[2] - c1[2] * c2[1])
+    - c0[1] * (c1[0] * c2[2] - c1[2] * c2[0])
+    + c0[2] * (c1[0] * c2[1] - c1[1] * c2[0]);
+  if (det < 0) s[0] = -s[0];
+  const r00 = c0[0] / s[0]; const r01 = c1[0] / s[1]; const r02 = c2[0] / s[2];
+  const r10 = c0[1] / s[0]; const r11 = c1[1] / s[1]; const r12 = c2[1] / s[2];
+  const r20 = c0[2] / s[0]; const r21 = c1[2] / s[1]; const r22 = c2[2] / s[2];
+  const trace = r00 + r11 + r22;
+  let x; let y; let z; let w;
+  if (trace > 0) {
+    const k = Math.sqrt(trace + 1) * 2;
+    w = k / 4; x = (r21 - r12) / k; y = (r02 - r20) / k; z = (r10 - r01) / k;
+  } else if (r00 > r11 && r00 > r22) {
+    const k = Math.sqrt(1 + r00 - r11 - r22) * 2;
+    w = (r21 - r12) / k; x = k / 4; y = (r01 + r10) / k; z = (r02 + r20) / k;
+  } else if (r11 > r22) {
+    const k = Math.sqrt(1 + r11 - r00 - r22) * 2;
+    w = (r02 - r20) / k; x = (r01 + r10) / k; y = k / 4; z = (r12 + r21) / k;
+  } else {
+    const k = Math.sqrt(1 + r22 - r00 - r11) * 2;
+    w = (r10 - r01) / k; x = (r02 + r20) / k; y = (r12 + r21) / k; z = k / 4;
+  }
+  return { t, s, q: [x, y, z, w] };
+}
+
+function len3(v) {
+  return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 }

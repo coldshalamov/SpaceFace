@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bb547c765936f364e97e7596c9dba0093636677930796674a6d8a795142946ae",
+  "contentHash": "5223147b3476fb373bfd4aa865f28be11ecac09e7ec348a8cd8522ce280d7717",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1261,13 +1261,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 35444,
-    "sha256": "3b1a03c73c6e2a657bb0a2e7cc1e8dc2fea832f96091a30204bcc291c1495dca",
+    "sha256": "06fccea6efb71c82b37c853f27e68398458df4daf34c426382d7e801aec04643",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1827,7 +1827,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold.glb"
   },
-  "runtimeHash": "97bb1812711f0166584e1c8ec98ee2e9351479a0bfef2c565ca2e4076c3a075f",
+  "runtimeHash": "4cacacd88689c7f29c0a77b4f3729217be4fc320f5647d842c49084ad07a917d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

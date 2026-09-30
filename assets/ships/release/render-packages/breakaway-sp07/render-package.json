@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ec2ca7c38d116dcb1a4faeba3e8b5792c5cbe437641c261274a936fd27ab0b5e",
+  "contentHash": "fcfab081ff52c06aca683f5668d08427981e3a7322c2532bac1c2618767c05f2",
   "dynamicGroups": [
     {
       "id": "sf.render.breakaway-sp07.mesh.lod0-hook-nav-port.dynamic",
@@ -3135,13 +3135,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 748504,
-    "sha256": "d50ab579f990f896d95203245201ec2b86a19b214d293d423a39def6598aa506",
+    "sha256": "18336c7194299930fe948f3d51e233c72e9add33f3121f5226e3a2294b5a75d4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4441,7 +4441,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_breakaway_sp07.glb"
   },
-  "runtimeHash": "73ce10ce84f655f2ef8818e0d0bf06cb4036e5046e1bf49b9aed74c15a7ccb15",
+  "runtimeHash": "dc6f337036570c33cd307201eecbda90e78a30124c0ea150e132d1a6e2a58122",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

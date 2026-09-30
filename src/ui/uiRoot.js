@@ -894,12 +894,10 @@ export const ui = {
           || (typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         if (motionReduced) dropVideo();
-        else {
-          try {
-            const p = cineVideo.play();
-            if (p && typeof p.catch === 'function') p.catch(dropVideo);
-          } catch (_) { dropVideo(); }
-        }
+        // play() stays inside mountCinematic: calling it here spun up a second fetch+decoder
+        // pipeline on the same 28.8 MB clip inside the registry-init crunch (the boot intro
+        // video already plays the file), competing with init + contract fetch + authored
+        // preload for decode threads every launch.
       }
 
       let dismissed = false;
@@ -949,6 +947,14 @@ export const ui = {
         // sitting between it and the player forever.
         if (!host) { this._cinematicActive = false; showMainMenuWhenReady(); return; }
         host.appendChild(cinematic);
+        // First paint-worthy moment for the clip: start the decoder only now that the layer
+        // can actually be seen (the .cine-bg still + poster covered the wait).
+        if (cineVideo && cineVideo.isConnected) {
+          try {
+            const p = cineVideo.play();
+            if (p && typeof p.catch === 'function') p.catch(dropVideo);
+          } catch (_) { dropVideo(); }
+        }
         inputFence = createCinematicInputFence({
           keyboardTarget: window,
           visibilityTarget: document,

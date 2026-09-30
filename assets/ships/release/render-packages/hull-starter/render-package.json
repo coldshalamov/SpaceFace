@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "25d54cc27afc734d29891422bc7369b68d0f44dc1edcbad8aceef2b413a5ff09",
+  "contentHash": "3d6b7d4aafac4240ef2dd6d34ca41c278ee8ba97f75f0e53721322e73f983a68",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -629,13 +629,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1004124,
-    "sha256": "7a107c9c45def044b117cbbc63be40eae2ebd5e33c1a7f8931c27c810d1a0702",
+    "sha256": "3c020f5bdc95e2023e06774c01bed272238d5f37de13fce7fcc78b19be06ba54",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1181,7 +1181,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_starter.glb"
   },
-  "runtimeHash": "7b6d9c208ec1cb1f9c8e47051d414c0e3f19ded2c9ac6fd3341ba1927bc6896a",
+  "runtimeHash": "b7da5d43d04d5083e96af18812fa0efaa4c17400966bbd59963cd91fb720576c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

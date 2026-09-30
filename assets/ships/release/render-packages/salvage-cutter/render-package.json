@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "29c9fba380e8a91bff7a78c6a02b951351ca062869689096e77b9354d3be5386",
+  "contentHash": "e9f132668d8fbbaed885721748221e62ac28db63d3781130cc8674c28e85192b",
   "dynamicGroups": [
     {
       "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.dynamic",
@@ -5227,18 +5227,18 @@
     },
     "sourceGlb": {
       "bytes": 921672,
-      "sha256": "15c09eb08d5bbe885ac78f8cca7885649663855ac935a5082c1095ff4f4bd7b5",
+      "sha256": "10204c681620a59e40bb48ccfe42d6251d25d605a3c1a96337779040a1d97474",
       "uri": "salvage_cutter.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1604580,
-    "sha256": "61502c7a865002723916eb3fc0bebe9226645ef9c5dd91f6c819f94f88ffaccb",
+    "sha256": "eb62b805d4cf4b6e2519a8c5481fa65d324afa0083ce3279373d2caca49d1f2a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7515,7 +7515,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "e4d2ffebbd692a1d3d9868c6023ae813fddbbcb85b8137c93d365153ab0c6669",
+  "runtimeHash": "d88e16cad4f843652a7de2c8a2191a0e89e1d89812db56b17fd1cf0b0bbb783b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

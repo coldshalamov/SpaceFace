@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "89711b0f429dad4f476a25b35322218348582017971866120da97b0c40d12e24",
+  "contentHash": "9feda0f2f1cbf7b9b21f22c735e113706640a70f267f3efb92150edb35cd04a5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2095,13 +2095,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 51260,
-    "sha256": "d4aec8674d80947ba58a2836bd416e2d1a6ad55fe3ada0e41929dd407baa39ad",
+    "sha256": "94cd88bd33f67120c64d75d6b3e7ed54806264cb47c627ac872af04b7ecab519",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3018,7 +3018,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_illicit_transfer_frame.glb"
   },
-  "runtimeHash": "401c3b824ba201ba03f13ca5fb00506fe359b932162a117760c1b596950eeb06",
+  "runtimeHash": "9d153d49ec7a2987f505f161df8f160fa3562002ca8a15587d908d2fe031171c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

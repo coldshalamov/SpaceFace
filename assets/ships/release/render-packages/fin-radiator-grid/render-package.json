@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "19defd696bd4f647376ba2de6a9ad01542d09fbf85a5a34cffa6727be341fb7a",
+  "contentHash": "9dd59891606c085c4f880456d981be2152a4fe6bb540c9ae1fad2cde989e0eed",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -345,13 +345,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 388320,
-    "sha256": "05f595d53e8d37948a8ba41844625c5b4be1e6effc3192211276df37b6247644",
+    "sha256": "718db07dfcee1be7b30f1718732e8902922495092a28fc0e07ff36e5df9d9553",
     "uri": "render.glb"
   },
   "runtime": {
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_radiator_grid.glb"
   },
-  "runtimeHash": "2a1673f074041bb8964b1302f1e9a50251fa285e0b3ccd3c93580ccbfe262883",
+  "runtimeHash": "7f6129f4e2a19761071f281a6ede14a35ebebcb3303ff016421e31a42c065eee",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2120c710078b34b54c7e0c563826a79a7b558bf103a876296ff5bb8b3ae1bc0a",
+  "contentHash": "10dd4ba7bd5b10e7e9aa964c2c744532af00c220811ea1644a3a447b6a30f837",
   "dynamicGroups": [
     {
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-hook-armor-port-hull.dynamic",
@@ -3067,13 +3067,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 827672,
-    "sha256": "14493285122c4291d6c5123fd2430e5f0fed4fe3ec3eaed3b8ea6c029fa1c4be",
+    "sha256": "652c646f5e900b889e803ee7e924a70c3ed0fa59ec879e173429db0ba55bc386",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4414,7 +4414,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb"
   },
-  "runtimeHash": "5aaecf5bf1965e7c625e216221e947b37aabe07321db5712f873af76ae521187",
+  "runtimeHash": "48b8cb3b6a83dbb958a4fea937c121d17ff7157e7430fb290c9b0a4407f92dd1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -21,7 +21,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { resolveStaticCacheHeaders } = require('./staticCachePolicy.cjs');
+const { resolveStaticCacheHeaders, ifNoneMatchSatisfied } = require('./staticCachePolicy.cjs');
 const { attachPlayerStore } = require('./playerSaveStore.cjs');
 const { buildUserContentScript } = require('./userContentStore.cjs');
 // Launch-policy contract: mutable documents keep this exact header token.
@@ -153,6 +153,39 @@ function resolveContainedFile(root, decodedPath) {
 // packaged app would. No git or no hash → an empty `output`, exactly what a packaged build
 // without a digest serves, and the menu falls back to the compiled version.
 const devReleaseReceiptCache = new Map(); // root -> receipt object
+
+// Packaged app-source pinning (F9): a packaged build's asar payload bytes are fixed for the
+// life of that build, so app-source files can serve immutable cache headers — a warm launch
+// then skips the ~700 conditional-GET revalidations the module graph otherwise pays. The pin
+// is keyed to the build: index.html stays revalidating and carries a `sf-build` cookie holding
+// the client's seen digest; a mismatched cookie means its HTTP cache still holds the PREVIOUS
+// build's module bytes, so the response clears the origin cache before the fresh HTML can
+// drive a new module graph. localStorage and cookies are untouched (cache directive only).
+const APP_SOURCE_BUILD_RECEIPT = 'build/web/spaceface-release-build.json';
+const APP_SOURCE_BUILD_COOKIE = 'sf-build';
+
+function readAppSourceBuildDigest(root) {
+  try {
+    const raw = fs.readFileSync(path.join(root, APP_SOURCE_BUILD_RECEIPT), 'utf8');
+    const receipt = JSON.parse(raw);
+    const digest = receipt && receipt.output && receipt.output.digest;
+    return typeof digest === 'string' && /^[0-9a-f]{16,64}$/i.test(digest)
+      ? digest.slice(0, 24) : null;
+  } catch {
+    return null;
+  }
+}
+
+function requestCookieValue(cookieHeader, name) {
+  if (!cookieHeader) return null;
+  for (const part of String(cookieHeader).split(';')) {
+    const idx = part.indexOf('=');
+    if (idx < 0) continue;
+    if (part.slice(0, idx).trim() === name) return part.slice(idx + 1).trim();
+  }
+  return null;
+}
+
 function devReleaseReceipt(root) {
   let receipt = devReleaseReceiptCache.get(root);
   if (receipt) return receipt;
@@ -234,6 +267,21 @@ function createGameServer(opts) {
     .map(([key, headers]) => [String(key).replace(/\\/g, '/').replace(/^\//, ''), Object.freeze({ ...headers })]));
   const devDiagnostics = opts.devDiagnostics !== false;
   const devFreshnessPayload = makeFreshnessTracker(root, { async: useAsync });
+  const appSourceBuildDigest = opts.appSourceImmutable === true
+    ? readAppSourceBuildDigest(root)
+    : null;
+  const appSourceIndexHeaders = (requestHeaders) => {
+    if (!appSourceBuildDigest) return {};
+    const headers = {
+      'Set-Cookie': `${APP_SOURCE_BUILD_COOKIE}=${appSourceBuildDigest}; Max-Age=31536000; Path=/; SameSite=Strict`,
+    };
+    // A cookie naming a DIFFERENT build means this client's HTTP cache may still hold the
+    // previous build's pinned module bytes. A first launch (no cookie) has nothing stale to
+    // clear — emitting Clear-Site-Data there would only evict useful early entries.
+    const seen = requestCookieValue(requestHeaders && requestHeaders.cookie, APP_SOURCE_BUILD_COOKIE);
+    if (seen != null && seen !== appSourceBuildDigest) headers['Clear-Site-Data'] = '"cache"';
+    return headers;
+  };
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -359,12 +407,38 @@ function createGameServer(opts) {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'no-store',
           'Content-Length': body.length,
+          ...appSourceIndexHeaders(requestHeaders),
         });
         res.end(body);
         return;
       }
 
-      const cache = resolveStaticCacheHeaders(relativePath, stats, requestHeaders);
+      // Digest-keyed index.html when app source is pinned: a matched source tag means the
+      // client's module cache holds THIS build's bytes and can answer every immutable hit;
+      // a mismatched one means last-build bytes — clear before the fresh document runs.
+      if (appSourceBuildDigest && relativePath === 'index.html') {
+        const headers = {
+          ...staticHeaders,
+          ...(staticHeadersByPath[relativePath] || {}),
+          'Cache-Control': 'no-cache',
+          'ETag': `"sfb-${appSourceBuildDigest}"`,
+          'Content-Type': 'text/html; charset=utf-8',
+          ...appSourceIndexHeaders(requestHeaders),
+        };
+        if (ifNoneMatchSatisfied(requestHeaders['if-none-match'] || requestHeaders['If-None-Match'], headers.ETag)) {
+          res.writeHead(304, headers);
+          res.end();
+          return;
+        }
+        headers['Content-Length'] = stats.size;
+        res.writeHead(200, headers);
+        fs.createReadStream(file).on('error', (error) => res.destroy(error)).pipe(res);
+        return;
+      }
+
+      const cache = resolveStaticCacheHeaders(relativePath, stats, requestHeaders, {
+        appSourceImmutable: appSourceBuildDigest != null,
+      });
       const headers = {
         ...staticHeaders,
         ...(staticHeadersByPath[relativePath] || {}),

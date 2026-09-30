@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c76a751b2fbe941d5d618f72bf70adede8eb4a38595baf7616116e2f792c00cf",
+  "contentHash": "58348fd5f283ff54121bc56389dca452f995156e8649519f4ca4d8ea71555b3b",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-span-mts.node.lod0-hook-drive-core.dynamic",
@@ -5708,18 +5708,18 @@
     },
     "sourceGlb": {
       "bytes": 1178100,
-      "sha256": "984e3e9e7e646ee2673f095a015fcd56fe46758c0eae1135ec2e1da7a7aa0383",
+      "sha256": "a6dae979d5829282695e165ba54169f0bea5ab63705eaba3d32fee5bb74d77a0",
       "uri": "helios_span_mts.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 2172972,
-    "sha256": "09b21104766691a0129f263de109a1edf5f1a84cf70ee13afe2049de473084fb",
+    "sha256": "04eabcd6361002b06623b2825131eee30999ea8ea084dc2233029168f67a423b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -8195,7 +8195,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_span_mts.glb"
   },
-  "runtimeHash": "6975ace57f65865c7faabaabcf23c84fc5dec675609885dd14a21ad42b9bc4ec",
+  "runtimeHash": "dcc73eb7157ec45488d08e3834ba07c2386177e5f1b7a0ef6ca8a60379571956",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

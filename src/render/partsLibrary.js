@@ -19,17 +19,25 @@ import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '.
 import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
 import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine structures (doc 07)
 import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
+import { packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
+  TABLE_BAND,
+  TABLE_FRAME_SKIRT_WU,
+  classifyTableBand,
+  glassHalfExtents,
   isCriticalHubInCurrentSector,
   isCriticalStartingHub as isTableCriticalStartingHub,
   isOpeningStoryActor,
   tableInstanceFarCullWu,
+  tableLookAtDelta,
   tableOpeningCompositionWu,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
@@ -44,6 +52,7 @@ import {
   resolveLiveWholeShipLodTransition,
   selectPrewarmLodLevel,
   shouldCommitWholeShipLodLoad,
+  WHOLE_SHIP_LOD_RUNTIME_DEMOTION,
 } from './wholeShipLodPolicy.js';
 import {
   instancePoolIdentity,
@@ -1180,16 +1189,24 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
   const includePlayer = options.includePlayer === true;
   const requests = [];
   const seen = new Set();
+  // Shared files take the NEAREST requesting entity's rank — a file shared by a near and a far
+  // body must not rank by whichever entity happened to be iterated first.
+  const rankByKey = new Map();
 
-  const pushPlan = (plan) => {
+  const pushPlan = (plan, deadlineRank = Infinity) => {
     for (const [slot, files] of Object.entries(plan || {})) {
       for (const file of files || []) {
         if (!file) continue;
         const url = `${partRoot}${file}`;
         const key = `${url}::${slot}`;
+        const prior = rankByKey.get(key);
+        if (prior !== undefined && deadlineRank < prior) {
+          rankByKey.set(key, deadlineRank);
+        }
         if (seen.has(key)) continue;
         seen.add(key);
-        requests.push(Object.freeze({ url, slot }));
+        if (prior === undefined) rankByKey.set(key, deadlineRank);
+        requests.push(Object.freeze({ url, slot, deadlineRank }));
       }
     }
   };
@@ -1203,15 +1220,60 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       if (String(entitySectorId || '') !== exactSectorId) continue;
     }
 
+    const entityDeadlineRank = (options.playerPos && entity.pos)
+      ? Math.hypot(
+        (Number(entity.pos.x) || 0) - (Number(options.playerPos.x) || 0),
+        (Number(entity.pos.z) || 0) - (Number(options.playerPos.z) || 0),
+      )
+      : Infinity;
+
+    // An explicit packagedPropFile is the entity's authored body (packagedPartUrl scope —
+    // always the release parts root regardless of asset mode) but placeFileForEntity never
+    // consults it, so a prop whose only authored file is its packagedPropFile minted an
+    // empty plan and decoded at reveal.
+    const packagedFile = entity.data && entity.data.packagedPropFile;
+    if (typeof packagedFile === 'string' && packagedFile) {
+      const slot = entity.data.packagedPropSlot
+        || (String(packagedFile).replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place');
+      const url = `${PART_RELEASE_ROOT}${packagedFile}`;
+      const key = `${url}::${slot}`;
+      const prior = rankByKey.get(key);
+      if (prior !== undefined && entityDeadlineRank < prior) {
+        rankByKey.set(key, entityDeadlineRank);
+      }
+      if (!seen.has(key)) {
+        seen.add(key);
+        if (prior === undefined) rankByKey.set(key, entityDeadlineRank);
+        requests.push(Object.freeze({ url, slot, deadlineRank: entityDeadlineRank }));
+      }
+    } else {
+      // packagedPropSpec's own resolutions (SCENARIO_47A map, generic tow, rescue beacons) —
+      // entities whose prop file is map-derived, not data-packaged, decode at reveal without it.
+      const spec = entity.data ? packagedPropSpec(entity) : null;
+      if (spec && spec.file) {
+        const slot = spec.slot
+          || (String(spec.file).replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place');
+        const url = `${PART_RELEASE_ROOT}${spec.file}`;
+        const key = `${url}::${slot}`;
+        const prior = rankByKey.get(key);
+        if (prior !== undefined && entityDeadlineRank < prior) {
+          rankByKey.set(key, entityDeadlineRank);
+        }
+        if (!seen.has(key)) {
+          seen.add(key);
+          if (prior === undefined) rankByKey.set(key, entityDeadlineRank);
+          requests.push(Object.freeze({ url, slot, deadlineRank: entityDeadlineRank }));
+        }
+      }
+    }
+
     let plan = {};
     if (entity.type === 'ship') {
       let lodLevel = options.lodLevel;
       if (!lodLevel && options.playerPos && entity.pos && entity.isPlayer !== true) {
-        const dx = Number(entity.pos.x) - Number(options.playerPos.x);
-        const dz = Number(entity.pos.z) - Number(options.playerPos.z);
-        const dist = Math.hypot(dx, dz);
         const radius = Number(entity.radius) || 8;
-        const px = (radius / Math.max(dist, 0.001)) * (Number(options.viewportHeight) || 800);
+        const px = (radius / Math.max(entityDeadlineRank, 0.001))
+          * (Number(options.viewportHeight) || 800);
         lodLevel = selectPrewarmLodLevel(px);
       }
       plan = authoredPreloadPlanForEntity(entity, {
@@ -1225,22 +1287,36 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       // second generation — `place` for the spindle, `pod` for the capsule.
       plan = { [authoredPayloadSlotForEntity(entity)]: [authoredPayloadFileForEntity(entity)] };
     } else {
-      const placeFile = placeFileForEntity(entity);
+      // Same resolution order as the decode runway: census dressing (drones, gate stations,
+      // site props) claims its packaged file before the generic place mapping.
+      const censusFile = resolve19305CensusAEntityPackagedFile(entity);
+      const placeFile = censusFile || placeFileForEntity(entity);
       if (placeFile) {
-        const overlay = tradeHubOverlayFileForEntity(entity);
+        const overlay = censusFile ? null : tradeHubOverlayFileForEntity(entity);
         plan = { place: overlay ? [placeFile, overlay] : [placeFile] };
       }
     }
-    pushPlan(plan);
+    pushPlan(plan, entityDeadlineRank);
   }
 
   // Always retain combat/traffic archetype GLBs for the sector so mid-fight spawns can admit
-  // without a cold decode hitch (composition still uses the prepared/defer path).
+  // without a cold decode hitch (composition still uses the prepared/defer path). Coverage
+  // files have no owner bearing down on the glass — they rank behind every live deadline.
   if (options.includeSpawnableArchetypes !== false) {
     pushPlan({ hull: [...spawnableShipArchetypePrewarmUrls()] });
+    // Mid-flight packaged bodies (kill aftermath, drones, payload drops) spawn with no entity
+    // plan — same ambient coverage lane, ranking behind every live deadline like the hull set.
+    pushPlan(spawnablePackagedBodyPrewarmFiles());
   }
 
-  requests.sort((a, b) => a.url.localeCompare(b.url) || a.slot.localeCompare(b.slot));
+  // Nearest-deadline-first: the alphabetical census order was stable but served the file the
+  // player reaches LAST as readily as the one they reach next. deadlineRank keeps ordering
+  // deterministic (distance then url) while the serial lane works the next-visible body first.
+  // rankByKey holds the min over all requesting entities for shared files.
+  requests.sort((a, b) => (rankByKey.get(`${a.url}::${a.slot}`) ?? a.deadlineRank)
+    - (rankByKey.get(`${b.url}::${b.slot}`) ?? b.deadlineRank)
+    || a.url.localeCompare(b.url)
+    || a.slot.localeCompare(b.slot));
   return Object.freeze(requests);
 }
 
@@ -2050,6 +2126,27 @@ export function authoredPreloadPlanForEntityAtLod(entity, level, options = {}) {
   return authoredPreloadPlanForEntity(entity, options);
 }
 
+/**
+ * Packaged bodies that materialize mid-flight in ordinary sectors without an entity plan
+ * entry — kill aftermath wrecks, deployed drones, scripted payload drops, the breakaway
+ * spindle. The crucible roster warm already decodes this set menu-side; a close-range kill
+ * on a cold sector otherwise mounts the wreck root pending and pops seconds later.
+ * Slots mirror packagedDecodeFileForEntity / authoredPayloadSlotForEntity so the warmed
+ * record is the same url::slot key the attach path resolves.
+ */
+export function spawnablePackagedBodyPrewarmFiles() {
+  return Object.freeze({
+    place: Object.freeze([
+      ...PQ_193_05_WRECK_PACKAGED_FILES,
+      PQ_193_05_DRONE_PACKAGED_FILE,
+      PQ_193_05_GATE_PACKAGED_FILE,
+      'places/place_47a_rescue_capsule.glb',
+      'places/place_breakaway_sp07.glb',
+    ]),
+    pod: Object.freeze(['pods/pod_cargo_container.glb']),
+  });
+}
+
 /** Spawnable combat/traffic presentation keys for sector asset prewarm (not only live entities). */
 export function spawnableShipArchetypePrewarmUrls() {
   return Object.freeze([
@@ -2058,10 +2155,20 @@ export function spawnableShipArchetypePrewarmUrls() {
     ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
-    // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2 body
-    // is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp link).
+    // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2
+    // body is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp
+    // link). Runtime demotion is off, so the lod1 file has no live consumer (admission builds
+    // lod0, stand-ins borrow lod2): warm lod2 only and skip decode bytes nobody can draw.
     ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID)
-      .flatMap((family) => [family.lod1, family.lod2].filter(Boolean)),
+      .flatMap((family) => (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
+        ? [family.lod1, family.lod2]
+        : [family.lod2]).filter(Boolean)),
+    // File-keyed families (massline express liner) have no def-id row — a far spawn's
+    // demotion still needs the sibling GLBs resident, so list them explicitly.
+    ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_FILE)
+      .flatMap((family) => (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
+        ? [family.lod1, family.lod2]
+        : [family.lod2]).filter(Boolean)),
   ]);
 }
 
@@ -2252,7 +2359,19 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'Ship'}_AuthoredAssetBoundary`;
-  fallbackRoot.visible = false;
+  // The procedural hull stays drawn for the whole admission window (wrap → commit), same
+  // contract as the place wrap: hiding it left only the abstract marker on the glass — "a
+  // ship will be a box and then it'll be a ship". The fallback's programs are already
+  // linked (it was the visible ship an instant ago) so drawing it submits no new work.
+  // The commit swaps the fallback out and the fail path already re-shows it.
+  let fallbackHasBody = false;
+  fallbackRoot.traverse((object) => { if (object && object.isMesh) fallbackHasBody = true; });
+  // requiredWholeShip is authored-or-nothing by contract: a procedural stand-in would publish
+  // a non-authored identity for a body the rung declared must be authored-only (fail closed).
+  const fallbackHidden = options.requiredWholeShip === true
+    || requiresProductionWholeShipForEntity(entity);
+  fallbackRoot.visible = fallbackHidden ? false : fallbackHasBody;
+  if (fallbackRoot.visible) boundary.userData.authoredPendingFallbackDrawn = true;
   boundary.add(fallbackRoot);
   // A substrate carrying a resolving marker keeps exactly one drawable while admission is
   // pending — the marker is abstract by design, so this never publishes a substitute identity.
@@ -2289,6 +2408,12 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   boundary.userData.updateLod = (level) => {
     const fn = active && active.userData && active.userData.updateLod;
     if (typeof fn === 'function') fn(level);
+  };
+  // ANI-00: authored rigid-part motion follows the same forwarding grammar as damage/LOD —
+  // the renderer calls this on the boundary; the live authored root owns the controller set.
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+    const fn = active && active.userData && active.userData.updateAuthoredMotion;
+    if (typeof fn === 'function') fn(liveEntity, simNow);
   };
   syncActiveSurface(boundary, active);
 
@@ -2533,6 +2658,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       slot: authoredPayloadSlotForEntity(entity),
       optional: true,
+      admissionDeadline: true,
       residencyOwner: options.residencyOwner,
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
@@ -2941,6 +3067,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     assetBoundary: 'GLTFKit v1 — authored station archetype',
     gracefulFallback: false,
   };
+  stampPendingPlaceVisualBounds(boundary);
 
   let activeRoot = fallbackRoot;
   const setActiveVisualRoot = (next) => {
@@ -2954,6 +3081,10 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.__setActiveVisualRoot = setActiveVisualRoot;
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
+  };
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+    const fn = activeRoot?.userData?.updateAuthoredMotion;
+    if (typeof fn === 'function') fn(liveEntity, simNow);
   };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
@@ -3025,13 +3156,18 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'PlaceProp'}_AuthoredAssetBoundary`;
-  // A same-envelope geology skin must keep its procedural body drawn for the whole
-  // admission window (wrap → commit): the authored rock occupies exactly the same
-  // envelope, so hiding the fallback here produced a guaranteed pop-in — nothing
-  // drew while the job queued, decoded, composed, and compiled. The commit swaps
-  // the fallback out and the fail path already re-shows it, so the visible body is
-  // the same silhouette at every stage.
-  fallbackRoot.visible = !geologySkin ? false : true;
+  // A same-envelope procedural body must stay drawn for the whole admission window
+  // (wrap → commit): hiding it produced a guaranteed pop-in — nothing drew while the
+  // job queued, decoded, composed, and compiled. That holds for geology skins AND for
+  // fx dressing bodies (claim outposts, site relays, POI props), whose procedural body
+  // is the same silhouette the entity drew before admission. The commit swaps the
+  // fallback out and the fail path already re-shows it. Place props whose temporary is
+  // an empty substrate keep it hidden — PIC-11 publishes no placeholder geometry for a
+  // missing world-place prop, and an empty root is no stand-in anyway.
+  let fallbackHasBody = false;
+  fallbackRoot.traverse((object) => { if (object && object.isMesh) fallbackHasBody = true; });
+  fallbackRoot.visible = geologySkin ? true : fallbackHasBody;
+  if (fallbackHasBody || geologySkin) boundary.userData.authoredPendingFallbackDrawn = true;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
   // The matching procedural geology body stays local to the boundary as the visible stand-in
@@ -3045,6 +3181,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.placeId = entity.data && entity.data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
   boundary.userData.placeTargetRadius = geologySkin ? entity.radius : null;
   boundary.userData.authoredGeologySkin = geologySkin;
+  stampPendingPlaceVisualBounds(boundary);
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -3070,6 +3207,10 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.__setActiveVisualRoot = setActiveVisualRoot;
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
+  };
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+    const fn = activeRoot?.userData?.updateAuthoredMotion;
+    if (typeof fn === 'function') fn(liveEntity, simNow);
   };
   boundary.userData.updateWorldSitePresentation = (liveEntity, simTime, a11y) => {
     const controller = activeRoot && activeRoot.userData && activeRoot.userData.worldSitePresentationController;
@@ -3151,6 +3292,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
       isResidencyOwnerActive: options.isResidencyOwnerActive,
+      admissionDeadline: true,
     });
   } catch (error) {
     handoffBootstrapIfCovered(renderer);
@@ -3165,6 +3307,27 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     );
   }
   handoffBootstrapIfCovered(renderer);
+  if (record && boundary.userData && record.bounds) {
+    // The pending substrate still classifies by presence radius until the authored body
+    // lands — stamp the envelope the compose is about to draw at, so glass/runway tests
+    // measure the incoming body (often 2-4x the collider) during the compile window. This
+    // overwrites the queue-window estimate stamped at boundary build.
+    const size = Array.isArray(record.bounds.size) ? record.bounds.size : null;
+    const center = Array.isArray(record.bounds.center) ? record.bounds.center : [0, 0, 0];
+    if (size) {
+      const data = entity && entity.data || {};
+      const authoredEnvelope = Math.max(1e-6, ...size.map((value) => Number(value) || 0));
+      const pendingScale = resolvePlaceDrawScale(data, {
+        targetRadius: Number(data.placeTargetRadius),
+        authoredEnvelope,
+        censusScale: modelTruthPlaceDrawScale(entity),
+      });
+      boundary.userData.visualBounds = {
+        center: center.map((value) => (Number(value) || 0) * pendingScale),
+        size: size.map((value) => (Number(value) || 0) * pendingScale),
+      };
+    }
+  }
   if (!record || !boundary.parent) {
     releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable');
     boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
@@ -3189,6 +3352,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
         residencyRole: options.residencyRole,
         sectorId: options.sectorId,
         isResidencyOwnerActive: options.isResidencyOwnerActive,
+        admissionDeadline: true,
       });
     } catch (error) {
       overlayRecord = null;
@@ -3391,6 +3555,26 @@ function commitAuthoredPlaceBoundary(
   try { disposeDetachedPlaceFallback(fallbackRoot); }
   catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
   return true;
+}
+
+/**
+ * Queue-window visual classification for a pending place boundary. The exact record bounds are
+ * only knowable after the GLB resolves, but the queue wait is precisely when rung ordering
+ * decides anything — a packaged prop whose drawn size far exceeds its collider would classify
+ * at presence radius for the whole wait and sit behind real glass jobs while its stand-in
+ * draws. When a target radius is declared, the compose draws the envelope at ~2× it regardless
+ * of authored units, so that envelope is stamped here; the exact record bounds overwrite the
+ * estimate in upgradePlaceBoundary.
+ */
+function stampPendingPlaceVisualBounds(boundary) {
+  if (!boundary || !boundary.userData || boundary.userData.visualBounds) return;
+  const targetRadius = Number(boundary.userData.placeTargetRadius);
+  if (!Number.isFinite(targetRadius) || targetRadius <= 0) return;
+  const diameter = targetRadius * 2;
+  boundary.userData.visualBounds = {
+    center: [0, 0, 0],
+    size: [diameter, diameter, diameter],
+  };
 }
 
 // Place draw-scale resolution. A POI's declared draw size (placeTargetRadius, else placeScale)
@@ -4410,11 +4594,27 @@ function placeFileForEntity(entity) {
   return null;
 }
 
+// A request deduped onto a still-queued job may carry urgency the first ask did not (the
+// decode-runway kick's residencyRole). The job's priority already re-grades at admit, so
+// merge only caller-provided option fields — undefined never clobbers, and a frozen or
+// admitted job's bag is left alone.
+function mergeQueuedJobOptions(queuedJob, request) {
+  const target = queuedJob && queuedJob.options;
+  const incoming = request && request.options;
+  if (!target || !incoming || !Object.isExtensible(target)) return;
+  for (const optionKey of Object.keys(incoming)) {
+    if (incoming[optionKey] !== undefined) target[optionKey] = incoming[optionKey];
+  }
+}
+
 export function enqueueBoundaryUpgrade(scene, job) {
   const state = upgradeQueueState(scene);
   if (!job || !job.boundary) return Promise.resolve({ status: 'invalid-upgrade-request' });
   const boundaryJob = state.byBoundary.get(job.boundary);
-  if (boundaryJob) return boundaryJob.completion;
+  if (boundaryJob) {
+    if (boundaryJob.lifecycle === 'queued') mergeQueuedJobOptions(boundaryJob, job);
+    return boundaryJob.completion;
+  }
   if (!boundaryBelongsToScene(job.boundary, scene)) {
     return Promise.resolve({ status: 'cancelled-before-queue', boundary: job.boundary });
   }
@@ -4441,7 +4641,10 @@ export function enqueueBoundaryUpgrade(scene, job) {
   };
   const keyedJob = state.byKey.get(queuedJob.key);
   if (keyedJob) {
-    if (jobStillNeeded(state, keyedJob)) return keyedJob.completion;
+    if (jobStillNeeded(state, keyedJob)) {
+      if (keyedJob.lifecycle === 'queued') mergeQueuedJobOptions(keyedJob, job);
+      return keyedJob.completion;
+    }
     if (keyedJob.lifecycle === 'queued') {
       const staleIndex = state.jobs.indexOf(keyedJob);
       if (staleIndex >= 0) state.jobs.splice(staleIndex, 1);
@@ -4647,8 +4850,10 @@ function backgroundUpgradePriority(job) {
   // promotes itself instead of waiting out the background backlog. Checked
   // before the mode gate: the load window has no flight rungs, and a glass body
   // the opening frame shows is exactly the set the belt tail left compiling
-  // behind staged furniture.
-  if (entityIsOnReadableGlass(entity)) return 1.5;
+  // behind staged furniture. The strict band, not readable glass: explicit-focus
+  // owners (player, locked target) carry their own rungs and must not tie the
+  // on-glass set from off the frame.
+  if (entityIsOnAuthoredGlassBand(entity, liveState)) return 1.5;
   // The law of the glass as an admission rung (ZERO_TO_HERO 5.12): a body the
   // composed frame shows outranks every body it does not — load window included,
   // where the arrival distance grade used to be the only ordering left and near
@@ -4694,6 +4899,21 @@ function firstFlightReadableShipJob(job) {
         && runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)));
 }
 
+// Same readable-glass test as the ship variant but type-agnostic: during the handoff
+// hold an on-glass station/place/capsule job is also a literal hole in the picture
+// (PQ-193.12 forbids drawing its procedural fallback), so it earns the pass behind any
+// readable ship rather than waiting out the whole ~20s hold.
+function firstFlightReadableGlassJob(job) {
+  const live = authoredRuntimeState();
+  const render = live && live.render;
+  const entity = job && job.entity;
+  return !!(live && live.mode === 'flight' && render
+    && Number.isFinite(render.firstPlayableFrameAt)
+    && render.sectorShellAdmission !== true
+    && entity && entity.alive !== false
+    && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
+}
+
 function scheduleHeldShipWake(state) {
   if (!state || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
   state.heldShipWakeTimer = setTimeout(() => {
@@ -4718,21 +4938,32 @@ function firstFlightShipCanPassBusyPlace(state) {
 // lane is concurrency 1, so one station / place / rock job — a trade hub is an 82 MB GLB whose
 // decode has sat in flight for minutes (ledger D48) — held every ship behind it, and the player
 // watched stand-ins for as long as it took. The first-flight hold already grants one extra ship
-// slot past a busy non-ship job; steady flight gets the same grant, but only for a ship the
-// player is already looking at or fighting (rung ≤ on-glass): a far runway ship still waits its
-// turn, so two full ship composes never overlap (the measured combat stall), and at most one
-// ship ever rides beside one non-ship job.
+// slot past a busy non-ship job; steady flight gets the same grant for the body the player is
+// already looking at (rung ≤ on-glass): a far runway job still waits its turn, so two full
+// composes never overlap (the measured combat stall), and at most one extra job ever rides
+// beside one non-ship job. The glass law is type-agnostic — the loading hold and the late-present
+// throttle already exempt ANY on-glass body — so an on-glass station/place earns the pass the
+// same way a ship does, while the in-flight guard keeps the serial ship invariant intact.
 const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
+function queuedGlassLawJobStillNeeded(state, job) {
+  return !!(job && job.entity && jobStillNeeded(state, job)
+    && authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY);
+}
 function steadyFlightShipCanPassBusyPlace(state) {
   if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true
-      || state.inFlight !== 1) return false;
+      || state.inFlight < 1) return false;
   const live = authoredRuntimeState();
   if (!live || live.mode !== 'flight') return false;
-  if (!state.jobs.some((job) => queuedShipJobStillNeeded(state, job)
-      && authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY)) return false;
+  if (!state.jobs.some((job) => queuedGlassLawJobStillNeeded(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
-  return active.length === 1 && active[0].entity?.type !== 'ship';
+  // Bound the grant to one overlap: a granted pass leaves the lane over-full only while the
+  // extra job still holds a serial slot, so demanding active ≤ limit makes the pass single-shot.
+  // Without it, a run of non-ship ≤1.5 jobs (critical hubs rung ahead of everything) keeps
+  // `every(non-ship)` true forever and chains N full composes — the measured combat stall the
+  // serial lane exists to prevent.
+  return active.length > 0 && active.length <= authoredUpgradeConcurrencyLimit()
+    && active.every((job) => job.entity?.type !== 'ship');
 }
 
 // Steady flight runs the serial lane at concurrency 1, so a job whose inner await never settles
@@ -4742,12 +4973,16 @@ function steadyFlightShipCanPassBusyPlace(state) {
 // first-flight hold grants applies in steady flight too — for every in-flight job, ship or not,
 // that has outlived any plausible upload window.
 const AUTHORED_UPGRADE_NONSHIP_STALL_MS = 120000;
+// The bypass feeds on-glass holes only: a body already drawn as a marker cannot wait the
+// ambient stall bound behind a wedged job. The serial-slot invariant still only yields to
+// dead lanes — this tightens how long 'plausibly alive' lasts when the picture is missing.
+const AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS = 30000;
 const STALLED_HOG_WAKE_MS = 5000;
 
-function jobIsStalledInFlight(job, nowMs) {
+function jobIsStalledInFlight(job, nowMs, boundMs = AUTHORED_UPGRADE_NONSHIP_STALL_MS) {
   if (!job || job.lifecycle !== 'in-flight') return false;
   const startedAt = Number(job.inFlightAtMs);
-  return Number.isFinite(startedAt) && nowMs - startedAt >= AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+  return Number.isFinite(startedAt) && nowMs - startedAt >= boundMs;
 }
 
 function queuedShipJobStillNeeded(state, job) {
@@ -4755,8 +4990,8 @@ function queuedShipJobStillNeeded(state, job) {
 }
 
 /**
- * One queued ship may pass the concurrency cap while every unreleased in-flight job is stalled
- * past the bound. The admit path hoists needed ships to the head when it fires (the
+ * One queued on-glass body may pass the concurrency cap while every unreleased in-flight job is
+ * stalled past the bound. The admit path hoists the needed job to the head when it fires (the
  * stallBypassShipPass marker), so a stale hog can never farm the lane behind ordinary dressing
  * jobs, and a live ship admission still blocks the bypass — the serial ship invariant only
  * yields to dead lanes.
@@ -4765,12 +5000,12 @@ function stalledHogsCanPassShip(state) {
   if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true) {
     return false;
   }
-  if (!state.jobs.some((job) => queuedShipJobStillNeeded(state, job))) return false;
+  if (!state.jobs.some((job) => queuedGlassLawJobStillNeeded(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
   if (!active.length) return false;
   const now = monotonicNow();
-  return active.every((job) => jobIsStalledInFlight(job, now));
+  return active.every((job) => jobIsStalledInFlight(job, now, AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS));
 }
 
 /**
@@ -4987,11 +5222,117 @@ function rootHiddenByAncestor(root) {
   return false;
 }
 
-function entityIsOnReadableGlass(entity) {
+const _glassDelta = { x: 0, z: 0 };
+const _glassDelta2 = { x: 0, z: 0 };
+
+// Mirror of the renderer-side liveTableCamera defaults (zoom 144, fov 50, tilt 60, 16:9):
+// the authored queue reads window.SF.state only, so the table math is replicated here rather
+// than imported through a partsLibrary -> renderer cycle.
+function authoredLiveTableCamera(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  return {
+    zoom: Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144),
+    fov: Number.isFinite(camera.fov) ? camera.fov
+      : (Number.isFinite(video.fov) ? video.fov : 50),
+    tilt: Number.isFinite(camera.tilt) ? camera.tilt : 60,
+    aspect: Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9,
+  };
+}
+
+function entityIsExplicitRenderFocus(entity, state) {
+  if (!entity || !state) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true) return true;
+  if (entity.flags && (entity.flags.forceRender || entity.flags.neverCull)) return true;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const targetId = state.player && state.player.targetId != null
+    ? state.player.targetId
+    : player && player.targetId;
+  return targetId != null && entity.id === targetId;
+}
+
+/**
+ * The renderer's readable-glass law, replicated for the authored queue: tier, explicit focus,
+ * then the geometric band. The activity tier trails the camera by a whole classification pass,
+ * so a body whose hull already intersects the glass — but whose R0 tier has not caught up —
+ * used to sit at background priority and the player watched its stand-in. The geometric test
+ * answers that case at once.
+ */
+function entityIsOnAuthoredGlassBand(entity, live) {
+  if (!entity || entity.alive === false || !live) return false;
+  const activity = entity.activity || {};
+  if (activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
+  // Strictly geometric — no explicit-focus term. Player/target-lock bodies carry their own
+  // rungs (player 0, locked target 2); counting them "on the glass" here would let an
+  // off-glass locked wreck tie the bodies actually in the picture at 1.5.
+  const player = live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId)
+    : null;
+  if (!player || !player.pos || !entity.pos) return false;
+  // Same camera proof the opening-frame rung requires: the live picture or the zoom it is
+  // opening toward. The player's requested wheel alone proves nothing yet — an uncomposed
+  // camera leaves the arrival distance grades untouched by design.
+  const camera = live.camera || {};
+  const liveZoom = Number(camera.liveZoom);
+  const composed = Number(camera.composedZoom);
+  const zoom = Number.isFinite(liveZoom) || Number.isFinite(composed)
+    ? Math.max(Number.isFinite(liveZoom) ? liveZoom : 0, Number.isFinite(composed) ? composed : 0)
+    : null;
+  if (!(zoom > 0)) return false;
+  const video = live.settings && live.settings.video || {};
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const glass = glassHalfExtents(zoom, fov, aspect, tilt);
+  const delta = tableLookAtDelta(live, player.pos, entity.pos, _glassDelta2);
+  const band = classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
+    radius: entityVisualCullRadius(entity, entity.mesh),
+  });
+  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
+}
+
+function entityIsOnReadableGlass(entity, state = undefined) {
   if (!entity || entity.alive === false) return false;
   const activity = entity.activity || {};
-  return activity.presentationTier === PRESENTATION_TIER.R0_GLASS;
+  if (activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
+  const live = state || authoredRuntimeState();
+  if (!live) return false;
+  if (entityIsExplicitRenderFocus(entity, live)) return true;
+  const player = live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId)
+    : null;
+  if (!player || !player.pos || !entity.pos) return false;
+  const cam = authoredLiveTableCamera(live);
+  const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  const delta = tableLookAtDelta(live, player.pos, entity.pos, _glassDelta);
+  const band = classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
+    radius: entityVisualCullRadius(entity, entity.mesh),
+  });
+  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
 }
+
+// entityIsOnscreen runs inside the upgrade-queue sort comparator — O(jobs·log jobs)
+// comparisons per admit — so its projection/frustum/sphere scratch is module-scoped
+// instead of allocated per call. It never re-enters: nothing it calls reads these.
+const _onscreenProjection = new THREE.Matrix4();
+const _onscreenFrustum = new THREE.Frustum();
+const _onscreenCenter = new THREE.Vector3();
+const _onscreenSphere = new THREE.Sphere();
 
 export function entityIsOnscreen(entity, state) {
   const root = entity && entity.mesh;
@@ -5007,9 +5348,14 @@ export function entityIsOnscreen(entity, state) {
   try {
     camera.updateMatrixWorld(true);
     root.updateWorldMatrix(true, false);
-    const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    const frustum = new THREE.Frustum().setFromProjectionMatrix(projection);
-    return frustum.containsPoint(root.getWorldPosition(new THREE.Vector3()));
+    _onscreenProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _onscreenFrustum.setFromProjectionMatrix(_onscreenProjection);
+    // Sphere, not point: a big authored body is onscreen while its centre is off it.
+    const presence = entityVisualCullRadius(entity, root);
+    root.getWorldPosition(_onscreenCenter);
+    _onscreenSphere.center.copy(_onscreenCenter);
+    _onscreenSphere.radius = Math.max(presence, 0.001);
+    return _onscreenFrustum.intersectsSphere(_onscreenSphere);
   } catch {
     return true;
   }
@@ -5198,7 +5544,7 @@ function scheduleNextUpgradeFrame(state) {
     return;
   }
   if (state.firstFlightHandoffHold === true
-      && !state.jobs.some(firstFlightReadableShipJob)) {
+      && !state.jobs.some(firstFlightReadableGlassJob)) {
     scheduleHeldShipWake(state);
     // The hold does not freeze in-flight jobs — a hog stalled through the hold still needs its
     // diagnostic closed on schedule.
@@ -5224,7 +5570,7 @@ function scheduleNextUpgradeFrame(state) {
   scheduleUpgradeFrame(() => {
     if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
     if (state.firstFlightHandoffHold === true
-        && !state.jobs.some(firstFlightReadableShipJob)) {
+        && !state.jobs.some(firstFlightReadableGlassJob)) {
       state.frameScheduled = false;
       scheduleHeldShipWake(state);
       armStalledHogWake(state);
@@ -5258,14 +5604,19 @@ function admitNextUpgradeJob(state) {
     }
   }
   state.jobs.sort((a, b) => {
-    // The stall bypass exists to feed the ship lane; a queued needed ship must take the freed
-    // slot ahead of ordinary dressing or the hog's own kind could keep re-winning the escape.
+    // The stall bypass exists to feed the on-glass body the lane granted; a queued needed
+    // on-glass job must take the freed slot ahead of ordinary dressing or the hog's own kind
+    // could keep re-winning the escape.
     if (stallBypassShipPass) {
-      const stallDelta = Number(queuedShipJobStillNeeded(state, b))
-        - Number(queuedShipJobStillNeeded(state, a));
+      const stallDelta = Number(queuedGlassLawJobStillNeeded(state, b))
+        - Number(queuedGlassLawJobStillNeeded(state, a));
       if (stallDelta) return stallDelta;
     }
     if (state.firstFlightHandoffHold === true) {
+      // On-glass first — a parked non-ship still drawn as void beats an off-glass runway
+      // ship. Within the same glass status ships keep priority.
+      const glassDelta = Number(firstFlightReadableGlassJob(b)) - Number(firstFlightReadableGlassJob(a));
+      if (glassDelta) return glassDelta;
       const urgentDelta = Number(firstFlightReadableShipJob(b)) - Number(firstFlightReadableShipJob(a));
       if (urgentDelta) return urgentDelta;
     }
@@ -5281,7 +5632,9 @@ function admitNextUpgradeJob(state) {
     }
     return a.sequence - b.sequence;
   });
-  if (state.firstFlightHandoffHold === true && !firstFlightReadableShipJob(state.jobs[0])) {
+  if (state.firstFlightHandoffHold === true
+      && !firstFlightReadableShipJob(state.jobs[0])
+      && !firstFlightReadableGlassJob(state.jobs[0])) {
     scheduleHeldShipWake(state);
     armStalledHogWake(state);
     return null;
@@ -5341,6 +5694,20 @@ function admitNextUpgradeJob(state) {
     // Loading composes one boundary at a time, then lets its exact GPU gate overlap the next CPU
     // admission. The authored overlap branches invoke this only after publishing pipelineReady.
     job.options.onAuthoredPipelineStaged = releaseSerialSlotAfterPipelineStaging;
+  } else if (job.options && Object.isExtensible(job.options)
+      && authoredRuntimeState() && authoredRuntimeState().mode === 'flight') {
+    // Flight-mode glass-law overlap: the job still stages its GPU work detached (the exact
+    // pipeline/GPU gate), but the serial slot frees only while a queued job's owner is on the
+    // readable glass — the hole-in-the-picture case. An on-glass nemesis wing or cohort no
+    // longer waits behind the whole in-flight job's upload drain; ambient jobs keep the
+    // original hold-the-slot pacing that keeps two composes from colliding on soft GPUs.
+    job.options.overlapAuthoredPipelineCompile = true;
+    job.options.onAuthoredPipelineStaged = () => {
+      const glassQueued = state.jobs.some((queued) => queued !== job
+        && entityIsOnReadableGlass(queued && queued.entity));
+      if (!glassQueued) return false;
+      return releaseSerialSlotAfterPipelineStaging();
+    };
   }
   // One entity begins CPU admission per frame. Non-overlap jobs and custom runs that do not enter
   // an authored overlap branch keep the original single-flight semantics; loading authored jobs
@@ -5430,7 +5797,7 @@ function primeNextAuthoredAssetPlan(state) {
         && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
     state.firstFlightPrefetchJob = null;
     const player = liveState.entities?.get?.(liveState.playerId);
-    const eligible = state.jobs.filter((job) => firstFlightReadableShipJob(job)
+    const eligible = state.jobs.filter((job) => firstFlightReadableGlassJob(job)
       && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise);
     eligible.sort((a, b) => {
       const priority = authoredUpgradePriority(a) - authoredUpgradePriority(b);
@@ -7117,13 +7484,21 @@ function admitEntityPlan(renderer, options, library, plan) {
   }
   return new Promise((resolve, reject) => {
     const entry = {
-      deadline: options && options.admissionDeadline === true,
+      deadline: options && (options.admissionDeadline === true || options.admissionVisible === true),
       run: async () => {
         // Re-check only after earlier demand has committed its records. Checking before joining
         // the lane permits duplicate decodes; copying slot arrays outside the lane permits
         // last-writer data loss.
         if (!libraryHasPreloadPlan(library, plan)) {
-          await loadPlanIntoLibrary(renderer, options, library, plan);
+          // An ambient run still occupying the lane must not hold a queued deadline entry
+          // for the rest of its plan — break between files so the spliced entry runs next;
+          // the unfinished remainder re-queues through the ordinary demand path. Deadline
+          // entries keep their own run to settle (they are the presentation path).
+          const runOptions = entry.deadline === true ? options : {
+            ...options,
+            hasQueuedDeadlineEntry: () => lane.queued.some((queued) => queued.deadline === true),
+          };
+          await loadPlanIntoLibrary(renderer, runOptions, library, plan);
         }
         return library;
       },
@@ -7172,31 +7547,53 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
   // Deliberately serial. GLB fetch is local and cheap; meshopt/KTX2 decode and GPU upload are the
   // expensive resident operations. Serial admission prevents renderer + GPU memory from rising by
   // hundreds of megabytes in one task while preserving the exact source assets.
+  // Flatten the plan once so file boundaries can be counted: the terminal file must not pay
+  // a present-yield — a frame boundary after the last decode only delays the compose that
+  // follows it, which is the pop latency the boundary exists to prevent.
+  const pendingFiles = [];
+  const recordsBySlot = new Map();
   for (const [slot, files] of Object.entries(plan || {})) {
     const records = Array.isArray(library.get(slot)) ? library.get(slot).filter(recordIsResident) : [];
-    for (const file of files || []) {
-      if (records.some((record) => recordUrlEndsWith(record, file))) continue;
-      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
-      const url = `${partRoot}${file}`;
-      const diagnostic = beginDecodeAdmission(renderer, url, slot);
-      let record;
-      try {
-        record = await loadPart(url, {
-          renderer,
-          slot,
-          optional: true,
-          residencyOwner: options.residencyOwner,
-          residencyRole: options.residencyRole,
-          sectorId: options.sectorId,
-          isResidencyOwnerActive: options.isResidencyOwnerActive,
-        });
-      } finally {
-        finishDecodeAdmission(renderer, diagnostic);
-      }
-      if (record) records.push(record);
-    }
-    library.set(slot, records);
+    recordsBySlot.set(slot, records);
+    for (const file of files || []) pendingFiles.push({ slot, file });
   }
+  for (let i = 0; i < pendingFiles.length; i++) {
+    const { slot, file } = pendingFiles[i];
+    const records = recordsBySlot.get(slot);
+    if (records.some((record) => recordUrlEndsWith(record, file))) continue;
+    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
+    // A deadline entry queued behind this ambient run takes the lane at the next file
+    // boundary; the remaining files re-admit on their own demand.
+    if (typeof options.hasQueuedDeadlineEntry === 'function' && options.hasQueuedDeadlineEntry()) break;
+    const url = `${partRoot}${file}`;
+    const diagnostic = beginDecodeAdmission(renderer, url, slot);
+    let record;
+    try {
+      record = await loadPart(url, {
+        renderer,
+        slot,
+        optional: true,
+        residencyOwner: options.residencyOwner,
+        residencyRole: options.residencyRole,
+        sectorId: options.sectorId,
+        isResidencyOwnerActive: options.isResidencyOwnerActive,
+        admissionDeadline: options.admissionDeadline,
+        admissionVisible: options.admissionVisible,
+      });
+    } finally {
+      finishDecodeAdmission(renderer, diagnostic);
+    }
+    if (record) records.push(record);
+    // File boundary: same pacing contract as the compose/compile stages — in flight a
+    // multi-file plan must let a presented frame land between serial decode+upload units
+    // instead of stacking one uninterrupted block across a visible beat.
+    if (i < pendingFiles.length - 1
+        && options.yieldBetweenGpuStages === true
+        && typeof options.yieldToNextPresent === 'function') {
+      try { await options.yieldToNextPresent(); } catch (_) { /* pacing only */ }
+    }
+  }
+  for (const [slot, records] of recordsBySlot) library.set(slot, records);
   return library;
 }
 
@@ -7688,6 +8085,9 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   synchronizeSecondaryDrives(primaryDrive, bindings);
   installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, wholeShip);
   root.userData.updateLod('lod0');
+  // ANI-00: mount the authored-motion driver beside the damage/drive closures the renderer
+  // already calls per frame. Detachment rides the disposeObject userData-callback grammar.
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 
   // GR-5: authored compositions need the same persistent shield bubble as procedural ships so
   // syncEntityViews can toggle it from e.shield. Geometry shared via shipKit; material per-ship.
@@ -8299,6 +8699,7 @@ function instantiateFlightRootTemplate(
   synchronizeSecondaryDrives(primaryDrive, bindings);
   installAuthoredLod(root, bindings, safetyCore, new Set(entry.authoredHullLevels || EMPTY_ARRAY), entry.wholeShip === true);
   root.userData.updateLod('lod0');
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
   if (entry.producerManifest) {
     stampOpeningSubmissionPackage(root, entry.producerManifest, {
       replace: true,
@@ -8406,6 +8807,12 @@ function restoreFlightTemplateBindings(root, paths, supplemental = null) {
   }
   for (const admission of supplemental?.packagePoolAdmissions || EMPTY_ARRAY) {
     bindings.packagePoolAdmissions.add(admission);
+  }
+  // Package subtrees recreated for a template instance re-bind their motion controllers into
+  // the supplemental set — merge them so the ship driver drives the LIVE pivots, not the paths
+  // the template serialized.
+  for (const controller of supplemental?.authoredMotions || EMPTY_ARRAY) {
+    bindings.authoredMotions.push(controller);
   }
   return bindings;
 }
@@ -10102,6 +10509,12 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
   }
   const tier1 = tier1CausalCounters();
   if (tier1) tier1.countPlanInstantiation(planNodes.length - 1, 'package-instance-specialize');
+
+  // ANI-00: the package's verified motion bank binds every same-named MOTION_* pivot in this
+  // instance (one per mounted LOD file), so LOD switches never pop a transform. The template
+  // path recreates packages through this same call, so cached roots rebind identically.
+  const motionController = bindInstanceMotion(packageRoot, record.motionBank);
+  if (motionController) bindings.authoredMotions.push(motionController);
   return partRoot;
 }
 
@@ -10809,6 +11222,10 @@ function createBindings() {
     lod: { lod0: [], lod1: [], lod2: [] },
     lodDynamicDetails: [],
     packagePoolAdmissions: new Set(),
+    // ANI-00: MOTION_* pivots found while specializing (tests/debug), and the per-instance
+    // authored-motion controllers bound from the package's verified motion bank.
+    motionGroups: [],
+    authoredMotions: [],
   };
 }
 
@@ -10822,6 +11239,7 @@ function registerBinding(object, tags, bindings) {
   if (tags.damageRole === 'armor' && object.isMesh) bindings.armor.push(object);
   if (tags.damageRole === 'secondary' && renderable) bindings.secondary.push(object);
   if (tags.decal && object.isMesh) bindings.decals.push(object);
+  if (tags.motionGroup) bindings.motionGroups.push(object);
   if (tags.mount && bindings.mounts[tags.mount]) bindings.mounts[tags.mount].push(object);
   if (renderable && tags.lod && bindings.lod[tags.lod]) bindings.lod[tags.lod].push(object);
   if (renderable && isLodDynamicDetail(tags)) bindings.lodDynamicDetails.push(object);

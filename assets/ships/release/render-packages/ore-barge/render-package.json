@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5ddb89ce0cc4f917eab226a8c3b95e320b4af101c4845415ac0638c6a0dff4a8",
+  "contentHash": "9e0ecfcecb74419069f3a4d35665da38cd6df5ea7a857282e1164b49bc7bcd23",
   "dynamicGroups": [
     {
       "id": "sf.render.ore-barge.node.lod0-hook-drive-core.dynamic",
@@ -5414,18 +5414,18 @@
     },
     "sourceGlb": {
       "bytes": 1254300,
-      "sha256": "cade177e3ad8a3d85512a6ea581d3e53859576e46dd909ff053d8899e323bc32",
+      "sha256": "50d089be5c16c83eb0b572e7019a0fc2bfcf803ba3069f4b5a1904f2024480f4",
       "uri": "ore_barge.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 2558060,
-    "sha256": "2732d03753989bd975f48309c61807d1622d9aaba46c4b6899b658f98d4fa72a",
+    "sha256": "54e61d2f62399553bc29083ea6ba44dfbf54643fc178a7878aeb00924e670477",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7769,7 +7769,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
-  "runtimeHash": "45b7051c1b675b84644dd7b685e019fc2acbab747b43b05dbf3237216201af25",
+  "runtimeHash": "9568314a3bc5a8420e9fee68c2779c1cc91d2b7afe236a39ca610b25671d203e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

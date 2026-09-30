@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8808b0f1a0bf16f286a7f0b0270db3583fd99fba0f18abda2abbf9fa1cc7352d",
+  "contentHash": "8c467dbf99c62556a0b9b4198d367d49c2b6084698b9192d21a059adaa3d83eb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1299,13 +1299,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1270436,
-    "sha256": "02c7100f2e854aa45c38bc38f5d3f5fc625c87a3ca4776897ac68a236651bdc6",
+    "sha256": "be5fd5ef30496bc4b8368befef3c18f08099fe7635050fc35636f60e7947d12a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1731,7 +1731,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel_authored_down.glb"
   },
-  "runtimeHash": "c85e9f130a1f62d5d08bd0faed7353e253fd7230dfd99c42b9055b3f60257e80",
+  "runtimeHash": "a4beb6139d486ec5aa76740e461ab9fb0b72c716556d17ecaaf4fc301ad2284d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

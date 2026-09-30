@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b0cf696c4a925c661a329c4560371261a7dab5b81974e599e1252ab9fbd06caf",
+  "contentHash": "6343fa9505d78d4ee498094503e5983a93e7038df26a5a0b4dbd2060259264f8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -738,13 +738,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
+      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 358276,
-    "sha256": "4e6ee258518204834998bbd16b37ee0adfac8945c2f8b7639cda7db15733744c",
+    "sha256": "64d684c78431b999ba6a1555cbe4ed80cc45e126c78304f0faeb3a87342c7bfb",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1153,7 +1153,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_gas_tap.glb"
   },
-  "runtimeHash": "1264cc037b061b9b6fdc2a1fa8de9570fab99f5cb9dded22ce869486abd5d679",
+  "runtimeHash": "62977dfae178063110914cbcfbfb7f18a28913e99a232cf29a9b75105e34cc1c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
