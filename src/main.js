@@ -526,7 +526,9 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // defaults byte-for-byte; nothing about the pick is saved as a class or lock.
       applyStarterPick(state, ships, opts);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      await nextPaint();
+      // Single-frame breath: a committed paint is reserved for the boundary just
+      // before bootstrapScene — this one only needs to yield.
+      await nextFrame();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       if (newGamePlus) {
@@ -614,33 +616,22 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // Hardware with KHR_parallel_shader_compile can link behind the loading
       // shell. Software WebGL links one program per bloomScene (1.3s+) with no
       // parallel compile, so an awaited cook holds Launch past the playable gate.
-      const cook = waitForOpeningGpuResources(state, 20000);
-      if (!shouldAwaitOpeningGpuCook({
+      const awaitCook = shouldAwaitOpeningGpuCook({
         gpu: state.render && state.render.gpu,
         renderer: state.render && state.render.renderer,
-      })) {
+      });
+      // PQ-210.02 — the composition-tail settle rides inside the cook now (both
+      // transition paths get it), finishing the serial lane's open composes/
+      // compiles/uploads while the shell still owns the picture.
+      const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
+      if (!awaitCook) {
         void cook.catch((error) => {
           console.warn('[startup] opening GPU cook failed', error);
         });
         return true;
       }
       try {
-        const cookReady = await cook;
-        // PQ-210.02 — the opening composition's serial lane must not finish inside flight frames.
-        // The live-sector cook's own upgrade-idle step shares a prepare budget that a contended
-        // host has already spent by the time it runs, so the shell used to release with
-        // composes/compiles/uploads still open and flight paid them (NOVEL program link +12.8 s,
-        // ~10 MB first-draw uploads +17 s in the before sample). This bounded, fail-open tail
-        // spends the gate's own headroom finishing that work while the shell still owns the
-        // picture. Boot-order only; the settle is render/asset-side and spawns nothing.
-        if (state.mode === 'loading') {
-          const tail = await settleOpeningCompositionTail(state, { budgetMs: 20000 });
-          if (state.render) state.render.openingCompositionTail = tail;
-          SF_DEBUG_ONLY: if (SF_DEBUG && tail && tail.skipped !== true) {
-            console.log('[SpaceFace] opening composition tail settle: %s', JSON.stringify(tail));
-          }
-        }
-        return cookReady;
+        return await cook;
       } catch (error) {
         console.warn('[startup] opening GPU cook failed', error);
         return false;
@@ -742,6 +733,19 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
   if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+  // Kick the backend prepare so WASM/world bring-up overlaps the whole library/
+  // visuals/GPU chain below — the same overlap New Game gets from its scenePrepared
+  // kick. save:loaded already rebound the player record before this function ran,
+  // so the non-reset prepare only needs to resolve before the D26 gate at the end.
+  let continuePhysicsPrep = null;
+  {
+    const physicsSystem = registry.get('physics');
+    if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
+      continuePhysicsPrep = Promise.resolve()
+        .then(() => physicsSystem.prepareBackend(state));
+      continuePhysicsPrep.catch(() => {});
+    }
+  }
   try {
     bus.emit('game:loadingProgress', {
       id: 'authored-library',
@@ -785,7 +789,9 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Warming up so the opening runs smooth',
       transition: 'continue',
     });
-    await nextPaint();
+    // Single-frame breath: the gpu-resources boundary below still pays the full
+    // paint before the cook — this one only needs to yield.
+    await nextFrame();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!shouldAwaitOpeningGpuCook({
       gpu: state.render && state.render.gpu,
@@ -806,11 +812,12 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     await nextPaint();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     {
-      const cook = waitForOpeningGpuResources(state, 20000);
-      if (!shouldAwaitOpeningGpuCook({
+      const awaitCook = shouldAwaitOpeningGpuCook({
         gpu: state.render && state.render.gpu,
         renderer: state.render && state.render.renderer,
-      })) {
+      });
+      const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
+      if (!awaitCook) {
         void cook.catch((error) => {
           console.warn('[startup] continue GPU cook failed', error);
         });
@@ -826,10 +833,9 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     {
       // Same D26 gate as New Game: the loaded world must enter flight only after the
       // SG-02 authority exists. No reset — save:loaded already rebound the retained
-      // player record; prepareBackend just awaits any pending init and republishes.
-      const physicsSystem = registry.get('physics');
-      if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
-        const physicsReady = await physicsSystem.prepareBackend(state);
+      // player record; the promise kicked at function top just resolves here.
+      if (continuePhysicsPrep) {
+        const physicsReady = await continuePhysicsPrep;
         if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
         if (physicsReady === false) {
           throw new Error('The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.');

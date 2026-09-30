@@ -85,7 +85,10 @@ export async function buildTitleAttractStage(built, io) {
   stageRoot.add(fleet);
 
   // -- Ship visuals: one GLB blueprint per roster archetype the tape actually uses.
+  // Loads fire together — there is no ordering between hulls, and awaiting each in
+  // turn serialized n fetch+decode jobs the shared loader could run concurrently.
   const visualKeys = new Map(); // key -> {file, unitScale, proto}
+  const loadJobs = new Map();   // key -> Promise<record|null>
   for (const ship of tape.ships) {
     const key = `${ship.visual || ''}|${ship.silhouette || ''}`;
     if (visualKeys.has(key)) continue;
@@ -101,7 +104,13 @@ export async function buildTitleAttractStage(built, io) {
     }
     const file = selection && selection.file;
     if (!file) continue;
-    const record = await io.loadPart(file, 'hull');
+    loadJobs.set(key, Promise.resolve(io.loadPart(file, 'hull')).catch((error) => {
+      console.warn('[titleAttract] hull load failed for', key, error);
+      return null;
+    }));
+  }
+  for (const [key, job] of loadJobs) {
+    const record = await job;
     if (!record) continue;
     const proto = new THREE.Group();
     let span = 0;

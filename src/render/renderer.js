@@ -2463,8 +2463,37 @@ function kickDecodeRunwayAssets(owner, entities) {
     Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
       pending.delete(entity.id);
     });
+    warmKillHulkDecode(owner, entity);
   }
   return started;
+}
+
+/**
+ * A kill wreck is the victim's own whole-ship GLB — decoded under the 'place' slot, which the
+ * hull's 'hull'-slot decode never produces. Every runway-decoded ship is killable, so warm its
+ * resolved hulk file alongside the hull plan; file dedupe keeps the extra work to one 'place'
+ * decode per unique hull family per sector. Survival rosters already cover their own hulks via
+ * hulkExemplarSpecsForShips — this is the open-world/ambient coverage.
+ */
+function warmKillHulkDecode(owner, entity) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || !renderer || !entity || entity.type !== 'ship') return;
+  const files = owner._decodeRunwayHulkFiles || (owner._decodeRunwayHulkFiles = new Set());
+  let file = null;
+  try { file = (wholeShipVisualForEntity(entity, { requiredWholeShip: true }) || {}).file; }
+  catch (_) { file = null; }
+  if (!file || files.has(file)) return;
+  files.add(file);
+  const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+    || 'assets/ships/release/parts/';
+  loadAuthoredPart(`${releaseRoot}${file}`, {
+    renderer,
+    slot: 'place',
+    optional: true,
+    residencyRole: 'kill-hulk-decode-runway',
+    sectorId: (state.world && state.world.currentSectorId) || null,
+  }).catch(() => {});
 }
 
 /**
@@ -7901,15 +7930,27 @@ export const render = {
       // Kick them here so the live-scene cook sees their authored materials,
       // not the procedural stand-in that first flight would otherwise compile.
       let liveStepStarted = prepareNow();
-      const opening = recook
-        ? { skipped: true, settled: true, reason: 'session-recook-visuals-already-ready' }
-        : await waitForOpeningCompositionSettled(state, {
+      // The composition settle and the queue-idle wait both pump the same authored
+      // upgrade queue — the settle feeds it opening jobs, the idle waits for the
+      // queue to empty. Serial waits paid settle-timeout + idle-timeout back to
+      // back; run them as one pump window so the idle clock starts while the
+      // settle is still feeding jobs, and the drain below still waits on both.
+      const openingPromise = recook
+        ? Promise.resolve({ skipped: true, settled: true, reason: 'session-recook-visuals-already-ready' })
+        : waitForOpeningCompositionSettled(state, {
           timeoutMs: Math.min(12000, remainingMs()),
           yieldToMain: yieldAndFlushLiveSectorGpu,
           renderer,
           scene,
           meshes: this._meshes,
         });
+      const upgradesPromise = recook
+        ? Promise.resolve({ skipped: true, reason: 'session-recook-hold-leftover-fx' })
+        : waitForAuthoredUpgradeQueueIdle(scene, {
+          timeoutMs: Math.min(12000, remainingMs()),
+          yieldToMain: yieldAndFlushLiveSectorGpu,
+        });
+      const opening = await openingPromise;
       recordOpeningCookStep(state.render, 'live.openingComposition', liveStepStarted,
         recook ? 'skipped' : (opening && opening.reason === 'timeout' ? 'timeout' : 'resolved'), {
           reason: opening && opening.reason || undefined,
@@ -7918,13 +7959,7 @@ export const render = {
           statuses: opening && Array.isArray(opening.statuses) && opening.statuses.length
             ? opening.statuses.slice(0, 6).join('/') : undefined,
         });
-      liveStepStarted = prepareNow();
-      const upgrades = recook
-        ? { skipped: true, reason: 'session-recook-hold-leftover-fx' }
-        : await waitForAuthoredUpgradeQueueIdle(scene, {
-          timeoutMs: Math.min(6000, remainingMs()),
-          yieldToMain: yieldAndFlushLiveSectorGpu,
-        });
+      const upgrades = await upgradesPromise;
       recordOpeningCookStep(state.render, 'live.upgradeQueueIdle', liveStepStarted,
         recook ? 'skipped' : (upgrades && upgrades.idle === true ? 'resolved' : 'timeout'), {
           pending: upgrades ? upgrades.pending : undefined,
@@ -9968,19 +10003,27 @@ export const render = {
     };
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
-      // rock receives its final PBR maps on its first and only visual publication.
+      // rock receives its final PBR maps on its first and only visual publication. The race starts
+      // now but only resolves where the maps are first consumed (residency upload / leaf reskin):
+      // the first-present admission wait and the submission plan build below are independent of the
+      // decode and used to sit serialized behind up to 4 s of dead veil time.
       const rockWaitStarted = performance.now();
+      let rockRace = null;
       if (this.rockSurfaceLibraryReady) {
         let rockTimedOut = false;
-        await Promise.race([
+        rockRace = Promise.race([
           this.rockSurfaceLibraryReady,
           new Promise((resolve) => setTimeout(() => { rockTimedOut = true; resolve(); }, 4000)),
-        ]);
-        recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted,
-          rockTimedOut ? 'timeout' : 'resolved');
-      } else {
-        recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted, 'skipped');
+        ]).then(() => (rockTimedOut ? 'timeout' : 'resolved'));
       }
+      const awaitRockSurfaceRace = async () => {
+        if (!rockRace) {
+          recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted, 'skipped');
+          return;
+        }
+        const outcome = await rockRace;
+        recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted, outcome);
+      };
       const openingNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
       let openingStepStarted = openingNow();
@@ -10029,6 +10072,7 @@ export const render = {
               || (entry.reason && String(entry.reason).includes('no-currently-instantiated'))
             ))
             : null;
+          await awaitRockSurfaceRace();
           recordOpeningCookStep(state.render, 'opening.plan', openingNow(), 'skipped', {
             reason: 'opening-plan-incomplete',
             fail: failRole
@@ -10048,6 +10092,8 @@ export const render = {
         // bounded so this stage yields back to the loading/flight event loop sooner.
         // Also pass deadlineMs into the uploader — Promise.race alone misses sync initTexture
         // bursts that starve the timer until well past the budget.
+        // The rock maps must be bound before the residency upload walks the leaves.
+        await awaitRockSurfaceRace();
         const residencyBudgetMs = softGpuOpening ? 750 : 5000;
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           // Same sliced cadence as the end-of-cook census: per-item task hops
@@ -14974,20 +15020,22 @@ export const render = {
     try {
       // A replacement requested by the prior flight may already be between its post-paint yield and
       // activation when Continue enters loading. Let that finite job settle (it aborts when loading
-      // owns the picture) before the exact opening census can capture a pool root.
+      // owns the picture) before the exact opening census can capture a pool root. Bound the first
+      // wait to a slice — it only has to land before the freeze below, and burning the whole
+      // envelope here left no budget to attempt the publish at all. The census deadline still
+      // applies: if growth is still open at the freeze point, that is the real timeout.
       let auxGrowthTimeout = null;
       let auxGrowthReady;
       try {
         auxGrowthReady = await Promise.race([
           waitForShipAuxPoolGrowth(this._shipAuxPool).then(() => true),
           new Promise((resolve) => {
-            auxGrowthTimeout = setTimeout(() => resolve(false), waitMs);
+            auxGrowthTimeout = setTimeout(() => resolve(false), Math.min(4000, waitMs));
           }),
         ]);
       } finally {
         if (auxGrowthTimeout !== null) clearTimeout(auxGrowthTimeout);
       }
-      if (!auxGrowthReady) throw new Error('opening ship auxiliary pool admission timed out');
       for (let pass = 0; pass < 8; pass++) {
         if (!this._publishOpeningFirstPicture()) {
           throw new Error('opening first-picture render publication unavailable');
@@ -15031,6 +15079,28 @@ export const render = {
               // A prepared boundary may add an exact first-picture root. Re-publish once before
               // freezing the graph so Continue captures its final material and geometry identity.
               if (cohort && cohort.prepared === true) continue;
+            }
+            if (!auxGrowthReady) {
+              // The aux pool only has to be settled before the census freezes the graph — a growth
+              // that committed mid-publish is captured by re-running the loop once.
+              const auxNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                ? performance.now()
+                : Date.now();
+              const auxRemaining = deadline - auxNow;
+              if (!(auxRemaining > 0)) throw new Error('opening ship auxiliary pool admission timed out');
+              let auxLateTimeout = null;
+              try {
+                auxGrowthReady = await Promise.race([
+                  waitForShipAuxPoolGrowth(this._shipAuxPool).then(() => true),
+                  new Promise((resolve) => {
+                    auxLateTimeout = setTimeout(() => resolve(false), auxRemaining);
+                  }),
+                ]);
+              } finally {
+                if (auxLateTimeout !== null) clearTimeout(auxLateTimeout);
+              }
+              if (!auxGrowthReady) throw new Error('opening ship auxiliary pool admission timed out');
+              continue;
             }
             // A survival arena is mounted content, not a curated first picture: freezing the
             // publication gate here parks every boundary job that finishes its admission between
