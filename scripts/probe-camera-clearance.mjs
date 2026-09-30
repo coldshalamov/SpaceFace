@@ -139,7 +139,35 @@ try {
     const s = st.entities.get(id);
     const render = window.SF.registry.get('render');
     const f = render._cameraClearanceAt.roofAt;
-    return { atCenter: f(s.pos.x, s.pos.z, 0), atEdge: f(s.pos.x + 80, s.pos.z, 0), far: f(s.pos.x + 900, s.pos.z, 0) };
+    // The roof query lives in RENDER-LOCAL space (the chase-camera frame membrane re-origins the
+    // scene near the player); a sim position must cross the membrane first or the query reads a
+    // column ~1.5 km from the station and reports "no roof" for a body that is right there —
+    // which is exactly what the 2026-09-29 report recorded (atCenter/atEdge/far all null with the
+    // camera inside the model). Same conversion the renderer uses for table rows.
+    const membrane = render._frameMembrane;
+    const local = membrane && typeof membrane.toLocal === 'function'
+      ? membrane.toLocal(s.pos, { x: 0, z: 0 })
+      : { x: s.pos.x, z: s.pos.z };
+    const root = render._meshes.get(id);
+    const rootPos = root && root.position ? { x: root.position.x, z: root.position.z } : null;
+    const stamp = root && root.userData ? {
+      kind: root.userData.kind,
+      state: root.userData.authoredAssetState || null,
+      geometryPending: root.userData.geometryPending === true,
+      box: root.userData.cameraClearanceBox && root.userData.cameraClearanceBox.box
+        ? { maxY: root.userData.cameraClearanceBox.box.maxY, bvh: root.userData.cameraClearanceBox.bvhQuery === true }
+        : null,
+    } : null;
+    const finite = (v) => (v === -Infinity ? null : v);
+    return {
+      simPos: { x: s.pos.x, z: s.pos.z },
+      renderLocal: local,
+      rootPos,
+      stamp,
+      atCenter: finite(f(local.x, local.z, 0)),
+      atEdge: finite(f(local.x + 80, local.z, 0)),
+      far: finite(f(local.x + 900, local.z, 0)),
+    };
   }, park.id);
   console.log('[roof]', JSON.stringify(report.stationRoofAtCenter));
   await page.evaluate((id) => {
