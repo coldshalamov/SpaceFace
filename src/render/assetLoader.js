@@ -550,7 +550,10 @@ export async function loadAuthoredPart(url, options = {}) {
   // pilot branch: render-package pilots are the dominant decode path and must classify too.
   const deadlineClass = options.admissionDeadline === true
     || options.admissionVisible === true
-    || /runway|deadline/i.test(String(options.residencyRole || ''));
+    // 'sector-prewarm' is the incoming-sector census — its decode window is the charge
+    // (or the zero-lead enter frame), a real deadline, not ambient warm. 'sector-predicted'
+    // and roster prewarms correctly stay ambient: long horizon, no deadline.
+    || /runway|deadline|sector-prewarm/i.test(String(options.residencyRole || ''));
   // admissionVisible is a deadline superset: the spawn is already at the glass, so its worker
   // posts jump ahead of even other deadline waiters via the 'visible' budget class.
   const wrapDecodeClass = options.admissionVisible === true

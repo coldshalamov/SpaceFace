@@ -11328,6 +11328,16 @@ export const render = {
     onBus('jump:chargeStart', ({ targetSectorId } = {}) => {
       beginIncomingSectorPrewarm(targetSectorId);
     });
+    onBus('player:death', ({ recoverable, recovery } = {}) => {
+      // A recoverable defeat fixes its recovery dock in the receipt while the after-action
+      // modal dwells — the destination census decodes through that window instead of
+      // starting at the enter frame. An untaken plan retires through the same
+      // mismatch/abort machinery as any superseded prewarm.
+      const targetSectorId = recovery && recovery.sectorId;
+      if (recoverable !== true || targetSectorId == null) return;
+      if (String(targetSectorId) === String(state.world && state.world.currentSectorId || '')) return;
+      beginIncomingSectorPrewarm(targetSectorId);
+    });
     onBus('jump:chargeAbort', () => {
       const incoming = this._incomingSectorPrewarm;
       if (incoming) releaseSectorPrewarm(incoming, 'jump-charge-aborted');

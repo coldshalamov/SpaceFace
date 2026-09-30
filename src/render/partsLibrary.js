@@ -5819,6 +5819,10 @@ function admitNextUpgradeJob(state) {
   job.lifecycle = 'in-flight';
   job.serialSlotReleased = false;
   job.inFlightAtMs = monotonicNow();
+  if (job.options && Object.isExtensible(job.options)
+      && typeof job.options.isAbortedStalledAdmission !== 'function') {
+    job.options.isAbortedStalledAdmission = () => job.abortedStalled === true;
+  }
   if (state.firstFlightHandoffHold === true && job.options) {
     job.options.urgentFirstFlightAdmission = true;
   }
@@ -7399,6 +7403,18 @@ async function commitAuthoredBoundary(
       await disposePreparedShipBoundaryResources(boundary, preparedAuthored);
     }
     return false; // destroyed while assets or GPU programs were in flight
+  }
+  // A stale run must not commit — the boundary re-admitted under a newer epoch while this
+  // run parked (stall-abort readmission), the job was stall-aborted, or its owner died.
+  // The live epoch's commit owns the boundary; this run disposes only what it prepared.
+  if ((options.admissionEpoch != null && boundary.userData.admissionEpoch != null
+        && boundary.userData.admissionEpoch !== options.admissionEpoch)
+      || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
+      || (entity && entity.alive === false)) {
+    if (preparedAuthored) {
+      await disposePreparedShipBoundaryResources(boundary, preparedAuthored);
+    }
+    return false;
   }
 
   const liveComposeOptions = {
