@@ -3,7 +3,9 @@
 
 Planning baseline: `adc71448e95c0cd488b0ba195ff5187b799e1488`, 2026-09-30.
 Scope: a source-grounded second opinion and executable first wave. This PR changes documentation only.
-No runtime, audiovisual, performance, or subjective-fun verdict was produced by this analysis.
+The initial pass was source-only. A deeper follow-up executed focused production-function probes;
+see [SOURCE_AUDIT](PRODUCTION_QUALITY_SOURCE_AUDIT.md) for the newer pinned revision, findings and
+limits. No full-game, audiovisual, performance or subjective-fun verdict has been produced.
 
 ## Decision
 
@@ -17,9 +19,12 @@ queue, mandatory capture pipeline, engine rewrite or promise of commercial succe
 [FINISH_LANES](FINISH_LANES.md), [INFERENCE_LANES](INFERENCE_LANES.md) and the
 [build map](../../build_map.md) retain their roles.
 
-**Start with the finite first wave in [FIRST_WAVE](PRODUCTION_QUALITY_FIRST_WAVE.md).**
-Its first assignment joins physical results to useful terrain; its second resolves terrain-assisted
-piloting; its third carries one completed experience through acquisition, play, reward and return.
+**Start with the source-grounded dispatch order in [SOURCE_AUDIT](PRODUCTION_QUALITY_SOURCE_AUDIT.md#10-revised-order-and-source-specific-work).**
+The immediate NXB-018 residual repairs demonstrated shop truncation; NXB-017 is corrected to target
+the real Swarm planner. The finite first wave in [FIRST_WAVE](PRODUCTION_QUALITY_FIRST_WAVE.md)
+then joins physical results to terrain, proposes optional contact-assisted piloting, and completes
+one acquisition/play/result/return route. New mechanics do not automatically outrank exposing
+already-built content or fixing a plan that points at the wrong mode.
 Architecture decisions are in [ARCHITECTURE](PRODUCTION_QUALITY_ARCHITECTURE.md).
 
 ## 1. What the evidence actually supports
@@ -166,8 +171,9 @@ telemetry or tests unless that is the requested deliverable.
 
 ## 6. First dispatch and stopping point
 
-Start with [FIRST_WAVE, assignment 1](PRODUCTION_QUALITY_FIRST_WAVE.md#assignment-1--the-throw-reaches-the-world).
-Complete its selected player-visible result before taking the next assignment. Work requiring
+Start with [FIRST_WAVE, assignment 0](PRODUCTION_QUALITY_FIRST_WAVE.md#assignment-0--expose-the-legal-swarm-shelf).
+Complete that selected player-visible result before taking the next assignment. NXB-017's
+mode-correct composition can proceed in disjoint files through its updated existing packet. Work requiring
 a concurrent hull-burst owner's exact files belongs in that continuation, not a competing version.
 This planning PR does not launch outside coding agents, spend their budgets, merge code or deploy.
 
