@@ -1,5 +1,13 @@
 import { successfulPickupAmount } from '../../core/pickupAcceptance.js';
 import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from './worldCueRecipes.js';
+
+// Rescue is green, ransom amber, loss red. Lost is the sim outcome "abandoned".
+const SURVIVOR_POD_RETIRE = Object.freeze({
+  rescued: { verb: 'cool', primitive: 'deposition', color: 0x7dcea0, life: 0.72, continuous: false },
+  ransomed: { verb: 'command', primitive: 'induction', color: 0xe2b15a, life: 0.72, continuous: false },
+  abandoned: { verb: 'disrupt', primitive: 'induction', color: 0xc45b4a, life: 0.72, continuous: false },
+});
+export { SURVIVOR_POD_RETIRE };
 // Extra responses consume confirmed simulation receipts. Resolving a receipt here is
 // cosmetic only: never discover collisions, change a body, or fabricate a successful action.
 export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
@@ -46,6 +54,13 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'beacon:deployed': {verb:'command',primitive:'induction',color:0x80ead8,life:1.1},
   // A warded shot's sheet lies on the aimed hull, along the hit that was absorbed.
   'combat:warded': {verb:'cool',primitive:'deposition',color:0x8fe1fa,life:.5,continuous:false},
+  // The pod body is disposed in the same turn, so the mark is the receipt point, not the mesh.
+  'survivorPod:resolved': {verb:'disrupt',primitive:'induction',color:SURVIVOR_POD_RETIRE.abandoned.color,life:.72,continuous:false,
+    variants:{
+      rescued:SURVIVOR_POD_RETIRE.rescued,
+      ransomed:SURVIVOR_POD_RETIRE.ransomed,
+      abandoned:SURVIVOR_POD_RETIRE.abandoned,
+    }},
 });
 
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -133,6 +148,12 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     const record=Array.isArray(records)?records.find(b=>b.id===p.id):records?.get?.(p.id);
     const target=body(state,record?.entityId);
     return {...p,targetId:target?.id,pos:point(p.pos)?copyPoint(p.pos):target?.pos};
+  }
+  if (name === 'survivorPod:resolved') {
+    // Lost is the sim outcome "abandoned". A missing point must not flash at the origin.
+    const variant = SURVIVOR_POD_RETIRE[p && p.outcome];
+    if (!variant || !point(p.pos)) return null;
+    return {...p, kind: p.outcome, pos: copyPoint(p.pos), targetId: null, sourceId: p.entityId, attachToTarget: false};
   }
   if (name === 'combat:warded') {
     const aimed = body(state, p && p.targetId);
