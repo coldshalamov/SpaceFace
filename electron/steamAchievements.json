@@ -65,6 +65,30 @@
     {
       "id": "six_figures",
       "apiName": "SF_SIX_FIGURES"
+    },
+    {
+      "id": "returning_caller",
+      "apiName": "SF_RETURNING_CALLER"
+    },
+    {
+      "id": "ten_permits",
+      "apiName": "SF_TEN_PERMITS"
+    },
+    {
+      "id": "the_hundred_thousand",
+      "apiName": "SF_THE_HUNDRED_THOUSAND"
+    },
+    {
+      "id": "quarry",
+      "apiName": "SF_QUARRY"
+    },
+    {
+      "id": "long_haul",
+      "apiName": "SF_LONG_HAUL"
+    },
+    {
+      "id": "salvage_crew",
+      "apiName": "SF_SALVAGE_CREW"
     }
   ]
 }

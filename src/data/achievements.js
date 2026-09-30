@@ -218,6 +218,59 @@ export const ACHIEVEMENTS = Object.freeze([
     icon: 'icon-credits',
     rule: { source: 'counter', key: 'creditsEarned', target: 100000 },
   }),
+
+  // Milestones — the same counters, read further along. Every rule below binds to a counter the
+  // ledger already keeps (see ACHIEVEMENT_COUNTERS); none of them adds a counter, a new event tap,
+  // or a hidden-only tease. A first-session player earns the target-1 row and sees the ladder ahead
+  // of them, which is what turns a checklist into a horizon.
+  achievement({
+    id: 'returning_caller',
+    category: 'adventure',
+    name: 'Returning Caller',
+    description: 'Dock at ten stations.',
+    icon: 'icon-station',
+    rule: { source: 'counter', key: 'docks', target: 10 },
+  }),
+  achievement({
+    id: 'ten_permits',
+    category: 'career',
+    name: 'Ten Permits',
+    description: 'Complete ten contracts.',
+    icon: 'icon-missions',
+    rule: { source: 'counter', key: 'contracts', target: 10 },
+  }),
+  achievement({
+    id: 'the_hundred_thousand',
+    category: 'career',
+    name: 'The Hundred Thousand',
+    description: 'Earn a million credits over your career.',
+    icon: 'icon-credits',
+    rule: { source: 'counter', key: 'creditsEarned', target: 1000000 },
+  }),
+  achievement({
+    id: 'quarry',
+    category: 'adventure',
+    name: 'Quarry',
+    description: 'Bring aboard a thousand units of ore and salvage.',
+    icon: 'icon-miner',
+    rule: { source: 'counter', key: 'oreUnits', target: 1000 },
+  }),
+  achievement({
+    id: 'long_haul',
+    category: 'adventure',
+    name: 'Long Haul',
+    description: 'Complete twenty-five jumps.',
+    icon: 'icon-route',
+    rule: { source: 'counter', key: 'jumps', target: 25 },
+  }),
+  achievement({
+    id: 'salvage_crew',
+    category: 'massline',
+    name: 'Salvage Crew',
+    description: 'Throw fifty bodies with the Massline.',
+    icon: 'icon-tow',
+    rule: { source: 'counter', key: 'throws', target: 50 },
+  }),
 ]);
 
 const BY_ID = new Map(ACHIEVEMENTS.map((def) => [def.id, def]));
