@@ -8,6 +8,7 @@ on:
       - 'src/ui/loadingPresenter.js'
       - 'test/boot-media*.test.mjs'
       - 'tools/cinematic/boot-media-proof*'
+      - 'tools/cinematic/check-boot-media-assets.mjs'
       - 'docs/BOOT_VISUALIZER.md'
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - 'src/ui/loadingPresenter.js'
       - 'test/boot-media*.test.mjs'
       - 'tools/cinematic/boot-media-proof*'
+      - 'tools/cinematic/check-boot-media-assets.mjs'
       - 'assets/cinematics/boot-visualizer*'
   workflow_dispatch:
 permissions:
@@ -40,6 +42,7 @@ jobs:
             /src/core/eventBus.js
             /tools/cinematic/boot-media-proof*
             /tools/cinematic/bake-boot-visualizer.mjs
+            /tools/cinematic/check-boot-media-assets.mjs
             /tools/cinematic/signal-remix*
             /test/boot-media*.test.mjs
             /test/intro-signal-remix*.test.mjs
@@ -48,6 +51,7 @@ jobs:
             /styles/intro.css
             /styles/boot-instrument.css
             /styles/boot-visualizer.css
+            /docs/BOOT_VISUALIZER.md
             /index.html
             /package.json
       - uses: actions/setup-node@v4
@@ -95,6 +99,8 @@ jobs:
             /src/core/boot*.js
             /src/core/eventBus.js
             /tools/cinematic/boot-media-proof*
+            /tools/cinematic/bake-boot-visualizer.mjs
+            /tools/cinematic/check-boot-media-assets.mjs
             /tools/cinematic/signal-remix*
             /assets/cinematics/boot-visualizer*
             /assets/cinematics/intro-visualizer.*
@@ -107,6 +113,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify complete, current and streamable media
+        run: node tools/cinematic/check-boot-media-assets.mjs
       - name: Install browser client without touching game dependencies
         timeout-minutes: 3
         run: |
