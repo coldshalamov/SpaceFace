@@ -1,0 +1,65 @@
+name: Intro visualizer review
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/intro-visualizer-proof.yml'
+      - 'src/ui/introSignalRemix.js'
+      - 'src/ui/introSignalRemixBoot.js'
+      - 'src/ui/loadingSignalTableaux.js'
+      - 'tools/cinematic/signal-remix*'
+      - 'test/intro-signal-remix.test.mjs'
+      - 'assets/cinematics/intro-visualizer.*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: intro-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/ui/introSignalRemix*
+            /src/ui/loadingSignalTableaux.js
+            /src/ui/loadingTerminalArt.js
+            /tools/cinematic/signal-remix*
+            /test/intro-signal-remix.test.mjs
+            /assets/cinematics/intro-visualizer.mp4
+            /assets/cinematics/intro-visualizer.jpg
+            /styles/intro.css
+            /index.html
+            /package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve review sources
+        run: |
+          mkdir -p .intro-review/assets/cinematics
+          cp assets/cinematics/intro-visualizer.mp4 assets/cinematics/intro-visualizer.jpg .intro-review/assets/cinematics/
+          git rev-parse HEAD > .intro-review/SOURCE_COMMIT.txt
+      - name: Focused unit tests
+        run: |
+          if test -f test/intro-signal-remix.test.mjs; then
+            node --test test/intro-signal-remix.test.mjs
+          fi
+      - name: Browser review
+        run: |
+          if test -f tools/cinematic/signal-remix-proof.mjs; then
+            npm install --prefix "$RUNNER_TEMP/intro-tools" --no-save --ignore-scripts playwright@1.56.1
+            "$RUNNER_TEMP/intro-tools/node_modules/.bin/playwright" install --with-deps chromium
+            python3 -m http.server 8123 --bind 127.0.0.1 > /tmp/intro-server.log 2>&1 &
+            INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intro-visualizer-review
+          path: .intro-review/
+          retention-days: 7
+          if-no-files-found: error
