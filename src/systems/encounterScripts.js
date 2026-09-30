@@ -1986,39 +1986,50 @@ function restoreFreightCargoCustody(d, state, envelope) {
   const savedRecord = envelope.record;
   const shape = ENCOUNTERS[savedLive.shapeId];
   if (!shape || (savedLive.script !== 'convoy' && savedLive.script !== 'traderRun')) return null;
-  const entities = Array.from(state.entities.values()).filter((entity) => entity && entity.alive !== false);
-  const carrierMatches = entities.filter((entity) => {
-    const data = entity.data || {};
-    const manifest = data.cargoManifest;
-    return entity.type === 'ship' && entity.team === 2
-      && data.freightCustodyCarrierIdentityKey === savedRecord.carrierIdentityKey
-      && manifest && manifest.manifestId === savedRecord.manifestId
-      && manifest.freighterKey === savedRecord.freighterKey;
-  });
+  // One entity pass builds all three match sets + the pod candidate index — the restore used
+  // to pay an alive-filter allocation plus one full walk per match kind and one per live pod.
+  let carrier = null, carrierCount = 0;
+  let raider = null, raiderCount = 0;
+  const podCandidates = new Map();
+  for (const entity of state.entities.values()) {
+    if (!entity || entity.alive === false) continue;
+    if (entity.type === 'ship') {
+      const data = entity.data || {};
+      const manifest = data.cargoManifest;
+      if (entity.team === 2
+        && data.freightCustodyCarrierIdentityKey === savedRecord.carrierIdentityKey
+        && manifest && manifest.manifestId === savedRecord.manifestId
+        && manifest.freighterKey === savedRecord.freighterKey) {
+        if (!carrier) carrier = entity;
+        carrierCount++;
+      }
+      if (data.freightCustodyRaiderIdentityKey === savedRecord.raiderIdentityKey) {
+        if (!raider) raider = entity;
+        raiderCount++;
+      }
+    } else if (entity.type === 'pickup') {
+      const annotation = entity.data && entity.data.freightCustodyPod;
+      if (annotation && annotation.custodyId === savedRecord.custodyId) {
+        const key = `${annotation.podIdentity}|${Math.floor(Number(annotation.qty) || 0)}|${Math.floor(Number(entity.data.amount) || 0)}`;
+        const list = podCandidates.get(key);
+        if (list) list.push(entity);
+        else podCandidates.set(key, [entity]);
+      }
+    }
+  }
   const carrierRequired = savedRecord.carrierQty > 0 && !savedRecord.carrierDead
     && !savedRecord.carrierRecovered && !savedRecord.carrierArrived && !savedRecord.carrierAbandoned;
-  if (carrierMatches.length > 1 || (carrierRequired && carrierMatches.length !== 1)) return null;
-  const carrier = carrierMatches[0] || null;
+  if (carrierCount > 1 || (carrierRequired && carrierCount !== 1)) return null;
+  if (carrierCount !== 1) carrier = null;
 
-  const raiderMatches = entities.filter((entity) => (
-    entity.type === 'ship'
-    && entity.data && entity.data.freightCustodyRaiderIdentityKey === savedRecord.raiderIdentityKey
-  ));
   const raiderRequired = savedRecord.raiderSecuredQty > 0 && !savedRecord.raiderEscaped;
-  if (raiderMatches.length > 1 || (raiderRequired && raiderMatches.length !== 1)) return null;
-  const raider = raiderMatches[0] || null;
+  if (raiderCount > 1 || (raiderRequired && raiderCount !== 1)) return null;
+  if (raiderCount !== 1) raider = null;
 
   const podEntities = new Map();
   for (const pod of savedRecord.pods) {
     if (pod.status !== 'live') continue;
-    const matches = entities.filter((entity) => {
-      const annotation = entity.data && entity.data.freightCustodyPod;
-      return entity.type === 'pickup' && annotation
-        && annotation.podIdentity === pod.podIdentity
-        && annotation.custodyId === savedRecord.custodyId
-        && Math.floor(Number(annotation.qty) || 0) === pod.qty
-        && Math.floor(Number(entity.data.amount) || 0) === pod.qty;
-    });
+    const matches = podCandidates.get(`${pod.podIdentity}|${pod.qty}|${pod.qty}`) || [];
     if (matches.length !== 1) return null;
     podEntities.set(pod.podIdentity, matches[0]);
   }

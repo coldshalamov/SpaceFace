@@ -36,6 +36,21 @@ function witnessCandidatesFor(state) {
   }
   return cache.list;
 }
+// The root×observer target walk is spawn-stable eligibility — `alive`/`point(pos)` are
+// rechecked per target below, and Map order is load-bearing (the tracked<8 cap picks by
+// iteration order), so the array is version-latched rather than hash-queried.
+const _witnessTargets = { version: null, source: null, list: [] };
+function witnessTargetsFor(state) {
+  const version = entityIndexVersion(state);
+  const cache = _witnessTargets;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    for (const t of state.entities.values()) if (t && t.alive && point(t.pos)) cache.list.push(t);
+  }
+  return cache.list;
+}
 export function observerProfile(state, entity) {
   if (!entity || entity.alive !== true || entity.id === state.playerId || !point(entity.pos)) return null;
   const d = entity.data || {};
@@ -80,8 +95,7 @@ export function observeStuntWitnesses(state) {
   observers.length=Math.min(observers.length,LIMITS.witnesses);
   // Per-tick target candidates for the root×observer nest — alive/point are rechecked
   // per target below; this just avoids re-walking the whole entity map per (root,observer).
-  const witnessTargets=[];
-  for(const t of state.entities.values()) if(t&&t.alive&&point(t.pos))witnessTargets.push(t);
+  const witnessTargets=witnessTargetsFor(state);
   for(const root of j.roots.values()) {
     if(root.actorId!==state.playerId||tick<root.tick||tick>root.tick+480||root.truncated)continue;
     let episode=own.episodes[root.id];
