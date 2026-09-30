@@ -182,6 +182,9 @@ export function spawnPayloadEntity(state, spec = {}, helpers = null) {
     mass,
     pos: { x: spec.pos ? spec.pos.x : 0, z: spec.pos ? spec.pos.z : 0 },
     vel: { x: spec.vel ? spec.vel.x : 0, z: spec.vel ? spec.vel.z : 0 },
+    // Authored physicsBody (e.g. contents-derived mass for jettisoned cargo) is adopted
+    // verbatim by ensurePhysicsBodySpec; unspecified payload classes keep volumetric mass.
+    physicsBody: spec.physicsBody && typeof spec.physicsBody === 'object' ? { ...spec.physicsBody } : undefined,
     hull: Number.isFinite(spec.hull) ? spec.hull : 100,
     hullMax: Number.isFinite(spec.hullMax) ? spec.hullMax : 100,
     data: {

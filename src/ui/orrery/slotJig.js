@@ -16,7 +16,7 @@ const STYLE_ID = 'orr-slot-jig-style';
 
 const CSS = `
 .orr-slotjig { position:relative; pointer-events:none; }
-.orr-slotjig__art { position:absolute; object-fit:contain; opacity:.95; }
+.orr-slotjig__art { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:.95; }
 .orr-slotjig__svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 .orr-slotjig .orr-slotjig__node { fill:rgb(4 6 9 / .88); stroke:rgb(236 230 216 / .6); stroke-width:1.2; }
 .orr-slotjig .orr-slotjig__node.is-open { stroke-dasharray:2.4 1.8; }
@@ -63,12 +63,13 @@ export function createSlotJig({ host } = {}) {
   let manifest = null;
   let spec = null;
   let frame = 0;
+  let disposed = false;
   loadHullPosterManifest().then((m) => { manifest = m; schedule(); });
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => schedule()) : null;
   if (ro) ro.observe(host);
 
   function schedule() {
-    if (frame) return;
+    if (disposed || frame) return;
     const raf = globalThis.requestAnimationFrame;
     if (typeof raf !== 'function') { draw(); return; }
     frame = raf(() => { frame = 0; draw(); });
@@ -176,6 +177,7 @@ export function createSlotJig({ host } = {}) {
      */
     show(next) { spec = next || null; schedule(); },
     dispose() {
+      disposed = true;
       if (ro) ro.disconnect();
       if (frame && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(frame);
       for (const n of [art, layer]) if (n.parentNode) n.parentNode.removeChild(n);

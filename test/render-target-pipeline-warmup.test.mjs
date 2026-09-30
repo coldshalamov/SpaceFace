@@ -587,6 +587,44 @@ test('post-route compilation targets the graph scene target or the bloom HDR adm
     'only the diagnosed unavailable-post fallback compiles for the native screen target');
 });
 
+test('a post route resolved before disposal degrades to native instead of dereferencing it', async () => {
+  // Save/Continue admission resolves the route, then the chain can be disposed before the
+  // async compile runs — a stale BLOOM route must not dereference the dead wrapper (D102).
+  const staleBloom = createPostRouteHarness();
+  const route = staleBloom.owner._selectPostRoute();
+  assert.equal(route, POST_PROCESS_ROUTE.BLOOM);
+  staleBloom.owner.bloom = null;
+  await staleBloom.owner._compilePostRoute(
+    route, staleBloom.subject, staleBloom.camera, staleBloom.scene,
+  );
+  assert.equal(staleBloom.compileCalls.length, 1);
+  assert.strictEqual(staleBloom.compileCalls[0].target, null,
+    'the stale bloom route compiles through the native screen target');
+  assert.equal(staleBloom.bloomCompileCalls.length, 0, 'the disposed wrapper is never touched');
+
+  staleBloom.renderCalls.length = 0;
+  staleBloom.owner._renderPostRoute(route, staleBloom.scene, staleBloom.camera, 0);
+  assert.deepEqual(staleBloom.renderCalls.map((call) => call.route), [POST_PROCESS_ROUTE.NATIVE],
+    'a stale bloom route presents through the native path');
+
+  const staleGraph = createPostRouteHarness({ renderGraph: true });
+  const graphRoute = staleGraph.owner._selectPostRoute();
+  assert.equal(graphRoute, POST_PROCESS_ROUTE.GRAPH);
+  staleGraph.owner._renderGraph = null;
+  staleGraph.owner._ensureRenderGraph = () => false;
+  await staleGraph.owner._compilePostRoute(
+    graphRoute, staleGraph.subject, staleGraph.camera, staleGraph.scene,
+  );
+  assert.equal(staleGraph.compileCalls.length, 1);
+  assert.strictEqual(staleGraph.compileCalls[0].target, null,
+    'the stale graph route compiles through the native screen target');
+
+  staleGraph.renderCalls.length = 0;
+  staleGraph.owner._renderPostRoute(graphRoute, staleGraph.scene, staleGraph.camera, 0);
+  assert.deepEqual(staleGraph.renderCalls.map((call) => call.route), [POST_PROCESS_ROUTE.NATIVE],
+    'a stale graph route presents through the native path');
+});
+
 test('AO and zero/off bloom skip their pass families without skipping presentation', () => {
   let activeTarget = null;
   const renders = [];

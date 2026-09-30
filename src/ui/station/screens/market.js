@@ -1860,6 +1860,10 @@ export function createMarketScreen(ctx) {
       if (ctx.bus && sid) ctx.bus.emit('economy:marketOpened', { stationId: sid });
       requestMarketLaunder(ctx.bus, st);
       const requestedMode = open.tradeMode === 'sell' || open.tradeMode === 'buy' ? open.tradeMode : null;
+      // An explicit handoff ("Sell what I hauled") always applies its mode — even with a lot
+      // already on screen, where the implicit resume below would otherwise keep Buy and leave
+      // the hold hidden. openTradeMode itself focuses a held lot for Sell.
+      if (requestedMode) openTradeMode(requestedMode, st);
       const resume = marketResumeSelection({
         selectedId,
         qty,

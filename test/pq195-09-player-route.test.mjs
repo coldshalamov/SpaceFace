@@ -589,12 +589,21 @@ test('(b) the same recovery dragged into the Quiet fence pays the illicit terms,
           const rx = p.pos.x - l.pos.x, rz = p.pos.z - l.pos.z; // capsule→tug rope
           const proj = (inX * rx + inZ * rz) / dpl;             // head along rope
           const perp = Math.abs(inX * rz - inZ * rx) / dpl;     // head off rope
-          if (proj > 15 && proj < dpl - 8 && perp < 26) {
-            // The ball lies on the rope — hold station and reel: the capsule's
-            // path is pulled onto the segment, the ball blocks it, and the line
-            // keeps shortening into a sustained press (>60N).
-            aimPt = { x: p.pos.x, z: p.pos.z };
-            vDes = 0;
+          // THE WRAP PRESS — park the tug hugging the ball on the ANTI-capsule
+          // face and pay the rope out past the wrap span (tug-ball ~30 + capsule
+          // contact ~28 ≈ 58) before winding in. A ~34 rope only ever grazes:
+          // the capsule's orbit pericenter is tug-to-ball minus line length.
+          // With the wrap open, winding in turns line tension into a sustained
+          // >60N face press — the receiver's contact threshold.
+          const dn = dlh || 1;
+          const anti = { x: h.pos.x + (inX / dn) * 34, z: h.pos.z + (inZ / dn) * 34 };
+          if (dpl < 62) {
+            aimPt = anti;
+            vDes = 9;
+            t.input.actions.reelDelta = 1;
+          } else if (proj > 15 && proj < dpl - 8 && perp < 26) {
+            aimPt = anti;
+            vDes = 9;
             t.input.actions.reelDelta = -1;
           } else {
             // Otherwise walk the tug around the ball toward the beyond-head ray

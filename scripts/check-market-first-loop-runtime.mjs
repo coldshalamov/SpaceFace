@@ -136,7 +136,7 @@ try {
   await domClick(page, '[data-screen="station"] .sx-mkt-row');
   await page.waitForTimeout(200);
   await domClick(page, '[data-screen="station"] .sx-trade__go[data-go]');
-  await page.waitForFunction((prev) => window.SF.state.player.credits !== prev, c0, { timeout: 6000 })
+  await page.waitForFunction((prev) => window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS })
     .catch(() => { throw new Error('a Market BUY should move the player\'s credits (trade must actually execute)'); });
   const c1 = await page.evaluate(() => window.SF.state.player.credits);
   assert.ok(c1 < c0, 'buying should spend credits: ' + c0 + ' -> ' + c1);
@@ -147,7 +147,7 @@ try {
   await page.waitForFunction(() => {
     const active = document.querySelector('[data-screen="station"] .sx-seg__btn.is-on');
     return active && active.getAttribute('data-mode') === 'sell';
-  }, null, { timeout: 5000 });
+  }, null, { timeout: DOCK_TIMEOUT_MS });
   const sellHandoff = await page.evaluate(() => {
     const state = window.SF.state;
     const rows = [...document.querySelectorAll('[data-screen="station"] .sx-mkt-row[data-cmdty]')]

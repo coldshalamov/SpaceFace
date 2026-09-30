@@ -931,10 +931,11 @@ export const survivalDraft = {
       this._notice = blocker.text || 'That item no longer fits.';
       return false;
     }
-    // A fresh demo on a slot retires the trial standing there BEFORE the new fit lands — the
-    // outgoing copy is destroyed in place rather than bumped into the hold as an unpaid spare.
-    // Checked after the blocker so a refused demo cannot cost the one you already had.
-    if (this._trials.has(offer.slotIndex)) this._retireTrial(offer.slotIndex);
+    // One trial at a time: a fresh demo retires EVERY standing trial BEFORE the new fit lands —
+    // the outgoing copies are destroyed in place rather than bumped into the hold as unpaid
+    // spares, and a second demo cannot quietly refit the whole ship for free. Checked after the
+    // blocker so a refused demo cannot cost the one you already had.
+    for (const slotIndex of [...this._trials.keys()]) this._retireTrial(slotIndex);
     if (!ships.fitModule({ slotIndex: offer.slotIndex, defId: offer.defId })) {
       this._notice = `${offer.name} could not be fitted for the trial.`;
       return false;

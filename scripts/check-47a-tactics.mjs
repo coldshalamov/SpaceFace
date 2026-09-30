@@ -58,7 +58,25 @@ const tactics = [
     livePredicate: true,
     predicateId: 'predicate.47a.surrender_evidence.live_state',
     commands: [
+      // Extra reels shorten the Massline until the spindle rides tight against the hull: under the
+      // post-Package-E rigid-body model a 960-mass payload on a long line turns the pair into a
+      // tumbling binary, so the tow must be gathered in before the ship can ferry it (2026-09-29).
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
+      frameCommand(820, combatAction('action_reel', { attachment: 'latestOwned' })),
+      frameCommand(920, combatAction('action_reel', { attachment: 'latestOwned' })),
+      frameCommand(1020, combatAction('action_reel', { attachment: 'latestOwned' })),
+    ],
+    // resolution_branch only unlocks at ~t36000 (beat 600s), and live predicates evaluate in the
+    // ~120-tick window after it; the official tug relocates to (815,95) when recovery_tug opens
+    // ~t16250. The deterministic ferry below times the spindle's passage through the authored
+    // 180 WU window for t36000: turn onto the measured bearing (~-0.55 rad), then a 5.5% throttle
+    // tow. Full throttle snaps the Massline (tetherBroken) and outruns the 960-mass payload;
+    // the fractional moveZ holds ~6 WU/s so the tether stays intact and the tug's own winch
+    // finishes the pull — the spindle sits ~19-38 WU out through the window (2026-09-29).
+    inputFrames: [
+      inputFrame(31980, { turnIntent: -1 }),
+      inputFrame(31994, { turnIntent: 0 }),
+      inputFrame(32010, { moveZ: 0.055 }),
     ],
     assert(trace) {
       assert(trace.metrics.tetherReel >= 4, 'control specialist should prove controlled Massline tow');
@@ -75,8 +93,21 @@ const tactics = [
     livePredicate: true,
     predicateId: 'predicate.47a.deliver_to_contact.live_state',
     commands: [
+      // Same tight-tow rationale as the surrender ferry above; the sling impulse still lands inside
+      // the gathered bundle so the authored sling requirement stays honest (2026-09-29).
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
+      frameCommand(820, combatAction('action_reel', { attachment: 'latestOwned' })),
       frameCommand(900, combatAction('action_sling', { attachment: 'latestOwned' })),
+      frameCommand(1020, combatAction('action_reel', { attachment: 'latestOwned' })),
+    ],
+    // Ferry to the handoff beacon (160 WU window at (780,320), which opens only when
+    // resolution_branch enters ~t36000): turn ~+0.36 rad, then the same fractional-throttle
+    // tow as the surrender leg so the tether survives and the spindle crosses the window at
+    // ~t36000 sitting ~35-41 WU out (2026-09-29).
+    inputFrames: [
+      inputFrame(33080, { turnIntent: 1 }),
+      inputFrame(33089, { turnIntent: 0 }),
+      inputFrame(33100, { moveZ: 0.055 }),
     ],
     assert(trace) {
       assert(trace.metrics.tetherReel >= 4, 'covert courier should keep positive Massline control before diversion');
@@ -164,6 +195,10 @@ function writeTacticTape(tactic) {
     });
   }
 
+  for (const item of tactic.inputFrames || []) {
+    const frame = frameAt(byTick, item.tick);
+    frame.input = { ...(frame.input || {}), ...item.input };
+  }
   for (const item of tactic.commands) {
     const frame = frameAt(byTick, item.tick);
     const commands = Array.isArray(frame.commands) ? frame.commands.slice() : [];
@@ -207,6 +242,10 @@ function frameAt(byTick, tick) {
 
 function frameCommand(tick, command) {
   return { tick, command };
+}
+
+function inputFrame(tick, input) {
+  return { tick, input };
 }
 
 function combatAction(actionId, options = {}) {
