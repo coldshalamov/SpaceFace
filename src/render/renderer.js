@@ -1073,6 +1073,18 @@ function itineraryTimeToGlassSeconds(entity, env, simTime, radius, horizonS) {
   return Infinity;
 }
 
+/** Drawn-envelope radius for admission timing — the same measure the cull band grades on
+ * (a pending boundary's stamped estimate already classifies at √2·placeTargetRadius), so
+ * admission predicates must not grade late against the circle the renderer draws. */
+function admissionVisualRadiusWu(entity) {
+  let visual = entityVisualCullRadius(entity, entity && entity.mesh);
+  const declaredRadius = Number(entity && entity.data && entity.data.placeTargetRadius);
+  if (Number.isFinite(declaredRadius) && declaredRadius > 0) {
+    visual = Math.max(visual, declaredRadius * Math.SQRT2);
+  }
+  return visual;
+}
+
 function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_HORIZON_SECONDS, padWu = 0) {
   const pos = entity && entity.pos;
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return Infinity;
@@ -1081,7 +1093,7 @@ function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_H
   const ez = ledgerPos.z;
   // Presence radius, not the collision proxy: a big authored body's surface reaches
   // the glass long before its centre+radius math says it does.
-  const visual = entityPresenceRadius(entity);
+  const visual = admissionVisualRadiusWu(entity);
   const radius = env.glassR + visual + (Number(padWu) || 0);
   if (isPresentationLedgerRow(entity) && entity.intent && Number.isFinite(entity.lastExactT)) {
     const simTime = Number.isFinite(state && state.simTime)
@@ -1123,7 +1135,7 @@ function isInboundDecodeHull(entity, state, radius = null) {
   // Promote and catch-up are player-centered. tableLookAtDelta follows the
   // leftover chase focus, so a relocate leaves the hull "beyond the table"
   // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
-  const visual = entityPresenceRadius(entity);
+  const visual = admissionVisualRadiusWu(entity);
   if ((playerPlanarDistance(entity, state) - visual) <= inboundDecodeRadius(state, radius)) {
     return true;
   }
@@ -1811,11 +1823,13 @@ function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state) {
     void yieldAfterPresent().then(() => {
       if (!subject || !subject.parent) return;
       if (!subject.userData || typeof subject.userData.requestAuthoredUpgrade !== 'function') return;
-      requestAuthoredUpgrade(subject, owner.renderer, owner.scene);
+      requestAuthoredUpgrade(subject, owner.renderer, owner.scene,
+        entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
     });
     return;
   }
-  requestAuthoredUpgrade(mesh, owner.renderer, owner.scene);
+  requestAuthoredUpgrade(mesh, owner.renderer, owner.scene,
+    entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
 }
 
 function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
@@ -2502,10 +2516,18 @@ function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole) {
   const boundaryData = boundary && boundary.userData;
   if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
       && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
+    // Same 'visible' class the spawn decode kick posts: a boundary job at the glass must not
+    // decode at deadline FIFO behind wave-hull warms — its stand-in is the hole in the frame.
+    const onGlass = entityIsOnReadableGlass(entity, state);
+    const tGlass = onGlass ? 0 : entityTimeToGlassSeconds(
+      entity, renderAdmissionEnv(state), state,
+      TABLE_DECODE_RUNWAY_SECONDS,
+      approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state)));
     try {
       requestAuthoredUpgrade(boundary, renderer, owner.scene, {
         residencyRole,
         sectorId: (state && state.world && state.world.currentSectorId) || null,
+        admissionVisible: onGlass || tGlass <= TABLE_BUILD_URGENT_SECONDS,
       });
     } catch (_) { /* a refused request leaves the relevance trigger armed */ }
   }
