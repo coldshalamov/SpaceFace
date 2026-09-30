@@ -107,7 +107,7 @@ const SURFACE_FRAGMENT = /* glsl */`
     float alpha = vSpriteOpacity * tips * edge * release*(.08+.66*ridge+.26*lip);
     if (alpha < 0.004) discard;
     vec3 heat = mix(vSpriteColor*0.32, vSpriteColor, body);
-    heat += mix(vSpriteColor,vec3(max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b))),0.55)*0.85*ridge*transport;
+    heat += mix(vSpriteColor,vec3(max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b))),0.55)*1.06*ridge*transport;
     gl_FragColor = vec4(heat*uRadiance*(body+0.32*grazing)*(0.65+0.35*transport), alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -215,11 +215,11 @@ const VOLUME_FRAGMENT = /* glsl */`
       // Cold cavities absorb; ignition lives on the hot, exposed interface and then cools.
       // This prevents stacked lobes from turning into a featureless additive light ball.
       float interfaceHeat=hot*(0.22+0.78*light);
-      vec3 fire=soot*.42+vSpriteColor*2.8*pow(interfaceHeat,1.35);
+      vec3 fire=soot*.42+vSpriteColor*3.5*pow(interfaceHeat,1.35);
       // Preserve the event's hue; only the hottest, unoccluded shoulders desaturate.
       float peak=pow(hot,3.0)*(0.25+0.75*light);
       float familyPeak=max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b));
-      fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*3.8,peak*.72);
+      fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*4.75,peak*.72);
       fire*=0.18+0.82*paintedLight;
       sum+=transmittance*absorb*mix(soot,fire,uCombustion);
       transmittance*=1.0-absorb;

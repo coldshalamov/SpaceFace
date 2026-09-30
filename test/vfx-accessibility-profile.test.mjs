@@ -132,10 +132,37 @@ test('luminous velocity ribbons honor flash, motion, quality, and engine-trail s
     assert.equal(trail.inspect().visiblePointCount, 0, `${event} must clear ribbon history`);
     rebuildWake();
   }
+  // INF-047: a floating-origin shift re-expresses the committed wake in the new frame — the laid
+  // samples are still true, so they are preserved and translated, not cleared.
+  const preRebase = trail.inspect();
+  const prePos = Float32Array.from(trail.getMesh().geometry.getAttribute('position').array);
+  const preTailVertex = Math.max(0, (preRebase.renderedCount - 1) * 6);
   system.reprojectFrame(-4096, 2048);
-  assert.equal(trail.getMesh().visible, false, 'floating-origin shift must clear stale ribbon geometry');
-  assert.equal(trail.inspect().visiblePointCount, 0, 'floating-origin shift must clear ribbon history');
-  rebuildWake();
+  const postRebase = trail.inspect();
+  assert.equal(trail.getMesh().visible, true,
+    'floating-origin shift must preserve the reprojected wake');
+  assert.equal(postRebase.visiblePointCount, preRebase.visiblePointCount,
+    'floating-origin shift must retain ribbon history');
+  assert.equal(postRebase.liveX, preRebase.liveX - 4096,
+    'the live nozzle sample must translate by the frame delta');
+  assert.equal(postRebase.liveZ, preRebase.liveZ + 2048);
+  // Feed the nozzle its shifted pose so the fixture stays in one frame, then both ends of the
+  // rebuilt ribbon must sit on the translated samples.
+  npc.pos.x -= 4096;
+  npc.pos.z += 2048;
+  system._updateRibbonTrails(1 / 60);
+  const postPos = trail.getMesh().geometry.getAttribute('position').array;
+  const postTailVertex = Math.max(0, (trail.inspect().renderedCount - 1) * 6);
+  assert.ok(Math.abs(postPos[0] - (prePos[0] - 4096)) < 0.01
+    && Math.abs(postPos[2] - (prePos[2] + 2048)) < 0.01,
+    'the live head vertex must translate by the frame delta');
+  assert.ok(Math.abs(postPos[postTailVertex] - (prePos[preTailVertex] - 4096)) < 0.01
+    && Math.abs(postPos[postTailVertex + 2] - (prePos[preTailVertex + 2] + 2048)) < 0.01,
+    'the oldest retained vertex must translate by the frame delta');
+  // Restore the original frame so the un-shifted nozzle stays consistent below.
+  system.reprojectFrame(4096, -2048);
+  npc.pos.x += 4096;
+  npc.pos.z -= 2048;
 
   npc.vel.x = 5000;
   npc.pos.x += RIBBON_DISCONTINUITY_MAX_WU * 4;
@@ -379,7 +406,8 @@ test('default player-owned Massline suppresses every snap transient while retain
       coreIntensity: cable.mesh.material.uniforms.uIntensity.value,
       glowIntensity: cable.glow.material.uniforms.uIntensity.value,
       glowOpacity: cable.glow.material.uniforms.uOpacity.value,
-      bandOpacity: cable.band.material.opacity,
+      bandOpacity: cable.band.material.uniforms.uOpacity.value,
+      bandIntensity: cable.band.material.uniforms.uIntensity.value,
       coreWidth: Math.hypot(core[0] - core[3], core[2] - core[5]) * 0.5,
       glowWidth: Math.hypot(glow[0] - glow[3], glow[2] - glow[5]) * 0.5,
       anchorCoreOpacity: cable.anchorCore.material.opacity,
@@ -394,6 +422,7 @@ test('default player-owned Massline suppresses every snap transient while retain
   assert.ok(fullSnap.glowIntensity > fullSteady.glowIntensity);
   assert.ok(fullSnap.glowOpacity > fullSteady.glowOpacity);
   assert.ok(fullSnap.bandOpacity > fullSteady.bandOpacity);
+  assert.ok(fullSnap.bandIntensity > fullSteady.bandIntensity);
   assert.ok(fullSnap.coreWidth > fullSteady.coreWidth);
   assert.ok(fullSnap.glowWidth > fullSteady.glowWidth);
   assert.ok(fullSnap.anchorCoreOpacity > fullSteady.anchorCoreOpacity);
