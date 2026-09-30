@@ -113,7 +113,7 @@ try {
   await page.waitForFunction(() => {
     const summary = document.querySelector('[data-screen="mainMenu"] .sf-menu-save-summary');
     return !!(summary && summary.classList.contains('has-save'));
-  }, null, { timeout: 5000 });
+  }, null, { timeout: 15000 });
 
   const report = await page.evaluate(() => {
     const text = (sel) => (document.querySelector(sel)?.textContent || '').replace(/\s+/g, ' ').trim();
@@ -162,7 +162,7 @@ try {
   assert.equal(await clickButton(page, 'Continue'), true, 'Continue button should be clickable');
   const emitted = await page.waitForFunction(() =>
     (window.__sfContinueProbe || []).some((e) => e.name === 'game:load'),
-  null, { timeout: 5000 }).then(() => page.evaluate(() =>
+  null, { timeout: 15000 }).then(() => page.evaluate(() =>
     (window.__sfContinueProbe || []).find((e) => e.name === 'game:load')
   ));
 

@@ -151,9 +151,13 @@ export function installGlInstrumentation(gl, counters) {
     return original.apply(this, arguments);
   });
   wrap('bufferSubData', (original) => function bufferSubData(target, offset, data, srcOffset, length) {
+    // The source view passes through so the diagnostic census can attribute ambient
+    // partial-upload traffic to its owning attribute — without it the counter can only
+    // total bytes, which cannot name the writer that misses the ranged path.
     counters.countBufferUpload(
       false,
       bufferSubDataPayloadBytes(data, srcOffset, length, arguments.length),
+      data,
     );
     return original.apply(this, arguments);
   });

@@ -1195,7 +1195,7 @@ export const baseScreen = {
       title.textContent = 'No body selected';
       const sub = document.createElement('div');
       sub.className = 'base-sub';
-      sub.textContent = 'Press ' + BINDINGS.claimBase.label + ' near a claimed body to manage it — or claim a body to build here.';
+      sub.textContent = 'Press ' + BINDINGS.claimBase.label + ' near a claimed body to manage it — or claim a body to build here — the surveyor marks candidates.';
       wrap.append(title, sub);
       // The registry dreaming: the first three unclaimed survey ticks ride the glass; the
       // chart key arms the chosen one.

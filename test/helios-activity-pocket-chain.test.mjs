@@ -148,7 +148,7 @@ test('the Helios chain is the CV-DAY chain: seam, load, want, route', () => {
   // A patrol has a route.
   const patrol = activityActorSlotById('helios_customs_patrol');
   assert.equal(patrol.jobKind, 'patrol');
-  assert.equal(patrol.lawful, true, 'the Concord keeps the Sanctioned Claim clear');
+  assert.equal(patrol.lawful, true, 'the Concord walks the arrival lane');
   assert.ok(patrol.route.marks.length === 2 && patrol.route.durationS > 0);
 
   // Distinct verbs, distinct subjects: the four slots are not four copies of one beat.
@@ -217,15 +217,42 @@ test('seed 4242: the shift is already under way when you arrive in Helios', () =
   assert.equal(new Set(ids).size, 4, 'four distinct durable identities');
 });
 
-test('the chain is one neighbourhood, not four places', () => {
-  // Both pockets hang off the Sanctioned Claim, so the whole chain sits inside roughly one
-  // screen-depth of work. A second pocket system spread across the sector is the thin answer.
+test('the chain is strung along the opening: the movement is in your first two screen-depths, the work at the seam', () => {
+  // P10 (build_map §1C row 59): the opening neighbourhood shows the working chain within two
+  // screen-depths (230 WU, the same unit encounter 344 authors for A1's raid reach). The movement
+  // half (hauler, staging pod, patrol) hangs off the freight-spine tally near the opening
+  // position; the work half (miner, fence) stays on the Sanctioned Claim where the ore is. One
+  // corridor strings them: spawn → tally leg → claim mark → seam.
+  const SCREEN_DEPTHS = 2;
+  const SCREEN_DEPTH_WU = 115; // encounter 344: fireWithinWu 230 = "~2 screen-depths (115 WU each)"
+  const reach = SCREEN_DEPTHS * SCREEN_DEPTH_WU;
   const seam = activityPocketById('helios_starter_seam');
   const leg = activityPocketById('helios_freight_leg');
-  const d = Math.hypot(
-    seam.activityAnchor.localPos.x - leg.activityAnchor.localPos.x,
-    seam.activityAnchor.localPos.z - leg.activityAnchor.localPos.z,
-  );
-  assert.ok(d <= 125, `the two pockets overlap into one neighbourhood (${d.toFixed(1)} WU apart)`);
-  assert.equal(seam.activityAnchor.zoneId, leg.activityAnchor.zoneId, 'both hang off the Sanctioned Claim');
+
+  // The movement half hangs off the freight spine, not a claim-margin borrow.
+  assert.equal(leg.activityAnchor.zoneId, 'zone_helios_freight', 'the leg belongs to the freight spine');
+  assert.equal(leg.activityAnchor.placeId, 'poi_helios_tally', 'the leg hangs off the tally post');
+
+  // Every leg body — actor spawns and object slots — sits inside two screen-depths of the
+  // opening position (sector-local origin).
+  const legBodies = [
+    ...leg.actorSlots.map((slot) => ({ id: slot.id, offset: slot.spawnOffset })),
+    ...leg.objectSlots.map((object) => ({ id: object.id, offset: object.offset })),
+  ];
+  for (const body of legBodies) {
+    const x = leg.activityAnchor.localPos.x + body.offset.x;
+    const z = leg.activityAnchor.localPos.z + body.offset.z;
+    const d = Math.hypot(x, z);
+    assert.ok(d <= reach, `${body.id} opens at ${d.toFixed(1)} WU, inside two screen-depths`);
+  }
+
+  // The work half stays on the claim, where the ore is.
+  assert.equal(seam.activityAnchor.zoneId, 'zone_helios_claim', 'the seam hangs off the Sanctioned Claim');
+  assert.equal(seam.activityAnchor.placeId, null, 'the seam anchor is the claim zone itself');
+
+  // One corridor, ordered: the leg is nearer the opening than the seam, and both sit on the
+  // spawn side of the sector — the chain is on the way, not across the map.
+  const seamDist = Math.hypot(seam.activityAnchor.localPos.x, seam.activityAnchor.localPos.z);
+  const legDist = Math.hypot(leg.activityAnchor.localPos.x, leg.activityAnchor.localPos.z);
+  assert.ok(legDist < seamDist, `leg (${legDist.toFixed(1)} WU) nearer the opening than seam (${seamDist.toFixed(1)} WU)`);
 });

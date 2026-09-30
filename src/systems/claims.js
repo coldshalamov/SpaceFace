@@ -61,6 +61,9 @@ import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
+// Player-facing reason the refinery stopped adding goods. The operating word stays
+// 'active' so upkeep, raids, and the refine tick keep running; the readout uses this.
+const OUTPUT_STORE_FULL_LINE = 'Output store full — collect refined goods';
 const REFINE_MAP = { // raw ore -> refined commodity
   cmdty_ore_iron: 'cmdty_refined_metals',
   cmdty_ore_copper: 'cmdty_comp_circuitry',
@@ -635,6 +638,11 @@ export const claims = {
       lastEvent: spec.receipts.length ? spec.receipts[spec.receipts.length - 1] : null,
       receipts: spec.receipts.slice(),
     };
+    // A full store is a readout, not a mode change. Cold and raided sites keep their word.
+    if (def.id === 'spec_refinery' && spec.status === 'active'
+      && sumStore(spec.store.output) >= def.outputCapU) {
+      out.status = OUTPUT_STORE_FULL_LINE;
+    }
     if (def.id === 'spec_refinery') {
       out.throughput = { refineRatePerS: def.refineRatePerS, refineRatio: REFINE_RATIO };
     } else if (def.id === 'spec_relay') {
@@ -965,7 +973,7 @@ export const claims = {
       if (sumStore(spec.store.output) >= def.outputCapU) {
         if (!spec.outputFull) {
           spec.outputFull = true;
-          this._receipt(body, 'output_full', 'Output store full — collect refined goods');
+          this._receipt(body, 'output_full', OUTPUT_STORE_FULL_LINE);
         }
         break;
       }
@@ -975,6 +983,12 @@ export const claims = {
       spec.store.output[out] = (spec.store.output[out] || 0) + 1;
       spec.totals.refinedTotalU += 1;
       spec.acc -= REFINE_RATIO;
+      // The batch that lands on the cap is the stop. A later attempt only
+      // repeats the note when a pickup cleared the flag and the store is still full.
+      if (sumStore(spec.store.output) >= def.outputCapU && !spec.outputFull) {
+        spec.outputFull = true;
+        this._receipt(body, 'output_full', OUTPUT_STORE_FULL_LINE);
+      }
     }
     // don't bank unbounded progress while starved or full
     if (spec.acc > REFINE_RATIO * 4) spec.acc = REFINE_RATIO * 4;

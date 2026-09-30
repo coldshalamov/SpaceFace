@@ -230,6 +230,9 @@ function checkCoreSnapshotsOnlyMovableEntities() {
   const ship = entity(1, 'ship', 10, 0, { prevPos: vec(0, 0, () => { movableCopies++; }) });
   const projectile = entity(2, 'projectile', 20, 0, { prevPos: vec(0, 0, () => { movableCopies++; }) });
   const asteroid = entity(3, 'asteroid', 100, 0, {
+    // Package E's defaultDynamic treats every non-landmark solid as a movable body — the fixture
+    // needs the landmark bit or the "static" asteroid never was.
+    data: { isLandmarkRock: true },
     prevPos: vec(0, 0, () => { throw new Error('static asteroid interpolation snapshot should sleep'); }),
   });
   const station = entity(4, 'station', -100, 0, {
@@ -1180,7 +1183,7 @@ function checkSpatialHashCachesStaticLayer() {
   state.entityList.length = 0;
   state.nextEntityId = 4;
   const ship = entity(1, 'ship', 0, 0);
-  const asteroid = entity(2, 'asteroid', 96, 0);
+  const asteroid = entity(2, 'asteroid', 96, 0, { data: { isLandmarkRock: true } });
   const station = entity(3, 'station', -120, 0, { data: { stationId: 'station_spatial_cache' } });
   for (const e of [ship, asteroid, station]) {
     state.entities.set(e.id, e);
@@ -1220,7 +1223,9 @@ function checkSpatialHashCachesStaticLayer() {
     mass: 200,
     hull: 20,
     hullMax: 20,
-    data: { typeId: 'ast_test', oreHP: 20 },
+    // Landmark bit keeps it on the static broadphase layer this check exercises — plain
+    // asteroids are dynamic bodies under Package E's defaultDynamic.
+    data: { typeId: 'ast_test', oreHP: 20, isLandmarkRock: true },
   });
   core.preStep(1 / 60, state);
   physics._rebuildSpatialHash(state);
@@ -1262,11 +1267,11 @@ function checkCoreBuildsPhysicsBodyIndexForSg02Layers() {
   state.entityList.length = 0;
   const ship = entity(1, 'ship', 0, 0);
   const wreck = entity(2, 'wreck', 48, 0);
-  const asteroid = entity(3, 'asteroid', 96, 0);
+  const asteroid = entity(3, 'asteroid', 96, 0, { data: { isLandmarkRock: true } });
   const station = entity(4, 'station', -120, 0, { data: { stationId: 'station_sg02_index' } });
   const visualOnly = entity(5, 'fx', 0, 96, { collides: false });
   const tetherPayload = entity(6, 'payload', 32, 32, { collides: false, data: { tetherPayload: true } });
-  const beacon = entity(7, 'beacon', 64, 32, { collides: false });
+  const beacon = entity(7, 'beacon', 64, 32, { collides: false, physicsBody: { dynamic: false } });
   for (const e of [ship, wreck, asteroid, station, visualOnly, tetherPayload, beacon]) {
     state.entities.set(e.id, e);
     state.entityList.push(e);
@@ -1293,7 +1298,7 @@ function checkSg02ProductionSyncUsesActivityBodyLayers() {
   // the activity classifier; production physics sync consumes its dormancy-filtered layers by
   // reference instead of re-reading state.entityIndex directly. The durable contract proven here:
   // layered sync only, never a fallback to full entityList iteration inside physics.
-  const staticBody = { id: 1, alive: true, type: 'asteroid', pos: { x: 0, z: 0 }, radius: 20 };
+  const staticBody = { id: 1, alive: true, type: 'asteroid', pos: { x: 0, z: 0 }, radius: 20, data: { isLandmarkRock: true } };
   const dynamicBody = { id: 2, alive: true, type: 'ship', pos: { x: 30, z: 0 }, radius: 4 };
   const state = {
     tick: 0,
@@ -3357,6 +3362,13 @@ function checkHeatUsesTargetFactionContext() {
   const patrol = sim.spawn({
     type: 'ship', team: 2, factionId: 'faction_scn',
     pos: { x: 80, z: 0 }, hull: 80, hullMax: 80, radius: 8,
+    data: { shipClass: 'gunship', ai: { lawful: true } },
+  });
+  // The law prices what eyes saw: a second patrol on scene makes the kill witnessed, which is
+  // what lets a charge open at all. Without it the act is only a recorded unreported case.
+  sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: 120, z: 40 }, hull: 80, hullMax: 80, radius: 8,
     data: { shipClass: 'gunship', ai: { lawful: true } },
   });
   const receipts = [];

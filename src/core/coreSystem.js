@@ -1,6 +1,6 @@
 // Core system: owns the entity store + lifecycle, the per-step prelude (tick/time/snapshot),
 // the end-of-step lifetime sweep, and the cross-cutting helpers exposed via ctx.helpers (§4.3).
-import { allocateEntityId, makeEntity, worldLedgerHoldsId, clearEntityRuntime } from './entity.js';
+import { allocateEntityId, makeEntity, stampOccupantGeneration, worldLedgerHoldsId, clearEntityRuntime } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
@@ -110,6 +110,8 @@ export const core = {
         ? reserved
         : allocateEntityId(state);
       e.id = id;
+      // A reserved id and a freeIds recycle are both a new occupant of that number.
+      stampOccupantGeneration(state, e);
       state.entities.set(id, e);
       state.entityList.push(e);
       appendEntityIndex(index, e);

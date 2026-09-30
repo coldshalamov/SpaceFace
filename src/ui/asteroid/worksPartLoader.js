@@ -454,6 +454,10 @@ function cloneMaterialForInstance(material, primitiveName, binding) {
   // tank, and their atlas-backed materials remain shared blueprint resources across instances.
   if (/^LOD[01]_refinery$/i.test(primitiveName || '')) return material;
   const clone = material.clone();
+  // clone() drops own-property shader patches — authored surfaces would render unpatched
+  // and key a cold program variant on the preview renderer.
+  clone.onBeforeCompile = material.onBeforeCompile;
+  clone.customProgramCacheKey = material.customProgramCacheKey;
   clone.userData = { ...(clone.userData || {}), worksInstanceOwned: true };
   // The extractor's belt scrolls its atlas sampler. Keep that sampler per instance
   // just as the Rover keeps its track sampler, so no live machine changes a cached

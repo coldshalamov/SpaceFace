@@ -23,12 +23,20 @@ const SCREENSHOTS = Object.freeze({
   stationHub: '06-station-hub.png',
 });
 
+// The launch gate waits for readiness; it does not measure load speed. The packaged
+// Electron shell measured 123s new-game -> flight-ready on a quiet host (run
+// 2026-09-25T20-28-40Z) and was still compositing its loading progress at 96% when a
+// 150s budget expired (run 2026-09-25T22-12-38Z), so 150s bound the budget, not the
+// product. 240s is ~2x the best observed load and still bounds a wedged page.
+export const AUTHORED_FLIGHT_READY_BUDGET_MS = 240_000;
+
 export async function runBrowserPublicRoute({
   page,
   outputDir,
   expectedRootUrl,
   log = () => {},
-  flightTimeoutMs = 150_000,
+  // See AUTHORED_FLIGHT_READY_BUDGET_MS above for the budget rationale.
+  flightTimeoutMs = AUTHORED_FLIGHT_READY_BUDGET_MS,
   dockTimeoutMs = 90_000,
   skipStationHubAcceptance = false,
   seed = null,
@@ -334,6 +342,7 @@ export async function runBrowserPublicRoute({
     let strandIterations = 0;
     let stallBrakes = 0;
     let stallNudges = 0;
+    let manualBrakes = 0;
     let bestDistToBerth = Infinity;
     let progressAt = Date.now();
     while (Date.now() < dockDeadline) {
@@ -383,7 +392,10 @@ export async function runBrowserPublicRoute({
       // neither the fast-brake (>26 wu/s) nor the stranded re-arm (AP off, >90 WU, approach
       // phase) applies. A pilot watching the range freeze brakes to hand the hull to the
       // capture assist; if the ship then parks short with nothing driving, a straight W nudge
-      // covers the last WU. Bounded: one brake pulse + two nudges per approach.
+      // covers the last WU. A nudge that overshoots the 12 wu/s dock gate is walked back by the
+      // same public brake while the autopilot stays manual. Bounded: one autopilot brake pulse
+      // plus three manual brakes and three nudges per approach, each gated by 15 s of no
+      // progress regardless of branch.
       const distNow = Number(approachSnapshot.corridor?.distToBerth);
       if (Number.isFinite(distNow)) {
         if (distNow < bestDistToBerth - 1.5) {
@@ -396,6 +408,23 @@ export async function runBrowserPublicRoute({
           if (approachSnapshot.autopilot?.active === true && nearBerth && stallBrakes < 1) {
             stallBrakes += 1;
             mark('dock-corridor-stall-brake', approachSnapshot);
+            try {
+              await page.keyboard.down('Digit0');
+              await page.waitForTimeout(900);
+            } finally {
+              await page.keyboard.up('Digit0').catch(() => {});
+            }
+            progressAt = Date.now();
+          } else if (approachSnapshot.autopilot?.active !== true && nearBerth
+              && manualBrakes < 3 && Number(approachSnapshot.speed) > 12) {
+            // A ship above the dock speed gate with the autopilot disengaged —
+            // typically because an earlier stall-brake pulse was the public
+            // disengage — cannot be nudged (speed>12) and is not stranded
+            // (distToBerth<=90), so nothing else slows it and it coasts
+            // through the capture volume until the deadline. A pilot brakes:
+            // once under the gate the nudge/recapture path applies again.
+            manualBrakes += 1;
+            mark('dock-corridor-manual-brake', approachSnapshot);
             try {
               await page.keyboard.down('Digit0');
               await page.waitForTimeout(900);

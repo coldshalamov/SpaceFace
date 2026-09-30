@@ -295,6 +295,39 @@ function restoredRouteIssue(nav, atlas, currentSectorId) {
   return null;
 }
 
+/**
+ * A dossier focus is not a plotted itinerary. True only when that focus names the sector
+ * already at the end of nav.route, or a station the atlas places in that sector.
+ * Never writes nav.route and never reads the entity ref.
+ */
+export function considerEntityRoute(nav, payload, atlas) {
+  const route = payload && payload.route;
+  const focus = route && typeof route.focus === 'string' ? route.focus : '';
+  const colon = focus.indexOf(':');
+  if (colon <= 0) return false;
+  const kind = focus.slice(0, colon);
+  const id = focus.slice(colon + 1);
+  if (!id || !atlas || typeof atlas.getNode !== 'function') return false;
+
+  let sectorId = '';
+  if (kind === 'sector') {
+    const node = atlas.getNode(id);
+    if (!node || node.kind !== 'sector') return false;
+    sectorId = id;
+  } else if (kind === 'station') {
+    const node = atlas.getNode(id);
+    if (!node || node.kind !== 'station' || typeof node.sectorId !== 'string' || !node.sectorId) return false;
+    sectorId = node.sectorId;
+  } else {
+    return false;
+  }
+
+  const legs = nav && nav.route && Array.isArray(nav.route.legs) ? nav.route.legs : null;
+  if (!legs || !legs.length) return false;
+  const last = legs[legs.length - 1];
+  return !!(last && last.to === sectorId);
+}
+
 export const routeFollower = {
   name: 'routeFollower',
 
@@ -313,6 +346,12 @@ export const routeFollower = {
 
     // ENGAGE is a distinct explicit act, separate from plotting (product direction, ADR D6).
     bus.on('nav:engageRoute', (p) => this.engage(p || {}));
+    // The dossier verb already emits ui:entityRoute. Engage only when that focus is the
+    // destination on the plotted route. Do not plot, and do not emit ui:setCourse.
+    bus.on('ui:entityRoute', (payload) => {
+      if (!considerEntityRoute(this.state && this.state.nav, payload, this._atlas)) return;
+      bus.emit('nav:engageRoute', {});
+    });
     bus.on('nav:abortRoute', (p) => this.interrupt((p && p.reason) || 'manual', p || {}));
 
     // Observe the delegated controller rather than polling it — see the edge-trigger note above.

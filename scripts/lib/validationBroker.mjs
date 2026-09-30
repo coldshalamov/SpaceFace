@@ -272,6 +272,30 @@ export async function incrementCandidateLaunchCount(outputRoot, candidateDigest)
   return next.byCandidate[candidateDigest];
 }
 
+/**
+ * Release one reserved launch for a candidate. Used to refund the quota
+ * reservation when an issued claim's probe exited at the pre-launch
+ * environment census — that host-contention check runs before any
+ * measurement exists, so it must not burn the candidate's launch budget.
+ */
+export async function decrementCandidateLaunchCount(outputRoot, candidateDigest) {
+  if (!candidateDigest) return 0;
+  const previous = await readPersistedLaunchCounts(outputRoot);
+  const prior = Number(previous.byCandidate[candidateDigest]) || 0;
+  const nextCount = Math.max(0, prior - 1);
+  const next = {
+    schema: 'spaceface.validation-launch-counts.v1',
+    currentCandidateDigest: previous.currentCandidateDigest ?? candidateDigest,
+    byCandidate: {
+      ...(previous.byCandidate ?? {}),
+      [candidateDigest]: nextCount,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJsonAtomically(path.join(outputRoot, LAUNCH_COUNTS_NAME), next);
+  return nextCount;
+}
+
 function brokerClaimConsumedSentinelPath(claimPath) {
   return `${claimPath}.consumed`;
 }
@@ -2252,6 +2276,40 @@ function resolveBrokerClaimPath(outputRoot, tokenOrPath) {
 }
 
 /**
+ * True when a probe run failed because the host environment census refused to
+ * authorize measurement — foreign process activity or an unavailable census —
+ * rather than because of anything the candidate did. Such failures are recorded
+ * in the run ledger but never persisted as primaryAcceptance failures: they
+ * carry no product signal, and wedging the manifest behind a regression-digest
+ * change would be unanswerable.
+ */
+export function isEnvironmentBlockedProbeError(errorText) {
+  return typeof errorText === 'string'
+    && errorText.includes('PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED');
+}
+
+/**
+ * Capture-integrity probe exits — a foreign commit or edit mutating the tree
+ * mid-capture — are environmental events in the same family as census blocks:
+ * the run produced no valid evidence, and no product fix can satisfy a
+ * regression gate keyed to them.
+ */
+export function isMeasurementIntegrityProbeError(errorText) {
+  return typeof errorText === 'string'
+    && (errorText.includes('worktree-not-clean-and-stable')
+      || errorText.includes('worktree changed during performance capture')
+      // Same mutation noticed on a run that already failed — the tree moved
+      // mid-capture, so the failure evidence is not attributable either.
+      || errorText.includes('worktree changed during failed capture')
+      // A tree mutation between claim mint and the probe's authority check
+      // legitimately rejects the claim; the probe never measured anything.
+      || errorText.includes('broker-claim-stale-digest')
+      // Contamination observed at a capture boundary means every number in the
+      // run is confounded — invalid evidence, not a product verdict.
+      || errorText.includes('contaminating-process-or-authoring-activity'));
+}
+
+/**
  * Direct-execution protection helper for expensive probes.
  * Fail-closed unless a valid one-use broker claim is present (or diagnostic mode).
  */
@@ -2575,7 +2633,20 @@ async function runProbeProcess({
       result.exitCode != null ? `exitCode=${result.exitCode}` : null,
     ].filter(Boolean).join('\n').slice(0, 4000);
 
-    const primaryAcceptance = !isDiagnostic;
+    // An environment census block is a host-contention event, not a product
+    // failure: it fires before any measurement exists, so persisting it as a
+    // primary failure would wedge the manifest behind a regression-digest
+    // change no code fix can satisfy. Capture-integrity exits (a foreign tree
+    // mutation mid-capture) are the same family — the run produced no valid
+    // evidence. Leave any prior failure record intact and refund the
+    // launch-count reservation: the quota bounds measured launches, not
+    // contested-host or contested-tree events.
+    const envBlocked = isEnvironmentBlockedProbeError(errorText);
+    const integrityBlocked = isMeasurementIntegrityProbeError(errorText);
+    if ((envBlocked || integrityBlocked) && !isDiagnostic) {
+      await decrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
+    }
+    const primaryAcceptance = !isDiagnostic && !envBlocked && !integrityBlocked;
     const identity = manifest.normalizeFailure({
       runtimeKind: manifest.runtimeKind,
       phase: isDiagnostic ? 'diagnostic-probe' : 'acceptance-probe',

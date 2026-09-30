@@ -186,9 +186,10 @@ test('authored world-place boundary does not publish the temporary box', () => {
   assert.equal(boundary.userData.authoredVisualRoot, 'none-pending-admission');
 });
 
-test('world-place and station fallbacks carry the global illustrated surface', () => {
-  // Graceful fallbacks are player-visible when an authored GLB fails to load. They must stay in
-  // the same Lacquer & Starlight light language as the fleet instead of flat physical shading.
+test('station fallbacks carry the global illustrated surface while place props stay empty', () => {
+  // Graceful station fallbacks are player-visible when an authored GLB fails to load. They must
+  // stay in the same Lacquer & Starlight light language as the fleet instead of flat physical
+  // shading. A missing world-place prop publishes no fallback geometry at all (PIC-11).
   const litMaterials = (root) => {
     const list = [];
     root.traverse((object) => {
@@ -207,10 +208,8 @@ test('world-place and station fallbacks carry the global illustrated surface', (
     data: { placeId: 'place_nav_buoy' },
   }, { releaseMode: true });
   const placeSurface = litMaterials(placeBoundary.children[0]);
-  assert.ok(placeSurface.length > 0, 'place fallback has a Standard material');
-  for (const material of placeSurface) {
-    assert.equal(material.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY, material.name);
-  }
+  // PIC-11: a missing place prop keeps an empty substrate rather than publishing cube geometry.
+  assert.equal(placeSurface.length, 0, 'place prop publishes no fallback surface');
 
   const stationBoundary = buildAuthoredStationArchetype({
     id: 'station_surface_contract',

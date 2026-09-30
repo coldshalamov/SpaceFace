@@ -314,3 +314,104 @@ export function spawnFracturePieces(ctx, note, options = {}) {
 
   return { seam, pieces, hullClass: classId };
 }
+
+// --- Collision tear-off ----------------------------------------------------
+// Sub-lethal hard contacts shed real plating shards as bounded debris bodies — not a second
+// wreck, not a durable marker. Pieces inherit the struck hull's velocity plus a contact-axis
+// fling, collide like ordinary debris, and die with the sector (homeSectorId ownership).
+// collisionConsequences owns admission (damage applied, non-lethal, cooldowns, live cap);
+// this file owns the body spec the same way it owns seam pieces.
+
+const TEAROFF_PIECE_CAP = 2;
+const TEAROFF_FLING_MIN = 8;
+const TEAROFF_FLING_MAX = 42;
+const TEAROFF_MASS_FRAC = 0.02;
+const TEAROFF_RADIUS_MIN = 1.6;
+const TEAROFF_RADIUS_MAX = 3.4;
+
+function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
+  return {
+    type: 'wreck',
+    pos: { x: note.pos.x + dir.x * radius * 0.5, z: note.pos.z + dir.z * radius * 0.5 },
+    vel: { x: note.vel.x + dir.x * speed, z: note.vel.z + dir.z * speed },
+    angVel: note.angVel + (dir.x * 0.7 - dir.z * 0.7) * (2 + speed * 0.1),
+    radius,
+    mass,
+    hull: 1,
+    hullMax: 1,
+    collides: true,
+    physicsBody: wreckPhysicsBody(mass, radius),
+    data: {
+      parentType: 'ship',
+      kind: 'wreck',
+      label: 'Hull Debris',
+      scanLabel: 'Hull Debris',
+      name: 'Hull Debris',
+      collisionTearOff: true,
+      collisionTearOffOf: note.victimId != null ? note.victimId : null,
+      homeSectorId: sectorId,
+      persistenceOwner: 'collisionConsequences',
+      proportions: WRECK_COLLIDER_PROPORTIONS,
+      wreckClass: 'battlefield',
+      loot: [],
+      salvagePool: { cmdty_scrap_metal: 1 },
+      salvageTimeLeft: 6,
+    },
+  };
+}
+
+export function spawnCollisionTearOff(ctx, note) {
+  const state = ctx && ctx.state;
+  const helpers = ctx && ctx.helpers;
+  if (!state || !helpers || typeof helpers.spawnEntity !== 'function' || !note) return null;
+  if (typeof state.rng !== 'function') return null;
+  if (!note.pos || !Number.isFinite(note.pos.x) || !Number.isFinite(note.pos.z)) return null;
+  const rng = state.rng;
+
+  const victimMass = Math.max(0.1, finite(note.mass, 1));
+  const victimRadius = Math.max(1, finite(note.radius, 7));
+  // Solver normals are axes — the sign is a collider-order artifact — so a shard may leave on
+  // either side of the contact axis; tangent spread keeps the spray off the contact line.
+  const n = unitDir(note.normal);
+  const tx = -n.z;
+  const tz = n.x;
+  const flingBase = TEAROFF_FLING_MIN + finite(note.closingSpeed, 0) * 0.18;
+  const fling = Math.min(TEAROFF_FLING_MAX, Math.max(TEAROFF_FLING_MIN, flingBase));
+  const count = Math.max(1, Math.min(TEAROFF_PIECE_CAP, Math.trunc(finite(note.count, 1))));
+  const sectorId = note.sectorId != null
+    ? note.sectorId
+    : (state.world && state.world.currentSectorId) || null;
+
+  const spawned = [];
+  for (let i = 0; i < count; i++) {
+    const side = rng() < 0.5 ? -1 : 1;
+    const tangentJitter = (rng() - 0.5) * 1.4;
+    const dir = unitDir({ x: n.x * side + tx * tangentJitter, z: n.z * side + tz * tangentJitter });
+    const mass = Math.max(0.4, victimMass * TEAROFF_MASS_FRAC * (0.6 + rng() * 0.9));
+    const radius = Math.min(TEAROFF_RADIUS_MAX,
+      Math.max(TEAROFF_RADIUS_MIN, victimRadius * Math.cbrt(mass / victimMass)));
+    const entity = helpers.spawnEntity(tearOffSpec({
+      note, dir, speed: fling * (0.75 + rng() * 0.5), mass, radius, sectorId,
+    }));
+    if (entity) spawned.push(entity);
+  }
+  if (!spawned.length) return null;
+
+  if (ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('collision:tearOff', {
+      tick: Math.max(0, Math.trunc(finite(note.tick))),
+      victimId: note.victimId,
+      pieceIds: spawned.map((piece) => piece.id),
+      pieceCount: spawned.length,
+      pos: { x: note.pos.x, z: note.pos.z },
+      momentum: finite(note.momentum, 0),
+      closingSpeed: finite(note.closingSpeed, 0),
+    });
+    ctx.bus.emit('audio:cue', {
+      id: 'sfx_hull_scrape',
+      position: { x: note.pos.x, z: note.pos.z },
+      gain: 0.55,
+    });
+  }
+  return spawned;
+}

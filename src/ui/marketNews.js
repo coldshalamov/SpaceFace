@@ -361,7 +361,6 @@ export function createMarketNews(ctx) {
     if (!p || !p.stationId) return;
     const cards = cardsForStation(state, p.stationId, { seed: seedOf() });
     model.lastCard = cards[0] || null;
-    if (bus) bus.emit('news:dockCards', { stationId: p.stationId, cards });
   });
   // Reset the log on a fresh game / load so stale headlines don't leak across sessions.
   on('save:loaded', () => {

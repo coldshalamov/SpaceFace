@@ -375,6 +375,58 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
 **LANE** open-ended area ownership (detail in `FINISH_LANES.md`).
 
+### Handoff — thirty landed rows, do not retake (2026-09-29)
+
+One sitting finished ten board rows and twenty inference lines. The board rows are already
+gone from the tables below. The inference lines are marked SHIPPED in
+[`INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md). Do not take them again.
+
+**Board, landed:**
+
+- CV-EAR-1 (`4b708d40c`) — three engine loads make three rising pitches; idle goes quiet; full throttle speaks; weapons duck both.
+- CV-GLASS-2 (`3d48adbb6`) — the same fixed-seed hit lands on the same body, and the clearance walk is no longer the cost that was named.
+- NXB-001 (`4875ab436`) — taking over a device does not fight the helm.
+- NXB-002 (`989152b5c`) — the G-stick answer stays stable through resize, zoom, and display density.
+- NXB-003 (`689c930c2`) — the same press is the same verb at every presentation rate, and closing a screen does not drop a bomb.
+- NXB-022 (`69800deb8`) — freed ore stays accepted on the same vein or is explicitly destroyed; a full hold does not duplicate the yield or trim the vein to the visit.
+- NXB-053 (`6727ba5ad`) — a station confirmation keeps the lot, quantity, and hull it named.
+- NXB-059 (`a5a33ea08`) — a save is one moment: cargo, credits, the site, and the accepted fact agree; a failed write keeps the previous slot.
+- NXB-060 (`2b83407a3`) — a rejected or replaced package is not described as ready, and New Game does not launch a run that only timed out.
+- NXB-041 (`f8a9a727d`) — an absent witness cannot accuse; a relay stays a report; a stale explanation expires without erasing settled heat, reputation, or the receipt.
+
+**Inference, shipped:**
+
+- NXI-013 (`0427869c5`) — a held throttle on a dead drive is not reported as a healthy coast.
+- NXI-097 (`59c420730`) — dumping sealed goods cannot eject a different owned lot.
+- NXI-026 (`c055479ef`) — reordering what is drawn does not change who is responsible for the same simulated inputs.
+- NXI-049 (`bc04436e4`) — destroying a wing leader between looks does not send followers onto a new ship that reused that number. The new body gets a fresh identity when the number is assigned, the sensors carry it, and the wing holds on the surviving ship even if the roster never changes or is rebuilt while the leader is gone. Do not dissolve the squad just because the leader changed.
+- NXI-033 (`5118b7673`) — an empty magazine stays recognizable; cycling still picks only loaded cells.
+- NXI-081 (`b28c6b720`) — the same ore asks for the same drill at two depths; unknown ore is not guessed.
+- NXI-098 (`872819827`) — sealed cargo stays visible and cannot be sold.
+- NXI-117 (`4b4b75387`) — an empty-hold turn estimate is not shown as the loaded-hold turn.
+- LAW-04 (`4480eff37`) — closing custody adds one chain entry, and the list stays capped.
+- WORLD-27 (`bf1f5fa8a`) — dock cards have one path; the berth card is that path.
+- NXI-130 (`5d87d2b72`) — a stopped site says why, and a valid withdrawal makes it active again.
+- PIC-16 (`3ff570497`) — a shot into a ward records one warded hit along the hit normal and does not flash damage on the ward.
+- VERB-30 (`ac6aeed05`) — fitting the vector charge rack changes that rail's charge capacity; a parked hull does not. The empty-charge line stays exactly `No impulse charges in cargo`.
+- FIGHT-03 (`f21f67eef`) — a draft pick stores the author note; a bad note is rejected without undoing the fit or stalling the draft.
+- PRO-02 (`543b24b07`) — the language list hides the pseudo-locale unless dev is on; an explicit request can still select it.
+- STORY-04 (`7dee214dd`) — the mission log shows one unfinished post-ending objective, and a finished record does not show it again.
+- LAW-06 (`b3d52c761`) — a black-market register asks the dock to wash nearby hot papers once; a lawful berth does not.
+- PRO-10 (`228df0f9d`) — an export that used the recovery copy names that slot once; a healthy export or an autosave does not.
+- STORY-07 (`023be4386`) — the hauler origin accepts and declines through the shared origin door; another career is ignored.
+- PRO-11 (`99f58d877`) — opening a plotted destination from a dossier engages that route; a hull, a good, or a different sector does not.
+
+**Leave alone.** Do not retune mass, thrust, weapon numbers, dock-assist, or camera governors.
+Do not edit Hitch's mesh, `test/*.expected.json`, or `design/program/vm-drop/`. The elastic-whip
+head check was already red from other work; do not retune it to go green. If `src/ai/stack.js`
+and `src/core/coreSystem.js` are still dirty, those hunks are not this batch: one passes doctrine
+perception into the combat override, the other keeps measured skins off dynamic hulls. Do not
+revert them and do not fold them into an unrelated commit.
+
+**Next.** The lowest-numbered OPEN row below whose paths are not in a live `NOW.md` row.
+Inference continues at the first OPEN line in `INFERENCE_IDEAS.md` whose paths are free.
+
 ### A. Recover — finished work stranded in the tree
 
 | # | ID | Work | Kind | Status |
@@ -423,12 +475,10 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 51 | CR-HOLLOW-1 | The illegal-pairing payoff — 357 THE HANDOFF: a Quiet seller + MTS buyer nose-to-nose in a lawless pocket, contraband pods physically crawling the gap; steal (scoop/burn), join (quiet approach → contact), or watch the transfer finish | BUILD | DONE 2026-09-28 — authored encounter on real cargo ownership and faction casting (`receipts/CR-HOLLOW-1-ILLEGAL-PAIRING.md`, 7/7 focused + 86/86 batch) |
 | 52 | CR-TEXTURE-1 | Per-sector surprise coverage — each named place gets one reachable one-off (rumor or skyline) | BUILD | DONE — 19 one-offs cover the 19 uncovered named sectors; every non-starter sector has an authored bar lead at its own station (Charon rides the Expanse lead); 6 ropeable bodies; receipt: design/program/roadmap/receipts/CR-TEXTURE-1-SECTOR-SURPRISE.md; 9/9 focused, 34/34 adjacent, review PASS |
 | 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | DONE 2026-09-29 — bank planner + gimbal-cone slew gate, 9/9 focused incl. swept-bolt proof, 42/42 AI-fire, 97/97 optic adjacent (`receipts/OPTIC-OFFENSE-BANK-SHOT.md`) |
-| 54 | OPTIC-COST | The required Ceres-entry cost trace for 42 optic bodies was never produced — scatter shipped live regardless; produce the artifact or retire the guard | ACCEPT | CLAIMED pb-ten-lanes — guard owners opticStructures.js/world.js clean; scatter confirmed live ungated at world.js `_opticScatterSpecs` |
 | 55 | SEAM-BASE | `combat:baseDestroyed` — dockless station-typed bases (`data.baseKind`, team-1 hostile) are real destructible bodies; combat emits the event on kill, economy + sectorSim consequences land, 358 THE PRESS CAMP fields the first one | BUILD | DONE 2026-09-28 — seam closed end-to-end, no UI needed (`receipts/SEAM-BASE-DESTRUCTIBLE-BASES.md`, 9/9 focused + 76/76 encounter batch) |
 | 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
 | 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | OPEN |
 | 58 | P7 | Body-scale bars hold across zoom/speed — first slice landed; verify floors at edge zooms | BUILD | OPEN |
-| 59 | P10 | World-on-the-way remainder: working chain within two screen-depths + raid in progress — partial | BUILD | CLAIMED pb-ten-lanes |
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
 
@@ -474,8 +524,6 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 72 | PB-MIS-A | SF-136 real crusher in the yard tow-out (deep-dive 01) — private timeout radius becomes real machine law with recoverable result | PB | CLAIMED pb-ten-lanes — seam missions.js |
-| 73 | PB-JOBS-A | SF-076+089 Ceres handoff: reproduce D89 drop scenario, then repair first missing real transition + stale-pin audit | PB | CLAIMED pb-ten-lanes — CHECK pair; boards-3x3 staleness verified 2026-09-28 (traffic.js clean, last commit 43cbaeb38) |
 | 74 | PB-ECON-A | SF-106+120 hauler viability re-measure post-D80 + cohort-vs-live reconciliation instrument | PB | OPEN — CHECK pair |
 | 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
 | 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | DONE — bound-wreck pool reattach + classified-mint idempotence fix; 3/3 focused + 116/116 adjacent; receipt SF-286-FIRST-VICTORY-WRECK.md |
@@ -483,28 +531,22 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | DONE — spill pods name the real cause (massline_whip/panic_jettison/combat_fire) + stolen freight rides ai.stolenLoot through release/shelf, sheds under pressure, drops on kill; storage-gated destroyed path; 38/38 focused + 51/51 adjacent; receipt PB-SLICE-C-BAD-THROW-ROBBERY-PURSUIT.md |
 | 79 | PB-SLICE-D | SF-291+293 same rope proves two careers + heavy enemy becomes temporary terrain | PB | DONE — two once-only measured-strain tradeoff beats (tow class on latch, whip mass past class) name honest fits; SF-293 already satisfied by PQ-154 machinery, binding fight-continuation/displacement/retention case added; 6/6 + 7/7 focused; receipt PB-SLICE-D-ROPE-CAREERS-HEAVY-TERRAIN.md |
 | 80 | PB-SLICE-E | SF-294+295 quiet return visit reveals what changed + investigation changes the next physical choice | PB | DONE — site returnBaseline diffs witnessed→current into one comms line on rematerialize; scanned ambush tells speak their authored warning via comms:log and resolve their signal row; proximity-gated shapes are route-aroundable; 5/5 focused + 84 adjacent; receipt PB-SLICE-E-RETURN-VISIT-INVESTIGATION.md |
-| 81 | PB-SLICE-F | SF-296+297 low-resource dignified recovery + combat pressure clears into audible breathing room | PB | CLAIMED pb-ten-lanes |
 | 82 | PB-SLICE-Z | SF-300 coherent session capstone — composes after its chosen chain works (integrates prior slice outcomes) | PB | PARKED gated on slice chain |
 | 83 | PB-MIS-B | SF-137+144+148 route-choice trio: liner toll bypass, wrong-convoy ambiguity, shortcut-vs-long-route contract | PB | OPEN — seam missions.js |
 | 84 | PB-MIS-C | SF-141+149+150 unique-wreck trio: warm wreck survivors, three-visit workplace arc, script audit | PB | OPEN — seam missions.js |
 | 85 | PB-MIS-D | SF-140+143+147 heist trio: launch-window depth, counterweight scene, monitored-escape second act | PB | OPEN — seam missions.js |
 | 86 | PB-MIS-E | SF-138+139+142+145 borrowed tug recovery, split manifest incident, quiet berth, race-residual verify | PB | OPEN — seam missions.js |
-| 87 | PB-TAC-A | SF-046+052 cutter commits to geometry + two-specialist offset-commit composition | PB | CLAIMED pb-ten-lanes — seam specialistCounterplay |
-| 88 | PB-TAC-B | SF-047+048+049 disrupt-window interrupt, ward per-carrier custody, anchor arena telegraph+escape | PB | CLAIMED pb-ten-lanes |
 | 89 | PB-TAC-C | SF-050+051 baitable sniper committed corridor + brawler mass-commitment redirect | PB | DONE 2026-09-29 — sniper corridor commits at cue (real-battery-speed forecast, ±0.1 rad band, off-bore hold), brawler commit is a fixed-point INTERCEPT charge with no arrival brake; executed-path proofs green, 2× review PASS (`receipts/PB-TAC-C-SNIPER-CORRIDOR-BRAWLER-COMMIT.md`) |
 | 90 | PB-TAC-D | SF-053+054 reinforcement ingress placement + safety-derived breather | PB | DONE 2026-09-29 — deterministic squad ingress bearing + wedge fan gated on bounds/collision/420 pocket (escape cone soft), schedule-time budget reservation with claim-flag fix, sector/deadline cancel on record, inbound velocity; actionable-opposition breather (arm dwell, hysteresis, cooldown, max-hold, inbound block, build→respite); 3× review to PASS (`receipts/PB-TAC-D-INGRESS-BREATHER.md`) |
 | 91 | PB-TAC-E | SF-055+056+057 wounded cargo tradeoff, retreat-to-cover trigger, bounded-search residual | PB | DONE 2026-09-29 — laden raiders accelerate escape off the attacker instead of converting (empty hold still converts); pack_pursuit wounded-subsystem retreat to ally/hazard-shadow/flee with hysteresis latch; squad merge carries live-sighting truth through wing-order + doctrine overrides so stale-only contacts steer search but never aim guns (`receipts/PB-TAC-E-WOUNDED-CARGO-COVER-SEARCH.md`, implemented/route-unproven) |
 | 92 | PB-TAC-F | SF-058+059 lawful-motive verify + terrain-aware orbit ring | PB | DONE 2026-09-29 — label hostility verified already-satisfied and pinned (armed neutral/same-team pairs stay cold, pod strike never aggros owner, station protection ends retaliation); orbit() sweeps a bounded 9-ray tangential fan on perceived obstacles — widest clear arc + velocity continuity, side never flips, ring resumes byte-identically once clear; dodge takeovers 140→39/1800 (`receipts/PB-TAC-F-LABEL-HOSTILITY-TERRAIN-ORBIT.md`, implemented/route-unproven) |
-| 93 | PB-ORD-A | SF-035+036+037 bomb readability trio: denied-vs-recovering, burn commitment, can't-fire vs can't-steer | PB | CLAIMED pb-ten-lanes — identical write-set |
 | 94 | PB-ORD-B | SF-034+038+039+040 field-family readability: goo edge/recovery, pinning law, bend read, mine breakout (fields.js stale-adoptable) | PB | OPEN — seam fields.js; verify claim staleness first |
-| 95 | PB-ORD-C | SF-041+042+043 mine corridor authoring + deterministic bomb chains + authored ammo route | PB | CLAIMED pb-ten-lanes |
 | 96 | PB-ORD-D | SF-031+032+033+045 drop-law/wake/leak verify + concussion encounter composition | PB | OPEN — CHECK pair + build |
 | 97 | PB-SWARM-A | SF-061+062 opening-wave physical promise + mass-and-gap wave composition | PB | OPEN — must-share pair |
 | 98 | PB-SWARM-B | SF-064+068 specialist introduction rehearsal + boss-round ammo placement | PB | OPEN — seam swarm planner |
 | 99 | PB-SWARM-C | SF-067+071 fracture-into-usable-cover + arena throw-window modifier | PB | OPEN — must-share pair |
 | 100 | PB-SWARM-D | SF-065+072 draft distinct intentions + build pressure through buildSummary | PB | OPEN |
 | 101 | PB-SWARM-E | SF-070+073+074+075 launch-path verify, chip pending-vs-committed, cash-out surface, rematch causal compare | PB | OPEN — CHECK quartet |
-| 102 | PB-SWARM-F | SF-063+069 pressure-reservoir burst verify + stranded/displaced survivor census | PB | CLAIMED pb-ten-lanes — CHECK pair; packet files swarmMode/survivalRun/survivalWave/survivalWavePlanner/swarmArena/runSession all clean 2026-09-28 |
 | 103 | PB-MASS-A | SF-023+024 cutter warning on the threatened segment + snag becomes a choice | PB | DONE 2026-10-02 — commit read warns at the bite point pre-contact (LINE UNDER BLADE + world-anchored X); reeled-and-fouled latches SNAGGED on the collidables index with haul/reposition/cut verbs; focused 5/5 + adjacent 331 green; receipt CR: PB-MASS-A-CUTTER-WARNING-SNAG |
 | 104 | PB-MASS-B | SF-027+029 release-space swept-contact delta + salvage-sorting job (route around infer10's mission claims) | PB | OPEN — seam tetherGameplay serial with 103 |
 | 105 | PB-HAND-A | SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry | PB | OPEN — seam flightV3 |
@@ -2336,6 +2378,294 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
+
+### Wave GFX-2 — the graphics assessment, implemented (2026-09-28/29) — IN PROGRESS, handoff
+
+Source of every row: [`GRAPHICS_ASSESSMENT_2026-09-28.md`](./design/program/GRAPHICS_ASSESSMENT_2026-09-28.md)
+(evidence sheets under `.devshots/assess/`). Owner asked for all of it. Packets run in order A→F;
+delete a row in the commit that finishes it.
+
+**Landed and pushed:**
+- **A — visual bugs** (`cbce4123a`): dynamic resolution no longer draws into the bottom-left corner
+  (D97 deleted); the purple disc under ships was the contact-shadow ink (now black); Wreck Cathedral
+  draws at authored size (D54 keeps only the Anvil item); sector-jump prewarm treats superseded
+  entries as withdrawal (6 jumps, 0 fallbacks); Pelican posters re-rendered (D72 deleted).
+- **B — runtime lighting + composition** (`52008a734`): per-sector rigs with key-colour moods (Vesta
+  hot, Pallas cold, Sker sodium, Ceres dusty) inside the colour standard; `fleet-look --sector=`;
+  per-sector sky bodies + desaturated painted sky; `src/render/cameraOccluders.js` dips bodies out
+  of the camera→player corridor. Shadows stay opt-in (owner ruling 2026-09-21); 2048 texel-snapped
+  map for the opt-in. Render graph (GTAO) stays opt-in: same picture, 1.4–1.9× cost.
+
+**C — kit surface + motion + fleet republish: UNCOMMITTED in the tree, interrupted before its checks.**
+What is in the working tree (verify, then commit by pathspec — foreign dirty files sit beside it):
+- C1 baked per-body AO: `tools/blender/forge/forge_export.py` (second UV + Cycles AO bake → glTF
+  occlusionTexture texCoord 1), forge-v1 material path applies AO to direct light
+  (`src/render/illustratedSurface.js`, `src/render/authoredMaterialProfiles.js`).
+- C2 panel grid broken up: `tools/blender/forge/forge_textures.py` + regenerated
+  `tools/blender/forge/textures/*.png`; UV rotation/offset jitter in `forge.py`.
+- C3 window/beacon emission for places: state unknown — check `forge.py` FINISHES and a hub z330 still.
+- C4 motion: `s.anim(...)` in `forge.py`/`forge_export.py` (ANIM_ nodes), 29 ship/place sources
+  tagged, ANIM_ driver in `src/render/infrastructureMotion.js` (+ place branch in `renderer.js`),
+  ANIM_ lane allowed in flight-static packages (`scripts/build-render-package-pilots.mjs`, `publish.mjs`).
+- C5 republish ran over 67 wholeship + 66 place GLBs (+ release mirrors, 447 render-package files,
+  manifests, census). `check-parts-manifest`: 5766 ok / 0 fail. The parts-manifest text corruption
+  from the Windows publish ("â€”") is repaired; confirm its writer is UTF-8-explicit before the next publish.
+- NOT yet run: `check-render-package-pilots`, `check-graphics-asset-receipts`,
+  `node --test test/model-truth-census.test.mjs test/render-package-pilots.test.mjs test/live-ship-visual-package-coverage.test.mjs`,
+  the ANIM/AO focused tests, `check:baseline`, and before/after sheets (partial captures in
+  `.devshots/c5-after-ships/`). Next session: run those, open the sheets (AO must darken recesses
+  without muddying; hub dock lights must chase), fix, then commit C.
+
+**Not started (in order):**
+- **E — models:** rebuild the 29 blockout "everyday space kit" props in Forge (same slots, pack
+  pipeline like the wreck pack); wreck fragments (floating pieces, too-clean "fresh", plank-like
+  cable/pipe); optic crystals as faceted glass not white cards; claim outposts heavier; transponder
+  gate not a sliver; rocks less lumpy; distinct grit/military dock interiors; Wreck Cathedral rebuild
+  to the 40–100k landmark budget; Quiessence freighters to ~15–20k; faction variants of Span/Wasp get
+  silhouette changes (not recolours); spread the civilian ivory-and-orange palette.
+- **F — effects at chase zoom:** record a real fight and prove flash/tracer/impact/death burst read at
+  144 WU; mining beam with body + contact spray + heat on the rock; white-hot Massline core; sector
+  arrival wake/flash; visible retro jet.
+- Also from the assessment: Sker Haven's purple soft-sphere crystals read as blobs (part of E).
+
+### CI stabilization campaign — IN PROGRESS, handoff (2026-09-29)
+
+Ledger truth lives in `DEMO_READINESS_2026-09-20.md` D90; this is the working state.
+
+**Goal:** get `.github/workflows/check.yml` (groups: static×3, sim, feel, browser×3) green on a quiet
+head. Runs cancel in-flight on every push (`concurrency.cancel-in-progress`), so the proof is one
+full green run, not a permanently green history.
+
+**Landed and pushed — real defects fixed (six waves, ~40 commits):**
+- Infra: browser sharded 2→3 (`71d21ea41`), blobless full-history checkouts (`7e9d5d638`).
+- Sim/harness: miningHud DOM guard (`a6e831ba5`), sf.mjs JSON stdout drain (`9f2cb70d5`), clientless
+  mission expiry (`3d1c3054e`), depth-program re-pins (`b339de8c7`), env-machinery crash (`d9ba5c266`).
+- Assets/tooling: place KTX2 role encodings re-published (`34e8a05f9`), forge root-node
+  `spacefaceAsset` stamp (`f50b45ee3`), cross-platform Chrome discovery (`5f3c898d3`), native
+  `title=` → `data-why` (`b6d7447ce`), texture-dedupe detached-payload guard (`c4ee3bd01`).
+- Browser boot: serial-GL-route queue pacing — `gpuQueuePace.js` wired into bloom/opening admission/
+  renderer/residency (`c48d13648`); signal cue lane-critical (`5a06e86ce`); dock pointer rAF+timer
+  backstop (`def5cd899`); ORRERY glyph aria-label hold (`1a249e88a`); bar nav budget (`7c479fed6`);
+  headed-capture anti-occlusion flags (`a7694369d`); `@elemaudio/core` importmap + vendored deps
+  (`f35d15203`).
+- Wave 4–6: sector-arrival headless-on-CI (`42760041c`), whole-ship LOD hysteresis across family
+  swaps — real thrash fix (`13e8b7966`), probe scores ships by the renderer's own admission policy
+  (`3a91603d3`), input gamepad-boost helm claim (`8516173bd`), sg06 port whitelist (`280e15718`),
+  K1 committed-corridor fire-window hold (`e2c4199f2`), probe resolve-window + menu budgets
+  (`160036aff`), save-index card assertions (`a64c6676b`).
+
+**OPEN — the blocking cluster (CI run 36594590047 @ `48c4def72`):**
+The Slice-A physics packages (`954a0ab8c` dynamic compound colliders, `b7b499263` non-landmark
+solids dynamic, `604d19831`, `41e035b11`, `30cb519bd`) drifted the sim hard. Failing now:
+`check-sim-v3`, `check-sim`, `check-sim-dynamic`, `check-sim-compare`, `check-sim-v3-compare`,
+`check-sim-profile`, `check-replay` (all telemetry-envelope hash drift — re-derive if the new
+physics is sanctioned, name the landing commits), `sg02-coincident-spawn-test`,
+`check-phase0-slice-contract` (4 vs 7), `check-sg06-formation` (interceptor separation 122.652),
+`check-pq146-stunt-proofs`, `check-shipworks-dock-composition`, `check-47a-tactics` +
+`check-47a-live-branch` (`surrender_evidence` never fires — behavioral, not a pin), `check-k1`
+re-fail, `check-station-tabs` (market pointer response absent), `check-sector-arrival-admission`,
+`probe-ship-visual-stability`. Adjudicate per-check: sanctioned drift → re-derive fixture; real
+regression → production fix.
+
+**OPEN — `check-ui-budgets` baseline treadmill:**
+`baseline:stale` fails static-2 whenever any lane commits to `src/ui`/`styles`/`src/core`/`src/render`
+(the digest roots). Fix per cycle: headed re-shoot —
+`node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 --budgets-out=test/ui-frame-references/budgets.json`
+on a CLEAN tree at the pushed head (~30-40 min). A race loop doing exactly this runs locally:
+`scratch/budget-loop.ps1` in `.worktrees/budget-shoot`, polls origin/master every 60 s and
+re-shoots the newest head, restarts on digest drift; wins → `scratch/budget-loop.done`. When it
+lands, copy `budgets.json` to main, commit, push immediately. Headed is a hard integrity gate —
+headless numbers are not evidence.
+
+#### Checkpoint 2 — cluster bisected, disk recovered (2026-09-29, late)
+
+**Environment — RESOLVED:** host disk hit 6.7 GB free (100%), which broke `sim-golden-diff`'s
+reference-tree tar export. Recovered to ~83 GB by removing 15 dead worktrees (46 GB under
+`.worktrees/` plus stale detached checkouts under `Documents/GitHub/` and `%TEMP%`). Dirty
+dead-worktree diffs salvaged to `scratch/salvage/*.patch` before removal (`skin-scope-fix`,
+`sf-clean-check`, `sf-head-verify`, `sf-d75-preperf`, `sf-sparse`). Preserved live worktrees:
+`budget-shoot` (race loop), `ci-repro`, `adjudicate-phys`, `dock-probe` — the last two had
+writes minutes old at checkpoint; do not touch.
+
+**Landed and pushed this checkpoint:**
+- `099214d4c` — probe teardown: bounded `browser.close()`/`server.close()` (10 s race) +
+  connection teardown + explicit exit in `probe-sector-arrival-admission.mjs` and the shared
+  `visualProbeCleanup` finalizer. A printed PASS can no longer hang into SIGKILL. Verified:
+  probe exits cleanly on PASS now.
+- `2b6ee9a4e` — B11 re-quote: `test/hitstun-curve.test.mjs` quotes the contract's
+  owner-ruling sentence verbatim (4/4 PASS).
+
+**Physics-drift cluster — bisected and adjudicated (do not re-bisect):**
+- `check-sg06-formation`: culprit isolated to Package D `1639c221e` (tunnelling/overlap
+  prevention). Separation 140.716 pre-package and identical through Package C `954a0ab8c`
+  (innocent) → 122.652 at Package D, stable through Package F. Qualitative contract intact:
+  no ram authorization, hull contact ~46 — **sanctioned drift, not a logic break**. The
+  physics lane's in-tree fix derives floor 80 from the hull+clearance contract with a
+  scatter sweep (86–141 across builds); that hunk is theirs and uncommitted — leave it.
+- `test/sg02-coincident-spawn`: a blind +2.5 ladder nudge placed pods on the wreck capsule's
+  spine axis → degenerate ~10⁶-unit Rapier manifold → 2.69-M-WU teleport. Root guard
+  `cc93d8461` (Sep 26) plus Package F's spine-aware ladder already fix the teleport;
+  remaining fails were stale expectations (+2.5 → +7.5, the first rung clearing the ±6.6
+  spine window) and a ghost test written before Package-D collision groups (pickups ghost
+  vs craft but intentionally pair vs debris/solids). The physics lane's dirty-tree version
+  supersedes — leave their hunk.
+- `check-47a-tactics` `surrender_evidence`: **BEHAVIORAL, not drift.** Instrumented with an
+  env-gated clause dump (`SF_PRED_DEBUG`, exists only in `ci-repro`, not committed): reel
+  fires, tether intact, no sling/cut — the failing clause is `actorDistance`.
+  `official_recovery_tug` approaches (500,-100 → 815,95) then stalls at 313 WU from the
+  spindle vs the required 180. The tug's `tether_control_raider` doctrine hold-short
+  equilibrium moved under the stiffer contacts. **Owned by a wave agent** — fix the tug's
+  approach behavior, never the predicate.
+- `sling_evidence` fails on the same `actorDistance` clause family — same root suspect.
+
+**Open items — each owned by a dispatched wave agent (fresh worktree writes at checkpoint):**
+- soak encounters `got 0` + `first layered sync should import fixed bodies once` (spawn path)
+- `check-pq146-stunt-proofs`: clothesline trajectory + two save-lineage fails
+- `check-shipworks-dock-composition`: pelican fallback hull clips dock interior at yaw 45/90
+  (14 raycast hits)
+- `check-phase0-slice-contract`: 4 vs 7 SG-08 cue rows
+- `check-k1`: `faction_fulfillment drive-disabled` refail
+- `check-station-tabs`: market tab pointer response absent
+- 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
+  hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,
+  `1639c221e`, `b7b499263`, `954a0ab8c`). Do NOT pin-update without that ruling.
+
+**Foreign in-flight in the main tree — do not sweep into commits:**
+- Forge-fleet rebuild: every `tools/blender/forge/ships/place_*.py` + `parts_manifest` +
+  place GLBs dirty (graphics/dock-probe lane).
+- `helios-trade-hub` render package has `dynamicGroups` — `check-sector-arrival-admission`
+  fails on THIS dirty tree (`station id 215` unpublished) but passes on the clean CI tree;
+  it is the graphics lane's uncommitted Packet C, not a regression.
+- `assets/incubator/wreck_aftermath_pack/` dirty — graphics lane.
+
+**Baseline treadmill:** race loop alive at attempt 11 (`82698b7d9`); digest drift from live
+lanes keeps killing attempts ~5 min in. Wins whenever a ~40-min quiet gap opens.
+
+#### Checkpoint 3 — repository consolidated (2026-09-29, late)
+
+Owner directed: all agents stopped; consolidate scattered work to master, park unmergeable
+in-flight work on one branch, delete orphan worktrees and process artifacts.
+
+**Worktree census — was 4 registered + ~15 stale, now 2:**
+- `SpaceFace/` (main, clean on master), `.worktrees/consolidated` (parked branch).
+- Removed: `adjudicate-phys`, `ci-repro`, `dock-probe`, `pq040-*`, `pq033-floor-v2`,
+  `skin-scope-fix`, `ci-b7d859ada`, plus detached checkouts `sf-clean-check`, `sf-hash-check`,
+  `sf-head-verify`, `sf-headcheck`, `sf-attr-check2`, `SpaceFace-f15check`,
+  `SpaceFace-verify`, `sf-d75-preperf`, `sf-sparse`, `sf-verify-head`, `scratch/assets-wt`.
+- `.worktrees/budget-shoot` stays while the baseline race loop runs; retire it with the loop.
+
+**Parked — `consolidated/inflight-2026-09-29` (pushed to origin, worktree `.worktrees/consolidated`):**
+- `0d93c19a5` — the ~950-file dirty snapshot of the shared tree: forge-fleet rebuild,
+  physics-lane adjudication hunks, ui/render/economy in-flight edits, untracked probes/tests,
+  process logs. Parked, not reviewed.
+- `6fe0255f6` — layer 2: 5 redock-stall diagnostic scripts (from `pq033-verify-evidence` tip)
+  + muse pre-cloud-merge park (sector chart webp art, deckplate token tools).
+- Pre-park dirty-worktree diffs also salvaged to `scratch/salvage/*.patch` (dead checkouts).
+- To resume parked work: check out the worktree, diff `consolidated/inflight-2026-09-29`
+  against master, and take hunks by file — treat the whole branch as WIP, not truth.
+
+**Merged to master tonight:**
+- PR #178 flying-saucer (`bde3dbe17`), PR #179 swarm crucible (`cc2334f4f`) — both were
+  conflict-free; their UNSTABLE checks are the same broken-CI group, not merge regressions.
+- `devin/pq033-floor-v2` (`16614ae4e`) — 5 §22 closures; 9 conflicts, all resolved to HEAD
+  (master strictly newer: salvage-bay cargo, quiet-latch barks, ORRERY market); branch tests
+  20/20 after merge.
+- `fleet-toys` (`eaf329eff`) — machined ordnance mine bodies survived merge (3/3 census).
+- `pq040-native` (`6d271c274`) — 65-commit dirty-range/residency campaign; 6 conflicts all
+  resolved to HEAD (extracted `materialClone.js` is master's superset of the branch's inline
+  clones; per-callsite clone stamps preserved); DEMO_READINESS union-merged — branch-unique
+  rows D38, D40–D44, D47, D48 spliced in id order.
+- Salvaged verified physics hunks (`e76c08de6`): sg06 floor 80 (hull envelope + authored
+  clearance; scatter sweep 86–141 made the old 130 pin over-tight) and the spine-aware
+  sg02 test upgrade — both green on master.
+
+**Deliberately NOT merged — preserved on origin instead:**
+- `pq033-verify-evidence` (81 commits): Sep-22/23 residency-upload work superseded by today's
+  landed PQ-040 refactor of the same subsystem; wholesale merge would regress it. Diagnostic
+  scripts already parked (above).
+- `muse/wip-park-backup-20260926`: stash-park; unique content parked (above).
+- PR #180 (intro visualizer): DRAFT — left open by design.
+
+**Artifact cleanup:** 44 uncited `.devshots` dirs deleted (~2.5 GB of superseded
+merge-check/g-*/preD/d_*/gfx11/vfx-catalog captures); all ledger/build-map-cited evidence
+kept (`scratch/cited-devshots.txt` is the citation census). `scratch/` is 35 MB;
+`check-ci-report` kept (cited by D46). Disk 6.7 GB → 103 GB free. Local branches pruned to
+`master` + `consolidated/inflight-2026-09-29`; everything else lives on origin.
+
+**Still open (unchanged):** the physics-drift cluster items above (surrender tug stall,
+envelope re-record, soak=0, save-lineage, dock clip, phase0 rows, k1, station tabs) and the
+baseline treadmill. Verified pre-existing, not merge-caused: `sim`/`sim-v3` envelope drift,
+`massline-elastic-whip-head` (43.775), `pq020-ceres-topology` structuralCostDigest.
+
+**Machine quiesced (2026-09-29, late):** owner directed all dev processes stopped. Killed the
+baseline race loop (`scratch/budget-loop.ps1` kept as the restart recipe), its capture+server
+children, all playwright probe chromes, 3-day-hung crucible/fun-bench nodes, orphaned
+`serve.mjs :4310`, the chrome-devtools-mcp stack, and stale agent daemons. `.worktrees/budget-shoot`
+removed with it — down to **2 worktrees**: main checkout + `.worktrees/consolidated`. One
+22 MB playwright storage stub (PID 34688) is kernel-stuck post-kill: 0 CPU, harmless, clears
+on reboot. To resume the treadmill: re-add a worktree and run `scratch/budget-loop.ps1`.
+
+**Tree fully pushed (2026-09-29, late):** 0 uncommitted changes and 0 unpushed commits anywhere —
+master = `af8d32b0c` = origin/master; parked `consolidated/inflight-2026-09-29` tip `6fe0255f6`
+= its origin branch. Consolidated worktree's own tree is clean too. Deleted ~75 MB of ignored
+scratch litter (`.tmp-*` lane dirs, `.genie-packets`/`.genie-returns` extracts, `*TEMP*`/`nul`
+root files, `.spaceface-*`/`.massline-*`/`.capital-boss` patch backups). `.devshots/` kept — it
+holds evidence referenced by open ledger rows.
+
+**Launcher repaired (2026-09-29, late):** `SpaceFace-Desktop.bat` was failing at its `npm install`
+step — `node_modules` was an empty dir (the old junction target was gone) and the npm cache was
+corrupted during the disk-full episode (`stat _cacache` ENOENT). Fix: removed the empty dir,
+`npm cache clean --force`, `npm install` (643 packages), then `node node_modules/electron/install.js`
+for the deferred runtime binary — `electron.exe` 43.2.0 present, `node scripts/launch-electron.mjs`
+exits 0, real window titled "SpaceFace" confirmed open. One game process is left running for the
+owner to play; nothing else.
+
+**Collision tear-off landed (2026-09-29, late):** the satisfying-collision audit found the ladder
+was ~80% built — physics receipts, momentum feel (`feel.js`), pooled contact VFX, particle debris,
+and lethal-ram seam fracture (pending-slam → `spawnFracturePieces` in mining) all already live. The
+genuine gap was the sub-lethal rung, now closed: a hard hit whose kernel `debrisCount` crosses the
+rung (≥10 of the authored 18) sheds real plating bodies — `wreck`-type entities with inherited
+victim velocity + bounded contact-axis fling (rng-symmetric side, since solver normals are unsigned
+axes), real colliders (material `debris`, so shards can crumple a third hull), scrap salvage, and
+`homeSectorId` cleanup ownership — `spawnCollisionTearOff` in `hullFracture.js`, admission gate in
+`collisionConsequences._maybeTearOffPlating` (applied damage on a surviving NPC hull only; kills
+stay with the fracture path; the player is exempt from collision damage by contract). Budgets:
+per-victim 120-tick cooldown, global live cap 20 reaped in `update()`, transient state reset on the
+existing load/flag boundary; deterministic via `state.rng`. Presentation: new `collision:tearOff`
+receipt → darker chip/streak burst in `vfx.js` (accessibility-scaled) + `sfx_hull_scrape` cue;
+`combat:collisionDebris` now carries `exchangedMomentum`. Tests: `test/collision-tearoff.test.mjs`
+4/4 (momentum inheritance, suppression rules, cooldown, cap + reap, seeded determinism); 85/85 on
+the consequence/fracture/feel neighbor suite. Flag note: the whole path rides
+`weaponImpulseConsequences` (production ON, legacy47a OFF — tests seed it). Next checkpoint: manual
+playtest read — ram a pirate at cruise and confirm plating visibly tears off and tumbles;
+heavy-vs-light hull feel tuning (`TEAROFF_*` constants in `collisionConsequences.js`) is the dial.
+
+### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
+
+Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
+
+- **Package A & B: Measured Truth Scoreboard (`check-solid-truth.mjs --strict`)**
+  - Scoreboard: **196/196 rows clean**, 0 findings (`node scripts/check-solid-truth.mjs --strict` exits 0).
+  - Craft colliders match measured silhouettes. Decoupled craft collision proportions from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS` in `src/core/sg02DynamicBodyOwner.js`, protecting physical hitboxes against visual tuning (resolves D99).
+  - 10 COARSE/NOSKIN rows resolved with truthful skins and collider kinds.
+- **Package C: Dynamic Compound Colliders (`test/dynamic-compound-colliders-determinism.test.mjs`)**
+  - Compound skins enabled on dynamic bodies (capital ships, dreadnought, heavy wrecks) behind bit-for-bit determinism proof (`test/dynamic-compound-colliders-determinism.test.mjs` PASS). Identical sim hash with/without save-reload, CCD active, primitive count <= 32.
+- **Package D: Zero Overlap & Tunnelling (`scripts/probe-solid-overlap.mjs`)**
+  - Swept headless probe: **480/480 test scenarios PASS**, **0 tunnelling**, worst penetration depth 5.67 WU (all within census row tolerances).
+  - Tested body pairs across speeds 30, 150, 400, 550 WU/s across multiple approach bearings.
+  - Isolated pickup sensor triggers from physical craft knock reactions; capsule spine degenerate window solver ladder added for coincident spawns (`test/sg02-coincident-spawn.test.mjs` 10/10 PASS).
+- **Package E: Universal Dynamics for Solids <= 90 WU (`src/core/physicsAuthority.js`)**
+  - Authoritative physics threshold: structures > 90 WU remain fixed landmarks (stations, jump gates, giant rock cathedrals); non-landmark rocks, wrecks, pods, props, payloads, and buoys are dynamic with volume-proportional mass table.
+- **Package F: Predictive Camera Clearance (`src/render/cameraGlide.js`, `src/render/camera.js`, `src/render/renderer.js`)**
+  - Large moving hulls (capital ships) added to `CAMERA_CLEARANCE_KINDS` with height gate and defId/silhouette/radius filtering.
+  - Reactive clearance paths (`keepOut`, floor easing in `camera.js`) removed; predictive glide is the sole authority.
+  - Headless structure sweep (`scripts/probe-camera-clearance-sweep.mjs`): **7,320 scenarios evaluated** across 122 structural models x 4 zooms [45, 58, 144, 330] x 3 speeds [40, 195, 400 WU/s] x 5 approach bearings: **0 inside frames everywhere**, **4 hard clamp frames total** (~0.0005/scenario), peak vertical acceleration gentle, returns smoothly to zoom.
+  - Camera test suite: **94/94 PASS** (`test/camera-*.test.mjs`).
+- **Ledger Total-Fixes:**
+  - D97 fixed: `BINDINGS.claimBase.label` restored in `src/ui/screens/base.js` (`scripts/check-ui-screen-imports.mjs` 56/56 PASS).
+  - D98 fixed: `maxContactDv` clamped by closing $\Delta v$ in `src/core/sg02DynamicBodyOwner.js` (`test/tumble-fling-bounce.test.mjs` 6/6 PASS); Hitch cruise base speed aligned in `test/pq-029-00-tractor-throw.test.mjs` (10/10 PASS).
+  - D99 fixed: Craft collision dimensions decoupled from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS`.
+  - Rows D97, D98, D99 deleted from `design/program/DEMO_READINESS_2026-09-20.md` per §7 total-fix rule.
 
 ### Wave D — shelf that beats live
 

@@ -2387,6 +2387,7 @@ export const vfx = {
     // emits no juice cue so cue-count contracts stay frozen.
     add('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
     add('combat:collisionDebris', (p) => this._onCollisionDebris(p));
+    add('collision:tearOff', (p) => this._onCollisionTearOff(p));
     add('combat:statusApplied', (p) => {
       this._onArcadeCausalReceipt('combat:statusApplied', p);
       // Damage-path statuses spend ≥1 tick in pendingStatuses and land via applyActive
@@ -4735,6 +4736,15 @@ export const vfx = {
   _presentationStyle(p) {
     const id = (p && p.id) || '';
     const lane = (p && p.lane) || '';
+    // Hull-burst cues (systems/hullBurst.js): a directional white-hot flare in the burst type's own colour
+    // (cold blue gravity, orange lance, green grip), cast along the wedge. Not the default violet ring.
+    if (lane === 'hullburst' || id.startsWith('hullburst.')) {
+      const tint = id === 'hullburst.lance' ? '#ff8a3d' : id === 'hullburst.catch' ? '#79f0c8' : '#7f9cff';
+      return presentationStyle('#ffffff', tint, id === 'hullburst.ignite' ? SPR_FLASH : SPR_RING, {
+        echoRing: true, spread: 0.55, lightPeak: 5.5, lightDistance: 210, speed0: 64, speedJitter: 84,
+        life0: 0.28, lifeJitter: 0.2, size0: 2.3, spriteLife: 0.3, spriteSize0: 0.4, spriteSize1: 3.1, spriteOpacity: 0.9,
+      });
+    }
     if (id === 'combat.near_miss' || lane.includes('combat_near_miss')) {
       return presentationStyle('#d7e6ff', '#ffb35c', SPR_FLASH, {
         spread: 0.18,
@@ -10222,6 +10232,43 @@ export const vfx = {
     return true;
   },
 
+  // Plating actually leaving a hull (collisionConsequences spawned the physical shards) gets a
+  // darker, heavier burst than spall: dense metal chips along the contact axis plus a few short
+  // smoking streaks. The tumbling debris bodies carry the persistent read — this sells the shear.
+  _onCollisionTearOff(p) {
+    if (!this._scene || !p || !p.pos) return false;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    const momentum = Math.max(0, Number(p.momentum) || 0);
+    const heat = Math.min(1, momentum / 22000);
+    const baseAng = this._collisionContactAxis({ aId: p.victimId, otherId: null, normal: p.normal });
+    const axisX = Math.cos(baseAng), axisZ = Math.sin(baseAng);
+    const tx = -axisZ, tz = axisX;
+    const serial = this._collisionPatternSerial({ aId: p.victimId, bId: p.victimId, tick: p.tick });
+    this._c0.set('#e8ecff');
+    this._c1.set('#4a3f2e');
+    const chips = reduced ? 3 : 4 + Math.round(heat * 4);
+    for (let i = 0; i < chips; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const spread = explosionPatternSigned(serial, 'tearoff', i, 31) * 0.55;
+      const speed = (16 + explosionPattern01(serial, 'tearoff', i, 32) * 30) * (0.7 + heat * 0.6);
+      const angle = baseAng + side * (0.5 + spread);
+      this._spawnParticle(
+        p.pos.x, p.pos.z, Math.cos(angle) * speed, Math.sin(angle) * speed,
+        0.45 + heat * 0.35, 1.6, 0.0, this._c0, this._c1, 2.8, 0, 0, angle, reduced ? 2.0 : 3.2,
+      );
+    }
+    for (const side of [-1, 1]) {
+      this._spawnProjectileTrailStreak(
+        p.pos.x + axisX * side * 0.1, 0.2, p.pos.z + axisZ * side * 0.1,
+        reduced ? 0.3 : 0.5, 0.09, (reduced ? 2.2 : 4.0) * (0.7 + heat * 0.6),
+        (reduced ? 0.3 : 0.55) * acc.flashOpacityScale,
+        '#caa06a', axisX * side * 8, axisZ * side * 8, tx * side, tz * side,
+      );
+    }
+    return true;
+  },
+
   // AI telegraph / flee / formation break markers (spec2/02 §3 + M1 doctrine tells).
   // Doctrine telegraphs are enemy-linked (or truthful offscreen direction) and sustain for the
   // full pre-consequence window (default ≥30 sim ticks). Sim owns the hold-fire gate; VFX only
@@ -11363,7 +11410,8 @@ export const vfx = {
   },
 
   _fieldFlowRelevant() {
-    return !!(this.state?.fields?.active?.length);
+    // A live hull burst draws its wedge through the field presentation (forceLanguage/hullBurstField.js).
+    return !!(this.state?.fields?.active?.length) || this.state?.hullBurst?.phase === 'active';
   },
 
   update(frameDt) {

@@ -93,6 +93,20 @@ test('only injected non-transition workloads hold the measured pose', async () =
     'station scenarios restore the exact Flyby Focus journal after measurement');
   assert.match(source, /flybyFocus: !snapshot\.isolatesFlybyFocus[\s\S]*sameFlybyFocus/,
     'restoration fails closed when the Flyby Focus journal does not round-trip');
+  // Injected ships carry a live thrust intent — without a pose hold they boost past the render
+  // glass during a slow authored-admission wait and the ready predicate can never converge
+  // (observed: unmeshed ships 1,300 WU out). The hold must pin position back to the arm-time
+  // hold point, not merely zero velocity once.
+  assert.match(source, /holdsMeasuredPose && snapshot\.liveInjectedIds\.length[\s\S]*poseHoldTimer = setInterval/);
+  assert.match(source, /entity\.pos\.set\(hold\.x, 0, hold\.z\)[\s\S]*stabilizeAuthoredPose\(entity\)/);
+  assert.match(source, /if \(snapshot\.poseHoldTimer != null\) clearInterval\(snapshot\.poseHoldTimer\)/);
+  assert.match(source, /activityStopped: snapshot\.activityTimer == null && snapshot\.poseHoldTimer == null/);
+  // A measured-pose scenario parks the player inside a live hostile sector; an ambient kill
+  // opens the pausing death screen (scale:0) mid-wait and strands every queued destroy behind
+  // a frozen clock. flags.invuln is journaled, armed, and round-tripped.
+  assert.match(source, /snapshot\.playerInvulnWas = player\.flags\?\.invuln === true[\s\S]*player\.flags\.invuln = true/);
+  assert.match(source, /player\.flags\.invuln = snapshot\.playerInvulnWas/);
+  assert.match(source, /playerInvuln: snapshot\.playerInvulnWas == null \|\| player\?\.flags\?\.invuln === snapshot\.playerInvulnWas/);
 });
 
 test('presentation-world scenarios use live owner journals and restore temporary authority exactly', async () => {
@@ -110,9 +124,7 @@ test('presentation-world scenarios use live owner journals and restore temporary
   assert.match(source, /timeScalePreserved: state\?\.timeScale === snapshot\.timeScale/);
   assert.match(source, /presentationSpawnCount = baseline \* 4[\s\S]*presentationTargetActive = baseline \* 5/);
   assert.match(source, /const targetActive = snapshot\.presentationTargetActive \|\| snapshot\.presentationBaseline\.active/);
-  assert.match(source, /world\.activeCount !== targetActive/);
-  assert.match(source, /world\.boundCount !== targetActive/);
-  assert.match(source, /renderSystem\._meshes\.size !== targetActive/);
+  assert.match(source, /world\.activeCount === targetActive[\s\S]*world\.boundCount === targetActive[\s\S]*renderSystem\._meshes\.size === targetActive/);
   assert.match(source, /Object\.getOwnPropertyDescriptor\(render, 'syncEntityViews'\)/);
   assert.match(source, /retainedEntityViewSync[\s\S]*retainedHlod[\s\S]*restoreAdapterAuthority/);
   assert.match(source, /injectFailureOnce/);
@@ -121,7 +133,10 @@ test('presentation-world scenarios use live owner journals and restore temporary
     'an injected adapter failure removes its authority, resets query/frame state, and proves the next dense frame');
   assert.match(source, /captureVisibleSemantics[\s\S]*same-population visible semantic parity mismatch/);
   assert.match(source, /_livingHullPresentation\.sync/);
-  assert.match(source, /if \(state\.entities\.has\(id\)\) sf\.helpers\.removeEntity\(id\)/);
+  // Immediate removal is the contract: the deferred path only marks alive=false and waits for a
+  // lifetimeSweep sim tick, so a frozen or starved clock strands injected entities in
+  // state.entities and the restore wait never satisfies.
+  assert.match(source, /if \(state\.entities\.has\(id\)\) sf\.helpers\.removeEntity\(id, \{ immediate: true \}\)/);
   assert.match(source, /presentationCountsRestored[\s\S]*presentationMeshesRestored[\s\S]*presentationResourcesIdle/);
 
   const failed = validateScenarioRestoration({
@@ -131,6 +146,22 @@ test('presentation-world scenarios use live owner journals and restore temporary
   });
   assert.equal(failed.pass, false);
   assert.match(failed.failures.join(' | '), /legacyAdapterRestored/);
+});
+
+test('scenario readiness requires driver-visible upload quiescence only when counters are live', async () => {
+  const source = await readFile(new URL('../scripts/lib/performanceScenarioDriver.mjs', import.meta.url), 'utf8');
+  // The gate must never gate an uninstrumented session: no counter, no wait.
+  assert.match(source, /perfApi\?\.tier1\?\.isEnabled\?\.\(\) !== true[\s\S]{0,120}return true/);
+  // The rate is read from the same tier-1 counter the comparator debits.
+  assert.match(source, /getCounterSnapshot\(\)\.totals\?\.bufferUploadBytes/);
+  // Quiet must be sustained, not instantaneous — a single sub-floor poll cannot open the window.
+  assert.match(source, /quiet\.since != null && now - quiet\.since >= uploadQuietRequiredMs/);
+  assert.match(source, /UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 4 \* 1024 \* 1024/);
+  assert.match(source, /UPLOAD_QUIET_CEILING_BYTES_PER_SEC = 8 \* 1024 \* 1024/);
+  // The asymmetry, not the level, loses the ratio: a steady hot host may pass, a decaying tail
+  // must not. The gate therefore also accepts a stable rate under the ceiling.
+  assert.match(source, /shortRate >= longRate \* uploadQuietStableMin[\s\S]*shortRate <= longRate \* uploadQuietStableMax/);
+  assert.match(source, /UPLOAD_QUIET_REQUIRED_MS = 1_500/);
 });
 
 test('terminal jump warmup preserves five-second stability inside a bounded longer envelope', async () => {

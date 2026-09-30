@@ -525,6 +525,13 @@ export const ALL_KILL_MACHINES = Object.freeze([
   VEIL_COLD_DRAW,
 ]);
 
+// The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
+// Consumers that bind a machine by world identity at fire time (SF-136 yard tow-out)
+// validate against this map, not the Ceres-only KILL_MACHINE_BY_ID.
+export const ALL_KILL_MACHINE_BY_ID = Object.freeze(Object.fromEntries(
+  ALL_KILL_MACHINES.map((machine) => [machine.id, machine]),
+));
+
 export function killMachinesForSector(sectorId) {
   if (sectorId === KILL_MACHINE_SECTOR_ID) return KILL_MACHINES;
   if (sectorId === STARTER_FIELD_SECTOR_ID) return Object.freeze([STARTER_FIELD_MACHINE]);

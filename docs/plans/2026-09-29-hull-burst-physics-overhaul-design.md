@@ -560,6 +560,81 @@ the stunt-evidence window.
 - Several commits swept other lanes' hunks (same-file pathspec commits while another lane edited the
   file). Stage by hunk, and read `git show --stat HEAD` afterwards.
 
-**Still open in slice A:** the bling (pitch-stepping pickup audio keyed off `acceptedAmount`, rolling
-counter), banking loot in flight on jump or dock, homing for Survival/Crucible run-wallet chips (wallet
-unchanged), and the real Massline throw arms.
+**Slice A, closed (2026-09-29).** Bling (the converted-ore chime ladder and a floating '+N cr'), banking loot
+in flight on dock or jump, homing for run-wallet chips (wallet unchanged), and the real Massline throw arms
+(`feel.fling_scene` throw arms: a hull the player swings and throws on the line is the player's kill; rope
+throws now write impulse provenance) all landed. Independent review of A/3-A/6 found four defects, fixed in
+A/9: loot moved at twice its speed inside the physics ring (bodiless-ness was read from SG-02 telemetry,
+which a production browser never publishes; it is now the port's `applyImpulse` answer), the inbound-velocity
+cancel stacked for same-tick hits (one per hull per tick now), the floor impulse opened a second stunt-evidence
+root (it now rides its hit's own impulse reason), and the tumble pair bound raised the player's per-contact
+receipt (the player keeps the ordinary bound). Known and accepted: a flung hull can kill civilians and neutral
+traffic, billed to the player; that is the section 6 collateral rule arriving early and the civilian-harm
+rules apply to an attributed kill.
+
+## 14. Slice C as built (2026-09-29): the Gravity Bumper
+
+Commits `41858027b` (module, system, wiring, scene), `be53726e1` (key), `3c663b8dc` (readout, sound, flares),
+`9ddc001c3` (Helios rack, scene through the input edge). No feature flag: the module has to be bought and
+fitted, and `hullBurst` is registered in the production orders only (absent from `legacy47a`; the 47-A hash
+is identical with and without the change, and with and without the input.js edit).
+
+**What exists.**
+
+| Piece | Where | Value |
+|---|---|---|
+| Module | `mod_gravity_bumper_s` (`src/data/modules.js`) | utility S, tier 2, 24,000 cr catalog, gated on Graviton Drives; Helios rack 12,000 cr (no research stop at that counter) |
+| Tuning | `src/data/hullBurst.js` (`HULL_BURST_TYPES.gravity`, `resolveHullBurst(kind, rank)`) | window 6 s, recharge 18 s, reach 150 WU, half angle 0.5 rad opening with distance, nose width 18 WU, player counts 4x heavier, kick 8 WU/s, bounce 1.0, low-speed toe 60 WU/s, knee 300 WU/s and a soft ceiling toward 480, forward bias 0.65, non-hostile nudge <= 12 WU/s |
+| Derived stat | `derived.hullBurstKind/Rank` (`src/systems/ships.js`) | one burst per hull; higher rank wins, ties by kind name |
+| System | `src/systems/hullBurst.js` | runtime state `state.hullBurst` (unsaved); ready -> active -> cooling on sim time; a cut-short burst still owes the full recharge |
+| Key | `hullBurst: ['Backslash']` (`src/systems/input.js`) | rebindable, in Settings and Help; no default pad button (none is free), no touch |
+| Readout | `src/ui/fieldHud.js` (the bottom-centre field pill) | LIVE Ns / RECHARGING Ns / a 3 s "READY [key]" hint; one voice at a time |
+| Source | `'hull_burst'` in `SHOVE_CLASS_HITSTUN_SOURCES` (`src/combat/impulseKernel.js`) | so it gets the shove beat and the outbound floor (no buzz) |
+
+**The throw** is momentum, through the same impulse route an impulse-charge blast takes (port impulse, impulse
+provenance naming the player, the one hitstun law), so slice A's tumble, projectile hull, chain credit and
+loot all apply for free: `raw = (kick + 1.6 x closing) x bumperMass / (bumperMass + targetMass)`,
+`deltaV = raw` up to a knee then a soft ceiling (a hard clamp gave a Wasp, a Drifter and a Bastion the same
+number at speed); `raw = (kick + (1 + bounce) x eff) x bumperMass / (bumperMass + targetMass)` with
+`eff = closing^2 / (closing + toe)`. `closing` is the relative speed along the centre line. Every hostile ship or drone in the
+wedge is thrown once per activation; non-hostile hulls are nudged and nothing else; rocks are never touched;
+the player is never pushed.
+
+**Measured** (`feel.bumper_scene`, real runtime, seed 4242, lit through the input edge): a Wasp touched at a
+real 19 WU/s closing is given 15 WU/s and moves 41 WU in 3 s (a nudge; 0.1 s of helm loss); a 281 WU/s arrival
+(boost speed; B7 measures a rope swing at 1.5 x cruise, 292 WU/s, so a swing arrives about as fast as a boost)
+gives 392 WU/s and 1,177 WU (29x); light / medium / heavy hulls are given 392 / 307 / 174 WU/s (a Warden-class
+hull gets 0.44 of a Wasp and loses its helm 1.8 s against 3.5 s); a thrown light or medium hull leaves the nose
+FASTER than the player flies, so it is never rammed again; three live Wasps in front of a rock wall, one pass:
+3 of 3 thrown, 3 kills all credited to the player, 21 of 21 pickups landed with no pilot input, +216 cr in 1.2 s.
+
+**A review finding worth keeping (advisor, C).** The first scene measured the player's own ram, not the burst:
+the player is not slowed by what it touches (the no-physics-damage ruling), so any hull it reaches is carried
+along at the player's speed (the control arm, burst never lit: a Warden peaks at 280 WU/s and travels 814 WU).
+A throw slower than the player is bulldozed and the "flight distance" is the ram. So the throw is tuned so light
+and medium hulls leave faster than the player; a heavy is given less than the player flies by design ("shoved
+hard but keeps flying") and is caught, and its shrug is scored on delta-V delivered and on helm loss. The scene
+reports `noRam` (contacts with a hull the wedge just threw) and the control so this cannot regress unseen.
+
+**Tuning risks to play-test.** A light hull thrown by a full-speed arrival flies ~1,100 WU in 3 s (about nine
+screens): satisfying against a rock field, possibly far in open space (a drag on tumbling hulls is the lever).
+Boost and a swing arrive at nearly the same speed, so the burst does not by itself make the Massline better than
+boost; that needs a rule elsewhere (boost is metered, a swing is free).
+
+**Traps.**
+
+- The runtime instantiates its OWN copy of every system (`runtime.getSystem('hullBurst') !== hullBurst`), so a
+  scene that calls the imported module's `activate()` lights a different object. Write the input edge instead.
+- The shove beat (`SHOVE_BEAT_LAW`) gives any shove-class hit past `minU` 0.3 about one screen of travel
+  whatever its size, so a "nudge" only exists below that: the kick is 8 WU/s on purpose.
+- A parked target with live AI drifts on its own and pollutes a distance reading; the throw arms use AI-less
+  hostile hulls (an encounter body on the hostile team) and the field arm keeps live AI on purpose.
+- Several UI surfaces name a module's verb (`shipBandModels`, `outfittingGuidance`,
+  `crucibleCombatReadout`, `buildIdentity`, `loadoutPresets`, the progression verb audit); the audit's vocabulary
+  tables must learn a new mods key or `check:progression-verb-audit` goes red.
+- The power rail is pinned to nine sockets by tests and the ORRERY cluster draws its ordnance groups from it,
+  so the burst readout rides the existing field pill instead of a tenth socket.
+
+**Still open in slice C:** a dedicated wedge visual (only the generic `hullburst.ignite` / `hullburst.hit`
+flares exist), a pad default, Fire Lance and Grip Bumper on this framework (slice E), and speed-scaling
+tuning against real Massline arrival speeds.

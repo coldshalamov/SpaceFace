@@ -28,12 +28,13 @@ import {
   uniqueWreckCassandraHardliners,
   uniqueWreckChoirTenderInvestigator,
   uniqueWreckHeldMass,
+  uniqueWreckLongChordWarden,
   uniqueWreckNestbreakerAdmirers,
   uniqueWreckPingElite,
   uniqueWreckSilverDraftCleaner,
 } from './uniqueWreckEncounterScripts.js';
 import { markEntityGhost } from './scanner.js';
-import { mines as minesSystem, MINE_TELEGRAPH_CUE } from './mines.js';
+import { mines as minesSystem, MINE_TELEGRAPH_CUE, mineCorridorLayout } from './mines.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
 import { isPdScreenActor } from '../ai/pdScreen.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
@@ -68,8 +69,7 @@ const DIST_TELL_R = 1500;         // scan-pulse inside this of a distress site r
 const CLAIM_TELEGRAPH_S = 3;      // arrival breath: read formation/motive before weapons open
 const CLAIM_RETREAT_R = 2400;     // leaving the defended site is a deliberate retreat
 const CLAIM_RETREAT_HOLD_S = 12;  // brief overshoots do not forfeit the defense
-const MINEFIELD_WAKE_COUNT = 3;   // mines seeded on minefield_wake spring
-const MINEFIELD_WAKE_SPACING = 70;
+const MINEFIELD_WAKE_COUNT = 3;   // mines seeded on minefield_wake spring (layout: mines.mineCorridorLayout)
 
 // Demand mode: an ambush shape that declares choices gets a voiced demand and a decision
 // window instead of a silent stalk. The Ceres activity adoption keeps its choreography.
@@ -148,29 +148,18 @@ function seedMinefieldWake(d, live, state, player) {
     return null;
   };
 
-  // Wake geometry: lay mines along the vector from jackal toward player (player's approach wake).
-  const dx = (player.pos.x || 0) - (jackal.pos.x || 0);
-  const dz = (player.pos.z || 0) - (jackal.pos.z || 0);
-  const len = Math.hypot(dx, dz) || 1;
-  const ux = dx / len;
-  const uz = dz / len;
-  // Perpendicular for a short fence.
-  const px = -uz;
-  const pz = ux;
+  // Wake geometry (SF-041): the corridor law lives on the mines owner — the fence hugs ONE
+  // flank of the approach line, leaving the opposite flank an open, readable safe lane.
+  // Threading it, displacing the fence with a field/blast, or throwing a body through are
+  // all real solutions against the same hulls.
   live.data.minesSeeded = live.data.minesSeeded || [];
-  for (let i = 0; i < MINEFIELD_WAKE_COUNT; i++) {
-    const along = 80 + i * MINEFIELD_WAKE_SPACING;
-    const side = ((i % 2) === 0 ? -1 : 1) * 28;
-    const pos = {
-      x: jackal.pos.x + ux * along + px * side,
-      z: jackal.pos.z + uz * along + pz * side,
-    };
+  for (const pos of mineCorridorLayout(jackal.pos, player.pos, MINEFIELD_WAKE_COUNT)) {
     const mine = place({
       ownerId: jackal.id,
       pos,
       team: jackal.team,
       factionId: jackal.factionId || null,
-      telegraph: i === 0,
+      telegraph: live.data.minesSeeded.length === 0,
     });
     if (mine && mine.id != null) live.data.minesSeeded.push(mine.id);
   }
@@ -3148,6 +3137,7 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckHeldMass: withShapeMeter(uniqueWreckHeldMass),
   uniqueWreckPingElite: withShapeMeter(uniqueWreckPingElite),
   uniqueWreckSilverDraftCleaner: withShapeMeter(uniqueWreckSilverDraftCleaner),
+  uniqueWreckLongChordWarden: withShapeMeter(uniqueWreckLongChordWarden),
   uniqueWreckCassandraHardliners: withShapeMeter(uniqueWreckCassandraHardliners),
   uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
   uniqueWreckChoirTenderInvestigator: withShapeMeter(uniqueWreckChoirTenderInvestigator),

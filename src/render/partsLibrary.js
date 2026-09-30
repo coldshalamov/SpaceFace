@@ -1073,6 +1073,7 @@ export const REQUIRED_WHOLE_SHIP_DEF_IDS = Object.freeze([
   'ship_colossus',
   'ship_leviathan',
   'ship_hawser',
+  'ship_saucer',
 ]);
 const REQUIRED_WHOLE_SHIP_DEF_ID_SET = Object.freeze(new Set(REQUIRED_WHOLE_SHIP_DEF_IDS));
 const REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES = Object.freeze(new Set([
@@ -1291,6 +1292,9 @@ const ENGINE_FILE_BY_DEF_ID = Object.freeze({
   ship_warden: 'engines/engine_plasma_ring.glb',
   ship_colossus: 'engines/engine_plasma_ring.glb',
   ship_leviathan: 'engines/engine_plasma_ring.glb',
+  // The saucer's drive glow lives in its rim light chain (design/FLYING_SAUCER_DESIGN.md);
+  // the resonator pod is the nearest gravimetric visual for the slot.
+  ship_saucer: 'engines/engine_resonator.glb',
 });
 
 const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
@@ -1298,6 +1302,7 @@ const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
   drive_reaction_m: 'engines/engine_ion_small.glb',
   drive_reaction_l: 'engines/engine_ion_twin.glb',
   drive_gravimetric_s: 'engines/engine_resonator.glb',
+  drive_inertialess_s: 'engines/engine_resonator.glb',
   drive_pulse_plate_m: 'engines/engine_vector.glb',
   drive_torch_l: 'engines/engine_plasma_ring.glb',
   drive_field_sail_m: 'engines/engine_resonator.glb',
@@ -1318,6 +1323,7 @@ const HULL_FILE_BY_DEF_ID = Object.freeze({
   ship_colossus: 'hulls/hull_capital.glb',
   ship_leviathan: 'hulls/hull_capital.glb',
   ship_hawser: 'hulls/hull_freighter.glb',
+  ship_saucer: 'hulls/hull_capital.glb',
 });
 
 // Only production-validated complete bodies belong here. Accessory-only exports remain unwired so a
@@ -1339,6 +1345,7 @@ const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
   // The Hawser player hull wears the accepted yard-tug body — the same packaged work
   // hull ambient tug traffic already flies. The fiction is the purchase, not a repaint.
   'ship_hawser': 'wholeships/yard_tug.glb',
+  'ship_saucer': 'wholeships/saucer_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'SF_K0_KESTREL_BORROWED_TIME_V4',
@@ -1355,6 +1362,7 @@ const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_colossus': 'SF_COLOSSUS_PRODUCTION_V1',
   'ship_leviathan': 'SF_LEVIATHAN_PRODUCTION_V1',
   'ship_hawser': 'SF_WHOLESHIP_YARD_TUG',
+  'ship_saucer': 'SF_SAUCER_PRODUCTION_V1',
 });
 // Independent GLBs let the distance selector load detail on demand. Keep player presentation at
 // LOD0 and associate traffic families with the selected visual body, never its gameplay chassis.
@@ -1423,6 +1431,11 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
     lod0: 'wholeships/leviathan_production_v1.glb',
     lod1: 'wholeships/leviathan_production_v1_lod1.glb',
     lod2: 'wholeships/leviathan_production_v1_lod2.glb',
+  }),
+  ship_saucer: Object.freeze({
+    lod0: 'wholeships/saucer_production_v1.glb',
+    lod1: 'wholeships/saucer_production_v1_lod1.glb',
+    lod2: 'wholeships/saucer_production_v1_lod2.glb',
   }),
 });
 const WHOLE_SHIP_LOD_FAMILY_BY_FILE = Object.freeze(Object.fromEntries([
@@ -2667,6 +2680,12 @@ function commitAuthoredCargoCapsuleBoundary(
   delete boundary.userData.requestAuthoredUpgrade;
   delete boundary.userData.__setActiveVisualRoot;
   const publish = () => {
+    // Same residual-link guard as the ship commit: the exact-target prepare ran while this
+    // root was detached, so pay any leftover variant here rather than in a presented pass.
+    if (typeof options.touchAuthoredExactTarget === 'function') {
+      try { options.touchAuthoredExactTarget(authored.root); }
+      catch (error) { console.warn('[partsLibrary] cargo publish touch failed', error); }
+    }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
@@ -3348,6 +3367,12 @@ function commitAuthoredPlaceBoundary(
   boundary.userData.__socketCache = new Map();
 
   const publish = () => {
+    // Same residual-link guard as the ship commit: the exact-target prepare ran while this
+    // root was detached, so pay any leftover variant here rather than in a presented pass.
+    if (typeof options.touchAuthoredExactTarget === 'function') {
+      try { options.touchAuthoredExactTarget(authored.root); }
+      catch (error) { console.warn('[partsLibrary] place publish touch failed', error); }
+    }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts }); }
@@ -3514,7 +3539,10 @@ function specializeClaimRelayOpaqueMaterials(root, placeId) {
       if (!source) return source;
       let variant = variants.get(source);
       if (!variant) {
-        variant = source.clone();
+        // Preserve the source's shader hooks — a bare clone() drops own-property
+        // onBeforeCompile, and installSingleSamplePackedOrmShader would then capture the
+        // dropped default as its chain target instead of the real patch.
+        variant = cloneMaterialPreservingShaderHooks(source);
         variant.name = `${source.name || 'ClaimRelayMaterial'}_ClosedFrontPackedOrm`;
         variant.side = THREE.FrontSide;
         variant.userData = {
@@ -4129,7 +4157,10 @@ function specializeWreckCathedralClosedSurfaces(sources) {
       if (open) retainedDoubleSideRoles.add(role);
       let variant = variants.get(material);
       if (!variant) {
-        variant = material.clone();
+        // Preserve the source's shader hooks — a bare clone() drops own-property
+        // onBeforeCompile, and the packed-ORM installer would then capture the dropped
+        // default as its chain target instead of the real patch.
+        variant = cloneMaterialPreservingShaderHooks(material);
         variant.name = `${material.name || 'CathedralMaterial'}_${closed ? 'ClosedFront' : 'OpenDouble'}`;
         variant.side = closed ? THREE.FrontSide : THREE.DoubleSide;
         variant.depthFunc = closed ? THREE.EqualDepth : THREE.LessEqualDepth;
@@ -4438,6 +4469,9 @@ function invalidateScheduledUpgradeFrame(state) {
   state.frameScheduleToken = (Number(state.frameScheduleToken) || 0) + 1;
   const invalidated = state.frameScheduled === true;
   state.frameScheduled = false;
+  // The pending callback that would have consumed this marker is being dropped — a stale bypass
+  // flag must not reorder the next unrelated admission.
+  state.stallBypassShipPass = false;
   return invalidated;
 }
 
@@ -4500,6 +4534,8 @@ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
+  if (state.stalledHogWakeTimer != null) clearTimeout(state.stalledHogWakeTimer);
+  state.stalledHogWakeTimer = null;
   state.loadingHullsOnly = false;
   scheduleNextUpgradeFrame(state);
   return held;
@@ -4514,6 +4550,8 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
+  if (state.stalledHogWakeTimer != null) clearTimeout(state.stalledHogWakeTimer);
+  state.stalledHogWakeTimer = null;
   state.loadingHullsOnly = true;
   scheduleNextUpgradeFrame(state);
   return true;
@@ -4545,9 +4583,11 @@ function upgradeQueueState(scene) {
       frameScheduled: false,
       frameScheduleToken: 0,
       heldShipWakeTimer: null,
+      stalledHogWakeTimer: null,
       firstFlightPrefetchJob: null,
       openingHandoffHold: false,
       firstFlightHandoffHold: false,
+      stallBypassShipPass: false,
       loadingHullsOnly: false,
       lateSkips: 0,
       byBoundary: new Map(),
@@ -4672,6 +4712,87 @@ function firstFlightShipCanPassBusyPlace(state) {
   // one additional serial ship slot for that case. A detached ship that already released its CPU
   // slot may still be linking GPU pipelines and must not block the next visible contact.
   return active.length === 1 && active[0].entity?.type !== 'ship';
+}
+
+// Steady flight runs the serial lane at concurrency 1, so a job whose inner await never settles
+// (a wedged decode/transcode/residency park — the critical-hub job sat in flight ~11 min behind
+// place_station_trade_hub.glb and starved every combat ship queued behind it) would block the
+// lane for the rest of the session. Past this bound the same one-extra-slot escape the
+// first-flight hold grants applies in steady flight too — for every in-flight job, ship or not,
+// that has outlived any plausible upload window.
+const AUTHORED_UPGRADE_NONSHIP_STALL_MS = 120000;
+const STALLED_HOG_WAKE_MS = 5000;
+
+function jobIsStalledInFlight(job, nowMs) {
+  if (!job || job.lifecycle !== 'in-flight') return false;
+  const startedAt = Number(job.inFlightAtMs);
+  return Number.isFinite(startedAt) && nowMs - startedAt >= AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+}
+
+function queuedShipJobStillNeeded(state, job) {
+  return !!(job && job.entity && job.entity.type === 'ship' && jobStillNeeded(state, job));
+}
+
+/**
+ * One queued ship may pass the concurrency cap while every unreleased in-flight job is stalled
+ * past the bound. The admit path hoists needed ships to the head when it fires (the
+ * stallBypassShipPass marker), so a stale hog can never farm the lane behind ordinary dressing
+ * jobs, and a live ship admission still blocks the bypass — the serial ship invariant only
+ * yields to dead lanes.
+ */
+function stalledHogsCanPassShip(state) {
+  if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true) {
+    return false;
+  }
+  if (!state.jobs.some((job) => queuedShipJobStillNeeded(state, job))) return false;
+  const active = [...state.byBoundary.values()].filter((job) =>
+    job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
+  if (!active.length) return false;
+  const now = monotonicNow();
+  return active.every((job) => jobIsStalledInFlight(job, now));
+}
+
+/**
+ * The queue only re-enters on a scheduled frame, and a wedged in-flight job never schedules one —
+ * poll at a slow cadence while any in-flight job exists so the stall bypass can fire once the
+ * bound is crossed and its diagnostic can close on schedule.
+ */
+function armStalledHogWake(state) {
+  // Owns its own timer field: scheduleHeldShipWake's 100ms wake must never wait behind this
+  // slow poll, and either callback re-arms what it still needs via scheduleNextUpgradeFrame.
+  if (!state || state.stalledHogWakeTimer != null) return;
+  // Poll only while an in-flight job still has work the wake can do: an open diagnostic to
+  // close, or a held serial slot a ship may need to pass. A GPU-detached job whose record the
+  // watchdog already closed can park forever without keeping this timer (and through it the
+  // queue state) alive.
+  const active = [...state.byBoundary.values()].filter((job) =>
+    job.lifecycle === 'in-flight'
+    && (job.serialSlotReleased !== true || job.upgradeDiagnostic?.endedAtMs == null));
+  if (!active.length) return;
+  state.stalledHogWakeTimer = setTimeout(() => {
+    state.stalledHogWakeTimer = null;
+    settleStalledUpgradeDiagnostics(state);
+    scheduleNextUpgradeFrame(state);
+  }, STALLED_HOG_WAKE_MS);
+  state.stalledHogWakeTimer.unref?.();
+}
+
+/**
+ * Close the 'running' diagnostic of any job whose inner await has outlived the stall bound. The
+ * job stays lifecycle 'in-flight' and keeps its serial slot accounting — its promise may still
+ * resolve and publish — but quiet-window gates that read activeJobs must not wait on a dead
+ * lane. finishUpgradeDiagnostic is idempotent, so the job's own settle path is a no-op whenever
+ * it eventually unwinds.
+ */
+function settleStalledUpgradeDiagnostics(state) {
+  const now = monotonicNow();
+  for (const job of state.byBoundary.values()) {
+    if (!jobIsStalledInFlight(job, now)) continue;
+    if (job.upgradeDiagnostic && job.upgradeDiagnostic.status === 'running') {
+      job.upgradeDiagnostic.status = 'stalled-slot-released';
+    }
+    finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
+  }
 }
 
 export function waitForOpeningGraphPublicationRelease() {
@@ -4809,6 +4930,10 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
             onGlass ? { urgent: true } : undefined,
           );
         }
+      : null,
+    touchAuthoredExactTarget: liveState && liveState.render
+      && typeof liveState.render.touchSubjectExactTarget === 'function'
+      ? (root) => liveState.render.touchSubjectExactTarget(root)
       : null,
     prepareAuthoredGpuResidency: liveState && liveState.render
       && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
@@ -5048,16 +5173,26 @@ function scheduleNextUpgradeFrame(state) {
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
+    armStalledHogWake(state);
     return;
   }
   if (state.firstFlightHandoffHold === true
       && !state.jobs.some(firstFlightReadableShipJob)) {
     scheduleHeldShipWake(state);
+    // The hold does not freeze in-flight jobs — a hog stalled through the hold still needs its
+    // diagnostic closed on schedule.
+    armStalledHogWake(state);
     return;
   }
   if (state.firstFlightHandoffHold === true) primeNextAuthoredAssetPlan(state);
-  if (state.inFlight >= authoredUpgradeConcurrencyLimit()
-      && !firstFlightShipCanPassBusyPlace(state)) return;
+  if (state.inFlight >= authoredUpgradeConcurrencyLimit()) {
+    const firstFlightPass = firstFlightShipCanPassBusyPlace(state);
+    if (!firstFlightPass && !stalledHogsCanPassShip(state)) {
+      armStalledHogWake(state);
+      return;
+    }
+    if (!firstFlightPass) state.stallBypassShipPass = true;
+  }
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
   // decoded packages become eligible together.
   state.frameScheduled = true;
@@ -5069,6 +5204,7 @@ function scheduleNextUpgradeFrame(state) {
         && !state.jobs.some(firstFlightReadableShipJob)) {
       state.frameScheduled = false;
       scheduleHeldShipWake(state);
+      armStalledHogWake(state);
       return;
     }
     admitNextUpgradeJob(state);
@@ -5077,6 +5213,8 @@ function scheduleNextUpgradeFrame(state) {
 
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
+  const stallBypassShipPass = state.stallBypassShipPass === true;
+  state.stallBypassShipPass = false;
   const live = authoredRuntimeState();
   if (live && live.mode === 'flight') {
     const gate = shouldStartHeavyAdmissionEventually(
@@ -5097,6 +5235,13 @@ function admitNextUpgradeJob(state) {
     }
   }
   state.jobs.sort((a, b) => {
+    // The stall bypass exists to feed the ship lane; a queued needed ship must take the freed
+    // slot ahead of ordinary dressing or the hog's own kind could keep re-winning the escape.
+    if (stallBypassShipPass) {
+      const stallDelta = Number(queuedShipJobStillNeeded(state, b))
+        - Number(queuedShipJobStillNeeded(state, a));
+      if (stallDelta) return stallDelta;
+    }
     if (state.firstFlightHandoffHold === true) {
       const urgentDelta = Number(firstFlightReadableShipJob(b)) - Number(firstFlightReadableShipJob(a));
       if (urgentDelta) return urgentDelta;
@@ -5115,6 +5260,7 @@ function admitNextUpgradeJob(state) {
   });
   if (state.firstFlightHandoffHold === true && !firstFlightReadableShipJob(state.jobs[0])) {
     scheduleHeldShipWake(state);
+    armStalledHogWake(state);
     return null;
   }
   if (state.loadingHullsOnly === true) {
@@ -5128,6 +5274,7 @@ function admitNextUpgradeJob(state) {
     if (hullIndex < 0) {
       state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
       publishUpgradeDiagnostics(state);
+      armStalledHogWake(state);
       return null;
     }
     if (hullIndex > 0) {
@@ -5140,6 +5287,7 @@ function admitNextUpgradeJob(state) {
   if (!job) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
+    armStalledHogWake(state);
     return null;
   }
   if (!jobStillNeeded(state, job)) {
@@ -5150,6 +5298,7 @@ function admitNextUpgradeJob(state) {
 
   job.lifecycle = 'in-flight';
   job.serialSlotReleased = false;
+  job.inFlightAtMs = monotonicNow();
   if (state.firstFlightHandoffHold === true && job.options) {
     job.options.urgentFirstFlightAdmission = true;
   }
@@ -5189,19 +5338,27 @@ function admitNextUpgradeJob(state) {
   let failure = null;
   Promise.resolve().then(run).then((value) => {
     result = value;
-    diagnostic.status = job.boundary && job.boundary.userData
-      ? job.boundary.userData.authoredAssetState || 'completed'
-      : 'completed';
+    // A stall-released diagnostic keeps its verdict — the boundary's own state may sit at a
+    // mid-admission stage long after the watchdog closed the record.
+    if (diagnostic.endedAtMs == null) {
+      diagnostic.status = job.boundary && job.boundary.userData
+        ? job.boundary.userData.authoredAssetState || 'completed'
+        : 'completed';
+    }
   }).catch((error) => {
     failure = error;
-    diagnostic.status = 'fallback-after-error';
-    diagnostic.error = error && error.message ? error.message : String(error);
+    // A stall-released record keeps its verdict; the boundary recovery below still runs — only
+    // the closed diagnostic is immutable.
+    if (diagnostic.endedAtMs == null) {
+      diagnostic.status = 'fallback-after-error';
+      diagnostic.error = error && error.message ? error.message : String(error);
+    }
     releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
     if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
       // The job's owner died under a kept boundary (save recook) — a terminal verdict would
       // strand the restored entity that rebinds to this mesh. Readmission status re-requests.
       markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
-      diagnostic.status = 'awaiting-authored-admission';
+      if (diagnostic.endedAtMs == null) diagnostic.status = 'awaiting-authored-admission';
       console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
     } else {
       job.boundary.userData.authoredAssetState = 'fallback-after-error';
@@ -5375,6 +5532,7 @@ function beginUpgradeDiagnostic(state, job) {
     backgroundJobId: backgroundJob?.backgroundJobId ?? null,
     backgroundJobOrigin: backgroundJob ? { ...backgroundJob.origin } : null,
   };
+  job.upgradeDiagnostic = diagnostic;
   state.diagnostics.jobs.push(diagnostic);
   if (state.diagnostics.jobs.length > 128) state.diagnostics.jobs.splice(0, state.diagnostics.jobs.length - 128);
   state.diagnostics.activeJobs++;
@@ -5392,6 +5550,9 @@ function beginUpgradeDiagnostic(state, job) {
 }
 
 function finishUpgradeDiagnostic(state, job, diagnostic) {
+  // A stalled hog's diagnostic is settled by the stall watchdog before its inner promise ever
+  // resolves; when the job's own chain finally unwinds, this must not double-count the release.
+  if (!diagnostic || diagnostic.endedAtMs != null) return;
   diagnostic.endedAtMs = monotonicNow();
   diagnostic.durationMs = Math.max(0, diagnostic.endedAtMs - diagnostic.startedAtMs);
   const boundaryTimings = job.boundary && job.boundary.userData
@@ -6614,7 +6775,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
         // the demotion's residency context ended between library load and createInstance. A live,
         // claimed boundary keeps the mixed-lifetime pin, so the message cannot fire otherwise.
         const ownerGone = causes.length > 0
-          && causes.every((cause) => /became inactive|owner.*inactive|must be retained before creating an instance/i.test(cause));
+          && causes.every((cause) => /became inactive|owner.*inactive|must be retained before creating/i.test(cause));
         if (ownerGone) {
           console.info('[partsLibrary] whole-ship LOD demotion aborted; owner inactive', { causes });
         } else {
@@ -6732,6 +6893,14 @@ async function commitAuthoredBoundary(
   boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
 
   const publish = () => {
+    // The pre-commit prepare touched this root while it was detached; publish-time state can
+    // still resolve a program key that touch never produced (final LOD from primeAuthoredState,
+    // owner bindings, parts minted inside commit). Pay any residual link here — in the
+    // admission continuation — instead of inside the first presented bloom pass.
+    if (typeof options.touchAuthoredExactTarget === 'function') {
+      try { options.touchAuthoredExactTarget(authored.root); }
+      catch (error) { console.warn('[partsLibrary] authored publish touch failed', error); }
+    }
     for (const admission of authored.packagePoolAdmissions || EMPTY_ARRAY) {
       activateRenderPackagePoolAdmission(admission);
     }
@@ -7826,7 +7995,7 @@ function cloneFlightTemplateMaterials(material, materials) {
   if (!material || typeof material.clone !== 'function') return material;
   let cloned = materials.get(material);
   if (!cloned) {
-    cloned = material.clone();
+    cloned = cloneMaterialPreservingShaderHooks(material);
     cloned.userData = {
       ...(cloned.userData || {}),
       spacefaceFlightTemplateMaterial: true,
@@ -7842,7 +8011,7 @@ function cloneFlightInstanceMaterials(material, materials) {
   if (!material || typeof material.clone !== 'function') return material;
   let cloned = materials.get(material);
   if (!cloned) {
-    cloned = material.clone();
+    cloned = cloneMaterialPreservingShaderHooks(material);
     cloned.userData = {
       ...(cloned.userData || {}),
       spacefaceFlightTemplateInstanceMaterial: true,
@@ -8823,7 +8992,7 @@ function applyFittedDriveGlow(bindings, mutableMaterials, glowHex) {
       if (!material || !material.isMaterial) return material;
       let owned = material;
       if (!material.userData || material.userData.spacefaceDriveGlowTint !== true) {
-        owned = material.clone();
+        owned = cloneMaterialPreservingShaderHooks(material);
         owned.userData = { ...(material.userData || {}), spacefaceDriveGlowTint: true };
         mutableMaterials.set(`driveGlow|${mesh.name || 'mesh'}|${index}|${mutableMaterials.size}`, owned);
       }
@@ -11453,7 +11622,7 @@ function normalizeWaspDomeGlass(root, entity) {
     const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
     const normalized = sourceMaterials.map((source) => {
       if (!source || source.userData?.spacefaceWaspCanopyNormalized) return source;
-      const material = source.clone();
+      const material = cloneMaterialPreservingShaderHooks(source);
       material.name = 'SF_Wasp_Canopy_Glass';
       material.userData = { ...(source.userData || {}), spacefaceWaspCanopyNormalized: true };
       material.color?.setHex?.(0x163849);

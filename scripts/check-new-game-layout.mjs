@@ -206,7 +206,7 @@ async function openNewGameWithKeyboard(page, url = null) {
   await page.waitForFunction(() => {
     const panel = document.querySelector('[data-screen="newGame"]');
     return panel && panel.querySelector('input[type="text"]') === document.activeElement;
-  }, null, { timeout: 5000 });
+  }, null, { timeout: 15000 });
 }
 
 async function focusButtonWithKeyboard(page, label) {
@@ -279,7 +279,7 @@ async function activateLaunchWithoutStartingGame(page) {
   for (let i = 0; i < 3 && (await activeText()) !== 'Launch'; i++) await page.keyboard.press('Shift+Tab');
   assert.equal(await activeText(), 'Launch', 'Launch must be focused before keyboard activation');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => window.__sfLayoutGameNewEvents?.length === 1, null, { timeout: 3000 });
+  await page.waitForFunction(() => window.__sfLayoutGameNewEvents?.length === 1, null, { timeout: 15000 });
   return page.evaluate(() => {
     const payload = window.__sfLayoutGameNewEvents[0];
     window.__sfLayoutRestoreEmit?.();

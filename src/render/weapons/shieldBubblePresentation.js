@@ -73,9 +73,9 @@ export function updateEntityShieldBubblePresentation(entity, shieldBubble, now, 
   if (up) {
     if (entity.shield < previousShield - 0.5) {
       uniforms.uFlash.value = Math.min(1.0, uniforms.uFlash.value + 0.8);
-    } else if (entity.shield > previousShield + 1.0) {
-      uniforms.uFlash.value = Math.max(uniforms.uFlash.value, 0.28);
     }
+    // Regeneration is intentionally silent: the bubble belongs to impact/collapse response, not
+    // passive shield bookkeeping. This keeps a healthy regenerating ship from showing a ghost sphere.
     uniforms.uFlash.value *= Math.pow(0.05, dt);
     flash = uniforms.uFlash.value;
     userData._collapseTimer = 0;

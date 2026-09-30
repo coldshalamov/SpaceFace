@@ -510,7 +510,19 @@ function aftermathLine(marker) {
 
 function newsLine(marker) {
   const zone = marker.zoneName || 'a local zone';
-  if (isPlayerWreckMarker(marker)) return `Your hull still drifts in ${zone}.`;
+  if (isPlayerWreckMarker(marker)) {
+    // SF-296: when the defeat left scoured cargo aboard, the line names it — the recovery job
+    // must be spoken by the same voice that reports the loss, not discovered by accident.
+    const residue = marker.manifestResidue && typeof marker.manifestResidue === 'object'
+      ? marker.manifestResidue : null;
+    let scouredUnits = 0;
+    if (residue) {
+      for (const id of Object.keys(residue)) scouredUnits += Math.max(0, Math.floor(Number(residue[id]) || 0));
+    }
+    return scouredUnits > 0
+      ? `Your hull still drifts in ${zone} — ${scouredUnits} u of your cargo scoured aboard.`
+      : `Your hull still drifts in ${zone}.`;
+  }
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const where = marker.zoneId ? `drifting on the lane` : `drifting in the open`;
   return `Aftermath reported in ${zone}: ${victim} wreckage now ${where}.`;
@@ -680,6 +692,17 @@ function makePlayerWreckMarker(state, payload, entity) {
     playerWreck: true,
     kind: PLAYER_WRECK_KIND,
   };
+  // SF-296 dignified recovery: the defeat receipt names the exact cargo this loss scours off the
+  // player's hold (buildRecoveryPlan.cargoLosses — combat removes precisely these units at
+  // recovery). That scoured share keeps the same destruction-residue law as every manifest hull
+  // (floor(30%) per line, capped): flying back to your own hull and salvaging it is a real,
+  // attainable job with real cargo value — not a free bailout, not a total loss, and one pool
+  // that drains like any wreck. Empty holds keep the generic pool, byte-identical to the old
+  // behavior.
+  const scouredLosses = payload && payload.recovery && Array.isArray(payload.recovery.cargoLosses)
+    ? payload.recovery.cargoLosses
+    : null;
+  marker.manifestResidue = scouredLosses ? wreckCargoResidueFor({ lines: scouredLosses }) : null;
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
 }

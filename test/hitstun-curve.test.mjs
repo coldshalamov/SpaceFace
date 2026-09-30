@@ -154,7 +154,7 @@ test('the shove beat extends a shove-class stun to the coast that clears one scr
 });
 
 test('shove-class sources are the delivered-impulse weapon family; throws and terrain keep the base law', () => {
-  for (const source of ['gun', 'weapon', 'bomb', 'impulse_charge']) {
+  for (const source of ['gun', 'weapon', 'bomb', 'impulse_charge', 'hull_burst']) {
     assert.equal(isShoveClassHitstunSource(source), true, `${source} delivers a shove payload`);
   }
   for (const source of ['rope_throw', 'rope_whip', 'collision', 'well', 'tether_share', 'transverse_snare', 'monofilament_sweep', undefined, null]) {
@@ -695,7 +695,7 @@ function barByLabel(bars, pattern) {
 // owns the verdict and the contract owns the sentence.
 // One literal, verbatim from FEEL_CONTRACT §B — the coverage contract
 // (test/feel-bars-contract.test.mjs) source-scans this file for the exact quote.
-const B11_SENTENCE = `Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.`;
+const B11_SENTENCE = `Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro; the tumble itself commands no torque (owner ruling 2026-09-29), so the bar samples the commanded opposing torque in the tumble **or** the recovery beat.`;
 
 test('B11 met clauses hold with the contract sentence as the message', LONG, async () => {
   const result = await scenario.run(4242);

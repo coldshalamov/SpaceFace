@@ -123,12 +123,26 @@ test('PQ-140.02 field-disruptor waits for the charge telegraph, then collapses a
     assert.equal(duringCharge, null, 'disrupt does not land on the charge cue');
     assert.ok(fieldsSys._kernel.size >= 1);
 
+    // SF-047: the collapse is a committed working interval — inside the fire window but before
+    // the wind-up elapses the ghost still touches nothing.
+    const earlyWindow = applySpecialistCounterplay({
+      state,
+      specialist: ghost,
+      enemyId: 'quiet_ghost',
+      doctrinePhase: 'fire_window',
+      tick: 20,
+      attachments: null,
+      fields: fieldsSys,
+    });
+    assert.equal(earlyWindow, null, 'the working interval must elapse before the collapse');
+    assert.ok(fieldsSys._kernel.size >= 1);
+
     const afterFire = applySpecialistCounterplay({
       state,
       specialist: ghost,
       enemyId: 'quiet_ghost',
       doctrinePhase: 'fire_window',
-      tick: 13,
+      tick: 48,
       attachments: null,
       fields: fieldsSys,
     });

@@ -1708,6 +1708,15 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             rows.push({
               object: String(object.name || object.type || 'unnamed').slice(0, 48),
               material: String(material.name || material.type || 'unnamed').slice(0, 32),
+              mu: String(material.uuid || '').slice(0, 8),
+              ou: String(object.uuid || '').slice(0, 8),
+              cloneOf: material && material.userData
+                ? String(material.userData.sfHeatSkinClone || material.userData.sfGhostClone || material.userData.sfClonedFrom || '')
+                : '',
+              parent: String(object.parent && (object.parent.name || object.parent.type) || '').slice(0, 48),
+              pos: object.position
+                ? [object.position.x, object.position.y, object.position.z].map((v) => Math.round(Number(v) || 0)).join(',')
+                : '',
               root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
               key: key.slice(0, 512),
               siblingKeys: siblings,

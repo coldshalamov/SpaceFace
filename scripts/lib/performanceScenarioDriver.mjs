@@ -70,6 +70,7 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       liveInjectedIds: [],
       retiredInjectedIds: [],
       activityTimer: null,
+      poseHoldTimer: null,
       timeScale: state.timeScale,
       playerTargetId: state.player?.targetId ?? null,
       flybyFocus: id.startsWith('station_') && state.player?.flybyFocus
@@ -105,6 +106,14 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       player.vel.set(0, 0, 0);
       player.prevPos.copy(player.pos);
       snapshot.physicsPoseSynchronized = syncPlayerPhysics(player, snapshot.player.noInterp);
+      // The scenario parks a measured pose inside a live hostile sector for as long as
+      // admission takes. Ambient traffic can kill the parked player mid-wait — observed: a
+      // Solar Concord Navy Hornet breached the hull ~6.7 min into a starved ready wait, the
+      // death screen held ui:pausing-screen scale:0, and every queued entity:destroyed sat
+      // unflushed behind a frozen clock. The window measures combat VFX workload, not
+      // survival — the damage system already honours flags.invuln.
+      snapshot.playerInvulnWas = player.flags?.invuln === true;
+      if (player.flags) player.flags.invuln = true;
     }
 
     const spawnFleet = async (count, { transparentHeavy = false, combat = false } = {}) => {
@@ -273,6 +282,39 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       player.rot = Math.PI;
       player.prevRot = player.rot;
       snapshot.physicsPoseSynchronized = syncPlayerPhysics(player, snapshot.player.noInterp);
+    }
+
+    if (holdsMeasuredPose && snapshot.liveInjectedIds.length) {
+      // The measured-pose hold pins the player at arm, but injected combat/transparent ships
+      // carry a live thrust intent — under admission starvation they boost past the render
+      // glass before their mesh lands, and the ready wait can never converge (observed:
+      // unmeshed ships 1,300 WU out after a 300 s starve). Pin injected ships the same way so
+      // admission latency cannot relocate the measured scene. Hold positions are taken after
+      // the scenario arm, so station scenarios that relocate the player keep their moved pose.
+      const holdPlayerPos = player?.pos ? { x: player.pos.x, z: player.pos.z } : null;
+      for (const entityId of snapshot.liveInjectedIds) {
+        const entity = state.entities.get(entityId);
+        if (entity?.data?.perfScenario && entity.pos) {
+          entity.data.perfScenario.holdPos = { x: entity.pos.x, z: entity.pos.z };
+        }
+      }
+      snapshot.poseHoldTimer = setInterval(() => {
+        for (const entityId of snapshot.liveInjectedIds) {
+          const entity = state.entities.get(entityId);
+          const hold = entity?.data?.perfScenario?.holdPos;
+          if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos || !hold) continue;
+          entity.pos.set(hold.x, 0, hold.z);
+          stabilizeAuthoredPose(entity);
+        }
+        // The player gets the same hold: vel.set(0) at arm is one-shot, and any later thrust
+        // input (undock recovery, stale intent) carries the camera 1,000+ WU from the spawn
+        // ring — the pinned ships then sit outside the render glass and never get meshes.
+        if (player?.pos && holdPlayerPos) {
+          player.pos.set(holdPlayerPos.x, 0, holdPlayerPos.z);
+          player.prevPos.copy(player.pos);
+          player.vel?.set?.(0, 0, 0);
+        }
+      }, 250);
     }
 
     return {
@@ -753,19 +795,44 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
   if (definition.actualRenderedEntitiesRequired
       || definition.presentationWorldReadyRequired
       || definition.presentationWorldMode) {
-    readiness = await waitForPerformanceScenarioReady(page, scenarioId);
+    readiness = await waitForPerformanceScenarioReady(page, scenarioId, { log });
   }
   let churn = null;
   if (definition.presentationWorldMode === 'churn') {
     churn = await advancePresentationWorldChurn(page, scenarioId, seed);
-    readiness = await waitForPerformanceScenarioReady(page, scenarioId);
+    readiness = await waitForPerformanceScenarioReady(page, scenarioId, { log });
     churn = { ...churn, settlement: await capturePresentationWorldChurnSettlement(page, scenarioId) };
   }
   log(`[scenario] prepared ${scenarioId} injected=${receipt.injectedEntityCount}`);
   return { ...receipt, baselineSettle, readiness, churn, definition };
 }
 
-async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = 120_000 } = {}) {
+// The ready conditions are correctness gates (authored admission actually finished), so they are
+// never relaxed. The bound itself is a host-speed budget: on a contended box the same admission
+// that takes ~75 s quiet can starve past 120 s (09-21 Electron, 09-24 Browser). Acceptors may
+// raise it for a contended evidence host without touching the measured windows.
+function scenarioReadyTimeoutMs() {
+  const override = Number(process.env.SF_SCENARIO_READY_TIMEOUT_MS);
+  return Number.isFinite(override) && override > 0 ? override : 120_000;
+}
+
+// Driver-visible upload quiescence, part of scenario readiness. The dirty-range comparator reads
+// tier1 postBoot.bufferUploadBytes — every buffer upload, not just the measured owners'. Route and
+// authored-admission churn emit MB-scale ambient uploads for tens of seconds after the admission
+// counters reach zero (2026-09-24 run: ~5.1 MB/s still decaying when the ranged window opened, vs
+// 1.5–3.1 MB/s steady-state under live combat on this host). A window that opens mid-tail charges
+// the tail to its driver bytes while the later window inherits the settled floor — it is the
+// ASYMMETRY that loses the ratio, so readiness waits for the rate to reach steady state, not for
+// a fixed low rate: pass when the recent rate is under the absolute floor, or when it has stopped
+// falling (within a band of the trailing mean) under the ceiling above which even symmetric
+// ambient breaks the comparator. Engages only when tier-1 counters are enabled.
+const UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 4 * 1024 * 1024;
+const UPLOAD_QUIET_CEILING_BYTES_PER_SEC = 8 * 1024 * 1024;
+const UPLOAD_QUIET_STABLE_MIN = 0.92;
+const UPLOAD_QUIET_STABLE_MAX = 1.2;
+const UPLOAD_QUIET_REQUIRED_MS = 1_500;
+
+async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs() } = {}) {
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf?.state;
@@ -798,45 +865,176 @@ async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = 
   }, scenarioId);
 }
 
-export async function waitForPerformanceScenarioReady(page, scenarioId, { timeoutMs = 120_000 } = {}) {
-  await page.waitForFunction((expectedId) => {
+export async function waitForPerformanceScenarioReady(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs(), log = () => {} } = {}) {
+  await page.waitForFunction(({ expectedId, uploadQuietFloorBytesPerSec, uploadQuietCeilingBytesPerSec, uploadQuietStableMin, uploadQuietStableMax, uploadQuietRequiredMs }) => {
     const sf = window.SF;
     const state = sf?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
-    if (!state || snapshot?.id !== expectedId) return false;
+    // Every poll records which sub-conditions hold so a starvation timeout names the blocker
+    // (authored admission vs presentation-world bookkeeping vs upload quiescence).
+    const detail = { scenarioId: expectedId };
+    const fail = (key, extra) => {
+      detail.heldAt = key;
+      if (extra) Object.assign(detail, extra);
+      window.__SF_SCENARIO_READY_LAST__ = detail;
+      return false;
+    };
+    if (!state || snapshot?.id !== expectedId) return fail('snapshotMatch');
+    const renderSystemEarly = sf.registry?.get?.('render');
+    const queueEarly = Array.isArray(renderSystemEarly?._meshBuildQueue)
+      ? Math.max(0, renderSystemEarly._meshBuildQueue.length - (renderSystemEarly._meshBuildQueueHead || 0))
+      : 0;
+    detail.queueRemaining = queueEarly;
+    detail.meshesSize = renderSystemEarly?._meshes?.size ?? null;
+    detail.activeJobs = Number(state.render?.scene?.userData?.authoredUpgradeDiagnostics?.activeJobs || 0);
+    detail.timeScale = state.timeScale ?? null;
+    detail.timeScaleRequests = sf.timeEffects?.describeRequests?.() || null;
+    const diagJobs = state.render?.scene?.userData?.authoredUpgradeDiagnostics?.jobs;
+    if (Array.isArray(diagJobs)) {
+      detail.runningJobs = diagJobs
+        // 'stalled-slot-released' is the watchdog's close of a still-parked job — it must stay
+        // visible here or a starvation dump would hide the hog it just rescued the lane from.
+        .filter((j) => j && (j.status === 'running' || j.status === 'stalled-slot-released'))
+        .slice(-4).map((j) => {
+          // A running job that never settles is the starvation signature. Name the await it is
+          // parked on: the boundary stamps authoredAssetState per stage and authoredPreparePhase
+          // when it parks on the opening-publication gate.
+          const jobEntity = j.entityId != null ? state.entities.get(j.entityId) : null;
+          const jobUd = jobEntity?.mesh?.userData || null;
+          return {
+            key: j.key,
+            entityId: j.entityId ?? null,
+            status: j.status === 'stalled-slot-released' ? j.status : undefined,
+            assets: (j.assetUrls || []).slice(-3).map((u) => String(u).split('/').pop()),
+            runningForMs: j.startedAtMs != null ? Math.round(performance.now() - j.startedAtMs) : null,
+            boundaryState: jobUd?.authoredAssetState || null,
+            preparePhase: jobUd?.authoredPreparePhase || null,
+            graphFrozen: state.render?.openingGraphPublicationFrozen === true || null,
+          };
+        });
+    }
     const shipIds = snapshot.liveInjectedIds.filter((id) => state.entities.get(id)?.type === 'ship');
-    if (!['legacy-current', 'rebase'].includes(snapshot.presentationWorldMode) && !shipIds.length) return false;
-    for (const id of shipIds) {
-      const entity = state.entities.get(id);
-      if (!entity?.mesh) return false;
-      if (entity.mesh.userData?.authoredAssetState !== 'authored') return false;
+    if (!['legacy-current', 'rebase'].includes(snapshot.presentationWorldMode) && !shipIds.length) {
+      return fail('shipsInjected');
+    }
+    const unmeshed = shipIds.filter((id) => !state.entities.get(id)?.mesh);
+    if (unmeshed.length) {
+      return fail('meshesPresent', {
+        unmeshed: unmeshed.slice(0, 8).map((id) => {
+          const entity = state.entities.get(id);
+          return {
+            id,
+            inEntityList: Array.isArray(state.entityList) ? state.entityList.includes(entity) : null,
+            alive: entity?.alive !== false,
+            noMesh: entity?._noMesh === true,
+            farResident: entity?.farResident === true,
+            pos: entity?.pos ? { x: Math.round(entity.pos.x), z: Math.round(entity.pos.z) } : null,
+            playerPos: state.entities.get(state.playerId)?.pos
+              ? { x: Math.round(state.entities.get(state.playerId).pos.x), z: Math.round(state.entities.get(state.playerId).pos.z) }
+              : null,
+          };
+        }),
+      });
+    }
+    const unauthored = shipIds.filter((id) => state.entities.get(id)?.mesh?.userData?.authoredAssetState !== 'authored');
+    if (unauthored.length) {
+      return fail('authoredAdmission', {
+        unauthored: unauthored.slice(0, 8).map((id) => ({
+          id,
+          authoredAssetState: state.entities.get(id)?.mesh?.userData?.authoredAssetState || null,
+        })),
+      });
     }
     const renderSystem = sf.registry?.get?.('render');
     const world = renderSystem?._presentationWorld;
     if (snapshot.presentationWorldMode) {
-      if (!world) return false;
+      if (!world) return fail('worldPresent');
       if (snapshot.presentationWorldMode === 'rebase') {
-        if (renderSystem?._frameMembrane?.seq !== state.world?.frameOriginSeq) return false;
+        if (renderSystem?._frameMembrane?.seq !== state.world?.frameOriginSeq) return fail('membraneSeq');
       } else {
         const targetActive = snapshot.presentationTargetActive || snapshot.presentationBaseline.active;
-        if (world.activeCount !== targetActive) return false;
-        if (world.boundCount !== targetActive) return false;
-        if (renderSystem._meshes.size !== targetActive) return false;
-        for (const id of shipIds) {
+        if (!(world.activeCount === targetActive && world.boundCount === targetActive
+            && renderSystem._meshes.size === targetActive)) {
+          return fail('worldCounts', {
+            targetActive,
+            activeCount: world.activeCount,
+            boundCount: world.boundCount,
+            meshesSize: renderSystem._meshes.size,
+          });
+        }
+        const unslotted = shipIds.filter((id) => {
           const slot = world.getSlotForEntityId(id);
-          if (slot < 0 || world.meshRefs[slot] !== state.entities.get(id)?.mesh) return false;
-        }
-        for (const id of snapshot.retiredInjectedIds) {
-          if (world.getSlotForEntityId(id) >= 0) return false;
-        }
+          return slot < 0 || world.meshRefs[slot] !== state.entities.get(id)?.mesh;
+        });
+        if (unslotted.length) return fail('worldSlots', { unslotted: unslotted.slice(0, 8) });
+        const staleRetired = snapshot.retiredInjectedIds.filter((id) => world.getSlotForEntityId(id) >= 0);
+        if (staleRetired.length) return fail('worldRetiredSlots', { staleRetired: staleRetired.slice(0, 8) });
       }
     }
     const queueRemaining = Array.isArray(renderSystem?._meshBuildQueue)
       ? Math.max(0, renderSystem._meshBuildQueue.length - (renderSystem._meshBuildQueueHead || 0))
       : 0;
     const upgrades = state.render?.scene?.userData?.authoredUpgradeDiagnostics;
-    return queueRemaining === 0 && renderSystem?._meshReconcileDirty !== true && Number(upgrades?.activeJobs || 0) === 0;
-  }, scenarioId, { timeout: timeoutMs });
+    if (!(queueRemaining === 0 && renderSystem?._meshReconcileDirty !== true && Number(upgrades?.activeJobs || 0) === 0)) {
+      return fail('admissionDrained', {
+        queueRemaining,
+        meshReconcileDirty: renderSystem?._meshReconcileDirty === true,
+        activeJobs: Number(upgrades?.activeJobs || 0),
+      });
+    }
+
+    const perfApi = window.__SPACEFACE_PERF__;
+    if (typeof perfApi?.getCounterSnapshot !== 'function' || perfApi?.tier1?.isEnabled?.() !== true) {
+      window.__SF_SCENARIO_READY_LAST__ = detail;
+      return true;
+    }
+    const tag = `${expectedId}:${snapshot.resourceStartTime}`;
+    const quiet = window.__SF_SCENARIO_UPLOAD_QUIET__?.tag === tag
+      ? window.__SF_SCENARIO_UPLOAD_QUIET__
+      : (window.__SF_SCENARIO_UPLOAD_QUIET__ = { tag, samples: [], lastAt: null, since: null });
+    const now = performance.now();
+    // getCounterSnapshot allocates a full report — sampling the byte counter at ~10 Hz is enough
+    // for a multi-second rate window, so most polls skip the snapshot entirely.
+    if (quiet.lastAt == null || now - quiet.lastAt >= 100) {
+      const uploadBytes = perfApi.getCounterSnapshot().totals?.bufferUploadBytes;
+      if (!Number.isFinite(uploadBytes)) { window.__SF_SCENARIO_READY_LAST__ = detail; return true; }
+      quiet.samples.push({ at: now, bytes: uploadBytes });
+      quiet.lastAt = now;
+      while (quiet.samples.length > 2 && now - quiet.samples[0].at > 8_000) quiet.samples.shift();
+    }
+    const last = quiet.samples[quiet.samples.length - 1];
+    const firstShort = quiet.samples.find((sample) => last && last.at - sample.at <= 2_000) || last;
+    const firstLong = quiet.samples[0];
+    const spanShort = last && firstShort ? last.at - firstShort.at : 0;
+    const spanLong = last && firstLong ? last.at - firstLong.at : 0;
+    const shortRate = spanShort >= 1_000 ? (last.bytes - firstShort.bytes) / (spanShort / 1_000) : Number.POSITIVE_INFINITY;
+    const longRate = spanLong >= 4_000 ? (last.bytes - firstLong.bytes) / (spanLong / 1_000) : null;
+    const steady = Number.isFinite(longRate)
+      && shortRate >= longRate * uploadQuietStableMin
+      && shortRate <= longRate * uploadQuietStableMax;
+    const quietNow = shortRate <= uploadQuietFloorBytesPerSec
+      || (steady && shortRate <= uploadQuietCeilingBytesPerSec);
+    if (quietNow) {
+      if (quiet.since == null) quiet.since = now;
+    } else quiet.since = null;
+    detail.heldAt = quiet.since == null ? 'uploadQuiet' : null;
+    detail.shortRateBytesPerSec = shortRate;
+    detail.longRateBytesPerSec = longRate;
+    detail.quietForMs = quiet.since == null ? 0 : now - quiet.since;
+    window.__SF_SCENARIO_READY_LAST__ = detail;
+    return quiet.since != null && now - quiet.since >= uploadQuietRequiredMs;
+  }, {
+    expectedId: scenarioId,
+    uploadQuietFloorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC,
+    uploadQuietCeilingBytesPerSec: UPLOAD_QUIET_CEILING_BYTES_PER_SEC,
+    uploadQuietStableMin: UPLOAD_QUIET_STABLE_MIN,
+    uploadQuietStableMax: UPLOAD_QUIET_STABLE_MAX,
+    uploadQuietRequiredMs: UPLOAD_QUIET_REQUIRED_MS,
+  }, { timeout: timeoutMs }).catch(async (error) => {
+    const last = await page.evaluate(() => window.__SF_SCENARIO_READY_LAST__ || null).catch(() => null);
+    log(`[scenario] ready wait starved for ${scenarioId}: ${JSON.stringify({ ...last, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })}`);
+    throw new Error(`scenario ready wait starved for ${scenarioId}: ${JSON.stringify({ ...last, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })} — ${error?.message || error}`);
+  });
   return page.evaluate((expectedId) => {
     const state = window.SF?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
@@ -865,11 +1063,21 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
         publisher: copyPublisher(publisher),
       };
     }
+    const quiet = window.__SF_SCENARIO_UPLOAD_QUIET__;
+    const quietSamples = quiet?.samples || [];
+    const quietFirst = quietSamples[0];
+    const quietLast = quietSamples[quietSamples.length - 1];
+    const quietSpanMs = quietFirst && quietLast ? quietLast.at - quietFirst.at : 0;
     return {
       scenarioId: expectedId,
       injectedAlive: entities.filter((entity) => entity.alive !== false).length,
       renderedShips: entities.filter((entity) => entity.type === 'ship' && entity.mesh).length,
       authoredShips: entities.filter((entity) => entity.type === 'ship' && entity.mesh?.userData?.authoredAssetState === 'authored').length,
+      uploadQuiet: {
+        tag: quiet?.tag || null,
+        observedBytesPerSec: quietSpanMs > 0 ? (quietLast.bytes - quietFirst.bytes) / (quietSpanMs / 1_000) : null,
+        quietForMs: quiet?.since != null && quietLast ? quietLast.at - quiet.since : null,
+      },
       presentationWorld: snapshot?.presentationWorldMode ? {
         active: world?.activeCount ?? null,
         bound: world?.boundCount ?? null,
@@ -1127,6 +1335,8 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
     }
     if (snapshot.activityTimer != null) clearInterval(snapshot.activityTimer);
     snapshot.activityTimer = null;
+    if (snapshot.poseHoldTimer != null) clearInterval(snapshot.poseHoldTimer);
+    snapshot.poseHoldTimer = null;
     if (snapshot.miningDiagnosticArmed) {
       sf.bus.emit('mining:stop', {
         minerId: state.playerId,
@@ -1136,7 +1346,19 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       snapshot.miningDiagnosticStopped = true;
     }
     for (const id of snapshot.injectedIds) {
-      if (state.entities.has(id)) sf.helpers.removeEntity(id);
+      // Immediate removal: the default path only marks alive=false and waits for the next
+      // lifetimeSweep, which couples restore to a sim tick — a frozen or starved clock strands
+      // the injected entities in state.entities and the restore wait never satisfies.
+      if (state.entities.has(id)) sf.helpers.removeEntity(id, { immediate: true });
+    }
+    // Retire the injected ids: removal pushed them onto state.freeIds, and ambient spawning
+    // recycles them into new live entities — the restore wait's !entities.has(id) predicate
+    // can then never hold (observed: ids 299/300/376/378 respawned with fresh slots mid-wait).
+    if (Array.isArray(state.freeIds) && state.freeIds.length) {
+      const retired = new Set(snapshot.injectedIds);
+      for (let i = state.freeIds.length - 1; i >= 0; i--) {
+        if (retired.has(state.freeIds[i])) state.freeIds.splice(i, 1);
+      }
     }
     snapshot.restoreRequested = true;
     snapshot.legacyAdapterRestored = legacyAdapterRestored;
@@ -1152,14 +1374,53 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
   }, scenarioId);
 
   if (removal.injectedIds?.length || removal.presentationBaseline) {
-    await page.waitForFunction(({ ids, baseline }) => {
+    // Each poll records which sub-conditions hold so a starvation timeout names the blocker
+    // instead of reporting a bare 600 s wait.
+    await page.waitForFunction(({ ids, baseline, expectedId }) => {
       const sf = window.SF;
       const state = sf?.state;
       const render = sf?.registry?.get?.('render');
       const world = render?._presentationWorld;
-      if (!ids.every((id) => !state?.entities?.has?.(id)
-        && !render?._meshes?.has?.(id)
-        && (!world || world.getSlotForEntityId(id) < 0))) return false;
+      const stuck = ids.map((id) => ({
+        id,
+        inEntities: state?.entities?.has?.(id) === true,
+        inMeshes: render?._meshes?.has?.(id) === true,
+        slot: world ? world.getSlotForEntityId(id) : -1,
+        inFarActors: state?.world?.farActors?.byId?.has?.(id) === true,
+        inDressing: state?.world?.dressing?.byId?.has?.(id) === true,
+        inField: state?.world?.asteroidField?.byId?.has?.(id) === true,
+      })).filter((r) => r.inEntities || r.inMeshes || r.slot >= 0);
+      const stuckIds = stuck.map((r) => r.id);
+      const prev = window.__SF_SCENARIO_RESTORE_WAIT_LAST__;
+      const detail = {
+        scenarioId: expectedId,
+        stuckIds,
+        stuck,
+        activeCount: world?.activeCount,
+        boundCount: world?.boundCount,
+        meshesSize: render?._meshes?.size,
+        baselineActive: baseline?.active,
+        baselineBound: baseline?.bound,
+        baselineMeshes: baseline?.meshes,
+        frameOrigin: state?.world?.frameOrigin,
+        baselineFrameOrigin: baseline?.frameOrigin,
+        membraneSeq: render?._frameMembrane?.seq,
+        frameOriginSeq: state?.world?.frameOriginSeq,
+        // Sim-clock fields: entity:destroyed is bus-queued and only flushed inside lifetimeSweep
+        // on a sim tick. A frozen clock leaks inMeshes/slot forever — the deltas name it.
+        tick: state?.tick ?? null,
+        simTime: state?.simTime ?? null,
+        timeScale: state?.timeScale ?? null,
+        mode: state?.mode ?? null,
+        paused: state?.paused === true || null,
+        tickDelta: prev && Number.isFinite(prev.tick) && Number.isFinite(state?.tick)
+          ? state.tick - prev.tick : null,
+        simTimeDelta: prev && Number.isFinite(prev.simTime) && Number.isFinite(state?.simTime)
+          ? state.simTime - prev.simTime : null,
+        timeScaleRequests: sf?.timeEffects?.describeRequests?.() || null,
+      };
+      window.__SF_SCENARIO_RESTORE_WAIT_LAST__ = detail;
+      if (stuckIds.length) return false;
       if (!baseline) return true;
       return world?.activeCount === baseline.active
         && world?.boundCount === baseline.bound
@@ -1167,7 +1428,11 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         && state?.world?.frameOrigin?.x === baseline.frameOrigin.x
         && state?.world?.frameOrigin?.z === baseline.frameOrigin.z
         && render?._frameMembrane?.seq === state?.world?.frameOriginSeq;
-    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null }, { timeout: 30_000 });
+    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null, expectedId: scenarioId }, { timeout: scenarioReadyTimeoutMs() }).catch(async (error) => {
+      const last = await page.evaluate(() => window.__SF_SCENARIO_RESTORE_WAIT_LAST__ || null).catch(() => null);
+      log(`[scenario] restore wait starved for ${scenarioId}: ${JSON.stringify(last)}`);
+      throw new Error(`scenario restore wait starved for ${scenarioId}: ${JSON.stringify(last)} — ${error?.message || error}`);
+    });
   }
   const receipt = await page.evaluate((expectedId) => {
     const sf = window.SF;
@@ -1207,11 +1472,12 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       }
     }
     state.timeScale = snapshot.timeScale;
+    if (player?.flags && snapshot.playerInvulnWas != null) player.flags.invuln = snapshot.playerInvulnWas;
     if (state.player && !routeProgression) state.player.targetId = snapshot.playerTargetId;
     const checks = routeProgression ? {
       injectedEntitiesRemoved: remainingInjectedIds.length === 0,
       timeScale: state.timeScale === snapshot.timeScale,
-      activityStopped: snapshot.activityTimer == null,
+      activityStopped: snapshot.activityTimer == null && snapshot.poseHoldTimer == null,
       miningDiagnosticStopped: !snapshot.miningDiagnosticArmed
         || (snapshot.miningDiagnosticStopped === true && vfxSystem?._miningBeam?.active !== true),
       routeProgressed: state.world?.currentSectorId !== snapshot.currentSectorId,
@@ -1219,13 +1485,14 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       injectedEntitiesRemoved: remainingInjectedIds.length === 0,
       timeScale: state.timeScale === snapshot.timeScale,
       playerTarget: state.player?.targetId === snapshot.playerTargetId,
+      playerInvuln: snapshot.playerInvulnWas == null || player?.flags?.invuln === snapshot.playerInvulnWas,
       playerPosition: sameVector(player?.pos, snapshot.player.pos),
       playerPreviousPosition: sameVector(player?.prevPos, snapshot.player.prevPos),
       playerVelocity: sameVector(player?.vel, snapshot.player.vel),
       playerRotation: player?.rot === snapshot.player.rot && player?.prevRot === snapshot.player.prevRot,
       flybyFocus: !snapshot.isolatesFlybyFocus
         || sameFlybyFocus(state.player?.flybyFocus, snapshot.flybyFocus),
-      activityStopped: snapshot.activityTimer == null,
+      activityStopped: snapshot.activityTimer == null && snapshot.poseHoldTimer == null,
       miningDiagnosticStopped: !snapshot.miningDiagnosticArmed
         || (snapshot.miningDiagnosticStopped === true && vfxSystem?._miningBeam?.active !== true),
       playerNoInterp: !player?.flags || player.flags.noInterp === snapshot.player.noInterp,

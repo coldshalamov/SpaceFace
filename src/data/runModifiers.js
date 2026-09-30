@@ -209,7 +209,7 @@ export function summarizeRunBuild(modifiers) {
  * callers must run it through validateRunModifier. */
 export function runModifierRecord(args) {
   const src = args || {};
-  return {
+  const record = {
     kind: typeof src.kind === 'string' ? src.kind : null,
     offerId: typeof src.offerId === 'string' ? src.offerId : null,
     verb: typeof src.verb === 'string' ? src.verb : null,
@@ -218,4 +218,12 @@ export function runModifierRecord(args) {
     replaced: typeof src.replaced === 'string' ? src.replaced : null,
     wave: Number.isInteger(src.wave) ? src.wave : 0,
   };
+  // Evolution notes remember the parts they spent. A hole in that list drops the
+  // field entirely so a weapon note keeps the seven keys the draft already locks.
+  const consumes = src.consumes;
+  const cleanConsumes = Array.isArray(consumes)
+    && consumes.length > 0
+    && consumes.every((id) => typeof id === 'string' && id.length > 0);
+  if (cleanConsumes) record.consumes = consumes.slice();
+  return record;
 }

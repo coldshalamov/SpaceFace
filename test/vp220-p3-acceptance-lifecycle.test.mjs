@@ -546,7 +546,7 @@ test('reduced-motion dense update preserves core+inner and zero alloc', () => {
 
 test('acceptance schema and scenario contract cover required profiles and scenarios', () => {
   assert.equal(SCHEMA_ID, 'spaceface.vp220PropulsionAcceptance.v1');
-  assert.equal(REQUIRED_PROFILE_IDS.length, 6);
+  assert.equal(REQUIRED_PROFILE_IDS.length, 7);
   assert.deepEqual(REQUIRED_PROFILE_IDS.slice().sort(), LIVE_ENGINE_PROFILE_IDS.slice().sort());
   const ids = SCENARIO_CONTRACT.map((s) => s.id);
   for (const required of [

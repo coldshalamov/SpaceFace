@@ -45,9 +45,13 @@ async function restored(saved){
 }
 // The payload, pursuer and wingman are slow hull classes (governed combat speed 95): receipt
 // gates key to 0.5 x a struck hull's cruise, doubled by the ceiling restore, and this episode's
-// strikes close at 105.8 (bolas) and 57.6 (wingman amendment) — over the 47.5 slow-class gate,
-// under the 105 kestrel-pace one.
-const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-135,51,{hull:3,mass:10,combatSpeed:95})];
+// strikes close at ~112 (bolas) and ~55 (wingman amendment) — over the 47.5 slow-class gate,
+// under the 105 kestrel-pace one. 2026-09-29: the wingman was re-seated onto the pursuer's
+// post-release flight line (-118,42 from -135,51). Under the post-1639c221e solver a tangential
+// clip bleeds closing across six ticks and the first impulse packet stays under damageDeltaV
+// (8), so the old grazing seat produced damageApplied=false and no amendment; the head-on seat
+// lands a single ~17.4-deltaV kill, preserving the same collateral-count-2 contract.
+const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-118,42,{hull:3,mass:10,combatSpeed:95})];
 const release=tick=>tick===31;
 
 test('a save between release and impact restores the pending root; the impact settles once with the saved identity',async()=>{

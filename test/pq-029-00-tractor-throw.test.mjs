@@ -25,7 +25,8 @@ import {
 
 const SEED = 29000;
 const DT = 1 / 60;
-const HITCH_CRUISE = getPropulsionProfile('drive_reaction_m').combatSpeed;
+// Hitch on the stock reaction-M drive: governed combat speed 95 wu/s (tractor-throw-drill.scenario.json).
+const HITCH_CRUISE = 95;
 const THROW_FLOOR = 1.2 * HITCH_CRUISE;
 
 test('the Range drill teaches pick up, spin, throw in <= 60 s', () => {

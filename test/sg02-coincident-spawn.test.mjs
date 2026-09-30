@@ -52,11 +52,13 @@ test('co-spawned dynamic bodies on one authored point never collide coincident',
     const wreck = dynamicBody(10, { type: 'wreck', shape: 'capsule', material: 'debris', mass: 55, radius: 18 });
     const pod = dynamicBody(11);
     owner.syncFromEntities([wreck, pod]);
-    // The guard fired at creation: the second co-created body claimed the +2.5 ladder slot
-    // (2.5 WU clears the measured ~1.5 WU degenerate window along a capsule partner's axis).
+    // The guard fired at creation: the second co-created body claimed the first +x ladder slot
+    // past the partner capsule's spine window (spine half-length ~4.6 + the 2 WU cap-centre eps
+    // -> |axial| > 6.6, so +7.5). Landing anywhere inside the spine segment leaves the package-D
+    // solver a degenerate manifold that detonates ~1e6 WU — the original teleport signature.
     assert.ok(Math.abs(wreck.pos.x - SPAWN.x) < 0.01, `wreck keeps the authored point (${wreck.pos.x})`);
-    assert.ok(Math.abs(pod.pos.x - (SPAWN.x + 2.5)) < 0.01,
-      `pod claims the +2.5 ladder slot (got ${pod.pos.x})`);
+    assert.ok(Math.abs(pod.pos.x - (SPAWN.x + 7.5)) < 0.01,
+      `pod claims the +7.5 ladder slot, past the capsule spine window (got ${pod.pos.x})`);
     owner.step(DT);
     owner.step(DT);
     const sep = Math.hypot(wreck.pos.x - pod.pos.x, wreck.pos.z - pod.pos.z);
@@ -129,12 +131,15 @@ test('ghost-material bodies neither nudge nor force nudges', async () => {
     const solid = dynamicBody(50);
     owner.syncFromEntities([solid]);
     owner.step(DT);
-    // A ghost candidate on an occupied point keeps its authored pose.
-    const ghost = dynamicBody(51, { type: 'pickup', material: 'default' });
+    // A ghost-material candidate on an occupied point keeps its authored pose. (Package D moved
+    // pickups from ghost-material to collision-group filtering — a pickup vs a solid DOES form a
+    // pair and is nudged; the ghost contract is exercised here with a real ghost material —
+    // massline_sensor, the authored world-site payload that still joins no pairs.)
+    const ghost = dynamicBody(51, { material: 'massline_sensor' });
     owner.syncFromEntities([solid, ghost]);
     assert.ok(Math.abs(ghost.pos.x - SPAWN.x) < 0.01, `ghost stays on the authored point (${ghost.pos.x})`);
     // And a solid body co-spawned onto a ghost is unaffected — ghosts form no pairs.
-    const ghost2 = dynamicBody(52, { type: 'pickup', material: 'default' });
+    const ghost2 = dynamicBody(52, { material: 'massline_sensor' });
     const solid2 = dynamicBody(53);
     ghost2.pos = { x: 2000, z: 2000 };
     solid2.pos = { x: 2000, z: 2000 };
@@ -142,6 +147,32 @@ test('ghost-material bodies neither nudge nor force nudges', async () => {
     assert.ok(Math.abs(solid2.pos.x - 2000) < 0.01,
       `solid body ignores a coincident ghost (${solid2.pos.x})`);
     owner.step(DT);
+  } finally {
+    owner.dispose();
+  }
+});
+
+test('a pickup nudges off a solid partner but not off a craft it cannot touch', async () => {
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: DT });
+  try {
+    // Package D collision groups: pickups form pairs with solids/debris, never with craft. The
+    // ladder must model the same rule — a crate spawned inside a hull keeps its authored pose
+    // (JS collection overlap), while a crate coincident with a debris body gets the slot.
+    const crate = dynamicBody(70, { type: 'pickup', material: 'sensor' });
+    const hull = dynamicBody(71, { type: 'ship', shape: 'capsule', material: 'ship', mass: 60, radius: 14 });
+    owner.syncFromEntities([crate, hull]);
+    assert.ok(Math.abs(crate.pos.x - SPAWN.x) < 0.01,
+      `pickup coincident with a craft keeps the authored point — no pair forms (${crate.pos.x})`);
+    const wreck = dynamicBody(72, { type: 'wreck', shape: 'capsule', material: 'debris', mass: 55, radius: 18 });
+    wreck.pos = { x: 3000, z: 3000 };
+    const crateOnWreck = dynamicBody(73, { type: 'pickup', material: 'sensor' });
+    crateOnWreck.pos = { x: 3000, z: 3000 };
+    owner.syncFromEntities([crate, hull, wreck, crateOnWreck]);
+    assert.ok(Math.abs(crateOnWreck.pos.x - 3000) > 2,
+      `pickup coincident with a debris capsule is nudged off the spine window (${crateOnWreck.pos.x})`);
+    owner.step(DT);
+    const sep = Math.hypot(wreck.pos.x - crateOnWreck.pos.x, wreck.pos.z - crateOnWreck.pos.z);
+    assert.ok(sep > 0.1 && sep < 1000, `pickup/debris pair resolves sanely (sep=${sep})`);
   } finally {
     owner.dispose();
   }

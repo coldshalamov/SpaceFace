@@ -7,6 +7,7 @@ import { createLocalizationRuntime, DEFAULT_LOCALE, PSEUDO_LOCALE } from './runt
 import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
 import { STORE_COPY } from './storeCopy.js';
 import { barkMessagesFor } from './barks.js';
+import { IS_DEV } from '../core/devMode.js';
 import { SHIPPED_LOCALES, translateMessage } from './pipeline.js';
 
 const englishMessages = Object.freeze({
@@ -23,15 +24,28 @@ for (const [key, entry] of Object.entries(englishMessages).sort(([a], [b]) => a.
   if (typeof message === 'string' && !keyByEnglishMessage.has(message)) keyByEnglishMessage.set(message, key);
 }
 
-/** The locales the Settings picker offers. English is first: it is the default unless chosen. */
-export const LANGUAGE_OPTIONS = Object.freeze([
+/** The five languages a player can pick. English is first: it is the default unless chosen. */
+const SHIPPED_LANGUAGE_ROWS = Object.freeze([
   Object.freeze({ id: DEFAULT_LOCALE, label: 'English' }),
   Object.freeze({ id: 'es-ES', label: 'Español' }),
   Object.freeze({ id: 'fr-FR', label: 'Français' }),
   Object.freeze({ id: 'de-DE', label: 'Deutsch' }),
   Object.freeze({ id: 'pt-BR', label: 'Português (Brasil)' }),
-  Object.freeze({ id: PSEUDO_LOCALE, label: 'Pseudo-locale (layout check)' }),
 ]);
+
+const PSEUDO_LANGUAGE_OPTION = Object.freeze({
+  id: PSEUDO_LOCALE,
+  label: 'Pseudo-locale (layout check)',
+});
+
+/** Picker rows for a dev flag. Only a strict true adds the layout pseudo-locale. */
+export function languageOptionsFor(isDev) {
+  if (isDev !== true) return SHIPPED_LANGUAGE_ROWS;
+  return Object.freeze([...SHIPPED_LANGUAGE_ROWS, PSEUDO_LANGUAGE_OPTION]);
+}
+
+/** The locales the Settings picker offers in this process. */
+export const LANGUAGE_OPTIONS = languageOptionsFor(IS_DEV);
 
 export { SHIPPED_LOCALES };
 

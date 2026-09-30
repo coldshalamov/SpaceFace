@@ -33,12 +33,16 @@ export class SquadCommander {
     this.config = Object.freeze({ ...DEFAULTS, ...config });
     this.freeze = config.freezeResults === false ? identity : Object.freeze;
     this.squads = new Map();
+    // Survives unregisterSquad. A roster rebuild drops the squad object and
+    // would otherwise accept the next body that reuses the leader id.
+    this.acceptedLeaderGeneration = new Map();
   }
 
   registerSquad(definition) {
     if (!definition || definition.id == null) throw new TypeError('squad id is required');
     if (!Array.isArray(definition.members) || definition.members.length === 0) throw new TypeError('squad requires members');
     const members = definition.members.map((member, index) => normalizeMember(member, index));
+    const leaderOccupantGeneration = this._rememberedLeaderGeneration(definition.id, members[0].id);
     const factionBehavior = normalizeFactionBehaviorProfile(definition.factionBehavior)
       || members.map((member) => member.factionBehavior).find(Boolean)
       || null;
@@ -71,7 +75,8 @@ export class SquadCommander {
       assignmentMembersScratch: [],
       // The occupant token accepted for members[0]. A later frame with the same id and a
       // different token is a recycled body, not a new order to follow it.
-      leaderOccupantGeneration: null,
+      // Restored from acceptedLeaderGeneration so a roster rebuild does not clear it.
+      leaderOccupantGeneration,
     };
     this.squads.set(definition.id, state);
     return this.inspect(definition.id);
@@ -79,6 +84,24 @@ export class SquadCommander {
 
   unregisterSquad(squadId) {
     this.squads.delete(squadId);
+  }
+
+  _rememberedLeaderGeneration(squadId, leaderId) {
+    const byLeader = this.acceptedLeaderGeneration.get(squadId);
+    if (!byLeader || leaderId == null) return null;
+    const generation = byLeader.get(leaderId);
+    if (generation == null || generation === '') return null;
+    return generation;
+  }
+
+  _rememberLeaderGeneration(squadId, leaderId, generation) {
+    if (leaderId == null || generation == null || generation === '') return;
+    let byLeader = this.acceptedLeaderGeneration.get(squadId);
+    if (!byLeader) {
+      byLeader = new Map();
+      this.acceptedLeaderGeneration.set(squadId, byLeader);
+    }
+    byLeader.set(leaderId, generation);
   }
 
   update(squadId, tick, perceptionsByMember, director = null) {
@@ -111,6 +134,7 @@ export class SquadCommander {
     const targetAssignments = allocateCombatTargets(squad, selected.id, contacts, focus);
 
     const leader = chooseLeaderPerception(squad, perceptions);
+    this._rememberLeaderGeneration(squad.id, squad.members[0].id, squad.leaderOccupantGeneration);
     if (leader && leader.self) {
       squad.formationHeading = squad.formationHeading == null
         ? leader.self.rot

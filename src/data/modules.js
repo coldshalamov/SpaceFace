@@ -413,6 +413,58 @@ const SHIPPED_MODULES = [
     visuals: { part: 'greebles/greeble_armor_plates.glb' },
   },
   {
+    // GRAVITY BUMPER — the first HULL BURST (design doc 2026-09-29 section 4). A timed, front-facing
+    // special attack: press the burst key and for a few seconds the nose throws away every hostile
+    // hull it touches, harder the faster you arrive (a Massline swing is the fastest way to arrive).
+    // The hull counts as much heavier while it runs; nothing pushes back on you. Consumed via
+    // derived.hullBurstKind (systems/ships.js), driven by systems/hullBurst.js, tuned in data/hullBurst.js.
+    // One hull-burst module per hull: the type is the build.
+    id: 'mod_gravity_bumper_s', name: 'Gravity Bumper S', slotType: 'utility', size: 'S', tier: 2, mass: 5, price: 24000,
+    requiresTech: 'tech_graviton_drives',
+    // The headline verb of the hull-burst overhaul sits on the first station's rack at first-haul terms
+    // (same door as Swing Drive): docked at Helios it sells with no Graviton Drives stop. The catalog
+    // price and the research gate stand at every other berth.
+    shopOffers: { station_helios: { price: 12000 } },
+    energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 1 },
+  },
+  {
+    // FIRE LANCE — the finisher (design doc 2026-09-29 section 4). A narrow, short wedge you must fly straight
+    // at: contact is thermal damage through the combat kernel, credited to you. A light or medium hull dies;
+    // a heavy ignites and burns. Full effect at speed; a crawling touch only scorches. Same key as every hull
+    // burst, one per hull; the type is the build. Tuned in data/hullBurst.js.
+    id: 'mod_fire_lance_s', name: 'Fire Lance S', slotType: 'utility', size: 'S', tier: 3, mass: 5, price: 32000,
+    requiresTech: 'tech_plasma_dynamics',
+    energyDraw: 0, mods: { hullBurst: 'lance', hullBurstRank: 1 },
+  },
+  {
+    // GRIP BUMPER — a battering ram with a hostage (design doc 2026-09-29 section 4). Press the burst key and
+    // the nose catches the first LIGHT hostile hull it meets and carries it, helm lost; whatever the carried
+    // hull hits is your doing. It lets go when the window ends, when you press the key again, or when the
+    // hostage dies, and leaves faster than you fly. Medium and heavy hulls cannot be caught. One hull burst
+    // per hull; the type is the build. Tuned in data/hullBurst.js.
+    id: 'mod_grip_bumper_s', name: 'Grip Bumper S', slotType: 'utility', size: 'S', tier: 2, mass: 5, price: 22000,
+    requiresTech: 'tech_tractor_systems',
+    energyDraw: 0, mods: { hullBurst: 'grip', hullBurstRank: 1 },
+  },
+  // HULL-BURST RANK 2 (the owner's "upgradeable to last longer"). The same three modules one research step
+  // higher, same S bay so a starter hull can carry them: rank 2 lasts 25% longer, reaches 20% farther and hits
+  // 15% harder (data/hullBurst.js HULL_BURST_RANK_GAIN). One hull burst per hull; the higher rank wins.
+  {
+    id: 'mod_gravity_bumper_s_mk2', name: 'Gravity Bumper S Mk2', slotType: 'utility', size: 'S', tier: 3, mass: 5, price: 52000,
+    requiresTech: 'tech_impulse_ballistics',
+    energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 2 },
+  },
+  {
+    id: 'mod_fire_lance_s_mk2', name: 'Fire Lance S Mk2', slotType: 'utility', size: 'S', tier: 4, mass: 5, price: 72000,
+    requiresTech: 'tech_payload_conduction',
+    energyDraw: 0, mods: { hullBurst: 'lance', hullBurstRank: 2 },
+  },
+  {
+    id: 'mod_grip_bumper_s_mk2', name: 'Grip Bumper S Mk2', slotType: 'utility', size: 'S', tier: 3, mass: 5, price: 48000,
+    requiresTech: 'tech_drone_control',
+    energyDraw: 0, mods: { hullBurst: 'grip', hullBurstRank: 2 },
+  },
+  {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
     energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
   },
@@ -793,6 +845,12 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_drone_bay_l: 'Puts a drone in the water.',
   mod_jump_drive_m: 'Jumps you farther than the hull\'s own drive.',
   mod_ram_plate: 'The hull itself hits harder when you mean to ram.',
+  mod_gravity_bumper_s: 'Press the burst key and, for a few seconds, the nose throws every hostile hull it touches. The faster you arrive, the farther they fly.',
+  mod_fire_lance_s: 'Press the burst key and, for a few seconds, a narrow lance burns whatever the nose touches: light and medium hulls die, heavies ignite. Fly straight at it, fast.',
+  mod_grip_bumper_s: 'Press the burst key and the nose catches the first light hostile hull it meets and carries it: ram things with it, then press again to let it go.',
+  mod_gravity_bumper_s_mk2: 'The Gravity Bumper, refined: it lasts a quarter longer, reaches a fifth farther and throws harder.',
+  mod_fire_lance_s_mk2: 'The Fire Lance, refined: it lasts a quarter longer, reaches a fifth farther and burns hotter.',
+  mod_grip_bumper_s_mk2: 'The Grip Bumper, refined: it lasts a quarter longer and reaches a fifth farther, so the catch is easier and the ride longer.',
   mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
   mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
   mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',

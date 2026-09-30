@@ -90,8 +90,16 @@ const PROBE_RELEVANT_EXTRA_FILES = Object.freeze(['src/systems/world.js']);
 
 export async function runAuthoredAssetsLiveProbe() {
 const candidate = collectAuthoredProbeCandidateIdentity();
-assert.equal(candidate.head, candidate.originMaster,
-  `authored batching evidence requires HEAD == origin/master: ${JSON.stringify(candidate)}`);
+// A pull_request run checks out the ephemeral merge ref: HEAD is the merge of the PR
+// branch with master, never equal to the master tip. The evidence still binds the same
+// content whenever origin/master is an ancestor of HEAD — anything else is a candidate
+// this gate has not seen.
+if (candidate.head !== candidate.originMaster) {
+  const mergeRef = spawnSync('git', ['merge-base', '--is-ancestor', candidate.originMaster, candidate.head],
+    { cwd: ROOT, encoding: 'utf8', windowsHide: true });
+  assert.equal(mergeRef.status, 0,
+    `authored batching evidence requires HEAD == origin/master (or the PR merge ref of it): ${JSON.stringify(candidate)}`);
+}
 assert.deepEqual(candidate.worktreeStatus, [],
   `authored batching evidence requires a globally clean candidate: ${JSON.stringify(candidate.worktreeStatus)}`);
 

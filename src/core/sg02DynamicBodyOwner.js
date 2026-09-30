@@ -161,13 +161,15 @@ const TUMBLE_RICOCHET_MIN_CLOSING = 6; // WU/s: a graze is not a ping
 // degenerates to a ~10^6-unit penetration and the step teleports both bodies — co-created
 // spawns land on it deterministically (the aftermath wreck and the manifest payload both spawn
 // at victim.pos; the A4 witnessed-kill run flung the pair ±0.76/1.74 MWU at seed 4242).
-// Measured on the live descriptors: the degenerate window runs ~±1.5 WU along a capsule
-// partner's own axis, so the guard claims the smallest free slot on a +x ladder at 2.5 WU —
-// a point that cannot sit near-axis AND near-center of a partner at any capsule orientation.
-// The band stays generous (2 WU) because near-coincident pickups inside a hull are a bad game
-// state anyway, and the nudged pair still overlaps into an ordinary shallow contact.
-const COINCIDENT_SPAWN_BAND = 2.0;           // coincidence window on each axis, WU
-const COINCIDENT_SPAWN_NUDGE = 2.5;          // WU per ladder step — past the measured window
+// The measured concentric window is ~±1.5-2 WU, but the degenerate region around a CAPSULE
+// partner is its whole spine segment: a candidate center within ~2 WU of the spine has no
+// unique closest feature and the stiffened Package D solver detonates on it even after the
+// old ±2.5 slot. The guard therefore climbs the +x ladder until the candidate's center clears
+// every partner spine (past the cap centres by EPS_AXIAL) or leaves the spine cylinder
+// radially. The nudged pair still overlaps into an ordinary, non-degenerate contact.
+const COINCIDENT_SPAWN_BAND = 2.0;           // radial coincidence window, WU
+const COINCIDENT_SPAWN_AXIAL_EPS = 2.0;      // extra WU past each spine end (cap-centre window)
+const COINCIDENT_SPAWN_NUDGE = 2.5;          // WU per ladder step
 const COINCIDENT_SPAWN_MAX_NUDGES = 64;      // 160 WU of pile; a fuller pile keeps the walked slot
 const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
 
@@ -612,7 +614,7 @@ export class Sg02DynamicBodyOwner {
   cutAttachment(input = {}) {
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
-    const reason = typeof input.reason === 'string' ? input.reason : '';
+    const reason = typeof input.reason === 'string' && input.reason ? input.reason : 'cut';
     const loadBreak = !!(attachment.springState && attachment.springState.breakRequested);
     if (usesElasticWhipSpring(attachment.spring)) {
       if (!loadBreak && PLAYER_WHIP_RELEASE_REASONS.has(reason)) {
@@ -1234,7 +1236,7 @@ export class Sg02DynamicBodyOwner {
     const closingDv = Math.hypot(e.vx, e.vz);
     const baseLimit = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
       ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
-    const maxContactDv = Math.max(baseLimit, closingDv + baseLimit, 350);
+    const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
     if (dv > maxContactDv) {
       const scale = maxContactDv / dv;
       vx = e.vx + dvx * scale;
@@ -1333,7 +1335,7 @@ export class Sg02DynamicBodyOwner {
     // the next sync for dt=0 init, noInterp, sleep-eligible, and static records alike.
     if (!material.ghost && entity.pos
       && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
-      const slotted = this._resolveCoincidentSpawnSlot(posX, posZ, spec.dynamic === true);
+      const slotted = this._resolveCoincidentSpawnSlot(posX, posZ, entity, spec);
       if (slotted !== posX) {
         posX = slotted;
         const g = frameToGlobal({ x: posX, z: posZ }, this._frameOrigin, this._globalScratch);
@@ -1416,6 +1418,10 @@ export class Sg02DynamicBodyOwner {
       collider,
       colliders,
       ccdEnabled,
+      // Body-local degenerate windows for the coincident-spawn ladder (spine segments for
+      // capsules, centre points for balls/offset primitives). Captured once at creation —
+      // collider-local offsets and axes never change on a live record.
+      coincidentSpines: colliders.map((owned) => coincidentSpineForCollider(owned)),
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
       proxyId: proxyManifest ? proxyManifest.id : null,
       ghostPoolKey,
@@ -1466,16 +1472,14 @@ export class Sg02DynamicBodyOwner {
 
   // Smallest free +x slot for a new body whose center would otherwise coincide with an existing
   // body (see COINCIDENT_SPAWN_*). Partners are filtered to bodies that can actually form a
-  // contact pair with the candidate: ghost materials join no pairs, fixed-fixed pairs never
-  // touch, and a dead entity's record is already on its way out. The scan reads the
-  // _bodyPoseX/Z mirrors — every setTranslation site maintains them, and a solver-moved body is
-  // always awake (sleep-skipped records keep pose), so the mirrors equal the WASM poses and the
-  // scan costs no WASM calls.
-  // Note: the scan compares body centers, not individual collider centers — compound-proxy
-  // records can carry primitives offset from the body origin, so a spawn concentric with an
-  // offset collider escapes detection. No data authors nonzero centerOfMass today; single-
-  // collider partners (the measured hazard class) are exact.
-  _resolveCoincidentSpawnSlot(posX, posZ, candidateDynamic, exclude = null) {
+  // contact pair with the candidate: ghost materials and group-filtered classes join no pairs,
+  // fixed-fixed pairs never touch, and a dead entity's record is already on its way out. The
+  // scan reads the _bodyPoseX/Z mirrors plus the partner's kinematics yaw mirror — every
+  // setTranslation/setRotation site and the post-step plane pass maintains them, and a
+  // solver-moved body is always awake (sleep-skipped records keep pose), so the mirrors equal
+  // the WASM poses and the scan costs no WASM calls.
+  _resolveCoincidentSpawnSlot(posX, posZ, candidateEntity, candidateSpec, exclude = null) {
+    const candidateDynamic = candidateSpec && candidateSpec.dynamic === true;
     for (let attempts = 0; attempts < COINCIDENT_SPAWN_MAX_NUDGES; attempts++) {
       let coincident = false;
       for (const other of this.records.values()) {
@@ -1483,10 +1487,11 @@ export class Sg02DynamicBodyOwner {
         if (!candidateDynamic && !(other.spec && other.spec.dynamic)) continue;
         if (!other.entity || other.entity.alive === false) continue;
         if (contactMaterialFor(other.entity, other.spec).ghost) continue;
-        const dx = finite(other._bodyPoseX, NaN) - posX;
-        if (!Number.isFinite(dx)) continue;
-        const dz = finite(other._bodyPoseZ, NaN) - posZ;
-        if (Math.abs(dx) < COINCIDENT_SPAWN_BAND && Math.abs(dz) < COINCIDENT_SPAWN_BAND) {
+        if (!collisionPairsForm(candidateEntity, candidateSpec, other.entity, other.spec)) continue;
+        const partnerX = finite(other._bodyPoseX, NaN);
+        const partnerZ = finite(other._bodyPoseZ, NaN);
+        if (!Number.isFinite(partnerX) || !Number.isFinite(partnerZ)) continue;
+        if (pointHitsCoincidentWindow(other, partnerX, partnerZ, posX, posZ)) {
           coincident = true;
           break;
         }
@@ -1623,9 +1628,12 @@ export class Sg02DynamicBodyOwner {
       let cap = Infinity;
       // A contact with a hull that has lost its helm is a projectile hit: the raised bound applies to
       // BOTH sides, or the struck hull's own 40 WU/s per-tick bound would truncate the knock.
-      const pairBound = recA._tumbling === true || recB._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
-      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * pairBound);
-      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * pairBound);
+      // The player's own record keeps the ordinary bound: its per-contact delta-V feeds the fragile-cargo
+      // and camera-trauma receipts, and a fling must not raise what a hit on the player costs it.
+      const tumbleContact = recA._tumbling === true || recB._tumbling === true;
+      const boundFor = (rec) => (tumbleContact && !(rec.entity && rec.entity.isPlayer === true) ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV);
+      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * boundFor(recA));
+      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * boundFor(recB));
       if (cap === Infinity) return;
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
@@ -1736,7 +1744,7 @@ export class Sg02DynamicBodyOwner {
     if (!contactMaterialFor(entity, rec.spec).ghost && entity.pos
       && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
       const slotted = this._resolveCoincidentSpawnSlot(
-        resyncX, resyncZ, rec.spec && rec.spec.dynamic === true, rec);
+        resyncX, resyncZ, entity, rec.spec, rec);
       if (slotted !== resyncX) {
         resyncX = slotted;
         const g = frameToGlobal({ x: resyncX, z: resyncZ }, this._frameOrigin, this._globalScratch);
@@ -2935,6 +2943,40 @@ export const FACTION_HULL_PROPORTIONS = Object.freeze({
   'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
 });
 
+export const CRAFT_COLLISION_PROPORTIONS = Object.freeze({
+  dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
+  hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
+  wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
+  kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
+  pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
+  mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
+  hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
+  bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
+  ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
+  ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
+  warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
+  colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
+  leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
+  ship_dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
+  ship_hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
+  ship_wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  ship_drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
+  ship_kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
+  ship_pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
+  ship_mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
+  ship_hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
+  ship_bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
+  ship_ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
+  ship_ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
+  ship_warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
+  ship_colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
+  ship_leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
+  'wasp:faction_free': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  'wasp:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+  'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
+});
+
 const CRAFT_PROPORTIONS_CACHE = new Map();
 for (const [sil, prop] of Object.entries(ENEMY_SILHOUETTE_PROPORTIONS)) {
   CRAFT_PROPORTIONS_CACHE.set(sil, prop);
@@ -2946,9 +2988,14 @@ for (const [role, prop] of Object.entries(TRAFFIC_ROLE_PROPORTIONS)) {
 for (const [key, prop] of Object.entries(FACTION_HULL_PROPORTIONS)) {
   CRAFT_PROPORTIONS_CACHE.set(key, prop);
 }
+for (const [key, prop] of Object.entries(CRAFT_COLLISION_PROPORTIONS)) {
+  CRAFT_PROPORTIONS_CACHE.set(key, prop);
+}
 for (const ship of SHIPS || []) {
   if (ship && ship.id && ship.visuals && ship.visuals.proportions) {
-    CRAFT_PROPORTIONS_CACHE.set(ship.id, ship.visuals.proportions);
+    if (!CRAFT_PROPORTIONS_CACHE.has(ship.id)) {
+      CRAFT_PROPORTIONS_CACHE.set(ship.id, ship.visuals.proportions);
+    }
   }
 }
 for (const enemy of ENEMY_TYPES || []) {
@@ -3008,6 +3055,79 @@ function computeCollisionGroups(entity, spec, material) {
   }
   // Solids (stations, rocks, default) collide with everything
   return (COLLISION_GROUP_SOLID << 16) | (COLLISION_GROUP_SOLID | COLLISION_GROUP_CRAFT | COLLISION_GROUP_DEBRIS | COLLISION_GROUP_PICKUP);
+}
+
+// Would the two bodies actually form a contact pair? The coincident-spawn ladder must model the
+// same rule as the collider builders: membership-vs-filter in both directions. Ghost materials
+// produce empty groups, and pickups vs craft never pair — neither may trigger or force a nudge.
+function collisionPairsForm(entityA, specA, entityB, specB) {
+  const groupsA = computeCollisionGroups(entityA, specA, contactMaterialFor(entityA, specA));
+  const groupsB = computeCollisionGroups(entityB, specB, contactMaterialFor(entityB, specB));
+  const memberA = (groupsA >>> 16) & 0xffff;
+  const memberB = (groupsB >>> 16) & 0xffff;
+  return (memberA & (groupsB & 0xffff)) !== 0 && (memberB & (groupsA & 0xffff)) !== 0;
+}
+
+// The degenerate narrow-phase window for one collider, captured in body-local planar terms.
+// A capsule's hazard is its whole spine segment: a partner centre within the band around the
+// segment leaves EPA without a unique closest feature, and the Package D solver detonates on
+// the residual overlap (Package D measured it detonating even at the cap-centre boundary, so
+// the window extends COINCIDENT_SPAWN_AXIAL_EPS past each end). Balls, cuboids, and offset
+// primitives degenerate only about their own centre — the halfLen-0 special case that matches
+// the original measured ±~1.5-2 WU concentric window.
+function coincidentSpineForCollider(collider) {
+  const shape = collider && collider.shape;
+  const halfLen = shape && Number.isFinite(shape.halfHeight) ? Math.max(0, shape.halfHeight) : 0;
+  const off = collider && typeof collider.translationWrtParent === 'function'
+    ? collider.translationWrtParent()
+    : { x: 0, y: 0, z: 0 };
+  const q = collider && typeof collider.rotationWrtParent === 'function'
+    ? collider.rotationWrtParent()
+    : { x: 0, y: 0, z: 0, w: 1 };
+  // Collider-local +Y (the capsule axis) rotated by the collider's own local rotation, then
+  // projected onto the plane. For a yaw-only world this composes exactly with the body yaw.
+  const ux = 2 * (finite(q.x) * finite(q.y) - finite(q.w) * finite(q.z));
+  const uz = 2 * (finite(q.w) * finite(q.x) + finite(q.y) * finite(q.z));
+  const len = Math.hypot(ux, uz);
+  return {
+    ox: finite(off && off.x),
+    oz: finite(off && off.z),
+    ux: len > 1e-9 ? ux / len : 1,
+    uz: len > 1e-9 ? uz / len : 0,
+    halfLen,
+  };
+}
+
+// True when a candidate centre at (posX,posZ) — frame coords — sits inside any of the partner's
+// degenerate windows: |axial| <= halfLen + EPS_AXIAL along the collider spine while radially
+// inside COINCIDENT_SPAWN_BAND, per collider. A point-window collider (halfLen 0) reduces to the
+// radial band around its offset centre.
+function pointHitsCoincidentWindow(rec, partnerX, partnerZ, posX, posZ) {
+  const spines = rec && rec.coincidentSpines;
+  if (!spines || !spines.length) {
+    // Pre-fix records and exotic builders carry no captured spines; fall back to the square band.
+    return Math.abs(posX - partnerX) < COINCIDENT_SPAWN_BAND
+      && Math.abs(posZ - partnerZ) < COINCIDENT_SPAWN_BAND;
+  }
+  const yaw = finite(rec.kinematics && rec.kinematics.yaw);
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  for (const spine of spines) {
+    // Body-local offset/axis rotated by the partner's current yaw into the frame plane.
+    const cx = partnerX + spine.ox * cos + spine.oz * sin;
+    const cz = partnerZ - spine.ox * sin + spine.oz * cos;
+    const ux = spine.ux * cos + spine.uz * sin;
+    const uz = -spine.ux * sin + spine.uz * cos;
+    const rx = posX - cx;
+    const rz = posZ - cz;
+    const axial = rx * ux + rz * uz;
+    const radialSq = rx * rx + rz * rz - axial * axial;
+    if (Math.abs(axial) <= spine.halfLen + COINCIDENT_SPAWN_AXIAL_EPS
+      && radialSq < COINCIDENT_SPAWN_BAND * COINCIDENT_SPAWN_BAND) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function buildCraftCapsuleColliderDesc(R, entity, spec, material, captureContactImpacts = true) {

@@ -7,6 +7,7 @@ import {
 } from '../src/ui/orrery/hudAdapter.js';
 import { speedPhase } from '../src/ui/orrery/flightCluster.js';
 import { RAIL_SLOTS } from '../src/ui/powerRail.js';
+import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
 
 function fakeState(extra = {}) {
   const entities = new Map();
@@ -100,8 +101,9 @@ test('every ordnance key explains itself: bank sentence, live keys and live stat
   const { state } = fakeState();
   state.player.cargo.items.cmdty_impulse_charge = 0;
   const ord = readOrdnanceModel(state, createCooldownTracker(), bindings);
+  const capacity = resolveImpulseChargeCapacity(state);
   assert.equal(ord['1'].tip,
-    'Charge — throw an impulse charge that sticks where it lands (1 · Y)\nNo impulse charges in cargo');
+    `Charge — throw an impulse charge that sticks where it lands (1 · Y)\nNo impulse charges in cargo · up to ${capacity}`);
   assert.match(ord['3'].tip, /\(3 · Space · F\)\nReady$/);
   assert.match(ord['2'].tip, /Nothing armed to detonate$/);
   // A collapsed node answers "what is in this band" without unfolding it.

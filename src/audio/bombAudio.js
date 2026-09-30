@@ -148,6 +148,12 @@ export function gooResidueGain(stacks, baseGain = BOMB_STATUS_AUDIO.status_goo.g
   return clamp(baseGain * (0.55 + 0.45 * clamp(Number(stacks) || 1, 1, 3) / 3), 0.08, 0.7);
 }
 
+/** PB-ORD-A (SF-036): the burn loop reads as committed only at the actual stack count —
+ *  one stack is a thin splash, a maxed sustained burn is loud. Same curve as goo. */
+export function burnResidueGain(stacks, baseGain = BOMB_STATUS_AUDIO.status_burning.gain) {
+  return clamp(baseGain * (0.55 + 0.45 * clamp(Number(stacks) || 1, 1, 3) / 3), 0.08, 0.7);
+}
+
 function liveBombList(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)) {
@@ -221,7 +227,9 @@ export function collectBombStatusLoopSpecs(state, out = []) {
         trackId: entity.id,
         stacks,
         remainingTicks: active.expiresTick - tick,
-        gain: statusId === 'status_goo' ? gooResidueGain(stacks, spec.gain) : spec.gain,
+        gain: statusId === 'status_goo' ? gooResidueGain(stacks, spec.gain)
+          : statusId === 'status_burning' ? burnResidueGain(stacks, spec.gain)
+            : spec.gain,
         dist2: dx * dx + dz * dz,
         position: entity.pos,
       });

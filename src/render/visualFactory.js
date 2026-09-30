@@ -4181,11 +4181,19 @@ function consolidateWreckDrawCalls(group) {
 function buildMine(e) {
   const R = Math.max(1, Number(e && e.radius) || 6);
   const g = new THREE.Group();
-  const casing = getMaterial('mine:casing', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x252d31, roughness: 0.68, metalness: 0.58,
-  }), SHARED_MATERIAL_ROLE.HULL));
+  // Dropped ordnance, not a board token: the casing wears the same generated panel/bevel/wear
+  // surface language as the ship hulls (gunmetal panels, amber ordnance markings), so a mine
+  // reads as a machined canister that belongs in the same foundry as the ships around it.
+  const casing = hullMaterial({ hull: '#29333a', accent: '#d98a2b', emissive: '#000000' }, 8);
   const exposed = getMaterial('mine:exposed-alloy', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x747b7f, roughness: 0.39, metalness: 0.82,
+    color: 0x7d8488, roughness: 0.36, metalness: 0.84,
+    roughnessMap: getTexture('noise:rough', () =>
+      makeNoiseTexture({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 })),
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const darkwork = getMaterial('mine:darkwork', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x161c20, roughness: 0.62, metalness: 0.6,
+    roughnessMap: getTexture('noise:rough', () =>
+      makeNoiseTexture({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 })),
   }), SHARED_MATERIAL_ROLE.HULL));
   const warningSafe = getMaterial('mine:warning-lens:safe', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MineWarningLensSafe',
@@ -4198,36 +4206,118 @@ function buildMine(e) {
     roughness: 0.24, metalness: 0.12,
   }), SHARED_MATERIAL_ROLE.HULL));
 
+  // Lathe-turned pressure canister: rolled base rim, straight wall, shoulder, recessed deck —
+  // the silhouette of a munition body, not a flat-sided puck.
   const hull = new THREE.Mesh(
-    getGeometry('mine:canister-hull', () => new THREE.CylinderGeometry(0.48, 0.52, 0.42, 6)),
+    getGeometry('mine:canister-hull-v2', () => new THREE.LatheGeometry([
+      [0.00, -0.26], [0.30, -0.26], [0.40, -0.23], [0.46, -0.13], [0.475, 0.00],
+      [0.46, 0.10], [0.40, 0.17], [0.31, 0.215], [0.26, 0.235], [0.00, 0.245],
+    ].map(([x, y]) => new THREE.Vector2(x, y)), 20)),
     casing,
   );
   hull.name = 'MinePressureHull';
   g.add(hull);
-  const cap = new THREE.Mesh(
-    getGeometry('mine:canister-cap', () => new THREE.CylinderGeometry(0.36, 0.40, 0.08, 6)),
-    exposed,
-  );
-  cap.name = 'MineAccessCap';
-  cap.position.y = 0.22;
-  g.add(cap);
+
+  // Anchor spikes under the skirt — an emplaced charge visibly seats into the surface below.
+  const spikeGeo = getGeometry('mine:anchor-spike', () =>
+    new THREE.ConeGeometry(0.07, 0.20, 4).rotateX(Math.PI));
+  for (let i = 0; i < 3; i++) {
+    const a = i * Math.PI * 2 / 3 + Math.PI / 6;
+    const spike = new THREE.Mesh(spikeGeo, darkwork);
+    spike.name = `MineAnchorSpike_${i + 1}`;
+    spike.position.set(Math.cos(a) * 0.30, -0.30, Math.sin(a) * 0.30);
+    g.add(spike);
+  }
+
+  // Bolted girth band: the armor ring plus evenly spaced stud heads, a clamped casing joint.
   const armorRing = new THREE.Mesh(
-    getGeometry('mine:armor-ring', () => new THREE.TorusGeometry(0.46, 0.05, 6, 12).rotateX(Math.PI / 2)),
+    getGeometry('mine:armor-ring-v2', () => new THREE.TorusGeometry(0.475, 0.042, 8, 24).rotateX(Math.PI / 2)),
     exposed,
   );
   armorRing.name = 'MineArmorRing';
-  armorRing.position.y = 0.08;
+  armorRing.position.y = -0.02;
   g.add(armorRing);
+  const studGeo = getGeometry('mine:ring-stud', () =>
+    new THREE.CylinderGeometry(0.026, 0.03, 0.075, 6).rotateZ(Math.PI / 2));
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4;
+    const stud = new THREE.Mesh(studGeo, darkwork);
+    stud.name = `MineRingStud_${i + 1}`;
+    stud.position.set(Math.cos(a) * 0.478, -0.02, Math.sin(a) * 0.478);
+    stud.rotation.y = -a;
+    g.add(stud);
+  }
+
+  // Top deck: machined access cap, service panel, and a domed warning beacon recessed in a bezel.
+  const cap = new THREE.Mesh(
+    getGeometry('mine:canister-cap-v2', () => new THREE.CylinderGeometry(0.28, 0.33, 0.05, 16)),
+    exposed,
+  );
+  cap.name = 'MineAccessCap';
+  cap.position.y = 0.25;
+  g.add(cap);
+  const panel = new THREE.Mesh(
+    getGeometry('mine:data-panel', () => new THREE.BoxGeometry(0.16, 0.022, 0.11)),
+    darkwork,
+  );
+  panel.name = 'MineDataPanel';
+  panel.position.set(0.19, 0.272, 0.10);
+  panel.rotation.y = -0.35;
+  g.add(panel);
+  const bezel = new THREE.Mesh(
+    getGeometry('mine:lens-bezel', () => new THREE.TorusGeometry(0.155, 0.032, 8, 20).rotateX(Math.PI / 2)),
+    darkwork,
+  );
+  bezel.name = 'MineLensBezel';
+  bezel.position.y = 0.265;
+  g.add(bezel);
   const lens = new THREE.Mesh(
-    getGeometry('mine:warning-lens', () => new THREE.CylinderGeometry(0.15, 0.18, 0.06, 12)),
+    getGeometry('mine:warning-lens-dome', () =>
+      new THREE.SphereGeometry(0.115, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)),
     warningSafe,
   );
   lens.name = 'MineArmingLens';
-  lens.position.y = 0.16;
+  lens.position.y = 0.255;
   g.add(lens);
 
-  const vaneGeometry = getGeometry('mine:sensor-vane', () => new THREE.BoxGeometry(0.42, 0.055, 0.13));
-  const tipGeometry = getGeometry('mine:sensor-tip', () => new THREE.ConeGeometry(0.09, 0.26, 6).rotateZ(-Math.PI / 2));
+  // Whip aerials off the deck — proximity sensor rods; static hardware, not part of the sweep.
+  const whipGeo = getGeometry('mine:whip-aerial', () => mergeGeometries([
+    new THREE.CylinderGeometry(0.012, 0.02, 0.5, 6).translate(0, 0.25, 0),
+    new THREE.SphereGeometry(0.032, 8, 6).translate(0, 0.51, 0),
+  ], false));
+  const whipSpecs = [
+    { a: -Math.PI * 0.28, tilt: -0.26 },
+    { a: Math.PI * 0.72, tilt: 0.32 },
+  ];
+  for (let i = 0; i < whipSpecs.length; i++) {
+    const { a, tilt } = whipSpecs[i];
+    const whip = new THREE.Mesh(whipGeo, darkwork);
+    whip.name = `MineWhipAerial_${i + 1}`;
+    whip.position.set(Math.cos(a) * 0.22, 0.27, Math.sin(a) * 0.22);
+    whip.rotation.set(0, -a, tilt);
+    g.add(whip);
+  }
+
+  // Bearing race under the orbiting sensor crown — the rail the vanes ride on.
+  const track = new THREE.Mesh(
+    getGeometry('mine:sensor-track', () => new THREE.TorusGeometry(0.72, 0.028, 6, 28).rotateX(Math.PI / 2)),
+    darkwork,
+  );
+  track.name = 'MineSensorTrack';
+  track.position.y = -0.055;
+  g.add(track);
+
+  // Sensor crown: instrument paddles riding the track, horn pickups outboard. Names + orbit
+  // radii are the pinned contract updateRuntimeState sweeps each frame.
+  const vaneGeometry = getGeometry('mine:sensor-vane-v2', () => mergeGeometries([
+    new THREE.BoxGeometry(0.42, 0.055, 0.13),
+    new THREE.CylinderGeometry(0.055, 0.055, 0.10, 8).translate(-0.24, 0.02, 0),
+    new THREE.BoxGeometry(0.10, 0.08, 0.15).translate(0.20, 0.01, 0),
+  ], false));
+  const tipGeometry = getGeometry('mine:prox-horn', () => mergeGeometries([
+    new THREE.CylinderGeometry(0.028, 0.036, 0.14, 6).translate(-0.10, 0.0, 0),
+    new THREE.ConeGeometry(0.075, 0.18, 8).rotateZ(-Math.PI / 2).translate(0.04, 0.0, 0),
+  ], false));
   for (let i = 0; i < 4; i++) {
     const angle = i * Math.PI / 2;
     const vane = new THREE.Mesh(vaneGeometry, casing);
@@ -4287,13 +4377,16 @@ function buildMine(e) {
 }
 
 // SF-10 vector mine (type 'vectormine'). A compact IMPULSE emitter — deliberately distinct from the
-// armored, orange-warning damage mine above: a cool-blue charge core with four radial emitter fins
-// (the directional-shove motif) and an arming pip that lights when it goes live.
+// armored, orange-warning damage mine above: a cool-blue charge core caged in a machined gimbal
+// cradle, four radial emitter arms riding the equator (the directional-shove motif), and an arming
+// pip on a mast that lights when it goes live.
 function buildVectorMine(e) {
   const R = Math.max(0.8, Number(e && e.radius) || 1.6);
   const g = new THREE.Group();
-  const shell = getMaterial('vmine:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+  const shell = getMaterial('vmine:shell-v2', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x1c2a3a, roughness: 0.5, metalness: 0.66,
+    roughnessMap: getTexture('noise:rough', () =>
+      makeNoiseTexture({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 })),
   }), SHARED_MATERIAL_ROLE.HULL));
   const emitterSafe = getMaterial('vmine:emitter:safe', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'VectorMineEmitterSafe',
@@ -4303,20 +4396,57 @@ function buildVectorMine(e) {
     name: 'VectorMineEmitterArmed',
     color: 0x5ab4ff, emissive: 0x2a8cff, emissiveIntensity: 1.5, roughness: 0.28, metalness: 0.2,
   }), SHARED_MATERIAL_ROLE.HULL));
-  const core = new THREE.Mesh(getGeometry('vmine:core', () => new THREE.OctahedronGeometry(0.5, 0)), shell);
+  const core = new THREE.Mesh(getGeometry('vmine:core-v2', () => new THREE.OctahedronGeometry(0.44, 0)), shell);
   core.name = 'VectorMineCore';
   g.add(core);
-  const finGeo = getGeometry('vmine:emitter', () => new THREE.BoxGeometry(0.55, 0.07, 0.16));
+  // Fixed gimbal cradle: two perpendicular machined arcs caging the spinning core — the charge
+  // sits in a frame, so it reads as a field generator, not a spinning jewel.
+  const gimbalGeo = getGeometry('vmine:gimbal', () =>
+    new THREE.TorusGeometry(0.42, 0.038, 6, 22, Math.PI * 0.92));
+  const gimbalA = new THREE.Mesh(gimbalGeo, shell);
+  gimbalA.name = 'VectorMineGimbalA';
+  gimbalA.rotation.z = Math.PI * 0.54;
+  g.add(gimbalA);
+  const gimbalB = new THREE.Mesh(gimbalGeo, shell);
+  gimbalB.name = 'VectorMineGimbalB';
+  gimbalB.rotation.set(0, Math.PI / 2, Math.PI * 0.54);
+  g.add(gimbalB);
+  // Deployed keel + foot: the body visibly sits on something, not floating jewelry.
+  const keel = new THREE.Mesh(
+    getGeometry('vmine:keel', () => mergeGeometries([
+      new THREE.CylinderGeometry(0.10, 0.14, 0.16, 8).translate(0, -0.30, 0),
+      new THREE.CylinderGeometry(0.22, 0.24, 0.05, 8).translate(0, -0.40, 0),
+    ], false)),
+    shell,
+  );
+  keel.name = 'VectorMineKeel';
+  g.add(keel);
+  // Emitter arms carry material groups: the blade + root boss stay machined shell while only the
+  // nozzle cone takes the armed/safe emitter material — the field lights the tips, not a glowing
+  // pinwheel.
+  const finGeo = getGeometry('vmine:emitter-v2', () => mergeGeometries([
+    new THREE.BoxGeometry(0.38, 0.07, 0.15),
+    new THREE.CylinderGeometry(0.055, 0.07, 0.11, 6).rotateZ(Math.PI / 2).translate(-0.22, 0, 0),
+    new THREE.ConeGeometry(0.065, 0.15, 6).rotateZ(-Math.PI / 2).translate(0.235, 0, 0),
+  ], true));
   const emitters = [];
   for (let i = 0; i < 4; i++) {
     const angle = i * Math.PI / 2;
-    const fin = new THREE.Mesh(finGeo, emitterSafe);
+    const fin = new THREE.Mesh(finGeo, [shell, shell, emitterSafe]);
     fin.name = `VectorMineEmitter_${i + 1}`;
     fin.position.set(Math.cos(angle) * 0.62, 0, Math.sin(angle) * 0.62);
     fin.rotation.y = -angle;
     g.add(fin);
     emitters.push(fin);
   }
+  // Arming pip rides a short mast above the cradle — a beacon, not a floating shard.
+  const mast = new THREE.Mesh(
+    getGeometry('vmine:pip-mast', () => new THREE.CylinderGeometry(0.045, 0.06, 0.10, 6)),
+    shell,
+  );
+  mast.name = 'VectorMinePipMast';
+  mast.position.y = 0.30;
+  g.add(mast);
   const pip = new THREE.Mesh(getGeometry('vmine:pip', () => new THREE.OctahedronGeometry(0.16, 0)), emitterSafe);
   pip.name = 'VectorMineArmingPip';
   pip.position.y = 0.36;
@@ -4334,7 +4464,11 @@ function buildVectorMine(e) {
     const t = Number.isFinite(now) ? now : 0;
     if (nextArmed !== visualArmed) {
       visualArmed = nextArmed;
-      for (const m of emitters) m.material = nextArmed ? emitterArmed : emitterSafe;
+      for (const m of emitters) {
+        m.material = Array.isArray(m.material)
+          ? [shell, shell, nextArmed ? emitterArmed : emitterSafe]
+          : (nextArmed ? emitterArmed : emitterSafe);
+      }
       g.userData.visualArmed = nextArmed;
     }
     // Armed: the radial emitter fins orbit the core — a live field generator visibly spinning —

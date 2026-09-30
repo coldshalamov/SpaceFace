@@ -319,6 +319,12 @@ function reserveBatchInstance(state, chunk, lane, scene) {
 function createBatch(material, lane, scene) {
   let mesh;
   const batchMaterial = material && typeof material.clone === 'function' ? material.clone() : material;
+  // clone() drops own-property shader patches — the batch would key the unpatched variant and
+  // link it cold on first consolidation instead of matching the pre-warmed batched program.
+  if (batchMaterial && batchMaterial !== material) {
+    batchMaterial.onBeforeCompile = material.onBeforeCompile;
+    batchMaterial.customProgramCacheKey = material.customProgramCacheKey;
+  }
   if (batchMaterial && batchMaterial.color && typeof batchMaterial.color.setRGB === 'function') {
     batchMaterial.color.setRGB(1, 1, 1);
   }

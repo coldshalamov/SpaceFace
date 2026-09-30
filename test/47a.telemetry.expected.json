@@ -52,8 +52,8 @@
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "combat:fire": 17,
-    "projectile:hit": 4,
-    "combat:damage": 4,
+    "projectile:hit": 1,
+    "combat:damage": 1,
     "economy:tick": 2,
     "camera:shake": 2,
     "presentation:cameraCue": 2,
@@ -61,12 +61,12 @@
     "presentation:audioCue": 3,
     "presentation:uiCue": 3,
     "presentation:caption": 3,
-    "presentation:cueApplied": 7,
-    "presentation:cue": 7,
+    "presentation:cueApplied": 4,
+    "presentation:cue": 4,
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "4896c299b2f6615dd3ba598d5fecded730997581001af920a1d60c99e57f666c",
+    "authoritativeHash": "c802c3e57f7fa0d04303c80a0a8d3bd241252c2121007e3276c13e85f47d820d",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -187,6 +187,8 @@
     "The $.entities[] radius diffs vs the 4d56cb9b reference are foreign committed model-truth work (silhouetteRadius 12.298904 -> 12.517587); the entity array is outside the hashed envelope regardless.",
     "Repeat run is deterministic; reload@600 reproduces the uninterrupted hash exactly (industry holds no non-serialized accumulators — it re-derives each tick from market stock).",
     "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves) + 13 debris-radius rng shifts. Zero motion fields changed.",
-    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed."
+    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed.",
+    "2026-09-29 merge re-record on 6a3ae3265: upstream Slice-A physics (compound collider, hull-knock) drifts 35 entity motion fields; sim-golden-diff --ref b3ef08974 verdict MOTION_CHANGED. Master tip reproduces this hash; saucer packet adds zero drift.",
+    "2026-09-29 re-record under landed physics C..F: solver stiffening + non-landmark-solid dynamics drift the aim tape a few WU; hits/damage 4->1, cues 7->4. carrier_wreck_bourse regains authored physicsBody.dynamic+mass 9000 — radius 92 had parked the hulk."
   ]
 }

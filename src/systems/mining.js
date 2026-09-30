@@ -23,7 +23,7 @@ import { MODULES } from '../data/modules.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
-import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity, readPhysicsTelemetry } from '../core/physicsAuthority.js';
+import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   clearPickupAcceptanceRetry,
@@ -1138,9 +1138,10 @@ export const mining = {
       const pickupData = e.data || {};
       // Combat loot (the player's own kill burst) waits out its beat, then homes from ANY distance;
       // everything else keeps the ordinary magnet range.
-      const combatLoot = arcadeLoot && pickupData.combatLoot === true;
+      const combatLoot = arcadeLoot && e.type === 'pickup' && pickupData.combatLoot === true;
       const beatPending = combatLoot && state.simTime < finiteNum(pickupData.homeAt);
       if (pickupData.anchored) continue;
+      if (e.type === 'payload' && !payloadHasCollectibleContent(pickupData)) continue;
       // A towable body (47-A evidence spindle, rescue pods, the swing-lesson rock) is moved by the
       // tether, never vacuumed: it carries no salvage to collect, so the homing write only rammed a
       // 960 t spindle into the Kestrel at spawn and pinned it there, shoving the ship ~80 WU and
@@ -1174,7 +1175,7 @@ export const mining = {
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
-      if (combatLoot ? !beatPending : dist <= magnet) {
+      if (e.type === 'pickup' && (combatLoot ? !beatPending : dist <= magnet)) {
         // Homing vacuum: inherit player velocity, then accelerate relative approach.
         // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
         // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.
@@ -1213,14 +1214,15 @@ export const mining = {
         // compatibility backend and body-less test entities; the impulse is only queued for a
         // bound DYNAMIC spec — a spec'd-but-static body has no consumer for it.
         // Combat loot homes from any distance, but the physics owner only admits bodies near the player,
-        // so a far pickup has no body for an impulse to act on and nothing else integrates it. It has no
-        // live body, so it is stepped directly (measured: 1500 and 3000 WU pickups never moved before);
-        // once it comes inside the physics ring the owner builds its body from this pose and takes over.
-        const looseCombatLoot = combatLoot && readPhysicsTelemetry(e) == null;
-        if (looseCombatLoot) {
-          e.pos.x += finiteNum(e.vel.x) * dt;
-          e.pos.z += finiteNum(e.vel.z) * dt;
-        } else if (e.physicsBody && typeof e.physicsBody === 'object' && isDynamicPhysicsBodyEntity(e)) {
+        // so a far pickup has no body for an impulse to act on and nothing else integrates it. Whether a
+        // pickup HAS a live body is the owner's own answer: the port's applyImpulse returns false when it
+        // holds no record for the entity (SG-02 telemetry is NOT a test for that: a production browser
+        // publishes none). A body-less pickup is stepped directly (measured: 1500 and 3000 WU pickups
+        // never moved before); once it comes inside the physics ring the owner builds its body from this
+        // pose and takes over. A pickup that has a body takes the impulse ONLY (a direct step as well
+        // would move it twice: the owner resyncs the stepped pose and integrates it again).
+        let impulseMass = 0;
+        if (e.physicsBody && typeof e.physicsBody === 'object' && isDynamicPhysicsBodyEntity(e)) {
           const specMass = finiteNum(e.physicsBody.mass, 0);
           const entityMass = finiteNum(e.mass, 0);
           const baseMass = specMass > 0 ? specMass : entityMass > 0 ? entityMass : 1;
@@ -1228,11 +1230,29 @@ export const mining = {
             && state.combat.entities[String(e.id)]
             && state.combat.entities[String(e.id)].physicsResponse
             && state.combat.entities[String(e.id)].physicsResponse.massScale) || 1;
-          const mass = baseMass * Math.max(0.25, Math.min(8, scale));
+          impulseMass = baseMass * Math.max(0.25, Math.min(8, scale));
+        }
+        let bodyless = false;
+        if (combatLoot) {
+          const port = this.helpers && this.helpers.combatPhysics;
+          const accepted = impulseMass > 0 && port && typeof port.applyImpulse === 'function'
+            && port.applyImpulse({
+              entityId: e.id,
+              impulse: { x: appliedDvx * impulseMass, z: appliedDvz * impulseMass },
+              point: null,
+              reason: 'loot_homing',
+              tick: state.tick,
+            }) === true;
+          bodyless = !accepted;
+        }
+        if (bodyless) {
+          e.pos.x += finiteNum(e.vel.x) * dt;
+          e.pos.z += finiteNum(e.vel.z) * dt;
+        } else if (!combatLoot && impulseMass > 0) {
           const impulse = this._magnetImpulse;
-          impulse.x = appliedDvx * mass;
+          impulse.x = appliedDvx * impulseMass;
           impulse.y = 0;
-          impulse.z = appliedDvz * mass;
+          impulse.z = appliedDvz * impulseMass;
           queuePhysicsImpulse(e, impulse);
         }
         this._diag.pickupsMagnetized++;
@@ -2887,9 +2907,17 @@ function salvagePoolHasCargo(data) {
   const pool = data && data.salvagePool;
   if (!pool || typeof pool !== 'object') return false;
   for (const qty of Object.values(pool)) {
-    if (Number(qty) > 0) return true;
+    if (finiteWholePickupAmount(qty) > 0) return true;
   }
   return false;
+}
+
+function payloadHasCollectibleContent(data) {
+  const pool = data && data.salvagePool;
+  if (pool && typeof pool === 'object' && Object.keys(pool).length > 0) {
+    return salvagePoolHasCargo(data);
+  }
+  return !!(data && data.commodityId && finiteWholePickupAmount(data.amount) > 0);
 }
 
 export function isMasslineLatchedPickup(state, player, entity) {

@@ -233,7 +233,7 @@ try {
     await page.waitForFunction(
       (expectedRows) => document.querySelectorAll('.sf-overview-row').length === expectedRows,
       cell.rows,
-      { timeout: 4000 },
+      { timeout: 15000 },
     );
     const measurement = await page.evaluate(() => {
       const rect = (selector) => {

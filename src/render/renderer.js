@@ -29,6 +29,7 @@ import {
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
 import {
+  IBL_PMREM_CUBE_SIZE,
   IBL_SOURCE_BACKGROUND,
   IBL_SOURCE_FOUNDRY,
   loadFoundryIblTexture,
@@ -1932,11 +1933,8 @@ const CAMERA_CLEARANCE_ANALYTIC_MAX_SPAN_WU = 120;
 // compounded to ±2e8 and this box reported a ~1.4e8 roof, orbiting the camera). Rejected
 // bounds return null so a corrupt subtree can never push the camera off the world.
 const CAMERA_CLEARANCE_MAX_SPAN_WU = 14000;
-const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
-// How long a latched "no slide" keep-out verdict may live. Membership changes that no serial
-// covers (an authored mesh settling, a collides flag flipping on) resolve within this bound —
-// shorter than the camera's own adopt hold, and the same cadence reconcileMeshResidency polls at.
-const CAMERA_KEEP_OUT_LATCH_TTL_S = 0.25;
+const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck', 'ship']);
+
 // Whole-boundary AABBs are the right floor for compact structures. Above this span — the
 // authored mega-stations are ~1300 WU across — one box reports the city's tallest tower as
 // the floor for every XZ inside the footprint, pinning the camera at ~380 WU for the entire
@@ -2186,6 +2184,16 @@ function clearanceStructuralMeshes(owner) {
       const data = mesh && mesh.userData;
       const kind = data && data.kind;
       if (!CAMERA_CLEARANCE_KINDS.has(kind)) continue;
+      if (kind === 'ship') {
+        const isPlayer = data.isPlayer === true || mesh === owner._playerMesh || data.id === (owner.state && owner.state.playerId);
+        if (isPlayer) continue;
+        const defId = data.defId || data.shipDefId || '';
+        const silhouette = data.silhouette || '';
+        const radius = Number(data.radius) || 0;
+        const isCapital = defId === 'ship_atlas' || defId === 'ship_colossus' || defId === 'ship_leviathan'
+          || defId === 'dreadnought_boss' || silhouette === 'dreadnought_enemy' || radius >= 28;
+        if (!isCapital) continue;
+      }
       // Quiet Ceres: dozens of field rocks can never roof. Keep them off the per-frame
       // structural walk (rebuild only on _meshesVersion). Scale growth clears the sticky bit.
       if (CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE
@@ -2221,7 +2229,7 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
     let staticStructural = true;
     for (let i = 0; i < structural.length; i++) {
       const kind = structural[i] && structural[i].userData && structural[i].userData.kind;
-      if (kind === 'asteroid' || kind === 'wreck') { staticStructural = false; break; }
+      if (kind === 'asteroid' || kind === 'wreck' || kind === 'ship') { staticStructural = false; break; }
     }
     const cache = owner._clearanceFloorCache || (owner._clearanceFloorCache = {
       camX: NaN,
@@ -2346,86 +2354,7 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
   return floor;
 }
 
-/**
- * Slide the chase camera in the plane so its near point stays outside a measured shell.
- * Unsettled meshes are ignored, same as the roof. The ship is not moved.
- *
- * The "no slide" outcome is latched like _seamMarkersRelevant: re-deriving it every frame is a
- * full entity walk plus per-shell skin allocations, and while the near point stays inside its
- * recorded slack the answer cannot change. The latch breaks on entity-index membership and mesh
- * bind/unbind, erodes by the near point's own displacement, and expires on a wall-clock bound so
- * a settling mesh or an accelerating hull cannot hold a stale identity answer.
- */
-export function cameraKeepOutTarget(owner, camX, camZ, focusX, focusZ, camY) {
-  const meshes = owner && owner._meshes;
-  const state = owner && owner.state;
-  const entities = state && state.entities;
-  if (!entities || typeof entities.values !== 'function') return { x: camX, z: camZ };
-  const dx = (Number(focusX) || 0) - camX;
-  const dy = -(Number(camY) || 0);
-  const dz = (Number(focusZ) || 0) - camZ;
-  const len = Math.hypot(dx, dy, dz) || 1;
-  const t = Math.min(1, 1 / len);
-  const nearX = camX + dx * t;
-  const nearZ = camZ + dz * t;
-  const v = entityIndexVersion(state);
-  const meshV = owner._meshesVersion || 0;
-  // Wall clock, not sim time: authored admission commits keep running while the sim is frozen,
-  // and a settle is exactly the version-free membership change the ttl exists to bound.
-  const now = (typeof performance !== 'undefined' && Number.isFinite(performance.now()))
-    ? performance.now() / 1000
-    : Date.now() / 1000;
-  const last = owner._keepOutLatch;
-  if (last && last.v === v && last.meshV === meshV && last.versionMode === (v !== null)) {
-    const mdx = nearX - last.nearX;
-    const mdz = nearZ - last.nearZ;
-    if (mdx * mdx + mdz * mdz <= last.slack * last.slack && now - last.t <= last.ttl) {
-      return { x: camX, z: camZ };
-    }
-  }
-  const solids = [];
-  let slack = Infinity;
-  let solidSpeed = 0;
-  for (const entity of entities.values()) {
-    if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
-    const mesh = meshes && typeof meshes.get === 'function' ? meshes.get(entity.id) : null;
-    if (!mesh || !mesh.userData || clearanceBoundUnsettled(mesh.userData)) continue;
-    solids.push(entity);
-    // Slack in the slide's own metric: only a shell wide enough to swallow the near point
-    // participates (the span gate inside modelTruthSlideOutside), and its planar bound is the
-    // rotation-invariant outer reach — the 1.35 matches the sampled cap in colliderRadiusAt.
-    const planar = modelTruthPlanarRadius(entity);
-    const span = planar * 2;
-    if (span < CAMERA_CLEARANCE_MIN_SPAN_WU || span > CAMERA_CLEARANCE_MAX_SPAN_WU) continue;
-    const ex = Number(entity.pos.x) || 0;
-    const ez = Number(entity.pos.z) || 0;
-    const reach = planar * 1.35;
-    const s = Math.hypot(nearX - ex, nearZ - ez) - reach - CAMERA_NEAR_MARGIN_WU;
-    if (s < slack) slack = s;
-    const vel = entity.vel;
-    const spd = vel
-      ? Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0)
-      : 0;
-    if (spd > solidSpeed) solidSpeed = spd;
-  }
-  const slid = modelTruthSlideOutside(solids, nearX, nearZ, CAMERA_NEAR_MARGIN_WU);
-  if (slid.x === nearX && slid.z === nearZ && slack > 0) {
-    // Only the identity outcome is reusable — a real slide answer is content-position dependent.
-    owner._keepOutLatch = {
-      v,
-      meshV,
-      nearX,
-      nearZ,
-      slack,
-      t: now,
-      ttl: Math.min(CAMERA_KEEP_OUT_LATCH_TTL_S, slack / Math.max(solidSpeed, 1e-3)),
-      versionMode: v !== null,
-    };
-  } else {
-    owner._keepOutLatch = null;
-  }
-  return { x: camX + (slid.x - nearX), z: camZ + (slid.z - nearZ) };
-}
+
 
 /**
  * The resolving marker inside a pending admission substrate draws only while the boundary is
@@ -2748,6 +2677,21 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.forcedNewContext = false;
   recovery.terminal = false;
   owner._contextLost = false;
+  // Authored boundaries that published while pending was set queued their exact-target
+  // touch instead of linking into the dead context. Drain them synchronously — before this
+  // tick ends and any presented frame can draw those roots cold against the fresh cache.
+  const queuedTouches = recovery.pendingExactTargetTouches;
+  recovery.pendingExactTargetTouches = null;
+  if (queuedTouches && queuedTouches.size && typeof recovery.runQueuedExactTargetTouch === 'function') {
+    for (const subject of queuedTouches) {
+      try { recovery.runQueuedExactTargetTouch(subject); }
+      catch (error) {
+        if (typeof console !== 'undefined') {
+          console.warn('[render] queued exact-target touch failed after context restore', error);
+        }
+      }
+    }
+  }
   return { ok: true };
 }
 
@@ -5001,6 +4945,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'scene', 'renderer', 'camera', 'meshes', 'cameraCtrl', 'vf', 'viewport', 'spaceBg', 'envMap',
   'gpuTimers', 'diagnostics', 'resetPostTelemetrySample', 'warmPostProcess',
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
+  'touchSubjectExactTarget',
   'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
@@ -5316,6 +5261,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._envMapTarget = null;
   owner._foundryEnvTexture = null;
   owner._envMapSource = null;
+  owner._envBakeScene = null;
   owner._lostEnvMap = null;
   owner._contextRecovery = null;
   owner._adaptive = null;
@@ -6391,8 +6337,6 @@ export const render = {
     // resolved XZ; the box pass reads the live mesh map so authored station bodies count once
     // they commit. Bound once — no per-frame closure allocation.
     this._cameraClearanceAt = (camX, camZ, camY) => cameraClearanceFloorAt(this, camX, camZ, camY);
-    this._cameraClearanceAt.keepOut = (camX, camZ, focusX, focusZ, camY) =>
-      cameraKeepOutTarget(this, camX, camZ, focusX, focusZ, camY);
     // Column-addressable roof for the predictive glide (cameraGlide.js) — bound once.
     this._cameraClearanceAt.roofAt = (x, z, pad) => cameraRoofAt(this, x, z, pad);
     // Measurement-only entity-layer isolation. The probe never reaches into the
@@ -7159,6 +7103,43 @@ export const render = {
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
       return admitSubjectPipelines(subject, admissionOptions);
     };
+    state.render.touchSubjectExactTarget = (subject) => {
+      // Publish-seam warm: an authored boundary calls this on its attached, final-state root
+      // just before reveal. The pre-commit prepare touched the root while it was detached, and
+      // publish-time state can still resolve a program key the detached touch never produced
+      // (final LOD from primeAuthoredState, owner bindings, parts minted inside commit). Any
+      // residual variant links here — in the admission continuation — not inside the first
+      // presented bloom pass.
+      if (!subject || !this.scene || !cam.obj) return { skipped: true, reason: 'touch unavailable' };
+      const recovery = this._contextRecovery;
+      if (recovery && recovery.pending === true) {
+        // A touch now would link into the dead context's program cache, and the restore
+        // rebuild's whole-scene warm can outrun a publish landing mid-recovery — the ship
+        // would present with its bloom variant cold. Queue the subject into the recovery
+        // completion instead: runWebGlContextRestoreRebuild drains it on the same tick that
+        // clears pending, before any presented frame can interleave.
+        const queued = recovery.pendingExactTargetTouches
+          || (recovery.pendingExactTargetTouches = new Set());
+        queued.add(subject);
+        return { skipped: true, reason: 'context-recovery-queued' };
+      }
+      // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
+      // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
+      // the draw a silent no-op and leaves the exact variant cold for the presented pass.
+      const restore = revealSubjectWithAncestors(subject);
+      try {
+        return touchExactTargetSubject(subject);
+      } finally {
+        restore();
+      }
+    };
+    // The restore drain re-enters the public touch so the queued subject gets the same
+    // reveal/park/cull treatment — and re-queues itself if a second loss lands mid-drain.
+    if (this._contextRecovery) {
+      this._contextRecovery.runQueuedExactTargetTouch = (subject) => {
+        state.render.touchSubjectExactTarget(subject);
+      };
+    }
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
@@ -13282,10 +13263,17 @@ export const render = {
         foundryTexture: this._foundryEnvTexture,
         background: scene.background,
       });
-      if (iblSource === IBL_SOURCE_FOUNDRY) {
-        envTarget = pmrem.fromEquirectangular(this._foundryEnvTexture);
-      } else if (iblSource === IBL_SOURCE_BACKGROUND) {
-        envTarget = pmrem.fromEquirectangular(scene.background);
+      if (iblSource === IBL_SOURCE_FOUNDRY || iblSource === IBL_SOURCE_BACKGROUND) {
+        // Equirect sources must not go through fromEquirectangular: it sizes the PMREM output
+        // from the input width, and the cubeUV height sits in every lit material's program key.
+        // Baking through a fixed-size scene capture keeps the key stable across env swaps.
+        const equirect = iblSource === IBL_SOURCE_FOUNDRY ? this._foundryEnvTexture : scene.background;
+        if (!this._envBakeScene) this._envBakeScene = new THREE.Scene();
+        this._envBakeScene.background = equirect;
+        envTarget = pmrem.fromScene(
+          this._envBakeScene, 0, 0.1, 1000, { size: IBL_PMREM_CUBE_SIZE },
+        );
+        this._envBakeScene.background = null;
       } else {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
         envTarget = pmrem.fromScene(
@@ -14411,11 +14399,21 @@ export const render = {
           globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
         } else if (typeName === 'station') {
           const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
+          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
           if (isGate) {
-            const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
             globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
           } else {
-            globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
+            globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+          }
+        } else if (typeName === 'place') {
+          // Landmarks/props carry authored ANIM_ parts (beacons, dishes, drills); gates
+          // filed as places still get the full gate treatment.
+          const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
+          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+          if (isGate) {
+            globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+          } else {
+            globalInfrastructureMotion.updatePlaceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
           }
         } else if (typeName === 'wreck') {
           // Fresh kill wrecks spiral (root-owned) while dead drift continues (child-owned).

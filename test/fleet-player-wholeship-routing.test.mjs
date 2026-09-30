@@ -30,6 +30,7 @@ const EXPECTED = {
   ship_colossus: { file: 'wholeships/colossus_production_v1.glb', assetId: 'SF_COLOSSUS_PRODUCTION_V1' },
   ship_leviathan: { file: 'wholeships/leviathan_production_v1.glb', assetId: 'SF_LEVIATHAN_PRODUCTION_V1' },
   ship_hawser: { file: 'wholeships/yard_tug.glb', assetId: 'SF_WHOLESHIP_YARD_TUG' },
+  ship_saucer: { file: 'wholeships/saucer_production_v1.glb', assetId: 'SF_SAUCER_PRODUCTION_V1' },
 };
 
 const hitch = makeShipEntitySpec('ship_kestrel', { isPlayer: true, team: 0 });
