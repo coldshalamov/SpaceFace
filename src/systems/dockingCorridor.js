@@ -79,7 +79,7 @@ export const dockingCorridor = {
       const clear = () => { this._farQuiet = null; };
       this._farQuietUnsubs = [
         this.bus.on('sector:exit', clear),
-        this.bus.on('sector:entered', clear),
+        this.bus.on('sector:enter', clear),
         this.bus.on('game:new', clear),
         this.bus.on('save:loaded', clear),
       ];
