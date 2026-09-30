@@ -100,8 +100,11 @@ html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-da
 /* DANGER is the same lamp driven red, and it outranks the quiet tier's tint like everything else. */
 .orr-arcrail-host--grouped .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important; }
 /* the stacked form: the head is a line of its own above its verbs, so a verb's box is its type and
-   the air the seat gave it, nothing more. */
+   the air the seat gave it, nothing more. The one-line form keeps the row's normal padding. */
 .orr-arcrail-host--stacked .dp-lit__item { padding:1px 0 !important; }
+/* …and on one line the head is centred on the row like a verb, so it never hangs off the row's own
+   height: the same hierarchy, seated rather than stacked. */
+.orr-arcrail-host--grouped:not(.orr-arcrail-host--stacked) .dp-lit__item { padding:2px 0 !important; }
 /* the extra fine row (the title's ARCHIVE and SANDBOX) is one line on its stop, one tick for both */
 .orr-arcrail-host > .orr-arcrail__extra { display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important; align-items:baseline; gap:22px !important; }
 .orr-arcrail-host > .orr-arcrail__extra > li { position:static !important; margin:0 !important; flex:0 0 auto !important; width:auto !important; }
@@ -534,21 +537,48 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // the thing they name.
     //
     // The type is written from the dial's own measured row pitch, so the head outranks its verbs by
-    // the same grammar at any window height: a tall window gets a tall head, a short one a small
-    // head over 12 px verbs, and the two are never the same size.
+    // the same grammar at any window height. A row has a real vertical budget — the pitch, less the
+    // line the row above already spends on its verbs, less the air a head needs to breathe — and a
+    // short window's budget is small enough that a head stacked over its verbs does NOT fit. So the
+    // form is chosen by arithmetic, not by hope: a tall window gets the head on its own line above
+    // its verbs, a short one keeps the same hierarchy on ONE line (a head far larger than the verbs,
+    // with the rule between them), and neither form ever overlaps the row above.
     const pitch = all.length > 1
       ? Math.min(...all.slice(1).map((_, k) => Math.abs(geo.anchors[k + 1].y - geo.anchors[k].y)))
       : Math.max(30, H * 0.055);
+    const VERB_LIFT = 13;     // a verb's own line, below its row's tick
+    const HEAD_AIR = 7;       // clear space between this head's cap and the row above
+    const CAP = 0.72;         // a capital's height above its baseline, in ems
+    let stacked = false;
     if (grouped) {
       const mid = clamp(pitch * 0.3, 12, 19);
       const low = clamp(pitch * 0.235, 12, 15.5);
-      // the head may be as tall as the row can hold above its verbs: cap ascent, a rule's air, the
-      // verbs' own line and a row's worth of air between this head and the one above it
-      headSize = Math.min(26, Math.max(12.5, (pitch - 13 - (mid + 2)) / 0.72));
+      // Each row's real height, measured from the buttons the screen already built. The row above a
+      // head is the one that sets the head's ceiling, and it is NOT a verb row: Resume is the lamp
+      // key and is three times the height, so a budget that assumed "the row above is a verb" let
+      // GAME's cap climb straight into RESUME on a mid-height window.
+      const boxOf = (row) => row.items.reduce((m, li) => {
+        const b = li.querySelector('button') || li;
+        return Math.max(m, b.offsetHeight || 40);
+      }, 0);
+      // where a row's own paint ends, if it is seated with a lift: anchor + lift + half its box
+      const bottomOf = (i, lift) => geo.anchors[i].y + lift + boxOf(all[i]) / 2;
+      // the tallest head every row can carry: its cap must clear the row above, and its baseline
+      // sits 7 px above its own tick
+      const room = all.reduce((m, row, k) => {
+        if (k === 0 || !row.group) return m;
+        const above = bottomOf(k - 1, all[k - 1].group ? VERB_LIFT : 0);
+        return Math.min(m, (geo.anchors[k].y - 7 - above - HEAD_AIR) / CAP);
+      }, Infinity);
+      stacked = room >= 13;
+      headSize = stacked
+        ? Math.min(26, room)
+        // one line: the head shares its row, so only the row's own height bounds it
+        : clamp(pitch * 0.52, 13, 26);
       host.style.setProperty('--orr-head', `${headSize.toFixed(1)}px`);
       host.style.setProperty('--orr-verb', `${mid.toFixed(1)}px`);
       host.style.setProperty('--orr-verb-low', `${low.toFixed(1)}px`);
-      host.classList.toggle('orr-arcrail-host--stacked', headSize >= 13);
+      host.classList.toggle('orr-arcrail-host--stacked', stacked);
     } else {
       host.classList.remove('orr-arcrail-host--stacked');
     }
@@ -563,21 +593,27 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       if (grouped && row.group) {
         head = svg('g', { class: 'orr-arcrail__head', 'data-row': String(i) });
         head.style.setProperty('--orr-delay', `${100 + i * 42}ms`);
-        const legend = svg('text', { x: (x + 8).toFixed(1), y: (y - 7).toFixed(1), class: 'orr-arcrail__legend' });
+        // stacked: the head's baseline sits on its own line above the row's tick. one line: it shares
+        // the row, so it is seated on the row's centre like a verb, and only its size separates them.
+        const hy = stacked ? y - 7 : y + headSize * 0.35;
+        const legend = svg('text', { x: (x + 8).toFixed(1), y: hy.toFixed(1), class: 'orr-arcrail__legend' });
         legend.textContent = String(row.group).toUpperCase();
         head.appendChild(legend);
         layer.appendChild(head);
         try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
         if (!(headW > 0)) headW = String(row.group).length * headSize * 0.86;
         record = { node: head, row: i, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
-        cursor = x + 20;                      // its verbs are listed one step IN, under the head
+        // stacked: the verbs are listed one step IN, on their own line under the head. one line: they
+        // follow the head along the row, the rule's short bridge between.
+        cursor = stacked ? x + 20 : x + 30 + headW;
       }
       let rowH = 0;
       row.items.forEach((li, k) => {
         const button = li.querySelector('button') || li;
         const bh = button.offsetHeight || 40;
-        // under a head, the verbs sit on their own line, below the rule the head ruled off
-        const ly = head ? y + 13 : y;
+        // stacked: the verbs sit on their own line under the rule the head ruled off. one line:
+        // they follow the head along the row's own line.
+        const ly = stacked ? y + VERB_LIFT : y;
         // left/top only: a screen's own arrival (kit stamp) owns the item's transform
         li.style.left = `${Math.round(cursor)}px`;
         li.style.top = `${Math.round(ly - bh / 2)}px`;
@@ -590,21 +626,25 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       if (head) {
         // the rule: out from the head's end, over the width of the verbs it owns, fading as it runs
         // out over the held world. Its extent is the row's own, so it groups exactly these words.
-        const rx0 = x + 18 + headW;
-        const rx1 = Math.max(rx0 + 40, cursor - 22);
+        // Stacked, it divides the head from its verbs on the line between them. On one line it
+        // bridges head to verbs, so it is drawn at the head's own optical centre — through the
+        // middle of the caps — and stops short of the first verb rather than striking through it.
+        const rx0 = x + 16 + headW;
+        const rx1 = stacked ? Math.max(rx0 + 40, cursor - 22) : Math.max(rx0 + 22, cursor - 20);
+        const ry = stacked ? y + 1 : y - headSize * 0.3;
         ruleDefs.append(
           mkRule(record.rest, rx0, rx1, 'rgb(232 226 212)'),
           mkRule(record.lit, rx0, rx1, 'var(--dp-hand, #f2b950)'),
         );
         head.appendChild(svg('path', {
           class: 'orr-arcrail__rule',
-          d: `M ${rx0.toFixed(1)} ${(y + 1).toFixed(1)} L ${rx1.toFixed(1)} ${(y + 1).toFixed(1)}`,
+          d: `M ${rx0.toFixed(1)} ${ry.toFixed(1)} L ${rx1.toFixed(1)} ${ry.toFixed(1)}`,
           'stroke-width': 1.25, pathLength: 1, stroke: `url(#${record.rest})`,
         }));
         // …and the head's own band: name, rule and the air between, never over its verbs' boxes, so
         // the category is a target that focuses the row's first verb instead of a caption to read.
-        const bandTop = y - headSize - 8;
-        const bandBottom = Math.max(y - rowH / 2 + 3, y - 2);
+        const bandTop = stacked ? y - headSize - 8 : y - Math.max(headSize, rowH) / 2 - 4;
+        const bandBottom = stacked ? Math.max(y - rowH / 2 + 3, y - 2) : bandTop + Math.max(headSize, rowH) + 8;
         head.appendChild(svg('rect', {
           class: 'orr-arcrail__headhit', x: (x + 2).toFixed(1), y: bandTop.toFixed(1),
           width: (rx1 + 12 - x).toFixed(1), height: Math.max(14, bandBottom - bandTop).toFixed(1), rx: 3,
