@@ -74,32 +74,6 @@
   ],
   "units": [
     {
-      "id": "world-11-io-named-courier",
-      "date": "2026-09-22",
-      "wf": "WF-01",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Io Reach traffic can include one named courier (lane_maro_keelwright, REACH-MAIL)",
-      "fingerprint": "verb=meet,subject=courier,sector=io-reach,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "0444daa66",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inst-13-station-hum-loop",
-      "date": "2026-09-22",
-      "wf": "WF-13",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Docking starts the authored station_hum room tone; undocking stops it",
-      "fingerprint": "verb=dock,subject=station,sector=helios,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "1eaf2de75",
-      "verification": "focused_green"
-    },
-    {
       "id": "pic-10-lab-halo-geometry",
       "date": "2026-09-22",
       "wf": "WF-11",
@@ -1646,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "b59ba8862",
+      "verification": "focused_green"
+    },
+    {
+      "id": "WORLD-38",
+      "date": "2026-09-30",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The arrival card names the assigned pad, or the hold and how many ships are ahead, and clears the line on undock.",
+      "fingerprint": "verb=dock,subject=berth-card,sector=helios,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "85730847d",
       "verification": "focused_green"
     }
   ],
