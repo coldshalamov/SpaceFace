@@ -354,7 +354,25 @@ export function createCombatKernel(ctx, options = {}) {
     const entityId = payload && payload.id;
     if (entityId == null) return;
     if (payload && payload.reason === 'save_restore') return;
-    for (const attachment of attachments.listForEntity(entityId, true)) attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
+    // entity:destroyed is queue-flushed after removal and ids recycle immediately: if a new
+    // occupant already holds the id, this receipt is stale — breakOrphans owns the dead side,
+    // and breaking here would sever the new entity's lines and wipe its combat runtime.
+    const occupant = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(entityId) : null;
+    if (payload && payload.entity && occupant && occupant !== payload.entity) return;
+    const brokenIds = new Set();
+    for (const attachment of attachments.listForEntity(entityId, true)) {
+      attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
+      brokenIds.add(attachment.id);
+    }
+    // Controller-only lines (caught snares, twin bridle) are invisible to listForEntity;
+    // a dead controller must release them too, not wait for the orphan sweep.
+    if (typeof attachments.listControlledBy === 'function') {
+      for (const attachment of attachments.listControlledBy(entityId, true)) {
+        if (brokenIds.has(attachment.id)) continue;
+        attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
+      }
+    }
     removeCombatantRuntime(state, entityId);
     appendCombatTrace(state.combat, state.tick, 'combat.entityRemoved', { targetId: entityId });
   }

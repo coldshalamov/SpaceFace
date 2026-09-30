@@ -526,7 +526,9 @@ export function createAttachmentService(context) {
       const targetLost = !target || target.alive === false;
       const controllerLost = attachment.controllerId != null && (!controller || controller.alive === false);
       if (!ownerLost && !targetLost && !controllerLost) continue;
-      const reason = controllerLost && !ownerLost && !targetLost ? 'controller_lost' : 'target_lost';
+      // Owner death is an endpoint loss, not a target loss — keep the reason inside the
+      // recognized endpoint vocabulary so cues/labels stay honest about which side died.
+      const reason = ownerLost ? 'endpoint_lost' : (targetLost ? 'target_lost' : 'controller_lost');
       const result = breakAttachment(attachment, reason, attachment.controllerId ?? attachment.ownerId);
       if (result.ok) broken++;
     }
@@ -948,8 +950,10 @@ export function createAttachmentService(context) {
       // into automatic break still snap on the authored envelope after the ordered warning
       // lease, even when oscillating load never reaches the controller's catastrophic cut.
       if (masslinePolicy && !automaticBreak) continue;
-      if (masslinePolicy
-        && Number.isFinite(attachment.breakWarningUntilTick)
+      // The warning lease is universal: any def that armed breakWarningUntilTick promised the
+      // pilot 15 ticks of counterplay, not just massline-controlled lines — a same-tick slam
+      // used to emit tether:nearBreak and tether:broken together for snare/snarl/bridle defs.
+      if (Number.isFinite(attachment.breakWarningUntilTick)
         && state.tick < attachment.breakWarningUntilTick) {
         continue;
       }
