@@ -309,6 +309,7 @@ export const barkDirector = {
     this._onLawCheckpointPosted = (payload) => this._speakLawSurrender(payload || {});
     this._onLawReportReceipt = (payload) => this._speakLawWitness(payload || {});
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
+    this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:spawned', this._onEntitySpawnedBark);
       this.bus.on('ai:flee', this._onFlee);
@@ -328,6 +329,7 @@ export const barkDirector = {
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
+      this.bus.on('bounty:cooled', this._onBountyCooled);
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
       this.bus.on('tether:released', this._onBodyReleased);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -541,6 +543,28 @@ export const barkDirector = {
       (entity) => isLawfulVoice(entity));
     if (!voice) return false;
     return this._speak(voice, 'warn', 'heat:changed', payload);
+  },
+
+  // LAW-07: the bounty desk answers a payoff with one comms line naming the heat it actually
+  // bought off — the measured delta from heat.js, never the theoretical credit. Same-tick
+  // repeats of the same receipt collapse to a single line.
+  _speakBountyCooled(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    const cooled = Number(payload.cooled) || 0;
+    if (!(cooled > 0)) return false;
+    const own = ensureState(state);
+    const tick = state.tick | 0;
+    if (own.lastBountyCooledTick === tick) return false;
+    own.lastBountyCooledTick = tick;
+    const pct = Math.round(cooled * 100);
+    this._emit('comms:popup', {
+      sender: 'BOUNTY DESK',
+      text: `Payment posted — the hunt cools ${pct}%.`,
+      category: 'law',
+      ttl: 6,
+    });
+    return true;
   },
 
   // The receipt names witnesses by STABLE id; `entity:N` rows resolve directly, and authored
@@ -1135,6 +1159,7 @@ export const barkDirector = {
       if (this._onLawWarrantPosted) this.bus.off('law:wantedWarrantPosted', this._onLawWarrantPosted);
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
+      if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -1155,6 +1180,7 @@ export const barkDirector = {
     this._onLawCheckpointPosted = null;
     this._onLawReportReceipt = null;
     this._onHeatWantedCrossed = null;
+    this._onBountyCooled = null;
     this._onBodyReleased = null;
     this._onBodyShoved = null;
     this._onBodyImpact = null;

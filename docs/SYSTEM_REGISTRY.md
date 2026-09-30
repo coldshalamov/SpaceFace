@@ -43,13 +43,13 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `nemesisEncounter` | `systems/nemesisEncounter.js` | 9 | 0 | 0 | — |
 | `capitalBossEncounters` | `systems/capitalBossEncounters.js` | 149 | 2 | 0 | `capitalBoss:telegraphEnd`×2 |
 | `ai` | `systems/tacticalAI.js` (+ legacy) | 1266 | 2 | 0 | `ai:telegraph`×1, `ai:doctrinePhase`×1 |
-| `barkDirector` | `systems/barkDirector.js` | 1584 | 1 | 21 | `audio:cue`×1 |
+| `barkDirector` | `systems/barkDirector.js` | 1610 | 1 | 22 | `audio:cue`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 844 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
 | `beacons` | `systems/beacons.js` | 216 | 5 | 2 | `audio:cue`×3, `economy:chargeCredits`×1, `beacon:deployed`×1 |
 | `travelLanes` | `systems/travelLanes.js` | 1320 | 0 | 1 | — |
 | `flight` | `systems/flightV3.js` (+ legacy) | 1561 | 9 | 4 | `ship:boostStop`×2, `ship:boostStart`×1, `ship:boostPreKick`×1 |
-| `cruise` | `systems/cruise.js` | 238 | 4 | 4 | `cruise:engaged`×1, `cruise:charging`×1, `cruise:snared`×1 |
+| `cruise` | `systems/cruise.js` | 242 | 4 | 4 | `cruise:engaged`×1, `cruise:charging`×1, `cruise:snared`×1 |
 | `aiPorts` | `systems/aiPorts.js` | 1947 | 2 | 0 | `ai:encounterCommand`×1, `cloak:faded`×1 |
 | `tumbleStates` | `systems/tumbleStates.js` | 732 | 9 | 7 | `audio:cue`×2, `presentation:vfxCue`×2, `massline:recovered`×1 |
 | `collisionConsequences` | `systems/collisionConsequences.js` | 740 | 2 | 6 | `combat:collisionConsequence`×1, `combat:collisionDebris`×1 |
@@ -58,7 +58,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `countermeasures` | `systems/countermeasures.js` | 549 | 5 | 3 | `audio:cue`×2, `pds:intercept`×1, `countermeasure:deployed`×1 |
 | `bombs` | `systems/bombs.js` | 1314 | 31 | 14 | `bombs:denied`×8, `economy:chargeCredits`×4, `bombs:stockChanged`×3 |
 | `emergentPrimitives` | `systems/emergentPrimitives.js` | 1151 | 2 | 0 | `emergent:audio`×1, `emergent:contact`×1 |
-| `impulseCharges` | `systems/impulseCharges.js` | 1319 | 23 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
+| `impulseCharges` | `systems/impulseCharges.js` | 1359 | 24 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
 | `hullBurst` | `systems/hullBurst.js` | 556 | 17 | 0 | `audio:cue`×6, `presentation:vfxCue`×4, `hullBurst:hit`×3 |
 | `mines` | `systems/mines.js` | 335 | 8 | 6 | `mines:armed`×2, `mines:capReached`×1, `ai:telegraph`×1 |
 | `massSeed` | `systems/massSeed.js` | 612 | 26 | 4 | `audio:cue`×6, `presentation:vfxCue`×4, `massSeed:collapsing`×4 |
@@ -114,7 +114,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `salvage` | `systems/salvage.js` | 873 | 7 | 6 | `comms:log`×2, `salvage:placed`×1, `wreckField:source`×1 |
 | `lossInvestigation` | `systems/lossInvestigation.js` | 206 | 1 | 5 | `lossInvestigation:promoted`×1 |
 | `salvageActions` | `systems/salvageActions.js` | 734 | 11 | 8 | `entity:spawnRequest`×2, `combat:hit`×2, `salvage:actionRead`×1 |
-| `survivorPod` | `systems/survivorPod.js` | 1268 | 11 | 10 | `survivorPod:ejected`×2, `faction:repDelta`×2, `entity:destroyed`×1 |
+| `survivorPod` | `systems/survivorPod.js` | 1282 | 11 | 10 | `survivorPod:ejected`×2, `faction:repDelta`×2, `entity:destroyed`×1 |
 | `recoveryEncounter` | `systems/recoveryEncounter.js` | 780 | 0 | 0 | — |
 | `factions` | `systems/factions.js` | 980 | 11 | 18 | `faction:repChanged`×3, `faction:aggro`×3, `economy:chargeCredits`×1 |
 | `sectorSim` | `systems/sectorSim.js` | 1121 | 9 | 14 | `sectorsim:tick`×1, `sectorsim:fieldAdvanced`×1, `economy:applyTradePressure`×1 |
@@ -131,7 +131,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `swarmChain` | `systems/swarmChain.js` | 266 | 0 | 2 | — |
 | `killReplay` | `systems/killReplay.js` | 160 | 0 | 0 | — |
 | `killcamRecorder` | `sim/killcamTape.js` | 492 | 0 | 2 | — |
-| `heat` | `systems/heat.js` | 727 | 1 | 10 | `heat:changed`×1 |
+| `heat` | `systems/heat.js` | 736 | 2 | 10 | `bounty:cooled`×1, `heat:changed`×1 |
 | `traffic` | `systems/traffic.js` | 11050 | 33 | 28 | `field:richSeamMissed`×2, `news:publish`×2, `comms:message`×2 |
 | `drill` | `systems/drill.js` | 1460 | 23 | 0 | `drill:warn`×9, `drill:rockDepleted`×3, `drill:yield`×1 |
 | `claims` | `systems/claims.js` | 2581 | 46 | 11 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×3 |

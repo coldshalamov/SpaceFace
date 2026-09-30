@@ -113,8 +113,8 @@ const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
 
 // Paying a posted bounty visibly cools the ledger: every credit of settled bounty quiets the
 // hunt a little, capped so a fat payoff never launders a massacre in one receipt.
-const BOUNTY_PAID_COOL_PER_CR = 0.0004;
-const BOUNTY_PAID_COOL_MAX = 0.5;
+export const BOUNTY_PAID_COOL_PER_CR = 0.0004;
+export const BOUNTY_PAID_COOL_MAX = 0.5;
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
@@ -578,6 +578,15 @@ export const heat = {
     if (before <= 0) return;
     const credit = Math.min(BOUNTY_PAID_COOL_MAX, amount * BOUNTY_PAID_COOL_PER_CR);
     this._setHeat(Math.max(0, before - credit), 'bounty paid');
+    // LAW-07: report the measured cool, not the computed credit — a sealed run or a clamped
+    // write must not make the line claim heat the ledger never lost.
+    const after = player.heat || 0;
+    const cooled = Math.max(0, before - after);
+    if (cooled > 0 && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('bounty:cooled', {
+        amount, credit, cooled, before, after, cap: BOUNTY_PAID_COOL_MAX,
+      });
+    }
   },
 
   _dropOneLevel(reason = 'escaped heat radius') {
