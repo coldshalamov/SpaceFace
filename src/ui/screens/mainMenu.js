@@ -839,19 +839,35 @@ export const mainMenuScreen = {
       if (previous.rafId != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(previous.rafId);
       if (previous.timerId != null) clearTimeout(previous.timerId);
       if (previous.removeTimerId != null) clearTimeout(previous.removeTimerId);
+      if (typeof previous.offModeChanged === 'function') previous.offModeChanged();
     }
-    const loop = { stale: false, rafId: null, timerId: null, removeTimerId: null };
+    const loop = { stale: false, rafId: null, timerId: null, removeTimerId: null, offModeChanged: null };
     fade._sfContinueFadeLoop = loop;
+    const lift = () => {
+      if (loop.stale) return;
+      loop.stale = true;
+      if (loop.rafId != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(loop.rafId);
+      if (loop.timerId != null) clearTimeout(loop.timerId);
+      if (typeof loop.offModeChanged === 'function') loop.offModeChanged();
+      fade.classList.remove('open');
+      loop.removeTimerId = setTimeout(() => {
+        if (fade._sfContinueFadeLoop === loop && fade.parentNode) fade.remove();
+      }, 1100);
+    };
+    // A failed Continue bounces mode back to the menu (the stranded-mode hand-back or a
+    // bounced rollback) — no flight frame is coming, so lift immediately instead of holding
+    // the opaque veil over the menu for the rest of the 4s failsafe.
+    loop.offModeChanged = ctx && ctx.bus && typeof ctx.bus.on === 'function'
+      ? ctx.bus.on('mode:changed', ({ mode } = {}) => {
+          if (mode && mode !== 'flight' && mode !== 'loading') lift();
+        })
+      : null;
     const check = () => {
       if (loop.stale) return;
       const live = ctx && ctx.state && ctx.state.mode === 'flight';
       const presented = frameAtClick == null || (frameCount() != null && frameCount() > frameAtClick);
       if ((live && presented) || Date.now() - start > 4000) {
-        loop.stale = true;
-        fade.classList.remove('open');
-        loop.removeTimerId = setTimeout(() => {
-          if (fade._sfContinueFadeLoop === loop && fade.parentNode) fade.remove();
-        }, 1100);
+        lift();
         return;
       }
       if (typeof requestAnimationFrame === 'function') loop.rafId = requestAnimationFrame(check);
