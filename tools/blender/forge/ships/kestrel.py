@@ -12,8 +12,17 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_01  # noqa: E402
 
 SHIP_ID = 'kestrel'
+
+
+def E_spec_asset_id():
+    return E.fleet_spec(SHIP_ID)['asset_id']
+
+
 COLORS = {
     'paint': '#2b5159',        # Hitch steel-teal pressure hull (Helios key light lifts it ~2.5x)
     'paint2': '#25282c',       # warm charcoal armour
@@ -125,9 +134,13 @@ def build():
     lid = F.box(s, 'RepairPodHatch', (-2.1, 4.35, 1.88), (1.2, 1.2, 0.08), material='paint2', bevel=0.01)
     s.hook_part('HOOK_SECONDARY_POD', pod, band, lid)
 
-    # --- dorsal sensor dish (sensor damage part) ----------------------------------------------
+    # --- dorsal sensor dish (sensor damage part; ANI-01 motion rig) -----------------------------
     ped = F.cylinder(s, 'DishPedestal', (-2.2, -0.9, 2.1), (-2.2, -0.9, 2.85), 0.2, 0.13, material='gunmetal',
                      segments=16)
+    # ANI-01 proposed geometry: a short rigid telescoping inner stem inside the pedestal bore —
+    # hidden at rest, exposed as the dish lifts.
+    stem = F.cylinder(s, 'DishStem', (-2.2, -0.9, 2.55), (-2.2, -0.9, 3.02), 0.085, 0.07,
+                      material='gunmetal', segments=12)
     # A shallow dish tilted aft: rim ring, dark reflector face, feed horn with a cyan pickup.
     dish = F.cylinder(s, 'Dish', (-2.12, -0.9, 2.95), (-2.32, -0.9, 3.12), 0.8, 0.86, material='gunmetal',
                       segments=32, cap_material='dark')
@@ -135,7 +148,10 @@ def build():
                       segments=8)
     lens = F.light(s, 'DishFeed', (-2.56, -0.9, 3.58), 'glow_cyan', size=0.1)
     dish = [dish, horn]
-    s.hook_part('HOOK_SENSOR_DISH', ped, *dish, lens)
+    s.hook_part('HOOK_SENSOR_DISH', ped, stem, *dish, lens)
+    ani01_bank = ANI_01.build(s, {'stem': stem, 'dish': dish, 'feed': lens},
+                              source_asset_id=E_spec_asset_id())
+    s.ani01_bank = ani01_bank
 
     # --- armour plate that sheds under damage (port shoulder cap) ------------------------
     cap = F.plate(s, 'ShoulderCap', [(4.0, 3.4), (3.1, 5.8), (0.5, 5.8), (0.5, 3.4)], z0=0.62,
@@ -159,6 +175,11 @@ def build():
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    spec = E.fleet_spec(SHIP_ID)
+    written = E.export_ship(ship, spec, preview=not live)
+    # The motion bank seals against the exported release GLB — preview runs leave the authored
+    # rig in place but skip the bank (the runtime only reads it from release packages).
+    if live:
+        ship.ani01_bank.bake([path for path, _tris in written])

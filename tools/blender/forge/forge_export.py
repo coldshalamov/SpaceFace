@@ -147,16 +147,50 @@ def _lod_meshes(ship, level, prefix):
     objs = [o for o in ship.objects if not (level >= 2 and o.get('forge_detail', 0) >= 1)]
     objs = [o for o in objs if not (level >= 1 and o.get('forge_detail', 0) >= 2)]
     # Hooked parts (damage roles: HOOK_SECONDARY_*, HOOK_SENSOR_*, HOOK_ARMOR_*) stay separate
-    # meshes so the runtime can bind, shed or flicker them.
+    # meshes so the runtime can bind, shed or flicker them. Motion-group parts weld per
+    # (group, hook) under a MOTION_<rig> pivot instead — the damage name is preserved so the
+    # runtime still sheds/flickers them while the pivot carries the authored transform.
     hooked = {}
+    moving = {}
     for o in objs:
-        if o.get('forge_hook'):
+        if o.get('forge_motion'):
+            moving.setdefault((o['forge_motion'], o.get('forge_hook') or ''), []).append(o)
+        elif o.get('forge_hook'):
             hooked.setdefault(o['forge_hook'], []).append(o)
-    objs = [o for o in objs if not o.get('forge_hook')]
+    objs = [o for o in objs if not o.get('forge_hook') and not o.get('forge_motion')]
     named = []
     for hook, parts in hooked.items():
         named += _join_named(parts, level, f'{prefix}_{hook}')
+    for (rig, hook), parts in moving.items():
+        pivot = ship.motion_pivots.get(rig)
+        motion_prefix = f'{prefix}_MOTION_{rig.upper()}_{hook}' if hook else f'{prefix}_MOTION_{rig.upper()}'
+        for p in _join_named(parts, level, motion_prefix):
+            if pivot is not None:
+                world = p.matrix_world.copy()
+                p.parent = pivot
+                p.matrix_world = world
+            named.append(p)
     return named + _join_named(objs, level, prefix)
+
+
+def _mount_motion_pivots(ship, root):
+    """Re-mount top-level motion pivots under this export's root, preserving world transforms.
+
+    Pivot empties are persistent (the authoring rig lives in ship.motion_pivots across LOD
+    passes), so each level's file re-mounts them under its own root; nested groups keep their
+    registered pivot parents. Returns every pivot for export selection.
+    """
+    pivots = []
+    for group in getattr(ship, 'motion_groups', []) or []:
+        pivot = ship.motion_pivots.get(group['id'])
+        if pivot is None:
+            continue
+        if group['parent'] is None:
+            world = pivot.matrix_world.copy()
+            pivot.parent = root
+            pivot.matrix_world = world
+        pivots.append(pivot)
+    return pivots
 
 
 def _join_named(objs, level, prefix):
@@ -376,8 +410,10 @@ def export_place(ship, spec, preview=False):
     for level in spec.get('lod_levels', (0, 1, 2)):
         meshes = _lod_meshes(ship, level, f'LOD{level}')
         for m in meshes:
-            m.parent = root
+            if m.parent is None:
+                m.parent = root
         meshes_all += meshes
+    pivots = _mount_motion_pivots(ship, root)
     # spec['no_collision'] skips the hull — the dock interiors are UI backdrops, never
     # spawned in the world, and the live files carry no collision node.
     if not spec.get('no_collision'):
@@ -392,7 +428,7 @@ def export_place(ship, spec, preview=False):
     if new_place:
         _add_sockets(ship, root)
     path = os.path.join(out_dir, f"{spec['file']}.glb")
-    _export([root] + list(root.children), path)
+    _export([root] + list(root.children_recursive), path)
     # Identity only: descriptive fields of the old body (triangle counts, material lists, texture
     # notes) would be false for the forged one.
     keep = ('contractVersion', 'assetId', 'partId', 'liveId', 'category', 'family', 'role',
@@ -428,33 +464,42 @@ def export_ship(ship, spec, out_dir=None, preview=False):
         for level in (0, 1, 2):
             root = _root_empty(f"{spec['root']}_LOD{level}_ROOT", {})
             prefix = f'LOD{level}' if spec.get('lod_prefix') == 'per_file' else 'LOD0'
+            # Export reads the authored pose: every motion pivot must sit at rest here, which is
+            # why ANI bake scripts key frame 0 to the rest pose and exports run at frame 0.
+            bpy.context.scene.frame_set(0)
             meshes = _lod_meshes(ship, level, prefix)
             for m in meshes:
-                m.parent = root
+                if m.parent is None:
+                    m.parent = root
+            pivots = _mount_motion_pivots(ship, root)
             coll = _collision_hull(ship, root, meshes)
             _add_sockets(ship, root)
             suffix = '' if level == 0 else f'_lod{level}'
             path = os.path.join(out_dir, f"{spec['file']}{suffix}.glb")
-            export_objs = [root] + list(root.children)
+            export_objs = [root] + list(root.children_recursive)
             _export(export_objs, path)
             wiring = spec.get('wiring')
             _stamp(path, {**identity, **({'wiringStatus': wiring[level]} if wiring else {})}, f'lod{level}')
             tris = sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in meshes)
             print(f'[forge] {path} lod{level} tris={tris} meshes={len(meshes)}')
             written.append((path, tris))
-            _clear_export_objects(export_objs + [coll])
+            # Motion pivots are persistent authoring objects — they re-mount under the next
+            # level's root, so they must survive the per-level cleanup.
+            _clear_export_objects([o for o in export_objs + [coll] if o not in pivots])
     else:
         root = _root_empty(spec['npc_root'], {})
         all_meshes = []
         for level in (0, 1, 2):
             meshes = _lod_meshes(ship, level, f'LOD{level}')
             for m in meshes:
-                m.parent = root
+                if m.parent is None:
+                    m.parent = root
             all_meshes += meshes
+        _mount_motion_pivots(ship, root)
         _collision_hull(ship, root)
         _add_sockets(ship, root)
         path = os.path.join(out_dir, f"{spec['file']}.glb")
-        _export([root] + list(root.children), path)
+        _export([root] + list(root.children_recursive), path)
         _stamp(path, identity, 'lod0')
         tris = sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in all_meshes if m.name.startswith('LOD0_'))
         print(f'[forge] {path} npc lod0 tris={tris}')

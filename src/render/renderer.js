@@ -217,6 +217,7 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
+import { installAuthoredMotionBus } from './authoredMotion.js';
 import { globalForgeCrown } from './forgeRegentCrown.js';
 import { globalLawArenaDressing } from './lawArenaDressing.js';
 import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
@@ -10294,6 +10295,10 @@ export const render = {
     globalPickupMotion.bindEvents(bus);
     globalOrdnanceMotion.bindEvents(bus);
     globalInfrastructureMotion.bindEvents(bus);
+    // ANI-00: gameplay events reach entity-keyed motion controllers only through the accepted
+    // source gate — a scan pulse drives the dish rig it was emitted for and nothing else.
+    if (typeof this._authoredMotionUnbind === 'function') this._authoredMotionUnbind();
+    this._authoredMotionUnbind = installAuthoredMotionBus(bus);
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
     // doesn't work" sore thumb. We forward the values to the systems that own them.
@@ -11303,6 +11308,8 @@ export const render = {
     globalPickupMotion.unbindEvents();
     globalOrdnanceMotion.unbindEvents();
     globalInfrastructureMotion.unbindEvents();
+    if (typeof this._authoredMotionUnbind === 'function') this._authoredMotionUnbind();
+    this._authoredMotionUnbind = null;
     this._resizeHandler = null;
     this._videoSettingsOff = null;
     return destroyed;
@@ -14398,6 +14405,7 @@ export const render = {
         }
       }
       if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
+      if (entity && runClosures && userData.updateAuthoredMotion) userData.updateAuthoredMotion(entity, simNow);
 
       // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
       // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
@@ -16929,6 +16937,10 @@ function disposeObject(obj) {
     // root into the dying tree; the children loop then applies the identical teardown grammar.
     const disposeLodRetained = c.userData && c.userData.disposeWholeShipLodRetained;
     if (typeof disposeLodRetained === 'function') disposeLodRetained();
+    // Authored-motion controllers register per entity id; releasing them here keeps a torn-down
+    // boundary from holding pivots (and events) for a ship that no longer exists.
+    const detachMotion = c.userData && c.userData.detachAuthoredMotion;
+    if (typeof detachMotion === 'function') detachMotion();
     // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
     // outermost detached root, so owner nodes nested under this tree never drain their pool
     // slots from the listener. Draining here releases the slot and lets the chunk retire.
