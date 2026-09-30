@@ -79,7 +79,7 @@ assert(physicsRuntime._sg02, 'loaded rapier-dynamic state should initialize the 
 physicsRuntime.update(0, restored.state);
 const restoredBodyRecord = physicsRuntime._sg02.records.get(restoredPlayer.id);
 assert(restoredBodyRecord, 'SG-02 body owner should create a body for the restored player');
-assert(Math.abs(restoredBodyRecord.body.angvel().y - 0.73) < 1e-6, 'SG-02 body owner should seed from saved yaw-rate');
+assert(Math.abs(restoredBodyRecord.body.angvel().y + 0.73) < 1e-6, 'SG-02 body owner should seed from saved yaw-rate');
 
 const rotBeforeStep = restoredPlayer.rot;
 physicsRuntime.update(DT, restored.state);

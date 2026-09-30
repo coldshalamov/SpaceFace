@@ -92,8 +92,8 @@ export const core = {
       const index = ensureEntityIndex(state);
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
-      // Measured skins default to fixed bodies, and are permitted on dynamic bodies only where one
-      // capsule cannot reach tolerance (capital ships, dreadnought, big wrecks, or data.compoundSkin) — Package C.
+      // Measured skins ride fixed bodies and eligible solid dynamics alike; authored physicsBody
+      // geometry (shape, collisionProxyManifest, useMeasuredSkin:false) opts out — Package C.
       const measuredSkin = e && e.collides !== false && measuredSkinAllowedFor(e)
         ? modelTruthProxyManifest(e)
         : null;

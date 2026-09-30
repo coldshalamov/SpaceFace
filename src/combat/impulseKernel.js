@@ -379,7 +379,7 @@ export function resolveCollisionConsequence(input = {}) {
   const exchangedMomentum = nonNegative(input.exchangedMomentum);
   if (exchangedMomentum < COLLISION_CONSEQUENCE_LIMITS.minMomentum) return null;
 
-  const mass = positive(target.mass, 1);
+  const mass = positive(target.physicsBody && target.physicsBody.mass, positive(target.mass, 1));
   let deltaV = exchangedMomentum / mass;
   // A loose striker's knock (see PROJECTILE_HULL_LAW). Only ever RAISES the knock the solver reported.
   const strike = input.projectileStrike;
@@ -407,11 +407,14 @@ export function resolveCollisionConsequence(input = {}) {
 
   // Craft contact has a real baseline; equipment such as the Ram Plate scales that baseline once
   // rather than replacing it or adding a second collision-damage packet.
-  const surfaceDamageMultiplier = surface === 'craft'
+  const impactDamageScale = Number.isFinite(other.physicsBody && other.physicsBody.impactDamageScale)
+    ? Math.min(8, Math.max(0, other.physicsBody.impactDamageScale))
+    : 1;
+  const surfaceDamageMultiplier = (surface === 'craft'
     ? (input.suppressCraftDamage === true
       ? 0
       : SURFACE_DAMAGE_MULTIPLIER.craft * positive(input.craftDamageMultiplier, 1))
-    : (SURFACE_DAMAGE_MULTIPLIER[surface] || 0);
+    : (SURFACE_DAMAGE_MULTIPLIER[surface] || 0)) * impactDamageScale;
   // Mass-relative ceiling: thin light hulls can crumple under a committed slam; mass-anchored
   // hulls keep the universal medium-class cap (or lower). The player never consumes this path —
   // collisionConsequences skips state.playerId before routing impactDamage.
@@ -423,7 +426,7 @@ export function resolveCollisionConsequence(input = {}) {
   const worldSurface = surface === 'terrain' || surface === 'structure';
   // PQ-140.01: a mass-150+ craft is terrain for whatever hits it (see HEAVY_AS_TERRAIN_MASS).
   const heavyAsTerrain = surface === 'craft'
-    && positive(other.mass, 0) >= HEAVY_AS_TERRAIN_MASS;
+    && positive(other.physicsBody && other.physicsBody.mass, positive(other.mass, 0)) >= HEAVY_AS_TERRAIN_MASS;
   const useCrumple = (worldSurface || heavyAsTerrain) && Number.isFinite(input.preSolveClosingSpeed);
   let impactDamage;
   let damageCap = massRelativeCap;
@@ -513,11 +516,31 @@ export function collisionSurface(entity) {
     case 'station': return 'structure';
     case 'wreck':
     case 'payload':
+    case 'debris':
+    case 'pod':
+    case 'prop':
+    case 'buoy':
     case 'pickup': return 'debris';
     case 'ship':
     case 'drone': return 'craft';
-    default: return 'other';
+    default: return physicalBodySurface(entity);
   }
+}
+
+function physicalBodySurface(entity) {
+  if (!entity || entity.type === 'fx' || entity.type === 'projectile') return 'other';
+  if (entity.collides === false) return 'other';
+  const body = entity.physicsBody;
+  if (!body || typeof body !== 'object') return 'other';
+  const material = body.material;
+  if (material === 'projectile' || material === 'massline_sensor' || material === 'sensor') {
+    return 'other';
+  }
+  if (body.collides === false || !(positive(body.mass, 0) > 0)) return 'other';
+  if (material === 'rock') return 'terrain';
+  if (material === 'station') return 'structure';
+  if (material === 'ship') return 'craft';
+  return body.dynamic === false ? 'structure' : 'debris';
 }
 
 function normalizeProvenance(value, tick) {

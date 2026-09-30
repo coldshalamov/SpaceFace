@@ -621,11 +621,11 @@ export const heistFacilities = {
     const mouth = projectBreakawayForkMouth(BREAKAWAY_CAPTURE_FORK);
     // Lateral axis is the inward normal rotated a quarter turn. A capsule built through the craft
     // recipe runs its length along local +X, whose world direction for a body yaw of θ is
-    // (cosθ, −sinθ) — so the rail yaw is atan2(−nz, nx), not the visual's atan2(nz, nx).
+    // (cosθ, sinθ) — the same convention the visual uses, so the rail yaw is atan2(nz, nx).
     const lx = -mouth.nz;
     const lz = mouth.nx;
-    const railRot = Math.atan2(-mouth.nz, mouth.nx);
-    const arrestorRot = Math.atan2(-lz, lx);
+    const railRot = Math.atan2(mouth.nz, mouth.nx);
+    const arrestorRot = Math.atan2(lz, lx);
     const spec = BREAKAWAY_FORK_COLLIDERS;
     const at = (depth, lateral) => this._global({
       x: mouth.x + mouth.nx * depth + lx * lateral,

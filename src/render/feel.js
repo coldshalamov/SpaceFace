@@ -253,6 +253,7 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (context.motionReduce) return null;
   if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
   if (context.mode !== 'flight') return null;
+  if (context.playerContact === true) return null;
   // C2: the curve reads the pre-solve closing speed (context.feelDeltaV) when the receipt carries
   // it — the solver's per-tick clamp must not flatten a 400 WU/s ram into a 40 WU/s nudge.
   const deltaV = Number.isFinite(context.feelDeltaV) && context.feelDeltaV > 0
@@ -333,6 +334,7 @@ export function traumaFromContact(dp, context = {}) {
       playerDistance: Number.isFinite(context.playerDistance) ? context.playerDistance : 0,
       motionReduce: context.motionReduce === true,
       photoMode: context.photoMode === true,
+      playerContact: context.playerContact === true,
       state: context.state,
     },
   );
@@ -1150,6 +1152,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // armor/hull hits get NO hit-stop (only trauma for player-as-target); big damage gets a micro dip.
     bus.on('combat:damage', (p) => {
       if (!p) return;
+      if (p.origin && p.origin.kind === 'collision') return;
       const isPlayer = p.isPlayer || (p.targetId === state.playerId);
       const playerInvolved = isPlayer || p.attackerId === state.playerId;
       const ctrl = this.state.render && this.state.render.cameraCtrl;
@@ -1442,7 +1445,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const knockId = playerIsContact ? playerId : p.targetId;
     const otherId = knockId === p.targetId ? p.otherId : p.targetId;
     this._queueCollisionFeel(p, p.deltaV, playerInvolved, p.targetId, p.otherId,
-      p.exchangedMomentum, knockId, otherId, p.feelDeltaV, this._chainBeatFor(p, playerId));
+      p.exchangedMomentum, knockId, otherId, p.feelDeltaV, true);
   },
 
   // F9 — the rope's joke is three bodies agreeing: a player-caused release whose contact chain
@@ -1478,11 +1481,20 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     return true;
   },
 
-  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId, feelDeltaV = null, chainBeat = false) {
+  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId, feelDeltaV = null, allowChainBeat = false) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !this._modalClear()) return;
     const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
     if (mr) return;
+    const playerId = state.playerId;
+    const contactPlayer = playerId != null && (aId === playerId || bId === playerId);
+    const provenanceActor = p && p.provenance ? p.provenance.actorId : null;
+    const playerCausedRemote = !contactPlayer && playerId != null
+      && (provenanceActor === playerId || (p && p.causalActorId === playerId));
+    const context = this._collisionFeelContext;
+    context.playerContact = !playerCausedRemote;
+    if (!playerCausedRemote) return;
+    const chainBeat = allowChainBeat === true && this._chainBeatFor(p, playerId);
     const tick = Number.isFinite(p.tick) ? p.tick : state.tick;
     if (Number.isFinite(tick) && tick === this._armedCollisionTick && aId != null && bId != null
       && ((aId === this._armedCollisionAId && bId === this._armedCollisionBId)
@@ -1539,7 +1551,6 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       }
     }
 
-    const context = this._collisionFeelContext;
     context.deltaV = deltaV;
     context.feelDeltaV = presentedDeltaV;
     context.playerDistance = playerDistance;

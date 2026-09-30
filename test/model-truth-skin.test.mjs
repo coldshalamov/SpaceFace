@@ -129,13 +129,15 @@ test('measured skins cover the outline, keep openings, and hold the camera outsi
   }
 });
 
-test('gas stays enterable and an undeclared body does not grow a skin', () => {
+test('gas keeps its measured soft skin and an undeclared body resolves it', () => {
   const gas = modelTruthRows().find((row) => row.id === 'ast_gas_cloud');
   assert.equal(gas.status, 'green');
-  assert.notEqual(gas.proposedSkin && gas.proposedSkin.adopted, true);
+  assert.equal(gas.proposedSkin && gas.proposedSkin.adopted, true);
   const gasBody = entityFor(gas, 4242);
   gasBody.data.collisionProxy = null;
-  assert.equal(modelTruthProxyManifest(gasBody), null);
+  const manifest = modelTruthProxyManifest(gasBody);
+  assert.equal(manifest && manifest.id, 'skin:ast_gas_cloud');
+  assert.equal(manifest.opening, 'gas-soft');
 });
 
 test('overlapping skins are pushed apart without dropping a body', () => {

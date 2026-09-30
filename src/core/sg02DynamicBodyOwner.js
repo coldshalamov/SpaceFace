@@ -12,16 +12,17 @@ import {
   writePhysicsTelemetry,
 } from './physicsAuthority.js';
 import {
+  MAX_PROXY_PRIMITIVES,
   expandProxyPrimitives,
   isCompoundSkinDynamicEligible,
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { SHIPS } from '../data/ships.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
-import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
 import { SIM_TIER } from '../world/activityClassification.js';
@@ -112,19 +113,10 @@ const SPRING_TUNES = Object.freeze({
 // `ghost` colliders join no contact pairs at all: projectiles do their damage through the
 // swept-segment tests in physics.js — a solver contact on top of that double-hit every target
 // with real momentum (~20 wu/s per bullet), which is why combat shoved ships around at random.
-const CONTACT_MATERIALS = Object.freeze({
-  ship:       Object.freeze({ friction: 0, restitution: 0,    angularDamping: 0.4, ghost: false, restitutionCombine: 'min' }),
-  projectile: Object.freeze({ friction: 0, restitution: 0,    angularDamping: 0,    ghost: true }),
-  rock:       Object.freeze({ friction: 0, restitution: 0.22, angularDamping: 0.02, ghost: false }),
-  station:    Object.freeze({ friction: 0, restitution: 0.06, angularDamping: 0,    ghost: false }),
-  debris:     Object.freeze({ friction: 0, restitution: 0.16, angularDamping: 0.06, ghost: false }),
-  payload:    Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false }),
-  // Keeps a dynamic body available to the attachment authority while excluding the authored
-  // sensor payload from every solver/contact pair. World-site payloads spawn inside assemblies.
-  massline_sensor: Object.freeze({ friction: 0, restitution: 0, angularDamping: 0.15, ghost: true }),
-  sensor:     Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.10, ghost: false }),
-  default:    Object.freeze({ friction: 0, restitution: 0.15, angularDamping: 0.05, ghost: false }),
-});
+// massline_sensor keeps a dynamic body available to the attachment authority while excluding
+// the authored sensor payload from every solver/contact pair; world-site payloads spawn inside
+// assemblies.
+const CONTACT_MATERIALS = PHYSICS_MATERIALS;
 
 // Structural give: contacts may not change a body's velocity by more than this per fixed tick
 // beyond what its own commanded forces/impulses produced. Real plating flexes and crumples; a
@@ -931,7 +923,7 @@ export class Sg02DynamicBodyOwner {
     _vecWriteScratch.z = vz;
     rec.body.setLinvel(_vecWriteScratch, true);
     _vecWriteScratch.x = 0;
-    _vecWriteScratch.y = wy;
+    _vecWriteScratch.y = -wy;
     _vecWriteScratch.z = 0;
     rec.body.setAngvel(_vecWriteScratch, true);
     kinematics.x = x;
@@ -949,7 +941,7 @@ export class Sg02DynamicBodyOwner {
     const dt = this.fixedDt;
     e.vx = finite(v.x) + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * dt;
     e.vz = finite(v.z) + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * dt;
-    const wyUndamped = finite(w.y)
+    const wyUndamped = -finite(w.y)
       + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * dt;
     const damping = contactAngularDamping(rec);
     let wyPredicted = damping > 0 ? wyUndamped / (1 + damping * dt) : wyUndamped;
@@ -1010,9 +1002,9 @@ export class Sg02DynamicBodyOwner {
   }
 
   // PQ-137.11: player contact structural give.
-  // The player is not ammunition. Preserves the no-contact baseline from _captureExpectedKinematics(),
-  // restricts contact velocity response to along heading, limits response to 25% of solver dV,
-  // enforces cumulative 10% cruise cap across contact episodes, strips contact yaw, and prevents reversal.
+  // The player is not ammunition: the solver's planar velocity response is REAL and passes
+  // through untouched, but contact may never spin or kick the hull — yaw pose and rate restore
+  // to the _captureExpectedKinematics() baseline, yaw-rate ceiling included.
   _applyPlayerStructuralGive(rec) {
     const e = rec.expected;
     if (!e) return 0;
@@ -1027,12 +1019,12 @@ export class Sg02DynamicBodyOwner {
     // OWNER RECEIPTS (PQ-137.11 A). Before restoring anything, record what the SOLVER tried to do
     // to the player's heading and course. The rule's own answer is published beside it, so a
     // receipt can show both "what a rock tried to do to my nose" and "what I let through" instead
-    // of only the second. Measured here and nowhere else: after the restore below the evidence is
-    // gone. Nothing on this path changes what the rule does.
+    // of only the second. Measured here and nowhere else: after the yaw restore below the evidence
+    // is gone. Nothing on this path changes what the rule does.
     const w = post && post.wDirty !== true ? post.w : rec.body.angvel();
     const solverYaw = wrapAngle(yawFromQuat(post && post.qRead === true && post.qDirty !== true ? post.q : rec.body.rotation()));
     const solverHeadingKickRad = Number.isFinite(e.yaw) ? wrapAngle(solverYaw - e.yaw) : 0;
-    const solverYawRateKick = finite(w.y) - finite(e.wy);
+    const solverYawRateKick = -finite(w.y) - finite(e.wy);
     const expectedSpeedForCourse = Math.hypot(e.vx, e.vz);
     const solverSpeed = Math.hypot(vx, vz);
     // A course is only defined when there is motion to have a direction. Two hulls at rest touching
@@ -1042,84 +1034,25 @@ export class Sg02DynamicBodyOwner {
       ? wrapAngle(Math.atan2(vz, vx) - Math.atan2(e.vz, e.vx))
       : 0;
 
-    let appliedAlong = 0;
-    let actualPlayerDeltaV = 0;
-
-    const isActive = dMag > PLAYER_CONTACT_ACTIVITY_EPSILON;
-    // The episode budget must clock on the SIM tick, not this owner's internal step counter:
-    // a save/load rebuild restarts the owner at tick 0 while the episode is mid-flight, and an
-    // owner-clock stamp can never bridge that boundary. simTick falls back to this.tick for
-    // harnesses that step the owner without a sim clock.
-    const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
-    // THE ROPE IS A ROPE. A live line already couples the player to an anchor; traffic that
-    // brushes the hull while the player is swinging is not an ordinary-flight bump, and spending
-    // the 10 % cruise budget on those hulls is what put Helios rope over 2 knocks/min. Terrain
-    // and the hook target still spend the ordinary budget, so a swing into rock stays a slam.
-    const trafficHeldByRope = this._playerTrafficContactWhileTethered(rec, this._stepContactReceipts);
-    if (isActive && trafficHeldByRope) {
-      // Contact is still happening; do not open a fresh 10 % budget after the traffic ticks.
-      rec._playerContactLastTick = tickNow;
-    }
-    if (isActive && !trafficHeldByRope) {
-      const lastTick = rec._playerContactLastTick;
-      const gap = Number.isFinite(lastTick) ? tickNow - lastTick : Infinity;
-      if (gap > PLAYER_CONTACT_EVENT_BRIDGE_TICKS) {
-        rec._playerContactCumulativeDeltaV = 0;
-      }
-      rec._playerContactLastTick = tickNow;
-
-      const expectedSpeed = Math.hypot(e.vx, e.vz);
-      if (expectedSpeed <= PLAYER_CONTACT_ACTIVITY_EPSILON) {
-        appliedAlong = 0;
-      } else {
-        const hx = e.vx / expectedSpeed;
-        const hz = e.vz / expectedSpeed;
-        const dotD = dvx * hx + dvz * hz;
-        const candidateAlong = dotD * PLAYER_CONTACT_RESPONSE_FRACTION;
-        const fallback = (rec.entity && (rec.entity.combatSpeed || rec.entity.maxSpeed)) || 0;
-        const cruise = resolveGovernedCombatSpeed(rec.entity, null, fallback);
-        const eventBudget = PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise;
-        const cumulative = rec._playerContactCumulativeDeltaV || 0;
-        const remainingBudget = Math.max(0, eventBudget - cumulative);
-
-        appliedAlong = clamp(candidateAlong, -remainingBudget, remainingBudget);
-        if (appliedAlong < -expectedSpeed) {
-          appliedAlong = -expectedSpeed;
-        }
-      }
-
-      actualPlayerDeltaV = Math.abs(appliedAlong);
-      rec._playerContactCumulativeDeltaV = (rec._playerContactCumulativeDeltaV || 0) + actualPlayerDeltaV;
-    }
-    // The record is physics-owner runtime: a save/load rebuild starts it at zero and would hand a
-    // ship mid-contact-episode a fresh 10 % cruise budget the uninterrupted run already spent.
-    // Mirror the episode onto the entity so plainEntity carries it through the save and
-    // _createRecord can restore it on the rebuilt record.
-    if (isActive && rec.entity) {
-      const give = rec.entity.playerContactGive || (rec.entity.playerContactGive = {});
-      give.spentDv = finite(rec._playerContactCumulativeDeltaV, 0);
-      give.lastTick = tickNow;
-    }
-
-    let finalVx = e.vx;
-    let finalVz = e.vz;
-    if (appliedAlong !== 0) {
-      const expectedSpeed = Math.hypot(e.vx, e.vz);
-      const hx = e.vx / expectedSpeed;
-      const hz = e.vz / expectedSpeed;
-      finalVx += hx * appliedAlong;
-      finalVz += hz * appliedAlong;
-    }
-    _vecWriteScratch.x = finalVx;
-    _vecWriteScratch.y = 0;
-    _vecWriteScratch.z = finalVz;
-    rec.body.setLinvel(_vecWriteScratch, true);
-    if (post) post.vDirty = true;
+    // There is no episode budget to clock on the sim tick: the admitted linear response IS the
+    // solver's planar velocity — sliding, deflection, and mass transfer are real physics — and
+    // the recorded delta-V is the measured solver-vs-prediction gap rather than a shaped
+    // allowance. No setLinvel runs on this path at all: the solver's velocity stands. THE ROPE
+    // IS A ROPE still holds: a live line already couples the player to an anchor, and traffic
+    // brushing the hull while the player is swinging is ordinary solid contact — the velocity
+    // answer is never rewritten, tethered or not, so a live line never turns traffic into a
+    // phase-through surface. The contact record is physics-owner runtime: a save/load rebuild
+    // starts from the body's live pose and keeps solving, and a serialized
+    // entity.playerContactGive episode on an old save is ignored — harmless metadata that caps
+    // nothing. The episode bookkeeping is gone with the budget: no cumulative counter, no
+    // last-contact tick, and no tethered-traffic scan survive on the record — contact is just
+    // contact now.
+    const actualPlayerDeltaV = dMag;
 
     const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
     _vecWriteScratch.x = 0;
-    _vecWriteScratch.y = finite(e.wy);
+    _vecWriteScratch.y = -finite(e.wy);
     _vecWriteScratch.z = 0;
     rec.body.setAngvel(_vecWriteScratch, true);
     if (post) {
@@ -1128,47 +1061,17 @@ export class Sg02DynamicBodyOwner {
     }
 
     rec._lastAppliedPlayerDeltaV = actualPlayerDeltaV;
-    // What the solver asked for, and what the rule answered. Heading and course retained are ZERO
-    // BY CONSTRUCTION — the pose is restored to the no-contact prediction and the retained velocity
-    // response is projected onto the expected heading — and they are published anyway, because a
-    // number that is always zero because the rule holds is evidence, and a number that is always
-    // zero because nobody measured it is not.
+    // What the solver asked for, and what the rule answered. Heading applied is ZERO BY
+    // CONSTRUCTION — the pose is restored to the no-contact prediction — and it is published
+    // anyway, because a number that is always zero because the rule holds is evidence, and a
+    // number that is always zero because nobody measured it is not. Applied course is the
+    // solver's real course: the velocity answer passed through whole.
     rec._lastSolverPlayerHeadingRad = solverHeadingKickRad;
     rec._lastSolverPlayerYawRateKick = solverYawRateKick;
     rec._lastSolverPlayerCourseRad = solverCourseKickRad;
     rec._lastAppliedPlayerHeadingRad = 0;
-    rec._lastAppliedPlayerCourseRad = 0;
+    rec._lastAppliedPlayerCourseRad = solverCourseKickRad;
     return actualPlayerDeltaV;
-  }
-
-  _playerTetherTargetId(playerRec) {
-    for (const attachment of this.attachments.values()) {
-      if (attachment.owner === playerRec && attachment.target && attachment.target.entity) {
-        return attachment.target.entity.id;
-      }
-      if (attachment.target === playerRec && attachment.owner && attachment.owner.entity) {
-        return attachment.owner.entity.id;
-      }
-    }
-    return null;
-  }
-
-  _playerTrafficContactWhileTethered(playerRec, receipts) {
-    const tetherId = this._playerTetherTargetId(playerRec);
-    if (tetherId == null) return false;
-    const playerId = playerRec.entity && playerRec.entity.id;
-    if (playerId == null) return false;
-    const list = Array.isArray(receipts) ? receipts : [];
-    let sawTraffic = false;
-    for (const r of list) {
-      if (!r || (r.aId !== playerId && r.bId !== playerId)) continue;
-      const otherId = r.aId === playerId ? r.bId : r.aId;
-      if (otherId === tetherId) return false;
-      const other = this.records.get(otherId);
-      if (!other || !other.spec || other.spec.dynamic !== true) return false;
-      sawTraffic = true;
-    }
-    return sawTraffic;
   }
 
   _distributeAppliedPlayerDeltaV(receipts) {
@@ -1228,7 +1131,7 @@ export class Sg02DynamicBodyOwner {
     const w = post && post.wDirty !== true ? post.w : rec.body.angvel();
     let vx = finite(v.x);
     let vz = finite(v.z);
-    let wy = finite(w.y);
+    let wy = -finite(w.y);
     let touched = false;
     const dvx = vx - e.vx;
     const dvz = vz - e.vz;
@@ -1293,7 +1196,7 @@ export class Sg02DynamicBodyOwner {
     _vecWriteScratch.z = vz;
     rec.body.setLinvel(_vecWriteScratch, true);
     _vecWriteScratch.x = 0;
-    _vecWriteScratch.y = wy;
+    _vecWriteScratch.y = -wy;
     _vecWriteScratch.z = 0;
     rec.body.setAngvel(_vecWriteScratch, true);
     if (post) {
@@ -1309,9 +1212,11 @@ export class Sg02DynamicBodyOwner {
     const rules = R && R.CoefficientCombineRule;
     rec._tumbleMaterial = tumbling;
     if (!rules || !Array.isArray(rec.colliders)) return;
-    const base = CONTACT_MATERIALS[(rec.spec && rec.spec.material) || 'default'] || CONTACT_MATERIALS.default;
+    const base = contactMaterialFor(rec.entity, rec.spec);
     const restitution = tumbling ? TUMBLE_RESTITUTION : base.restitution;
-    const rule = tumbling ? rules.Max : (base.restitutionCombine === 'min' ? rules.Min : rules.Average);
+    const rule = tumbling ? rules.Max : (base.restitutionCombine === 'min' ? rules.Min
+      : base.restitutionCombine === 'max' ? rules.Max
+      : rules.Average);
     if (rec.body && typeof rec.body.setAngularDamping === 'function') {
       rec.body.setAngularDamping(tumbling ? TUMBLE_ANGULAR_DAMPING : base.angularDamping);
     }
@@ -1353,7 +1258,7 @@ export class Sg02DynamicBodyOwner {
       .setTranslation(posX, 0, posZ)
       .setRotation(quatFromYaw(finite(entity.rot)))
       .setLinvel(vel.x, 0, vel.z)
-      .setAngvel({ x: 0, y: finite(entity.angVel), z: 0 })
+      .setAngvel({ x: 0, y: -finite(entity.angVel), z: 0 })
       .enabledTranslations(true, false, true)
       .enabledRotations(false, true, false)
       .setCcdEnabled(!!spec.ccd);
@@ -1389,7 +1294,7 @@ export class Sg02DynamicBodyOwner {
       body.setTranslation({ x: posX, y: 0, z: posZ }, true);
       body.setRotation(quatFromYaw(finite(entity.rot)), true);
       body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
-      body.setAngvel({ x: 0, y: finite(entity.angVel), z: 0 }, true);
+      body.setAngvel({ x: 0, y: -finite(entity.angVel), z: 0 }, true);
       body.setEnabled(true);
     } else {
       body = this.world.createRigidBody(desc);
@@ -1397,7 +1302,7 @@ export class Sg02DynamicBodyOwner {
       let colliderDescs;
       if (proxyManifest) {
         colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts);
-      } else if (spec.shape === 'capsule' || entity.type === 'ship' || entity.type === 'drone') {
+      } else if (spec.shape === 'capsule' || (!spec.shape && (entity.type === 'ship' || entity.type === 'drone'))) {
         colliderDescs = [buildCraftCapsuleColliderDesc(this.RAPIER, entity, spec, material, this.captureContactImpacts)];
       } else {
         colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts, entity)];
@@ -1458,14 +1363,9 @@ export class Sg02DynamicBodyOwner {
         revision: spec.revision,
       },
     };
-    // Restore the player contact-give episode mirrored onto the entity by
-    // _applyPlayerStructuralGive (see the mirror write there): without it a mid-episode
-    // save/load would reopen the spent budget and change the first post-load contact tick.
-    const savedGive = entity && entity.playerContactGive;
-    if (savedGive && Number.isFinite(savedGive.spentDv)) {
-      record._playerContactCumulativeDeltaV = Math.max(0, savedGive.spentDv);
-      if (Number.isFinite(savedGive.lastTick)) record._playerContactLastTick = savedGive.lastTick;
-    }
+    // Old saves may carry a mirrored entity.playerContactGive episode record; nothing reads it —
+    // contact velocity is the solver's answer now, so a rebuilt body simply keeps solving from
+    // its live pose.
     for (const ownedCollider of colliders) this._colliderOwners.set(ownedCollider.handle, { rec: record, collider: ownedCollider });
     return record;
   }
@@ -1769,7 +1669,7 @@ export class Sg02DynamicBodyOwner {
     _vecWriteScratch.z = vz;
     rec.body.setLinvel(_vecWriteScratch, true);
     _vecWriteScratch.x = 0;
-    _vecWriteScratch.y = wy;
+    _vecWriteScratch.y = -wy;
     _vecWriteScratch.z = 0;
     rec.body.setAngvel(_vecWriteScratch, true);
     if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
@@ -1860,7 +1760,9 @@ export class Sg02DynamicBodyOwner {
       const force = planeForceInto(command.control.force, _planeForceScratch);
       const torque = yawTorqueInto(command.control.torque, _yawTorqueScratch);
       rec.body.addForce(force, true);
+      torque.y = -torque.y;
       rec.body.addTorque(torque, true);
+      torque.y = -torque.y;
       rec._forcesDirty = true;
       add3Into(rec.appliedForce, force);
       add3Into(rec.appliedTorque, torque);
@@ -1880,21 +1782,29 @@ export class Sg02DynamicBodyOwner {
   }
 
   // PQ-133.04: apply a consumed projectile bounce continuation to the real Rapier body.
-  // setLinvel to the outgoing velocity, setTranslation to the body pose plus the bounded
-  // de-penetration offset (world delta; the physics frame is a pure translation), setRotation
-  // to the outgoing yaw, then wake the body. The command membrane's immediate kinematic mirror
-  // already wrote the same values onto the entity for the legacy backend and synchronous
-  // consumers; this is the authoritative-body half of the same write.
+  // setLinvel to the outgoing velocity, setTranslation to the entity's mirrored pose — the
+  // command membrane's nudge along the outgoing velocity owns de-penetration exactly once —
+  // or to the body pose plus the offset when no mirrored pose exists, setRotation to the
+  // outgoing yaw, then wake the body. This is the authoritative-body half of the same write.
   _applyProjectileContinuation(rec, continuation) {
     if (!rec || !rec.body || !continuation) return false;
     const vx = finite(continuation.velocity && continuation.velocity.x);
     const vz = finite(continuation.velocity && continuation.velocity.z);
     const yaw = wrapAngle(finite(continuation.yaw));
-    const ox = finite(continuation.offset && continuation.offset.x);
-    const oz = finite(continuation.offset && continuation.offset.z);
-    const pose = rec.body.translation();
-    const px = finite(pose.x) + ox;
-    const pz = finite(pose.z) + oz;
+    const entityPos = rec.entity && rec.entity.pos;
+    let px;
+    let pz;
+    if (entityPos && Number.isFinite(entityPos.x) && Number.isFinite(entityPos.z)) {
+      const local = globalToFrame(entityPos, this._frameOrigin, this._frameScratch);
+      px = finite(local.x);
+      pz = finite(local.z);
+    } else {
+      const ox = finite(continuation.offset && continuation.offset.x);
+      const oz = finite(continuation.offset && continuation.offset.z);
+      const pose = rec.body.translation();
+      px = finite(pose.x) + ox;
+      pz = finite(pose.z) + oz;
+    }
     _vecWriteScratch.x = px;
     _vecWriteScratch.y = 0;
     _vecWriteScratch.z = pz;
@@ -1959,7 +1869,7 @@ export class Sg02DynamicBodyOwner {
     const z = finite(p.z);
     const vx = finite(v.x);
     const vz = finite(v.z);
-    const wy = finite(w.y);
+    const wy = -finite(w.y);
     // _bodyPoseX/Z mirror the body's stored f32 pose (write sites mirror the f32-rounded value)
     // so _maybeResyncBodyPose can compare without a WASM translation() read.
     if (Math.abs(finite(p.y)) > 1e-9 || x !== p.x || z !== p.z) {
@@ -1982,9 +1892,9 @@ export class Sg02DynamicBodyOwner {
     if (Math.abs(finite(q.x)) > 1e-9 || Math.abs(finite(q.z)) > 1e-9 || !Number.isFinite(q.y) || !Number.isFinite(q.w)) {
       rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
     }
-    if (Math.abs(finite(w.x)) > 1e-9 || Math.abs(finite(w.z)) > 1e-9 || wy !== w.y) {
+    if (Math.abs(finite(w.x)) > 1e-9 || Math.abs(finite(w.z)) > 1e-9 || w.y !== -wy) {
       _vecWriteScratch.x = 0;
-      _vecWriteScratch.y = wy;
+      _vecWriteScratch.y = -wy;
       _vecWriteScratch.z = 0;
       rec.body.setAngvel(_vecWriteScratch, true);
     }
@@ -2771,7 +2681,7 @@ function yawTorqueInto(value, out) {
 
 function quatFromYawInto(yaw, out) {
   out.x = 0;
-  out.y = Math.sin(yaw / 2);
+  out.y = -Math.sin(yaw / 2);
   out.z = 0;
   out.w = Math.cos(yaw / 2);
   return out;
@@ -2787,12 +2697,12 @@ function applyYawTorqueImpulse(rec, value, evidence = null) {
   // bodies. The owner is the sanctioned body writer, so apply the identical J = I*deltaOmega
   // relation explicitly rather than leaking an entity.angVel fallback into gameplay systems.
   _vecWriteScratch.x = 0;
-  _vecWriteScratch.y = current + impulseY / inertiaY;
+  _vecWriteScratch.y = current - impulseY / inertiaY;
   _vecWriteScratch.z = 0;
   rec.body.setAngvel(_vecWriteScratch, true);
   // The post-write angvel() allocates a fresh Rapier vector; observeAppliedSurfaceTorque
   // returns early without a journal, so only pay the read when a journal exists.
-  if (journalFor()) observeAppliedSurfaceTorque(rec.entity, current, rec.body.angvel().y, evidence);
+  if (journalFor()) observeAppliedSurfaceTorque(rec.entity, -current, -rec.body.angvel().y, evidence);
   return true;
 }
 
@@ -2822,9 +2732,18 @@ function setZero3(value) {
   return value;
 }
 
+const RESOLVED_CONTACT_MATERIALS = new WeakMap();
+
 function contactMaterialFor(entity, spec) {
   const base = CONTACT_MATERIALS[(spec && spec.material) || 'default'] || CONTACT_MATERIALS.default;
-  return base;
+  const overrides = spec && spec.contact;
+  if (!overrides) return base;
+  let merged = RESOLVED_CONTACT_MATERIALS.get(spec);
+  if (!merged) {
+    merged = Object.freeze({ ...base, ...overrides });
+    RESOLVED_CONTACT_MATERIALS.set(spec, merged);
+  }
+  return merged;
 }
 
 function craftKeepsHelmThroughContact(rec) {
@@ -2835,8 +2754,7 @@ function craftKeepsHelmThroughContact(rec) {
 function contactAngularDamping(rec) {
   // The owner's own prediction of the spin the solver will damp; it must match the body's damping.
   if (rec && rec._tumbling === true) return TUMBLE_ANGULAR_DAMPING;
-  const material = CONTACT_MATERIALS[(rec && rec.spec && rec.spec.material) || 'default']
-    || CONTACT_MATERIALS.default;
+  const material = contactMaterialFor(rec && rec.entity, rec && rec.spec);
   return Math.max(0, finite(material.angularDamping));
 }
 
@@ -2844,19 +2762,23 @@ function applyColliderContactMaterial(R, colliderDesc, material) {
   if (!colliderDesc || !material) return colliderDesc;
   if (typeof colliderDesc.setFriction === 'function') colliderDesc.setFriction(material.friction);
   if (typeof colliderDesc.setRestitution === 'function') colliderDesc.setRestitution(material.restitution);
-  if (material.restitutionCombine === 'min' && typeof colliderDesc.setRestitutionCombineRule === 'function') {
-    const rule = R && R.CoefficientCombineRule && R.CoefficientCombineRule.Min;
+  if (material.restitutionCombine != null && typeof colliderDesc.setRestitutionCombineRule === 'function') {
+    const rules = R && R.CoefficientCombineRule;
+    const rule = rules && (material.restitutionCombine === 'min' ? rules.Min
+      : material.restitutionCombine === 'max' ? rules.Max
+      : material.restitutionCombine === 'average' ? rules.Average
+      : null);
     if (rule != null) colliderDesc.setRestitutionCombineRule(rule);
   }
   return colliderDesc;
 }
 
 function quatFromYaw(yaw) {
-  return { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) };
+  return { x: 0, y: -Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) };
 }
 
 function yawFromQuat(q) {
-  return Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z));
+  return -Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z));
 }
 
 function quantize(value, quantum) {
@@ -2877,12 +2799,13 @@ function recordMatchesSpec(rec, spec) {
     rec.spec.shape === spec.shape &&
     rec.spec.mass === spec.mass &&
     rec.spec.inertiaY === spec.inertiaY &&
-    rec.spec.material === spec.material;   // material drives collider friction/restitution/groups
+    rec.spec.material === spec.material &&   // material drives collider friction/restitution/groups
+    rec.spec.contact === spec.contact;
 }
 
-// Measured skins (`skin:<census row>`) default to fixed bodies, but are permitted on dynamic
-// bodies where one capsule cannot reach tolerance (capital ships, dreadnought, big wrecks, or explicit
-// compoundSkin opt-in), proven deterministic across save/reload rebuilds (Package C).
+// Measured skins (`skin:<census row>`) ride fixed bodies and eligible solid dynamics alike;
+// closed dynamic skins compact to one tolerance-checked convex hull (`skin:<row>:hull`), openings
+// and non-fitting silhouettes keep the bounded compound — deterministic across save/reload (Package C).
 function proxyManifestForBody(entity, spec) {
   const manifest = resolveCollisionProxyManifest(entity);
   if (manifest && spec && spec.dynamic && typeof manifest.id === 'string' && manifest.id.startsWith('skin:')) {
@@ -3114,10 +3037,10 @@ function pointHitsCoincidentWindow(rec, partnerX, partnerZ, posX, posZ) {
   const sin = Math.sin(yaw);
   for (const spine of spines) {
     // Body-local offset/axis rotated by the partner's current yaw into the frame plane.
-    const cx = partnerX + spine.ox * cos + spine.oz * sin;
-    const cz = partnerZ - spine.ox * sin + spine.oz * cos;
-    const ux = spine.ux * cos + spine.uz * sin;
-    const uz = -spine.ux * sin + spine.uz * cos;
+    const cx = partnerX + spine.ox * cos - spine.oz * sin;
+    const cz = partnerZ + spine.ox * sin + spine.oz * cos;
+    const ux = spine.ux * cos - spine.uz * sin;
+    const uz = spine.ux * sin + spine.uz * cos;
     const rx = posX - cx;
     const rz = posZ - cz;
     const axial = rx * ux + rz * uz;
@@ -3168,8 +3091,66 @@ function buildBallColliderDesc(R, spec, material, captureContactImpacts = true, 
 // normalized station-local units and become a bounded static collider set on the fixed body. The
 // body transform (station pos/rot) composes at the body level, so primitives stay entity-local.
 // This runs ONCE at record creation — never per frame.
+function convexPrismDesc(R, verts, scale, halfY) {
+  const points = new Float32Array(verts.length * 6);
+  for (let i = 0; i < verts.length; i += 1) {
+    const px = verts[i].x * scale;
+    const pz = verts[i].z * scale;
+    points[i * 3] = px;
+    points[i * 3 + 1] = halfY;
+    points[i * 3 + 2] = pz;
+    const j = (verts.length + i) * 3;
+    points[j] = px;
+    points[j + 1] = -halfY;
+    points[j + 2] = pz;
+  }
+  return R.ColliderDesc.convexHull(points);
+}
+
+function dressProxyColliderDesc(R, desc, entity, spec, material, captureContactImpacts) {
+  desc.setDensity(0);
+  applyColliderContactMaterial(R, desc, material);
+  if (typeof desc.setCollisionGroups === 'function') {
+    desc.setCollisionGroups(computeCollisionGroups(entity, spec, material));
+  }
+  if (captureContactImpacts) configureContactEvents(R, desc, material);
+  return desc;
+}
+
 function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, captureContactImpacts = true) {
   const scale = proxyScaleFor(entity, manifest);
+  const hasConvexHull = typeof R.ColliderDesc.convexHull === 'function';
+  const halfY = Math.max(0.1, (spec && Number.isFinite(spec.radius) ? spec.radius : 1) * 0.1);
+  if (Array.isArray(manifest.compactHull) && manifest.compactHull.length >= 3 && hasConvexHull) {
+    const hullDesc = convexPrismDesc(R, manifest.compactHull, scale, halfY);
+    if (hullDesc) {
+      return [dressProxyColliderDesc(R, hullDesc, entity, spec, material, captureContactImpacts)];
+    }
+  }
+  if (Array.isArray(manifest.planarPolygon)
+    && manifest.planarPolygon.length >= 3
+    && manifest.planarPolygon.length <= MAX_PROXY_PRIMITIVES
+    && hasConvexHull) {
+    const verts = manifest.planarPolygon;
+    const descs = [];
+    let ok = true;
+    for (let i = 0; i < verts.length; i += 1) {
+      const a = verts[i];
+      const b = verts[(i + 1) % verts.length];
+      const ax = a.x * scale;
+      const az = a.z * scale;
+      const bx = b.x * scale;
+      const bz = b.z * scale;
+      if (Math.abs(ax * bz - az * bx) < 1e-9) continue;
+      const desc = convexPrismDesc(R, [{ x: 0, z: 0 }, a, b], scale, halfY);
+      if (!desc) { ok = false; break; }
+      descs.push(desc);
+    }
+    if (ok && descs.length) {
+      for (const desc of descs) dressProxyColliderDesc(R, desc, entity, spec, material, captureContactImpacts);
+      return descs;
+    }
+  }
   const primitives = expandProxyPrimitives(manifest, { entity });
   const descs = [];
   for (const primitive of primitives) {
@@ -3238,6 +3219,13 @@ function capsulePlanarQuat(ux, uz) {
   return { x: uz * s, y: 0, z: -ux * s, w: s };
 }
 
+function contactOverrideEquals(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.friction === b.friction && a.restitution === b.restitution
+    && a.angularDamping === b.angularDamping && a.restitutionCombine === b.restitutionCombine;
+}
+
 function massPropertiesOnlyChanged(rec, spec) {
   if (!rec || !rec.spec || !spec) return false;
   const current = rec.spec;
@@ -3247,7 +3235,8 @@ function massPropertiesOnlyChanged(rec, spec) {
     current.ccd === spec.ccd &&
     current.radius === spec.radius &&
     current.shape === spec.shape &&
-    current.material === spec.material;
+    current.material === spec.material &&
+    contactOverrideEquals(current.contact, spec.contact);
 }
 
 function bodyStateMatchesEntity(rec, entity, frameOrigin, frameScratch) {
@@ -3267,7 +3256,7 @@ function bodyStateMatchesEntity(rec, entity, frameOrigin, frameScratch) {
   return savedVx === finite(v && v.x)
     && savedVz === finite(v && v.z)
     && savedYaw === bodyYaw
-    && finite(entity.angVel) === finite(w && w.y);
+    && finite(entity.angVel) === -finite(w && w.y);
 }
 
 function wrapAngle(value) {

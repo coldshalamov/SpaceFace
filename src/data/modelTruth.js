@@ -5,7 +5,10 @@ import census from './modelTruthCensus.json' with { type: 'json' };
 import {
   CAMERA_NEAR_MARGIN_WU,
   colliderRadiusAt,
+  convexHullRadiusAt,
+  convexPlanarHull,
   flightPlaneToleranceWu,
+  roundWu,
   scaleProxyPrimitives,
   skinContains,
   throatOpen,
@@ -161,6 +164,63 @@ export function modelTruthProxyManifest(entity) {
     mouthBearingDeg: skin.mouthBearingDeg,
     sourceRow: row.id,
   };
+}
+
+const SKIN_HULL_CACHE = new Map();
+
+export function modelTruthSkinHull(rowOrId) {
+  const row = typeof rowOrId === 'string' ? BY_ID.get(rowOrId) : rowOrId;
+  if (!row) return null;
+  if (SKIN_HULL_CACHE.has(row.id)) return SKIN_HULL_CACHE.get(row.id);
+  let verts = null;
+  const skin = row.proposedSkin;
+  const outline = row.collider && row.collider.outline;
+  const reference = skinReference(row);
+  if (skin && skin.adopted === true && !row.opening && Array.isArray(outline) && reference > 0
+    && skin.primitives && skin.primitives.length) {
+    const hull = convexPlanarHull(skin.primitives);
+    if (hull) {
+      const tolerance = Number.isFinite(row.collider.toleranceWu)
+        ? row.collider.toleranceWu
+        : flightPlaneToleranceWu(reference);
+      const bins = outline.length;
+      let fits = true;
+      for (let i = 0; i < bins && fits; i += 1) {
+        const visual = (outline[i] || 0) / reference;
+        if (visual <= 0) continue;
+        const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
+        if (Math.abs(convexHullRadiusAt(angle, hull) - visual) > tolerance / reference) fits = false;
+      }
+      if (fits) verts = hull;
+    }
+  }
+  SKIN_HULL_CACHE.set(row.id, verts);
+  return verts;
+}
+
+const SKIN_POLYGON_CACHE = new Map();
+
+export function modelTruthSkinPolygon(rowOrId) {
+  const row = typeof rowOrId === 'string' ? BY_ID.get(rowOrId) : rowOrId;
+  if (!row) return null;
+  if (SKIN_POLYGON_CACHE.has(row.id)) return SKIN_POLYGON_CACHE.get(row.id);
+  let verts = null;
+  const skin = row.proposedSkin;
+  const outline = row.collider && row.collider.outline;
+  const reference = skinReference(row);
+  if (skin && skin.adopted === true && !row.opening && Array.isArray(outline) && reference > 0) {
+    const bins = outline.length;
+    const pts = [];
+    for (let i = 0; i < bins; i += 1) {
+      const r = (outline[i] || 0) / reference;
+      if (r <= 0) continue;
+      const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
+      pts.push({ x: roundWu(Math.cos(angle) * r), z: roundWu(Math.sin(angle) * r) });
+    }
+    if (pts.length >= 3) verts = pts;
+  }
+  SKIN_POLYGON_CACHE.set(row.id, verts);
+  return verts;
 }
 
 function stationRow(entity) {

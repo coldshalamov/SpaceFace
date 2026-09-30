@@ -14,4 +14,8 @@ and shared low-level contracts.
 - Sim uses `state.rng` and `state.simTime`, never ambient randomness or wall time.
 - `physicsAuthority.js`/Rapier own live physics authority. Compatibility modules are not the default
   gameplay seam.
+- `physicsBody` (schema v1) authors a body's shape plus optional `density`, `contact` overrides,
+  `impactDamageScale`, `fieldResponseMult`, and `collisionProxyManifest` — the same proxy manifest
+  shared with measured skins. Bump `physicsBody.revision` to rebuild a mutated body spec.
 - Core changes are broad: run focused tests, sim comparison, and the relevant launch/perf floor.
+- Production calendar owners run at their authored phases on every fixed tick, including catch-up; `partitionUpdateSystems(..., { state, bus }).updateDt` supplies their elapsed simulation time. Table/near/glass keep fixed dt, keepalive is separate, and New Game/save restoration reset calendar baselines. Regressions: `test/sim-clock-catchup.test.mjs` and `test/calendar-elapsed-time.test.mjs`.

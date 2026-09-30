@@ -344,7 +344,10 @@ export function fieldBodyProfile(entity, state, out = null) {
   profile.type = entity && entity.type;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
-  profile.fieldResponseMult = Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1;
+  const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
+    ? Math.max(0, entity.physicsBody.fieldResponseMult)
+    : 1;
+  profile.fieldResponseMult = (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
   profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
   profile.hitchedTo = null;
   if (entity && entity.id != null && state && state.fields && state.fields.hitches) {

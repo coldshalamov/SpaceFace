@@ -9,7 +9,8 @@
 //     AUTHORED footprint constants — deterministic, no GLB parsing anywhere in this file;
 //   - the corridor gap stays genuinely navigable and the berth deck stays clear of every proxy
 //     (the proxy set must not silently seal the dock route it exists to make truthful);
-//   - the golden-safety gate: manifests activate ONLY for entities that explicitly declare them.
+//   - resolution order: an authored physicsBody.collisionProxyManifest wins when valid, a declared
+//     non-skin id beats a skin, and eligible undeclared dynamic bodies adopt their measured skin.
 //
 // The measured geometry numbers (expanded counts, silhouette bound, gap width, berth clearance)
 // are pinned as literals copied BY HAND from the live module. Any deliberate rebalancing of the
@@ -220,7 +221,7 @@ test('the corridor gap stays navigable and the berth deck stays clear of every p
 // resolution + golden-safety gate
 // ---------------------------------------------------------------------------------------------
 
-test('manifests activate ONLY for entities that explicitly declare them', () => {
+test('declared, authored, and adopted manifests resolve in that priority order', () => {
   const resolved = resolveCollisionProxyManifest(heliosStation());
   assert.equal(resolved.id, 'skin:place_station_trade_hub');
   assert.equal(resolved.docking.assist.kp, HELIOS.docking.assist.kp);
@@ -230,10 +231,11 @@ test('manifests activate ONLY for entities that explicitly declare them', () => 
   assert.equal(resolved.docking.corridor.speedGate, HELIOS.docking.corridor.speedGate);
   assert.equal(resolved.docking.capture.speedGate, HELIOS.docking.capture.speedGate);
   assert.equal(resolved.docking.berth.speedGate, HELIOS.docking.berth.speedGate);
-  // Same station id WITHOUT the declaration: no manifest. This is the 47a golden-safety gate.
+  // Same station id WITHOUT the declaration resolves nothing: undeclared fixed bodies keep the
+  // legacy center-radius dock contract; only dynamic bodies adopt skins on older saves.
   const undeclared = heliosStation();
   undeclared.data = { stationId: 'station_helios', dockRadius: 90 };
-  assert.equal(resolveCollisionProxyManifest(undeclared), null);
+  assert.equal(resolveCollisionProxyManifest(undeclared), null, 'undeclared fixed station keeps legacy resolution');
   assert.equal(resolveCollisionProxyManifest({ data: { collisionProxy: 'nope' } }), null);
   assert.equal(resolveCollisionProxyManifest({}), null);
   assert.equal(resolveCollisionProxyManifest(null), null);

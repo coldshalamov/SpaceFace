@@ -24,8 +24,9 @@
 // it never teleports, never writes velocity directly, and never seizes control (player input always
 // blends). Stations WITHOUT a manifest keep the legacy center-radius dock behavior untouched.
 
-import { modelTruthProxyManifest } from './modelTruth.js';
-import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { modelTruthProxyManifest, modelTruthSkinHull, modelTruthSkinPolygon } from './modelTruth.js';
+import { isDynamicPhysicsBodyEntity, substanceFor } from '../core/physicsAuthority.js';
+import { PHYSICS_MATERIALS } from './physicsMaterials.js';
 
 export const COLLISION_PROXY_SCHEMA_VERSION = 1;
 
@@ -211,11 +212,25 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
 // (SG-02 compares proxy ids each tick) and every LOS/scan query; building the skin manifest
 // allocates, so a fixed body resolves it once. A replaced data object or proxy id re-resolves.
 const MEASURED_PROXY_CACHE = new WeakMap();
+const AUTHORED_PROXY_CACHE = new WeakMap();
+const DYNAMIC_SKIN_CACHE = new Map();
+
+const SKIN_DYNAMIC_TYPES = new Set(['ship', 'drone', 'asteroid', 'wreck', 'debris', 'payload', 'pod', 'prop', 'buoy']);
+
+function hasAuthoredSkinOverride(entity) {
+  const body = entity && entity.physicsBody;
+  if (!body || typeof body !== 'object') return false;
+  if (body.useMeasuredSkin === false) return true;
+  if (body.collisionProxyManifest) return true;
+  const canonical = (entity.type === 'ship' || entity.type === 'drone') ? 'capsule' : 'ball';
+  return typeof body.shape === 'string' && body.shape !== canonical;
+}
 
 export function isCompoundSkinDynamicEligible(entity) {
   if (!entity) return false;
   const data = entity.data || {};
   if (data.compoundSkin === true) return true;
+  if (SKIN_DYNAMIC_TYPES.has(entity.type)) return true;
   if (data.defId === 'ship_atlas' || data.defId === 'ship_colossus' || data.defId === 'ship_leviathan') return true;
   if (data.defId === 'dreadnought_boss' || data.typeId === 'dreadnought_boss' || data.silhouette === 'dreadnought_enemy' || data.defId === 'dreadnought_enemy') return true;
   if (data.isMajorWreck === true || (entity.type === 'wreck' && typeof data.placeId === 'string' && data.placeId.startsWith('place_aftermath_wreck_'))) return true;
@@ -223,28 +238,55 @@ export function isCompoundSkinDynamicEligible(entity) {
 }
 
 /** True when the measured skin may stand in for this body's collider. Fixed bodies (stations,
- * landmark rocks) always take their skin; dynamic bodies keep their capsule/ball by default,
- * with compound skins permitted only where one capsule cannot reach tolerance (capital ships,
- * dreadnought, big wrecks, or explicit compoundSkin opt-in), proven deterministic across save/reload. */
+ * landmark rocks) always take their skin; solid dynamic bodies take it as one tolerance-checked
+ * convex hull when the census outline permits, else a bounded compound — proven deterministic
+ * across save/reload. Ghost/sensor bodies and authored geometry opt-outs never adopt a skin. */
 export function measuredSkinAllowedFor(entity) {
-  if (!entity) return false;
-  if (!isDynamicPhysicsBodyEntity(entity)) return true;
+  if (!entity || entity.physicsBody === false || entity.collides === false) return false;
+  const type = entity.type;
+  if (type === 'projectile' || type === 'pickup' || type === 'fx' || type === 'sensor') return false;
+  const substance = substanceFor(entity);
+  const material = PHYSICS_MATERIALS[substance.material];
+  if (substance.sensor === true || (material && material.ghost === true)) return false;
+  if (hasAuthoredSkinOverride(entity)) return false;
+  if (!substance.dynamic) return true;
   return isCompoundSkinDynamicEligible(entity);
 }
 
-/** Manifest declared on an entity via data.collisionProxy, else null. Manifests activate ONLY for
- * entities that explicitly declare them — the 47a golden scenario declares none. */
+function authoredProxyManifest(entity) {
+  const body = entity && entity.physicsBody;
+  const authored = body && body.collisionProxyManifest;
+  if (!authored || typeof authored !== 'object') return null;
+  const revision = Math.max(0, Math.trunc(Number(body.revision) || 0));
+  const cached = AUTHORED_PROXY_CACHE.get(authored);
+  if (cached && cached.revision === revision) return cached.manifest;
+  let manifest = null;
+  if (authored.schemaVersion === COLLISION_PROXY_SCHEMA_VERSION
+    && typeof authored.id === 'string' && authored.id) {
+    const candidate = { ...authored, flags: COLLISION_PROXY_FLAGS };
+    if (validateCollisionProxyManifest(candidate).ok) manifest = candidate;
+  }
+  AUTHORED_PROXY_CACHE.set(authored, { revision, manifest });
+  return manifest;
+}
+
+/** Declared manifests and adopted measured skins resolve here. An authored
+ * physicsBody.collisionProxyManifest wins when valid; a declared non-skin proxy id beats a skin;
+ * an eligible entity that declares nothing still takes its measured skin on older saves. */
 export function resolveCollisionProxyManifest(entity) {
+  const authored = authoredProxyManifest(entity);
+  if (authored) return authored;
   const data = entity && entity.data;
   const id = data && typeof data.collisionProxy === 'string' ? data.collisionProxy : null;
   const declared = id && COLLISION_PROXY_MANIFESTS[id] || null;
-  // A dynamic body never takes a measured skin, even if an older save stamped `skin:<row>` on
-  // it: the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
-  if (!id || !measuredSkinAllowedFor(entity)) return declared;
+  // Eligibility owns the opt-outs: sensors, ghosts, and authored geometry never take a skin —
+  // the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
+  if (!measuredSkinAllowedFor(entity)) return declared;
+  const dynamic = isDynamicPhysicsBodyEntity(entity);
   const cached = MEASURED_PROXY_CACHE.get(entity);
-  if (cached && cached.data === data && cached.id === id && cached.type === entity.type) return cached.manifest;
+  if (cached && cached.data === data && cached.id === id && cached.type === entity.type && cached.dynamic === dynamic) return cached.manifest;
   const manifest = resolveMeasuredProxyManifest(entity, id, declared);
-  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, manifest });
+  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, dynamic, manifest });
   return manifest;
 }
 
@@ -270,13 +312,33 @@ function resolveMeasuredProxyManifest(entity, id, declared) {
       };
     }
   }
-  // A skin replaces a declared legacy collider or an explicit skin id. An entity
-  // that declares nothing stays on its ball or capsule — the 47a scenarios depend on that.
-  if (measured && (id === 'station_ring_hub' || id === 'helios_trade_hub'
+  // A skin replaces a declared legacy collider, an explicit skin id, or — once eligibility
+  // already admitted it — a dynamic body that declares nothing (older saves stamp no proxy id).
+  // Fixed bodies still adopt only through a declared id, so a station that declares nothing keeps
+  // the legacy center-radius dock contract.
+  if (measured && ((!id && isDynamicPhysicsBodyEntity(entity)) || id === 'station_ring_hub' || id === 'helios_trade_hub'
     || id === 'gate_jump_ring' || (typeof id === 'string' && id.startsWith('skin:')))) {
-    return measured;
+    return compactSkinManifest(entity, measured);
   }
   return declared;
+}
+
+function compactSkinManifest(entity, manifest) {
+  if (manifest.opening || !isDynamicPhysicsBodyEntity(entity)) return manifest;
+  const key = manifest.id;
+  let resolved = DYNAMIC_SKIN_CACHE.get(key);
+  if (resolved === undefined) {
+    const hull = modelTruthSkinHull(manifest.sourceRow);
+    if (hull) resolved = { ...manifest, id: `${manifest.id}:hull`, compactHull: hull };
+    else {
+      const polygon = modelTruthSkinPolygon(manifest.sourceRow);
+      resolved = polygon
+        ? { ...manifest, id: `${manifest.id}:polygon`, planarPolygon: polygon }
+        : manifest;
+    }
+    DYNAMIC_SKIN_CACHE.set(key, resolved);
+  }
+  return resolved;
 }
 
 /** Station id → manifest id, for world spawn wiring. */

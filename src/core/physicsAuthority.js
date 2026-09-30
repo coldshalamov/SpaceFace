@@ -4,6 +4,8 @@
 // physics system should consume those commands and mutate body/entity motion. WeakMaps keep transient
 // commands and measured telemetry out of saves, replays, and renderer-facing entity graphs.
 
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+
 export const PHYSICS_COMMAND_SCHEMA_VERSION = 1;
 export const PHYSICS_BODY_SCHEMA_VERSION = 1;
 export const PHYSICS_TELEMETRY_SCHEMA_VERSION = 1;
@@ -234,6 +236,8 @@ export function ensurePhysicsBodySpec(entity) {
     mass = positive(authored.mass, 1);
   } else if (!dynamic) {
     mass = positive(entity.mass, 1e6);
+  } else if (Number.isFinite(authored.density) && authored.density > 0) {
+    mass = defaultMass(entity, radius);
   } else if (entity.mass != null && entity.mass > 0 && entity.mass < 1e5 && (entity.type === 'ship' || entity.type === 'drone')) {
     mass = entity.mass;
   } else if (entity.mass != null && entity.mass > 0 && entity.mass < 1e5 && !['asteroid', 'wreck', 'pod', 'payload', 'prop'].includes(entity.type)) {
@@ -265,6 +269,15 @@ export function ensurePhysicsBodySpec(entity) {
     thrusters,
     revision: Math.max(0, Math.trunc(finite(authored.revision))),
   };
+  if (Number.isFinite(authored.density) && authored.density > 0) body.density = authored.density;
+  else delete body.density;
+  const contact = normalizeContactOverride(authored.contact);
+  if (contact) body.contact = contact;
+  else delete body.contact;
+  if (Number.isFinite(authored.impactDamageScale)) body.impactDamageScale = clamp(authored.impactDamageScale, 0, 8);
+  else delete body.impactDamageScale;
+  if (Number.isFinite(authored.fieldResponseMult)) body.fieldResponseMult = clamp(authored.fieldResponseMult, 0, 8);
+  else delete body.fieldResponseMult;
   entity.physicsBody = body;
   NORMALIZED_BODY_CACHE.set(entity, body);
   return body;
@@ -347,8 +360,37 @@ export function resolvePhysicsBodySpec(entity) {
     attachmentPoints: normalizeAttachmentPoints(body.attachmentPoints),
     revision,
   };
+  if (body.density != null) spec.density = body.density;
+  const resolvedContact = normalizedContactFor(body.contact, revision);
+  if (resolvedContact) spec.contact = resolvedContact;
+  if (body.impactDamageScale != null) spec.impactDamageScale = body.impactDamageScale;
+  if (body.fieldResponseMult != null) spec.fieldResponseMult = body.fieldResponseMult;
   RESOLVED_BODY_CACHE.set(entity, { body, revision, spec });
   return spec;
+}
+
+const NORMALIZED_CONTACT_CACHE = new WeakMap();
+
+function normalizedContactFor(contact, revision) {
+  if (!contact || typeof contact !== 'object') return null;
+  const cached = NORMALIZED_CONTACT_CACHE.get(contact);
+  if (cached && cached.revision === revision) return cached.normalized;
+  const normalized = normalizeContactOverride(contact);
+  NORMALIZED_CONTACT_CACHE.set(contact, { revision, normalized });
+  return normalized;
+}
+
+function normalizeContactOverride(contact) {
+  if (!contact || typeof contact !== 'object') return null;
+  const out = {};
+  if (contact.friction != null) out.friction = clamp(finite(contact.friction), 0, 1);
+  if (contact.restitution != null) out.restitution = clamp(finite(contact.restitution), 0, 1);
+  if (contact.angularDamping != null) out.angularDamping = clamp(finite(contact.angularDamping), 0, 8);
+  if (contact.restitutionCombine === 'min' || contact.restitutionCombine === 'average'
+    || contact.restitutionCombine === 'max') {
+    out.restitutionCombine = contact.restitutionCombine;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 /**
@@ -485,12 +527,12 @@ function normalizeAttachmentPoints(points) {
 export const FIXED_BODY_RADIUS_THRESHOLD = 90;
 
 export const SOLID_WORLD_DENSITY = Object.freeze({
-  rock: 0.25,        // asteroids, mining chunks: mass ~ 0.25 * R^3
-  wreck: 0.10,       // spaceframe / armor debris: mass ~ 0.10 * R^3
-  pod: 0.08,         // containers, hab pods: mass ~ 0.08 * R^3
-  payload: 0.08,     // mission payloads: mass ~ 0.08 * R^3
-  buoy: 0.06,        // beacons, nav pins, worklights: mass ~ 0.06 * R^3
-  prop: 0.06,        // dressing props: mass ~ 0.06 * R^3
+  rock: PHYSICS_MATERIALS.rock.density,        // asteroids, mining chunks: mass ~ 0.25 * R^3
+  wreck: PHYSICS_MATERIALS.wreck.density,      // spaceframe / armor debris: mass ~ 0.10 * R^3
+  pod: PHYSICS_MATERIALS.pod.density,          // containers, hab pods: mass ~ 0.08 * R^3
+  payload: PHYSICS_MATERIALS.payload.density,  // mission payloads: mass ~ 0.08 * R^3
+  buoy: PHYSICS_MATERIALS.buoy.density,        // beacons, nav pins, worklights: mass ~ 0.06 * R^3
+  prop: PHYSICS_MATERIALS.prop.density,        // dressing props: mass ~ 0.06 * R^3
   pickup: 0.1,       // cargo / ore pickups: fixed 0.1
 });
 
@@ -536,12 +578,16 @@ function defaultMaterial(entity) {
 
 export function defaultMass(entity, radius = null) {
   if (!entity || typeof entity !== 'object') return 1;
+  const R = positive(radius, positive(entity.physicsBody && entity.physicsBody.radius, positive(entity.radius, 1)));
+  const vol = R * R * R;
+  const authoredDensity = entity.physicsBody && entity.physicsBody.density;
+  if (Number.isFinite(authoredDensity) && authoredDensity > 0) {
+    return Math.max(1, Math.round(authoredDensity * vol));
+  }
   if (entity.type === 'pickup') return SOLID_WORLD_DENSITY.pickup;
   if (entity.type === 'ship' || entity.type === 'drone') {
     return positive(entity.mass, 24);
   }
-  const R = positive(radius, positive(entity.physicsBody && entity.physicsBody.radius, positive(entity.radius, 1)));
-  const vol = R * R * R;
   const data = entity.data || {};
 
   if (entity.type === 'asteroid') {

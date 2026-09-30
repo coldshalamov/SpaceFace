@@ -59,9 +59,10 @@ export async function createRapierCollisionWorld() {
         rec.ccdEnabled = ccdEnabled;
       }
       rec.body.setTranslation({ x: finite(e.pos && e.pos.x), y: 0, z: finite(e.pos && e.pos.z) }, true);
+      rec.body.setRotation(observerQuatFromYaw(e.rot), true);
       if (rec.dynamic) {
         rec.body.setLinvel({ x: finite(e.vel && e.vel.x), y: 0, z: finite(e.vel && e.vel.z) }, true);
-        rec.body.setAngvel({ x: 0, y: finite(e.angVel), z: 0 }, true);
+        rec.body.setAngvel({ x: 0, y: -finite(e.angVel), z: 0 }, true);
       }
     }
 
@@ -113,11 +114,12 @@ export async function createRapierCollisionWorld() {
   function createRecord(e, dynamic, ccdEnabled) {
     const desc = (dynamic ? RAPIER.RigidBodyDesc.dynamic() : RAPIER.RigidBodyDesc.fixed())
       .setTranslation(finite(e.pos && e.pos.x), 0, finite(e.pos && e.pos.z))
+      .setRotation(observerQuatFromYaw(e.rot))
       .setCcdEnabled(ccdEnabled);
     if (dynamic) {
       desc
         .setLinvel(finite(e.vel && e.vel.x), 0, finite(e.vel && e.vel.z))
-        .setAngvel({ x: 0, y: finite(e.angVel), z: 0 });
+        .setAngvel({ x: 0, y: -finite(e.angVel), z: 0 });
     }
     const body = world.createRigidBody(desc);
     const proxyManifest = resolveCollisionProxyManifest(e);
@@ -190,7 +192,7 @@ export async function createRapierCollisionWorld() {
           Math.max(0.01, primitive.hz * scale),
         )
           .setTranslation(primitive.x * scale, 0, primitive.z * scale)
-          .setRotation({ x: 0, y: Math.sin(angle / 2), z: 0, w: Math.cos(angle / 2) });
+          .setRotation({ x: 0, y: -Math.sin(angle / 2), z: 0, w: Math.cos(angle / 2) });
       }
       if (!desc) continue;
       desc.setSensor(false).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
@@ -255,6 +257,11 @@ function wantsCcd(e) {
 
 function wantsDynamic(e) {
   return e.type !== 'asteroid' && e.type !== 'station';
+}
+
+function observerQuatFromYaw(yaw) {
+  const half = finite(yaw) / 2;
+  return { x: 0, y: -Math.sin(half), z: 0, w: Math.cos(half) };
 }
 
 function finite(value, fallback = 0) {

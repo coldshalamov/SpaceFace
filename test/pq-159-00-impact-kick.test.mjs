@@ -25,6 +25,7 @@ import {
   stepCameraKick,
 } from '../src/render/camera.js';
 import { physics } from '../src/core/physics.js';
+import { resolveCollisionConsequence } from '../src/combat/impulseKernel.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
@@ -49,26 +50,37 @@ function makeBody({ id, type, x, z, vx = 0, vz = 0, radius = 10, mass = 20 }) {
   };
 }
 
-// A real exchange measured by the physics authority on the fixed seed: the starter-scale hull
-// (mass 20) runs head-on into a heavy asteroid. Returns the emitted physics:impact payload.
+// A real exchange measured by the physics authority on the fixed seed: a player-credited thrown
+// hull (mass 20) runs head-on into a heavy asteroid. Returns the impact + consequence payloads.
 function measuredImpact() {
   const state = createGameState(SEED);
   state.mode = 'flight';
   state.playerId = 1;
   const events = [];
   const bus = { emit: (name, payload) => events.push({ name, payload }) };
-  const player = makeBody({ id: 1, type: 'ship', x: 0, z: 0, vx: 90, radius: 10, mass: 20 });
+  const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, vx: 90, radius: 10, mass: 20 });
   const rock = makeBody({ id: 2, type: 'asteroid', x: 18, z: 0, radius: 10, mass: 220 });
   const host = Object.create(physics);
   host._pairMaterialScratch = {};
   host._impactOptionsScratch = {
-    backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null, preSolveClosingSpeed: 0,
+    backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: 1, preSolveClosingSpeed: 0,
   };
-  host.resolvePair(player, rock, 18, 18, 0, bus, state);
+  host.resolvePair(thrown, rock, 18, 18, 0, bus, state);
   const impact = events.find((entry) => entry.name === 'physics:impact');
   assert.ok(impact, 'the seeded head-on contact must emit physics:impact');
   assert.ok(impact.payload.dp > 0, 'the seeded exchange must carry real exchanged momentum');
-  return { impact: impact.payload, player, rock };
+  const consequence = resolveCollisionConsequence({
+    target: { id: thrown.id, type: thrown.type, mass: thrown.mass },
+    other: { id: rock.id, type: rock.type, mass: rock.mass },
+    exchangedMomentum: impact.payload.dp,
+    tick: 0,
+    pos: impact.payload.pos,
+    normal: { x: 1, z: 0 },
+    preSolveClosingSpeed: impact.payload.preSolveClosingSpeed,
+    provenance: { actorId: 1, weaponId: null, tag: 'massline', appliedTick: 0 },
+  });
+  assert.ok(consequence, 'the seeded exchange must resolve a consequence receipt');
+  return { impact: impact.payload, consequence, thrown, rock };
 }
 
 // Live feel host over a real bus + time-effects owner (the pq-139.00 fixture pattern). `ctrl`
@@ -191,14 +203,15 @@ test('the resolved record carries a directed kick beside the scalar beat', () =>
 
 test('fixed seed: a real physics exchange kicks the live chase camera in player units', () => {
   // resolvePair mutates its bodies (pushApart/impulse), so the live fixture keeps its OWN
-  // stationary player (id 1 at x=0) and rock (id 2 at x=18) — matching the receipt's aId/bId —
+  // thrown hull (id 3 at x=0) and rock (id 2 at x=18) — matching the receipt's aId/bId —
   // and the measured payload supplies the physics truth. Stationary player = exact focus control.
-  const { impact } = measuredImpact();
+  const { impact, consequence } = measuredImpact();
   const rock = makeBody({ id: 2, type: 'asteroid', x: 18, z: 0, radius: 10, mass: 220 });
-  const { state, bus, camera, frame } = liveFixture({ entities: [rock] });
+  const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, radius: 10, mass: 20 });
+  const { state, bus, camera, frame } = liveFixture({ entities: [rock, thrown] });
 
   const before = { x: state.camera.focus.x, z: state.camera.focus.z };
-  bus.emit('physics:impact', impact);
+  bus.emit('combat:collisionConsequence', consequence);
   frame();            // flush the armed beat
   let peak = 0;
   for (let i = 0; i < 30; i++) {
@@ -226,10 +239,13 @@ test('fixed seed: a real physics exchange kicks the live chase camera in player 
 });
 
 test('the kick is rate-limited by the shared collision cooldown', () => {
-  const { bus, calls, frame } = feelFixture();
-  const hit = (dp, tick) => bus.emit('physics:impact', {
-    tick, aId: 1, bId: 2, dp, playerInvolved: true, playerDeltaV: dp / 20,
+  const { bus, calls, frame } = feelFixture({
+    extraEntities: [makeBody({ id: 4, type: 'ship', x: 14, z: 0, mass: 20 })],
+  });
+  const hit = (dp, tick) => bus.emit('combat:collisionConsequence', {
+    tick, targetId: 4, otherId: 2, exchangedMomentum: dp, deltaV: dp / 20,
     pos: { x: 14, z: 0 }, normal: { x: 1, z: 0 },
+    provenance: { actorId: 1, weaponId: null, tag: 'massline', appliedTick: tick },
   });
   hit(1200, 10);
   frame(DT);
@@ -253,11 +269,12 @@ test('the kick is rate-limited by the shared collision cooldown', () => {
 });
 
 test('reduce-motion capture shows none: no kick, no trauma, no hitstop', () => {
-  const { impact } = measuredImpact();
+  const { consequence } = measuredImpact();
   const rock = makeBody({ id: 2, type: 'asteroid', x: 18, z: 0, radius: 10, mass: 220 });
-  const { state, bus, camera, frame } = liveFixture({ motionReduce: true, entities: [rock] });
+  const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, radius: 10, mass: 20 });
+  const { state, bus, camera, frame } = liveFixture({ motionReduce: true, entities: [rock, thrown] });
 
-  bus.emit('physics:impact', impact);
+  bus.emit('combat:collisionConsequence', consequence);
   frame(DT);
   for (let i = 0; i < 60; i++) camera.follow(DT);
 

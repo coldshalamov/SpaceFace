@@ -118,7 +118,7 @@ function addPair({ actorId, targetId, extreme }) {
     state.entities.set(entity.id, entity);
     state.entityList.push(entity);
   }
-  return { actor, target };
+  return { actor, target, extreme };
 }
 
 function createLoadedAttachment(pair, startTick) {
@@ -168,7 +168,7 @@ function step(tick, highWater = null) {
 function applyOutwardLoad(attachmentId, pair, tick) {
   const attachment = state.combat.attachments.byId[attachmentId];
   if (!helpers.combatPhysics || !attachment || attachment.state !== 'active') return;
-  const impulse = 120;
+  const impulse = pair.extreme ? 240 : 120;
   helpers.combatPhysics.applyImpulse({
     entityId: pair.actor.id,
     impulse: { x: -impulse, y: 0, z: 0 },

@@ -1599,6 +1599,7 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     playerDeltaV,
     feelDeltaV: options.preSolveClosingSpeed,
     preSolveClosingSpeed: options.preSolveClosingSpeed,
+    playerContact: playerInvolved,
   });
   const payload = {
     consequenceKernelVersion: 1,

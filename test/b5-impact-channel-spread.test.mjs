@@ -42,20 +42,8 @@ function receipt(closingSpeed) {
   };
 }
 
-function physicsImpact(closingSpeed) {
-  return {
-    consequenceKernelVersion: 1,
-    backend: 'rapier-dynamic',
-    tick: 120,
-    aId: 1,
-    bId: 2,
-    dp: CLAMPED_DP,
-    impulse: CLAMPED_DP,
-    playerInvolved: true,
-    playerDeltaV: 40,
-    preSolveClosingSpeed: closingSpeed,
-    pos: { x: 40, z: 0 },
-  };
+function consequenceReceipt(closingSpeed) {
+  return resolveCollisionConsequence(receipt(closingSpeed));
 }
 
 function feelHost() {
@@ -71,6 +59,8 @@ function feelHost() {
     entities: new Map([
       [1, { id: 1, type: 'ship', mass: HULL_MASS, pos: { x: 0, z: 0 } }],
       [2, { id: 2, type: 'ship', mass: 60, pos: { x: 40, z: 0 } }],
+      [7, { id: 7, type: 'ship', mass: HULL_MASS, pos: { x: 38, z: 0 } }],
+      [9, { id: 9, type: 'ship', mass: 60, pos: { x: 44, z: 0 } }],
     ]),
     render: {
       cameraCtrl: {
@@ -143,10 +133,10 @@ for (const seed of SEEDS) {
     assert.notEqual(nudgeFeel.id, slamFeel.id, 'feel recipe tier: knock vs slam');
   });
 
-  test(`seed ${seed}: the live physics:impact beat separates kick and hit-stop on the pre-solve axis`, () => {
+  test(`seed ${seed}: the live collision beat separates kick and hit-stop on the pre-solve axis`, () => {
     const answers = [NUDGE, SLAM].map((speed) => {
       const { bus, host, traumas, kicks, frame } = feelHost();
-      bus.emit('physics:impact', physicsImpact(speed));
+      bus.emit('combat:collisionConsequence', consequenceReceipt(speed));
       frame();
       return { trauma: traumas[0], hsDur: host._hsTimer, kickWu: kicks[0] };
     });

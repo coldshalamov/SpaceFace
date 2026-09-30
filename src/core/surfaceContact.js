@@ -130,7 +130,7 @@ export function createSurfaceContactReceipt(input = {}) {
 
 /**
  * Surface-point velocity for Y-axis spin: v + omega x r, with r = point - surface.pos on the
- * XZ plane (sv.x = vel.x + angVel*rz, sv.z = vel.z - angVel*rx).
+ * XZ plane (sv.x = vel.x - angVel*rz, sv.z = vel.z + angVel*rx).
  */
 function surfaceVelocityOf(surface, point) {
   if (!surface || typeof surface !== "object") return { x: 0, z: 0 };
@@ -139,8 +139,8 @@ function surfaceVelocityOf(surface, point) {
   const rz = finite(point && point.z) - finite(pos && pos.z);
   const angVel = finite(surface.angVel);
   return {
-    x: finite(surface.vel && surface.vel.x) + angVel * rz,
-    z: finite(surface.vel && surface.vel.z) - angVel * rx,
+    x: finite(surface.vel && surface.vel.x) - angVel * rz,
+    z: finite(surface.vel && surface.vel.z) + angVel * rx,
   };
 }
 

@@ -687,3 +687,76 @@ export function measuredProportions(worldPoints, entityRadius) {
     height: roundWu(Math.max(0.05, bounds.size[1] / R)),
   };
 }
+
+function hullSupportSamples(primitives) {
+  const points = [];
+  for (const primitive of primitives || []) {
+    if (primitive.kind === 'circle') {
+      points.push({ x: primitive.x, z: primitive.z });
+      for (let k = 0; k < 8; k += 1) {
+        const a = (k / 8) * Math.PI * 2;
+        points.push({ x: primitive.x + Math.cos(a) * primitive.r, z: primitive.z + Math.sin(a) * primitive.r });
+      }
+    } else if (primitive.kind === 'capsule') {
+      for (const end of [[primitive.ax, primitive.az], [primitive.bx, primitive.bz]]) {
+        points.push({ x: end[0], z: end[1] });
+        for (let k = 0; k < 8; k += 1) {
+          const a = (k / 8) * Math.PI * 2;
+          points.push({ x: end[0] + Math.cos(a) * primitive.r, z: end[1] + Math.sin(a) * primitive.r });
+        }
+      }
+    } else if (primitive.kind === 'obb') {
+      const rot = Number.isFinite(primitive.rot) ? primitive.rot : (Number(primitive.angleDeg) || 0) * Math.PI / 180;
+      const c = Math.cos(rot);
+      const s = Math.sin(rot);
+      for (const side of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const lx = side[0] * primitive.hx;
+        const lz = side[1] * primitive.hz;
+        points.push({ x: primitive.x + lx * c - lz * s, z: primitive.z + lx * s + lz * c });
+      }
+    }
+  }
+  return points;
+}
+
+export function convexPlanarHull(primitives) {
+  const sorted = hullSupportSamples(primitives)
+    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.z))
+    .sort((a, b) => a.x - b.x || a.z - b.z);
+  if (sorted.length < 3) return null;
+  const cross = (o, a, b) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+  const lower = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 1e-12) lower.pop();
+    lower.push(p);
+  }
+  const upper = [];
+  for (let i = sorted.length - 1; i >= 0; i -= 1) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 1e-12) upper.pop();
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  const hull = lower.concat(upper);
+  return hull.length >= 3 ? hull : null;
+}
+
+export function convexHullRadiusAt(angle, verts) {
+  const dx = Math.cos(angle);
+  const dz = Math.sin(angle);
+  let outer = 0;
+  const n = verts ? verts.length : 0;
+  for (let i = 0; i < n; i += 1) {
+    const a = verts[i];
+    const b = verts[(i + 1) % n];
+    const ex = b.x - a.x;
+    const ez = b.z - a.z;
+    const denom = dx * ez - dz * ex;
+    if (Math.abs(denom) < 1e-12) continue;
+    const t = (a.x * ez - a.z * ex) / denom;
+    const u = (a.x * dz - a.z * dx) / denom;
+    if (t > outer && u >= -1e-9 && u <= 1 + 1e-9) outer = t;
+  }
+  return outer;
+}

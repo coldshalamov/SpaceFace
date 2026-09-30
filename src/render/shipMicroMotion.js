@@ -682,12 +682,8 @@ export function createShipMicroMotionTracker() {
     applyImpactFlinch(bId, nx, nz, dp, cx, cz);
 
     // Player cosmetic yaw: the authority measured this kick and then deliberately suppressed it
-    // (the player is not ammunition). Replay it as a damped swing through the player queue —
-    // impacts carry no playerId, so it resolves on the player hull's next update like dock/cloak.
-    if (payload.playerInvolved && Number.isFinite(payload.solverPlayerYawRateKick)
-        && Math.abs(payload.solverPlayerYawRateKick) > 0.02) {
-      queuePlayerYawKick(clamp(payload.solverPlayerYawRateKick, -3.2, 3.2));
-    }
+    // (the player is not ammunition). Nothing is replayed — the player hull's yaw channel IS the
+    // authored heading, so solverPlayerYawRateKick stays receipt evidence only.
   }
 
   // Directional bounce for one involved hull. push = the impulse direction on this entity in
@@ -723,7 +719,7 @@ export function createShipMicroMotionTracker() {
     rec.flinchVelRoll += -pushLat * (0.55 + Math.abs(leverLat) * 0.9) * intensity * 3.6;
     // NPCs get their yaw from the solver already; this swing still helps them read the impact
     // direction — it is small beside the real angular response and shares the damped spring.
-    rec.impactVelYaw += leverYaw * intensity * 2.4;
+    if (id !== rememberedPlayerId) rec.impactVelYaw += leverYaw * intensity * 2.4;
     rec.flinchX += pushFwd * intensity * 0.30;
     rec.flinchZ += pushLat * intensity * 0.30;
     rec.flinchShudder = Math.min(0.4, rec.flinchShudder + intensity * 0.3);
@@ -798,8 +794,7 @@ export function createShipMicroMotionTracker() {
   // player record on its next update.
   const pendingPlayerActions = [];
   let pendingDeathSlide = null;
-  // Player-only yaw swing queue (impacts carry no playerId; resolved on the player's next update).
-  const pendingPlayerYawKicks = [];
+  // No player yaw-kick queue: contact yaw stays off the player hull's authored heading channel.
   // Last tether ends, so a let-go that carries only a target id can still thump both hulls.
   let rememberedPlayerId = null;
   let rememberedTargetId = null;
@@ -807,11 +802,6 @@ export function createShipMicroMotionTracker() {
   function queuePlayerAction(kind) {
     if (pendingPlayerActions.length < 8) pendingPlayerActions.push(kind);
     else { pendingPlayerActions.shift(); pendingPlayerActions.push(kind); }
-  }
-
-  function queuePlayerYawKick(kick) {
-    if (pendingPlayerYawKicks.length < 4) pendingPlayerYawKicks.push(kick);
-    else { pendingPlayerYawKicks.shift(); pendingPlayerYawKicks.push(kick); }
   }
 
   // Jettison load scale for the next queued 'jettison' action (cargo:jettisoned carries the
@@ -1338,20 +1328,20 @@ export function createShipMicroMotionTracker() {
     const reducedMotion = options.motionReduce === true;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getRecord(entity.id);
+    const isPlayer = options.playerId != null ? entity.id === options.playerId : entity.isPlayer === true;
+    if (isPlayer) {
+      rememberedPlayerId = entity.id;
+      rec.impactYaw = 0;
+      rec.impactVelYaw = 0;
+    }
 
     // Player-intent queue: dock/cloak/respawn events carry no entity id — resolve to the
     // player record the first frame it updates after the event.
-    if (pendingPlayerActions.length > 0 && entity.id === options.playerId) {
+    if (pendingPlayerActions.length > 0 && isPlayer) {
       for (let i = 0; i < pendingPlayerActions.length; i++) {
         applyPlayerAction(rec, pendingPlayerActions[i], simTime);
       }
       pendingPlayerActions.length = 0;
-    }
-    if (pendingPlayerYawKicks.length > 0 && entity.id === options.playerId) {
-      for (let i = 0; i < pendingPlayerYawKicks.length; i++) {
-        rec.impactVelYaw += pendingPlayerYawKicks[i];
-      }
-      pendingPlayerYawKicks.length = 0;
     }
     // Last-seen kinematics for directional impact decomposition (physics:impact fires mid-tick).
     rec.mass = Number.isFinite(entity.mass) && entity.mass > 0 ? entity.mass : 400;
@@ -1385,7 +1375,7 @@ export function createShipMicroMotionTracker() {
       }
       rec.jumpKick = 0;
     }
-    if (pendingDeathSlide && entity.id === options.playerId) {
+    if (pendingDeathSlide && isPlayer) {
       if (!reducedMotion) {
         rec.deathSlideVel = pendingDeathSlide;
         rec.deathSlideT = 0;
@@ -1439,6 +1429,9 @@ export function createShipMicroMotionTracker() {
         hull.position.z = 0;
         hull.rotation.x = baseBank + idleBreathRoll;
         hull.rotation.z = basePitch + idleBreathPitch;
+        if (rec.hullYawBase == null) {
+          rec.hullYawBase = Number.isFinite(hull.rotation.y) ? hull.rotation.y : 0;
+        }
         hull.rotation.y = rec.hullYawBase || 0;
         if (hull.scale && rec.hullScaleDirty) {
           if (typeof hull.scale.set === 'function') {
@@ -1827,7 +1820,6 @@ export function createShipMicroMotionTracker() {
     }
 
     // 8b. Line haul — a taut tether leans both hulls toward the line and stretches a light one.
-    if (options && options.playerId != null) rememberedPlayerId = options.playerId;
     if (options && options.tetherActive && options.tetherTargetId != null) {
       rememberedTargetId = options.tetherTargetId;
     }
@@ -1934,9 +1926,9 @@ export function createShipMicroMotionTracker() {
     hull.rotation.z += (rec.recoilPitch + rec.flinchPitch + rec.accelSurge + idleBreathPitch + rcsPitchKick) * (reducedMotion ? 0.3 : 1.0);
     // Impact yaw swing on the hull channel — unowned here (entity sync only resets the root yaw,
     // which is −entity.rot, so sim-frame yaw writes mirrored). Absolute set around the authored
-    // base, spring-decays back to it.
+    // base, spring-decays back to it; for the player hull that channel is the heading itself.
     hull.rotation.y = (rec.hullYawBase || 0)
-      - (rec.impactYaw + rec.haulPose.yaw) * (reducedMotion ? 0.3 : 1.0);
+      - (isPlayer ? 0 : (rec.impactYaw + rec.haulPose.yaw) * (reducedMotion ? 0.3 : 1.0));
 
     // Hull-scale channels: materialize ramp, cloak ripple, swing stretch, shield breath.
     // hull.scale is set-once-at-build everywhere, so this tracker owns it multiplicatively

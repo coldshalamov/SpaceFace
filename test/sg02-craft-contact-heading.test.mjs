@@ -17,17 +17,26 @@ test('a glancing asteroid bump does not reverse a ship or leave it spinning', as
 
     let shipHit = false;
     let droneHit = false;
+    let shipMinSep = Infinity;
+    let droneMinSep = Infinity;
     for (let i = 0; i < 90; i++) {
       owner.step(DT);
       for (const impact of owner.drainContactImpacts()) {
         if (impact.aId === ship.id || impact.bId === ship.id) shipHit = true;
         if (impact.aId === drone.id || impact.bId === drone.id) droneHit = true;
       }
+      const shipSep = Math.hypot(ship.pos.x - rockA.pos.x, ship.pos.z - rockA.pos.z);
+      const droneSep = Math.hypot(drone.pos.x - rockB.pos.x, drone.pos.z - rockB.pos.z);
+      if (shipSep < shipMinSep) shipMinSep = shipSep;
+      if (droneSep < droneMinSep) droneMinSep = droneSep;
     }
 
     assert.equal(shipHit, true, 'the ship must actually strike the rock');
     assert.equal(droneHit, true, 'the drone must actually strike the rock');
-    assert.ok(ship.pos.x < rockA.pos.x - 2, 'the ship must not tunnel through the rock');
+    assert.ok(shipMinSep > rockA.radius,
+      `the ship must not tunnel through the rock (closest approach=${shipMinSep})`);
+    assert.ok(droneMinSep > rockB.radius,
+      `the drone must not tunnel through the rock (closest approach=${droneMinSep})`);
     assert.ok(Math.abs(ship.angVel) < 0.2,
       `ship must not keep spinning after a bump (angVel=${ship.angVel})`);
     assert.ok(Math.abs(ship.rot) < 0.45,
