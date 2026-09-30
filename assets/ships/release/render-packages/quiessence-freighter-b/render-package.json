@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e5b98ecdb3813f1a45e96f793a771e994fee41b20e06028d47217d1eba9b4971",
+  "contentHash": "3c566d708b021c6ec718a6de24781b259cec8a179dc8476063acee8b2e6c8eb4",
   "dynamicGroups": [
     {
       "id": "sf.render.quiessence-freighter-b.node.lod0-hook-drive-core.dynamic",
@@ -4763,7 +4763,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "e8872fde61ba4629204b3a353ccf376788a150dae2d95fa36be6ac38ce42fc40",
+      "sha256": "a1a28fae817b46815436cd2141db11ccb881545f1ce638edd9c0e481fb86b8bd",
       "uri": "pilots.json"
     }
   },
@@ -6725,7 +6725,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_quiessence_freighter_b.glb"
   },
-  "runtimeHash": "257755355f858cd4c0a0ee1a561201b5e0349ed03a117ef7d2e595834be82461",
+  "runtimeHash": "eef0dba83bf42622dc53705d44bca5f573d7ba5c86a85de5dbb97dc75a0f5c65",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

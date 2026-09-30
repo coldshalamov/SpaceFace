@@ -4290,7 +4290,7 @@
           8.8
         ]
       },
-      "bytes": 497732,
+      "bytes": 513892,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -4304,16 +4304,16 @@
           15.517345,
           13.717954,
           3.350836,
-          2.923411,
-          4.191339,
+          3.747433,
+          3.928923,
           7.620463,
           5.920349,
           14.530353,
           14.535978,
           5.920006,
           7.620173,
-          4.191341,
-          2.923414,
+          3.928923,
+          3.747432,
           3.350836,
           13.718655,
           15.51772,
@@ -4400,6 +4400,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Cyan_jacket",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
@@ -4458,8 +4466,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 15,
-      "nodes": 28,
+      "meshes": 16,
+      "nodes": 29,
       "note": null,
       "opening": null,
       "pivot": [
@@ -4541,8 +4549,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.0579,
-            "bz": -0.139784,
+            "bx": 0.075419,
+            "bz": -0.182078,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.025
@@ -4550,8 +4558,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134987,
-            "bz": -0.175919,
+            "bx": 0.126112,
+            "bz": -0.164353,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.025
@@ -4613,8 +4621,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134987,
-            "bz": 0.175919,
+            "bx": 0.126112,
+            "bz": 0.164353,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.025
@@ -4622,8 +4630,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.0579,
-            "bz": 0.139784,
+            "bx": 0.075419,
+            "bz": 0.182078,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.025
@@ -4701,7 +4709,7 @@
       ],
       "shell": {
         "boundaryEdges": 826,
-        "inwardFaceFraction": 0.337,
+        "inwardFaceFraction": 0.34375,
         "silhouetteRadius": 19.605705,
         "sliceY": 0
       },
@@ -4807,7 +4815,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 12724,
+      "triangles": 13728,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -9353,7 +9361,7 @@
           8.8
         ]
       },
-      "bytes": 497732,
+      "bytes": 513892,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -9367,16 +9375,16 @@
           15.517345,
           13.717954,
           3.350836,
-          2.923411,
-          4.191339,
+          3.747433,
+          3.928923,
           7.620463,
           5.920349,
           14.530353,
           14.535978,
           5.920006,
           7.620173,
-          4.191341,
-          2.923414,
+          3.928923,
+          3.747432,
           3.350836,
           13.718655,
           15.51772,
@@ -9463,6 +9471,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Cyan_jacket",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
@@ -9521,8 +9537,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 15,
-      "nodes": 28,
+      "meshes": 16,
+      "nodes": 29,
       "note": null,
       "opening": null,
       "pivot": [
@@ -9604,8 +9620,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.0579,
-            "bz": -0.139784,
+            "bx": 0.075419,
+            "bz": -0.182078,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.025
@@ -9613,8 +9629,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134987,
-            "bz": -0.175919,
+            "bx": 0.126112,
+            "bz": -0.164353,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.025
@@ -9676,8 +9692,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134987,
-            "bz": 0.175919,
+            "bx": 0.126112,
+            "bz": 0.164353,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.025
@@ -9685,8 +9701,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.0579,
-            "bz": 0.139784,
+            "bx": 0.075419,
+            "bz": 0.182078,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.025
@@ -9764,7 +9780,7 @@
       ],
       "shell": {
         "boundaryEdges": 826,
-        "inwardFaceFraction": 0.337,
+        "inwardFaceFraction": 0.34375,
         "silhouetteRadius": 19.605705,
         "sliceY": 0
       },
@@ -9870,7 +9886,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 12724,
+      "triangles": 13728,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -42583,7 +42599,7 @@
           8.8
         ]
       },
-      "bytes": 497732,
+      "bytes": 513892,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -42597,16 +42613,16 @@
           13.793195,
           12.193737,
           2.978521,
-          2.598587,
-          3.725634,
+          3.331052,
+          3.492376,
           6.773745,
           5.262533,
           12.91587,
           12.920869,
           5.262228,
           6.773487,
-          3.725636,
-          2.59859,
+          3.492376,
+          3.331051,
           2.978521,
           12.19436,
           13.793529,
@@ -42693,6 +42709,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Cyan_jacket",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
@@ -42751,8 +42775,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 15,
-      "nodes": 28,
+      "meshes": 16,
+      "nodes": 29,
       "note": null,
       "opening": null,
       "pivot": [
@@ -42834,8 +42858,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.057369,
-            "bz": -0.1385,
+            "bx": 0.074888,
+            "bz": -0.180795,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.028125
@@ -42843,8 +42867,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134142,
-            "bz": -0.174817,
+            "bx": 0.125267,
+            "bz": -0.163251,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.028125
@@ -42906,8 +42930,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134142,
-            "bz": 0.174817,
+            "bx": 0.125267,
+            "bz": 0.163251,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.028125
@@ -42915,8 +42939,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.057369,
-            "bz": 0.138501,
+            "bx": 0.074888,
+            "bz": 0.180795,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.028125
@@ -42994,7 +43018,7 @@
       ],
       "shell": {
         "boundaryEdges": 826,
-        "inwardFaceFraction": 0.337,
+        "inwardFaceFraction": 0.34375,
         "silhouetteRadius": 17.427293,
         "sliceY": 0
       },
@@ -43100,7 +43124,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 12724,
+      "triangles": 13728,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],

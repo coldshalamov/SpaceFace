@@ -6978,8 +6978,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 12724,
-      "bytes": 882876,
+      "tris": 13728,
+      "bytes": 938188,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
