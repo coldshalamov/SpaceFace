@@ -53,6 +53,9 @@ jobs:
           "$RUNNER_TEMP/intro-tools/node_modules/.bin/playwright" install --with-deps chrome
           python3 tools/cinematic/signal-remix-server.py --port 8123 > /tmp/intro-server.log 2>&1 &
           INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
+      - name: Install the optional offline video encoder
+        if: github.event_name == 'workflow_dispatch'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Exact-frame motion preview (offline, not a performance benchmark)
         if: github.event_name == 'workflow_dispatch'
         run: INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-bake-preview.mjs --out .intro-review
