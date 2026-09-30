@@ -46,6 +46,9 @@ export const LOOK_BASE = deepFreeze({
     coat: 1.0,
     coatRoughness: 0.24,
     coatEnv: 0.75,
+    // Gain on the coat's sun glint. A physical lacquer glint is several times the bloom
+    // threshold; at full strength a long hull streak blooms into a white bar.
+    coatSun: 0.5,
     // Coat reflectance at the grazing limb (facing reflectance is a fixed lacquer 0.05).
     coatEdge: 0.6,
     coatTint: [1.0, 1.0, 1.0],

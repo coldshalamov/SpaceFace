@@ -57,14 +57,17 @@ Runtime rescue layers (roughness noise, palette multiplies, pigment, synthetic
 panel wells) apply to old exports only. Forge `forge-v1` bodies skip them.
 
 Surface response is shared by every lit hull and owned by the Look
-(`sfLook*` uniforms): paint shows its authored value (no lift), chroma x1.18;
+(`sfLook*` uniforms): paint shows close to its authored value (gamma 0.9), chroma x1.18;
 smooth dielectric paint carries a clear coat whose weight is
 `(1 − 0.85·metalness) · (1 − smoothstep(0.50, 0.95, roughness))`, so paint
 (0.42–0.50) is fully coated, ceramic (0.70) partly, stone and bare metal not at
-all; the coat adds a sun glint, an environment mirror that rises toward the limb,
-and the mood's rim colour. Lit pigment rolls off under `paintCeiling` 0.74.
+all; the coat adds a sun glint (gain 0.5), an environment mirror that rises toward
+the limb, and the mood's rim colour, all fading on pigment that is already
+bright. Lit pigment rolls off under `paintCeiling` 0.74. Rough stone takes a
+softer, greyer version of the shadow colour and light bands.
 Signal and drive emission is multiplied once at admission (`LOOK_EMISSIVE_GAIN`:
-signal x2.6, drive x1.7) so lamps read as light.
+point lamps and trim x2.6, drive x1.7, `glow_warm` window rows x1.3) so lamps
+read as light without a lit liner hiding behind its own haze.
 
 ## 4. Dynamic event lights (the VFX→lighting bridge)
 

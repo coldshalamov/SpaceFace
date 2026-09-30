@@ -1,14 +1,14 @@
 // Illustrated industrial surfaces: shape the light, never quantize the texture.
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
 //
-// v10-v12 (the Look, 2026-09-30): every constant that decides the vibe is a shared Look
+// v10-v13 (the Look, 2026-09-30): every constant that decides the vibe is a shared Look
 // uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
 // gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
 import { Color, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v12';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v13';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -85,7 +85,7 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
       float sfNoH = saturate(dot(nonPerturbedNormal, normalize(sfToLight + geometryViewDir)));
       float sfLobe = sfNoH * sfNoH * (sfCoatAlpha2 - 1.0) + 1.0;
       sfCoatLight += directionalLights[sfJ].color
-        * (sfNoL * 0.25 * sfCoatAlpha2 / (PI * sfLobe * sfLobe));
+        * (sfLookCoatSun * sfNoL * 0.25 * sfCoatAlpha2 / (PI * sfLobe * sfLobe));
     }
     #endif
     #ifdef USE_ENVMAP
@@ -231,6 +231,7 @@ export function installIllustratedSurface(material) {
         uniform float sfLookCoat;
         uniform float sfLookCoatRoughness;
         uniform float sfLookCoatEnv;
+        uniform float sfLookCoatSun;
         uniform float sfLookCoatEdge;
         uniform float sfLookPaintCeiling;
         uniform float sfLookRimStrength;

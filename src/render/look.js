@@ -9,7 +9,7 @@ import { Vector3 } from 'three';
 import { DEFAULT_LOOK_MOOD, resolveLookMood } from '../data/lookMoods.js';
 
 const SURFACE_SCALARS = ['albedoGamma', 'albedoSaturation', 'bandMix', 'contour', 'coat',
-  'coatRoughness', 'coatEnv', 'coatEdge', 'rimStrength', 'rimPower', 'paintCeiling'];
+  'coatRoughness', 'coatEnv', 'coatSun', 'coatEdge', 'rimStrength', 'rimPower', 'paintCeiling'];
 const SURFACE_COLORS = ['shadowTint', 'lightTint', 'coatTint', 'rim'];
 const POST_SCALARS = ['contrast', 'saturation', 'vibrance', 'ink'];
 const POST_COLORS = ['shadowTint', 'highlightTint', 'bloomTint', 'vignetteTint'];
