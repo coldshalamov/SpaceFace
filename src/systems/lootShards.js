@@ -427,6 +427,10 @@ export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
     vel: spec.vel ? { x: spec.vel.x, z: spec.vel.z } : { x: 0, z: 0 },
     radius,
     mass,
+    // Contents-derived mass is physics truth for a cargo pod — without the authored
+    // physicsBody stamp, payload-type bodies fall back to volumetric mass and the pod
+    // carries ~1/16 of its real momentum into collisions (the ore-shotgun defect).
+    physicsBody: { mass },
     hull: 100,
     hullMax: 100,
     ownerId: spec.ownerId != null ? spec.ownerId : null,
