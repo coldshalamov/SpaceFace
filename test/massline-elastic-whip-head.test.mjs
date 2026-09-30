@@ -74,7 +74,7 @@ test('Elastic Whip is a reachable, exclusive, independently flagged Massline hea
   assert.match(emitted.at(-1).payload.text, /unfit .* before fitting another head/i);
 });
 
-test('Elastic Whip returns more earned spring energy without steering or a cut impulse', async () => {
+test('Elastic Whip returns more earned spring energy, and a player cut spends the store', async () => {
   const standard = await sampleSpring(STANDARD.spring, 'standard');
   const whipPolicy = effectiveTetherPolicy(STANDARD, {
     data: { derived: { masslineHeadId: 'elastic_whip' } },
@@ -91,10 +91,28 @@ test('Elastic Whip returns more earned spring energy without steering or a cut i
   assert.ok(Math.abs(whip.ownerRot) < 1e-6 && Math.abs(whip.payloadRot) < 1e-6,
     'center-applied tension must not steer either body');
 
+  // The Whip's signature spend (9404d2e21): a player cut on a stretched line releases the stored
+  // spring potential as a closing snap. The store is the real ½K·stretch² at cut time — a slack
+  // line holds nothing, an enemy cut earns nothing, and a load break dumps it empty.
   const cut = await sampleCut(whipPolicy.spring);
   assert.ok(cut.tension > 0, 'the proof cut must happen while the Whip is loaded');
-  assert.ok(cut.deltaSpeed < 1e-6,
-    `manual cut must preserve earned velocity instead of adding a launch impulse, got ${cut.deltaSpeed}`);
+  assert.ok(cut.deltaSpeed > 10,
+    `a player cut on a loaded Whip must spend stored energy as a closing snap, got ${cut.deltaSpeed}`);
+  assert.ok(cut.deltaSpeed < 100,
+    `the snap stays bounded by the stored spring potential, got ${cut.deltaSpeed}`);
+
+  const hostile = await sampleCut(whipPolicy.spring, { reason: 'specialist_cut' });
+  assert.ok(hostile.tension > 0, 'the hostile cut must also land on a loaded line');
+  assert.equal(hostile.deltaSpeed, 0,
+    'an enemy cut must not fling the pair with your stored energy');
+
+  const slack = await sampleCut(whipPolicy.spring, { distance: 60 });
+  assert.equal(slack.phase, 'slack', 'a line under rest length is slack — nothing is stored');
+  assert.equal(slack.deltaSpeed, 0, 'a slack cut fires nothing');
+
+  const overload = await sampleCut(whipPolicy.spring, { distance: 210, ticks: 3 });
+  assert.equal(overload.phase, 'overload', 'the proof break must grade an overloaded line');
+  assert.equal(overload.deltaSpeed, 0, 'a load break dumps the store — no snap for the victim');
 });
 
 test('an active Elastic Whip snapshots through combat save and Continue', () => {
@@ -182,9 +200,12 @@ async function sampleSpring(spring, id) {
   }
 }
 
-async function sampleCut(spring) {
+async function sampleCut(spring, options = {}) {
+  const distance = options.distance ?? 120;
+  const ticks = options.ticks ?? 24;
+  const reason = options.reason ?? 'tether_cut';
   const owner = makeBody('cut-owner', 0);
-  const payload = makeBody('cut-payload', 120);
+  const payload = makeBody('cut-payload', distance);
   const runtime = await createSg02DynamicBodyOwner({ fixedDt: DT, quantum: 1e-5, mode: 'rapier-dynamic' });
   try {
     runtime.syncFromEntities([owner, payload]);
@@ -199,13 +220,14 @@ async function sampleCut(spring) {
       spring,
       tick: 0,
     });
-    for (let tick = 0; tick < 24; tick += 1) runtime.step(DT);
+    for (let tick = 0; tick < ticks; tick += 1) runtime.step(DT);
     const telemetry = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
     const before = { x: owner.vel.x, z: owner.vel.z };
-    assert.equal(runtime.cutAttachment({ attachmentId: handle.attachmentId }), true);
+    assert.equal(runtime.cutAttachment({ attachmentId: handle.attachmentId, reason }), true);
     runtime.step(DT);
     return {
       tension: telemetry.tension,
+      phase: telemetry.phase,
       deltaSpeed: Math.hypot(owner.vel.x - before.x, owner.vel.z - before.z),
     };
   } finally {

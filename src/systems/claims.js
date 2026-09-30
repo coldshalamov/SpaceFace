@@ -285,10 +285,6 @@ export const claims = {
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
       this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
       this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
-      this.bus.on('claim:defenseIgnore', (payload) => {
-        const body = this._body(payload && payload.bodyId);
-        if (body && body.spec && body.spec.defense) this._settleDefense(body, 'ignored');
-      });
       // Physical relay convoys: traffic manifests and routes the carrier hull; claims owns the
       // leg ledger. Manifestation flips the leg onto the physical track; a berth unload settles
       // the sale; a hull kill arrives through the ordinary freight:loss ledger.

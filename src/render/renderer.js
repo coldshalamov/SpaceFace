@@ -16303,7 +16303,7 @@ export const render = {
     // hide→render→restore guard here so a mid-link program cannot stall either presented path.
     const guard = this._unreadyDrawableGuard
       || (this._unreadyDrawableGuard = createUnreadyDrawableGuard(this.renderer));
-    if (route === POST_PROCESS_ROUTE.GRAPH) {
+    if (route === POST_PROCESS_ROUTE.GRAPH && this._renderGraph) {
       const frame = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
       frame.time = Number.isFinite(time) ? time : 0;
       guard.hide(scene);
@@ -16313,7 +16313,7 @@ export const render = {
         guard.restore();
       }
     }
-    if (route === POST_PROCESS_ROUTE.BLOOM) {
+    if (route === POST_PROCESS_ROUTE.BLOOM && this.bloom) {
       return this.bloom.render(scene, camera);
     }
     this._postNativeFallbackReason = this._contextLost === true
@@ -16330,12 +16330,15 @@ export const render = {
   },
 
   _compilePostRoute(route, subject, camera, lightingScene, options = {}) {
-    if (route === POST_PROCESS_ROUTE.GRAPH) {
+    // The route is resolved before an async gap (save/Continue admission, prewarm); the post
+    // chain it names can be disposed meanwhile. A stale route compiles through the native
+    // target — the scene programs are what the warm is for, not the disposed pass.
+    if (route === POST_PROCESS_ROUTE.GRAPH && this._renderGraph) {
       return compileScenePipelinesForRenderTarget(
         this.renderer, this._renderGraph.sceneTarget, subject, camera, lightingScene, options,
       );
     }
-    if (route === POST_PROCESS_ROUTE.BLOOM) {
+    if (route === POST_PROCESS_ROUTE.BLOOM && this.bloom) {
       return this.bloom.compileScenePipelines(subject, camera, lightingScene, options);
     }
     return compileScenePipelinesForRenderTarget(

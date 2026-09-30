@@ -957,13 +957,6 @@ export function createAttachmentService(context) {
     }
   }
 
-  function onPhysicsBreak(payload) {
-    if (!payload || !payload.attachmentId) return false;
-    const attachment = get(payload.attachmentId);
-    if (!attachment || attachment.state !== 'active') return false;
-    return breakAttachment(attachment, 'physics_break', attachment.ownerId, payload).ok;
-  }
-
   function listForEntity(entityId, activeOnly = true) {
     return orderedAttachments()
       .filter((attachment) => (!activeOnly || attachment.state === 'active') && (attachment.ownerId === entityId || attachment.targetId === entityId));
@@ -975,7 +968,7 @@ export function createAttachmentService(context) {
         && attachment.controllerId === controllerId);
   }
 
-  return Object.freeze({ get, breakPolicy, reelPolicy, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, onPhysicsBreak, listForEntity, listControlledBy });
+  return Object.freeze({ get, breakPolicy, reelPolicy, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, listForEntity, listControlledBy });
 
   function combatPhysics() {
     return helpers && helpers.combatPhysics;

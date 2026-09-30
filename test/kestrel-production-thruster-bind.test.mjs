@@ -119,10 +119,13 @@ test('live Kestrel plume remains visible when the legacy HDR-energy toggle is of
 
   assert.equal(system._updateEnergy(1 / 60), true,
     'the production exhaust is an engine-trail visual, not an optional Massline/HDR experiment');
-  assert.ok(system._energy?.plumeSystem?.group?.visible,
+  // The player hero exhaust is the unified plasma stream; the continuous card family keeps
+  // zero sockets for the player by design, so visibility lives on plasmaStream, not plumeSystem.
+  const plasma = system._energy && system._energy.plasmaStream;
+  assert.ok(plasma && plasma.group && plasma.group.visible,
     'normal forward thrust must publish a visible production plume');
-  assert.ok(system._energy.plumeSystem.layerBatches.some((batch) => batch.mesh.count > 0),
-    'at least one plume layer must reach the live draw list');
+  assert.ok(plasma._throats.some((throat) => throat.visible),
+    'at least one plume element must reach the live draw list');
 
   system._disposeEnergy();
 });
@@ -305,8 +308,11 @@ test('RCS accessibility keeps one geometric envelope and a minimum readable hot-
   assert.ok(reducedCore.material.uniforms.uIntensity.value
     >= normalCore.material.uniforms.uIntensity.value * 0.89,
   'reduced RCS retains its attached hot root while separately constraining event light and whiteness');
-  assert.match(FLOW_FLIPBOOK_FRAGMENT, /float impulseRoot = uImpulseJet/);
-  assert.match(FLOW_FLIPBOOK_FRAGMENT, /coreRole \* 0\.52 \+ innerRole \* 0\.22/);
+  assert.match(FLOW_FLIPBOOK_FRAGMENT, /float impulseCoreWindow/,
+    'the impulse family keeps its own root-biased hot zone');
+  assert.match(FLOW_FLIPBOOK_FRAGMENT, /coreWindow = mix\(mainCoreWindow, impulseCoreWindow, uImpulseJet\)/,
+    'impulse jets must select the impulse core window, not the main window');
+  assert.match(FLOW_FLIPBOOK_FRAGMENT, /coreRole \* 0\.62 \+ innerRole \* 0\.30/);
 
   normal.dispose();
   reducedFlash.dispose();
@@ -334,9 +340,9 @@ test('turbo changes plume length, axial structure, and shear without using opaci
   // uBoostBlend remains as a single-writer fallback uniform.
   assert.match(FLOW_FLIPBOOK_FRAGMENT, /dynBoost \* 2\.4/,
     'turbo changes axial breakup frequency');
-  assert.match(FLOW_FLIPBOOK_FRAGMENT, /float crossFilaments = 0\.56 \+ 0\.44/,
-    'outer layers carry attached directional shear filaments');
-  assert.match(FLOW_FLIPBOOK_FRAGMENT, /float axialShear = 0\.68 \+ 0\.32/,
+  assert.match(FLOW_FLIPBOOK_FRAGMENT, /along \* uFoldPitch/,
+    'outer layers carry attached directional shear filaments running along the flow axis');
+  assert.match(FLOW_FLIPBOOK_FRAGMENT, /uFoldBreak \* smoothstep\(0\.22, 0\.92, along\)/,
     'outer-layer breakup remains elongated along the flow axis');
 
   cruise.dispose();
