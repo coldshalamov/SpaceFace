@@ -715,7 +715,8 @@ export const gameOverScreen = {
       vitals.shield, vitals.armor, vitals.hull,
       recovery.stationName, recovery.stationId, recovery.costCr, recovery.quotedCostCr,
       recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
-      recovery.insuranceStatus,
+      recovery.insuranceStatus, recovery.coverageNote,
+      recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
     ].join('|');
     if (sig === this._summarySig) return;
     this._summarySig = sig;
@@ -747,7 +748,7 @@ export const gameOverScreen = {
       dock: recovery.stationName || 'No recovery route',
       cost: recovery.costCr != null ? costText : '-',
       cargo: cargoText,
-      insurance: recovery.insuranceStatus || 'No recovery coverage',
+      insurance: recovery.coverageNote || recovery.insuranceStatus || 'No recovery coverage',
     };
     for (const key in values) {
       if (key === 'cause') continue; // the title carries the cause (below)
