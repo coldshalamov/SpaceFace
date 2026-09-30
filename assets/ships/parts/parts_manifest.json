@@ -7863,8 +7863,8 @@
    "category": "wholeships",
    "priority": "P2",
    "file": "wholeships/salvage_cutter.glb",
-   "tris": 35522,
-   "bytes": 2133624,
+   "tris": 35518,
+   "bytes": 2169668,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",

@@ -944,12 +944,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.salvage-cutter",
-    "expectedContentHash": "e56bf5760181a817d034d94ba8f2200b16cd35ffda81ebe52197b46c310f17a8",
+    "expectedContentHash": "375135d8b4e226567b9c9def3d70cc35f743272d22306c1d1eb86c54220c15ff",
     "key": "salvage-cutter",
     "metadataUrl": "assets/ships/release/render-packages/salvage-cutter/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_SALVAGE_CUTTER",
     "slot": "hull",
-    "sourceSha256": "4daca34b2249f64519e7c85a9df11aa9892eeee570b12091d6a7e85091af9882",
+    "sourceSha256": "78cad34b54dc0dbce434a8c56fc2484d3fa427cdbc799c5da623d6c78429a689",
     "sourceUrl": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
   {

@@ -3688,20 +3688,6 @@
       "contractNodeCount": 53
     },
     {
-      "id": "wholeship_salvage_cutter",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/salvage_cutter.glb",
-      "release": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
-      "sourceSha256": "5b92a26d1fad40c5be3edcd46266127db578f3c1443f5b4977a74055a06a52c3",
-      "releaseSha256": "4daca34b2249f64519e7c85a9df11aa9892eeee570b12091d6a7e85091af9882",
-      "sourceBytes": 2133624,
-      "releaseBytes": 890876,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 168,
-      "contractNodeCount": 57
-    },
-    {
       "id": "wholeship_scrap_sweeper",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/scrap_sweeper.glb",
@@ -4442,6 +4428,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 85,
       "contractNodeCount": 31
+    },
+    {
+      "id": "wholeship_salvage_cutter",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/salvage_cutter.glb",
+      "release": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
+      "sourceSha256": "a364dbb2bfd02ab796ddd96f53548186023ed9d6bf3bcb04143e357e20988b13",
+      "releaseSha256": "78cad34b54dc0dbce434a8c56fc2484d3fa427cdbc799c5da623d6c78429a689",
+      "sourceBytes": 2169668,
+      "releaseBytes": 954160,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 285,
+      "contractNodeCount": 89
     }
   ]
 }
