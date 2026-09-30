@@ -92,6 +92,9 @@ var MeshoptDecoder = (function () {
 			object.onmessage = function (event) {
 				var data = event.data;
 
+				// A dead worker's queued messages can still deliver after onerror cleared
+				// `requests` — drop stale deliveries so pending accounting stays exact.
+				if (!(data.id in worker.requests)) return;
 				worker.pending -= data.count;
 				worker.requests[data.id][data.action](data.value);
 				delete worker.requests[data.id];

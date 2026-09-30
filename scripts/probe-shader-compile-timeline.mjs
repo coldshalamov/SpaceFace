@@ -303,6 +303,32 @@ try {
   const linkEvents = await page.evaluate(() => window.__SF_PROGRAM_TIMELINE__.linkEvents);
   const postBootLinks = linkEvents.slice(boundary.linkCount, afterStimulus.linkCount);
 
+  // Correlate each link to the program it produced: a miss only links on a cacheKey miss, so the
+  // next program event (rAF sampler order, first-seen cacheKey) after a link's frame IS the
+  // linked program — pair them FIFO within the window and the residual DRAW-TIME-MISS set stops
+  // being a stack-only hypothesis and becomes a named owner list.
+  const programEvents = await page.evaluate(() => window.__SF_PROGRAM_TIMELINE__.events);
+  const linkProgramAttribution = new Array(linkEvents.length).fill(null);
+  {
+    let linkCursor = 0;
+    for (const program of programEvents) {
+      while (linkCursor < linkEvents.length && linkEvents[linkCursor].frame <= program.frame
+          && linkProgramAttribution[linkCursor] != null) linkCursor++;
+      if (linkCursor < linkEvents.length && linkEvents[linkCursor].frame <= program.frame) {
+        linkProgramAttribution[linkCursor] = {
+          name: program.name,
+          cacheKey: program.cacheKey,
+        };
+        linkCursor++;
+      }
+    }
+  }
+  const attributedPostBootLinks = postBootLinks.map((link, i) => ({
+    ...link,
+    program: linkProgramAttribution[boundary.linkCount + i] || null,
+    class: classifyLink(link.stack),
+  }));
+
   const productionCounters = await page.evaluate(() => (
     window.__SPACEFACE_PERF__?.getCounterSnapshot?.() ?? null));
 
@@ -353,7 +379,7 @@ try {
       ),
       coverage: contactCensus.coverage,
     },
-    postBootLinks,
+    postBootLinks: attributedPostBootLinks,
     bootRamp,
     // The production seam's own view of the same run. Two instruments, one context.
     productionCounters,
@@ -381,7 +407,7 @@ try {
 
   console.log('');
   console.log(`[shader-timeline] gl.linkProgram calls: ${linkEvents.length} total, ${postBootLinks.length} post-boot`);
-  for (const link of postBootLinks) {
+  for (const link of attributedPostBootLinks) {
     // Print the THREE frames rather than filtering them out: they are what distinguishes the two
     // compile classes, and the distinction decides which fix applies.
     //   ...setProgram <- renderBufferDirect <- WebGLRenderer.render
@@ -390,10 +416,27 @@ try {
     //   ...prepareMaterial <- traverse
     //       = WebGLRenderer.compile(), i.e. precompilePipelines running. Deliberate work, but if it
     //         lands after the boot boundary it is still a stall in flight.
-    console.log(`  [link] flightFrame=${link.flightFrame} class=${classifyLink(link.stack)}`);
+    const owner = link.program
+      ? ` name=${link.program.name || '(unnamed)'} key=${String(link.program.cacheKey || '').slice(0, 100)}`
+      : ' name=? (no new program attributed)';
+    console.log(`  [link] flightFrame=${link.flightFrame} class=${link.class}${owner}`);
     for (const line of link.stack.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 8)) {
       console.log(`         ${line}`);
     }
+  }
+  // The named residual owner list: every DRAW-TIME-MISS link grouped by shader name, with the
+  // cacheKeys that produced it — the hypothesis-to-owner-list step for the metric-B residual.
+  const missOwners = new Map();
+  for (const link of attributedPostBootLinks) {
+    if (link.class !== 'DRAW-TIME-MISS') continue;
+    const key = link.program && link.program.name || '(unattributed)';
+    if (!missOwners.has(key)) missOwners.set(key, new Set());
+    if (link.program && link.program.cacheKey) missOwners.get(key).add(link.program.cacheKey.slice(0, 80));
+  }
+  console.log('');
+  console.log('[shader-timeline] DRAW-TIME-MISS owners:');
+  for (const [name, keys] of missOwners) {
+    console.log(`  ${name}: ${keys.size} distinct key(s)`);
   }
 
   // --- Cross-validation: production seam vs page-level wrapper --------------------------------
