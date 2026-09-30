@@ -42,6 +42,7 @@ import {
   pirateParleyDemandForHandoff,
 } from '../data/contactHail.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { makeShipEntitySpec } from './ships.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
 
@@ -71,6 +72,8 @@ const LANE_CONTEXT_OUTER_R = 2200;
 export const GHOST_REVEAL_STAGE_MAX = 3;
 export const GHOST_ESCAPE_RANGE = 2400;
 export const GHOST_ESCAPE_HOLD_S = 18;
+/** E1/H8 shattered-echo swarm: contacts drift out and despawn on their own clock. */
+const SENSOR_GHOST_SWARM_LIFETIME_S = 45;
 const GHOST_STAGE_CONFIDENCE = Object.freeze([0.12, 0.34, 0.58, 0.82]);
 const PLAYER_DANGER_CONTEXTS = new Set([
   'interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter', 'tutorial_pirate',
@@ -831,6 +834,7 @@ export const scanner = {
     this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
     this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
     this._onContactHailReset = () => this._resetContactHail('lifecycle');
+    this._onSensorGhostSwarm = (payload) => this._spawnSensorGhostSwarm(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('signal:track', this._onSignalTrack);
       this.bus.on('signal:investigate', this._onSignalInvestigate);
@@ -841,6 +845,10 @@ export const scanner = {
       this.bus.on('game:load', this._onContactHailReset);
       this.bus.on('dock:docked', this._onContactHailReset);
       this.bus.on('mode:changed', this._onContactHailReset);
+      // E1/H8 payoff: a shattered echo scatters sensor ghosts. The scanner owns ghost
+      // semantics (mark/reveal/escape), so it owns the spawn too — passive, revealStage-0
+      // contacts that drift outward and decay on their own despawn clock.
+      this.bus.on('sensorGhost:swarm', this._onSensorGhostSwarm);
     }
   },
 
@@ -893,6 +901,40 @@ export const scanner = {
         });
       }
     }
+  },
+
+  /** E1/H8 `sensorGhost:swarm` { encounterId?, pos, count } — scatter passive ghost contacts. */
+  _spawnSensorGhostSwarm(payload) {
+    const state = this.state;
+    if (!state || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
+    const pos = payload.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return 0;
+    const count = Math.max(1, Math.min(12, (payload.count | 0) || 7));
+    const seed = (state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 1) >>> 0;
+    const key = String(payload.encounterId || 'sensor-ghost-swarm');
+    const now = state.simTime || 0;
+    let spawned = 0;
+    for (let i = 0; i < count; i++) {
+      const angle = ((hash32(seed, key, i, 'swarm:angle') >>> 0) % 3600) / 3600 * Math.PI * 2;
+      const dist = 60 + ((hash32(seed, key, i, 'swarm:dist') >>> 0) % 1000) / 1000 * 140;
+      const speed = 26 + ((hash32(seed, key, i, 'swarm:speed') >>> 0) % 1400) / 1400 * 22;
+      const spec = makeShipEntitySpec('ship_wasp', {
+        team: 2,
+        factionId: 'faction_free',
+        pos: { x: pos.x + Math.cos(angle) * dist, z: pos.z + Math.sin(angle) * dist },
+        rot: angle,
+        ai: { passive: true },
+      });
+      spec.data.scanLabel = 'Sensor ghost';
+      spec.data.callsign = 'Ghost Contact';
+      spec.data.despawnAt = now + SENSOR_GHOST_SWARM_LIFETIME_S;
+      spec.vel = { x: Math.cos(angle) * speed, z: Math.sin(angle) * speed };
+      const entity = this.helpers.spawnEntity(spec);
+      if (!entity || !entity.alive) continue;
+      markEntityGhost(entity, { spawnedAt: now, revealStage: 0 });
+      spawned++;
+    }
+    return spawned;
   },
 
   _pulse(state, player, now) {

@@ -241,6 +241,16 @@ export const factions = {
     bus.on('faction:repDelta', ({ factionId, delta, reason }) => {
       this.applyRep(factionId, delta, reason || 'event');
     });
+    // Narrative trade posture (E1 first-contact consequences: open_early / cautious / grudge).
+    // The record is the durable faction-owned truth; story flags mirror it for narrative reads.
+    bus.on('faction:tradePosture', (p) => {
+      if (!p || typeof p.factionId !== 'string' || !p.factionId || typeof p.posture !== 'string') return;
+      const rec = ensureFaction(state, p.factionId);
+      if (!p.permanent && rec.tradePostureLocked) return; // a locked posture outranks later soft sets
+      rec.tradePosture = p.posture;
+      rec.tradePostureAt = state.simTime || 0;
+      if (p.permanent) rec.tradePostureLocked = true;
+    });
     bus.on('faction:bribe', (p) => {
       const payload = (p && typeof p === 'object') ? p : {};
       payload.result = this.bribeStanding(payload);

@@ -136,6 +136,13 @@ export const story = {
     bus.on('save:loaded', () => this._onLoaded());
     bus.on('encounter:resolved', (p) => this._onOrrinWitnessTransition(p || {}));
     bus.on('signal:investigated', (p) => this._onOrrinWitnessEvidence(p || {}));
+    // ── Ambient comms registry (E1 depth-program consequences). A registered line is durable
+    // story state and is voiced once when it registers — the ghost mayday actually reaches the
+    // player instead of dying on the bus. Tone changes only update the registry.
+    bus.on('ambientComms:register', (p) => this._onAmbientCommsRegister(p || {}));
+    bus.on('ambientComms:toneChanged', (p) => this._onAmbientCommsToneChanged(p || {}));
+    // ── An encounter's vultured winner turning on the player deserves a warning line. ─────────
+    bus.on('encounter:winnerHostile', (p) => this._onEncounterWinnerHostile(p || {}));
     // When the first-hour tutorial finishes (spec2/03), release the cold-start voice it deferred.
     bus.on('tutorial:finished', () => {
       this._releaseDeferredColdStart();
@@ -1075,6 +1082,64 @@ export const story = {
       anchor: { ...source.anchor },
     });
     return { source, record };
+  },
+
+  // ── Ambient comms registry (E1 depth-program consequences) ────────────────────────────────
+  _ambientCommsRegistry() {
+    this._ensureState();
+    const story = this.state.story;
+    if (!story.ambientComms || typeof story.ambientComms !== 'object') {
+      story.ambientComms = { tone: null, lines: {} };
+    }
+    if (!story.ambientComms.lines || typeof story.ambientComms.lines !== 'object') {
+      story.ambientComms.lines = {};
+    }
+    return story.ambientComms;
+  },
+
+  _onAmbientCommsRegister(payload) {
+    const id = String(payload.id || '').trim();
+    const line = String(payload.line || '').trim();
+    if (!id || !line) return false;
+    const registry = this._ambientCommsRegistry();
+    const existing = registry.lines[id];
+    registry.lines[id] = {
+      line,
+      persistent: payload.persistent !== false,
+      registeredAt: this.state.simTime || 0,
+    };
+    if (existing) return true; // a re-register refreshes the record but never re-voices
+    this._fireComms({
+      id,
+      sender: payload.sender || null,
+      text: line,
+      category: 'ambient',
+      ttl: 10,
+    });
+    return true;
+  },
+
+  _onAmbientCommsToneChanged(payload) {
+    const tone = String(payload.tone || '').trim();
+    if (!tone) return false;
+    const registry = this._ambientCommsRegistry();
+    registry.tone = tone;
+    if (payload.reason) registry.toneReason = String(payload.reason);
+    registry.toneAt = this.state.simTime || 0;
+    return true;
+  },
+
+  _onEncounterWinnerHostile(payload) {
+    if (!payload || !payload.encounterId) return false;
+    const winner = payload.winner === 'reach' ? 'The Reach survivors' : 'The Concord survivors';
+    this._fireComms({
+      id: `encounter-winner-hostile:${payload.encounterId}`,
+      sender: null,
+      text: `${winner} have finished their fight — and turned on you.`,
+      category: 'trap',
+      ttl: 8,
+    });
+    return true;
   },
 
   _onOrrinWitnessEvidence(payload) {

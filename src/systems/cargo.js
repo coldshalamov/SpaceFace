@@ -423,6 +423,28 @@ export const cargo = {
       if (this._binding === binding) this._massDirty = true;
     });
 
+    // Story items (E1 depth program, PERSISTENT_CARGO): the emitter records the lock in
+    // state.story.persistentCargo; this seam is the grant itself, so the hold actually carries
+    // the black box / letter the narrative says the player took. Persistent items are vol 0,
+    // so the grant can never be refused by a full hold.
+    subscribe(binding, 'cargo:persistentAdded', (payload) => {
+      if (!payload || typeof payload.id !== 'string' || !payload.id) return;
+      const cargo = state.player && state.player.cargo;
+      if (!cargo || (cargo.items && cargo.items[payload.id] > 0)) return;
+      addCargo(state, payload.id, 1);
+    });
+    // Saves made while the grant seam was dead carry the story lock but an empty hold: backfill
+    // the missing persistent items on load so the manifest matches the narrative again.
+    subscribe(binding, 'save:loaded', () => {
+      const locked = state.story && state.story.persistentCargo;
+      if (!Array.isArray(locked)) return;
+      for (const id of locked) {
+        if (typeof id !== 'string' || !PERSISTENT_FOOTPRINT.has(id)) continue;
+        if (!(state.player && state.player.cargo && state.player.cargo.items
+          && state.player.cargo.items[id] > 0)) addCargo(state, id, 1);
+      }
+    });
+
     // Ejected ore / dropped cargo / loose modules collected by the player ship → hold or inventory.
     subscribe(binding, 'pickup:collected', (payload) => {
       if (!payload || payload.collectorId !== state.playerId) return; // NPC/drone collection is not the player hold

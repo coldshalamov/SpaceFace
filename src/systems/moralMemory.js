@@ -99,6 +99,17 @@ export function settleMoralDebt(state, id, how = 'custody') {
   return debt;
 }
 
+// The vengeful comeback happened (moralMemory:vengefulReturn): the debt's story is told.
+// Records the return on the debt without reopening it — the picker only reads 'pending'.
+export function markMoralDebtReturned(state, id) {
+  const memory = ensureMoralMemory(state);
+  const debt = memory.debts[String(id || '')];
+  if (!debt || debt.status === 'returned') return debt || null;
+  debt.status = 'returned';
+  debt.returnedAt = finite(state.simTime, 0);
+  return debt;
+}
+
 function freshMemory() {
   return { schemaVersion: MORAL_MEMORY_VERSION, mercyCount: 0, debts: {}, order: [] };
 }

@@ -500,6 +500,9 @@ export const KURTZ = {
 export const PERSISTENT_CARGO = [
   { id: 'cmdty_47a_assay_sample', name: '47-A ASSAY SAMPLE', mass: 0.0031, note: 'SEALED EVIDENCE — CONTRACT 47-A. Deliver to Helios Station.' },
   { id: 'cmdty_unclassified_composite', name: 'UNCLASSIFIED COMPOSITE', mass: 0.0031, note: 'PERSONAL EFFECTS — 3.1 kg. The second fragment. In the manifest since first launch.' },
+  // E1 depth-program story items (cargo:persistentAdded grants these into the hold).
+  { id: 'depth_vols_black_box', name: 'CAPTAIN VOLS BLACK BOX', mass: 0.0022, note: 'PERSONAL EFFECTS — the Tessera\u2019s previous crew, in their own voice.' },
+  { id: 'depth_vols_letter', name: 'LETTER TO THE TESSERA', mass: 0.0004, note: 'PERSONAL EFFECTS — addressed to this hull. Kurtz knew the route.' },
   KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The administrator\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
   KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Format: unknown.' },
 ].filter(Boolean);
