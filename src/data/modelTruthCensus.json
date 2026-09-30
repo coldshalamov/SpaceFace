@@ -43708,7 +43708,7 @@
           13.260697
         ]
       },
-      "bytes": 773836,
+      "bytes": 775728,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -43915,9 +43915,9 @@
         "height": 0.426148,
         "length": 1.72
       },
-      "meshHash": "61d8d2878731b92fbf08238bd7f20ffaa3b3adcbc3968cb64e07d660f4f14235",
-      "meshes": 21,
-      "nodes": 31,
+      "meshHash": "0de4320fbd7822395c76af17c75befefd71ff0664b425fe2a34609ac599a3ec0",
+      "meshes": 22,
+      "nodes": 32,
       "note": null,
       "opening": null,
       "pivot": [
@@ -44158,7 +44158,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1696,
+        "boundaryEdges": 1676,
         "inwardFaceFraction": 0.17275,
         "silhouetteRadius": 12.517587,
         "sliceY": 0
