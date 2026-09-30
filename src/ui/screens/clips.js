@@ -45,13 +45,20 @@ const TRIM_MIN_SECONDS = 0.5;
 
 let clipDirector = null;
 let clipUnsub = null;
+let amendUnsub = null;
 let openState = null;
+// Amended grades keyed by the original moment tick and trick. Delete rebuilds clip ids,
+// and an amendment's own tick is later than the clip, so the reel must not key on either.
+const amendedGradeByKey = new Map();
+const GRADE_RANK = Object.freeze({ common: 1, uncommon: 2, rare: 3, legendary: 4 });
 /** clip+format pairs exported this sitting: exporting again holds to overwrite. */
 const exportedKeys = new Set();
 
 /** Publish the live clip director (from createClipDirector) to the Clips surface. */
 export function setClipDirector(director) {
-  clipDirector = director || null;
+  const next = director || null;
+  if (next !== clipDirector) amendedGradeByKey.clear();
+  clipDirector = next;
 }
 
 export function getClipDirector() {
@@ -68,7 +75,15 @@ export function installLiveClipDirector(bus, options = {}) {
     try { clipUnsub(); } catch { /* best-effort */ }
     clipUnsub = null;
   }
-  if (bus) clipUnsub = attachClipDirectorToBus(bus, clipDirector, options);
+  if (amendUnsub) {
+    try { amendUnsub(); } catch { /* best-effort */ }
+    amendUnsub = null;
+  }
+  if (bus) {
+    clipUnsub = attachClipDirectorToBus(bus, clipDirector, options);
+    // Re-rate the clip already on the reel. Never mark another one from the amendment.
+    if (typeof bus.on === 'function') amendUnsub = bus.on('moment:amended', noteMomentAmendment);
+  }
   return clipDirector;
 }
 
@@ -77,6 +92,10 @@ export function uninstallLiveClipDirector() {
   if (clipUnsub) {
     try { clipUnsub(); } catch { /* best-effort */ }
     clipUnsub = null;
+  }
+  if (amendUnsub) {
+    try { amendUnsub(); } catch { /* best-effort */ }
+    amendUnsub = null;
   }
 }
 
@@ -87,22 +106,60 @@ export function resolveClipDirector(ctx) {
   return (state && state.clips && state.clips.director) || null;
 }
 
-/** Pure summary used by the surface and tests. */
-export function clipListSummary(director) {
+function gradeRank(name) {
+  const rank = GRADE_RANK[String(name || '').toLowerCase()];
+  return rank || 0;
+}
+
+function reelMomentKey(entry) {
+  if (!entry || typeof entry !== 'object') return '';
+  const tickSource = Number.isFinite(Number(entry.momentTick)) ? Number(entry.momentTick) : Number(entry.tick);
+  if (!Number.isFinite(tickSource)) return '';
+  const trickId = entry.trickId == null ? '' : String(entry.trickId);
+  return Math.floor(tickSource) + '|' + trickId;
+}
+
+function withAmendedGrade(clip) {
+  if (!clip || typeof clip !== 'object') return clip;
+  const key = reelMomentKey(clip);
+  if (!key || !amendedGradeByKey.has(key)) return clip;
+  const grade = amendedGradeByKey.get(key);
+  if (gradeRank(grade) <= gradeRank(clip.rarity)) return clip;
+  return { ...clip, rarity: grade };
+}
+
+function listedClips(director) {
   const list = director && typeof director.list === 'function' ? director.list() : [];
-  const items = Array.isArray(list)
-    ? list.map((clip) => ({
-      id: clip.id,
-      kind: clip.kind,
-      trickId: clip.trickId || null,
-      label: clip.label,
-      rarity: clip.rarity || null,
-      momentTick: clip.momentTick,
-      startTick: clip.startTick,
-      endTick: clip.endTick,
-      seconds: clip.seconds,
-    }))
-    : [];
+  return Array.isArray(list) ? list.map(withAmendedGrade) : [];
+}
+
+function noteMomentAmendment(moment) {
+  if (!moment || typeof moment !== 'object' || !clipDirector) return;
+  const rank = gradeRank(moment.rarity);
+  if (!rank) return;
+  const key = reelMomentKey(moment);
+  if (!key || typeof clipDirector.list !== 'function') return;
+  const list = clipDirector.list();
+  if (!Array.isArray(list) || !list.some((clip) => reelMomentKey(clip) === key)) return;
+  const prev = amendedGradeByKey.get(key);
+  if (prev == null || rank > gradeRank(prev)) amendedGradeByKey.set(key, String(moment.rarity).toLowerCase());
+}
+
+/** Summary used by the surface and tests. An amended grade rides the same clip. */
+export function clipListSummary(director) {
+  const list = listedClips(director);
+  const items = list.map((clip) => ({
+    id: clip.id,
+    kind: clip.kind,
+    trickId: clip.trickId || null,
+    label: clip.label,
+    rarity: clip.rarity || null,
+    rating: clipRating(clip),
+    momentTick: clip.momentTick,
+    startTick: clip.startTick,
+    endTick: clip.endTick,
+    seconds: clip.seconds,
+  }));
   return {
     available: items.length > 0,
     count: items.length,
@@ -114,10 +171,10 @@ export function clipListSummary(director) {
   };
 }
 
-/** Rating for the plate's corner gauge: rarity maps to arc fill; death alone burns red. */
+/** Rating for the plate's corner gauge. An amended grade replaces rarity when it ranks higher. Death alone burns red. */
 export function clipRating(clip) {
-  const rarity = clip && clip.rarity ? String(clip.rarity).toLowerCase() : '';
   if (clip && clip.kind === 'death') return { fraction: 1, tone: 'threat', label: 'Death' };
+  const rarity = clip && clip.rarity ? String(clip.rarity).toLowerCase() : '';
   if (rarity === 'legendary') return { fraction: 1, tone: 'hi', label: 'Legendary' };
   if (rarity === 'rare') return { fraction: 0.75, tone: 'hi', label: 'Rare' };
   if (rarity === 'uncommon') return { fraction: 0.5, tone: 'hi', label: 'Uncommon' };
@@ -794,7 +851,7 @@ function doDelete(view) {
       rarity: kept.rarity, actorId: kept.actorId, targetId: kept.targetId, seed: kept.seed,
     });
   }
-  view.clips = typeof director.list === 'function' ? director.list() : [];
+  view.clips = listedClips(director);
   view.chosenIdx = Math.max(0, Math.min(view.clips.length - 1, view.chosenIdx));
   layoutReel(view);
   paintReelCounters(view);
@@ -989,7 +1046,7 @@ function buildContent(container, ctx) {
   const director = resolveClipDirector(ctx);
   let clips = [];
   try {
-    clips = director && typeof director.list === 'function' ? director.list() || [] : [];
+    clips = listedClips(director);
   } catch (_) {
     clips = [];
   }
