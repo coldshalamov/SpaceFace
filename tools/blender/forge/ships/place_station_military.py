@@ -28,6 +28,7 @@ COLORS = {
     'hazard': '#6e5214',
     'dark': '#121518',
     'paint.pale': '#394350',  # pale armour facings (citadel crown, landing apron, bastion caps)
+    'glow_cyan.warning': '#ff4838',  # warning red, lit: the belt and keep deck-edge outlines
 }
 
 # Tiers: (name, x0, x1, half-width, corner cut, z0, thickness, chamfer). Upper keep and lower keel.
@@ -188,6 +189,15 @@ def build():
     F.box(s, 'ApronStrut', (31.5, 0.0, -9.5), (2.0, 8.0, 3.6), material='gunmetal', bevel=0.05, taper=0.8)
     # T0 roof livery: red bands on the crown edges, rank bars across the bow terrace
     F.band(s, 'Gate', (26.3, 0, 0), (1, 0, 0), 0.6, 'stripe', facing=(0, 0, 1), mirror=True)
+    # Identity trim, lit: one thin warning-red line just inside each long edge of the battle belt's
+    # dark deck, so the star fort is outlined by its own light at the chase tilt (LOOK.md: lamps
+    # are light). The corner cut is 4 m, so the line stops short of the octagon's diagonals.
+    for sy in (1, -1):
+        F.band(s, 'T0', (0, sy * (T0['hw'] - 1.3), 0), (0, 1, 0), 0.3, 'glow_cyan.warning', facing=(0, 0, 1),
+               min_facing=0.6, inset=0.01, depth=-0.03, region=(('x', T0['x0'] + 5.2, T0['x1'] - 5.2),))
+    # ...and the hangar threshold: a lit bar across the apron at the mouth, the Leviathan's flight
+    # deck vocabulary, so the dock reads before the ship is over it.
+    F.box(s, 'Threshold', (35.1, 0.0, -3.5), (0.35, 10.8, 0.1), material='glow_warm', bevel=0.0)
 
     # --- upper keep: stepped tiers, each a chamfered armour slab -------------------------------
     for name, x0, x1, hw, c, z0, th, ch in UPPER:
