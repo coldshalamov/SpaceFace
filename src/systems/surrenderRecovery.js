@@ -8,7 +8,7 @@
 // and encounter state remain with their canonical owners through events.
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
-import { forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
 import { isHostileToPlayer } from './scanner.js';
 import { ensureMoralMemory, pendingMoralDebt, rememberMoralDebt, settleMoralDebt } from './moralMemory.js';
 import { promotedPilotIdentity, promotedPilotIdFor } from '../data/pilotCallsigns.js';
@@ -95,7 +95,13 @@ export const surrenderRecovery = {
     // Ships/drones only — living-world views never yield rocks or dressing FX.
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
     if (tick % SURRENDER_READOPT_CADENCE_TICKS === 0) {
-      forEachLivingWorldActor(state, (entity) => {
+      // The adoption walk only discovers something when the indexed actor set changed — a
+      // saved annotation or a surrender that arrived before a spawn/load bumped the version.
+      // Live surrenders register through the bus handlers instead, so a latched walk is enough.
+      const version = entityIndexVersion(state);
+      if (version == null || own._readoptVersion !== version) {
+        own._readoptVersion = version == null ? -1 : version;
+        forEachLivingWorldActor(state, (entity) => {
         if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) return;
         const ai = entity.data && entity.data.ai || {};
         const annotation = entity.data && entity.data.surrenderRecovery;
@@ -115,7 +121,8 @@ export const surrenderRecovery = {
         } else if (ai.fsm === 'surrender') {
           this._register({ entityId: entity.id, reason: 'saved_surrender', factionId: entity.factionId, type: entity.type }, RECOVERY_SURRENDERED);
         }
-      });
+        });
+      }
     }
 
     const now = Number(state.simTime) || 0;

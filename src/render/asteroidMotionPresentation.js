@@ -24,6 +24,7 @@
 // PURE RENDER-ONLY PRESENTATION: Never alters physics positions/radii, zero per-frame garbage.
 
 import * as THREE from 'three';
+import { recordMountedRootForUnreadyScan } from './bloom.js';
 
 import { invalidateAsteroidInstancePool, registerAsteroidBaseLeaf, releaseAsteroidInstancesForEntity } from './asteroidInstancePool.js';
 import { syncOpticCellSkin } from './opticCellPresentation.js';
@@ -234,6 +235,7 @@ function ensureVeinRig(rec, mesh, entity) {
     rig.add(strip);
   }
   mesh.add(rig);
+  recordMountedRootForUnreadyScan(rig);
   rec.veinRig = rig;
   return rig;
 }

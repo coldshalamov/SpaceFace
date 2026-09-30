@@ -19,6 +19,12 @@
  */
 
 import { timeToEnterRadiusSeconds } from './tabletopPolicy.js';
+import {
+  CORRIDOR_SECTOR_IDS,
+  isCorridorSector,
+  sectorGlobalOrigin,
+} from '../data/sectorCoordinates.js';
+import { SECTORS } from '../data/sectors.js';
 
 /** A ballistic path that enters a gate's disc this soon is treated as jump intent. */
 export const PREDICT_GATE_ARM_SECONDS = 30;
@@ -38,6 +44,24 @@ function gateDestination(entity) {
   if (!data || data.isGate !== true) return null;
   const to = data.gateTo;
   return to == null ? null : String(to);
+}
+
+let _discRadiusBySectorId = null;
+function sectorDiscRadiusWu(sectorId) {
+  if (!_discRadiusBySectorId) {
+    _discRadiusBySectorId = new Map();
+    for (const sector of SECTORS || []) {
+      if (sector && sector.id) {
+        // Author the predictor disc at the sector's hard bound (worldRadius + 500), not the bare
+        // authored radius — content standing in the worldRadius..+500 skirt has the same cold-pop
+        // profile on border approach. Matches hardRadius in world.js.
+        const worldRadius = Number.isFinite(sector.worldRadius) && sector.worldRadius > 0
+          ? sector.worldRadius : 4000;
+        _discRadiusBySectorId.set(sector.id, worldRadius + 500);
+      }
+    }
+  }
+  return _discRadiusBySectorId.get(sectorId) ?? 4500;
 }
 
 function sectorResult(sectorId, source, currentSectorId, ttcSeconds) {
@@ -124,6 +148,56 @@ export function predictNextSector(state, options = {}) {
     );
     if (!Number.isFinite(ttc)) continue;
     if (!best || ttc < best.ttcSeconds) best = { sectorId: to, source: 'gate-approach', ttcSeconds: ttc };
+  }
+  if (best) return best;
+
+  // 6. Ballistic border penetration: free flight over a Voronoi seam never touches a gate
+  //    entity — the player's global path enters a neighboring sector's authored disc, and the
+  //    target's authored census is exactly what pops if it is still cold at membership change.
+  //    Corridor-only: continuous global addressing only exists inside the corridor lattice.
+  if (!isCorridorSector(currentSectorId)) return null;
+  // Live entity positions are already galactic-global in the corridor (authored locals are
+  // composed into global once at spawn; sectorMembershipAtGlobal reads player.pos directly).
+  const gpos = playerPos;
+  const currentOrigin = sectorGlobalOrigin(currentSectorId);
+  for (const id of CORRIDOR_SECTOR_IDS) {
+    if (id === currentSectorId) continue;
+    const origin = sectorGlobalOrigin(id);
+    const radius = sectorDiscRadiusWu(id);
+    const horizon = id === heldSectorId ? PREDICT_GATE_HOLD_SECONDS : PREDICT_GATE_ARM_SECONDS;
+    const ttc = timeToEnterRadiusSeconds(
+      origin.x - gpos.x,
+      origin.z - gpos.z,
+      -pvx,
+      -pvz,
+      radius,
+      horizon,
+    );
+    if (Number.isFinite(ttc)) {
+      if (!best || ttc < best.ttcSeconds) best = { sectorId: id, source: 'border-approach', ttcSeconds: ttc };
+      continue;
+    }
+    // Membership flips on Voronoi penetration, not authored-disc contact — a graze that crosses
+    // the cell deep past the bisector never enters the disc window at all. Mirror the flip's own
+    // threshold (y ≥ max(2500, 0.35·span), world.js membership): arm when the ballistic path
+    // reaches flip depth inside the horizon while leading toward the neighbor.
+    if (!currentOrigin || !origin) continue;
+    const spanX = origin.x - currentOrigin.x;
+    const spanZ = origin.z - currentOrigin.z;
+    const span = Math.hypot(spanX, spanZ);
+    if (!(span > 1e-6)) continue;
+    const nx = spanX / span;
+    const nz = spanZ / span;
+    const vN = pvx * nx + pvz * nz;
+    if (vN <= 1e-6) continue;
+    const midX = (currentOrigin.x + origin.x) * 0.5;
+    const midZ = (currentOrigin.z + origin.z) * 0.5;
+    const y0 = (gpos.x - midX) * nx + (gpos.z - midZ) * nz;
+    const needed = Math.max(2500, 0.35 * span);
+    const tFlip = Math.max(0, (needed - y0) / vN);
+    if (tFlip <= horizon) {
+      if (!best || tFlip < best.ttcSeconds) best = { sectorId: id, source: 'border-approach', ttcSeconds: tFlip };
+    }
   }
   return best;
 }

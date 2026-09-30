@@ -3,12 +3,12 @@
 // them. They are not GameState combat entities while shelved.
 
 import { clearEntityRuntime } from '../core/entity.js';
-import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
+import { authoredPrefetchRadius, farLedgerScanRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
 import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
-import { advanceWorldRecord, normalizeIntent } from './worldCatchup.js';
+import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
 import { resolveFarEncounters } from './farEncounterOutcomes.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
@@ -25,6 +25,8 @@ export function getFarEmptyQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const FAR_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+const _sweepPos = { x: 0, z: 0 };
 
 function entityIndexVersion(state) {
   const index = state && state.entityIndex;
@@ -326,7 +328,7 @@ function snapshotActor(entity, simTime) {
   };
 }
 
-export function catchUpFarRecord(rec, simTime) {
+export function catchUpFarRecord(rec, simTime, table = null) {
   if (!rec || typeof rec !== 'object') return rec;
   const toT = Number.isFinite(simTime) ? simTime : 0;
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
@@ -334,19 +336,28 @@ export function catchUpFarRecord(rec, simTime) {
     rec.lastExactT = toT;
     return rec;
   }
-  const advanced = advanceWorldRecord(rec, fromT, toT);
+  // In-place advance: the per-tick sweep only needs the record's fields to land —
+  // advanceWorldRecordInto skips the {...record} spread + pos/vel/drift literals the
+  // allocating variant pays per row per tick. Field values are identical.
+  const advanced = advanceWorldRecordInto(rec, fromT, toT);
   if (!advanced) {
     rec.lastExactT = toT;
     return rec;
   }
-  rec.pos = advanced.pos ? { x: finite(advanced.pos.x), z: finite(advanced.pos.z) } : rec.pos;
-  rec.vel = advanced.vel ? { x: finite(advanced.vel.x), z: finite(advanced.vel.z) } : rec.vel;
-  rec.rot = finite(advanced.rot, rec.rot);
-  rec.angVel = finite(advanced.angVel, rec.angVel);
-  if (Number.isFinite(advanced.hull)) rec.hull = advanced.hull;
-  if (Number.isFinite(advanced.shield)) rec.shield = advanced.shield;
   rec.lastExactT = toT;
   rec.lastObservedT = toT;
+  // A moved row must re-key the spatial grid — otherwise query discs centred on the
+  // stale cell keep returning it beside ghosts while its true cell never sees it.
+  if (table && rec.pos) {
+    const key = cellKey(finite(rec.pos.x), finite(rec.pos.z));
+    if (key !== rec._cell) {
+      gridRemove(table, rec);
+      gridAdd(table, rec);
+      // The presentation collect memoizes its grid walk on table.version — a silent
+      // re-key would let a memoized disc keep returning a row at its old cell.
+      table.version++;
+    }
+  }
   return rec;
 }
 
@@ -740,6 +751,37 @@ export function tickFarActors(state, helpers, bus) {
       });
     }
     shelved++;
+  }
+
+  // Freshness sweep BEFORE the promote query: shelved rows keep moving, so a row whose
+  // frozen shelf pos sits outside `enter` can have drifted inside it — and every row the
+  // presentation collect can draw reads rec.pos directly. Advance any row whose ballistic
+  // projection lands inside the collect scan disc so promote checks and the draw both see
+  // the true position (catch-up also re-keys the grid). Rows outside the scan stay shelved
+  // and untouched — the sim side keeps them weightless until they matter.
+  const table = ensureFarActorTable(state);
+  if (table && Array.isArray(table.rows) && table.rows.length) {
+    const scanR = farLedgerScanRadius(state);
+    const scan2 = scanR * scanR;
+    for (let i = 0; i < table.rows.length; i++) {
+      const rec = table.rows[i];
+      if (!rec || rec.alive === false || !rec.pos) continue;
+      const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : simTime;
+      const drift = simTime - fromT;
+      if (!(drift > 0)) continue;
+      // Itinerary intents hold the authoritative position (accelerating/decelerating
+      // routes diverge from pure ballistic), so mirror advanceWorldRecord's predictor.
+      // rec.intent is already normalized at insert — the memoized into-variant drops the
+      // triple re-normalization + {x,z} literal this test paid per row per tick.
+      const along = rec.intent ? itineraryPositionInto(rec.intent, simTime, _sweepPos) : null;
+      const px = along ? finite(along.x)
+        : rec.pos.x + finite(rec.vel && rec.vel.x) * drift;
+      const pz = along ? finite(along.z)
+        : rec.pos.z + finite(rec.vel && rec.vel.z) * drift;
+      const dx = px - player.pos.x;
+      const dz = pz - player.pos.z;
+      if (dx * dx + dz * dz <= scan2) catchUpFarRecord(rec, simTime, table);
+    }
   }
 
   // Restore ALWAYS when rows may exist — query is cheap when empty; never gate this behind latch.

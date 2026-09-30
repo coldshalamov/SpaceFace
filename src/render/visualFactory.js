@@ -88,7 +88,18 @@ const NEUTRAL_PAL = { hull: '#6b7280', accent: '#b0b8c4', emissive: '#9fb2c8', t
 // hulls can mirror the actual space around them. Null until the bake completes — chrome then falls
 // back to high-metalness matte, which is still a clean-shiny read, just not mirror.
 let SHIP_ENV_MAP = null;
-export function setEnvMapForShips(env) { SHIP_ENV_MAP = env; }
+export function setEnvMapForShips(env) {
+  SHIP_ENV_MAP = env;
+  // Materials minted before a relight keep the previous PMREM render-target texture — which the
+  // bake then disposes, leaving stale/black reflections on the next mount. Re-point every cached
+  // env-mapped material; scene-attached materials are swept separately by replaceSceneEnvMap.
+  for (const material of _mat.values()) {
+    if (material && material.envMap && material.envMap !== env) {
+      material.envMap = env;
+      material.needsUpdate = true;
+    }
+  }
+}
 
 // Resolve the colors + the paint profile (grime/chrome/nose-art) for an entity. The profile comes
 // from the faction's `personality`, so the dirty-outlaw vs clean-authority look is data-driven and
@@ -3218,7 +3229,7 @@ function hulkPackagedFileForEntity(e) {
   return selection && selection.file || null;
 }
 
-function wreckPackagedFile(e) {
+export function wreckPackagedFile(e) {
   const hulkFile = hulkPackagedFileForEntity(e);
   if (hulkFile) return hulkFile;
   const identity = interactionProfileForEntity(e);
@@ -3701,7 +3712,11 @@ function attachPackagedBody(root, relativeFile, entity) {
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
   // a wreck that fell back to a generic aftermath piece must not be dead-stated.
   const deadHulk = relativeFile === hulkPackagedFileForEntity(entity);
-  hideProceduralChildren(root);
+  // Same-envelope body: the packaged group is fitted to entity.radius, so the procedural
+  // wreck stays drawn through admission (the geology-skin precedent — hiding it produced a
+  // guaranteed pop-in window). The commit at publish re-hides; the flag exempts this boundary
+  // from the authoredPending submit deny while the fallback is the visible stand-in.
+  root.userData.authoredPendingFallbackDrawn = true;
   root.userData.authoredAssetState = 'awaiting-authored-admission';
   root.userData.authoredPackageUrl = url;
   root.userData.authoredVisualRoot = 'none-pending-admission';
@@ -3737,6 +3752,9 @@ function attachPackagedBody(root, relativeFile, entity) {
       renderer,
       slot: 'place',
       optional: true,
+      // A mounted-but-unready packaged body sits on the glass behind ambient decodes;
+      // deadline class keeps any un-warmed file (drone, post-evict promote) ahead of them.
+      admissionDeadline: true,
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {

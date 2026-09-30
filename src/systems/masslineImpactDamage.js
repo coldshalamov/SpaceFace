@@ -28,6 +28,12 @@ const MONOFILAMENT_DAMAGE_SCALE = 1 / 1600;
 const MONOFILAMENT_DAMAGE_MAX = 35;
 const DAMAGEABLE = new Set(['ship', 'drone']);
 
+const _kineticHitPos = { x: 0, z: 0 };
+const _kineticSource = { kind: null };
+const _kineticOrigin = { kind: null, id: null };
+const _KINETIC_PACKET_FLAGS = Object.freeze({ ignoreFriendlyFire: true, allowAnyTarget: true });
+const _routeDamageArgs = { attackerId: null, targetId: null, packet: null, origin: null };
+
 export const masslineImpactDamage = {
   id: 'masslineImpactDamage',
   name: 'masslineImpactDamage',
@@ -102,22 +108,25 @@ export const masslineImpactDamage = {
   _routeKinetic(target, damage, sourceKind, pos = null) {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return;
-    const hitPos = pos && Number.isFinite(pos.x)
-      ? { x: pos.x, z: pos.z }
-      : { x: target.pos.x, z: target.pos.z };
+    // Sync-read scratches: normalizeDamagePacket copies pos/source/flags field-by-field and
+    // routeDamage reads the args wrapper without retaining it.
+    _kineticHitPos.x = pos && Number.isFinite(pos.x) ? pos.x : target.pos.x;
+    _kineticHitPos.z = pos && Number.isFinite(pos.x) ? pos.z : target.pos.z;
+    _kineticSource.kind = sourceKind;
     const packet = scalarHitToDamagePacket({
       damage,
       damageType: 'kinetic',
-      pos: hitPos,
-      source: { kind: sourceKind },
+      pos: _kineticHitPos,
+      source: _kineticSource,
     });
-    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
-    kernel.routeDamage({
-      attackerId: this.state.playerId,
-      targetId: target.id,
-      packet,
-      origin: { kind: sourceKind, id: target.id },
-    });
+    packet.flags = _KINETIC_PACKET_FLAGS;
+    _routeDamageArgs.attackerId = this.state.playerId;
+    _routeDamageArgs.targetId = target.id;
+    _routeDamageArgs.packet = packet;
+    _kineticOrigin.kind = sourceKind;
+    _kineticOrigin.id = target.id;
+    _routeDamageArgs.origin = _kineticOrigin;
+    kernel.routeDamage(_routeDamageArgs);
   },
 
   _entity(id) {

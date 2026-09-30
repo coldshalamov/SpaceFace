@@ -13,7 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
@@ -130,11 +130,16 @@ export function createRenderPackageLoader(options = {}) {
     // inside that gap sends the loader into a decode→evict→retry livelock (the PQ-033.02
     // save/load station-shell hang: the gate-required package was always the eviction victim).
     const consumerOwner = loadOptions.residencyOwner || null;
+    // Warm-purpose decodes must carry the flag through this route too — a retracted prewarm or
+    // runway residue otherwise reads identical to ambient package-cache residue and loses the
+    // soft-eviction LRU race first, exactly the pop the flag exists to prevent.
+    const decodeWarm = /warm|runway|prewarm|armory|predicted/i.test(String(loadOptions.residencyRole || ''));
     const retainConsumer = (key) => {
       if (!consumerOwner) return;
       residency.retain(key, consumerOwner, {
         role: loadOptions.residencyRole || 'live-boundary',
         sectorId: loadOptions.residencySectorId || null,
+        decodeWarm,
       });
     };
     const existing = cache.get(contentHash);
@@ -148,7 +153,7 @@ export function createRenderPackageLoader(options = {}) {
         return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions);
       }
       retainConsumer(existing.key);
-      if (!existing.packageOwner && !retainPackageOwner(existing)) {
+      if (!existing.packageOwner && !retainPackageOwner(existing, decodeWarm)) {
         throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
       }
       return loaded;
@@ -168,6 +173,7 @@ export function createRenderPackageLoader(options = {}) {
     };
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
+      decodeWarm,
     });
     entry.promise = Promise.resolve()
       .then(() => {
@@ -253,10 +259,10 @@ export function createRenderPackageLoader(options = {}) {
     return entry.promise;
   }
 
-  function retainPackageOwner(entry) {
+  function retainPackageOwner(entry, decodeWarm = false) {
     if (disposed || entry.evicted) return false;
     const owner = createOwner('package-cache', entry.metadata.contentHash);
-    if (!residency.retain(entry.key, owner, { role: 'render-package-cache' })) return false;
+    if (!residency.retain(entry.key, owner, { role: 'render-package-cache', decodeWarm })) return false;
     entry.packageOwner = owner;
     entry.loaded?.markRetained();
     return true;
@@ -989,7 +995,9 @@ export function startMeshoptWorkerPool(MeshoptDecoder) {
     const decodeGltfBufferAsync = MeshoptDecoder.decodeGltfBufferAsync;
     if (typeof decodeGltfBufferAsync === 'function' && decodeGltfBufferAsync.spacefaceDecodeBudgetGated !== true) {
       const gated = function gatedMeshoptDecodeGltfBufferAsync(count, size, source, mode, filter) {
-        return sharedDecodeTaskBudget().acquire().then((release) => {
+        return sharedDecodeTaskBudget().acquire(
+          activeDecodeClass(),
+        ).then((release) => {
           let result;
           try {
             result = decodeGltfBufferAsync.call(this, count, size, source, mode, filter);

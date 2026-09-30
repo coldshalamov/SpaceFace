@@ -192,6 +192,24 @@ export function tablePrefetchZoomFromState(state) {
   return Math.max(live, requested, composed) || 144;
 }
 
+/**
+ * The walk radius a ledger-row collect must cover — the collect disc plus the full
+ * decode-runway travel margin. Shared with the far table's freshness sweep so the rows
+ * the presentation collect can draw are exactly the rows the sim keeps pose-fresh.
+ */
+export function farLedgerScanRadius(state) {
+  const speed = tableTravelSpeed(state);
+  const camera = (state && state.camera) || {};
+  const video = (state && state.settings && state.settings.video) || {};
+  const prefetchZoom = tablePrefetchZoomFromState(state);
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  return residencyPrefetchRadius(speed, prefetchZoom, fov, aspect, tilt)
+    + (speed + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS;
+}
+
 /** Live table envelope. Prefetch uses the wider of live and requested zoom. */
 export function tableCameraEnvelope(state) {
   const camera = state && state.camera || {};

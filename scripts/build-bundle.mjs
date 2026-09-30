@@ -239,6 +239,9 @@ async function buildBundledHtml() {
     // strip the importmap block (the bundle resolves bare specifiers itself), including the
     // dev-only comment that explains it — check-bundle fails on any 'importmap' text left behind
     .replace(/(<!--[^>]*importmap[^>]*-->\s*)?<script type="importmap">[\s\S]*?<\/script>\s*/, '')
+    // dev warmup links resolve through the importmap and have no meaning in the bundle:
+    // the bundled main.js covers src/, and the vendor/ tree it points at is not shipped.
+    .replace(/<link rel="modulepreload"[^>]*>\s*/g, '')
     // point the module script at the bundled output
     .replace('<script type="module" src="./src/ui/bootEntry.js"></script>', '<script type="module" src="./main.js"></script>');
   // A drifted index.html must fail the build here — a silently missed rewrite ships a

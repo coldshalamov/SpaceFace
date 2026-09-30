@@ -601,6 +601,10 @@ function repairEntityIndex(index) {
 function clearEntityIndex(index) {
   if (!index || !index.__spacefaceEntityIndexV1) return;
   repairEntityIndex(index);
+  // Membership may already be gone when this runs (entities.clear() precedes the index wipe on
+  // the wholesale-save path). Version-latched caches must see a bump so no stale row outlives
+  // the wipe — an extra bump only costs a re-walk, a missed one leaks a dead entity.
+  index.version = (Number.isFinite(index.version) ? index.version : 0) + 1;
   index.ships.length = 0;
   index.drones.length = 0;
   index.shipLike.length = 0;
