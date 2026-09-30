@@ -13,11 +13,11 @@ const args=process.argv.slice(2), oi=args.indexOf('--out');
 const out=resolve(oi<0?'.devshots/signal-remix':args[oi+1]);
 const url=process.env.INTRO_URL || 'http://127.0.0.1:8123/tools/cinematic/signal-remix.html';
 await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,args:[
+const browser=await chromium.launch({channel:process.env.INTRO_BROWSER_CHANNEL || 'chrome',headless:true,args:[
   '--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader',
   '--autoplay-policy=no-user-gesture-required',
 ]});
-const report={renderer:'Chromium / software WebGL2 (not a hardware performance claim)',frames:[],checks:[],errors:[]};
+const report={renderer:'Chrome / software WebGL2 (not a hardware performance claim)',frames:[],checks:[],errors:[]};
 const page=await browser.newPage({viewport:{width:1280,height:720},deviceScaleFactor:1});
 page.on('pageerror',e=>report.errors.push(e.message));
 try {
@@ -81,5 +81,5 @@ try {
   report.checks.push('removed host releases canvas and controller');
   assert.deepEqual(report.errors,[]);
   report.passed=true;
-} catch(error) { report.passed=false;report.failure=error.stack;await page.screenshot({path:resolve(out,'failure.png')}).catch(()=>{});throw error; }
+} catch(error) { report.passed=false;report.failure=error.stack;report.diagnostics=await page.evaluate(()=>({ready:window.__remixProof?.ready,errors:window.__remixProof?.errors,video:[...document.querySelectorAll('video')].map(v=>({readyState:v.readyState,networkState:v.networkState,source:v.currentSrc,error:v.error?.message,codec:v.canPlayType('video/mp4; codecs=\"avc1.42E01E\"')}))})).catch(()=>null);await page.screenshot({path:resolve(out,'failure.png')}).catch(()=>{});throw error; }
 finally { await writeFile(resolve(out,'browser-report.json'),JSON.stringify(report,null,2));await browser.close(); }

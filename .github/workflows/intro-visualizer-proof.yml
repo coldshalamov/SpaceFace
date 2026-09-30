@@ -44,18 +44,13 @@ jobs:
           cp assets/cinematics/intro-visualizer.mp4 assets/cinematics/intro-visualizer.jpg .intro-review/assets/cinematics/
           git rev-parse HEAD > .intro-review/SOURCE_COMMIT.txt
       - name: Focused unit tests
+        run: node --test test/intro-signal-remix.test.mjs
+      - name: Browser review with the shipped H.264 movie
         run: |
-          if test -f test/intro-signal-remix.test.mjs; then
-            node --test test/intro-signal-remix.test.mjs
-          fi
-      - name: Browser review
-        run: |
-          if test -f tools/cinematic/signal-remix-proof.mjs; then
-            npm install --prefix "$RUNNER_TEMP/intro-tools" --no-save --ignore-scripts playwright@1.56.1
-            "$RUNNER_TEMP/intro-tools/node_modules/.bin/playwright" install --with-deps chromium
-            python3 -m http.server 8123 --bind 127.0.0.1 > /tmp/intro-server.log 2>&1 &
-            INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
-          fi
+          npm install --prefix "$RUNNER_TEMP/intro-tools" --no-save --ignore-scripts playwright@1.56.1
+          "$RUNNER_TEMP/intro-tools/node_modules/.bin/playwright" install --with-deps chrome
+          python3 -m http.server 8123 --bind 127.0.0.1 > /tmp/intro-server.log 2>&1 &
+          INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
       - uses: actions/upload-artifact@v4
         if: always()
         with:
