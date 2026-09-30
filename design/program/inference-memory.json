@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "pic-02-rock-variant-surfaces",
-      "date": "2026-09-22",
-      "wf": "WF-11",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "five common-rock variants now differ in tint and ORM response instead of sharing one material",
-      "fingerprint": "verb=see,subject=common-rock,sector=any,domain=wf-11",
-      "references": [],
-      "integration": "live",
-      "commit": "c4592b62f",
-      "verification": "focused_green"
-    },
-    {
       "id": "PIC-08",
       "date": "2026-09-22",
       "wf": "WF-08",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "f00e9ba23a7791c19dd883b2598e13486add6cce",
+      "verification": "focused_green"
+    },
+    {
+      "id": "INST-21",
+      "date": "2026-09-30",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "One mining yield plays sfx_mining_yield once; the verb-route impact no longer doubles it.",
+      "fingerprint": "verb=mine,subject=ore,sector=helios,layer=audio,domain=instrument",
+      "references": [],
+      "integration": "live",
+      "commit": "128971f46",
       "verification": "focused_green"
     }
   ],
