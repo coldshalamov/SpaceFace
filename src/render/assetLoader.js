@@ -542,9 +542,18 @@ export async function loadAuthoredPart(url, options = {}) {
   if (runtime.retiring) return null;
   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
 
+  // Deadline-class decodes (runway/wave-hull/admission-deadline work) mark the whole fetch +
+  // worker-decode window so every task this part posts — prepass, meshopt, KTX2 — is served
+  // ahead of queued ambient warm inside the shared decode budget. The class travels by depth,
+  // not by message, because the worker intakes are shared-loader internals. Computed before the
+  // pilot branch: render-package pilots are the dominant decode path and must classify too.
+  const deadlineClass = options.admissionDeadline === true
+    || /runway|deadline/i.test(String(options.residencyRole || ''));
+
   const renderPackagePilot = renderPackagePilotForSourceUrl(url);
   if (renderPackagePilot) {
-    return loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options);
+    return (deadlineClass ? () => withDeadlineDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
+      : () => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))();
   }
   assertSourceRouteAdmitted(url);
 
@@ -562,12 +571,6 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
-  // Deadline-class decodes (runway/wave-hull/admission-deadline work) mark the whole fetch +
-  // worker-decode window so every task this part posts — prepass, meshopt, KTX2 — is served
-  // ahead of queued ambient warm inside the shared decode budget. The class travels by depth,
-  // not by message, because the worker intakes are shared-loader internals.
-  const deadlineClass = options.admissionDeadline === true
-    || /runway|deadline/i.test(String(options.residencyRole || ''));
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     (deadlineClass ? () => withDeadlineDecodeClass(() => loadGltfDocument(url, runtime.gltf))
       : () => loadGltfDocument(url, runtime.gltf))()

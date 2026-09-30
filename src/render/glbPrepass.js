@@ -116,7 +116,12 @@ export function createGlbPrepasser(options = {}) {
     for (const worker of workers) {
       if (!queue.length) return;
       if (worker.current) continue;
-      const job = queue.shift();
+      // Deadline-class jobs splice ahead of queued ambient jobs (FIFO within each class),
+      // mirroring the shared decode budget's waiter order — a deadline decode must not sit
+      // behind a deep ambient queue waiting for a free worker.
+      let idx = queue.findIndex((job) => job.decodeClass === 'deadline');
+      if (idx < 0) idx = 0;
+      const job = queue.splice(idx, 1)[0];
       worker.current = job;
       budget.acquire(job.decodeClass || (deadlineDecodeActive() ? 'deadline' : 'ambient')).then((release) => {
         if (worker.current !== job) { release(); return; } // retired while waiting for the token
@@ -155,7 +160,8 @@ export function createGlbPrepasser(options = {}) {
           resolve,
           release: null,
           timer: null,
-          decodeClass: options.decodeClass,
+          decodeClass: options.decodeClass
+            || (deadlineDecodeActive() ? 'deadline' : 'ambient'),
         };
         if (timeoutMs > 0) {
           job.timer = setTimeout(() => {

@@ -52,19 +52,28 @@ function idbEvict() {
   } catch { /* eviction is best-effort */ }
 }
 
-function idbPut(key, binary) {
-  if (!idbDb || !binary || !binary.binary) return;
-  const skey = saltedKey(key);
-  const size = binary.binary.byteLength || binary.binary.length || 0;
-  if (size <= 0 || size > IDB_MAX_BYTES) return;
-  const prior = idbMeta.get(skey);
-  if (prior) idbBytes -= prior.size;
-  idbBytes += size;
-  idbMeta.set(skey, { t: Date.now(), size });
+// One transaction per drain, not per binary — a boot burst harvests 50-150 programs and a
+// transaction each is pure housekeeping overhead.
+function idbPutBatch(entries) {
+  if (!idbDb || !entries.length) return;
+  const now = Date.now();
+  let tx = null;
   try {
-    const tx = idbDb.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).put({ format: binary.format, binary: binary.binary, t: Date.now(), size }, skey);
-  } catch { /* persist is best-effort */ }
+    tx = idbDb.transaction(IDB_STORE, 'readwrite');
+  } catch { return; }
+  const store = tx.objectStore(IDB_STORE);
+  for (const { key, binary } of entries) {
+    const skey = saltedKey(key);
+    const size = binary.binary.byteLength || binary.binary.length || 0;
+    if (size <= 0 || size > IDB_MAX_BYTES) continue;
+    const prior = idbMeta.get(skey);
+    if (prior) idbBytes -= prior.size;
+    idbBytes += size;
+    idbMeta.set(skey, { t: now, size });
+    try {
+      store.put({ format: binary.format, binary: binary.binary, t: now, size }, skey);
+    } catch { /* persist is best-effort */ }
+  }
   idbEvict();
 }
 
@@ -94,6 +103,7 @@ function idbHydrate(gl) {
     try {
       tx = idbDb.transaction(IDB_STORE, 'readonly');
     } catch { idbDb = null; return; }
+    const staleKeys = [];
     const cursor = tx.objectStore(IDB_STORE).openCursor();
     cursor.onsuccess = () => {
       const it = cursor.result;
@@ -106,10 +116,23 @@ function idbHydrate(gl) {
         const size = Number(rec.size) || rec.binary.byteLength || 0;
         idbBytes += size;
         idbMeta.set(skey, { t: Number(rec.t) || 0, size });
+      } else {
+        // Stale salt (renderer/driver/version moved) can never hydrate — evict it now so the
+        // store does not grow unboundedly across driver changes. The cursor runs readonly, so
+        // collect keys and delete in a follow-up tx.
+        staleKeys.push(it.key);
       }
       it.continue();
     };
-    tx.oncomplete = idbEvict;
+    tx.oncomplete = () => {
+      if (staleKeys.length && idbDb) {
+        try {
+          const purge = idbDb.transaction(IDB_STORE, 'readwrite');
+          for (const key of staleKeys) purge.objectStore(IDB_STORE).delete(key);
+        } catch { /* purge is best-effort */ }
+      }
+      idbEvict();
+    };
   };
 }
 
@@ -159,6 +182,7 @@ export function installProgramBinaryCache(gl) {
       pending.length = 0;
       return;
     }
+    const harvested = [];
     for (let i = pending.length - 1; i >= 0; i--) {
       const { program, key } = pending[i];
       if (parallelCompile) {
@@ -173,12 +197,13 @@ export function installProgramBinaryCache(gl) {
         const binary = gl.getProgramBinary(program);
         if (binary && binary.binary) {
           MEMORY.set(key, binary);
-          idbPut(key, binary);
+          harvested.push({ key, binary });
         }
       } catch {
         /* some drivers reject getProgramBinary until COMPLETION_STATUS */
       }
     }
+    idbPutBatch(harvested);
   };
   const scheduleDrain = () => {
     if (drainScheduled || pending.length === 0) return;
@@ -218,7 +243,9 @@ export function installProgramBinaryCache(gl) {
     origLink(program);
     if (key && canGet) {
       pending.push({ program, key });
-      drainPending();
+      // No synchronous drain here: draining inside every linkProgram makes the COMPLETION_STATUS
+      // poll O(n^2) per compile burst (each a GPU-process round trip where supported). The
+      // timer drains the tail once; a cache miss for a not-yet-harvested key just links for real.
       scheduleDrain();
     }
   };

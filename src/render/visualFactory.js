@@ -88,7 +88,18 @@ const NEUTRAL_PAL = { hull: '#6b7280', accent: '#b0b8c4', emissive: '#9fb2c8', t
 // hulls can mirror the actual space around them. Null until the bake completes — chrome then falls
 // back to high-metalness matte, which is still a clean-shiny read, just not mirror.
 let SHIP_ENV_MAP = null;
-export function setEnvMapForShips(env) { SHIP_ENV_MAP = env; }
+export function setEnvMapForShips(env) {
+  SHIP_ENV_MAP = env;
+  // Materials minted before a relight keep the previous PMREM render-target texture — which the
+  // bake then disposes, leaving stale/black reflections on the next mount. Re-point every cached
+  // env-mapped material; scene-attached materials are swept separately by replaceSceneEnvMap.
+  for (const material of _mat.values()) {
+    if (material && material.envMap && material.envMap !== env) {
+      material.envMap = env;
+      material.needsUpdate = true;
+    }
+  }
+}
 
 // Resolve the colors + the paint profile (grime/chrome/nose-art) for an entity. The profile comes
 // from the faction's `personality`, so the dirty-outlaw vs clean-authority look is data-driven and

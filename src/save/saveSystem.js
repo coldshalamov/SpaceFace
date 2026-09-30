@@ -200,7 +200,12 @@ export const save = {
       }
       const load = () => this.load((p && p.slot) || 'latest');
       const defer = this.helpers && this.helpers.deferLoadedGameRestore;
-      if (typeof defer === 'function' && defer(load) === true) return;
+      // The painted defer path swallows a promise (nextPaint().then(restore).catch), so the
+      // worker-pool restore lane can take it; the immediate fallback keeps the sync contract.
+      const loadDeferred = () => (typeof this.loadAsync === 'function'
+        ? this.loadAsync((p && p.slot) || 'latest')
+        : load());
+      if (typeof defer === 'function' && defer(loadDeferred) === true) return;
       load();
     });
     bus.on('settings:changed', (payload) => {
@@ -2712,6 +2717,119 @@ export const save = {
       { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
       skippedNewer ? { skippedNewer } : null));
     return false;
+  },
+
+  /**
+   * The Continue-route load: identical slot resolution, recovery, and restore order as load(),
+   * but the parse+checksum+player checks run in the save worker so the loading screen paints
+   * instead of freezing behind a multi-MB synchronous JSON.parse. Migrations, normalization,
+   * and the restore itself still run on main in the same order; a missing/failed worker falls
+   * back to the synchronous prepare, so this cannot regress correctness — only cost.
+   */
+  async loadAsync(slot) {
+    slot = slot || 'quick';
+    let skippedNewer = null;
+    if (slot === 'latest') {
+      try { skippedNewer = this._newerUnplayableSkip(); } catch (err) { skippedNewer = null; }
+      const resolved = this._latestSlot();
+      if (!resolved) {
+        this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
+          skippedNewer ? { skippedNewer } : null));
+        return false;
+      }
+      slot = resolved;
+    }
+    let raw = null;
+    try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+    catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+    const primary = await this._prepareEnvelopeStringAsync(raw);
+    if (primary.ok) {
+      return this._restorePreparedEnvelope(primary, slot,
+        skippedNewer ? { skippedNewer } : undefined);
+    }
+
+    let backupRaw = null;
+    try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
+    catch (err) { /* primary failure below remains the player-facing reason */ }
+    const backup = await this._prepareEnvelopeStringAsync(backupRaw);
+    if (backup.ok) {
+      const restored = this._restorePreparedEnvelope(backup, slot, Object.assign(
+        { emitError: false, recovered: true }, skippedNewer ? { skippedNewer } : null));
+      if (restored) {
+        let promoted = false;
+        try {
+          localStorage.setItem(LS_PREFIX + slot, backupRaw);
+          promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
+          if (promoted) this._updateIndex(slot, backup.env);
+          if (promoted) this._queueSharedStoreMirror();
+        } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
+        this.bus.emit('save:recovered', {
+          slot,
+          source: 'previous_generation',
+          failedReason: primary.reason,
+          recoveredSavedAt: backup.env.savedAt || null,
+          recoveredVersion: backup.env.version | 0,
+          promoted,
+        });
+        return true;
+      }
+    }
+    this.bus.emit('save:error', Object.assign(
+      { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
+      skippedNewer ? { skippedNewer } : null));
+    return false;
+  },
+
+  /**
+   * Worker-side envelope prepare for the Continue lane: the worker parses + checksums and the
+   * envelope crosses postMessage already-cloned, so main keeps only the bounded preflight plus
+   * migration/normalize — clonePlain is deliberately absent because nothing else shares the
+   * worker's copy. Falls back to the synchronous prepare when no worker exists or the round
+   * trip fails, preserving the exact failure vocabulary of the sync path.
+   */
+  _prepareEnvelopeStringAsync(raw) {
+    if (!raw) return Promise.resolve({ ok: false, reason: 'no_save' });
+    if (typeof raw !== 'string') return Promise.resolve({ ok: false, reason: 'parse_failed' });
+    const bytes = saveImportByteLength(raw);
+    if (bytes > SAVE_IMPORT_MAX_BYTES) {
+      return Promise.resolve(importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes));
+    }
+    if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
+      return Promise.resolve(this._prepareEnvelopeString(raw));
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const accepted = this._requestSaveWorker('restore_prepare',
+        { raw, currentVersion: CURRENT_VERSION },
+        (message) => settle(message && message.result ? message.result : null),
+        () => settle(null));
+      if (!accepted) settle(null);
+    }).then((prepared) => {
+      if (!prepared) return this._prepareEnvelopeString(raw);
+      if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
+      const env = prepared.env;
+      if (!env || typeof env !== 'object') return { ok: false, reason: 'bad_format' };
+      try {
+        const versionRead = readSaveVersion(env.version);
+        if (!versionRead.ok) return versionRead;
+        const ver = versionRead.version;
+        const preflight = preflightSaveImport(env);
+        if (!preflight.ok) return preflight;
+        // env.data is the worker's private structured clone: migrations may mutate it in place.
+        const data = env.data;
+        if (!runMigrations(data, ver)) return { ok: false, reason: 'migration_failed' };
+        const normalized = normalizeRestorableData(data);
+        if (!normalized.ok) return { ok: false, reason: normalized.reason };
+        return { ok: true, env, data, version: ver };
+      } catch (err) {
+        return { ok: false, reason: 'load_failed', error: err };
+      }
+    });
   },
 
   /** Parse + validate + migrate a raw JSON string, then restore. Shared by load() and import. */

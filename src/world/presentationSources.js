@@ -203,15 +203,22 @@ function appendNearbyLedgerRows(state, out) {
   for (let i = 0; i < _meshRockScratch.length; i++) {
     const rec = _meshRockScratch[i];
     if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
-    const relX = rec.pos.x - origin.x;
-    const relZ = rec.pos.z - origin.z;
+    // Shelf-time pos + "static row" relative velocity was wrong for drifting rocks: the record
+    // carries vel/lastExactT (asteroidField) but the test measured from the frozen pos and
+    // ignored the rock's own motion, so a rock already closing fast read as stationary and
+    // admitted late. Same ballistic extrapolation the far-actor branch uses; vel=0 rocks
+    // reduce to the old math exactly.
+    const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
+    const relX = eff.x - origin.x;
+    const relZ = eff.z - origin.z;
     if (relX * relX + relZ * relZ <= radius2) {
       out.push(rec);
       continue;
     }
-    // A static row only earns early residency on the player's own approach.
+    const relVx = finite(rec.vel && rec.vel.x) - pvx;
+    const relVz = finite(rec.vel && rec.vel.z) - pvz;
     const tEnter = timeToEnterRadiusSeconds(
-      relX, relZ, -pvx, -pvz,
+      relX, relZ, relVx, relVz,
       glassR + finite(rec.radius),
       TABLE_COLLECT_HORIZON_SECONDS,
     );

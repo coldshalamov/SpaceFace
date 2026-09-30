@@ -93,6 +93,8 @@ import {
   spawnableShipArchetypePrewarmUrls,
   residentWholeShipStandInRecord,
   wholeShipVisualForEntity,
+  resolve19305CensusAEntityPackagedFile,
+  resolvePlaceFileForEntity,
   PQ_193_05_WRECK_PACKAGED_FILES,
   PQ_193_05_DRONE_PACKAGED_FILE,
   PQ_193_05_GATE_PACKAGED_FILE,
@@ -1034,7 +1036,10 @@ const _admissionAnchor = { x: 0, z: 0 };
 function renderAdmissionEnv(state, out = _admissionEnv) {
   const player = playerEntityForRenderState(state);
   const cam = liveTableCamera(state);
-  out.glassR = glassCornerWu(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  // Admit-side predictions read the composed zoom (max of live + requested): while a wheel-out
+  // is still damping, entities already inside the requested frame would otherwise wait for the
+  // catch-up before their decode starts. The deny side keeps live zoom (see renderResidencyRadius).
+  out.glassR = glassCornerWu(cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
   const anchor = admissionAnchorPos(
     state,
     player && player.pos,
@@ -2511,7 +2516,17 @@ function packagedDecodeFileForEntity(entity) {
       return file ? { file, slot: 'place' } : null;
     }
     const spec = packagedPropSpec(entity);
-    return spec && spec.file ? { file: spec.file, slot: spec.slot || 'place' } : null;
+    if (spec && spec.file) return { file: spec.file, slot: spec.slot || 'place' };
+    // Deployables and mid-flight dressing materializations (drones, gate stations, claim
+    // outposts, site relays, POIs) never emit entity:spawned and resolve no packaged prop —
+    // without the census/place resolvers they decode cold at admission and pop in.
+    const censusFile = resolve19305CensusAEntityPackagedFile(entity);
+    if (censusFile) return { file: censusFile, slot: 'place' };
+    if (entity.type === 'fx' || entity.type === 'place' || entity.type === 'dressing') {
+      const placeFile = resolvePlaceFileForEntity(entity);
+      if (placeFile) return { file: placeFile, slot: 'place' };
+    }
+    return null;
   } catch (_) {
     return null;
   }
@@ -2530,13 +2545,18 @@ function warmPackagedEntityDecode(owner, entity) {
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
   const sectorId = (state.world && state.world.currentSectorId) || null;
+  // The key only dedupes the in-flight window — it is deleted on settle so a transient
+  // failure or a later eviction never poisons re-warm for the rest of the session
+  // (loadAuthoredPart's own cache/residency dedupe still suppresses concurrent duplicates).
   return Promise.resolve(loadAuthoredPart(`${releaseRoot}${resolved.file}`, {
     renderer,
     slot: resolved.slot,
     optional: true,
     residencyRole: 'packaged-decode-runway',
     sectorId,
-  })).catch(() => {});
+  })).catch(() => {}).finally(() => {
+    files.delete(key);
+  });
 }
 
 /**
@@ -2598,7 +2618,21 @@ function warmKillHulkDecode(owner, entity) {
     optional: true,
     residencyRole: 'kill-hulk-decode-runway',
     sectorId: (state.world && state.world.currentSectorId) || null,
-  }).catch(() => {});
+  }).catch(() => {}).finally(() => {
+    files.delete(file);
+  });
+}
+
+/**
+ * Sector rotation rotates residency but these Sets persist — clear them with the sector so a
+ * re-entry re-warms files the eviction released (contrast: _waveHullDecodePending clears on
+ * run:ended). The entity-id prefetch set goes too: ids recycle across sectors.
+ */
+function clearDecodeRunwayDedupe(owner) {
+  if (!owner) return;
+  if (owner._decodeRunwayPackagedFiles) owner._decodeRunwayPackagedFiles.clear();
+  if (owner._decodeRunwayHulkFiles) owner._decodeRunwayHulkFiles.clear();
+  if (owner._decodeRunwayPrefetchIds) owner._decodeRunwayPrefetchIds.clear();
 }
 
 /**
@@ -6388,7 +6422,13 @@ export const render = {
         // bursts into the command buffer; draining each phase behind a task-queue slot keeps any
         // single forced drain bounded instead of draining the whole boot inside one frame.
         const paceBootQueue = makeGpuQueuePacer(renderer);
-        if (typeof this._bakeEnv === 'function') this._bakeEnv();
+        // Bake only when the IBL source moved since the last bake — the 120 ms starfield bake
+        // already covers the common cold-boot case, and a same-source re-bake is pure GL churn.
+        if (typeof this._bakeEnv === 'function'
+            && (this._envMap == null || resolveIblSource({
+              foundryTexture: this._foundryEnvTexture,
+              background: scene.background,
+            }) !== this._envMapSource)) this._bakeEnv();
         if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -11178,6 +11218,7 @@ export const render = {
         this._authoredSectorPrewarmPending = null;
         this._authoredSectorPrewarmPendingId = null;
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
         this._publishAssetResidencyDiagnostics();
         return;
@@ -11199,6 +11240,7 @@ export const render = {
           ? SECTOR_VISUAL_TRANSITION_SECONDS
           : 0;
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
         this._publishAssetResidencyDiagnostics();
         return;
@@ -11309,6 +11351,7 @@ export const render = {
         // from leaving residency labelled as the sector the player already departed.
         if (prewarm.active === true && state.world && state.world.currentSectorId === exactSectorId) {
           if (this._assetResidency) this._assetResidency.rotateSector(exactSectorId);
+          clearDecodeRunwayDedupe(this);
           if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
             releaseSectorPrewarm(this._currentSectorPrewarm, 'failed-sector-prewarm-replaced');
           }
@@ -14417,9 +14460,12 @@ export const render = {
       const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);
       let lodLevel = userData.lod ? userData.lod.level : null;
       const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
+      // Projected size must measure the drawn envelope, not the presence proxy: a station's
+      // authored hull outgrows entityPresenceRadius and would resolve a coarser LOD while its
+      // visible footprint is still large on screen.
       const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
         ? hlodVisualRadius
-        : (entity && entityPresenceRadius(entity)) || world.radii[slot] || 0;
+        : (entity && entityVisualCullRadius(entity, mesh)) || world.radii[slot] || 0;
       const projectedPx = projectedWidthPx(
         mesh.position,
         lodRadius,
@@ -15224,7 +15270,12 @@ export const render = {
             } else {
               freezeOpeningGraphPublication(this);
             }
-            this._bakeEnv();
+            // Same source-dirty gate: an already-baked env of the current source needs no
+            // re-convolve before freezing the picture.
+            if (this._envMap == null || resolveIblSource({
+              foundryTexture: this._foundryEnvTexture,
+              background: this.scene && this.scene.background,
+            }) !== this._envMapSource) this._bakeEnv();
             this._openingEnvFrozen = true;
             succeeded = true;
             return true;

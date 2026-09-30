@@ -104,6 +104,14 @@ function installGlobalErrorBoundary() {
 async function boot() {
   installGlobalErrorBoundary();
   try {
+    // Kick the scenario-contract fetch+hash at boot top: it is consumed only at helpers
+    // construction below, so the fetch RTT overlaps everything in between instead of
+    // serializing ahead of registry init.
+    const contractPromise = loadScenarioContract(
+      new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
+    // Belt: a rejection surfacing before the real await below still counts as handled (a boot
+    // error thrown earlier would otherwise leave it as an unhandled rejection).
+    contractPromise.catch(() => {});
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
     // Renderer/VFX are initialized before the save system in registry order. Consume the persisted
@@ -128,7 +136,7 @@ async function boot() {
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
-    const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
+    const contract = await contractPromise;
     const helpers = {
       scenarioContract: contract.document,
       scenarioContractPath: contract.path,
@@ -733,6 +741,25 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
   if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+  // The three long gates below used to publish one stage event then stay silent for their
+  // whole bound — the shell read as frozen behind real work. This pulse re-emits a bounded
+  // detail heartbeat (≤1 update / 500 ms, only when the text actually changes) so the loading
+  // presenter keeps moving with honest, non-duplicated stage detail.
+  const startGatePulse = (id, progress, label, detailOf) => {
+    let lastText = null;
+    const emit = () => {
+      try {
+        if (!runTransitionGuard.isCurrent(transitionToken)) return;
+        const detail = detailOf();
+        if (detail == null || detail === lastText) return;
+        lastText = detail;
+        bus.emit('game:loadingProgress', { id, progress, label, detail, transition: 'continue' });
+      } catch (_) { /* the pulse is presentation-only; never let it break the gate */ }
+    };
+    const timer = setInterval(emit, 500);
+    if (timer && typeof timer.unref === 'function') timer.unref();
+    return () => clearInterval(timer);
+  };
   // Kick the backend prepare so WASM/world bring-up overlaps the whole library/
   // visuals/GPU chain below — the same overlap New Game gets from its scenePrepared
   // kick. save:loaded already rebound the player record before this function ran,
@@ -758,7 +785,13 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     // loop only moves when the compositor gets a frame.
     await nextPaint();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    const stopLibraryPulse = startGatePulse('authored-library', 0.25, 'Loading the ships', () => {
+      const elapsed = nowMs() - gateStartedMs;
+      return elapsed > 8000 ? 'Still loading the saved sector' : 'Bringing the saved sector back with its ships intact';
+    });
+    const gateStartedMs = nowMs();
     const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    stopLibraryPulse();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
       throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
@@ -772,12 +805,22 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     });
     await nextPaint();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    const stopVisualsPulse = startGatePulse('authored-visuals', 0.5, 'Building the opening scene', () => {
+      const readiness = authoredCriticalVisualReadiness(state);
+      const pending = readiness && Array.isArray(readiness.openingPending)
+        ? readiness.openingPending.length
+        : 0;
+      return pending > 0
+        ? `Placing ships and stations — ${pending} still staging`
+        : 'Placing ships and stations before you arrive';
+    });
     const visualsReady = await waitForInitialAuthoredVisualsWithRetry(
       state,
       INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
       () => runTransitionGuard.isCurrent(transitionToken),
       bus,
     );
+    stopVisualsPulse();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
@@ -816,17 +859,29 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
         gpu: state.render && state.render.gpu,
         renderer: state.render && state.render.renderer,
       });
+      const stopCookPulse = startGatePulse('gpu-resources', 0.9, 'Preparing the opening route', () => {
+        const ledger = state.render && state.render.openingCookLedger;
+        const rows = Array.isArray(ledger) ? ledger.filter((row) => row && row.step && row.step !== 'lane') : [];
+        const done = rows.filter((row) => row.outcome === 'resolved' || row.outcome === 'skipped').length;
+        return done > 0
+          ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
+          : 'Loading the opening stretch smoothly';
+      });
       const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
-      if (!awaitCook) {
-        void cook.catch((error) => {
-          console.warn('[startup] continue GPU cook failed', error);
-        });
-      } else {
-        try {
-          await cook;
-        } catch (error) {
-          console.warn('[startup] continue GPU cook failed', error);
+      try {
+        if (!awaitCook) {
+          void cook.catch((error) => {
+            console.warn('[startup] continue GPU cook failed', error);
+          });
+        } else {
+          try {
+            await cook;
+          } catch (error) {
+            console.warn('[startup] continue GPU cook failed', error);
+          }
         }
+      } finally {
+        stopCookPulse();
       }
     }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };

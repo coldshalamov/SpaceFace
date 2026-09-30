@@ -3306,7 +3306,10 @@ export const audio = {
     const a = String(p.aId);
     const b = String(p.bId);
     if (a === b) return true;
-    const key = a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+    // physics:impact carries the pre-joined pair key (same min\0max law); the collision
+    // twin and any older emitter may not, so keep the local build as the fallback.
+    const key = typeof p.pairKey === 'string' ? p.pairKey
+      : (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
     const dp = Number.isFinite(p.dp) ? p.dp : Number.isFinite(p.impulse) ? p.impulse : 0;
     const prev = this._collisionCueContacts.get(key);
     if (prev && tick - prev.tick < COLLISION_CUE_COOLDOWN_TICKS

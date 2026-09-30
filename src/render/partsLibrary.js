@@ -19,13 +19,19 @@ import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '.
 import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
 import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine structures (doc 07)
 import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
+import { packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
+  TABLE_BAND,
+  TABLE_FRAME_SKIRT_WU,
+  classifyTableBand,
+  glassHalfExtents,
   isCriticalHubInCurrentSector,
   isCriticalStartingHub as isTableCriticalStartingHub,
   isOpeningStoryActor,
   tableInstanceFarCullWu,
+  tableLookAtDelta,
   tableOpeningCompositionWu,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
@@ -1180,6 +1186,9 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
   const includePlayer = options.includePlayer === true;
   const requests = [];
   const seen = new Set();
+  // Shared files take the NEAREST requesting entity's rank — a file shared by a near and a far
+  // body must not rank by whichever entity happened to be iterated first.
+  const rankByKey = new Map();
 
   const pushPlan = (plan, deadlineRank = Infinity) => {
     for (const [slot, files] of Object.entries(plan || {})) {
@@ -1187,8 +1196,13 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
         if (!file) continue;
         const url = `${partRoot}${file}`;
         const key = `${url}::${slot}`;
+        const prior = rankByKey.get(key);
+        if (prior !== undefined && deadlineRank < prior) {
+          rankByKey.set(key, deadlineRank);
+        }
         if (seen.has(key)) continue;
         seen.add(key);
+        if (prior === undefined) rankByKey.set(key, deadlineRank);
         requests.push(Object.freeze({ url, slot, deadlineRank }));
       }
     }
@@ -1220,9 +1234,33 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
         || (String(packagedFile).replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place');
       const url = `${PART_RELEASE_ROOT}${packagedFile}`;
       const key = `${url}::${slot}`;
+      const prior = rankByKey.get(key);
+      if (prior !== undefined && entityDeadlineRank < prior) {
+        rankByKey.set(key, entityDeadlineRank);
+      }
       if (!seen.has(key)) {
         seen.add(key);
+        if (prior === undefined) rankByKey.set(key, entityDeadlineRank);
         requests.push(Object.freeze({ url, slot, deadlineRank: entityDeadlineRank }));
+      }
+    } else {
+      // packagedPropSpec's own resolutions (SCENARIO_47A map, generic tow, rescue beacons) —
+      // entities whose prop file is map-derived, not data-packaged, decode at reveal without it.
+      const spec = entity.data ? packagedPropSpec(entity) : null;
+      if (spec && spec.file) {
+        const slot = spec.slot
+          || (String(spec.file).replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place');
+        const url = `${PART_RELEASE_ROOT}${spec.file}`;
+        const key = `${url}::${slot}`;
+        const prior = rankByKey.get(key);
+        if (prior !== undefined && entityDeadlineRank < prior) {
+          rankByKey.set(key, entityDeadlineRank);
+        }
+        if (!seen.has(key)) {
+          seen.add(key);
+          if (prior === undefined) rankByKey.set(key, entityDeadlineRank);
+          requests.push(Object.freeze({ url, slot, deadlineRank: entityDeadlineRank }));
+        }
       }
     }
 
@@ -1265,7 +1303,9 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
   // Nearest-deadline-first: the alphabetical census order was stable but served the file the
   // player reaches LAST as readily as the one they reach next. deadlineRank keeps ordering
   // deterministic (distance then url) while the serial lane works the next-visible body first.
-  requests.sort((a, b) => a.deadlineRank - b.deadlineRank
+  // rankByKey holds the min over all requesting entities for shared files.
+  requests.sort((a, b) => (rankByKey.get(`${a.url}::${a.slot}`) ?? a.deadlineRank)
+    - (rankByKey.get(`${b.url}::${b.slot}`) ?? b.deadlineRank)
     || a.url.localeCompare(b.url)
     || a.slot.localeCompare(b.slot));
   return Object.freeze(requests);
@@ -3052,13 +3092,18 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'PlaceProp'}_AuthoredAssetBoundary`;
-  // A same-envelope geology skin must keep its procedural body drawn for the whole
-  // admission window (wrap → commit): the authored rock occupies exactly the same
-  // envelope, so hiding the fallback here produced a guaranteed pop-in — nothing
-  // drew while the job queued, decoded, composed, and compiled. The commit swaps
-  // the fallback out and the fail path already re-shows it, so the visible body is
-  // the same silhouette at every stage.
-  fallbackRoot.visible = !geologySkin ? false : true;
+  // A same-envelope procedural body must stay drawn for the whole admission window
+  // (wrap → commit): hiding it produced a guaranteed pop-in — nothing drew while the
+  // job queued, decoded, composed, and compiled. That holds for geology skins AND for
+  // fx dressing bodies (claim outposts, site relays, POI props), whose procedural body
+  // is the same silhouette the entity drew before admission. The commit swaps the
+  // fallback out and the fail path already re-shows it. Place props whose temporary is
+  // an empty substrate keep it hidden — PIC-11 publishes no placeholder geometry for a
+  // missing world-place prop, and an empty root is no stand-in anyway.
+  let fallbackHasBody = false;
+  fallbackRoot.traverse((object) => { if (object && object.isMesh) fallbackHasBody = true; });
+  fallbackRoot.visible = geologySkin ? true : fallbackHasBody;
+  if (fallbackHasBody || geologySkin) boundary.userData.authoredPendingFallbackDrawn = true;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
   // The matching procedural geology body stays local to the boundary as the visible stand-in
@@ -5019,10 +5064,68 @@ function rootHiddenByAncestor(root) {
   return false;
 }
 
-function entityIsOnReadableGlass(entity) {
+const _glassDelta = { x: 0, z: 0 };
+
+// Mirror of the renderer-side liveTableCamera defaults (zoom 144, fov 50, tilt 60, 16:9):
+// the authored queue reads window.SF.state only, so the table math is replicated here rather
+// than imported through a partsLibrary -> renderer cycle.
+function authoredLiveTableCamera(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  return {
+    zoom: Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144),
+    fov: Number.isFinite(camera.fov) ? camera.fov
+      : (Number.isFinite(video.fov) ? video.fov : 50),
+    tilt: Number.isFinite(camera.tilt) ? camera.tilt : 60,
+    aspect: Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9,
+  };
+}
+
+function entityIsExplicitRenderFocus(entity, state) {
+  if (!entity || !state) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true) return true;
+  if (entity.flags && (entity.flags.forceRender || entity.flags.neverCull)) return true;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const targetId = state.player && state.player.targetId != null
+    ? state.player.targetId
+    : player && player.targetId;
+  return targetId != null && entity.id === targetId;
+}
+
+/**
+ * The renderer's readable-glass law, replicated for the authored queue: tier, explicit focus,
+ * then the geometric band. The activity tier trails the camera by a whole classification pass,
+ * so a body whose hull already intersects the glass — but whose R0 tier has not caught up —
+ * used to sit at background priority and the player watched its stand-in. The geometric test
+ * answers that case at once.
+ */
+function entityIsOnReadableGlass(entity, state = undefined) {
   if (!entity || entity.alive === false) return false;
   const activity = entity.activity || {};
-  return activity.presentationTier === PRESENTATION_TIER.R0_GLASS;
+  if (activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
+  const live = state || authoredRuntimeState();
+  if (!live) return false;
+  if (entityIsExplicitRenderFocus(entity, live)) return true;
+  const player = live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId)
+    : null;
+  if (!player || !player.pos || !entity.pos) return false;
+  const cam = authoredLiveTableCamera(live);
+  const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  const delta = tableLookAtDelta(live, player.pos, entity.pos, _glassDelta);
+  const band = classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
+    radius: entityPresenceRadius(entity),
+  });
+  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
 }
 
 export function entityIsOnscreen(entity, state) {

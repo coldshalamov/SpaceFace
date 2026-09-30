@@ -63,6 +63,9 @@ const EMPTY_SWEEP_LIST = Object.freeze([]);
 const DEGENERATE_SEP2 = 1e-24;
 const DEGENERATE_SEP_CLAMP = 0.0001;
 const _contactNormalScratch = { x: 1, z: 0 };
+// Scratch pos arg for emitPhysicsImpact: it copies x/z into the emitted payload, so the
+// per-emit `{x,z}` literal is wasted work in a contact storm.
+const _contactPosScratch = { x: 0, z: 0 };
 // D35: the Rapier module import + WASM init behind `createSg02DynamicBodyOwner` has no internal
 // bound, so `prepareBackend` used to await `_sg02Init` with no deadline. Both startup gates
 // (new-game waitForPhysics, load finalizeLoadedGame) hold the session at mode:'loading' with
@@ -1021,7 +1024,8 @@ export const physics = {
       const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
       pushApart(a, b, dist, dx, dz, material.push);
       const impulseMag = impulse(a, b, nx, nz, material);
-      emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z }, impactOptions);
+      _contactPosScratch.x = a.pos.x; _contactPosScratch.z = a.pos.z;
+      emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
       return;
     }
     // ship/ship and ship/asteroid: separate + restitution impulse
@@ -1031,7 +1035,8 @@ export const physics = {
     const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
     pushApart(a, b, dist, dx, dz, material.push);
     const impulseMag = impulse(a, b, nx, nz, material);
-    const impactDp = emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z }, impactOptions);
+    _contactPosScratch.x = a.pos.x; _contactPosScratch.z = a.pos.z;
+    const impactDp = emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
     bus.emit('collision', {
       aId: a.id,
       bId: b.id,
@@ -1601,12 +1606,17 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     preSolveClosingSpeed: options.preSolveClosingSpeed,
     playerContact: playerInvolved,
   });
+  // Pair key is built once here: audio/vfx/hud each used to re-derive the same
+  // `min\0max` string per emit to dedupe, so a contact storm paid the alloc N times.
+  const aKey = String(a.id);
+  const bKey = String(b.id);
   const payload = {
     consequenceKernelVersion: 1,
     backend: String(options.backend || 'custom'),
     tick: Number.isFinite(options.tick) ? Math.max(0, Math.trunc(options.tick)) : Math.max(0, Math.trunc(state && state.tick || 0)),
     aId: a.id,
     bId: b.id,
+    pairKey: aKey < bKey ? `${aKey}\u0000${bKey}` : `${bKey}\u0000${aKey}`,
     dp,
     trauma,
     impulse: finiteOrZero(impulseMag),
