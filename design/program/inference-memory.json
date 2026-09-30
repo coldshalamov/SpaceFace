@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "verb-09-helios-impulse-charge",
-      "date": "2026-09-22",
-      "wf": "WF-06",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Helios Station authors cmdty_impulse_charge as a produced line, so the starter station deepens local stock for the combat verb instead of the neutral listing",
-      "fingerprint": "verb=buy,subject=impulse-charge,sector=helios,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "40a2f2c4c",
-      "verification": "focused_green"
-    },
-    {
       "id": "world-14-research-sensor-sweep",
       "date": "2026-09-22",
       "wf": "WF-12",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "c8c91ef1d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "TEACH-09",
+      "date": "2026-09-30",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Help lists every live pad binding, including accept, station tabs, hull burst, and chords, and follows a rebind.",
+      "fingerprint": "verb=read,subject=pad-chords,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "de93113c9",
       "verification": "focused_green"
     }
   ],
