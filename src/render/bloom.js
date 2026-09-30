@@ -1040,6 +1040,15 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardWrapped = true;
 }
 
+// Mounts under a scene descendant (socket.add, mesh.add, parent.add) never touch the
+// scene.add hook — the known nested-mount helpers record the attached root here and the
+// guard drains it the same way the next presented pass.
+const pendingNestedMountedRoots = [];
+
+export function recordMountedRootForUnreadyScan(object) {
+  if (object && object.isObject3D === true) pendingNestedMountedRoots.push(object);
+}
+
 export function createUnreadyDrawableGuard(renderer) {
   installUnreadyDrawGuard(renderer);
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
@@ -1130,6 +1139,15 @@ export function createUnreadyDrawableGuard(renderer) {
       return;
     }
     ensureSceneMountWatch(scene);
+    // Fold nested-mount records into the drain only when their ancestor chain reaches this
+    // scene — a mount recorded for another graph or detached before the pass stays out.
+    if (pendingNestedMountedRoots.length) {
+      for (const root of pendingNestedMountedRoots.splice(0, pendingNestedMountedRoots.length)) {
+        let top = root;
+        while (top && top.parent) top = top.parent;
+        if (top === scene) unreadyMountedRoots.push(root);
+      }
+    }
     const sceneChildren = scene.children || [];
     const sceneSetChanged = sceneChildren.length !== unreadySceneChildCount
       || sceneChildren[sceneChildren.length - 1] !== unreadySceneChildTail;
@@ -1139,7 +1157,8 @@ export function createUnreadyDrawableGuard(renderer) {
     // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
     // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
     if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
-      && programs[programs.length - 1] === unreadyProgramTail && !sceneSetChanged) return;
+      && programs[programs.length - 1] === unreadyProgramTail
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
     unreadyProgramsPending = false;
     unreadyProgramCount = programs.length;
     unreadyProgramTail = programs[programs.length - 1] || null;
@@ -1154,13 +1173,13 @@ export function createUnreadyDrawableGuard(renderer) {
       if (!ready) { unreadyProgramsPending = true; break; }
     }
     if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
-      && !sceneSetChanged) return;
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
     unreadyCheckedMaterials.clear();
     unreadyHiddenMaterials.clear();
     admissionScene = scene;
     admissionPendingSubjects = pendingSubjects;
     const drainRoots = unreadyMountedRoots.length > 0
-      && sceneSetChanged ? unreadyMountedRoots.splice(0, unreadyMountedRoots.length) : null;
+      ? unreadyMountedRoots.splice(0, unreadyMountedRoots.length) : null;
     // Anything still queued was detached before this pass or covered by the full traverse —
     // drop it so stale roots never accumulate.
     unreadyMountedRoots.length = 0;

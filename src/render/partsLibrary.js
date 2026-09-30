@@ -36,6 +36,7 @@ import {
   tableTravelSpeed,
 } from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
@@ -84,7 +85,7 @@ import {
   isPlaceLayerBlockingFlightReady,
   selectPlacePackageLayer,
 } from './flightReadySet.js';
-import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
+import { PRESENTATION_TIER } from '../world/activityClassification.js';
 import { canonicalizeObjectSurfaceProgramKeys, canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
@@ -1284,9 +1285,12 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       // second generation — `place` for the spindle, `pod` for the capsule.
       plan = { [authoredPayloadSlotForEntity(entity)]: [authoredPayloadFileForEntity(entity)] };
     } else {
-      const placeFile = placeFileForEntity(entity);
+      // Same resolution order as the decode runway: census dressing (drones, gate stations,
+      // site props) claims its packaged file before the generic place mapping.
+      const censusFile = resolve19305CensusAEntityPackagedFile(entity);
+      const placeFile = censusFile || placeFileForEntity(entity);
       if (placeFile) {
-        const overlay = tradeHubOverlayFileForEntity(entity);
+        const overlay = censusFile ? null : tradeHubOverlayFileForEntity(entity);
         plan = { place: overlay ? [placeFile, overlay] : [placeFile] };
       }
     }
@@ -2319,7 +2323,19 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'Ship'}_AuthoredAssetBoundary`;
-  fallbackRoot.visible = false;
+  // The procedural hull stays drawn for the whole admission window (wrap → commit), same
+  // contract as the place wrap: hiding it left only the abstract marker on the glass — "a
+  // ship will be a box and then it'll be a ship". The fallback's programs are already
+  // linked (it was the visible ship an instant ago) so drawing it submits no new work.
+  // The commit swaps the fallback out and the fail path already re-shows it.
+  let fallbackHasBody = false;
+  fallbackRoot.traverse((object) => { if (object && object.isMesh) fallbackHasBody = true; });
+  // requiredWholeShip is authored-or-nothing by contract: a procedural stand-in would publish
+  // a non-authored identity for a body the rung declared must be authored-only (fail closed).
+  const fallbackHidden = options.requiredWholeShip === true
+    || requiresProductionWholeShipForEntity(entity);
+  fallbackRoot.visible = fallbackHidden ? false : fallbackHasBody;
+  if (fallbackRoot.visible) boundary.userData.authoredPendingFallbackDrawn = true;
   boundary.add(fallbackRoot);
   // A substrate carrying a resolving marker keeps exactly one drawable while admission is
   // pending — the marker is abstract by design, so this never publishes a substitute identity.
@@ -3223,6 +3239,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
       isResidencyOwnerActive: options.isResidencyOwnerActive,
+      admissionDeadline: true,
     });
   } catch (error) {
     handoffBootstrapIfCovered(renderer);
@@ -3261,6 +3278,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
         residencyRole: options.residencyRole,
         sectorId: options.sectorId,
         isResidencyOwnerActive: options.isResidencyOwnerActive,
+        admissionDeadline: true,
       });
     } catch (error) {
       overlayRecord = null;
@@ -4719,8 +4737,10 @@ function backgroundUpgradePriority(job) {
   // promotes itself instead of waiting out the background backlog. Checked
   // before the mode gate: the load window has no flight rungs, and a glass body
   // the opening frame shows is exactly the set the belt tail left compiling
-  // behind staged furniture.
-  if (entityIsOnReadableGlass(entity)) return 1.5;
+  // behind staged furniture. The strict band, not readable glass: explicit-focus
+  // owners (player, locked target) carry their own rungs and must not tie the
+  // on-glass set from off the frame.
+  if (entityIsOnAuthoredGlassBand(entity, liveState)) return 1.5;
   // The law of the glass as an admission rung (ZERO_TO_HERO 5.12): a body the
   // composed frame shows outranks every body it does not — load window included,
   // where the arrival distance grade used to be the only ordering left and near
@@ -5065,6 +5085,7 @@ function rootHiddenByAncestor(root) {
 }
 
 const _glassDelta = { x: 0, z: 0 };
+const _glassDelta2 = { x: 0, z: 0 };
 
 // Mirror of the renderer-side liveTableCamera defaults (zoom 144, fov 50, tilt 60, 16:9):
 // the authored queue reads window.SF.state only, so the table math is replicated here rather
@@ -5103,6 +5124,45 @@ function entityIsExplicitRenderFocus(entity, state) {
  * used to sit at background priority and the player watched its stand-in. The geometric test
  * answers that case at once.
  */
+function entityIsOnAuthoredGlassBand(entity, live) {
+  if (!entity || entity.alive === false || !live) return false;
+  const activity = entity.activity || {};
+  if (activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
+  // Strictly geometric — no explicit-focus term. Player/target-lock bodies carry their own
+  // rungs (player 0, locked target 2); counting them "on the glass" here would let an
+  // off-glass locked wreck tie the bodies actually in the picture at 1.5.
+  const player = live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId)
+    : null;
+  if (!player || !player.pos || !entity.pos) return false;
+  // Same camera proof the opening-frame rung requires: the live picture or the zoom it is
+  // opening toward. The player's requested wheel alone proves nothing yet — an uncomposed
+  // camera leaves the arrival distance grades untouched by design.
+  const camera = live.camera || {};
+  const liveZoom = Number(camera.liveZoom);
+  const composed = Number(camera.composedZoom);
+  const zoom = Number.isFinite(liveZoom) || Number.isFinite(composed)
+    ? Math.max(Number.isFinite(liveZoom) ? liveZoom : 0, Number.isFinite(composed) ? composed : 0)
+    : null;
+  if (!(zoom > 0)) return false;
+  const video = live.settings && live.settings.video || {};
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const glass = glassHalfExtents(zoom, fov, aspect, tilt);
+  const delta = tableLookAtDelta(live, player.pos, entity.pos, _glassDelta2);
+  const band = classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
+    radius: entityVisualCullRadius(entity, entity.mesh),
+  });
+  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
+}
+
 function entityIsOnReadableGlass(entity, state = undefined) {
   if (!entity || entity.alive === false) return false;
   const activity = entity.activity || {};
@@ -5123,7 +5183,7 @@ function entityIsOnReadableGlass(entity, state = undefined) {
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: TABLE_FRAME_SKIRT_WU,
-    radius: entityPresenceRadius(entity),
+    radius: entityVisualCullRadius(entity, entity.mesh),
   });
   return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
 }
@@ -5145,7 +5205,7 @@ export function entityIsOnscreen(entity, state) {
     const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     const frustum = new THREE.Frustum().setFromProjectionMatrix(projection);
     // Sphere, not point: a big authored body is onscreen while its centre is off it.
-    const presence = entityPresenceRadius(entity);
+    const presence = entityVisualCullRadius(entity, root);
     const center = root.getWorldPosition(new THREE.Vector3());
     return frustum.intersectsSphere(new THREE.Sphere(center, Math.max(presence, 0.001)));
   } catch {

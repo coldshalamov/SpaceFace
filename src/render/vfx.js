@@ -4974,6 +4974,13 @@ export const vfx = {
 
   _collisionPatternSerial(p) {
     let hash = Math.trunc(Number(p && p.tick) || Number(this.state && this.state.tick) || 0);
+    // physics:impact already carries the joined pair string — one pass instead of two
+    // String() coercions plus a channel loop per emitted contact.
+    if (p && typeof p.pairKey === 'string') {
+      const text = p.pairKey;
+      for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+      return hash | 0;
+    }
     for (let channel = 0; channel < 2; channel++) {
       const value = channel === 0
         ? p && (p.aId ?? p.targetId)

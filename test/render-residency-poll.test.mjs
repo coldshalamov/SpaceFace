@@ -209,11 +209,13 @@ test('residency service runs full recovery once, then drains without repeating s
   };
 
   assert.equal(serviceRenderMeshResidency(owner, 1 / 60), 'full');
-  assert.deepEqual(calls, ['full']);
+  // The reconcile frame folds the budgeted drain in rather than stranding the queue a
+  // frame per poll — 'full' still means exactly one recovery scan, never a repeat.
+  assert.deepEqual(calls, ['full', 'drain']);
   assert.equal(owner._renderResidencyPollS, 0.25);
   assert.equal(serviceRenderMeshResidency(owner, 1 / 60), 'drain');
-  assert.deepEqual(calls, ['full', 'drain']);
-  assert.equal(serviceRenderMeshResidency(owner, 1 / 60), 'drain');
+  assert.deepEqual(calls, ['full', 'drain', 'drain']);
+  assert.equal(serviceRenderMeshResidency(owner, 1 / 60), 'idle');
   assert.deepEqual(calls, ['full', 'drain', 'drain']);
 
   owner._renderResidencyPollS = 0;

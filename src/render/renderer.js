@@ -6,6 +6,7 @@ import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import {
@@ -682,72 +683,9 @@ const SECTOR_POST_GRADE = 0.45;
 const SECTOR_POST_TOE = DEFAULT_CINEMATIC_TOE;
 const SECTOR_POST_VIGNETTE = 0.12;
 
-const _drawnCullBox = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
-
-/**
- * True drawn reach for an authored root that carries no authored visualBounds: measure the
- * real envelope once and cache it on userData. station_helios draws 549x420 WU half-extents
- * against a 90 WU dock radius, so collision-proxied radii hide limbs that are still on the
- * glass. The stamp mirrors cameraClearanceBoxForMesh — field equality, never a per-call
- * string. A pending substrate (authoredAssetState not yet 'authored*') must not define the
- * size, so callers only reach this once the authored body has landed.
- */
-function drawnCullRadiusForMesh(mesh) {
-  const data = mesh && mesh.userData;
-  if (!data || mesh.isObject3D !== true || !_drawnCullBox) return 0;
-  const assetState = data.authoredAssetState || '';
-  const compositionId = data.authoredCompositionId || '';
-  const lodLevel = data.wholeShipLodActiveLevel || '';
-  const childCount = mesh.children ? mesh.children.length : 0;
-  const cached = data.drawnCullRadius;
-  if (cached && cached.assetState === assetState && cached.compositionId === compositionId
-    && cached.lodLevel === lodLevel && cached.childCount === childCount) {
-    return cached.radius;
-  }
-  _drawnCullBox.setFromObject(mesh);
-  let radius = 0;
-  if (!_drawnCullBox.isEmpty()) {
-    const b = _drawnCullBox;
-    const px = mesh.position ? mesh.position.x : 0;
-    const pz = mesh.position ? mesh.position.z : 0;
-    // Farthest XZ corner from the root's own position — the body may sit off-centre.
-    radius = Math.max(
-      Math.hypot(b.min.x - px, b.min.z - pz),
-      Math.hypot(b.min.x - px, b.max.z - pz),
-      Math.hypot(b.max.x - px, b.min.z - pz),
-      Math.hypot(b.max.x - px, b.max.z - pz),
-    );
-  }
-  const rec = cached || (data.drawnCullRadius = {});
-  rec.assetState = assetState;
-  rec.compositionId = compositionId;
-  rec.lodLevel = lodLevel;
-  rec.childCount = childCount;
-  rec.radius = radius;
-  return radius;
-}
-
-/** Use authored XZ bounds for view culling without changing gameplay/collision radius. */
-export function entityVisualCullRadius(entity, mesh = null) {
-  // Presence, not collision: a station's drawn envelope reaches data.dockRadius while
-  // entity.radius is only the small collision proxy, so a hull centred just off-screen
-  // still culls as the size it actually draws at.
-  const presence = entityPresenceRadius(entity);
-  const data = mesh && mesh.userData;
-  const hull = data && data.hull;
-  const bounds = hull && hull.userData && hull.userData.visualBounds
-    || data && data.visualBounds;
-  const size = bounds && bounds.size;
-  if (Array.isArray(size)) {
-    const x = Math.max(0, Number(size[0]) || 0);
-    const z = Math.max(0, Number(size[2]) || 0);
-    return Math.max(presence, Math.hypot(x, z) * 0.5);
-  }
-  if (data && String(data.authoredAssetState || '').startsWith('authored')) {
-    return Math.max(presence, drawnCullRadiusForMesh(mesh));
-  }
-  return presence;
-}
+// entityVisualCullRadius + drawnCullRadiusForMesh live in ./visualCullRadius.js so the
+// partsLibrary glass mirror measures the same envelope the renderer does.
+export { entityVisualCullRadius };
 
 /**
  * Return only attached entity roots that can contribute to the current first camera picture.
@@ -1040,10 +978,13 @@ function renderAdmissionEnv(state, out = _admissionEnv) {
   // is still damping, entities already inside the requested frame would otherwise wait for the
   // catch-up before their decode starts. The deny side keeps live zoom (see renderResidencyRadius).
   out.glassR = glassCornerWu(cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
+  // The chase focus IS the frame's destination: at speed it leads the player ~400 WU, so a
+  // capped anchor would let the admission centre trail the actual glass by that whole lead.
+  // When focus is finite it is the anchor; only the no-focus fallback uses the player pos.
   const anchor = admissionAnchorPos(
     state,
     player && player.pos,
-    Math.max(160, out.glassR),
+    Number.POSITIVE_INFINITY,
     _admissionAnchor,
   );
   out.anchorX = anchor.x;
@@ -2452,16 +2393,16 @@ function kickDecodeRunwayAssets(owner, entities) {
   // to contact always claims it first. Only the first two in that order can ever
   // start, so a single linear pass keeps the two best instead of fully sorting the
   // whole list (the comparator used to re-evaluate both keys on every pair).
+  const resolvedFiles = new Map();
   const ordered = pickDecodeRunwayCandidates(list, (entity, key) => {
     if (!entity || entity.alive === false) return false;
     // The runway is not ship-only: wrecks/payloads/beacons carry the same GLB-decode
     // long pole on first contact (packagedPropSpec covers payload/beacon/assetRef-mapped
     // and explicit packagedPropFile props; wrecks decode a 'place'-slot hulk/aftermath
     // body). Ship and station still take the full authored plan.
-    const packagedBody = entity.type === 'ship' || entity.type === 'station'
-      ? true
-      : !!packagedDecodeFileForEntity(entity);
-    if (!packagedBody) return false;
+    const wholePlan = entity.type === 'ship' || entity.type === 'station';
+    const resolved = wholePlan ? null : packagedDecodeFileForEntity(entity);
+    if (!wholePlan && !resolved) return false;
     if (!meshNeedsAuthoredDecode(owner, entity)) return false;
     if (pending.has(entity.id)) return false;
     // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
@@ -2475,6 +2416,7 @@ function kickDecodeRunwayAssets(owner, entities) {
     if (!wave
         && !isEntityAuthoredUpgradeRelevant(entity, state)
         && !(seconds <= TABLE_DECODE_RUNWAY_SECONDS)) return false;
+    if (resolved) resolvedFiles.set(entity.id, resolved);
     key.wave = wave ? 0 : 1;
     key.seconds = seconds;
     return true;
@@ -2482,9 +2424,9 @@ function kickDecodeRunwayAssets(owner, entities) {
   let started = 0;
   for (let i = 0; i < ordered.length && started < 2; i++) {
     const entity = ordered[i];
-    pending.add(entity.id);
-    started += 1;
     if (entity.type === 'ship' || entity.type === 'station') {
+      pending.add(entity.id);
+      started += 1;
       const opts = entityMatchesWaveHullRunway(entity, state)
         ? { residencyRole: 'wave-hull-decode-runway' }
         : {};
@@ -2495,7 +2437,15 @@ function kickDecodeRunwayAssets(owner, entities) {
     } else {
       // Non-ship packaged bodies have no authored plan — the decode is one file under its
       // authored slot, file-deduped against the whole sector run.
-      warmPackagedEntityDecode(owner, entity).finally(() => {
+      const resolved = resolvedFiles.get(entity.id) || packagedDecodeFileForEntity(entity);
+      const fkey = resolved && resolved.file ? `${resolved.slot}::${resolved.file}` : null;
+      const inFlight = owner._decodeRunwayPackagedFiles;
+      // A file already in flight decodes for the whole same-file cohort — claiming a start
+      // slot for it would burn one of the two per-poll slots on a no-op.
+      if (!fkey || (inFlight && inFlight.has(fkey))) continue;
+      pending.add(entity.id);
+      started += 1;
+      warmPackagedEntityDecode(owner, entity, resolved).finally(() => {
         pending.delete(entity.id);
       });
     }
@@ -2522,22 +2472,23 @@ function packagedDecodeFileForEntity(entity) {
     // without the census/place resolvers they decode cold at admission and pop in.
     const censusFile = resolve19305CensusAEntityPackagedFile(entity);
     if (censusFile) return { file: censusFile, slot: 'place' };
-    if (entity.type === 'fx' || entity.type === 'place' || entity.type === 'dressing') {
-      const placeFile = resolvePlaceFileForEntity(entity);
-      if (placeFile) return { file: placeFile, slot: 'place' };
-    }
+    // resolvePlaceFileForEntity self-gates (no explicit authored mapping → null), so any
+    // type may claim a packaged file — authored-geology asteroids, anomaly rows, and
+    // dressing materializations all decode through the runway rather than cold at wrap.
+    const placeFile = resolvePlaceFileForEntity(entity);
+    if (placeFile) return { file: placeFile, slot: 'place' };
     return null;
   } catch (_) {
     return null;
   }
 }
 
-function warmPackagedEntityDecode(owner, entity) {
+function warmPackagedEntityDecode(owner, entity, resolvedOverride = null) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
   if (!state || !renderer || !entity) return Promise.resolve();
   const files = owner._decodeRunwayPackagedFiles || (owner._decodeRunwayPackagedFiles = new Set());
-  const resolved = packagedDecodeFileForEntity(entity);
+  const resolved = resolvedOverride || packagedDecodeFileForEntity(entity);
   if (!resolved || !resolved.file) return Promise.resolve();
   const key = `${resolved.slot}::${resolved.file}`;
   if (files.has(key)) return Promise.resolve();
@@ -2572,7 +2523,18 @@ function kickSpawnedEntityDecode(owner, entity) {
   if (!entity || entity.alive === false || entity.isPlayer === true) return;
   const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
   if (pending.has(entity.id)) return;
-  if (entity.type === 'ship') {
+  // Every spawned entity reaching this kick would otherwise post a deadline-class decode in
+  // arrival order — far-field spawns nowhere near the glass included — ahead of genuinely
+  // closing work the poll ordered first. Apply the poll's own eligibility so the kick only
+  // accelerates true runway candidates.
+  const inRunway = entityMatchesWaveHullRunway(entity, state)
+    || isEntityAuthoredUpgradeRelevant(entity, state)
+    || entityTimeToGlassSeconds(entity, renderAdmissionEnv(state), state,
+        TABLE_DECODE_RUNWAY_SECONDS,
+        approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state)))
+      <= TABLE_DECODE_RUNWAY_SECONDS;
+  if (!inRunway) return;
+  if (entity.type === 'ship' || entity.type === 'station') {
     if (!meshNeedsAuthoredDecode(owner, entity)) return;
     pending.add(entity.id);
     Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {
@@ -2621,6 +2583,30 @@ function warmKillHulkDecode(owner, entity) {
   }).catch(() => {}).finally(() => {
     files.delete(file);
   });
+}
+
+/**
+ * Continue-route decode runway: the restored save's serialized entities name every ship,
+ * station, and packaged body the sector will rematerialize. Warming their authored files the
+ * moment the envelope resolves overlaps the whole chunked restore — by the time each spawn
+ * fires its ordinary kick, the GLB is already decoded or in flight. Records are durable
+ * specs (id space differs from live ids, so the entity-id dedupe does not apply); the
+ * loader's url::slot dedupe keeps repeated records to one decode per file.
+ */
+function warmSaveEnvelopeEntityDecode(owner, entity) {
+  const renderer = owner && owner.renderer;
+  if (!renderer || !entity || entity.alive === false || entity.isPlayer === true) return;
+  if (entity.type === 'ship' || entity.type === 'station') {
+    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {
+      residencyRole: 'save-envelope-decode-runway',
+      sectorId: null,
+    })).catch(() => {});
+    warmKillHulkDecode(owner, entity);
+    return;
+  }
+  if (packagedDecodeFileForEntity(entity)) {
+    Promise.resolve(warmPackagedEntityDecode(owner, entity)).catch(() => {});
+  }
 }
 
 /**
@@ -11074,6 +11060,10 @@ export const render = {
     onBus('survivalArena:installed', (p) => globalLawArenaDressing.handleInstall(p, this.scene));
     onBus('survivalArena:released', () => globalLawArenaDressing.handleReleased());
     onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
+    // Continue decode runway — the worker-prepared envelope arrives before restore clears
+    // the live world; its entity histogram is the only prefetch source that names the saved
+    // sector's exact authored set this early.
+    onBus('save:envelopePrepared', (p) => this._prefetchSaveEnvelopeVisuals(p));
     // Between-round roster warm: every swarm wave ends in the armory, and the next wave's
     // newcomer set is fixed by its number, so the eligible-minus-covered cohort builds and
     // compiles during the shop dwell rather than inside the launch cook or the next round.
@@ -11518,6 +11508,19 @@ export const render = {
     const keys = collectWaveHullDecodeKeys(plan);
     noteWaveHullRunwayKeys(this.state, keys);
     return kickWaveHullDecodeAssets(this, keys);
+  },
+
+  // The save system's envelope prepare names the exact hull/place set the saved sector will
+  // rematerialize — warm every mapped decode ahead of the chunked restore's spawn events.
+  _prefetchSaveEnvelopeVisuals(payload) {
+    const data = payload && payload.data;
+    if (!data || !this.renderer) return;
+    const entities = data.entities;
+    if (!entities || typeof entities !== 'object') return;
+    const persistent = Array.isArray(entities.persistent) ? entities.persistent : [];
+    for (const record of persistent) warmSaveEnvelopeEntityDecode(this, record);
+    // The saved player restores through the authored-hero path; persistent NPC ships are
+    // the runway cost this warms. Stations/places ride the same record list.
   },
 
   // PQ-210.00 Crucible roster prewarm. A wave that introduces a hull the GPU has never drawn
@@ -17123,14 +17126,21 @@ function lerp(a, b, t) {
 
 function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
   if (!scene || !previousEnvMap || !nextEnvMap) return;
-  scene.traverse((node) => {
+  const rebind = (node) => {
     const materials = Array.isArray(node && node.material) ? node.material : [node && node.material];
     for (const material of materials) {
       if (!material || material.envMap !== previousEnvMap) continue;
       material.envMap = nextEnvMap;
       material.needsUpdate = true;
     }
-  });
+  };
+  scene.traverse(rebind);
+  // Detached prepared authored roots park off the scene graph (deferred publication) and mount
+  // later — the envMap they captured at admission must re-point with the re-bake too or the
+  // parked body publishes dead reflections.
+  for (const root of collectPreparedAuthoredCompileRoots(scene)) {
+    if (root && typeof root.traverse === 'function') root.traverse(rebind);
+  }
 }
 
 function disposeObject(obj) {

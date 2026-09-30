@@ -1588,6 +1588,16 @@ function impulse(a, b, nx, nz, material) {
   return Math.abs(j);
 }
 
+// emitPhysicsImpact is synchronous and non-reentrant — the trauma-call context literal it used
+// to allocate per contact lives here and never escapes the emit.
+const _impactTraumaCtx = {
+  mode: 'flight',
+  playerDeltaV: 0,
+  feelDeltaV: undefined,
+  preSolveClosingSpeed: undefined,
+  playerContact: false,
+};
+
 function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options = {}) {
   if (!bus || typeof bus.emit !== 'function') return 0;
   const dp = Math.max(0, finiteOrZero(impulseMag) * Math.max(0, finiteOrZero(material && material.impactScale) || 1));
@@ -1599,13 +1609,13 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     const player = a.id === playerId ? a : b;
     playerDeltaV = dp / Math.max(0.1, finiteOrZero(player && player.mass) || 1);
   }
-  const trauma = traumaFromContact(dp, {
-    mode: state && state.mode || 'flight',
-    playerDeltaV,
-    feelDeltaV: options.preSolveClosingSpeed,
-    preSolveClosingSpeed: options.preSolveClosingSpeed,
-    playerContact: playerInvolved,
-  });
+  const ctx = _impactTraumaCtx;
+  ctx.mode = state && state.mode || 'flight';
+  ctx.playerDeltaV = playerDeltaV;
+  ctx.feelDeltaV = options.preSolveClosingSpeed;
+  ctx.preSolveClosingSpeed = options.preSolveClosingSpeed;
+  ctx.playerContact = playerInvolved;
+  const trauma = traumaFromContact(dp, ctx);
   // Pair key is built once here: audio/vfx/hud each used to re-derive the same
   // `min\0max` string per emit to dedupe, so a contact storm paid the alloc N times.
   const aKey = String(a.id);

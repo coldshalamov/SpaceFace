@@ -118,12 +118,19 @@ export function createGlbPrepasser(options = {}) {
       if (worker.current) continue;
       // Deadline-class jobs splice ahead of queued ambient jobs (FIFO within each class),
       // mirroring the shared decode budget's waiter order — a deadline decode must not sit
-      // behind a deep ambient queue waiting for a free worker.
+      // behind a deep ambient queue waiting for a free worker. A sustained deadline stream
+      // must not starve ambient work forever either: after two consecutive deadline pickups
+      // the oldest waiting ambient job ages into a slot.
       let idx = queue.findIndex((job) => job.decodeClass === 'deadline');
       if (idx < 0) idx = 0;
+      else if ((worker.deadlineStreak || 0) >= 2) {
+        const ambientIdx = queue.findIndex((job) => job.decodeClass !== 'deadline');
+        if (ambientIdx >= 0) idx = ambientIdx;
+      }
       const job = queue.splice(idx, 1)[0];
+      worker.deadlineStreak = job.decodeClass === 'deadline' ? (worker.deadlineStreak || 0) + 1 : 0;
       worker.current = job;
-      budget.acquire(job.decodeClass || (deadlineDecodeActive() ? 'deadline' : 'ambient')).then((release) => {
+      budget.acquire(job.decodeClass).then((release) => {
         if (worker.current !== job) { release(); return; } // retired while waiting for the token
         job.release = release;
         try {

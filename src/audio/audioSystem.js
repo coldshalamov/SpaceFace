@@ -573,6 +573,31 @@ function collisionAcousticMass(mass, type) {
   return Number.isFinite(mass) && mass > 0 ? mass : COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN;
 }
 
+// Contact-admission scratches — _onCollision fills these per admitted contact and every
+// callee (resolveCollisionCue, play, _applyWeightDuck) only reads fields synchronously, so
+// the literals never escape.
+const _collisionCueArg = {
+  dp: 0,
+  impulse: 0,
+  massA: null,
+  massB: null,
+  typeA: undefined,
+  typeB: undefined,
+  closingSpeed: undefined,
+  hullDamage: undefined,
+};
+const _collisionPlayOpts = {
+  position: null,
+  gain: 1,
+  rate: 1,
+  ladderId: undefined,
+};
+const _collisionDuckArg = {
+  mass: 0,
+  dp: 0,
+  importance: 0,
+};
+
 export function resolveCollisionCue(input) {
   const src = input || {};
   const acousticMass = Math.max(
@@ -3303,20 +3328,28 @@ export const audio = {
     }
     this._collisionCueTick = tick;
     if (p.aId == null || p.bId == null) return true;  // unidentifiable contacts stay audible
-    const a = String(p.aId);
-    const b = String(p.bId);
-    if (a === b) return true;
     // physics:impact carries the pre-joined pair key (same min\0max law); the collision
-    // twin and any older emitter may not, so keep the local build as the fallback.
-    const key = typeof p.pairKey === 'string' ? p.pairKey
-      : (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+    // twin and any older emitter may not, so keep the local build as the fallback. The
+    // self-contact check answers without stringizing when the key is already present.
+    let key = typeof p.pairKey === 'string' ? p.pairKey : null;
+    if (key == null) {
+      const a = String(p.aId);
+      const b = String(p.bId);
+      if (a === b) return true;
+      key = a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+    } else if (p.aId === p.bId) return true;
     const dp = Number.isFinite(p.dp) ? p.dp : Number.isFinite(p.impulse) ? p.impulse : 0;
     const prev = this._collisionCueContacts.get(key);
     if (prev && tick - prev.tick < COLLISION_CUE_COOLDOWN_TICKS
       && !(dp > prev.dp * COLLISION_CUE_UPGRADE_RATIO)) {
       return false;
     }
-    if (!this._collisionCueContacts.has(key) && this._collisionCueContacts.size >= COLLISION_CUE_PAIR_CAP) {
+    if (prev) {
+      prev.tick = tick;
+      prev.dp = dp;
+      return true;
+    }
+    if (this._collisionCueContacts.size >= COLLISION_CUE_PAIR_CAP) {
       const oldest = this._collisionCueContacts.keys().next();
       if (!oldest.done) this._collisionCueContacts.delete(oldest.value);
     }
@@ -3328,41 +3361,38 @@ export const audio = {
     if (!p) return;
     if (!this._admitCollisionCue(p)) return;
     const entities = this.state && this.state.entities;
-    const pick = (id) => {
-      if (!entities) return null;
-      const e = typeof entities.get === 'function' ? entities.get(id) : entities[id];
-      return e || null;
-    };
-    const a = pick(p.aId);
-    const b = pick(p.bId);
-    const cue = resolveCollisionCue({
-      dp: p.dp,
-      impulse: p.impulse,
-      massA: a && Number.isFinite(a.mass) ? a.mass : null,
-      massB: b && Number.isFinite(b.mass) ? b.mass : null,
-      typeA: a ? a.type : undefined,
-      typeB: b ? b.type : undefined,
-      // The slam-vs-kiss pitch bend reads the pre-solve closing speed; the solver's per-tick dp
-      // clamp must not flatten a 150 WU/s ram into a 40 WU/s answer.
-      closingSpeed: p.preSolveClosingSpeed,
-      hullDamage: Number.isFinite(p.hullDamage) ? p.hullDamage : undefined,
-    });
-    const voice = this.play(cue.recipeId, {
-      position: p.pos,
-      gain: cue.gain,
-      rate: cue.rate,
-      ladderId: cue.ladderId || undefined,
-    });
+    const a = !entities ? null
+      : (typeof entities.get === 'function' ? entities.get(p.aId) : entities[p.aId]) || null;
+    const b = !entities ? null
+      : (typeof entities.get === 'function' ? entities.get(p.bId) : entities[p.bId]) || null;
+    const cueArg = _collisionCueArg;
+    cueArg.dp = p.dp;
+    cueArg.impulse = p.impulse;
+    cueArg.massA = a && Number.isFinite(a.mass) ? a.mass : null;
+    cueArg.massB = b && Number.isFinite(b.mass) ? b.mass : null;
+    cueArg.typeA = a ? a.type : undefined;
+    cueArg.typeB = b ? b.type : undefined;
+    // The slam-vs-kiss pitch bend reads the pre-solve closing speed; the solver's per-tick dp
+    // clamp must not flatten a 150 WU/s ram into a 40 WU/s answer.
+    cueArg.closingSpeed = p.preSolveClosingSpeed;
+    cueArg.hullDamage = Number.isFinite(p.hullDamage) ? p.hullDamage : undefined;
+    const cue = resolveCollisionCue(cueArg);
+    const playOpts = _collisionPlayOpts;
+    playOpts.position = p.pos;
+    playOpts.gain = cue.gain;
+    playOpts.rate = cue.rate;
+    playOpts.ladderId = cue.ladderId || undefined;
+    const voice = this.play(cue.recipeId, playOpts);
     const aMass = a && Number.isFinite(a.mass) ? a.mass : 16;
     const bMass = b && Number.isFinite(b.mass) ? b.mass : 16;
     // The duck follows audibility: a contact beyond hearing range is culled inside play() and
     // must not bow the player's music for a sound nobody heard.
     if (voice) {
-      this._applyWeightDuck({
-        mass: Math.max(aMass, bMass),
-        dp: Number.isFinite(p.dp) ? p.dp : p.impulse,
-        importance: cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35,
-      });
+      const duck = _collisionDuckArg;
+      duck.mass = Math.max(aMass, bMass);
+      duck.dp = Number.isFinite(p.dp) ? p.dp : p.impulse;
+      duck.importance = cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35;
+      this._applyWeightDuck(duck);
     }
   },
 

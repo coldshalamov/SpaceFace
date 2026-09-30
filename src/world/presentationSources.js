@@ -8,6 +8,7 @@ import { getDressingRow } from './dressingTable.js';
 import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
 import {
   authoredPrefetchRadius,
+  farLedgerScanRadius,
   glassCornerWu,
   residencyPrefetchRadius,
   tableLookAtOrigin,
@@ -16,7 +17,6 @@ import {
   timeToEnterRadiusSeconds,
   TABLE_COLLECT_HORIZON_SECONDS,
   TABLE_DECODE_RUNWAY_SECONDS,
-  TABLE_INBOUND_APPROACH_WU,
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
 import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
@@ -169,14 +169,13 @@ function appendNearbyLedgerRows(state, out) {
   const origin = tableLookAtOrigin(state, player.pos, _ledgerCollectOrigin);
   const radius = presentationCollectRadius(state);
   if (!(radius > 0)) return;
-  const travel = tableTravelSpeed(state);
   // The scan disc must hold every row that can still reach the glass inside the
   // longest admit window — hulls ride the decode runway, which exceeds both the
   // collect and promote horizons, so sizing to either would strand a fast inbound
   // ship between "scannable" and "admissible". The per-row time-to-glass test below
-  // decides admission, so the disc leaning wide does not wake receding traffic.
-  const scanRadius = radius
-    + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS;
+  // decides admission, so the disc leaning wide does not wake receding traffic. The
+  // far table's freshness sweep keys this same disc so collect and sim stay in step.
+  const scanRadius = farLedgerScanRadius(state);
   // The collect disc moves with the look-at every frame, so keying the memo on the
   // exact origin meant it never hit while the player travelled — every poll walked
   // every grid cell inside the multi-thousand-WU decode runway disc. Walk a quantized

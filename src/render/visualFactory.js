@@ -3752,6 +3752,9 @@ function attachPackagedBody(root, relativeFile, entity) {
       renderer,
       slot: 'place',
       optional: true,
+      // A mounted-but-unready packaged body sits on the glass behind ambient decodes;
+      // deadline class keeps any un-warmed file (drone, post-evict promote) ahead of them.
+      admissionDeadline: true,
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {

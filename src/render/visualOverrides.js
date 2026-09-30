@@ -584,6 +584,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
       optional: true,
+      // Same deadline class as the boundary packaged path: an un-warmed scenario prop
+      // otherwise queues behind ambient decodes while its mount point shows nothing.
+      admissionDeadline: true,
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {

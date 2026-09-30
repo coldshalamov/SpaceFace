@@ -597,68 +597,108 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     discardRun: () => discardPreparedNewGameScene(
       state, bus, runTransitionGuard, transitionToken,
     ),
-    waitForLibrary: () => waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
-    waitForVisuals: () => waitForInitialAuthoredVisualsWithRetry(
-      state,
-      INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-      () => runTransitionGuard.isCurrent(transitionToken),
-      bus,
+    waitForLibrary: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'authored-library', 0.25, 'Loading the ships',
+      (elapsed) => (elapsed > 8000 ? 'Still loading the ships' : 'Bringing the ships in for the first flight'),
+      () => waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
     ),
-    waitForWarmup: async () => {
-      // Hardware+KHR awaits the 20s live-sector cook next. Do not also start
-      // the 180s first-picture warmup on the same Intel context.
-      if (shouldAwaitOpeningGpuCook({
-        gpu: state.render && state.render.gpu,
-        renderer: state.render && state.render.renderer,
-      })) {
-        return true;
-      }
-      // Software WebGL links programs on the main thread. Awaiting warmup here
-      // keeps Launch on render-pipelines until the playable gate expires.
-      void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
-        console.warn('[startup] render pipeline warmup failed', error);
-      });
-      return true;
-    },
-    waitForGpuResources: async () => {
-      // Hardware with KHR_parallel_shader_compile can link behind the loading
-      // shell. Software WebGL links one program per bloomScene (1.3s+) with no
-      // parallel compile, so an awaited cook holds Launch past the playable gate.
-      const awaitCook = shouldAwaitOpeningGpuCook({
-        gpu: state.render && state.render.gpu,
-        renderer: state.render && state.render.renderer,
-      });
-      // PQ-210.02 — the composition-tail settle rides inside the cook now (both
-      // transition paths get it), finishing the serial lane's open composes/
-      // compiles/uploads while the shell still owns the picture.
-      const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
-      if (!awaitCook) {
-        void cook.catch((error) => {
-          console.warn('[startup] opening GPU cook failed', error);
+    waitForVisuals: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'authored-visuals', 0.5, 'Building the opening scene',
+      () => {
+        const readiness = authoredCriticalVisualReadiness(state);
+        const pending = readiness && Array.isArray(readiness.openingPending)
+          ? readiness.openingPending.length
+          : 0;
+        return pending > 0
+          ? `Placing ships and stations — ${pending} still staging`
+          : 'Placing ships and stations before you arrive';
+      },
+      () => waitForInitialAuthoredVisualsWithRetry(
+        state,
+        INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+        () => runTransitionGuard.isCurrent(transitionToken),
+        bus,
+      ),
+    ),
+    waitForWarmup: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'render-pipelines', 0.78, 'Preparing the visuals',
+      (elapsed) => (elapsed > 8000 ? 'Still preparing the visuals' : 'Linking the first-flight render pipelines'),
+      async () => {
+        // Hardware+KHR awaits the 20s live-sector cook next. Do not also start
+        // the 180s first-picture warmup on the same Intel context.
+        if (shouldAwaitOpeningGpuCook({
+          gpu: state.render && state.render.gpu,
+          renderer: state.render && state.render.renderer,
+        })) {
+          return true;
+        }
+        // Software WebGL links programs on the main thread. Awaiting warmup here
+        // keeps Launch on render-pipelines until the playable gate expires.
+        void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
+          console.warn('[startup] render pipeline warmup failed', error);
         });
         return true;
-      }
-      try {
-        return await cook;
-      } catch (error) {
-        console.warn('[startup] opening GPU cook failed', error);
-        return false;
-      }
-    },
-    waitForPhysics: async () => {
-      if (!physicsPrep) {
-        const physicsSystem = registry.get('physics');
-        if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
-        physicsPrep = Promise.resolve()
-          .then(() => physicsSystem.prepareBackend(state, { reset: true }));
-      }
-      try {
-        return await physicsPrep;
-      } catch (error) {
-        console.warn('[startup] physics backend preparation failed', error);
-        return false;
-      }
-    },
+      },
+    ),
+    waitForGpuResources: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'gpu-resources', 0.9, 'Preparing the opening route',
+      () => {
+        const ledger = state.render && state.render.openingCookLedger;
+        const rows = Array.isArray(ledger) ? ledger.filter((row) => row && row.step && row.step !== 'lane') : [];
+        const done = rows.filter((row) => row.outcome === 'resolved' || row.outcome === 'skipped').length;
+        return done > 0
+          ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
+          : 'Loading the opening stretch smoothly';
+      },
+      async () => {
+        // Hardware with KHR_parallel_shader_compile can link behind the loading
+        // shell. Software WebGL links one program per bloomScene (1.3s+) with no
+        // parallel compile, so an awaited cook holds Launch past the playable gate.
+        const awaitCook = shouldAwaitOpeningGpuCook({
+          gpu: state.render && state.render.gpu,
+          renderer: state.render && state.render.renderer,
+        });
+        // PQ-210.02 — the composition-tail settle rides inside the cook now (both
+        // transition paths get it), finishing the serial lane's open composes/
+        // compiles/uploads while the shell still owns the picture.
+        const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
+        if (!awaitCook) {
+          void cook.catch((error) => {
+            console.warn('[startup] opening GPU cook failed', error);
+          });
+          return true;
+        }
+        try {
+          return await cook;
+        } catch (error) {
+          console.warn('[startup] opening GPU cook failed', error);
+          return false;
+        }
+      },
+    ),
+    waitForPhysics: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'physics-authority', 0.94, 'Preparing flight dynamics',
+      (elapsed) => (elapsed > 8000 ? 'Still preparing flight dynamics' : 'Waking the flight authority'),
+      async () => {
+        if (!physicsPrep) {
+          const physicsSystem = registry.get('physics');
+          if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
+          physicsPrep = Promise.resolve()
+            .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+        }
+        try {
+          return await physicsPrep;
+        } catch (error) {
+          console.warn('[startup] physics backend preparation failed', error);
+          return false;
+        }
+      },
+    ),
     readPackageAdmission: () => (state.render && state.render.requiredPackageAdmission) || null,
     awaitSettledPackageAdmission: () => settleRequiredPackageAdmission(state),
     reportProgress: (stage) => bus.emit('game:loadingProgress', {
@@ -735,31 +775,51 @@ function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionT
   return true;
 }
 
+// The long loading gates used to publish one stage event then stay silent for their whole
+// bound — the shell read as frozen behind real work. This pulse re-emits a bounded detail
+// heartbeat (≤1 update / 500 ms, only when the text actually changes) so the loading
+// presenter keeps moving with honest, non-duplicated stage detail.
+function startLoadingGatePulse(bus, runTransitionGuard, transitionToken, transition, id, progress, label, detailOf) {
+  let lastText = null;
+  const emit = () => {
+    try {
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      const detail = detailOf();
+      if (detail == null || detail === lastText) return;
+      lastText = detail;
+      bus.emit('game:loadingProgress', { id, progress, label, detail, transition });
+    } catch (_) { /* the pulse is presentation-only; never let it break the gate */ }
+  };
+  const timer = setInterval(emit, 500);
+  if (timer && typeof timer.unref === 'function') timer.unref();
+  return () => clearInterval(timer);
+}
+
+function withLoadingGatePulse(bus, runTransitionGuard, transitionToken, transition, id, progress, label, detailOf, gate) {
+  const startedMs = nowMs();
+  const stop = startLoadingGatePulse(
+    bus, runTransitionGuard, transitionToken, transition, id, progress, label,
+    () => detailOf(nowMs() - startedMs),
+  );
+  let result;
+  try {
+    result = gate();
+  } catch (error) {
+    stop();
+    throw error;
+  }
+  return Promise.resolve(result).finally(stop);
+}
+
 async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payload = {}) {
   const transitionToken = payload.transitionToken || runTransitionGuard.begin('load');
   if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
   if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  // The three long gates below used to publish one stage event then stay silent for their
-  // whole bound — the shell read as frozen behind real work. This pulse re-emits a bounded
-  // detail heartbeat (≤1 update / 500 ms, only when the text actually changes) so the loading
-  // presenter keeps moving with honest, non-duplicated stage detail.
-  const startGatePulse = (id, progress, label, detailOf) => {
-    let lastText = null;
-    const emit = () => {
-      try {
-        if (!runTransitionGuard.isCurrent(transitionToken)) return;
-        const detail = detailOf();
-        if (detail == null || detail === lastText) return;
-        lastText = detail;
-        bus.emit('game:loadingProgress', { id, progress, label, detail, transition: 'continue' });
-      } catch (_) { /* the pulse is presentation-only; never let it break the gate */ }
-    };
-    const timer = setInterval(emit, 500);
-    if (timer && typeof timer.unref === 'function') timer.unref();
-    return () => clearInterval(timer);
-  };
+  const startGatePulse = (id, progress, label, detailOf) => startLoadingGatePulse(
+    bus, runTransitionGuard, transitionToken, 'continue', id, progress, label, detailOf,
+  );
   // Kick the backend prepare so WASM/world bring-up overlaps the whole library/
   // visuals/GPU chain below — the same overlap New Game gets from its scenePrepared
   // kick. save:loaded already rebound the player record before this function ran,
