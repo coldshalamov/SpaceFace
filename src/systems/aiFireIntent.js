@@ -199,7 +199,7 @@ export function applyAIFiringIntent(decision, state) {
     shooter: e,
     target,
     aimAngle,
-    entities: opticLaneBodies(state),
+    entities: opticLaneBodiesWithShelved(state),
     weapons: data.weapons,
   });
   if (!splinterLane.clear && target.type !== 'projectile') {
@@ -218,7 +218,7 @@ export function applyAIFiringIntent(decision, state) {
     shooter: e,
     target,
     aimAngle,
-    entities: opticLaneBodies(state),
+    entities: opticLaneBodiesWithShelved(state),
     weapons: data.weapons,
   });
   let bankAim = null;
@@ -284,6 +284,47 @@ export function opticLaneBodies(state) {
       : EMPTY_OPTIC_LANE_BODIES;
   }
   return (state && state.entityList) || (state && state.entities) || EMPTY_OPTIC_LANE_BODIES;
+}
+
+/**
+ * Optic lattice cells still shelved in the compact field — a lattice prisms a real bolt whether
+ * or not the player's decode disc promoted it, so the splinter refusal and the bank planner
+ * must reason over field-resident cells too. Cached against `asteroidField.version` (every
+ * membership mutation bumps it) so the filter is O(field rocks) once per mutation, not once
+ * per armed actor per tick. Record order is insertion order — deterministic for a fixed
+ * spawn/promote sequence.
+ */
+function shelvedOpticLaneRecords(state) {
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !Array.isArray(field.rocks)) return EMPTY_OPTIC_LANE_BODIES;
+  const cache = field._opticLaneCache;
+  if (cache && cache.version === field.version) return cache.records;
+  const records = field.rocks.filter((rec) => !!rec
+    && rec.alive !== false
+    && rec.data
+    && typeof rec.data.opticMaterial === 'string');
+  field._opticLaneCache = { version: field.version, records };
+  return records;
+}
+
+/**
+ * The optic callsites' lane view: promoted collidables (index order) followed by shelved optic
+ * records (record order), replayable and allocation-free — shelved records already carry the
+ * {id, pos, radius, collides, data} shape the lane scans consume.
+ */
+export function opticLaneBodiesWithShelved(state) {
+  const live = opticLaneBodies(state);
+  const shelved = shelvedOpticLaneRecords(state);
+  if (!shelved.length) return live;
+  return {
+    values() {
+      return (function* () {
+        if (Array.isArray(live)) yield* live;
+        else if (live && typeof live.values === 'function') yield* live.values();
+        yield* shelved;
+      })();
+    },
+  };
 }
 
 /**
