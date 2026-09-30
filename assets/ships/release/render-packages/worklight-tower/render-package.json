@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a0fb14bebab6c977118365fa5517f69e71b1cdc64c667412df3b1964c30464df",
+  "contentHash": "9b2ca542f5430ac0cc2cd2d739dfccf06f96281bda86637d01c298575e6bf974",
   "dynamicGroups": [
     {
       "id": "sf.render.worklight-tower.mesh.lod0-hook-nav-port.dynamic",
@@ -2420,7 +2420,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "a1a28fae817b46815436cd2141db11ccb881545f1ce638edd9c0e481fb86b8bd",
+      "sha256": "f95faf0676299c62c4c7f1d9bf1a9c4a62dc70e16bfb2226206674a944fbfe60",
       "uri": "pilots.json"
     }
   },
@@ -3389,7 +3389,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
-  "runtimeHash": "57976004bf60f86a388f0cda9a38df13f0d77e3a8f1ab8d5218ffd69506fbb50",
+  "runtimeHash": "8dfb5a140dd3706ac4deec6c32d4839032aca796a5699677dc2c2ea5c68391c3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

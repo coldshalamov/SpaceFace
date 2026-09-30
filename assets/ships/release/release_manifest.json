@@ -3702,20 +3702,6 @@
       "contractNodeCount": 28
     },
     {
-      "id": "wholeship_mule_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/mule_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/mule_production_v1.glb",
-      "sourceSha256": "8f5f439e6c23554a7004cb9a1b89c2ce87452faf20ac38e657ab254ca4ad5bb8",
-      "releaseSha256": "3a0861167d427fc0660f6c77c65bddbb48097653e89a22ee7f57e8bd2366f3a3",
-      "sourceBytes": 1468056,
-      "releaseBytes": 650200,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 75,
-      "contractNodeCount": 33
-    },
-    {
       "id": "wholeship_ore_barge",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/ore_barge.glb",
@@ -4164,34 +4150,6 @@
       "contractNodeCount": 27
     },
     {
-      "id": "wholeship_mule_production_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/mule_production_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb",
-      "sourceSha256": "634cf37164262aab90bd8a5d22a3994c5a3c2986e46e4d71c2d3f6b74e6d189f",
-      "releaseSha256": "fea829568d093ea1fa591d856fb26c0925922ed20e5729031ec8d35d352e8cd5",
-      "sourceBytes": 803252,
-      "releaseBytes": 494276,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 71,
-      "contractNodeCount": 32
-    },
-    {
-      "id": "wholeship_mule_production_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/mule_production_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb",
-      "sourceSha256": "fae80eb47c26f84189f35a371be7f546ac109e221759d980d4185d2482eb0754",
-      "releaseSha256": "021ae7550a278bd4c32fdbcf4b41168cc8eeaed987ba50f68714818b9431884e",
-      "sourceBytes": 516016,
-      "releaseBytes": 413712,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 61,
-      "contractNodeCount": 28
-    },
-    {
       "id": "wholeship_ranger_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/ranger_production_v1_lod1.glb",
@@ -4442,6 +4400,48 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 48,
       "contractNodeCount": 24
+    },
+    {
+      "id": "wholeship_mule_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/mule_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/mule_production_v1.glb",
+      "sourceSha256": "5e743ded2d2573347cbfabbbadb13b86e49ec17fb8591dfa84ecbb5e3d0f7ceb",
+      "releaseSha256": "8107d30d444f9ef46cc4af7e6ea1e05a9a588f3597fb084e6f2f807cb693bb8f",
+      "sourceBytes": 1541812,
+      "releaseBytes": 671868,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 79,
+      "contractNodeCount": 34
+    },
+    {
+      "id": "wholeship_mule_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/mule_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb",
+      "sourceSha256": "a7668265465c9c791543f385079568db616f3c064e83d01acdc85eb3f2d08a75",
+      "releaseSha256": "b581990a869953077897b93f45e6ea6c06892169c9b4f8aedc1b4a095694f1bc",
+      "sourceBytes": 837436,
+      "releaseBytes": 505864,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 75,
+      "contractNodeCount": 33
+    },
+    {
+      "id": "wholeship_mule_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/mule_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb",
+      "sourceSha256": "dc576e7cea2d2af46e989321b54ecf12055dcf520ad3a47d7b8dc6556b81ea56",
+      "releaseSha256": "83cdb1205705c2a6c21f9d65483e721732fab248f0472a1a4fe49156e4b9a9ed",
+      "sourceBytes": 533032,
+      "releaseBytes": 418928,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 61,
+      "contractNodeCount": 28
     }
   ]
 }

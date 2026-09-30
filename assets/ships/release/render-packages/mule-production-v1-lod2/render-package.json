@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f4a4366d9d409e02019c9b34b3c92632cf16590ffac0ba838ea76dc0a068f252",
+  "contentHash": "a7ceb5b1ea42708610db8adaa4eca262451141dfb76aa052f6605d3a6ea6a138",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1-lod2.node.lod0-hook-armor-bumper-mechanical.dynamic",
@@ -608,51 +608,51 @@
       "bounds": {
         "max": [
           7.999996185302734,
-          2.029094934463501,
+          2.0291130542755127,
           3.371209144592285
         ],
         "min": [
           -8.120311737060547,
-          -1.0447196960449219,
+          -1.046669602394104,
           -3.371209144592285
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f145de313259d39d446b1713f2fb368f2af4d0ee012df96b0f67a4403e68813",
+      "geometryHash": "a170c6922fc2795bd46a73cc5cdaecdc4af9540b5026e58cd1d4ee9fd35f5e45",
       "id": "sf.render.mule-production-v1-lod2.node.collision-hull.primitive.0",
-      "indexCount": 798,
+      "indexCount": 822,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
       "meshName": "COLLISION_HULL.002",
       "nodeId": "sf.render.mule-production-v1-lod2.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 692
+      "vertexCount": 716
     },
     {
       "bounds": {
         "max": [
-          6.100764751434326,
-          1.8603793382644653,
-          3.2880351543426514
+          6.100513935089111,
+          1.8601267337799072,
+          3.288090229034424
         ],
         "min": [
-          -3.3442294597625732,
-          -0.6580359935760498,
-          -3.2880351543426514
+          -3.347951650619507,
+          -0.6580608487129211,
+          -3.288090229034424
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd6a8467f32e27ed886017d2319ce469f54ee3eb633b6867ea913eddea0081db",
+      "geometryHash": "7d6bd86bf63d7a5b4a8d24e97827a637346c202ba71108537cb6e1fde690aece",
       "id": "sf.render.mule-production-v1-lod2.node.lod0-armor.primitive.0",
-      "indexCount": 1704,
+      "indexCount": 1983,
       "indexed": true,
       "materialHash": "cd33f261b3299189b508fd96ac6363e52774e7f21dd0d921f1b80f5dfa57a4a6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor.002",
       "nodeId": "sf.render.mule-production-v1-lod2.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 649
+      "vertexCount": 744
     },
     {
       "bounds": {
@@ -743,7 +743,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64ed8bfde30b84a106bd7fc0f49958e388c8344d94c0d6da003453bef69cffee",
+      "geometryHash": "a2226853024ec16a9b5fca2a61a80d130c4ee9618aa5dd3472cb6d6e6b7ea79f",
       "id": "sf.render.mule-production-v1-lod2.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 114,
       "indexed": true,
@@ -883,26 +883,51 @@
       "bounds": {
         "max": [
           7.800090312957764,
-          2.0288779735565186,
-          3.2223997116088867
+          2.0287325382232666,
+          3.223109722137451
         ],
         "min": [
-          -6.991304397583008,
-          -0.9991891980171204,
-          -3.2223997116088867
+          -6.998709678649902,
+          -0.9990439414978027,
+          -3.223109722137451
         ]
       },
       "drawMode": 4,
-      "geometryHash": "458e925675528fa7a8e21e4f8b85492c57030aa98cde59d14ae180f05417cfc9",
+      "geometryHash": "262d3356e11a20b1e35f73c9546c23eed365959d66196289a1e68bd313a5e184",
       "id": "sf.render.mule-production-v1-lod2.node.lod0-hull.primitive.0",
-      "indexCount": 2097,
+      "indexCount": 2091,
       "indexed": true,
       "materialHash": "0877e5cc5fa5f0580e1ac7e953b4bae0b305900aee9f93857ea7bab3381e78d3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.002",
       "nodeId": "sf.render.mule-production-v1-lod2.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 637
+      "vertexCount": 650
+    },
+    {
+      "bounds": {
+        "max": [
+          6.063276767730713,
+          1.663403868675232,
+          0.06452491879463196
+        ],
+        "min": [
+          -6.998110771179199,
+          0.8853091597557068,
+          -0.061437129974365234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27c9414e4101fe57a32d2cf3b31c7b4804a8a82d7e0ef75710cc4a418989fd83",
+      "id": "sf.render.mule-production-v1-lod2.node.lod0-lights-cyan-cream.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "b6465101f2584b1d1592c710822d991d60fec1cb0213fde44a9d0feec1a5fb07",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan_cream.002",
+      "nodeId": "sf.render.mule-production-v1-lod2.node.lod0-lights-cyan-cream",
+      "primitiveIndex": 0,
+      "vertexCount": 95
     },
     {
       "bounds": {
@@ -932,77 +957,52 @@
     {
       "bounds": {
         "max": [
-          3.8801424503326416,
-          1.0989294052124023,
-          0.2813625931739807
-        ],
-        "min": [
-          -6.982890605926514,
-          0.8960369229316711,
-          -0.26764044165611267
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "963c2eaf085a41e270b63a73a1a5bbdbe8cf8b464cd3e8ab60a33c93a1e2a283",
-      "id": "sf.render.mule-production-v1-lod2.node.lod0-livery.primitive.0",
-      "indexCount": 15,
-      "indexed": true,
-      "materialHash": "972bb6bc01bc05c8943b6061370e061751ede00a83be96c54e405622a7a1708a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Livery.002",
-      "nodeId": "sf.render.mule-production-v1-lod2.node.lod0-livery",
-      "primitiveIndex": 0,
-      "vertexCount": 7
-    },
-    {
-      "bounds": {
-        "max": [
           7.799790382385254,
-          1.2175341844558716,
+          1.2170382738113403,
           3.3312838077545166
         ],
         "min": [
           -8.120311737060547,
-          -1.02712881565094,
+          -1.0276248455047607,
           -3.3312840461730957
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30b2d809472cd794f2ce358d730ccc2bd2d1dee64d5d7c33c64f3c12af808745",
+      "geometryHash": "ee265c4a6f0a9ac24d475de297c1eee69b4bac71fcec609ac9bfeb3bd1f8decf",
       "id": "sf.render.mule-production-v1-lod2.node.lod0-mechanical.primitive.0",
-      "indexCount": 3864,
+      "indexCount": 4095,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical.002",
       "nodeId": "sf.render.mule-production-v1-lod2.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1785
+      "vertexCount": 1858
     },
     {
       "bounds": {
         "max": [
           7.332332134246826,
-          1.126604437828064,
+          1.1265816688537598,
           3.2730820178985596
         ],
         "min": [
           -8.120311737060547,
-          -1.0446035861968994,
+          -1.0465127229690552,
           -3.2730820178985596
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8925904b2550281ba28807619729282dcda28422c5cb6425a36d5ae8c72622b1",
+      "geometryHash": "6a61ed8aac8f57c4c65c5398639e53001fda6a3c96d8e66596a0f9d864203dea",
       "id": "sf.render.mule-production-v1-lod2.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 1326,
+      "indexCount": 1383,
       "indexed": true,
       "materialHash": "c2498444ecef0251ca52252be8ce06ff755b2ba849f40ea1e3b9586304b86abd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark.002",
       "nodeId": "sf.render.mule-production-v1-lod2.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 579
+      "vertexCount": 617
     },
     {
       "bounds": {
@@ -1018,7 +1018,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12cfbbc0bec103ee94e555c2fa4c5903887430de08f91cc729641c85ad2928b8",
+      "geometryHash": "5bf0aa2c4ab837852080770a09b93dcd65d19e12659f2bb570193a1b3e587e7e",
       "id": "sf.render.mule-production-v1-lod2.node.lod0-warning.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -1159,36 +1159,11 @@
       "textures": []
     },
     {
-      "hash": "972bb6bc01bc05c8943b6061370e061751ede00a83be96c54e405622a7a1708a",
-      "id": "material:972bb6bc01bc05c8943b6061",
-      "name": "Material_Accent",
+      "hash": "b6465101f2584b1d1592c710822d991d60fec1cb0213fde44a9d0feec1a5fb07",
+      "id": "material:b6465101f2584b1d1592c710",
+      "name": "Material_Emissive_Cyan_cream",
       "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
+      "textures": []
     },
     {
       "hash": "c2498444ecef0251ca52252be8ce06ff755b2ba849f40ea1e3b9586304b86abd",
@@ -1859,7 +1834,7 @@
       ]
     },
     {
-      "id": "sf.render.mule-production-v1-lod2.node.lod0-lights-warm",
+      "id": "sf.render.mule-production-v1-lod2.node.lod0-lights-cyan-cream",
       "localTransform": [
         1,
         0,
@@ -1879,8 +1854,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Warm",
-      "nodeName": "LOD0_Lights_Warm",
+      "mergeBoundary": "LOD0_Lights_Cyan_cream",
+      "nodeName": "LOD0_Lights_Cyan_cream",
       "nodePath": [
         0,
         12
@@ -1908,7 +1883,7 @@
       ]
     },
     {
-      "id": "sf.render.mule-production-v1-lod2.node.lod0-livery",
+      "id": "sf.render.mule-production-v1-lod2.node.lod0-lights-warm",
       "localTransform": [
         1,
         0,
@@ -1928,8 +1903,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Livery",
-      "nodeName": "LOD0_Livery",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
         13
@@ -2742,44 +2717,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "d555f94459930182901076ea2ae12c8b23e77143a11c8833cf20d9cd8e927a36"
+      "sha256": "ed30fb0e652fada10a17b214ff75d0b95002df89ec927fcdbd6146ffa8b48655"
     },
     "sourceGlb": {
-      "bytes": 413712,
-      "sha256": "021ae7550a278bd4c32fdbcf4b41168cc8eeaed987ba50f68714818b9431884e",
+      "bytes": 418928,
+      "sha256": "83cdb1205705c2a6c21f9d65483e721732fab248f0472a1a4fe49156e4b9a9ed",
       "uri": "mule_production_v1_lod2.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "a1a28fae817b46815436cd2141db11ccb881545f1ce638edd9c0e481fb86b8bd",
+      "sha256": "f95faf0676299c62c4c7f1d9bf1a9c4a62dc70e16bfb2226206674a944fbfe60",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 506616,
-    "sha256": "8e8dbffde18952b00e6e5bd7d4bac454ce10fd8e38c9489e186ee3dd1768d114",
+    "bytes": 519032,
+    "sha256": "04fe1d252024485795efb36f93af7ff12a4a09de2e8f4aae7ccd5e75725e45d8",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.06015777587890625,
-        0.49218761920928955,
+        0.49122172594070435,
         0
       ],
       "max": [
         7.999996185302734,
-        2.029094934463501,
+        2.0291130542755127,
         3.372096300125122
       ],
       "min": [
         -8.120311737060547,
-        -1.0447196960449219,
+        -1.046669602394104,
         -3.372096300125122
       ],
       "size": [
         16.12030792236328,
-        3.073814630508423,
+        3.0757826566696167,
         6.744192600250244
       ]
     },
@@ -3414,12 +3389,11 @@
       }
     ],
     "materialProfileRoles": {
-      "accent": 1,
       "drive": 1,
       "glass": 1,
       "hull": 3,
       "mechanical": 5,
-      "signal": 4,
+      "signal": 5,
       "warning": 1
     },
     "materialProfiles": [
@@ -3486,7 +3460,7 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3848,7 +3822,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_Lights_Cyan_cream",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -3875,7 +3849,7 @@
           0,
           1
         ],
-        "name": "LOD0_Livery",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -3968,19 +3942,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb"
   },
-  "runtimeHash": "783fde2fa5f13831579d52a685f40eaf8ee5e098c93118e84e2cfb5e033a0384",
+  "runtimeHash": "95e83550fb22854be402d4721305fc88ad3f65d4059b0fb0f3b8a04f27e79f1f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           7.999996185302734,
-          2.029094934463501,
+          2.0291130542755127,
           3.372096300125122
         ],
         "min": [
           -8.120311737060547,
-          -1.0447196960449219,
+          -1.046669602394104,
           -3.372096300125122
         ]
       },
@@ -3998,8 +3972,8 @@
         "sf.render.mule-production-v1-lod2.node.lod0-hook-secondary-turret-mechanical",
         "sf.render.mule-production-v1-lod2.node.lod0-hook-secondary-turret-mechanicaldark",
         "sf.render.mule-production-v1-lod2.node.lod0-hull",
+        "sf.render.mule-production-v1-lod2.node.lod0-lights-cyan-cream",
         "sf.render.mule-production-v1-lod2.node.lod0-lights-warm",
-        "sf.render.mule-production-v1-lod2.node.lod0-livery",
         "sf.render.mule-production-v1-lod2.node.lod0-mechanical",
         "sf.render.mule-production-v1-lod2.node.lod0-mechanicaldark",
         "sf.render.mule-production-v1-lod2.node.lod0-warning",

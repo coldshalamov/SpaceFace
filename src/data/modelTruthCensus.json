@@ -44866,7 +44866,7 @@
           6.924717
         ]
       },
-      "bytes": 650200,
+      "bytes": 671868,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44984,6 +44984,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Cyan_cream",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
@@ -45058,8 +45066,8 @@
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 22,
-      "nodes": 35,
+      "meshes": 23,
+      "nodes": 36,
       "note": null,
       "opening": null,
       "pivot": [
@@ -45299,7 +45307,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1438,
+        "boundaryEdges": 1645,
         "inwardFaceFraction": 0.3695,
         "silhouetteRadius": 15.683783,
         "sliceY": 0
@@ -45406,7 +45414,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 23604,
+      "triangles": 24994,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],

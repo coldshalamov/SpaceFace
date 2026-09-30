@@ -7471,8 +7471,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
-      "tris": 23604,
-      "bytes": 1468056,
+      "tris": 24994,
+      "bytes": 1541812,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
