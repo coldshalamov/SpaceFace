@@ -367,6 +367,7 @@ Current save version: `14`
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |
 | `$.settings.gameplay.stuntMoments` | string | cinematic |
+| `$.settings.gameplay.targetAssistStrength` | string | full |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
 | `$.settings.keybinds` | object | {} |
 | `$.settings.showDamageNumbers` | boolean | true |
