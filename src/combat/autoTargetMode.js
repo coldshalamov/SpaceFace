@@ -27,6 +27,22 @@ export const AUTO_TARGET_REFRESH_S = 0.12;
 const RETICLE_EDGE_MARGIN = 28;
 const AUTO_TARGET_HEADING_SOFT_ANGLE = 0.42;
 
+// VERB-17: the assist has an off and a strength (`settings.gameplay.targetAssistStrength`,
+// Gameplay row beside the orbit assist). Full is today's authored correction — the default,
+// so nothing already flying changes. Off yields zero aim correction; light/standard track
+// the same solution lazily by converging a fraction of the remaining error per tick.
+const TARGET_ASSIST_SCALES = Object.freeze({ full: 1, standard: 0.75, light: 0.4, off: 0 });
+
+/** 0..1 fraction of the aim correction applied this tick. Unknown values fail to full. */
+export function targetAssistScale(state) {
+  const key = state && state.settings && state.settings.gameplay
+    ? state.settings.gameplay.targetAssistStrength
+    : undefined;
+  if (key == null) return 1;
+  const scale = TARGET_ASSIST_SCALES[key];
+  return typeof scale === 'number' ? scale : 1;
+}
+
 
 export function createAutoTargetRuntime() {
   return { refreshT: 0 };
@@ -43,7 +59,11 @@ export function toggleAutoTarget(state, bus, runtime = createAutoTargetRuntime()
   if (inp.autoTargetPath) inp.autoTargetPath.active = false;
   if (inp.autoFire) {
     runtime.refreshT = AUTO_TARGET_REFRESH_S;
-    if (bus && inp.targetAssistDisabled !== true) bus.emit('ui:targetNearestHostileToPlayer');
+    // VERB-17: at assist off the toggle still arms the stick, but nothing is selected for
+    // it — selection is aim correction's source, and off means zero correction.
+    if (bus && inp.targetAssistDisabled !== true && targetAssistScale(state) > 0) {
+      bus.emit('ui:targetNearestHostileToPlayer');
+    }
   } else {
     runtime.refreshT = 0;
     if (inp.autoAim && inp.targetAssistDisabled === true) inp.autoAim = null;
@@ -158,10 +178,22 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     return;
   }
 
-  const target = inp.targetAssistDisabled === true ? null : resolvePlayerGunTarget(state);
+  const target = (inp.targetAssistDisabled === true || targetAssistScale(state) <= 0)
+    ? null
+    : resolvePlayerGunTarget(state);
   if (target) {
     const lead = computeLockedLeadPoint(state) || target.pos;
-    inp.aimAngle = Math.atan2(lead.z - player.pos.z, lead.x - player.pos.x);
+    const leadAngle = Math.atan2(lead.z - player.pos.z, lead.x - player.pos.x);
+    // VERB-17: full applies the authored solution; a partial strength converges a fraction
+    // of the remaining error per tick, so a light assist tracks lazily instead of snapping.
+    // Raw aim input itself is never touched — at off the branch above leaves it alone.
+    const scale = targetAssistScale(state);
+    if (scale >= 1) {
+      inp.aimAngle = leadAngle;
+    } else {
+      const current = Number.isFinite(inp.aimAngle) ? inp.aimAngle : leadAngle;
+      inp.aimAngle = current + wrapAngle(leadAngle - current) * scale;
+    }
     // Keep the physical cursor point for Massline acquisition. G's draw mode retains its
     // historical lead-point presentation; ordinary assisted combat does not move the cursor.
     if (inp.autoFire) {
@@ -209,7 +241,7 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
   }
 
   runtime.refreshT = Math.max(0, (runtime.refreshT || 0) - dt);
-  if (runtime.refreshT <= 0 && inp.targetAssistDisabled !== true) {
+  if (runtime.refreshT <= 0 && inp.targetAssistDisabled !== true && targetAssistScale(state) > 0) {
     runtime.refreshT = AUTO_TARGET_REFRESH_S;
     if (bus) bus.emit('ui:targetNearestHostileToPlayer', { quiet: true });
   }
@@ -260,6 +292,8 @@ function finite(value, fallback = 0) {
 
 export function projectLockedReticle(state, w2s, viewport = {}) {
   if (!state || !state.input || state.input.targetAssistDisabled === true) return null;
+  // VERB-17: at assist off there is no lead solution to draw — the pip is the assist's voice.
+  if (targetAssistScale(state) <= 0) return null;
   const lead = computeLockedLeadPoint(state);
   const target = resolvePlayerGunTarget(state);
   const point = lead || (target && target.pos) || null;

@@ -1634,6 +1634,32 @@
       "integration": "live",
       "commit": "4c7fca809",
       "verification": "focused_green"
+    },
+    {
+      "id": "PIC-28",
+      "date": "2026-09-30",
+      "wf": "WF-12",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "hot-dock spill emits one berth-apron cue with the lot count; whitelist resolves it at the berth",
+      "fingerprint": "verb=see,subject=dock-spill,sector=any,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "bb2a29e3f6633dd0feabb5ef7e80675fed710dac",
+      "verification": "focused_green"
+    },
+    {
+      "id": "VERB-17",
+      "date": "2026-09-30",
+      "wf": "WF-15",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "target assist has off and strength in Gameplay settings; off is zero correction, full is authored",
+      "fingerprint": "verb=aim,subject=target-assist,sector=any,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "pending-unit-4-commit",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

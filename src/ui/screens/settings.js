@@ -485,6 +485,12 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'orbitAssistStrength', v));
+      rowSelect('Auto-target assist', () => g.targetAssistStrength || 'full', [
+        ['full', 'Full'],
+        ['standard', 'Standard'],
+        ['light', 'Light'],
+        ['off', 'Off'],
+      ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       if (massline2Flag('enabled')) {

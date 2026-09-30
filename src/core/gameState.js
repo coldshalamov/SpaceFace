@@ -44,6 +44,9 @@ function defaultSettings() {
       controlScheme: 'pilot',
       controlSchemeV2: true,
       orbitAssistStrength: 'standard',
+      // VERB-17: auto-target aim correction. Full is the authored solution (the behaviour
+      // everything shipped with); off is zero correction. Persisted like the orbit assist.
+      targetAssistStrength: 'full',
       masslineReleaseAssist: 'snap',
       stuntMoments: 'cinematic',
     },
