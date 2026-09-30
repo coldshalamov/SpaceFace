@@ -7,6 +7,17 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### NXB-027 — one freight settlement (2026-09-30)
+
+Implemented in this landing: identified deliveries and sales count once across market supply
+and station growth, including reload and dependent-effect retries. Distinct later shipments
+still settle. Existing convoy lifecycle and an owner guard prevent duplicate unload payment.
+Proof: [test/next-wave-nxb-027.test.mjs](./test/next-wave-nxb-027.test.mjs) (7 cases),
+adjacent economy, convoy and station-growth checks (149 cases). Delivery boundary exercised
+through live simulation owners; browser route not exercised. Receipt metadata grows with
+accepted transactions; no new entity scans.
+Packet: [NXB-027](./design/program/next-wave-2026-09-28/build/NXB-027.md).
+
 ### NXB-033 — refinery interruption (2026-09-30)
 
 Implemented in this landing: blocked time no longer banks refinery work; existing 2:1

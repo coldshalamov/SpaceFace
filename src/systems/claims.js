@@ -132,6 +132,23 @@ export const ACE_TROPHY_TIER_MAX = 3;
 const ENDGAME_MEGA_HEIST_TAG = 'pq170-mega-heist';
 const ENDGAME_CAPITAL_BOSS_TAG = 'pq170-capital-boss';
 
+// NXB-027: receipt ids the growth ledger already consumed → the canonical lot they counted.
+// Null-prototype map so an adversarial id ('__proto__') can never alias inherited state.
+function normalizeSupplyReceipts(raw) {
+  const out = Object.create(null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const rid of Object.keys(raw)) {
+    const entry = raw[rid];
+    if (!rid || !entry || typeof entry !== 'object') continue;
+    out[rid] = {
+      qty: Math.max(0, Math.floor(Number(entry.qty) || 0)),
+      source: typeof entry.source === 'string' ? entry.source : 'market_sell',
+      goodId: typeof entry.goodId === 'string' ? entry.goodId : null,
+    };
+  }
+  return out;
+}
+
 export function fittedTrophyFromState(state) {
   if (!state) return null;
   const player = state.entities && typeof state.entities.get === 'function'
@@ -285,6 +302,9 @@ export const claims = {
       this.bus.on('sector:enter', () => this._stampAllStationGrowth());
       // PQ-170.01: player-supplied throughput. Only the SELL side supplies a station.
       this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {}));
+      // NXB-027: accepted contract freight is player-supplied throughput too — the same lot the
+      // economy just stocked. The committed receipt dedupes canonical retries (and only them).
+      this.bus.on('economy:freightAccepted', (payload) => this._onFreightAccepted(payload || {}));
       this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {}));
       this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
@@ -1125,6 +1145,10 @@ export const claims = {
    * Never fabricates a price — no market truth means the freight comes home.
    */
   _settleConvoySale(body, spec, def, convoy, qty) {
+    // NXB-027: one leg settles once. Accepted on the convoy's own record BEFORE any synchronous
+    // publication, so a repeated berth/arrival callback can never re-pay or re-return the freight.
+    if (convoy.saleSettled === true) return;
+    convoy.saleSettled = true;
     const economy = this._economyPeer();
     const unit = economy && economy.priceOf ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell') : null;
     if (!(unit > 0)) {
@@ -1141,9 +1165,11 @@ export const claims = {
     spec.totals.soldTotalCr += revenue;
     this._receipt(body, 'convoy_sold', 'Convoy sold ' + qty + 'u at ' + (this._stationName(convoy.destStationId) || convoy.destStationId),
       { goodId: convoy.goodId, qty, destStationId: convoy.destStationId, revenueCr: revenue, saleFee });
-    // Relay freight landing at a real market is player-supplied throughput for that station.
+    // Relay freight landing at a real market is player-supplied throughput for that station,
+    // keyed on the leg's durable id so a republished dock notice cannot recount it.
     this._recordStationThroughput(convoy.destStationId, qty, 'relay_convoy', {
       goodId: convoy.goodId, bodyId: body.id,
+      receiptId: convoy.convoyId ? 'relay-convoy:' + convoy.convoyId : null,
     });
   },
 
@@ -1819,6 +1845,21 @@ export const claims = {
     if (isRunSealed(this.state)) return null;
     return this._recordStationThroughput(payload.stationId, qty, 'market_sell', {
       goodId: payload.commodityId || null,
+      receiptId: payload.receiptId || null,
+    });
+  },
+
+  // NXB-027 — economy's canonical freight fact: the lot already landed in the market, so this is
+  // growth bookkeeping only. Tallied under market_sell (the player-supplied sell side), keyed on
+  // the committed receipt so a republished retry never counts the same delivery twice.
+  _onFreightAccepted(payload) {
+    if (!payload || !payload.stationId) return null;
+    const qty = Math.floor(Number(payload.qty) || 0);
+    if (qty <= 0) return null;
+    if (isRunSealed(this.state)) return null;
+    return this._recordStationThroughput(payload.stationId, qty, 'market_sell', {
+      goodId: payload.commodityId || null,
+      receiptId: payload.receiptId || null,
     });
   },
 
@@ -1867,18 +1908,36 @@ export const claims = {
       rung: 0,
       modules: [],
       sources: { market_sell: 0, relay_convoy: 0 },
+      appliedSupplyReceipts: Object.create(null),
       firstSupplyAt: t,
       lastSupplyAt: t,
     };
     return rec;
   },
 
-  /** Count `qty` units of player-supplied freight against `stationId`; gain every rung crossed. */
+  /**
+   * Count `qty` units of player-supplied freight against `stationId`; gain every rung crossed.
+   * A stable supply receipt (trade receiptId, freightAccepted receiptId, relay convoyId) names
+   * one physical transaction: a matching republished retry returns the record untouched, a
+   * disagreeing payload under a consumed id is a collision — never new freight. Anonymous
+   * notifications keep the legacy always-count behavior.
+   */
   _recordStationThroughput(stationId, qty, source, extra = {}) {
     const units = Math.floor(Number(qty) || 0);
     if (!stationId || units <= 0) return null;
     const rec = this._ensureStationGrowth(stationId);
     if (!rec) return null;
+    const receiptId = typeof extra.receiptId === 'string' && extra.receiptId ? extra.receiptId : null;
+    if (receiptId) {
+      if (!rec.appliedSupplyReceipts || typeof rec.appliedSupplyReceipts !== 'object'
+          || Array.isArray(rec.appliedSupplyReceipts)) {
+        rec.appliedSupplyReceipts = Object.create(null);
+      }
+      if (Object.hasOwn(rec.appliedSupplyReceipts, receiptId)) return rec;
+      // Mark before any output callback — a listener reacting to the emit below observes the
+      // receipt already consumed.
+      rec.appliedSupplyReceipts[receiptId] = { qty: units, source, goodId: extra.goodId || null };
+    }
     rec.throughputU += units;
     rec.sources[source] = (rec.sources[source] || 0) + units;
     rec.lastSupplyAt = this.state.simTime || 0;
@@ -2036,6 +2095,7 @@ export const claims = {
           market_sell: Math.max(0, Math.floor(Number(rec.sources && rec.sources.market_sell) || 0)),
           relay_convoy: Math.max(0, Math.floor(Number(rec.sources && rec.sources.relay_convoy) || 0)),
         },
+        appliedSupplyReceipts: normalizeSupplyReceipts(rec.appliedSupplyReceipts),
         firstSupplyAt: Number.isFinite(Number(rec.firstSupplyAt)) ? Number(rec.firstSupplyAt) : 0,
         lastSupplyAt: Number.isFinite(Number(rec.lastSupplyAt)) ? Number(rec.lastSupplyAt) : 0,
       };

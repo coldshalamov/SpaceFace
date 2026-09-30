@@ -1004,10 +1004,9 @@ export const economy = {
     });
     // Contract cargo lands in the receiving market — a delivered lot is real goods through the
     // same stock authority as a sale, so relieving a starved yard physically re-feeds its line.
-    bus.on('cargo:delivered', (p) => {
-      if (!p || !p.stationId || !p.commodityId) return;
-      this.applyStockPressure(p.stationId, p.commodityId, 'sell', Math.abs(Number(p.qty) || 0));
-    });
+    // NXB-027: identified deliveries settle once — the committed receipt makes a retry republish
+    // the canonical freight fact for dependent owners instead of moving stock a second time.
+    bus.on('cargo:delivered', (p) => { this.applyFreightDelivery(p); });
     // Player cargo-ship kill → salvage → sale. Economy remembers the hull and, once those goods
     // are sold, moves the destination price. Missions owns the board opportunity that follows.
     bus.on('entity:killed', (p) => this._openCargoKillChain(p));
@@ -2315,6 +2314,64 @@ export const economy = {
     }
     this.recomputeLivePrices(entry, def, stationId, commodityId);
     this.recordLivePriceHistory(entry, def, stationId, commodityId);
+  },
+
+  /**
+   * NXB-027 — one physical freight delivery into a station market. Identified payloads (a stable
+   * receiptId, else the sender's missionId) commit under the persisted committed-intents journal
+   * in the reserved `freight:` namespace, so a retry across a reload/replay boundary republishes
+   * the canonical `economy:freightAccepted` fact for dependent owners without moving stock,
+   * credits, or cargo a second time. Payloads carrying no identity keep the legacy stock-only
+   * path and make no duplicate promise. This is never a wallet event: delivery is not a sale.
+   */
+  applyFreightDelivery(payload) {
+    if (!payload || typeof payload !== 'object') return { ok: false, reason: 'invalid' };
+    const state = this.state;
+    const stationId = typeof payload.stationId === 'string' && payload.stationId ? payload.stationId : null;
+    const commodityId = typeof payload.commodityId === 'string' && payload.commodityId ? payload.commodityId : null;
+    const qty = Number(payload.qty);
+    const receiptId = typeof payload.receiptId === 'string' && payload.receiptId
+      ? payload.receiptId
+      : (typeof payload.missionId === 'string' && payload.missionId ? 'mission-delivery:' + payload.missionId : null);
+    if (!receiptId) {
+      if (stationId && commodityId) {
+        this.applyStockPressure(stationId, commodityId, 'sell', Math.abs(qty) || 0);
+      }
+      return { ok: true, anonymous: true };
+    }
+    if (!stationId || !commodityId || !Number.isInteger(qty) || qty <= 0 || qty > 1_000_000) {
+      return { ok: false, reason: 'invalid_delivery' };
+    }
+    const info = stationInfo(state, stationId);
+    const def = commodityDef(state, commodityId);
+    if (!info || !def) return { ok: false, reason: 'untraded' };
+    const market = state.economy.markets[stationId] || this.ensureMarket(stationId, info.type, info.size);
+    if (!(market && market[commodityId])) return { ok: false, reason: 'untraded' };
+
+    const intents = ensureCommittedIntents(state);
+    const intentKey = 'freight:' + receiptId;
+    const prior = intents[intentKey];
+    if (prior) {
+      const prev = prior.receipt || {};
+      if (prev.stationId !== stationId || prev.commodityId !== commodityId || prev.qty !== qty) {
+        return { ok: false, reason: 'receipt_conflict' };
+      }
+      // Matching retry: republish the committed canonical fact so a dependent owner that missed
+      // the first notification finishes its own effect. Stock/credits/cargo stay settled.
+      this.bus.emit('economy:freightAccepted', {
+        receiptId: prev.receiptId, stationId: prev.stationId, commodityId: prev.commodityId,
+        qty: prev.qty, source: prev.source,
+      });
+      return { ok: true, duplicate: true, receiptId, qty };
+    }
+
+    // Commit the accepted transaction BEFORE the stock write and publication, so a re-entrant
+    // retry anywhere inside this call already observes the settled record.
+    const accepted = { receiptId, stationId, commodityId, qty, source: 'mission_delivery' };
+    intents[intentKey] = { receipt: { ...accepted }, result: { ok: true, qty } };
+    this.applyStockPressure(stationId, commodityId, 'sell', qty);
+    this.bus.emit('economy:freightAccepted', { ...accepted });
+    return { ok: true, duplicate: false, receiptId, qty };
   },
 
   /**
