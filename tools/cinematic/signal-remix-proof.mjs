@@ -28,6 +28,7 @@ try {
   for(const t of [1.3,4,7.4,10.8,14.5,17.6]){
     const state=await page.evaluate(t=>__remixProof.frame(t),t);
     assert(state.status.frameCount>0&&!state.status.failed,'frame failed at '+t);
+    assert(Math.abs(state.sourceTime-(t*32/18)%32)<.1,'wrong movie frame at '+t);
     await page.screenshot({path:resolve(out,`remix-${t}.png`)});report.frames.push({t,...state});
   }
   for(const view of ['original','tableaux','terminal']){
@@ -38,9 +39,10 @@ try {
   await page.evaluate(()=>document.documentElement.classList.remove('art-only'));
   await page.evaluate(()=>__remixProof.frame(14.5));
   await page.screenshot({path:resolve(out,'with-lockup.png')});
-  report.checks.push('six source shots, all three retained sources, existing lockup');
+  report.checks.push('verified timestamps for all six source shots, all three retained sources, existing lockup');
   await page.goto(url+'?managed&capture',{waitUntil:'load'});
   await page.waitForFunction(()=>window.__remixProof?.ready&&__remixProof.controller?.inspect().frameCount>2,null,{timeout:30000});
+  await page.waitForFunction(()=>__remixProof.video.currentTime>1,null,{timeout:15000});
   assert.equal(await page.evaluate(()=>document.querySelectorAll('.intro-signal-remix').length),1);
   assert(Math.abs(await page.evaluate(()=>__remixProof.video.playbackRate)-32/18)<1e-5);
   const stopCount=async()=>{

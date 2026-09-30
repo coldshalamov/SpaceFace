@@ -8,7 +8,6 @@ if (params.has('capture')) document.documentElement.classList.add('capture');
 if (params.has('art')) document.documentElement.classList.add('art-only');
 const video = document.querySelector('video');
 let legacy = document.querySelector('#legacy');
-const parent = document.querySelector('#boot-overlay');
 const managed = params.has('managed');
 const manager = managed ? installIntroSignalRemix(document) : null;
 let remix = null, engine = null, tableaux = null, loop = null, view = 'remix', held = false;
@@ -27,7 +26,11 @@ async function seek(seconds) {
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => { cleanup(); reject(new Error('Video seek timed out')); }, 10000);
     const cleanup = () => { clearTimeout(timeout); video.removeEventListener('seeked', done); video.removeEventListener('error', bad); };
-    const done = () => { cleanup(); resolve(); }, bad = () => { cleanup(); reject(new Error('Movie unavailable')); };
+    const done = () => {
+      cleanup();
+      if (Math.abs(video.currentTime - seconds) > .1) reject(new Error(`Seek landed at ${video.currentTime}, expected ${seconds}. Use signal-remix-server.py (HTTP byte ranges).`));
+      else resolve();
+    }, bad = () => { cleanup(); reject(new Error('Movie unavailable')); };
     video.addEventListener('seeked', done); video.addEventListener('error', bad); video.currentTime = seconds;
   });
 }
