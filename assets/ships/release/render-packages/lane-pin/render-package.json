@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ae19f2161e71e1c0427719829fca0c00fdd172f966a512deb21a8aa1517ef585",
+  "contentHash": "bd101c83b657961317cbf47f636967af319f239ec09b55704ebb7f71f493c6fc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2039,13 +2039,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 696440,
-    "sha256": "0f67a154dc70a6fea74453f719d4562d3c2e9bc67a3d0d7811ca4b0bf0c45abe",
+    "sha256": "70dcbb70888161b8390e6527fc26c096df421ab546934df3fc99541e596483fe",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2832,7 +2832,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_pin.glb"
   },
-  "runtimeHash": "e25f002a7df75a0fc215410cf216cb88cca26eed4b14d9ec24e389a0ff4dd50e",
+  "runtimeHash": "1b6eea289e2a15f6f183b11e3778711ca474963179e60d7fe9b17543f36d0db0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

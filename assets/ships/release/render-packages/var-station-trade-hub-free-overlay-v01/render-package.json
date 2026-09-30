@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1829daad35a9890d7e610ffa64dacdd042fc2f8a5c19164796e2809c0c2a3687",
+  "contentHash": "3a3fa81f0db68690b7e213dc1f64a6ed13ba21f498c6847fae04d09cb1fbbf41",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2801,13 +2801,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1268184,
-    "sha256": "e8735855ccbbaf005097a59a66d5b91c808a367ba4860566d21ab165e8e5ad19",
+    "sha256": "51922c9e712c0db25af3d80597e12a7c1b13526f660d86d8e7c47e8f72a3a7a3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3883,7 +3883,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb"
   },
-  "runtimeHash": "7a5a1af482997790de95b5fc9f2a6f9f89d2bdb75456b4a2866a0a5e8b6887ab",
+  "runtimeHash": "690c5ab4a2ae9f6eb4b4d25c04174008616ddfc27b95011dc998817697e99c08",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

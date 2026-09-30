@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1eb1990ef86d17035cb0b48f29d7318660c7207aef343b6a3b122c4f6294deb7",
+  "contentHash": "a3e4501d804d3d1abd49eddd459c1dad385f4b1d29061a4a548ce90631c73378",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1748,13 +1748,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 639016,
-    "sha256": "b06f1d696119e5757764a366b52d74ee19bd649ec5d5a969a3ed3260c5bfd60d",
+    "sha256": "f4f8165e971d5eba2a930566474ea8ce5caa432b5820dcc30d23e7f8ae0a4b4e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2464,7 +2464,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_truss.glb"
   },
-  "runtimeHash": "f66c7f753e5c01641d47ad98244adf60bb4064b279c961039c95010392f4cbbc",
+  "runtimeHash": "d406cd0512cf3156e1539d74593defcb17481fa14e9c900febce5c8be73be359",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

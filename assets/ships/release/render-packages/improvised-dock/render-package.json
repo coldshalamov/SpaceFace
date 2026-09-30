@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "791e7baa45d7feef5670bc112708ea0fef33712996a736640536e5f3a05e6f9e",
+  "contentHash": "ba97f905dca20aac02341f228f59382c349d0a3862c42ef2d6d0caea0bedc7d1",
   "dynamicGroups": [
     {
       "id": "sf.render.improvised-dock.mesh.lod0-hook-nav-port.dynamic",
@@ -2674,13 +2674,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 581156,
-    "sha256": "addcae6cb404b3e4715c8ebf7f23e67cd6f55a26c7512d98a572f36753f26c56",
+    "sha256": "a4fffa307af8d4763715ac7bb37989c293299aefb80d74061548b70f91d1c60e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3739,7 +3739,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_improvised_dock.glb"
   },
-  "runtimeHash": "713e5278b4ec9aff714d90dbea133f0a9f794a42e6dfcda79e66bec0efd7e5d2",
+  "runtimeHash": "e3d7c927d074b942398dd033ac91924fdf633d1748668e2aafe8b86bbfce27ef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

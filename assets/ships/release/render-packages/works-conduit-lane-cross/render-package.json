@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c2808f130182e2bb9f18e0ed4e8084fc0b7071b790ad21a5e79209c0989e16fa",
+  "contentHash": "222b2e9cc97e076a681994ffe2be00b2905ecc7cc82e3f9f47643101d789b36d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -410,13 +410,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 513008,
-    "sha256": "a4e7781f21485bd0ebc8cfda2baec9db08770e8a1fd5860b5ab8cde8ded6ef85",
+    "sha256": "f440577b09907674c6f7a980d2544743268436db93485c7ded1c6326287a777b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -622,7 +622,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_lane_cross.glb"
   },
-  "runtimeHash": "8db08702d11eb952a2f4b246ad1b63135cac176bc4eb9f221559114d88a99f98",
+  "runtimeHash": "02e71ec0b3f26230dca2e0d418af6e74f536af4e303175360edced703ac87fd5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

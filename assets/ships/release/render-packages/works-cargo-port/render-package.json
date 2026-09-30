@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b56757901cc535641a7aebf853f6c43583b0bfe9acd789ef4ec4b2965a620066",
+  "contentHash": "cd5a5c54d118ceed786121a535a61c1da5ba49d05d2dc61d7ec0eb3f5e212901",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1458,13 +1458,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1264524,
-    "sha256": "021432aa50735b4d39b7a97c818d7102a86baad3be024f5bdee32af0bfc69cf0",
+    "sha256": "7e8180224ed69f27568ecaf609813d25d6a0a6553f16b17f4c712e4bd2f9772b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2464,7 +2464,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_cargo_port.glb"
   },
-  "runtimeHash": "06555cf5eb47bf908329b3012daf4e3c334bd785783aa34f73b2c18741c49b4a",
+  "runtimeHash": "733d49132dcaa01da47e2804c03d1df5cab40466e89510b55b3de9a33a1c5379",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

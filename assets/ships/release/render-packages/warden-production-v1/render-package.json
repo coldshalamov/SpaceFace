@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "09a4aa16c2d9861a5aa1fdd43746166804c8f7af3d63ed652e939d60be8b9079",
+  "contentHash": "401f30be02c252897032780b60105f822afb3e13b09e6c5a2429ddb3d05a1073",
   "dynamicGroups": [
     {
       "id": "sf.render.warden-production-v1.node.lod0-hook-armor-port-armor.dynamic",
@@ -3042,13 +3042,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1728656,
-    "sha256": "fcd049072932105403acbaec0a4f5327e83c1d5dbf7fd934f445c5f9139f4cdb",
+    "sha256": "a84a301142dff29f57cb775c203e32e5061340814d7e4ec923e2cdf5ba30a9f0",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4389,7 +4389,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1.glb"
   },
-  "runtimeHash": "4449096cefb9606a531bd62f8342abb6bb8aff674a2490cb84bc735b1a313322",
+  "runtimeHash": "4806a84bdb5629fe83bbfeaa62ba28bdf02b514115e993083ea890ce2278b6c2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "02b1425ed6df95ffa2f13790922ca51d3063760b96a1eb4c4b53ebfdfd437976",
+  "contentHash": "e9c1681cb6f27b346e06657a139e136b458b023492b4b2d287835833f4b325d3",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -571,13 +571,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 223296,
-    "sha256": "ba2f83d2b12744f957c5d4f1b9cc360f682fac630e5777222e2ce33e0cf04f9d",
+    "sha256": "022eaf37dfa39b035601c75b01ecbcc05afe66fb26fee75e9dde156134946b82",
     "uri": "render.glb"
   },
   "runtime": {
@@ -872,7 +872,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_vector.glb"
   },
-  "runtimeHash": "6c39c6b4d691c13c300540621f802bd26a88c7e0c5be2f6abd615ec1473373dd",
+  "runtimeHash": "f4f6f86d773b4de58506511768dae5e478d019d1e28b83d09ad8d0297c0c2f72",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "77f2fec003ae0f6c6f67d7517e32172c6ccc0371358becb3f52767175bdb6286",
+  "contentHash": "033d03097f831647731712590179728a94fb1bef35c04dc15879add893b4db60",
   "dynamicGroups": [
     {
       "id": "sf.render.scrap-cage.mesh.lod0-hook-nav-port.dynamic",
@@ -2684,13 +2684,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 668404,
-    "sha256": "8d90e34674937592d5058b55259da15477ac6027f8b6556c225bec207ce39969",
+    "sha256": "cc938cf5f8c19ea4e3acd521e70f92db28a7cfc21eff1b7d16dca4f8a679e90a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3746,7 +3746,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_scrap_cage.glb"
   },
-  "runtimeHash": "a25b701d46786bcca70cf006d291a820b41755fc59ad995f458243d359f636c8",
+  "runtimeHash": "a98c9ef89765dfc15a853fc8f17189fc7ab09178d1d6626acddb34fbb10fd667",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

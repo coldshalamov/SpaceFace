@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "861a4f5b5eb1db514a857ac81c6268982b30269b0511a98711e5ba359ef929ad",
+  "contentHash": "09321d2d9d2defa565dcc2e4dfbc7d44eca055c30f795ecfa427ce2cd5a0454b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -3875,13 +3875,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 413272,
-    "sha256": "50c27bc6de840ba2123467c59b9279b4b5f9ad560a1098d0f0bb100900d74042",
+    "sha256": "ea29dd17bc893da2f8e6b896a45133c6d95b75a8c24a08389ed097e7d009398c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5789,7 +5789,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb"
   },
-  "runtimeHash": "4f0d8e9319c4ea9a226782bc948b20c9a413d789fe5ba5036db097f4b5924a12",
+  "runtimeHash": "87ef27b87ec574e5a4c3b0743847c70e4e68da837bec646aabd93988b5a67962",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

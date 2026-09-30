@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8c8587922dc5701a90ca85709b81e6d8b0c05749005d2c273bf15f32ebdc269c",
+  "contentHash": "0295137ad979223e74b6d11e71b29deafc7bca64a604f195343218e0daabfb31",
   "dynamicGroups": [
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.dynamic",
@@ -2402,13 +2402,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 679292,
-    "sha256": "7071737ce4992b23c81cf311a66e0bb6b6d555e8e70dbaa15c5c79f0d1fc4511",
+    "sha256": "374a8915d50a9c3c78fc4c27250fa842eb360a343905a005472ab2c872cfd2b3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3377,7 +3377,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transfer_arm.glb"
   },
-  "runtimeHash": "6208707b599b2cd1ad169872c8f360ac6c1884c6cef18f59ce14baca4143a1ba",
+  "runtimeHash": "241da2135f71a16ed7a23bc58d8337d8c0c4bdb79ede9be55fae3c3cf19c38dd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

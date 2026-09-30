@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "22e2d01815b96d76b8b4334fda6322e01035fe21848d3ef822ea025d9f4134d9",
+  "contentHash": "333640ca997c334a41b2e5cce4eef12deb4b81d7d64d0f336b68822e6e221eb6",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1240,13 +1240,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 4207032,
-    "sha256": "60d9f2c706cfb413029aca23917426f41f44363b15d87001ac7cb24c29669bfa",
+    "sha256": "5b9e302d3abd89852c6f265c3afd1a13f2d959b7ddbac819b6f4f5e78c1f70ed",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1880,7 +1880,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_derrick.glb"
   },
-  "runtimeHash": "b0796b6a430dd715fdfd2209ffdaeaa4ada2f77c6287fc221b82bb500382d7d5",
+  "runtimeHash": "143d8011a408e266e154013d0e55b593daebfe8952b2fcb41985bb896a57aa1b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

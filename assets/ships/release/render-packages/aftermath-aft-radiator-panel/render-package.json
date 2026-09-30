@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "de390bc7b99e03c78daa45ea433ded4253bfc00891a74c252b790bf8e049f3fc",
+  "contentHash": "8bfca5b2658482493f7d24010f5238745a48f82e9943792e7f67e96a69f096fe",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1667,13 +1667,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 190396,
-    "sha256": "a099819719283fd9351618b35e20adda40196263b4c34886ffc4a9be8924b36a",
+    "sha256": "ba48d074e0122dfeb172942cb59934719c51b50fafdd91cd4b8e6fb623e93596",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2392,7 +2392,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_radiator_panel.glb"
   },
-  "runtimeHash": "80d1dac16eb8c2cb15858f9df9a410c09e28a1cde123ca4b22cf0f930cbe783a",
+  "runtimeHash": "1f2b5b6b21e4607cc50505b119c6c6f2c3deabcd7a93abac5cb88e178b1b4b42",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

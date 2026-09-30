@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9d0dd4364a9999ca383ab0276ca67038268367eb985ef6910c58451843d14c63",
+  "contentHash": "e506292e9720600f51aa2400de971ef67fa2bf3f287a0ed7cef3e769b3b78fd9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -774,13 +774,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 118856,
-    "sha256": "64b69152b3d872cd45f472e2cf20cfa39b45f5fd2020f5d56b1665a440ca2316",
+    "sha256": "f775d24686bdffd8b2c87224c374ce9ef634be64e87697469b8bd29cd7cabc72",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1160,7 +1160,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
   },
-  "runtimeHash": "dbdc5801250669addf51ac6025e4db0e82ebb4189f3eea3dbbbdcb57aa0d2796",
+  "runtimeHash": "d204678b0d56a21cec59f83430881ff8a7bfabb8058af718cf509f4271f87fac",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

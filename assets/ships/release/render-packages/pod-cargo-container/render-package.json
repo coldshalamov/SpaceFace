@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "36a43c0761771a7436fcb446753d7d85007a7012b3e06575fd93d551dcaea68d",
+  "contentHash": "4faae18dadb2b9911c8f8b4d9cd0c4d013ca4a7c636628465f609fd60f1fe822",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -580,13 +580,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 552388,
-    "sha256": "6e62b5289f2c8c1316367a6852a0a8ae09344ac0677925dae46b11535cbd1d31",
+    "sha256": "cd8187310a53efc724b4f05b6ad317ad1746c9516be3e3942b8d6bd781407b73",
     "uri": "render.glb"
   },
   "runtime": {
@@ -764,7 +764,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
-  "runtimeHash": "0f37c07b16ad5cfb53ac784b11d89ae29bff4ca33e7cedd598aefc4e04accf52",
+  "runtimeHash": "bb41ff48e64cb9a8ae866155741525407c06e334b5d5aeb3a61c94803667f9e9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        46
+        49
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        47
+        50
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        48
+        51
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        49
+        52
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        50
+        53
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        51
+        54
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        52
+        55
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        53
+        56
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        54
+        57
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        55
+        58
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        56
+        59
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        57
+        60
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e56bf5760181a817d034d94ba8f2200b16cd35ffda81ebe52197b46c310f17a8",
+  "contentHash": "29c9fba380e8a91bff7a78c6a02b951351ca062869689096e77b9354d3be5386",
   "dynamicGroups": [
     {
       "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.dynamic",
@@ -628,7 +628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "55e9478799545a91b575d81b162a0c0bb08640189803a08ed022004430d8a892",
+      "geometryHash": "e3cde3f585d83ca32369c1aa8331cf744087581de2e4746b3f973451140fc8d8",
       "id": "sf.render.salvage-cutter.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -637,7 +637,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.salvage-cutter.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 808
+      "vertexCount": 802
     },
     {
       "bounds": {
@@ -678,16 +678,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1e6e60b56cf44421a49d9191ca4a63ae89e9e3983a09780fa024991450d096c",
+      "geometryHash": "9fb838d4d5491a02103e9204ee8fce82010a984a54a635ebaf3f153488879da1",
       "id": "sf.render.salvage-cutter.node.lod0-armor.primitive.0",
-      "indexCount": 8010,
+      "indexCount": 8208,
       "indexed": true,
       "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.salvage-cutter.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2182
+      "vertexCount": 2218
     },
     {
       "bounds": {
@@ -853,7 +853,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7d40caf7a4144d6b8de56ef3bb0cb5289c6762d7ef789ca2868f5ebbbacdb49",
+      "geometryHash": "1bd95339267df92d6f44c6cfd6080116180b0d13fe0e7ea17b5c0a56a7fd8cf9",
       "id": "sf.render.salvage-cutter.node.lod0-hull-patch.primitive.0",
       "indexCount": 2712,
       "indexed": true,
@@ -903,16 +903,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98680d5bd53a0c9ea6d5552b7d70812cd551e8686656548a3619ea9bc33d55e2",
+      "geometryHash": "3821a7baf06af77567041ba76f2501e6966bd60c50e72843e26ce97be52786b9",
       "id": "sf.render.salvage-cutter.node.lod0-hull.primitive.0",
-      "indexCount": 10791,
+      "indexCount": 11193,
       "indexed": true,
       "materialHash": "90c3b4dcf87a9c869c0f66a5b2e579a44cc7df98fd0de84782dbfa36665b2576",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.salvage-cutter.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2891
+      "vertexCount": 3029
+    },
+    {
+      "bounds": {
+        "max": [
+          2.800049066543579,
+          1.6992430686950684,
+          0.08002346754074097
+        ],
+        "min": [
+          -7.850150108337402,
+          1.47952401638031,
+          -0.0798904150724411
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bba87c5385fe1cf3b603d5023794b351bf5b3a2f8498b50535257cdb8674b71e",
+      "id": "sf.render.salvage-cutter.node.lod0-lights-cyan-rust.primitive.0",
+      "indexCount": 1689,
+      "indexed": true,
+      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan_rust",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-lights-cyan-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 548
     },
     {
       "bounds": {
@@ -978,16 +1003,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cca78e9f919d5f974cd14969e39b8278dd3909f2a422ba649912bf176661bb30",
+      "geometryHash": "a1a7c0c4b71269baf54e88757ed667695ba04806454b8cd9bc1df910e1b88f81",
       "id": "sf.render.salvage-cutter.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 7656,
+      "indexCount": 8712,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.salvage-cutter.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2589
+      "vertexCount": 2875
     },
     {
       "bounds": {
@@ -1003,16 +1028,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e78c0fb1e09b4a3ffd3f433e73164a9e7c2d18fc18007c2dac7120a6061c41f5",
+      "geometryHash": "cef34b2d52ffb679171112f17dd61f97c4f779495602e008118afa1511856102",
       "id": "sf.render.salvage-cutter.node.lod0-warning.primitive.0",
-      "indexCount": 8280,
+      "indexCount": 8331,
       "indexed": true,
       "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.salvage-cutter.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 2449
+      "vertexCount": 2474
     },
     {
       "bounds": {
@@ -1028,116 +1053,116 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70634316ed4c0f236a5ac4fb1ac838a0314d85903d56fa3a0aa40ce03cf1ad2b",
+      "geometryHash": "12a7ac3eacb09af143fe41595603916332bb8cb638a68c4776b6d1f7ecad9a2e",
       "id": "sf.render.salvage-cutter.node.lod1-armor-olive.primitive.0",
-      "indexCount": 816,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "ff7a90d921cc8c559f393dce634200a6e8783772998fa7d8ba63393dafc37d02",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor_olive",
       "nodeId": "sf.render.salvage-cutter.node.lod1-armor-olive",
       "primitiveIndex": 0,
-      "vertexCount": 283
+      "vertexCount": 292
     },
     {
       "bounds": {
         "max": [
           10.746306419372559,
-          0.9002036452293396,
+          0.9001960754394531,
           3.4500114917755127
         ],
         "min": [
           -9.65000057220459,
-          -1.4502238035202026,
+          -1.4502313137054443,
           -3.4500114917755127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ecc63d43a9b8ea9debf0a89c4ed0911047b7495b7d60b9fecf9b40446d64985",
+      "geometryHash": "1054edfd0219bed30b53e2a6674f4b6394b7f5aab3d831570ce9450c78510be8",
       "id": "sf.render.salvage-cutter.node.lod1-armor.primitive.0",
-      "indexCount": 2244,
+      "indexCount": 2286,
       "indexed": true,
       "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.salvage-cutter.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 630
+      "vertexCount": 645
     },
     {
       "bounds": {
         "max": [
           10.749200820922852,
-          3.3605408668518066,
-          1.5286858081817627
+          3.3608715534210205,
+          1.5296000242233276
         ],
         "min": [
           -4.230000019073486,
-          -0.12837354838848114,
-          -1.5286858081817627
+          -0.1298714578151703,
+          -1.5296000242233276
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a40e7d570960ef723d7c2ea74894ac4c247148217484ef419f86de76d465fbfe",
+      "geometryHash": "695a9032f4579ea380ebfab3ed5b75580daa630780fff6dcd7ae464b434ff588",
       "id": "sf.render.salvage-cutter.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 912,
+      "indexCount": 1218,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.salvage-cutter.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 280
+      "vertexCount": 391
     },
     {
       "bounds": {
         "max": [
-          10.749029159545898,
-          2.6579244136810303,
-          3.144714117050171
+          10.75,
+          2.6580119132995605,
+          3.144883871078491
         ],
         "min": [
           -7.238328456878662,
-          -0.5896482467651367,
-          -3.144575357437134
+          -0.5897358655929565,
+          -3.144745111465454
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3ee5e511ab58de3cb093721107e930d4da488f75c6db006c5b52cd62d635f41",
+      "geometryHash": "7778b815a0f27b1d0e76759bc7390904acd26bb9f2a1c0087c71da9a459ee8c8",
       "id": "sf.render.salvage-cutter.node.lod1-brushedmetal.primitive.0",
-      "indexCount": 2628,
+      "indexCount": 2850,
       "indexed": true,
       "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.salvage-cutter.node.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 908
+      "vertexCount": 983
     },
     {
       "bounds": {
         "max": [
-          3.7000324726104736,
-          2.020022392272949,
-          2.299948215484619
+          3.7000579833984375,
+          2.020020008087158,
+          2.299999952316284
         ],
         "min": [
-          1.1183592081069946,
-          0.9049242734909058,
-          0.30005162954330444
+          2.9499740600585938,
+          0.906094491481781,
+          0.29999998211860657
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84d9d467529053185ad1266f8c2cf9b86e71c869936ac5385c432926cc39e8f9",
+      "geometryHash": "23b7d80c5ad6324b644418d32ed82f39e621ebd1dad7fc5ecb72e3cd94d7191b",
       "id": "sf.render.salvage-cutter.node.lod1-canopy.primitive.0",
-      "indexCount": 507,
+      "indexCount": 552,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_CANOPY",
       "nodeId": "sf.render.salvage-cutter.node.lod1-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 150
+      "vertexCount": 163
     },
     {
       "bounds": {
@@ -1217,27 +1242,27 @@
     {
       "bounds": {
         "max": [
-          2.350032329559326,
+          2.3500325679779053,
           2.3001022338867188,
           2.3823580741882324
         ],
         "min": [
           -7.05004358291626,
           -1.0313923358917236,
-          -1.4999390840530396
+          -1.499939203262329
         ]
       },
       "drawMode": 4,
-      "geometryHash": "17a412ccfcf594c2a29b2544c375c37039f6f804db7945a729e9b0e91dcfc339",
+      "geometryHash": "8289a4c9b9f1489095698d97edcbd119c5420dc9907c42bb559de8913ccc098a",
       "id": "sf.render.salvage-cutter.node.lod1-hull-patch.primitive.0",
-      "indexCount": 714,
+      "indexCount": 792,
       "indexed": true,
       "materialHash": "287f8415c6100ad8e7c7cb4d93a1c0161e60435461bb7a7567b727c1ff8b7322",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_patch",
       "nodeId": "sf.render.salvage-cutter.node.lod1-hull-patch",
       "primitiveIndex": 0,
-      "vertexCount": 250
+      "vertexCount": 275
     },
     {
       "bounds": {
@@ -1253,41 +1278,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "164255b24189d25f5934c31c12413735bddb2fc185557528a0502724c0001b2b",
+      "geometryHash": "4a55cef2477f1b57ec42c569f8d328362a7055b9b417ea7e998bce273163ec8f",
       "id": "sf.render.salvage-cutter.node.lod1-hull-primer.primitive.0",
-      "indexCount": 978,
+      "indexCount": 1038,
       "indexed": true,
       "materialHash": "93ed9cd98e2c06c119688c3bd7330c941336449abf4c0566d19ce9d66660b40d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_primer",
       "nodeId": "sf.render.salvage-cutter.node.lod1-hull-primer",
       "primitiveIndex": 0,
-      "vertexCount": 371
+      "vertexCount": 389
     },
     {
       "bounds": {
         "max": [
           5.300039768218994,
-          2.2780232429504395,
+          2.279611587524414,
           2.499896764755249
         ],
         "min": [
           -9.399982452392578,
-          -0.9664166569709778,
+          -0.9666227102279663,
           -2.5000040531158447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26b1a3db0ccb0aad70c255c6db9e2684514d59519898c5d68762e0280c9290cb",
+      "geometryHash": "8a373e629eb796f72199058d4c845bbd33d7c383a283f5eac0932d9bdc2c6e72",
       "id": "sf.render.salvage-cutter.node.lod1-hull.primitive.0",
-      "indexCount": 3135,
+      "indexCount": 3300,
       "indexed": true,
       "materialHash": "90c3b4dcf87a9c869c0f66a5b2e579a44cc7df98fd0de84782dbfa36665b2576",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.salvage-cutter.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 871
+      "vertexCount": 929
+    },
+    {
+      "bounds": {
+        "max": [
+          2.800006866455078,
+          1.6992923021316528,
+          0.0799536183476448
+        ],
+        "min": [
+          -7.849931716918945,
+          1.4795786142349243,
+          -0.07995634526014328
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38be99b298aadd079ccc72eeca5c9d2b39e825cc8bea3d0cc690ea3848518321",
+      "id": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust.primitive.0",
+      "indexCount": 99,
+      "indexed": true,
+      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Cyan_rust",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 45
     },
     {
       "bounds": {
@@ -1328,16 +1378,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e75ab627ebf3ecba1c28139d4c86a8a24c5e445d5806f8a1287780b6028ad4b",
+      "geometryHash": "4ec7183391bb760a9751acfd607a718d2d45916784400f59cfe304cffb2d4830",
       "id": "sf.render.salvage-cutter.node.lod1-mechanical.primitive.0",
-      "indexCount": 7692,
+      "indexCount": 7866,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.salvage-cutter.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2598
+      "vertexCount": 2661
     },
     {
       "bounds": {
@@ -1353,116 +1403,116 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd1ce24767401aad8586ee63092c8a9ec86763471e39cb6816b3133054affc09",
+      "geometryHash": "37f15c224d4cd2b5cf223fdc788040e357fb1bccd9af13d2a5ae338660423fea",
       "id": "sf.render.salvage-cutter.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 4362,
+      "indexCount": 4410,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.salvage-cutter.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1580
+      "vertexCount": 1616
     },
     {
       "bounds": {
         "max": [
           -0.47103625535964966,
-          3.2192234992980957,
+          3.2192230224609375,
           2.2941880226135254
         ],
         "min": [
           -8.350049018859863,
-          -1.3797327280044556,
+          -1.3797333240509033,
           -2.2941882610321045
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90c8496afc9af478f441712cb987f260715885ab7bcb875401a0dfb48957e378",
+      "geometryHash": "a0ec3944c6dd6e891c2af36e88e738fb24d850284f22c7b7a98b89f1cfa4cb67",
       "id": "sf.render.salvage-cutter.node.lod1-warning.primitive.0",
-      "indexCount": 2454,
+      "indexCount": 2523,
       "indexed": true,
       "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.salvage-cutter.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 861
+      "vertexCount": 887
     },
     {
       "bounds": {
         "max": [
-          1.7009702920913696,
+          1.7009555101394653,
           1.664129376411438,
-          2.471276044845581
+          2.4712626934051514
         ],
         "min": [
-          -0.15044569969177246,
-          -1.0936371088027954,
-          1.001286506652832
+          -0.15007342398166656,
+          -1.0945653915405273,
+          1.0001047849655151
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65fa5dc9ed28389cab20f4f7b57eba7f8923d43b08b39b7773adb0823dded798",
+      "geometryHash": "c71f09759ceb66c797e79f565ec9523f552fe77d7aea6a4b4d894c060a72f576",
       "id": "sf.render.salvage-cutter.node.lod2-armor-olive.primitive.0",
-      "indexCount": 285,
+      "indexCount": 300,
       "indexed": true,
       "materialHash": "ff7a90d921cc8c559f393dce634200a6e8783772998fa7d8ba63393dafc37d02",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor_olive",
       "nodeId": "sf.render.salvage-cutter.node.lod2-armor-olive",
       "primitiveIndex": 0,
-      "vertexCount": 111
+      "vertexCount": 116
     },
     {
       "bounds": {
         "max": [
           10.745348930358887,
-          0.8946217894554138,
+          0.8946142196655273,
           3.450228214263916
         ],
         "min": [
           -9.644879341125488,
-          -1.4501268863677979,
+          -1.450134515762329,
           -3.450228214263916
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fd0d97abd0051a3628c3ec777c8361285f2760457cf4c87960d483bcd167e6d",
+      "geometryHash": "ded4508ff58868296515dc46742721f0e8a3ccc72a5651f8698e9b6c45ae695d",
       "id": "sf.render.salvage-cutter.node.lod2-armor.primitive.0",
-      "indexCount": 1098,
+      "indexCount": 1122,
       "indexed": true,
       "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.salvage-cutter.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 355
+      "vertexCount": 361
     },
     {
       "bounds": {
         "max": [
-          10.745031356811523,
-          3.360745906829834,
-          1.5255181789398193
+          10.74561595916748,
+          3.360814094543457,
+          1.5246636867523193
         ],
         "min": [
           -4.230000019073486,
-          -0.12719734013080597,
-          -1.5255180597305298
+          -0.12726542353630066,
+          -1.5246635675430298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73f757a41cb155c1ff6d52b2a7879691f6ba6aaeab914b76b646531041f0bd88",
+      "geometryHash": "a54648a8ca0ae8b7b4ddb57787d5a4a7ee3c1030426d8a6872189d38f912a4cd",
       "id": "sf.render.salvage-cutter.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 324,
+      "indexCount": 348,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.salvage-cutter.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 140
+      "vertexCount": 148
     },
     {
       "bounds": {
@@ -1478,41 +1528,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff425d3a62222566a4b5e5fc954ed174d83eed5c25856be4ff73294e4a2968d8",
+      "geometryHash": "a203305c6d45ab442121c1ca63ea95e5bc4af4d37c243493bc513a2d4e8b7534",
       "id": "sf.render.salvage-cutter.node.lod2-brushedmetal.primitive.0",
-      "indexCount": 1308,
+      "indexCount": 1344,
       "indexed": true,
       "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.salvage-cutter.node.lod2-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 544
+      "vertexCount": 555
     },
     {
       "bounds": {
         "max": [
-          3.6990256309509277,
-          2.0200657844543457,
-          2.295503616333008
+          3.6992504596710205,
+          2.019955635070801,
+          2.29543137550354
         ],
         "min": [
           1.1038250923156738,
-          0.9067282676696777,
-          0.3076213598251343
+          0.9068384170532227,
+          0.3076936602592468
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db2a7b433836924937227485008fc9ef9b46f02832fb634581e9c64ef6b70005",
+      "geometryHash": "4fb8b896a655da7aa44d821a85c8ee35d116ee2f65d31b018717e8cd1e7248ca",
       "id": "sf.render.salvage-cutter.node.lod2-canopy.primitive.0",
-      "indexCount": 171,
+      "indexCount": 192,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_CANOPY",
       "nodeId": "sf.render.salvage-cutter.node.lod2-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 67
+      "vertexCount": 72
     },
     {
       "bounds": {
@@ -1528,7 +1578,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4de4546c9ed5fa9e5f6be36ffe0bc12462880e8bc53ae5feae7e8994c72d81e9",
+      "geometryHash": "9dccdb3c4fb77d39d48356542e2f128d981b4d03c04b9826da99d3b26e210a87",
       "id": "sf.render.salvage-cutter.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1592,18 +1642,18 @@
     {
       "bounds": {
         "max": [
-          2.350032329559326,
-          1.6450951099395752,
+          2.3500325679779053,
+          1.6450942754745483,
           2.3823580741882324
         ],
         "min": [
           -7.05004358291626,
-          -1.0311741828918457,
-          -1.4999390840530396
+          -1.0311750173568726,
+          -1.499939203262329
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b615b8516db8c5b63efda8527cc3845e70e97d9d589ff7a6e84dddb3abe0c8a",
+      "geometryHash": "ad6cc35813c1f6d80314bddc9d67919aed05a6aaa80a8a85b15d0be6b36b4264",
       "id": "sf.render.salvage-cutter.node.lod2-hull-patch.primitive.0",
       "indexCount": 276,
       "indexed": true,
@@ -1628,41 +1678,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c556d83b00560497866d1f0a96ee90b2b2b75b47b7a977e827447bdf963c5bf4",
+      "geometryHash": "0af3b98d39a7df312a93a055183c4ebb601ca575587f3b86bd00954e4e002026",
       "id": "sf.render.salvage-cutter.node.lod2-hull-primer.primitive.0",
-      "indexCount": 462,
+      "indexCount": 474,
       "indexed": true,
       "materialHash": "93ed9cd98e2c06c119688c3bd7330c941336449abf4c0566d19ce9d66660b40d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_primer",
       "nodeId": "sf.render.salvage-cutter.node.lod2-hull-primer",
       "primitiveIndex": 0,
-      "vertexCount": 203
+      "vertexCount": 206
     },
     {
       "bounds": {
         "max": [
           5.300090312957764,
-          2.2468154430389404,
-          2.4999375343322754
+          2.246795654296875,
+          2.4999067783355713
         ],
         "min": [
-          -9.400172233581543,
-          -0.9671706557273865,
-          -2.500044822692871
+          -9.399991035461426,
+          -0.9671508073806763,
+          -2.500014066696167
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3696101c5aaf0d896e6808874f85b071e4d0e389f1401e78ad5f6edbdf21d570",
+      "geometryHash": "388d07eb33aa48f522a34187688a6a9d3a9ae861170544247f0ff24140bfaef9",
       "id": "sf.render.salvage-cutter.node.lod2-hull.primitive.0",
-      "indexCount": 1791,
+      "indexCount": 1884,
       "indexed": true,
       "materialHash": "90c3b4dcf87a9c869c0f66a5b2e579a44cc7df98fd0de84782dbfa36665b2576",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.salvage-cutter.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 500
+      "vertexCount": 526
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7998499870300293,
+          1.6992906332015991,
+          0.07999421656131744
+        ],
+        "min": [
+          -7.849931716918945,
+          1.479580283164978,
+          -0.07991339266300201
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "24571ee647eb5befc15016d12aa0e3bfeefd73e40222333e5e5b450f001b37de",
+      "id": "sf.render.salvage-cutter.node.lod2-lights-cyan-rust.primitive.0",
+      "indexCount": 78,
+      "indexed": true,
+      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan_rust",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-lights-cyan-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 38
     },
     {
       "bounds": {
@@ -1692,77 +1767,77 @@
     {
       "bounds": {
         "max": [
-          6.64366340637207,
-          3.1870458126068115,
-          3.193748950958252
+          6.644381046295166,
+          3.1870737075805664,
+          3.197946310043335
         ],
         "min": [
-          -10.37114429473877,
-          -0.9483931660652161,
-          -3.193748950958252
+          -10.37065601348877,
+          -0.948421061038971,
+          -3.197946310043335
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3638f33877f15751eb1402d8e2f969b9973df72916ad12c05c1c89a41be1877a",
+      "geometryHash": "2c4d8b35a5e7727c9ad2d0a482c7e3aa97165b26f4d2b77a7cdf5807b4a33a9e",
       "id": "sf.render.salvage-cutter.node.lod2-mechanical.primitive.0",
-      "indexCount": 1923,
+      "indexCount": 2052,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.salvage-cutter.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 833
+      "vertexCount": 860
     },
     {
       "bounds": {
         "max": [
           6.247238636016846,
-          1.6684491634368896,
-          2.991464614868164
+          1.669953465461731,
+          2.9913766384124756
         ],
         "min": [
-          -10.37114429473877,
-          -1.149377703666687,
-          -2.9915997982025146
+          -10.37065601348877,
+          -1.1498193740844727,
+          -2.991511821746826
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4af7842ff20c1de918c6397004d0c2d562a8728b8d44712f031da88286eaa0af",
+      "geometryHash": "104430cd408d7be5b3e02941a01c962f1a1643502f1f57d7c7739858ea9b7d9a",
       "id": "sf.render.salvage-cutter.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 1419,
+      "indexCount": 1500,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.salvage-cutter.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 537
+      "vertexCount": 584
     },
     {
       "bounds": {
         "max": [
-          -0.47633692622184753,
-          3.2134623527526855,
-          2.294086217880249
+          -0.4756653606891632,
+          3.21779465675354,
+          2.2938013076782227
         ],
         "min": [
           -8.350049018859863,
-          -1.3795164823532104,
-          -2.294086456298828
+          -1.3794208765029907,
+          -2.2938015460968018
         ]
       },
       "drawMode": 4,
-      "geometryHash": "14bc1868e37e59876079f341e150d53dbc4f6877d01f828317ca393c326048b5",
+      "geometryHash": "145ff58bb4e26715eec685b8ecdaa32700882fedbb70479d4d49b719e1582f19",
       "id": "sf.render.salvage-cutter.node.lod2-warning.primitive.0",
-      "indexCount": 993,
+      "indexCount": 1092,
       "indexed": true,
       "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.salvage-cutter.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 373
+      "vertexCount": 405
     }
   ],
   "hlods": [],
@@ -1851,6 +1926,13 @@
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "id": "material:6a5417b004bdbc8e05e1f1ee",
       "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "id": "material:799b05dd6e45a6e8b6507d32",
+      "name": "Material_Emissive_Cyan_rust",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -2690,6 +2772,55 @@
       ]
     },
     {
+      "id": "sf.render.salvage-cutter.node.lod0-lights-cyan-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan_rust",
+      "nodeName": "LOD0_Lights_Cyan_rust",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.salvage-cutter.node.lod0-lights-warm",
       "localTransform": [
         1,
@@ -2714,7 +2845,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        12
+        13
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -2763,7 +2894,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        13
+        14
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -2812,7 +2943,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        14
+        15
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -2861,7 +2992,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        15
+        16
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -2910,7 +3041,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        16
+        17
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -2959,7 +3090,7 @@
       "nodeName": "LOD1_Armor_olive",
       "nodePath": [
         0,
-        17
+        18
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3008,7 +3139,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3057,7 +3188,7 @@
       "nodeName": "LOD1_BrushedMetal",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3106,7 +3237,7 @@
       "nodeName": "LOD1_CANOPY",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3155,7 +3286,7 @@
       "nodeName": "LOD1_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
-        21
+        22
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
@@ -3204,7 +3335,7 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        22
+        23
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
@@ -3253,7 +3384,7 @@
       "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
@@ -3302,7 +3433,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3351,7 +3482,7 @@
       "nodeName": "LOD1_Hull_patch",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3400,7 +3531,56 @@
       "nodeName": "LOD1_Hull_primer",
       "nodePath": [
         0,
-        26
+        27
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Cyan_rust",
+      "nodeName": "LOD1_Lights_Cyan_rust",
+      "nodePath": [
+        0,
+        28
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3449,7 +3629,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        27
+        29
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3498,7 +3678,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        28
+        30
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3547,7 +3727,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        29
+        31
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3596,7 +3776,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        30
+        32
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3645,7 +3825,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        31
+        33
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3694,7 +3874,7 @@
       "nodeName": "LOD2_Armor_olive",
       "nodePath": [
         0,
-        32
+        34
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3743,7 +3923,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        33
+        35
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3792,7 +3972,7 @@
       "nodeName": "LOD2_BrushedMetal",
       "nodePath": [
         0,
-        34
+        36
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3841,7 +4021,7 @@
       "nodeName": "LOD2_CANOPY",
       "nodePath": [
         0,
-        35
+        37
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -3890,7 +4070,7 @@
       "nodeName": "LOD2_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
-        36
+        38
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
@@ -3939,7 +4119,7 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        37
+        39
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
@@ -3988,7 +4168,7 @@
       "nodeName": "LOD2_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        38
+        40
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
@@ -4037,7 +4217,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        39
+        41
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4086,7 +4266,7 @@
       "nodeName": "LOD2_Hull_patch",
       "nodePath": [
         0,
-        40
+        42
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4135,7 +4315,56 @@
       "nodeName": "LOD2_Hull_primer",
       "nodePath": [
         0,
-        41
+        43
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-lights-cyan-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan_rust",
+      "nodeName": "LOD2_Lights_Cyan_rust",
+      "nodePath": [
+        0,
+        44
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4184,7 +4413,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        42
+        45
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4233,7 +4462,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        43
+        46
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4282,7 +4511,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        44
+        47
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4331,7 +4560,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        45
+        48
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4428,7 +4657,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        46
+        49
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4477,7 +4706,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        47
+        50
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4526,7 +4755,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        48
+        51
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4575,7 +4804,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        49
+        52
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4624,7 +4853,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        50
+        53
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4673,7 +4902,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        51
+        54
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4722,7 +4951,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        52
+        55
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4771,7 +5000,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        53
+        56
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4820,7 +5049,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        54
+        57
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4869,7 +5098,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        55
+        58
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4918,7 +5147,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        56
+        59
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4967,7 +5196,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        57
+        60
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4994,29 +5223,29 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "340e27ea01f89caaaceae3f59acd8a5e27bd5f8a0bb14949d6ca112d02b53503"
+      "sha256": "56da44b8cc6c46210001ad7da188cdc4633dafb09064c7208aad801d529f9817"
     },
     "sourceGlb": {
-      "bytes": 890876,
-      "sha256": "4daca34b2249f64519e7c85a9df11aa9892eeee570b12091d6a7e85091af9882",
+      "bytes": 921672,
+      "sha256": "15c09eb08d5bbe885ac78f8cca7885649663855ac935a5082c1095ff4f4bd7b5",
       "uri": "salvage_cutter.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1539128,
-    "sha256": "db5a2274a3aeece94bc9e00d3c1b1ae5c57d58b7013896cfc3e32e8a30d16df3",
+    "bytes": 1604580,
+    "sha256": "61502c7a865002723916eb3fc0bebe9226645ef9c5dd91f6c819f94f88ffaccb",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.18942785263061523,
-        0.956800639629364,
+        0.18967199325561523,
+        0.9567968845367432,
         0
       ],
       "max": [
@@ -5025,13 +5254,13 @@
         3.569999933242798
       ],
       "min": [
-        -10.37114429473877,
-        -1.4502238035202026,
+        -10.37065601348877,
+        -1.4502313137054443,
         -3.569999933242798
       ],
       "size": [
-        21.12114429473877,
-        4.814048886299133,
+        21.12065601348877,
+        4.814056396484375,
         7.139999866485596
       ]
     },
@@ -5060,7 +5289,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 48,
+        "planIndex": 51,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5112,7 +5341,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 49,
+        "planIndex": 52,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5164,7 +5393,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 50,
+        "planIndex": 53,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5216,7 +5445,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 51,
+        "planIndex": 54,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5268,7 +5497,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 52,
+        "planIndex": 55,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5320,7 +5549,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 53,
+        "planIndex": 56,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5372,7 +5601,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 54,
+        "planIndex": 57,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5424,7 +5653,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 55,
+        "planIndex": 58,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5476,7 +5705,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 56,
+        "planIndex": 59,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5528,7 +5757,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 57,
+        "planIndex": 60,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5580,7 +5809,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 58,
+        "planIndex": 61,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5632,7 +5861,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 59,
+        "planIndex": 62,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5670,7 +5899,7 @@
       "glass": 3,
       "hull": 16,
       "mechanical": 9,
-      "signal": 12,
+      "signal": 15,
       "warning": 3
     },
     "materialProfiles": [
@@ -5742,7 +5971,7 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -5752,12 +5981,12 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -5767,27 +5996,27 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "glass"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "drive"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
@@ -5797,7 +6026,7 @@
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -5812,72 +6041,72 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 33,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 36,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 37,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "signal"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 41,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 42,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -5887,25 +6116,40 @@
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 45,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 47,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
         "role": "warning"
       }
     ],
-    "nodeCount": 60,
+    "nodeCount": 63,
     "primitives": [
       {
         "canopy": false,
@@ -6245,7 +6489,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_Lights_Cyan_rust",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -6272,7 +6516,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -6299,7 +6543,7 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_Mechanical",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -6326,7 +6570,7 @@
           0,
           1
         ],
-        "name": "LOD0_Warning",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -6353,11 +6597,11 @@
           0,
           1
         ],
-        "name": "LOD1_Armor",
+        "name": "LOD0_Warning",
         "planIndex": 18,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -6380,7 +6624,7 @@
           0,
           1
         ],
-        "name": "LOD1_Armor_olive",
+        "name": "LOD1_Armor",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -6407,7 +6651,7 @@
           0,
           1
         ],
-        "name": "LOD1_Beacon_Amber",
+        "name": "LOD1_Armor_olive",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -6434,8 +6678,35 @@
           0,
           1
         ],
-        "name": "LOD1_BrushedMetal",
+        "name": "LOD1_Beacon_Amber",
         "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -6462,7 +6733,7 @@
           1
         ],
         "name": "LOD1_CANOPY",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "canopy": true,
           "lod": "lod1"
@@ -6489,7 +6760,7 @@
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -6535,7 +6806,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -6563,7 +6834,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -6591,33 +6862,6 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 26,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Hull_patch",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -6644,7 +6888,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull_primer",
+        "name": "LOD1_Hull_patch",
         "planIndex": 28,
         "tags": {
           "canopy": false,
@@ -6671,7 +6915,7 @@
           0,
           1
         ],
-        "name": "LOD1_Lights_Warm",
+        "name": "LOD1_Hull_primer",
         "planIndex": 29,
         "tags": {
           "canopy": false,
@@ -6698,7 +6942,7 @@
           0,
           1
         ],
-        "name": "LOD1_Mechanical",
+        "name": "LOD1_Lights_Cyan_rust",
         "planIndex": 30,
         "tags": {
           "canopy": false,
@@ -6725,7 +6969,7 @@
           0,
           1
         ],
-        "name": "LOD1_MechanicalDark",
+        "name": "LOD1_Lights_Warm",
         "planIndex": 31,
         "tags": {
           "canopy": false,
@@ -6752,7 +6996,7 @@
           0,
           1
         ],
-        "name": "LOD1_Warning",
+        "name": "LOD1_Mechanical",
         "planIndex": 32,
         "tags": {
           "canopy": false,
@@ -6779,11 +7023,11 @@
           0,
           1
         ],
-        "name": "LOD2_Armor",
+        "name": "LOD1_MechanicalDark",
         "planIndex": 33,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
+          "lod": "lod1"
         }
       },
       {
@@ -6806,11 +7050,11 @@
           0,
           1
         ],
-        "name": "LOD2_Armor_olive",
+        "name": "LOD1_Warning",
         "planIndex": 34,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
+          "lod": "lod1"
         }
       },
       {
@@ -6833,7 +7077,7 @@
           0,
           1
         ],
-        "name": "LOD2_Beacon_Amber",
+        "name": "LOD2_Armor",
         "planIndex": 35,
         "tags": {
           "canopy": false,
@@ -6860,8 +7104,62 @@
           0,
           1
         ],
-        "name": "LOD2_BrushedMetal",
+        "name": "LOD2_Armor_olive",
         "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6888,7 +7186,7 @@
           1
         ],
         "name": "LOD2_CANOPY",
-        "planIndex": 37,
+        "planIndex": 39,
         "tags": {
           "canopy": true,
           "lod": "lod2"
@@ -6915,7 +7213,7 @@
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
-        "planIndex": 38,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -6961,7 +7259,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 39,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -6989,7 +7287,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 40,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -7017,60 +7315,6 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 41,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Hull_patch",
-        "planIndex": 42,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Hull_primer",
         "planIndex": 43,
         "tags": {
           "canopy": false,
@@ -7097,7 +7341,7 @@
           0,
           1
         ],
-        "name": "LOD2_Lights_Warm",
+        "name": "LOD2_Hull_patch",
         "planIndex": 44,
         "tags": {
           "canopy": false,
@@ -7124,7 +7368,7 @@
           0,
           1
         ],
-        "name": "LOD2_Mechanical",
+        "name": "LOD2_Hull_primer",
         "planIndex": 45,
         "tags": {
           "canopy": false,
@@ -7151,7 +7395,7 @@
           0,
           1
         ],
-        "name": "LOD2_MechanicalDark",
+        "name": "LOD2_Lights_Cyan_rust",
         "planIndex": 46,
         "tags": {
           "canopy": false,
@@ -7178,8 +7422,89 @@
           0,
           1
         ],
-        "name": "LOD2_Warning",
+        "name": "LOD2_Lights_Warm",
         "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7190,7 +7515,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "317675f026e52f66d18047a74e095231ebc3b6f51dad1499ad14ed77fa4e5072",
+  "runtimeHash": "e4d2ffebbd692a1d3d9868c6023ae813fddbbcb85b8137c93d365153ab0c6669",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -7201,8 +7526,8 @@
           3.569999933242798
         ],
         "min": [
-          -10.37114429473877,
-          -1.4502238035202026,
+          -10.37065601348877,
+          -1.4502313137054443,
           -3.569999933242798
         ]
       },
@@ -7220,6 +7545,7 @@
         "sf.render.salvage-cutter.node.lod0-hull",
         "sf.render.salvage-cutter.node.lod0-hull-patch",
         "sf.render.salvage-cutter.node.lod0-hull-primer",
+        "sf.render.salvage-cutter.node.lod0-lights-cyan-rust",
         "sf.render.salvage-cutter.node.lod0-lights-warm",
         "sf.render.salvage-cutter.node.lod0-mechanical",
         "sf.render.salvage-cutter.node.lod0-mechanicaldark",
@@ -7235,6 +7561,7 @@
         "sf.render.salvage-cutter.node.lod1-hull",
         "sf.render.salvage-cutter.node.lod1-hull-patch",
         "sf.render.salvage-cutter.node.lod1-hull-primer",
+        "sf.render.salvage-cutter.node.lod1-lights-cyan-rust",
         "sf.render.salvage-cutter.node.lod1-lights-warm",
         "sf.render.salvage-cutter.node.lod1-mechanical",
         "sf.render.salvage-cutter.node.lod1-mechanicaldark",
@@ -7250,6 +7577,7 @@
         "sf.render.salvage-cutter.node.lod2-hull",
         "sf.render.salvage-cutter.node.lod2-hull-patch",
         "sf.render.salvage-cutter.node.lod2-hull-primer",
+        "sf.render.salvage-cutter.node.lod2-lights-cyan-rust",
         "sf.render.salvage-cutter.node.lod2-lights-warm",
         "sf.render.salvage-cutter.node.lod2-mechanical",
         "sf.render.salvage-cutter.node.lod2-mechanicaldark",

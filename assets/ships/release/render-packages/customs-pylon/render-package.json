@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8fbc27c7fd8dc12d27c90a51aedefa5ee7967212a49d732540abe130b2fbd19f",
+  "contentHash": "2507dbca3c622ef8adaa857aa8dc16dc189c53d32584da99fb602a170b47984a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -898,13 +898,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 23648,
-    "sha256": "9bdbefcb7e828020b37493be5833f70cdaa602a227daa5025affa9e0339765a6",
+    "sha256": "e1e721c526464922e8e2eb9cac4a22a0a546bc38df1f84a146c062e9770f73a8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1304,7 +1304,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_customs_pylon.glb"
   },
-  "runtimeHash": "d239cf539017ecd4f7b999c81bf637bf6dd8983649e3aea58b8ee372c4ea258e",
+  "runtimeHash": "5f4d68c76a03ed742974ead1fd678bfda95bbf2fa003596fd7bfeb6cac2241af",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

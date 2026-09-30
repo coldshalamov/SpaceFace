@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "12478c55a3336c0cf40f8a4438dd8e6a7b4be1eec2f071a6e7f42a28164f86ff",
+  "contentHash": "1fe0a3d7c0f2132be836a0743f3de61cd43d0a2b112d87aecceda049f4d21313",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -410,13 +410,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 516708,
-    "sha256": "930054ad3cd44b60270167086b8e49f4ff52a7a4963d173e531fecffc52cab1a",
+    "sha256": "392bcb126669febdf588de53735b706c7ed11d089ce1dc9ff9a8c217a4ef0278",
     "uri": "render.glb"
   },
   "runtime": {
@@ -622,7 +622,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_end.glb"
   },
-  "runtimeHash": "e643453396d2c8d808d5c8011c20dde359fc11815bcc9c3b7e65fa17be150862",
+  "runtimeHash": "862df0243053dcf5f0f044da0649e7a230d860a4c9432b51c61f345970dfd680",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "509c6cf242487dea14770b92722a3b7baac963d7a211801947bbf1d4f9948b12",
+  "contentHash": "a7070e133e61cbd760ca8f60544a839662c40bed475c60e545029264f47b4f7e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -263,13 +263,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 421696,
-    "sha256": "7c54a67e4843c0faaacafc9af98253ea884158197855249aae95c69c77af205c",
+    "sha256": "b3d88861a6919e74f65fa9d5c091450865fcc8dad5cc94b5e31cba24fe128ed1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -373,7 +373,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_vents.glb"
   },
-  "runtimeHash": "01b9b8bb1befbff53826397f4087fdf8ede99033d4975861e499d4be69614a67",
+  "runtimeHash": "e9ab91d2e0d694a4fc7899219ebe12d9fe19e4679eaae4fbae681445004aa08e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

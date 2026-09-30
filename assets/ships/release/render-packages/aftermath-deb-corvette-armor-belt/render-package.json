@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "498b70ac833bfdb47c0adba893b6d602bb726357488aa3064786e766b377e94e",
+  "contentHash": "c9c825744b45b2aaeac7f8660db951c24fb0c9b4129c54db6cd536f36acc846a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1390,13 +1390,13 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "6f481ed1b6008203f78401547e33c6621bbf4ab3af7948eba6bdd7730c745a1a",
+      "sha256": "499418853d704cf07ef9e0261115619add6e894658ee416801876c723d9b522e",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 302020,
-    "sha256": "a12d4ab1b25881abfecc61893ab34fc15e2fc61f0a32b222951f0ab1498d31af",
+    "sha256": "e82e8ca3f735f42266cd88753193889e5fc65b3da6203c57ef876574bde64564",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2079,7 +2079,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_armor_belt.glb"
   },
-  "runtimeHash": "ade88af9f55cdab100dbdc8836443650987e66524f6e409ea4f81e71a33007cc",
+  "runtimeHash": "f9dc333a9acba6cdf5e2c15661619d30bb07136234ee380c395f13ec94eea597",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
