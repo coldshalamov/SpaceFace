@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "11a31050cda4d20cdbb9b966f3df2b8de35ef7f753f713cf54f369586dbb38ed",
+  "contentHash": "89c1c2dbd6bfa0549abeb1ec9ffe77b3f031332395db454777cc8c22e0cf8788",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -126,7 +126,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b0774a0887b19d2576ed2ca007d75710c1bb03a8c6f36c4e9b9fe87e8b79c73",
+      "geometryHash": "c01dcbd3fcff2ebeea6ab973ca5e2913954a23fd3204ad9335a99a1729462e28",
       "id": "sf.render.helios-rock-b.mesh.lod0-ceramic-ice.primitive.0",
       "indexCount": 2400,
       "indexed": true,
@@ -241,17 +241,17 @@
       "bounds": {
         "max": [
           1.8950022459030151,
-          4.427206039428711,
-          0.8018893003463745
+          4.427209854125977,
+          0.8016380667686462
         ],
         "min": [
-          -1.7953904867172241,
-          4.274486541748047,
-          -1.6963648796081543
+          -1.7955710887908936,
+          4.274482727050781,
+          -1.6962878704071045
         ]
       },
       "drawMode": 4,
-      "geometryHash": "290d745349670c119b682bbd91e5817f5be06fc080a38d4c78aa9b64cac6e038",
+      "geometryHash": "fd1d39b26a8d404184b255316cad88f3a80241eda2eb28d9812822f37c43c813",
       "id": "sf.render.helios-rock-b.mesh.lod1-ceramic-ice.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -366,17 +366,17 @@
       "bounds": {
         "max": [
           1.9005134105682373,
-          4.412042617797852,
-          0.8018540740013123
+          4.411821365356445,
+          0.8016259074211121
         ],
         "min": [
-          -1.7997840642929077,
-          4.274270534515381,
-          -1.6963295936584473
+          -1.8000353574752808,
+          4.274491786956787,
+          -1.6962757110595703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ec71b508a48c64358a58faffbaa0531b30b7f9800a4fccd117fde1d7c8d515c",
+      "geometryHash": "c58571fa188b49a8c08dc2f086737c892a9015affefc88d1999188b3aa8460b8",
       "id": "sf.render.helios-rock-b.mesh.lod2-ceramic-ice.primitive.0",
       "indexCount": 66,
       "indexed": true,
@@ -1367,19 +1367,19 @@
       "sha256": "d2bfc679743c864a8e716dfe82cdc24718e1cc0a7b194b7703eea6238eed51e9"
     },
     "sourceGlb": {
-      "bytes": 472404,
-      "sha256": "bd112385ff8f3fa7cf86a6af38cede7f5aa5b95d42c4ee46fbaab549d2e3f1a5",
+      "bytes": 473136,
+      "sha256": "803190e8570b3a591d8ede3e16d910f414d99125ecc4b466d1cf65b223d49547",
       "uri": "place_asteroid_rock_b.glb"
     },
     "sourceManifest": {
-      "bytes": 211633,
-      "sha256": "fa323342fc136e3b14adae135f1076c5f9940139e1757e3a01ad9ca9792e1953",
+      "bytes": 212794,
+      "sha256": "39f8094815db22260c88b7327b9e33e26c676e6382f25f33abfe52d976cecde8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 900232,
-    "sha256": "fc0c344a5a2531d539c4d8cd3da3b8e254c42838bba97231c8484b363aad7e2c",
+    "bytes": 900940,
+    "sha256": "25fa5238e900beeafa0df0a1785492492e47e28f8180489aec9eaa650f006ad5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1967,7 +1967,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_rock_b.glb"
   },
-  "runtimeHash": "9b64001a0c065dbea848a6c46b260736e9f520bdfefdd85f24eb087325ccb0d7",
+  "runtimeHash": "c94f0a3d59eb1c87e8ac751d3c2655c12976b8df57ba072f632eb507d68ee3ee",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

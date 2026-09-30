@@ -43,7 +43,9 @@ Pick the top backlog row whose files are free.
 ## Hard-won facts (each cost hours; do not relearn them)
 
 **Colour and look**
-- **Colour calibration:** the Helios key light lifts values about 2.5×. Author paint at hex channels ≈ 0x30–0x90; `#a69d8a` ivory is the brightest allowed; dark armour is 0x20–0x2c. Anything you think looks right in Blender will be pastel in game.
+- **Colour calibration:** the key light is strong. Author paint at hex channels ≈ 0x30–0x90; `#a69d8a` ivory is the brightest allowed; dark armour is 0x20–0x2c. The Look (`docs/visual-assets/LOOK.md`) shows paint near its authored value with deeper chroma and a clear coat, so judge colour in `fleet-look`, never in Blender.
+- **Gloss is automatic; form is yours.** Smooth paint finishes get a clear coat at runtime (sun glint, sky mirror, coloured rim). It only shows on curvature and bevels, so a flat slab looks dead: round it, chamfer it, break it into planes.
+- **Lamps bloom.** `glow_*` finishes spill tens of pixels. Thin strips read as neon; broad glow areas read as fog. Window rows are `glow_warm` (lifted least).
 - **No noise, ever.** Broadband roughness/normal noise at this camera reads as leather or hammered tin. The shared panel tile (seams, fasteners) supplies the surface. Wear is modelled geometry (a patched plate), not texture.
 - **Lights sell scale.** Hundreds of small lit windows, nav red (port, +Y) and green (starboard), an amber beacon. A station without lit windows reads as a toy.
 - **Nothing floats.** Every module joins by a truss, arm, spoke, pylon or strut. The chase camera finds every gap.

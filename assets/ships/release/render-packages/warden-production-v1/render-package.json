@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d6bf6a69a4460e841693b5ec174ddee88ba9a8dd88e60bc11b0dc29b311ac117",
+  "contentHash": "44e1f2f66f58b0c55239205da24ac4f48d740713de0a39de82d771021557a996",
   "dynamicGroups": [
     {
       "id": "sf.render.warden-production-v1.node.lod0-hook-armor-port-armor.dynamic",
@@ -663,11 +663,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6e2bbd02420ea82f1f7175b45d56bbefcff7d2e24d514b85a5492096ddcb5cd",
+      "geometryHash": "13e092c7dc5704157afb0bffd5e9d8235a4907fb2002623f2958cbe1c6b68c2c",
       "id": "sf.render.warden-production-v1.node.lod0-armor.primitive.0",
       "indexCount": 27237,
       "indexed": true,
-      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "materialHash": "9808bf51996ac8237de234b4063160cdf98b705a05e4e3fcc5d95438d6a30397",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.warden-production-v1.node.lod0-armor",
@@ -713,11 +713,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e266e244f70ed0448eb4f2e0068fad58d75253128fc361b6e7fdd31bc9a07969",
+      "geometryHash": "44d5506d17c61924a19a2dcb040c208f214933a07b3b0d6c7d76ba80d52e503d",
       "id": "sf.render.warden-production-v1.node.lod0-hook-armor-port-armor.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "materialHash": "9808bf51996ac8237de234b4063160cdf98b705a05e4e3fcc5d95438d6a30397",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_ARMOR_PORT_Armor",
       "nodeId": "sf.render.warden-production-v1.node.lod0-hook-armor-port-armor",
@@ -813,11 +813,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af4355af0a706d1891f3707fc3d68e7fe7e6b892bea49d3c9e077022b3344c3b",
+      "geometryHash": "2cd9e0f0e47a9383d6ee42992dea5b508842213df9e3b1c3606f997734e74d5f",
       "id": "sf.render.warden-production-v1.node.lod0-hook-secondary-turret-armor.primitive.0",
       "indexCount": 1434,
       "indexed": true,
-      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "materialHash": "9808bf51996ac8237de234b4063160cdf98b705a05e4e3fcc5d95438d6a30397",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TURRET_Armor",
       "nodeId": "sf.render.warden-production-v1.node.lod0-hook-secondary-turret-armor",
@@ -842,7 +842,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-hook-secondary-turret-livery.primitive.0",
       "indexCount": 486,
       "indexed": true,
-      "materialHash": "5f1665af9bea6e76fa8bf43890e9e5067fffee6e119a896644074219941ea092",
+      "materialHash": "3ab9a63570b47afbd7758d2a11c8ef05695a3e5110f33e16a81759dca58a5bcd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TURRET_Livery",
       "nodeId": "sf.render.warden-production-v1.node.lod0-hook-secondary-turret-livery",
@@ -917,7 +917,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-hook-sensor-mast-armor.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "materialHash": "9808bf51996ac8237de234b4063160cdf98b705a05e4e3fcc5d95438d6a30397",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SENSOR_MAST_Armor",
       "nodeId": "sf.render.warden-production-v1.node.lod0-hook-sensor-mast-armor",
@@ -988,11 +988,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb87effaddfad0c355a79e60980b2fa88847c97a0fa1044edb4f92527125937e",
+      "geometryHash": "a0a1de7d6cd311716bb00a9991340afdcdb3b11b5fc46a694a8ecfd9fd3b736b",
       "id": "sf.render.warden-production-v1.node.lod0-hull.primitive.0",
       "indexCount": 27981,
       "indexed": true,
-      "materialHash": "21a98d48bd7070c8f5f58f2ff8dc072ff50831426ed217b22a1af78eef36800b",
+      "materialHash": "cde92c4fff0e8a33c7d85ee66dfd14547f4a7ef5aa3553d4699572fa2a8991f0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.warden-production-v1.node.lod0-hull",
@@ -1063,11 +1063,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d3ab2ff57f34489ed3d41677b69f8ebdd511ed39f4583015c1494fbb78fa327f",
+      "geometryHash": "a800f75ee483ffceefa209da2d0d466b300f2ca59f454dcc0c5cae6ca9d3e156",
       "id": "sf.render.warden-production-v1.node.lod0-livery.primitive.0",
       "indexCount": 17406,
       "indexed": true,
-      "materialHash": "5f1665af9bea6e76fa8bf43890e9e5067fffee6e119a896644074219941ea092",
+      "materialHash": "3ab9a63570b47afbd7758d2a11c8ef05695a3e5110f33e16a81759dca58a5bcd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.warden-production-v1.node.lod0-livery",
@@ -1130,38 +1130,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "21a98d48bd7070c8f5f58f2ff8dc072ff50831426ed217b22a1af78eef36800b",
-      "id": "material:21a98d48bd7070c8f5f58f2f",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "id": "material:35c00bfb4e1adf84176a4a79",
       "name": "Material_Emissive_Amber",
@@ -1169,8 +1137,8 @@
       "textures": []
     },
     {
-      "hash": "5f1665af9bea6e76fa8bf43890e9e5067fffee6e119a896644074219941ea092",
-      "id": "material:5f1665af9bea6e76fa8bf438",
+      "hash": "3ab9a63570b47afbd7758d2a11c8ef05695a3e5110f33e16a81759dca58a5bcd",
+      "id": "material:3ab9a63570b47afbd7758d2a",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1254,9 +1222,41 @@
       "textures": []
     },
     {
-      "hash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
-      "id": "material:9446f9f5b354774e6890c2b2",
+      "hash": "9808bf51996ac8237de234b4063160cdf98b705a05e4e3fcc5d95438d6a30397",
+      "id": "material:9808bf51996ac8237de234b4",
       "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cde92c4fff0e8a33c7d85ee66dfd14547f4a7ef5aa3553d4699572fa2a8991f0",
+      "id": "material:cde92c4fff0e8a33c7d85ee6",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -2955,19 +2955,19 @@
       "sha256": "18072d5e74e1c8e512598f7b07b070ff6dce257fd7e27fc96e0e5a787447451e"
     },
     "sourceGlb": {
-      "bytes": 953196,
-      "sha256": "53b28bfbc7b6336b4e7964191f65dbce3e0190554f5b6a283ba13a9273e98436",
+      "bytes": 971256,
+      "sha256": "4aaac3c968b88bd6a82675407bb005d0bef8ccbf9eab662007f699847a2cc4cb",
       "uri": "warden_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 211633,
-      "sha256": "fa323342fc136e3b14adae135f1076c5f9940139e1757e3a01ad9ca9792e1953",
+      "bytes": 212794,
+      "sha256": "39f8094815db22260c88b7327b9e33e26c676e6382f25f33abfe52d976cecde8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1654544,
-    "sha256": "6d79b3b2d2e396b706afc620405662e81eea957f5c1838eaaf0d05b5a4544988",
+    "bytes": 1672668,
+    "sha256": "1a566340c26c80924138b41dc8dcbcb98e36a3139d8b9742b9dd3b5bc04aa52a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4276,7 +4276,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1.glb"
   },
-  "runtimeHash": "a234ed7fe3b8fd514884dd16b533c77c98e1926e66a99796f20e504d987c4ec5",
+  "runtimeHash": "c0ec91c63a7f86377de6e94c633e1b35edb0477f155bd080ea09922d9fbb503a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

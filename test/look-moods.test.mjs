@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import {
   DEFAULT_LOOK_MOOD,
   LOOK_BASE,
-  LOOK_EMISSIVE_GAIN,
+  resolveLookEmissiveGain,
   LOOK_MOODS,
   resolveLookLighting,
   resolveLookMood,
@@ -65,7 +65,11 @@ test('paint never emits: the pigment ceiling sits under the bloom knee in every 
   for (const id of Object.keys(LOOK_MOODS)) {
     assert.ok(resolveLookMood(id).surface.paintCeiling <= 0.75, `${id} paint ceiling`);
   }
-  assert.ok(LOOK_EMISSIVE_GAIN.signal > 1 && LOOK_EMISSIVE_GAIN.drive > 1, 'lamps are lifted above paint');
+  assert.ok(resolveLookEmissiveGain('signal', 'glow_cyan') > 2 && resolveLookEmissiveGain('drive', 'glow_drive') > 1,
+    'lamps are lifted above paint');
+  assert.ok(resolveLookEmissiveGain('signal', 'glow_warm.deck') < resolveLookEmissiveGain('signal', 'glow_red'),
+    'window rows are lifted less than point lamps');
+  assert.equal(resolveLookEmissiveGain('hull', 'paint'), 1, 'paint is never lifted');
 });
 
 test('every sector visual profile wears a real mood, its rig colours and its post amounts', () => {

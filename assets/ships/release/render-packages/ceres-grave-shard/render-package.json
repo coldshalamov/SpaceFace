@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "39de0913bd41efb36b2bc6fbf34b6d4342e602d6127666c214026d99f113ec76",
+  "contentHash": "59f0b1f2a08dbda6753c560f9fdb7e229d8ce67279e03e2e5bc131275c737544",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port.dynamic",
@@ -167,7 +167,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-armor.primitive.0",
       "indexCount": 1428,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "903487682799d0c7a38969dc3450be356194b696c93c1d13917593caaa103bcc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-armor",
@@ -217,7 +217,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 4380,
       "indexed": true,
-      "materialHash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
+      "materialHash": "8620d14e59fa02bebcb864923e308c72ef6146a238830ff789ba5aa61dc7d748",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-brushedmetal",
@@ -267,7 +267,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-deep.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "materialHash": "4ca30dedc6827118dd11bc4a6a56ae7b1b1be2e3bed03c7ec4e69fb037b9a3b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deadmetal_deep",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-deep",
@@ -292,7 +292,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-faded.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
+      "materialHash": "9e31ae32d58cefcae44cc2ae6089e4de5ae73eba9ee4561a88563518d9d1bf21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deadmetal_faded",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-faded",
@@ -317,7 +317,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-rust.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
+      "materialHash": "6e0db8ddfe8c7dc7cf87b02f5f27f6a98442a16a65a9033ed4861c6fb0615f55",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deadmetal_rust",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-rust",
@@ -342,7 +342,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "materialHash": "980175d5c5926d88664e4f066241bae46f5b1735d3440f3932721a1f7b0d50ec",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deadmetal",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal",
@@ -392,7 +392,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
+      "materialHash": "766c7a2699c27eae735684e8f53a8621a3e630b248a3cbe939e899ef9c5cdd64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-livery",
@@ -467,7 +467,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod0-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
+      "materialHash": "a6359ebd30233d9f48b181271d694a01b1f2325db46e536a7292c1e90ac391e6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod0-warning",
@@ -492,7 +492,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-armor.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "903487682799d0c7a38969dc3450be356194b696c93c1d13917593caaa103bcc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-armor",
@@ -542,7 +542,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 1356,
       "indexed": true,
-      "materialHash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
+      "materialHash": "8620d14e59fa02bebcb864923e308c72ef6146a238830ff789ba5aa61dc7d748",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-brushedmetal",
@@ -592,7 +592,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep.primitive.0",
       "indexCount": 504,
       "indexed": true,
-      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "materialHash": "4ca30dedc6827118dd11bc4a6a56ae7b1b1be2e3bed03c7ec4e69fb037b9a3b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deadmetal_deep",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep",
@@ -617,7 +617,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-faded.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
+      "materialHash": "9e31ae32d58cefcae44cc2ae6089e4de5ae73eba9ee4561a88563518d9d1bf21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deadmetal_faded",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-faded",
@@ -642,7 +642,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust.primitive.0",
       "indexCount": 528,
       "indexed": true,
-      "materialHash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
+      "materialHash": "6e0db8ddfe8c7dc7cf87b02f5f27f6a98442a16a65a9033ed4861c6fb0615f55",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deadmetal_rust",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust",
@@ -667,7 +667,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "materialHash": "980175d5c5926d88664e4f066241bae46f5b1735d3440f3932721a1f7b0d50ec",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deadmetal",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal",
@@ -717,7 +717,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
+      "materialHash": "766c7a2699c27eae735684e8f53a8621a3e630b248a3cbe939e899ef9c5cdd64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-livery",
@@ -792,7 +792,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod1-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
+      "materialHash": "a6359ebd30233d9f48b181271d694a01b1f2325db46e536a7292c1e90ac391e6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-warning",
@@ -817,7 +817,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-armor.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "903487682799d0c7a38969dc3450be356194b696c93c1d13917593caaa103bcc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-armor",
@@ -867,7 +867,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 432,
       "indexed": true,
-      "materialHash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
+      "materialHash": "8620d14e59fa02bebcb864923e308c72ef6146a238830ff789ba5aa61dc7d748",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-brushedmetal",
@@ -917,7 +917,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-deep.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "materialHash": "4ca30dedc6827118dd11bc4a6a56ae7b1b1be2e3bed03c7ec4e69fb037b9a3b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deadmetal_deep",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-deep",
@@ -942,7 +942,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-faded.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
+      "materialHash": "9e31ae32d58cefcae44cc2ae6089e4de5ae73eba9ee4561a88563518d9d1bf21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deadmetal_faded",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-faded",
@@ -967,7 +967,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-rust.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
+      "materialHash": "6e0db8ddfe8c7dc7cf87b02f5f27f6a98442a16a65a9033ed4861c6fb0615f55",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deadmetal_rust",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-rust",
@@ -992,7 +992,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "materialHash": "980175d5c5926d88664e4f066241bae46f5b1735d3440f3932721a1f7b0d50ec",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deadmetal",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal",
@@ -1042,7 +1042,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
+      "materialHash": "766c7a2699c27eae735684e8f53a8621a3e630b248a3cbe939e899ef9c5cdd64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-livery",
@@ -1117,7 +1117,7 @@
       "id": "sf.render.ceres-grave-shard.mesh.lod2-warning.primitive.0",
       "indexCount": 210,
       "indexed": true,
-      "materialHash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
+      "materialHash": "a6359ebd30233d9f48b181271d694a01b1f2325db46e536a7292c1e90ac391e6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod2-warning",
@@ -1129,38 +1129,6 @@
   "kind": "place",
   "lods": [],
   "materials": [
-    {
-      "hash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
-      "id": "material:2d4cf91d4ec5ece80aa6afc8",
-      "name": "Material_Hull_deep",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
     {
       "hash": "343ab013389558a8144411a711b3bea737e92484e4d9b1bc0e18050a258a8db4",
       "id": "material:343ab013389558a8144411a7",
@@ -1188,70 +1156,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "35e415dc0d6bc316715e2edaecbf2c2b6ee4f646a0165bb300d6cc1c9736b205",
-      "id": "material:35e415dc0d6bc316715e2eda",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
-      "id": "material:3a3b2f67d6688939e22c4df2",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1290,9 +1194,9 @@
       ]
     },
     {
-      "hash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
-      "id": "material:519c02f683125e22ef810336",
-      "name": "Material_Hull",
+      "hash": "4ca30dedc6827118dd11bc4a6a56ae7b1b1be2e3bed03c7ec4e69fb037b9a3b7",
+      "id": "material:4ca30dedc6827118dd11bc4a",
+      "name": "Material_Hull_deep",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1322,8 +1226,40 @@
       ]
     },
     {
-      "hash": "8434fd67f6dfc91ad0b29fd3918e6262fc437713a81969f7e25d385ca9af607a",
-      "id": "material:8434fd67f6dfc91ad0b29fd3",
+      "hash": "6e0db8ddfe8c7dc7cf87b02f5f27f6a98442a16a65a9033ed4861c6fb0615f55",
+      "id": "material:6e0db8ddfe8c7dc7cf87b02f",
+      "name": "Material_Hull_rust",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "766c7a2699c27eae735684e8f53a8621a3e630b248a3cbe939e899ef9c5cdd64",
+      "id": "material:766c7a2699c27eae735684e8",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1354,8 +1290,8 @@
       ]
     },
     {
-      "hash": "9efdd0772bd3e276fe5e707b7ba242e422ba4c5d3da6088a095709ccad01497e",
-      "id": "material:9efdd0772bd3e276fe5e707b",
+      "hash": "8620d14e59fa02bebcb864923e308c72ef6146a238830ff789ba5aa61dc7d748",
+      "id": "material:8620d14e59fa02bebcb86492",
       "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1386,9 +1322,105 @@
       ]
     },
     {
-      "hash": "a6c26684193e200a7bc1fe464b70db1106b774d83cfb64c1399964f1aa7fa583",
-      "id": "material:a6c26684193e200a7bc1fe46",
+      "hash": "903487682799d0c7a38969dc3450be356194b696c93c1d13917593caaa103bcc",
+      "id": "material:903487682799d0c7a38969dc",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "980175d5c5926d88664e4f066241bae46f5b1735d3440f3932721a1f7b0d50ec",
+      "id": "material:980175d5c5926d88664e4f06",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9e31ae32d58cefcae44cc2ae6089e4de5ae73eba9ee4561a88563518d9d1bf21",
+      "id": "material:9e31ae32d58cefcae44cc2ae",
       "name": "Material_Hull_faded",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a6359ebd30233d9f48b181271d694a01b1f2325db46e536a7292c1e90ac391e6",
+      "id": "material:a6359ebd30233d9f48b18127",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1444,38 +1476,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "dd766116a4799c6c906e92481913e00b24ec288dbe6305f795fab79e400cedbb",
-      "id": "material:dd766116a4799c6c906e9248",
-      "name": "Material_Hull_rust",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -3511,19 +3511,19 @@
       "sha256": "da6c99ca284b1f52dda6ab2003aaec7b45cc778024420ec8d70e95f967964c96"
     },
     "sourceGlb": {
-      "bytes": 452916,
-      "sha256": "addbfad4e88c139b0b9e68b4696f6f8cef8a389c27124789551db92491400118",
+      "bytes": 470964,
+      "sha256": "cade549f8a2dceb023b95880e8cbb808892682168493922ca79f09251a9663bd",
       "uri": "place_ceres_grave_shard.glb"
     },
     "sourceManifest": {
-      "bytes": 211633,
-      "sha256": "fa323342fc136e3b14adae135f1076c5f9940139e1757e3a01ad9ca9792e1953",
+      "bytes": 212794,
+      "sha256": "39f8094815db22260c88b7327b9e33e26c676e6382f25f33abfe52d976cecde8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 587528,
-    "sha256": "b21b75bc87fff97815eddfdfbff114daae72aaf9318e4939300636efff4306af",
+    "bytes": 605564,
+    "sha256": "96d3a8bf87e2b34f92aaccff7d3e9a1879439b47e95b334b136b1e00fd61eb81",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4900,7 +4900,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb"
   },
-  "runtimeHash": "3b308d191b0963e761fa4208f2e03e4b03e136751283a1b8e886d58293f6d331",
+  "runtimeHash": "ccb02b4cf61853218e397101b953c1eed036da0b0fa6c549616e0d67e76da2c0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

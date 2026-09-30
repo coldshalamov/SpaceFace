@@ -105,7 +105,8 @@ try {
     for (const body of bodies) {
       const entry = FLEET[body];
       if (!entry) { console.log('unknown body', body); continue; }
-      const spec = { file: `wholeships/${entry.file}.glb`, view: VIEW, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0) };
+      const dir = entry.layout === 'place' ? (entry.parts_dir || 'places') : 'wholeships';
+      const spec = { file: `${dir}/${entry.file}.glb`, view: VIEW, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0) };
       // Sector first (its isolate() re-applies rig + mood on the next shot), one settle frame, then
       // the mood and single-value patches over the settled state, then the real frame.
       await page.evaluate((id) => window.SF_fleetLook.setSector(id), variation.sector || 'sector_helios_prime');

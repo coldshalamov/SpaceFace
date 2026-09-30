@@ -25,23 +25,34 @@ The camera is a 60° top-down chase at 144 WU (ship ≈ 170 px wide) with an opt
    plan-view shapes (`plate`, `loft`), not decoration.
 2. **Three values.** Light primary paint, mid secondary, dark mechanical. Dark reads as depth
    (recesses, intakes, gaps, engine blocks) and should be a visible share of the top view. The
-   Helios key light lifts values about 2.5x: author paint channels ≈ 0x30–0x90 (Helios ivory
-   `#bfb6a3` is the brightest allowed), dark armour ≈ 0x20–0x2c. Look, then adjust.
+   key light is strong: author paint channels ≈ 0x30–0x90 (Helios ivory `#bfb6a3` is the
+   brightest allowed), dark armour ≈ 0x20–0x2c. The Look shows paint at close to its authored
+   value with its chroma deepened, so a saturated mid-dark paint reads rich, not pastel. Look,
+   then adjust.
 3. **One identity colour, carried in bands.** Stripes and bands are cut into the geometry with
    `band()`, so they follow the form and stay crisp at any zoom. No painted-on decals, no text.
 4. **Layered construction.** Panels are raised or recessed (`panel()`, `band(inset, depth)`),
    control surfaces are separate plates with a dark hinge gap, armour sits proud of the skin.
 5. **Light is part of the ship.** Engine cores, red port / green starboard nav lights at the
-   extremities, an amber beacon, lit windows on anything crewed. Space is dark; the ship should be
-   recognisable by its lights.
+   extremities, an amber beacon, lit windows on anything crewed, a lit trim line in the identity
+   colour where the design has one. Space is dark; the ship should be recognisable by its
+   lights. Lamps bloom: a `glow_*` strip reads as neon, so keep strips thin and deliberate.
+   Window rows use `glow_warm` (lifted least, so a lit liner does not drown its own hull).
 6. **Surfaces are manufactured, never noisy.** The shared panel texture set (256 px/m, world-locked)
-   supplies seams, fasteners and access plates. No grain, grime, scratches or rust noise: at this
-   camera broadband noise reads as leather. Wear, if a ship needs it, is a design element (a
-   patched plate, a scorched nozzle ring), modelled.
-7. **Everything attached.** No part floats. Guns sit on wings or pods, drives on pylons, masts on
+   supplies recessed seams, dog-eared plates, hatches, vent slots and fastener rows, with
+   near-uniform albedo so it never reads as a checkerboard of tinted tiles. No grain, grime,
+   scratches or rust noise: at this camera broadband noise reads as leather. Wear, if a ship
+   needs it, is a design element (a patched plate, a scorched nozzle ring), modelled.
+7. **The finish is lacquer.** The Look ([`docs/visual-assets/LOOK.md`](../../../docs/visual-assets/LOOK.md))
+   puts a clear coat on smooth dielectric paint: a sun glint, a mirror of the sky at the limb and a
+   coloured rim. It comes from the finish's own roughness and metalness, so a ship gets it by
+   using `paint`/`paint2`/`stripe`/`hazard`. Use `ceramic` or `stone` for a surface that must stay
+   dry, `bare`/`gunmetal` for one that must read as metal. Curved forms and bevels are what
+   catch the light: a slab of flat plate shows none of it.
+8. **Everything attached.** No part floats. Guns sit on wings or pods, drives on pylons, masts on
    feet. The runtime adds nothing to a forge hull (see *Runtime* below), so what you model is what
    the player sees.
-8. **Personality.** Each ship has one idea you can say in five words ("yellow-jacket needle
+9. **Personality.** Each ship has one idea you can say in five words ("yellow-jacket needle
    interceptor", "ivory courier with pod drives"). Faction families share a language:
    - *Helios civil* — rounded, practical, ivory with one occupation colour, windows.
    - *Ashline raiders* — angular, blades and exposed machinery, dark rust/black, sodium-orange light.
@@ -116,7 +127,8 @@ already forged — not after a fixed number of cycles and not on a script's say-
 ## Runtime
 
 Forge materials carry `spacefaceFinish: forge-v1`. The runtime then applies only role
-environment intensity and the shared illustrated light response; it skips the rescue layers for old
+environment intensity, the lamp gain and the shared surface response of the Look
+(`docs/visual-assets/LOOK.md`); it skips the rescue layers for old
 exports (roughness noise, family multipliers, occupational pigment, synthetic panel wells, palette
 multiplies). Explicit player paint still recolours the hull. Forge bodies declare
 `integratedHardpoints`, so fitted weapons/modules are not bolted onto them as kit parts.

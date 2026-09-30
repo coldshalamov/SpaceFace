@@ -20,7 +20,9 @@ const views = String(args.views || 'chase,close,inspect').split(',');
 
 // Every forge body (tools/blender/forge/fleet.json), from its live release file.
 const FORGE_FLEET = JSON.parse((await import('node:fs')).readFileSync(new URL('../tools/blender/forge/fleet.json', import.meta.url), 'utf8')).ships;
-export const LIVE_FLEET = Object.entries(FORGE_FLEET).map(([name, entry]) => [name, { file: `wholeships/${entry.file}.glb` }]);
+// Places release under their own parts directory (publish.mjs uses the same rule).
+export const forgeReleaseFile = (entry) => `${entry.layout === 'place' ? (entry.parts_dir || 'places') : 'wholeships'}/${entry.file}.glb`;
+export const LIVE_FLEET = Object.entries(FORGE_FLEET).map(([name, entry]) => [name, { file: forgeReleaseFile(entry) }]);
 
 async function findFreePort(start) {
   for (let port = start; port < start + 80; port++) {
@@ -103,6 +105,7 @@ try {
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(m.text().slice(0, 300)); });
   page.on('pageerror', (e) => logs.push('PAGEERROR ' + String(e).slice(0, 300)));
   if (args.illustrated === '0') await page.addInitScript(() => { globalThis.__SF_FORGE_ILLUSTRATED__ = false; });
+  if (args.init) await page.addInitScript(String(args.init));
   // 'commit' not 'load': the game's asset preload can hold the load event for minutes under
   // SwiftShader; scripts run fine once navigation commits (same workaround as flight-look).
   await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'commit', timeout: 180000 });

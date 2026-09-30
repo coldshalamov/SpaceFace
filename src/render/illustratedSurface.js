@@ -1,14 +1,14 @@
 // Illustrated industrial surfaces: shape the light, never quantize the texture.
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
 //
-// v10 (the Look, 2026-09-30): every constant that decides the vibe is a shared Look
+// v10-v12 (the Look, 2026-09-30): every constant that decides the vibe is a shared Look
 // uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
 // gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
 import { Color, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v10';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v12';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -47,8 +47,15 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // The band share is a Look value (v9 shipped a fixed 0.55): the graphic pools keep the
   // broad read while the true low-frequency response and the full residual keep PBR material
   // response alive — highlights pool on polish, panel relief shades, flashes light.
-  float sfShaped = mix(sfLow, sfBands, sfLookBandMix) + sfResidual;
+  // How "finished" the surface is: 1 for smooth dielectric paint, toward 0 for rough stone and
+  // for metal. It gates the clear coat below, and it scales the graphic treatment here: the
+  // saturated shadow colour and hard light bands are a lacquer look, and on a rough faceted
+  // rock they turn every facet into a harlequin patch. Stone keeps a softer, greyer version.
+  float sfFinish = (1.0 - 0.85 * metalnessFactor) * (1.0 - smoothstep(0.50, 0.95, roughnessFactor));
+  float sfStyle = 0.35 + 0.65 * sfFinish;
+  float sfShaped = mix(sfLow, sfBands, sfLookBandMix * sfStyle) + sfResidual;
   vec3 sfInkTint = mix(sfLookShadowTint, sfLookLightTint, sfBodyLight);
+  sfInkTint = mix(vec3(dot(sfInkTint, vec3(0.2126, 0.7152, 0.0722))), sfInkTint, sfStyle);
   vec3 sfLightScale = sfInkTint * (sfShaped / max(sfLight, 0.025));
   reflectedLight.directDiffuse *= sfLightScale;
   reflectedLight.indirectDiffuse *= sfLightScale;
@@ -60,8 +67,7 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // bare metal (which already mirrors through its base lobe) do not. The weight comes from
   // the material's own roughness/metalness, so the panel texture's roughness structure
   // breaks the gloss up per plate and no per-material state is needed.
-  float sfCoatWeight = sfLookCoat * (1.0 - 0.85 * metalnessFactor)
-    * (1.0 - smoothstep(0.50, 0.95, roughnessFactor));
+  float sfCoatWeight = sfLookCoat * sfFinish;
   vec3 sfCoatLight = vec3(0.0);
   vec3 sfRimLight = vec3(0.0);
   if (sfCoatWeight > 0.004) {
@@ -294,13 +300,16 @@ export function installIllustratedSurface(material) {
       .replace(OUTPUT_NEEDLE, `
         vec3 sfPaint = totalDiffuse * sfContour;
         float sfPaintY = dot(sfPaint, vec3(0.2126, 0.7152, 0.0722));
+        // Gloss needs headroom: on pigment already near the ceiling (sunlit ivory) the coat and
+        // rim fade, or a pale wall would stack them into a glowing white slab.
+        float sfHeadroom = 1.0 - 0.72 * smoothstep(sfLookPaintCeiling * 0.45, sfLookPaintCeiling, sfPaintY);
         float sfKnee = sfLookPaintCeiling * 0.6;
         if (sfPaintY > sfKnee) {
           float sfOver = sfPaintY - sfKnee;
           float sfRoom = sfLookPaintCeiling - sfKnee;
           sfPaint *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
         }
-        vec3 outgoingLight = sfPaint + sfCoatLight + sfRimLight + totalSpecular + totalEmissiveRadiance;`);
+        vec3 outgoingLight = sfPaint + (sfCoatLight + sfRimLight) * sfHeadroom + totalSpecular + totalEmissiveRadiance;`);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   illustratedSurfaceShader[TAG] = ILLUSTRATED_SURFACE_KEY;

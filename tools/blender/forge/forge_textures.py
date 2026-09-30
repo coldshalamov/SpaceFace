@@ -2,8 +2,10 @@
 
 One 1024 px tile covers TILE_METERS x TILE_METERS of hull at a world-locked box projection, so every
 ship in the fleet carries the same texel density (256 px/m) and the same panel language. The maps
-carry *manufacture* (panel seams, fasteners, access plates, per-panel tone), never noise: broadband
-grain is what made the old fleet read as leather at the chase camera.
+carry *manufacture* (recessed seams, dog-eared plates, hatches, vents, fasteners), never noise:
+broadband grain is what made the old fleet read as leather at the chase camera. Albedo stays
+near-uniform so the tile cannot read as a checkerboard of tinted squares; relief and occlusion
+carry the panel lines.
 
 Outputs (PNG, linear except albedo):
   forge_panel_albedo.png   near-white multiplier; paint colour comes from the material factor
@@ -71,8 +73,10 @@ def _panel_layout(rng, grid):
     """Merge a grid of cells into rectangular plates. Returns (id map at grid res, rect list)."""
     ids = -np.ones((grid, grid), dtype=int)
     rects = []
-    shapes = [(1, 1), (2, 1), (1, 2), (2, 2), (3, 1), (1, 3), (2, 3), (3, 2), (4, 2), (2, 4)]
-    weights = np.array([6, 5, 5, 4, 2, 2, 2, 2, 1, 1], dtype=float)
+    shapes = [(1, 1), (2, 1), (1, 2), (2, 2), (3, 1), (1, 3), (2, 3), (3, 2), (4, 2), (2, 4), (4, 1), (3, 3)]
+    # Larger plates and long strakes dominate; single-module squares are the exception. A field
+    # of small equal squares is what reads as bathroom tile.
+    weights = np.array([1.5, 3, 3, 5, 4, 3, 4, 4, 3, 3, 3, 2], dtype=float)
     weights /= weights.sum()
     for y in range(grid):
         for x in range(grid):
@@ -108,88 +112,168 @@ def _rect_mask(size, x0, y0, w, h, inset, radius):
     return outside + inside - radius  # <0 inside
 
 
+def _plate_sdf(xx, yy, size, x0, y0, w, h, inset, radius, cuts):
+    """Signed distance (px, <0 inside) to one hull plate on the wrapping tile.
+
+    A plate is a rounded rectangle; `cuts` lists corners (sx, sy in {-1, +1}) that are clipped at
+    45 degrees by `cut` px, the dog-eared corner of pressed aerospace skin.
+    """
+    cx = x0 + w / 2.0
+    cy = y0 + h / 2.0
+    dx = (xx - cx + size / 2) % size - size / 2
+    dy = (yy - cy + size / 2) % size - size / 2
+    hx = w / 2.0 - inset - radius
+    hy = h / 2.0 - inset - radius
+    qx = np.abs(dx) - hx
+    qy = np.abs(dy) - hy
+    d = np.sqrt(np.maximum(qx, 0) ** 2 + np.maximum(qy, 0) ** 2) + np.minimum(np.maximum(qx, qy), 0) - radius
+    for sx, sy, cut in cuts:
+        # Half-plane through the clipped corner: keep the side toward the plate centre.
+        plane = (dx * sx + dy * sy - (w / 2.0 + h / 2.0 - 2 * inset - cut)) * 0.70710678
+        d = np.maximum(d, plane)
+    return d
+
+
+def _capsule_sdf(xx, yy, size, ax, ay, bx, by, r):
+    """Signed distance to a wrapping capsule from (ax, ay) to (bx, by) with radius r."""
+    px = (xx - ax + size / 2) % size - size / 2
+    py = (yy - ay + size / 2) % size - size / 2
+    vx, vy = bx - ax, by - ay
+    t = np.clip((px * vx + py * vy) / max(vx * vx + vy * vy, 1e-6), 0, 1)
+    return np.sqrt((px - vx * t) ** 2 + (py - vy * t) ** 2) - r
+
+
+def _downsample(img, k):
+    """Box-filter a supersampled tile down by k (anti-aliases every seam and fastener)."""
+    if k == 1:
+        return img
+    h, w = img.shape[:2]
+    shape = (h // k, k, w // k, k) + img.shape[2:]
+    return img.reshape(shape).mean(axis=(1, 3))
+
+
 def generate_panel_set(out_dir, seed=7, size=SIZE):
+    """Hull plating, v2 (2026-09-30).
+
+    The tile is drawn from signed-distance fields at 2x and box-filtered down, so seams and
+    fasteners are anti-aliased rather than stair-stepped. What it carries:
+      - plates with pressed, dog-eared corners, separated by a recessed seam (a dark gap with a
+        bevelled shoulder: shadow and relief, never a painted grout line);
+      - access hatches, vent slot groups and sparse fastener rows at hand-sized scale;
+      - near-uniform albedo (paint colour is the material factor; the tile must not read as a
+        checkerboard at the chase camera), with occlusion pooled softly around every recess;
+      - roughness that is slightly lower at plate edges (handled, polished) and higher in recesses.
+    """
     rng = np.random.default_rng(seed)
+    ss = 2
+    S = size * ss
     grid = 8  # 8 cells over 4 m -> 0.5 m module
-    cell = size // grid
+    cell = S // grid
     ids, rects = _panel_layout(rng, grid)
-    idmap = np.kron(ids, np.ones((cell, cell), dtype=int))
+    yy, xx = np.mgrid[0:S, 0:S].astype(np.float32)
 
-    height = np.zeros((size, size), np.float32)
-    tone = np.zeros((size, size), np.float32)
-    rough = np.zeros((size, size), np.float32)
-    groove = np.zeros((size, size), np.float32)
+    gap = 1.6 * ss            # half-width of the seam between plates
+    nearest = np.full((S, S), 1e9, np.float32)   # distance to the nearest plate (<0 inside one)
+    tone = np.zeros((S, S), np.float32)
+    rough = np.zeros((S, S), np.float32)
+    lift = np.zeros((S, S), np.float32)
+    plates = []
     for k, (x, y, w, h) in enumerate(rects):
-        mask = idmap == k
-        height[mask] = rng.uniform(-0.05, 0.05)
-        tone[mask] = rng.uniform(-0.035, 0.035)
-        rough[mask] = rng.uniform(-0.05, 0.05)
-    # Seams: wherever the plate id changes, a 3 px groove with a soft shoulder.
-    edge = (idmap != np.roll(idmap, 1, 0)) | (idmap != np.roll(idmap, 1, 1))
-    edge = edge.astype(np.float32)
-    seam = np.clip(_blur(edge, 1) * 3.2, 0, 1)
-    groove = np.maximum(groove, seam)
-    height -= seam * 0.55
+        cuts = []
+        if w * h >= 2:
+            for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                if rng.random() < 0.30:
+                    cuts.append((sx, sy, float(rng.integers(cell // 5, cell // 2))))
+        d = _plate_sdf(xx, yy, S, x * cell, y * cell, w * cell, h * cell, gap, 3.0 * ss, cuts)
+        inside = d < nearest
+        t, r, l = rng.uniform(-0.012, 0.012), rng.uniform(-0.05, 0.05), rng.uniform(-0.04, 0.04)
+        tone = np.where(inside, t, tone)
+        rough = np.where(inside, r, rough)
+        lift = np.where(inside, l, lift)
+        nearest = np.minimum(nearest, d)
+        plates.append((x * cell, y * cell, w * cell, h * cell, w * h))
 
-    # Fasteners along a subset of seams (every 20 px, inset 7 px).
-    fasten = np.zeros((size, size), np.float32)
-    yy, xx = np.mgrid[0:size, 0:size]
-    for k, (x, y, w, h) in enumerate(rects):
-        if rng.random() > 0.45:
-            continue
-        x0, y0, pw, ph = x * cell, y * cell, w * cell, h * cell
-        step = 20
-        pts = []
-        for px in range(x0 + 10, x0 + pw - 6, step):
-            pts += [(px, y0 + 7), (px, y0 + ph - 7)]
-        for py in range(y0 + 10, y0 + ph - 6, step):
-            pts += [(x0 + 7, py), (x0 + pw - 7, py)]
-        for px, py in pts:
-            px %= size
-            py %= size
-            ys = slice(max(py - 3, 0), min(py + 4, size))
-            xs = slice(max(px - 3, 0), min(px + 4, size))
-            d = np.sqrt((yy[ys, xs] - py) ** 2 + (xx[ys, xs] - px) ** 2)
-            fasten[ys, xs] = np.maximum(fasten[ys, xs], np.clip(1.8 - d, 0, 1))
-    height += fasten * 0.22
+    # The seam is a thin gap hugging each plate edge. Where a dog-eared corner leaves a wider
+    # opening, the opening is a gusset plate set slightly below its neighbours, not a hole.
+    gusset = np.clip((nearest - 2.6 * ss) / (1.2 * ss), 0, 1)
+    seam = np.clip(nearest / (0.9 * ss) + 0.5, 0, 1) * (1 - gusset)    # 1 in the gap between plates
+    shoulder = np.clip(1.0 + nearest / (4.5 * ss), 0, 1) ** 2           # bevel rolling into the gap
+    edge_polish = np.clip(1.0 + nearest / (9.0 * ss), 0, 1) * (1 - seam) * (1 - gusset)
+    height = lift * (1 - gusset) - shoulder * 0.55 * (1 - gusset) - seam * 0.45 - gusset * 0.30
+    tone = tone * (1 - gusset) - gusset * 0.035
+    rough = rough * (1 - gusset) + gusset * 0.06
 
-    # Access plates: a recessed rounded outline inside ~30% of the larger plates.
-    for k, (x, y, w, h) in enumerate(rects):
-        if w * h < 2 or rng.random() > 0.35:
-            continue
-        x0, y0 = x * cell, y * cell
-        pw, ph = rng.integers(cell // 3, int(cell * min(w, 2) * 0.7)), rng.integers(cell // 3, int(cell * min(h, 2) * 0.7))
-        ox = x0 + rng.integers(14, max(15, w * cell - pw - 14))
-        oy = y0 + rng.integers(14, max(15, h * cell - ph - 14))
-        sd = _rect_mask(size, ox, oy, pw, ph, 0, 6)
-        line = np.clip(1.4 - np.abs(sd), 0, 1)
-        height -= line * 0.35
-        groove = np.maximum(groove, line * 0.7)
-        inner = (sd < -1.5).astype(np.float32)
-        tone += inner * rng.uniform(-0.03, 0.03)
+    recess = np.zeros((S, S), np.float32)     # hatch outlines and vent slots
+    fasten = np.zeros((S, S), np.float32)
+    for x0, y0, pw, ph, area in plates:
+        roll = rng.random()
+        # Access hatch: a thin recessed rounded outline with a fastener in each corner.
+        if area >= 2 and roll < 0.42:
+            hw = float(rng.integers(int(cell * 0.45), int(min(pw, 2 * cell) * 0.72)))
+            hh = float(rng.integers(int(cell * 0.40), int(min(ph, 2 * cell) * 0.72)))
+            ox = x0 + rng.integers(int(cell * 0.18), max(int(cell * 0.2), int(pw - hw - cell * 0.18)))
+            oy = y0 + rng.integers(int(cell * 0.18), max(int(cell * 0.2), int(ph - hh - cell * 0.18)))
+            sd = _plate_sdf(xx, yy, S, ox, oy, hw, hh, 0, 5.0 * ss, [])
+            recess = np.maximum(recess, np.clip(1.0 - np.abs(sd) / (0.9 * ss), 0, 1) * 0.85)
+            tone += (sd < -ss) * rng.uniform(-0.010, 0.010)
+            for fx, fy in ((ox + 7 * ss, oy + 7 * ss), (ox + hw - 7 * ss, oy + 7 * ss),
+                           (ox + 7 * ss, oy + hh - 7 * ss), (ox + hw - 7 * ss, oy + hh - 7 * ss)):
+                fasten = np.maximum(fasten, np.clip(1.4 - _capsule_sdf(xx, yy, S, fx, fy, fx, fy, 1.4 * ss) / ss, 0, 1))
+        # Vent group: a short rank of slots near one edge of a big plate.
+        elif area >= 3 and roll < 0.62:
+            n = int(rng.integers(3, 6))
+            length = cell * rng.uniform(0.34, 0.52)
+            horizontal = pw >= ph
+            bx = x0 + pw * rng.uniform(0.18, 0.55)
+            by = y0 + ph * rng.uniform(0.18, 0.55)
+            for i in range(n):
+                off = i * 7.0 * ss
+                ax, ay = (bx, by + off) if horizontal else (bx + off, by)
+                ex, ey = (bx + length, by + off) if horizontal else (bx + off, by + length)
+                sd = _capsule_sdf(xx, yy, S, ax, ay, ex, ey, 1.5 * ss)
+                recess = np.maximum(recess, np.clip(0.5 - sd / ss, 0, 1))
+        # Fastener row along one long edge of some plates, inset from the seam.
+        if rng.random() < 0.34:
+            step = 28.0 * ss
+            inset = 9.0 * ss
+            along_x = pw >= ph
+            count = int(((pw if along_x else ph) - 2 * inset) // step)
+            for i in range(max(count, 0) + 1):
+                fx = x0 + inset + i * step if along_x else x0 + inset
+                fy = y0 + inset if along_x else y0 + inset + i * step
+                fasten = np.maximum(fasten, np.clip(1.4 - _capsule_sdf(xx, yy, S, fx, fy, fx, fy, 1.2 * ss) / ss, 0, 1))
+
+    recess = np.maximum(recess * (1 - seam), 0)
+    height = height - recess * 0.42 + fasten * (1 - seam) * 0.16
+
     # Very broad, very gentle variation (a few cells per tile), never grain.
-    broad = _smooth_noise(rng, size, 4) - 0.5
-    tone += broad * 0.03
+    broad = np.kron(_smooth_noise(rng, size, 4) - 0.5, np.ones((ss, ss), np.float32))
+    tone += broad * 0.014
     rough += broad * 0.05
 
-    # Normal map (OpenGL convention: +Y up = green).
-    strength = 5.0
-    gx = (np.roll(height, -1, 1) - np.roll(height, 1, 1)) * 0.5 * strength
-    gy = (np.roll(height, -1, 0) - np.roll(height, 1, 0)) * 0.5 * strength
+    # Normal map (OpenGL convention: +Y up = green). The gradient is taken at the supersampled
+    # resolution, so the shoulder keeps its slope after the downsample.
+    strength = 5.2 / ss
+    gx = (np.roll(height, -1, 1) - np.roll(height, 1, 1)) * 0.5 * strength * ss
+    gy = (np.roll(height, -1, 0) - np.roll(height, 1, 0)) * 0.5 * strength * ss
     n = np.stack([-gx, gy, np.ones_like(gx)], -1)
+    n = _downsample(n, ss)
     n /= np.linalg.norm(n, axis=-1, keepdims=True)
     normal = n * 0.5 + 0.5
 
-    cavity = np.clip((_blur(height, 3) - height) * 2.2, 0, 1)
-    ao = np.clip(1.0 - cavity * 0.75 - groove * 0.25, 0, 1)
-    rough_mul = np.clip(0.88 + rough + groove * 0.12, 0, 1)
+    pit = np.maximum(seam, recess)                      # every recessed feature
+    pool = np.clip(_blur(_downsample(pit, ss), 3) * 1.5, 0, 1)   # occlusion pooled around it
+    pit_lo = _downsample(pit, ss)
+    ao = np.clip(1.0 - pit_lo * 0.80 - pool * 0.30, 0, 1)
+    rough_mul = np.clip(0.86 + _downsample(rough - edge_polish * 0.06, ss) + pit_lo * 0.12, 0, 1)
     orm = np.stack([ao, rough_mul, np.ones_like(ao)], -1)
 
-    albedo_v = np.clip(0.93 + tone - groove * 0.28 + fasten * 0.03, 0, 1)
+    albedo_v = np.clip(0.95 + _downsample(tone, ss) - pit_lo * 0.50 - pool * 0.05
+                       + _downsample(fasten, ss) * 0.02, 0, 1)
     albedo = np.stack([albedo_v] * 3, -1)
 
     os.makedirs(out_dir, exist_ok=True)
-    _write_png(os.path.join(out_dir, 'forge_panel_albedo.png'), albedo ** (1 / 2.2) if False else albedo)
+    _write_png(os.path.join(out_dir, 'forge_panel_albedo.png'), albedo)
     _write_png(os.path.join(out_dir, 'forge_panel_normal.png'), normal)
     _write_png(os.path.join(out_dir, 'forge_panel_orm.png'), orm)
     return {k: os.path.join(out_dir, f'forge_panel_{k}.png') for k in ('albedo', 'normal', 'orm')}

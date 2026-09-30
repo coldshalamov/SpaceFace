@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "eaff67d59e60380e234da5d3ffb7b9185aeca5ab848938142210074e8fbcef18",
+  "contentHash": "b8b15ee2541c57745a326ec314132f2d3a80fd9476bdeaef76fc612501816b39",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -151,7 +151,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod0-armor.primitive.0",
       "indexCount": 10740,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-armor",
@@ -201,7 +201,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod0-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-hull",
@@ -276,7 +276,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod0-warning.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.conveyor-truss.mesh.lod0-warning",
@@ -301,7 +301,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod1-armor.primitive.0",
       "indexCount": 4128,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.conveyor-truss.mesh.lod1-armor",
@@ -351,7 +351,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod1-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.conveyor-truss.mesh.lod1-hull",
@@ -426,7 +426,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod1-warning.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.conveyor-truss.mesh.lod1-warning",
@@ -451,7 +451,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod2-armor.primitive.0",
       "indexCount": 1140,
       "indexed": true,
-      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.conveyor-truss.mesh.lod2-armor",
@@ -501,7 +501,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod2-hull.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.conveyor-truss.mesh.lod2-hull",
@@ -576,7 +576,7 @@
       "id": "sf.render.conveyor-truss.mesh.lod2-warning.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.conveyor-truss.mesh.lod2-warning",
@@ -621,9 +621,16 @@
       ]
     },
     {
-      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
-      "id": "material:333a696e723d180dee93b90e",
-      "name": "Material_Warning",
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "id": "material:3b5154ad7ec0ee2263502c49",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -653,16 +660,9 @@
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
-      "id": "material:7d49b2b274926ec08348a5fd",
-      "name": "Material_Armor",
+      "hash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "id": "material:674f214b9b571ec60dc6b3ef",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -724,9 +724,9 @@
       ]
     },
     {
-      "hash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "id": "material:d53e5ef9a99fb30a7a241f6f",
-      "name": "Material_Hull",
+      "hash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
+      "id": "material:b346ef27b8bd0571f026a51f",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1742,19 +1742,19 @@
       "sha256": "d81f44a8db2d9323c657a6c79303fc57452aa8d07c9be0ec3364cf86ef373600"
     },
     "sourceGlb": {
-      "bytes": 455780,
-      "sha256": "9ddabf360ac590c08f7bb2b815ae58db4099f783afd69657669e522161ff71f9",
+      "bytes": 473888,
+      "sha256": "8d3a3df8da34289d68c7360262d90b329b515735b240a21ea1bf97b62642e879",
       "uri": "place_conveyor_truss.glb"
     },
     "sourceManifest": {
-      "bytes": 211633,
-      "sha256": "fa323342fc136e3b14adae135f1076c5f9940139e1757e3a01ad9ca9792e1953",
+      "bytes": 212794,
+      "sha256": "39f8094815db22260c88b7327b9e33e26c676e6382f25f33abfe52d976cecde8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 620916,
-    "sha256": "15d57b48da6e963976a2a12301733b812cecba579b61e3489368aca63954fc04",
+    "bytes": 639016,
+    "sha256": "b06f1d696119e5757764a366b52d74ee19bd649ec5d5a969a3ed3260c5bfd60d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2464,7 +2464,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_truss.glb"
   },
-  "runtimeHash": "5510710df57e1d02d04e0ac2cbc9f3d0ab85d62a1c5ec3e1ad0aad6b4eaa5cff",
+  "runtimeHash": "e8d56bd123915e13bee1f6b203d26a9268877549cdab10a6adb4aa01e7badb27",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

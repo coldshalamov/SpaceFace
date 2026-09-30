@@ -657,7 +657,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "aac6ca46172bd3695b19ccff410d394a2ca2870fcb7ec6598901cf403dfac009",
+  "contentHash": "d79bfaebbf9c54040bb6516252a723bef2ce90ebf7068dbdfe95add6bf0b5dcd",
   "dynamicGroups": [
     {
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-hook-drive-core-mesh-lights-cyan.dynamic",
@@ -719,22 +719,22 @@
     {
       "bounds": {
         "max": [
-          9.877819061279297,
-          1.4599099159240723,
+          9.877815246582031,
+          1.4599088430404663,
           9.869446754455566
         ],
         "min": [
-          -9.750292778015137,
-          -3.9960579872131348,
-          -9.8695068359375
+          -9.750288963317871,
+          -3.9960570335388184,
+          -9.869499206542969
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2259cde6160955e8ab0f128a3ca88d2cf9a295c357d7b9f031be369c6925a65c",
+      "geometryHash": "47fe5de10613b71bb98eac2eeee2f4e319206c579c4216416b73f9bd0077eb2f",
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-armor.primitive.0",
       "indexCount": 16581,
       "indexed": true,
-      "materialHash": "0a85c2892d073bb72255f2d8320248bbb38dd72809c9eac06dcfef4f12b9a741",
+      "materialHash": "f1ccb18988172691872fa42e33810d337628a1a5b1f27c8b5b6d05c4110f2321",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor.001",
       "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-armor",
@@ -959,7 +959,7 @@
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-hull.primitive.0",
       "indexCount": 2442,
       "indexed": true,
-      "materialHash": "982348f882a3f77f7abf8c76f8d72725f75b0141a4a16d6ced8cf2cc6254a95b",
+      "materialHash": "00e17bddea7603818e8c8a02ae6262086f1b7c029b22d498c418ab2a3bd4eb73",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.001",
       "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-hull",
@@ -1034,7 +1034,7 @@
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-livery.primitive.0",
       "indexCount": 540,
       "indexed": true,
-      "materialHash": "2abb2e2e8fdfb0b7d7a5b646d1c25b6785b2040e2766975a42802040aecfbde6",
+      "materialHash": "ffc8be67d438f3bf22ec59f7fd8e17cfff5f4c7b4291240e1ff5367c318f09c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery.001",
       "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-livery",
@@ -1080,7 +1080,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "721217a06a3197faa0b1d05c4133964ff7acdd2bbf7cc5bdafabc7c956297a8d",
+      "geometryHash": "90410d00383cc5875945a7341c7e385d53b45421f69979743bfc047d860cd6b6",
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 18381,
       "indexed": true,
@@ -1097,9 +1097,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0a85c2892d073bb72255f2d8320248bbb38dd72809c9eac06dcfef4f12b9a741",
-      "id": "material:0a85c2892d073bb72255f2d8",
-      "name": "Material_Armor",
+      "hash": "00e17bddea7603818e8c8a02ae6262086f1b7c029b22d498c418ab2a3bd4eb73",
+      "id": "material:00e17bddea7603818e8c8a02",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1134,38 +1134,6 @@
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
       "textures": []
-    },
-    {
-      "hash": "2abb2e2e8fdfb0b7d7a5b646d1c25b6785b2040e2766975a42802040aecfbde6",
-      "id": "material:2abb2e2e8fdfb0b7d7a5b646",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     },
     {
       "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
@@ -1260,9 +1228,16 @@
       "textures": []
     },
     {
-      "hash": "982348f882a3f77f7abf8c76f8d72725f75b0141a4a16d6ced8cf2cc6254a95b",
-      "id": "material:982348f882a3f77f7abf8c76",
-      "name": "Material_Hull",
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f1ccb18988172691872fa42e33810d337628a1a5b1f27c8b5b6d05c4110f2321",
+      "id": "material:f1ccb18988172691872fa42e",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1292,11 +1267,36 @@
       ]
     },
     {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
+      "hash": "ffc8be67d438f3bf22ec59f7fd8e17cfff5f4c7b4291240e1ff5367c318f09c3",
+      "id": "material:ffc8be67d438f3bf22ec59f7",
+      "name": "Material_Accent",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -2824,25 +2824,25 @@
       "sha256": "39fd001359af3c2de9422a42040087854c67f0052925ac90297e878b043b1fce"
     },
     "sourceGlb": {
-      "bytes": 717032,
-      "sha256": "0ac0d0c74a60c6de99ee24dce869a676c48aa9b76e913cb7c71bae07d12cf2ee",
+      "bytes": 734428,
+      "sha256": "edfd5f6513ae65cd280cee2613ca70274b01a4714ad7772d4e6ab088d42b9979",
       "uri": "saucer_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 211633,
-      "sha256": "fa323342fc136e3b14adae135f1076c5f9940139e1757e3a01ad9ca9792e1953",
+      "bytes": 212794,
+      "sha256": "39f8094815db22260c88b7327b9e33e26c676e6382f25f33abfe52d976cecde8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1258788,
-    "sha256": "eb59230c343139aa461ddf6f548af4bfb95737d80fe047e92156eed31799b1a3",
+    "bytes": 1276152,
+    "sha256": "830b32b81ff3a45c1b03171fd5641ad92716a9d88059b4e21e192ccaf5e6e8cc",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.7310762405395508,
+        0.7310781478881836,
         -0.21492552757263184,
         -0.00009632110595703125
       ],
@@ -2852,12 +2852,12 @@
         11.030397415161133
       ],
       "min": [
-        -9.750292778015137,
+        -9.750288963317871,
         -3.996337890625,
         -11.030590057373047
       ],
       "size": [
-        20.962738037109375,
+        20.96273422241211,
         7.562824726104736,
         22.06098747253418
       ]
@@ -4116,7 +4116,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb"
   },
-  "runtimeHash": "bc558ce5dea9a64b2092a4bc4c43342c501152a7a3a1bb9502f6a4f73be3ae68",
+  "runtimeHash": "c99b3e5d9f1daa5ec60e0bec4b11b7f481df80848c33abcf3bb1b099d42c3ad4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4127,7 +4127,7 @@
           11.030397415161133
         ],
         "min": [
-          -9.750292778015137,
+          -9.750288963317871,
           -3.996337890625,
           -11.030590057373047
         ]

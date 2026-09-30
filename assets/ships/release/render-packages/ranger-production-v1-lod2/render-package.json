@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "135a62c999a6f4e65e05bf363a3d5b696519e6bc9299297cd56c95c7d4caa993",
+  "contentHash": "3fa3cdf40dc97a3e4eab824e8357228fba80924e2462369dbb34992d009945e5",
   "dynamicGroups": [
     {
       "id": "sf.render.ranger-production-v1-lod2.mesh.lod0-hook-drive-core.dynamic",
@@ -658,16 +658,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54680bd5c773c226edbab0f87d3dbfc694d861fff58897244061e797f5c0f1b3",
+      "geometryHash": "1c1ec71bdb056d308a3cf43d54024f74d2bc712bffab1a11498e29823798ec7a",
       "id": "sf.render.ranger-production-v1-lod2.mesh.lod0-armor.primitive.0",
       "indexCount": 3855,
       "indexed": true,
-      "materialHash": "7acd44691cc2b2c9bbc9238fea287bbf28d59183d98a2977870c70f34d70ced9",
+      "materialHash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor.002",
       "nodeId": "sf.render.ranger-production-v1-lod2.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1328
+      "vertexCount": 1327
     },
     {
       "bounds": {
@@ -812,7 +812,7 @@
       "id": "sf.render.ranger-production-v1-lod2.mesh.lod0-hook-secondary-tank-armor.primitive.0",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "7acd44691cc2b2c9bbc9238fea287bbf28d59183d98a2977870c70f34d70ced9",
+      "materialHash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TANK_Armor.002",
       "nodeId": "sf.render.ranger-production-v1-lod2.mesh.lod0-hook-secondary-tank-armor",
@@ -837,7 +837,7 @@
       "id": "sf.render.ranger-production-v1-lod2.mesh.lod0-hook-secondary-tank-hull.primitive.0",
       "indexCount": 138,
       "indexed": true,
-      "materialHash": "34a7cfebcd5e795e3716c4c7d96c054371d5aecfe80c669ce8a751bd33988d09",
+      "materialHash": "bd02b45bd762825bfe41575ad41090d5ddd1175c3318279d1e3864b2b7867bfb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SECONDARY_TANK_Hull.002",
       "nodeId": "sf.render.ranger-production-v1-lod2.mesh.lod0-hook-secondary-tank-hull",
@@ -912,7 +912,7 @@
       "id": "sf.render.ranger-production-v1-lod2.mesh.lod0-hook-sensor-dish-armor.primitive.0",
       "indexCount": 273,
       "indexed": true,
-      "materialHash": "7acd44691cc2b2c9bbc9238fea287bbf28d59183d98a2977870c70f34d70ced9",
+      "materialHash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_SENSOR_DISH_Armor.002",
       "nodeId": "sf.render.ranger-production-v1-lod2.mesh.lod0-hook-sensor-dish-armor",
@@ -983,11 +983,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e2d5c74851bace362ebff17052e8d4f4d62756eadf489ed72e67d181632e891",
+      "geometryHash": "68a3598759615a528d52e9f37607243ec458f745e6a87ce44cd1a808bce3d306",
       "id": "sf.render.ranger-production-v1-lod2.mesh.lod0-hull.primitive.0",
       "indexCount": 3852,
       "indexed": true,
-      "materialHash": "34a7cfebcd5e795e3716c4c7d96c054371d5aecfe80c669ce8a751bd33988d09",
+      "materialHash": "bd02b45bd762825bfe41575ad41090d5ddd1175c3318279d1e3864b2b7867bfb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.002",
       "nodeId": "sf.render.ranger-production-v1-lod2.mesh.lod0-hull",
@@ -1058,7 +1058,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41f791320b16bedf15c77b534a539089887980193d6d67e5cd9406f7d7a94ad9",
+      "geometryHash": "318eb604a0b42b09fd9a433a4c48ad70e8a9651a32f46f2cc57a7cd42d3ad173",
       "id": "sf.render.ranger-production-v1-lod2.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 804,
       "indexed": true,
@@ -1082,9 +1082,9 @@
       "textures": []
     },
     {
-      "hash": "34a7cfebcd5e795e3716c4c7d96c054371d5aecfe80c669ce8a751bd33988d09",
-      "id": "material:34a7cfebcd5e795e3716c4c7",
-      "name": "Material_Hull",
+      "hash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
+      "id": "material:2eb1bbc7cc458318dc1ac87e",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1126,38 +1126,6 @@
       "name": "Material_Emissive_NavRed",
       "pipelineKey": "opaque:front",
       "textures": []
-    },
-    {
-      "hash": "7acd44691cc2b2c9bbc9238fea287bbf28d59183d98a2977870c70f34d70ced9",
-      "id": "material:7acd44691cc2b2c9bbc9238f",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     },
     {
       "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
@@ -1229,6 +1197,38 @@
       "name": "Material_Emissive_Cyan",
       "pipelineKey": "opaque:front",
       "textures": []
+    },
+    {
+      "hash": "bd02b45bd762825bfe41575ad41090d5ddd1175c3318279d1e3864b2b7867bfb",
+      "id": "material:bd02b45bd762825bfe41575a",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
@@ -2182,19 +2182,19 @@
       "sha256": "25d0c7825c9ea49197a1ad906a43a9f5fd961927f1a1a6c8b8c0c010aff7680c"
     },
     "sourceGlb": {
-      "bytes": 403172,
-      "sha256": "d95692bf159c88e87d7179dfeb301e464256d1b1eff9caf3b945235ad1f46489",
+      "bytes": 421276,
+      "sha256": "0c15493a52535f4af8ebf41393ab8d9480a43d0142ab73a298151aa6ee5cdbda",
       "uri": "ranger_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 211633,
-      "sha256": "fa323342fc136e3b14adae135f1076c5f9940139e1757e3a01ad9ca9792e1953",
+      "bytes": 212794,
+      "sha256": "39f8094815db22260c88b7327b9e33e26c676e6382f25f33abfe52d976cecde8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 511160,
-    "sha256": "4551222f465f752a3691e0c16d98bdda311cc4fceb3556e1ee09c4d5fc5ad905",
+    "bytes": 529188,
+    "sha256": "f10c433446624f9373da37593d0fd6adf7de300c7ed3e051b774312a807b53f9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3426,7 +3426,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb"
   },
-  "runtimeHash": "6d1e1013374b5e00b6d0f2d8cd9c7bf6509ea6f590aefc4e1752db09e4213134",
+  "runtimeHash": "fd8b98d20f1a1364efa8fd885263b121ac0123daf089b6f4672746386fbdc3cf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

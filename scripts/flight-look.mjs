@@ -1,6 +1,7 @@
 // Flight look: boot the real game, New Game -> Launch, and screenshot the live flight picture
 // (full post pipeline, HUD optional) at the default chase zoom and the close zoom.
 //   node scripts/flight-look.mjs [--wait=20] [--zooms=144,58] [--hud] [--out=.devshots/flight-look]
+//   node scripts/flight-look.mjs --act=thrust,fire     # also shoot each zoom while thrusting/firing/boosting
 import { mkdirSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -748,6 +749,21 @@ try {
       if (args.aim) { await centreOn(String(args.aim)); await page.waitForTimeout(800); }
       await page.screenshot({ path: `${OUT}flight_z${zoom}.png`, timeout: 180000 });
       console.log('shot zoom', zoom);
+      // --act=thrust,boost,fire: a second frame per zoom with the ship doing something, so the
+      // plume, the guns and the light they throw on the hull are judged in the same picture.
+      if (args.act) {
+        const acts = String(args.act).split(',');
+        const size = page.viewportSize();
+        if (acts.includes('thrust')) await page.keyboard.down('KeyW');
+        if (acts.includes('boost')) await page.keyboard.down('ShiftLeft');
+        if (acts.includes('fire')) { await page.mouse.move(size.width * 0.72, size.height * 0.5); await page.mouse.down(); }
+        await page.waitForTimeout(Number(args.actMs || 1400));
+        await page.screenshot({ path: `${OUT}flight_z${zoom}_act.png`, timeout: 180000 });
+        if (acts.includes('fire')) await page.mouse.up();
+        if (acts.includes('boost')) await page.keyboard.up('ShiftLeft');
+        if (acts.includes('thrust')) await page.keyboard.up('KeyW');
+        console.log('shot zoom', zoom, 'act', acts.join('+'));
+      }
     }
   }
   const info = await page.evaluate(async () => {

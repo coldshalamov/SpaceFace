@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5e6ada6d4470c1f8ea4cd07a3f3cafc8fa15c5f376e2fa53afe8a82839b86e15",
+  "contentHash": "809c9ecf02ccfdc0641b2418536eb3076555bb169d7f0236a0cf8bba01060e0a",
   "dynamicGroups": [
     {
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-hook-armor-hip-hull.dynamic",
@@ -633,16 +633,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16a1a49f89e58976a363127595df7b62498094a33db2c3adc28244a37def607d",
+      "geometryHash": "3c0c041abefd3d79139e5c583add7f6bc5b00867819972d204ca6e34bd5f07b2",
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-armor.primitive.0",
-      "indexCount": 1365,
+      "indexCount": 1377,
       "indexed": true,
-      "materialHash": "574df9ff13e6cd47f6c8e3ca44c2ae4486a95e26a024732465b22be16e3beb2b",
+      "materialHash": "9009222d3155b6b81e4df5a396271268aecfc435a500ea04b085ace2c533219f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 451
+      "vertexCount": 455
     },
     {
       "bounds": {
@@ -687,7 +687,7 @@
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 504,
       "indexed": true,
-      "materialHash": "b356a9a7dd2bf1eca7a16e7d577e946116d2834795b1a90e518413bc0dc9578a",
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-brushedmetal",
@@ -723,51 +723,51 @@
       "bounds": {
         "max": [
           -1.413626790046692,
-          0.19585022069683197,
-          -1.2021370134813638
+          0.19584854659341452,
+          -1.2020768633468562
         ],
         "min": [
-          -5.893631935119629,
-          -0.1973653558658612,
-          -2.348013142539754
+          -5.893593788146973,
+          -0.19736368176244376,
+          -2.347943235339362
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4f4f0c2658f41db0f3e3213eba5092ba9963f275bf4b03e6dd83cdc2c3b8424",
+      "geometryHash": "b6a5f255c2452c796cd63b2845a629729e897cfb21a5ae5b5b4200b572db31df",
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-hook-armor-hip-hull.primitive.0",
-      "indexCount": 81,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "15b56ad2d722bda9a87061bfa6ff14fc6bbf0a54af9ad155a82859b32975964a",
+      "materialHash": "c707cc31959c7c52977f3e31855950b1aed55e360b6f9fd2ba29357a26cf98fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_ARMOR_HIP_Hull.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-hook-armor-hip-hull",
       "primitiveIndex": 0,
-      "vertexCount": 41
+      "vertexCount": 40
     },
     {
       "bounds": {
         "max": [
           -1.413400411605835,
-          -0.020240151238508267,
-          -1.2021080624374352
+          -0.020240905632815998,
+          -1.2020479123029273
         ],
         "min": [
-          -5.893631935119629,
-          -0.1974422159522104,
-          -2.348042093583683
+          -5.893593788146973,
+          -0.19744146155790265,
+          -2.347972186383291
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9454db882469f6fac3873f89cc18194c89a35f36874761ce96c52c097d242e87",
+      "geometryHash": "61609eb16eacfe36bbc8da348c0fa33107f053152de506851c76e9f10b2d7433",
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-hook-armor-hip-mechanical.primitive.0",
-      "indexCount": 57,
+      "indexCount": 54,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_ARMOR_HIP_Mechanical.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-hook-armor-hip-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 33
+      "vertexCount": 32
     },
     {
       "bounds": {
@@ -858,16 +858,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b002e88c5137136375ed102717309b17c7518f4ec1e28a68c51afed16505fb0",
+      "geometryHash": "17a071abfbf8707a579fd16c8a423cd32396d69e07694db37c5cb73d912c3453",
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-hull.primitive.0",
-      "indexCount": 3477,
+      "indexCount": 3474,
       "indexed": true,
-      "materialHash": "15b56ad2d722bda9a87061bfa6ff14fc6bbf0a54af9ad155a82859b32975964a",
+      "materialHash": "c707cc31959c7c52977f3e31855950b1aed55e360b6f9fd2ba29357a26cf98fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1045
+      "vertexCount": 1044
     },
     {
       "bounds": {
@@ -883,16 +883,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da314968e80602f63dd8a774b0fe761e355c8ed1dacbb25e61aeef03b184addb",
+      "geometryHash": "4a370080afb6145b0c26afcabf2c0eb6d2fed04c7a9ba7e5df9253121d2b80e0",
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-livery.primitive.0",
-      "indexCount": 1968,
+      "indexCount": 1965,
       "indexed": true,
-      "materialHash": "be1d7145a57fefbf84ef9f6021fa1f26d6e94decaac6289ac1f59502029a596c",
+      "materialHash": "7dc1377505e74e73b5955cf5d0bc5f8a1650e2a96e07950c28b35b6521cc2596",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 567
+      "vertexCount": 566
     },
     {
       "bounds": {
@@ -908,7 +908,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b53076931f7c691770b119d191ebc5b60f62b141846b8e9b75c34d6995c8905a",
+      "geometryHash": "53097744ca0f007817733b1c0ce7e2fee84910bb3fae38e8f73a442aacee3cc6",
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-mechanical.primitive.0",
       "indexCount": 1707,
       "indexed": true,
@@ -933,16 +933,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "863a2f678b07a1bc6e7d403ed39d179cbff8b9efa5dc239b832b180b3f738ec9",
+      "geometryHash": "e097c89d44b1103d6da85b5ace7f2753721ca8a772b78b7aa7d93918df0a6f07",
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 2157,
+      "indexCount": 2151,
       "indexed": true,
       "materialHash": "857cde1496b806bb55ff9ff02283a860edaef089770c2359b39cddcb49c13c02",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 810
+      "vertexCount": 808
     },
     {
       "bounds": {
@@ -962,7 +962,7 @@
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-warning.primitive.0",
       "indexCount": 18,
       "indexed": true,
-      "materialHash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
+      "materialHash": "2dab67b43d63e858cab2dcc0c90f2d49e6bb7d7ce55cb97c2ed20c68d076cd61",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning.002",
       "nodeId": "sf.render.pelican-production-v1-lod2.mesh.lod0-warning",
@@ -975,38 +975,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "15b56ad2d722bda9a87061bfa6ff14fc6bbf0a54af9ad155a82859b32975964a",
-      "id": "material:15b56ad2d722bda9a87061bf",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -1014,16 +982,9 @@
       "textures": []
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "574df9ff13e6cd47f6c8e3ca44c2ae4486a95e26a024732465b22be16e3beb2b",
-      "id": "material:574df9ff13e6cd47f6c8e3ca",
-      "name": "Material_Armor",
+      "hash": "2dab67b43d63e858cab2dcc0c90f2d49e6bb7d7ce55cb97c2ed20c68d076cd61",
+      "id": "material:2dab67b43d63e858cab2dcc0",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1051,6 +1012,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -1092,6 +1060,38 @@
       ]
     },
     {
+      "hash": "7dc1377505e74e73b5955cf5d0bc5f8a1650e2a96e07950c28b35b6521cc2596",
+      "id": "material:7dc1377505e74e73b5955cf5",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "857cde1496b806bb55ff9ff02283a860edaef089770c2359b39cddcb49c13c02",
       "id": "material:857cde1496b806bb55ff9ff0",
       "name": "Material_MechanicalDark",
@@ -1124,9 +1124,9 @@
       ]
     },
     {
-      "hash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
-      "id": "material:94130d3712ec2f09e6854233",
-      "name": "Material_Warning",
+      "hash": "9009222d3155b6b81e4df5a396271268aecfc435a500ea04b085ace2c533219f",
+      "id": "material:9009222d3155b6b81e4df5a3",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1156,8 +1156,8 @@
       ]
     },
     {
-      "hash": "b356a9a7dd2bf1eca7a16e7d577e946116d2834795b1a90e518413bc0dc9578a",
-      "id": "material:b356a9a7dd2bf1eca7a16e7d",
+      "hash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "id": "material:bfa183b9b652162d020ab353",
       "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1188,9 +1188,9 @@
       ]
     },
     {
-      "hash": "be1d7145a57fefbf84ef9f6021fa1f26d6e94decaac6289ac1f59502029a596c",
-      "id": "material:be1d7145a57fefbf84ef9f60",
-      "name": "Material_Accent",
+      "hash": "c707cc31959c7c52977f3e31855950b1aed55e360b6f9fd2ba29357a26cf98fa",
+      "id": "material:c707cc31959c7c52977f3e31",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1483,21 +1483,21 @@
     {
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-hook-armor-hip-hull",
       "localTransform": [
-        2.2400025725364685,
+        2.2399834990501404,
         0,
         0,
         0,
         0,
-        2.2400025725364685,
+        2.2399834990501404,
         0,
         0,
         0,
         0,
-        2.2400025725364685,
+        2.2399834990501404,
         0,
-        -3.6536293625831604,
+        -3.6536102890968323,
         -0.0007575675845146179,
-        -1.775075078010559,
+        -1.7750100493431091,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1511,42 +1511,42 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.pelican-production-v1-lod2.body",
       "worldTransform": [
-        2.2400025725364685,
+        2.2399834990501404,
         0,
         0,
         0,
         0,
-        2.2400025725364685,
+        2.2399834990501404,
         0,
         0,
         0,
         0,
-        2.2400025725364685,
+        2.2399834990501404,
         0,
-        -3.6536293625831604,
+        -3.6536102890968323,
         -0.0007575675845146179,
-        -1.775075078010559,
+        -1.7750100493431091,
         1
       ]
     },
     {
       "id": "sf.render.pelican-production-v1-lod2.mesh.lod0-hook-armor-hip-mechanical",
       "localTransform": [
-        2.240115761756897,
+        2.240096688270569,
         0,
         0,
         0,
         0,
-        2.240115761756897,
+        2.240096688270569,
         0,
         0,
         0,
         0,
-        2.240115761756897,
+        2.240096688270569,
         0,
-        -3.653516173362732,
+        -3.653497099876404,
         -0.10884118359535933,
-        -1.775075078010559,
+        -1.7750100493431091,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1560,21 +1560,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.pelican-production-v1-lod2.body",
       "worldTransform": [
-        2.240115761756897,
+        2.240096688270569,
         0,
         0,
         0,
         0,
-        2.240115761756897,
+        2.240096688270569,
         0,
         0,
         0,
         0,
-        2.240115761756897,
+        2.240096688270569,
         0,
-        -3.653516173362732,
+        -3.653497099876404,
         -0.10884118359535933,
-        -1.775075078010559,
+        -1.7750100493431091,
         1
       ]
     },
@@ -2024,19 +2024,19 @@
       "sha256": "ee860224c87acf4b9b0f79846c2a76d6ba9add7f540e707fe940a9780cc5a376"
     },
     "sourceGlb": {
-      "bytes": 389328,
-      "sha256": "33546a430de14d89fbc41d9f3d3a5e0749fccc11086b56f2010fda8487f561cf",
+      "bytes": 407288,
+      "sha256": "df8b7980248c68c74a7137777ac6004d2f9dce271cf4d75cd18117ff0001053a",
       "uri": "pelican_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 211633,
-      "sha256": "fa323342fc136e3b14adae135f1076c5f9940139e1757e3a01ad9ca9792e1953",
+      "bytes": 212794,
+      "sha256": "39f8094815db22260c88b7327b9e33e26c676e6382f25f33abfe52d976cecde8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 486144,
-    "sha256": "167ef1bf157c85ef795988d240c0676815bf4df925f714415a1d129269b09c5f",
+    "bytes": 504052,
+    "sha256": "b66fae032bbc31942d3746b1d6f8ad48bfe53c18083702c153d63f3dafd6e3ac",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2879,21 +2879,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2400025725364685,
+          2.2399834990501404,
           0,
           0,
           0,
           0,
-          2.2400025725364685,
+          2.2399834990501404,
           0,
           0,
           0,
           0,
-          2.2400025725364685,
+          2.2399834990501404,
           0,
-          -3.6536293625831604,
+          -3.6536102890968323,
           -0.0007575675845146179,
-          -1.775075078010559,
+          -1.7750100493431091,
           1
         ],
         "name": "LOD0_HOOK_ARMOR_HIP_Hull",
@@ -2907,21 +2907,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.240115761756897,
+          2.240096688270569,
           0,
           0,
           0,
           0,
-          2.240115761756897,
+          2.240096688270569,
           0,
           0,
           0,
           0,
-          2.240115761756897,
+          2.240096688270569,
           0,
-          -3.653516173362732,
+          -3.653497099876404,
           -0.10884118359535933,
-          -1.775075078010559,
+          -1.7750100493431091,
           1
         ],
         "name": "LOD0_HOOK_ARMOR_HIP_Mechanical",
@@ -3174,7 +3174,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pelican_production_v1_lod2.glb"
   },
-  "runtimeHash": "068407c1c2a24d5a87f0215a8567afa80f3f48eb1c2824d04a203a4bd1a7a25a",
+  "runtimeHash": "f6af395ff853789ca6568d5ec2b4b4d4bf64074d6d4ae14732eeb2e2ccb7d535",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

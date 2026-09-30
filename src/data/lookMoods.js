@@ -31,7 +31,7 @@ export const LOOK_BASE = deepFreeze({
   surface: {
     // Paint value. 1.0 shows the authored albedo; <1 lifts it toward pastel (the retired
     // Lacquer & Starlight pass shipped 0.80, which is what bleached the fleet).
-    albedoGamma: 1.0,
+    albedoGamma: 0.9,
     // Paint chroma around its own luminance. >1 deepens colour without changing value.
     albedoSaturation: 1.18,
     // Share of form shading replaced by graphic light bands. 0 = physical falloff, 1 = poster.
@@ -221,11 +221,23 @@ export const LOOK_MOODS = deepFreeze({
   },
 });
 
-// Emissive gain by material role, applied once when a Forge material is admitted. Light is
-// part of the ship: a nav light or window is a few pixels at the chase camera, and only a
-// source well above the bloom threshold spills far enough to read as a lamp instead of paint.
-// This is material physics, so it is the same in every mood.
-export const LOOK_EMISSIVE_GAIN = Object.freeze({ signal: 2.6, drive: 1.7 });
+// Emissive gain, applied once when a Forge material is admitted. Light is part of the ship:
+// a nav light or neon strip is a few pixels at the chase camera, and only a source well above
+// the bloom threshold spills far enough to read as a lamp instead of paint. Point lamps and
+// trim get the most. Window rows (`glow_warm`) are many and broad: lifted as hard, a lit
+// liner hides its own hull behind a white haze, so they get just enough to read as lit glass.
+// Keyed by Forge finish first, material role second. This is material physics, so it is the
+// same in every mood.
+export const LOOK_EMISSIVE_GAIN = Object.freeze({
+  finish: Object.freeze({ glow_warm: 1.3, glow_drive: 1.7 }),
+  role: Object.freeze({ signal: 2.6, drive: 1.7 }),
+});
+
+export function resolveLookEmissiveGain(role, forgeFinish) {
+  const finish = String(forgeFinish || '').split('.')[0];
+  if (Object.prototype.hasOwnProperty.call(LOOK_EMISSIVE_GAIN.finish, finish)) return LOOK_EMISSIVE_GAIN.finish[finish];
+  return LOOK_EMISSIVE_GAIN.role[role] || 1;
+}
 
 export const DEFAULT_LOOK_MOOD = 'arcade';
 
