@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "method": "Exact offline frames from unchanged attachIntroSignalRemix; circular 0.5s dissolve; bounded-bitrate native H.264 playback at runtime.",
+  "inputs": {
+    "src/ui/introSignalRemix.js": "467c5d03a13221a227d599a3ff4b24482c81f0c249b75a116c309efc508291ab",
+    "src/ui/loadingSignalTableaux.js": "cd4545f7a2e19f5a34db84f8bbfa921710fbc1610e00a0b120873ea22d2ad775",
+    "assets/cinematics/intro-visualizer.mp4": "27788810e75a106f113b290dc5174463f8864cacc0de5fac464ca62448bb9c13",
+    "tools/cinematic/bake-boot-visualizer.mjs": "9922e828bd4825db38a99e9b354cad0fa37f3cb9629dd404159b6150bb1ecdb6"
+  },
+  "outputs": [
+    {
+      "file": "boot-visualizer.mp4",
+      "bytes": 17741034,
+      "sha256": "3fdeeffc4769f2c96320a3428ccbe097ecf1d2258d01d8986aa773b3ab0da482",
+      "width": 1280,
+      "height": 720,
+      "fps": 24,
+      "seconds": 17.5,
+      "reducedFlash": false,
+      "maxBitrate": 8000000
+    },
+    {
+      "file": "boot-visualizer-quiet.mp4",
+      "bytes": 17823901,
+      "sha256": "b847643043eef2c9958d15e08d23f4423f4bd8a829b575c5894517bb95f6b869",
+      "width": 1280,
+      "height": 720,
+      "fps": 24,
+      "seconds": 17.5,
+      "reducedFlash": true,
+      "maxBitrate": 8000000
+    },
+    {
+      "file": "boot-visualizer.jpg",
+      "bytes": 179035,
+      "sha256": "1c11c2a55311d72edab0937889f27be1e8c4f890854db315306e7c26efe7f2c0"
+    }
+  ]
+}

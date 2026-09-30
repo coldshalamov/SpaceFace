@@ -27,9 +27,9 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /src/ui/introSignalRemix*
+            /src/ui/bootEntry.js
             /src/ui/loadingSignalTableaux.js
             /src/ui/loadingTerminalArt.js
-            /src/ui/bootEntry.js
             /tools/cinematic/signal-remix*
             /test/intro-signal-remix*.test.mjs
             /scripts/build-bundle.mjs
@@ -48,10 +48,16 @@ jobs:
           git rev-parse HEAD > .intro-review/SOURCE_COMMIT.txt
       - name: Focused unit tests
         run: node --test test/intro-signal-remix*.test.mjs
+      - name: Install only the browser client
+        timeout-minutes: 3
+        run: |
+          mkdir -p "$RUNNER_TEMP/intro-tools"
+          cd "$RUNNER_TEMP/intro-tools"
+          printf '{"private":true}' > package.json
+          npm install --no-save --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=60000 playwright@1.56.1
+          google-chrome --version
       - name: Browser review with the shipped H.264 movie
         run: |
-          npm install --prefix "$RUNNER_TEMP/intro-tools" --no-save --ignore-scripts playwright@1.56.1
-          "$RUNNER_TEMP/intro-tools/node_modules/.bin/playwright" install --with-deps chrome
           python3 tools/cinematic/signal-remix-server.py --port 8123 > /tmp/intro-server.log 2>&1 &
           INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
       - name: Install the optional offline video encoder
