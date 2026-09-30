@@ -844,7 +844,10 @@ export const mainMenuScreen = {
         return;
       }
       if (typeof requestAnimationFrame === 'function') rafId = requestAnimationFrame(check);
-      else timerId = setTimeout(check, 120);
+      // The timer must re-arm on every wake, not just when rAF is missing: on a rAF-throttled
+      // host (background tab) the first timer fire is the last check unless it keeps itself
+      // armed — the 4s cap would never evaluate and the veil would hold indefinitely.
+      timerId = setTimeout(check, 200);
     };
     if (typeof requestAnimationFrame === 'function') {
       rafId = requestAnimationFrame(check);

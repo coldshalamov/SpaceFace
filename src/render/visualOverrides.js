@@ -165,7 +165,10 @@ RESOLVING_MARKER_MATERIAL.userData.spacefaceSharedAsset = true;
 // by the primitive's base/emissive colour — no maps, no vertex colours, no instancing — so the
 // stand-in links no new program variant in bloomScene, same as the marker it replaces.
 const STAND_IN_MATERIALS = new Map();
-const STAND_IN_LOD_PREFERENCE = ['lod2', 'lod1', 'lod0'];
+// lod0 first: every tier of the catalog record is already resident by the time a stand-in can
+// exist, so the pending body reads as the real hull shape in the same flat materials — strictly
+// closer to the authored body and a smaller swap-pop than a blocky coarse-tier silhouette.
+const STAND_IN_LOD_PREFERENCE = ['lod0', 'lod1', 'lod2'];
 const WHOLE_SHIP_STAND_IN_TARGET_LENGTH = 1.72;
 // A pending substrate retries its resident-record lookup at this cadence, not every frame —
 // the lookup scans the renderer's resolved libraries and settled decode cache.
@@ -224,7 +227,7 @@ function standInMaterialFor(primitiveMaterial) {
 }
 
 /**
- * Coarsest detail tier the record carries: lod2 where authored, else the lowest level present.
+ * Finest detail tier the record carries: lod0 where authored, else the nearest level present.
  * Untagged primitives are always-visible in the composed body, so they ride every tier here too.
  */
 function standInPrimitivesFor(record) {
