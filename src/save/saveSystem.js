@@ -76,6 +76,9 @@ export const SAVE_IMPORT_MAX_DEPTH = 64;
 export const SAVE_IMPORT_MAX_NODES = 200_000;
 export const SAVE_IMPORT_MAX_COLLECTION_ITEMS = 50_000;
 export const SAVE_IMPORT_MAX_PERSISTENT_ENTITIES = 2_048;
+// Restore-route persistent respawn batch: spawn order is unchanged; the window only bounds
+// how much spawn work runs between presentation yields inside the chunked restore.
+const RESTORE_PERSISTENT_SPAWN_BATCH = 16;
 export const SAVE_IMPORT_LIMITS = Object.freeze({
   maxBytes: SAVE_IMPORT_MAX_BYTES,
   maxDepth: SAVE_IMPORT_MAX_DEPTH,
@@ -318,7 +321,13 @@ export const save = {
       const merged = mergeSharedStoreKeys(local, remote || {});
       applySharedStoreKeys(merged);
       if (remote != null || Object.keys(local).length > 0) {
-        const pushed = await pushSharedPlayerStore(merged);
+        // Only ship what the merge actually changed — an already-mirrored store keeps the
+        // ~220 KB envelope PUT off the boot path entirely.
+        let delta = null;
+        for (const [key, value] of Object.entries(merged)) {
+          if ((remote || {})[key] !== value) (delta || (delta = {}))[key] = value;
+        }
+        const pushed = delta == null ? true : await pushSharedPlayerStore(delta);
         if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }
     } catch (err) {
@@ -1242,26 +1251,30 @@ export const save = {
   // (plus each value's length + end-slices — never a full parse), so a stale cache is impossible
   // even for writes saveLoad.js performs outside this system.
   _slotStoreSignature() {
-    if (typeof localStorage === 'undefined') return 'none';
+    if (typeof localStorage === 'undefined') return { sig: 'none', raws: null };
     const parts = [];
+    const raws = new Map();
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (!key || (!key.startsWith(LS_PREFIX) && !key.startsWith(RECOVERY_PREFIX))) continue;
         const v = localStorage.getItem(key);
+        raws.set(key, v);
         parts.push(key + ':' + (v == null ? -1 : v.length) + ':' + (v ? v.slice(0, 24) + v.slice(-24) : ''));
       }
     } catch (err) { /* signature is best-effort; a failed walk just misses the cache */ }
-    return parts.join('|');
+    return { sig: parts.join('|'), raws };
   },
 
   _slotIndexWithFallback() {
-    const sig = this._slotStoreSignature();
+    const { sig, raws } = this._slotStoreSignature();
     const cache = this._slotIndexCache;
     if (cache && cache.sig === sig) return { ...cache.merged };
     const indexed = normalizeSlotIndex(this._readIndex());
-    const scanned = this._scanStoredSlots(indexed);
-    const recovered = this._scanRecoverySlots(scanned);
+    // The signature walk already enumerated every save key and read every blob this tick —
+    // hand the raws forward so the two scans never touch localStorage again.
+    const scanned = this._scanStoredSlots(indexed, raws);
+    const recovered = this._scanRecoverySlots(scanned, raws);
     const merged = mergeSlotIndexes(indexed, scanned);
     for (const slot in recovered) {
       merged[slot] = Object.assign({}, merged[slot] || {}, recovered[slot], {
@@ -1285,12 +1298,17 @@ export const save = {
     return { ...merged };
   },
 
-  _scanStoredSlots(indexed = {}) {
+  _scanStoredSlots(indexed = {}, raws = null) {
     const out = {};
-    if (typeof localStorage === 'undefined') return out;
+    if (raws == null && typeof localStorage === 'undefined') return out;
     try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+      const entries = raws != null ? raws.entries() : (function* () {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          yield [key, localStorage.getItem(key)];
+        }
+      })();
+      for (const [key, raw] of entries) {
         if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
         const slot = key.slice(LS_PREFIX.length);
         if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
@@ -1301,7 +1319,6 @@ export const save = {
         // foreign write, flipped byte) still pays the full validation so an unplayable slot
         // is never advertised — the Continue resolver depends on that hiding contract.
         const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
-        const raw = localStorage.getItem(key);
         if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string'
           && fnv1a(raw) === indexCard._blobHash) {
           const trusted = Object.assign({}, indexCard);
@@ -1320,16 +1337,21 @@ export const save = {
     return out;
   },
 
-  _scanRecoverySlots(primarySlots = {}) {
+  _scanRecoverySlots(primarySlots = {}, raws = null) {
     const out = {};
-    if (typeof localStorage === 'undefined') return out;
+    if (raws == null && typeof localStorage === 'undefined') return out;
     try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+      const entries = raws != null ? raws.entries() : (function* () {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          yield [key, localStorage.getItem(key)];
+        }
+      })();
+      for (const [key, raw] of entries) {
         if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
         const slot = key.slice(RECOVERY_PREFIX.length);
         if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
-        const prepared = this._prepareEnvelopeString(localStorage.getItem(key));
+        const prepared = this._prepareEnvelopeString(raw);
         if (!prepared.ok) continue;
         const meta = slotMetaFromEnvelope(slot, prepared.env);
         if (meta) out[slot] = meta;
@@ -3478,10 +3500,26 @@ export const save = {
       }
 
       // 10. restore persistent saved actors after sector regeneration, which despawns non-player
-      // entities from the previous live sector.
-      this._spawnPersistentEntities(data.entities && data.entities.persistent, entityIdRemap);
-      this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
-      yield 'persistent-spawned';
+      // entities from the previous live sector. Spawn order (and therefore ids/entityList order)
+      // is identical to the monolithic call — the batch window only inserts presentation
+      // yields so a mature save's respawn does not freeze the loading bar in one chunk.
+      const savedPersistent = data.entities && data.entities.persistent;
+      if (Array.isArray(savedPersistent)) {
+        let nextSpawnIndex = 0;
+        do {
+          nextSpawnIndex = this._spawnPersistentEntities(savedPersistent, entityIdRemap, {
+            startIndex: nextSpawnIndex,
+            limit: RESTORE_PERSISTENT_SPAWN_BATCH,
+            clearStale: nextSpawnIndex === 0,
+          });
+          this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
+          yield 'persistent-spawned';
+        } while (nextSpawnIndex < savedPersistent.length);
+      } else {
+        this._spawnPersistentEntities(savedPersistent, entityIdRemap);
+        this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
+        yield 'persistent-spawned';
+      }
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
@@ -3492,6 +3530,8 @@ export const save = {
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.
       this._callDeserialize('bombs', data.bombs);
+      this._reportRestoreProgress(0.21, 'Restoring combat memory');
+      yield 'combat-restored';
 
       // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);
@@ -3504,6 +3544,8 @@ export const save = {
       }
       this._restoreAutomation(data.automation);
       this._restoreCrafting(data.crafting);
+      this._reportRestoreProgress(0.215, 'Restoring automation');
+      yield 'automation-restored';
       // Offscreen sim state restores last (after world/factions/economy) so its drift overlay can
       // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
       this._callDeserialize('sectorSim', data.sectorSim);
@@ -3991,27 +4033,35 @@ export const save = {
     }
   },
 
-  _spawnPersistentEntities(savedList, entityIdRemap = null) {
-    if (!Array.isArray(savedList)) return;
+  _spawnPersistentEntities(savedList, entityIdRemap = null, batch = null) {
+    if (!Array.isArray(savedList)) return 0;
     if (savedList.length > SAVE_IMPORT_MAX_PERSISTENT_ENTITIES) {
       throw new Error('persistent_entity_limit');
     }
     const state = this.state;
+    const startIndex = batch && Number.isSafeInteger(batch.startIndex) && batch.startIndex > 0
+      ? Math.min(batch.startIndex, savedList.length)
+      : 0;
+    const limit = batch && Number.isFinite(batch.limit) ? Math.max(0, batch.limit) : Infinity;
     // Sector regen deliberately keeps flags.persistent actors alive, so on load they are still
     // standing when the saved copies arrive. The envelope is authoritative: clear the survivors
     // first or every save→load roundtrip spawns a duplicate generation (save size grew ~+40KB
     // per quick-load in the release soak until the 5MB localStorage quota refused writes).
-    const removeEntity = this.helpers && this.helpers.removeEntity;
-    if (typeof removeEntity === 'function') {
-      const staleIds = [];
-      for (const e of state.entityList) {
-        if (!e || e.id === state.playerId || e.isPlayer) continue;
-        const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
-        if (persistent) staleIds.push(e.id);
+    if (!batch || batch.clearStale !== false) {
+      const removeEntity = this.helpers && this.helpers.removeEntity;
+      if (typeof removeEntity === 'function') {
+        const staleIds = [];
+        for (const e of state.entityList) {
+          if (!e || e.id === state.playerId || e.isPlayer) continue;
+          const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
+          if (persistent) staleIds.push(e.id);
+        }
+        for (const id of staleIds) removeEntity(id, { immediate: true });
       }
-      for (const id of staleIds) removeEntity(id, { immediate: true });
     }
-    for (const saved of savedList) {
+    const end = Math.min(savedList.length, startIndex + limit);
+    for (let spawnIndex = startIndex; spawnIndex < end; spawnIndex++) {
+      const saved = savedList[spawnIndex];
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
       delete spec._isPlayer;
@@ -4045,6 +4095,7 @@ export const save = {
       state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
       if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), e.id);
     }
+    return end;
   },
 
   _applySavedVitals(saved) {

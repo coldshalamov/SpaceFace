@@ -49,6 +49,13 @@
     }
   }
   </script>
+  <!-- Fetch-only early hints: a preload does not apply the sheet or run the module, it just
+       starts the transfer before the @import/dynamic-import graph discovers them. hud.css stays
+       ordered by ui.css's @import (see the note above); the URLs must match the importmap so the
+       module loader reuses the warmed response. -->
+  <link rel="preload" as="style" href="./styles/hud.css" />
+  <link rel="modulepreload" href="./vendor/three.module.js" />
+  <link rel="modulepreload" href="./src/main.js" />
 </head>
 <body>
   <canvas id="gl-canvas"></canvas>

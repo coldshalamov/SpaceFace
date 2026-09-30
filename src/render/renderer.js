@@ -2514,9 +2514,11 @@ function kickDecodeRunwayAssets(owner, entities) {
       const resolved = resolvedFiles.get(entity.id) || packagedDecodeFileForEntity(entity);
       const fkey = resolved && resolved.file ? `${resolved.slot}::${resolved.file}` : null;
       const inFlight = owner._decodeRunwayPackagedFiles;
-      if (entity.type === 'station') {
-        kickBoundaryUpgrade(entity, entityMatchesWaveHullRunway(entity, state));
-      }
+      // Every pick whose boundary still awaits authored admission gets the pipeline-tail
+      // kick — it is idempotent via authoredUpgradePromise, and a wreck/prop body stages
+      // through exactly the same compose+compile+upload tail a station does. Firing ahead
+      // of the file dedupe covers picks whose decode is already in flight.
+      kickBoundaryUpgrade(entity, entityMatchesWaveHullRunway(entity, state));
       // A file already in flight decodes for the whole same-file cohort — claiming a start
       // slot for it would burn one of the two per-poll slots on a no-op.
       if (!fkey || (inFlight && inFlight.has(fkey))) continue;

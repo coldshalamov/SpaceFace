@@ -51,6 +51,7 @@ import {
   resolveLiveWholeShipLodTransition,
   selectPrewarmLodLevel,
   shouldCommitWholeShipLodLoad,
+  WHOLE_SHIP_LOD_RUNTIME_DEMOTION,
 } from './wholeShipLodPolicy.js';
 import {
   instancePoolIdentity,
@@ -1302,6 +1303,9 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
   // files have no owner bearing down on the glass — they rank behind every live deadline.
   if (options.includeSpawnableArchetypes !== false) {
     pushPlan({ hull: [...spawnableShipArchetypePrewarmUrls()] });
+    // Mid-flight packaged bodies (kill aftermath, drones, payload drops) spawn with no entity
+    // plan — same ambient coverage lane, ranking behind every live deadline like the hull set.
+    pushPlan(spawnablePackagedBodyPrewarmFiles());
   }
 
   // Nearest-deadline-first: the alphabetical census order was stable but served the file the
@@ -2121,6 +2125,27 @@ export function authoredPreloadPlanForEntityAtLod(entity, level, options = {}) {
   return authoredPreloadPlanForEntity(entity, options);
 }
 
+/**
+ * Packaged bodies that materialize mid-flight in ordinary sectors without an entity plan
+ * entry — kill aftermath wrecks, deployed drones, scripted payload drops, the breakaway
+ * spindle. The crucible roster warm already decodes this set menu-side; a close-range kill
+ * on a cold sector otherwise mounts the wreck root pending and pops seconds later.
+ * Slots mirror packagedDecodeFileForEntity / authoredPayloadSlotForEntity so the warmed
+ * record is the same url::slot key the attach path resolves.
+ */
+export function spawnablePackagedBodyPrewarmFiles() {
+  return Object.freeze({
+    place: Object.freeze([
+      ...PQ_193_05_WRECK_PACKAGED_FILES,
+      PQ_193_05_DRONE_PACKAGED_FILE,
+      PQ_193_05_GATE_PACKAGED_FILE,
+      'places/place_47a_rescue_capsule.glb',
+      'places/place_breakaway_sp07.glb',
+    ]),
+    pod: Object.freeze(['pods/pod_cargo_container.glb']),
+  });
+}
+
 /** Spawnable combat/traffic presentation keys for sector asset prewarm (not only live entities). */
 export function spawnableShipArchetypePrewarmUrls() {
   return Object.freeze([
@@ -2129,14 +2154,20 @@ export function spawnableShipArchetypePrewarmUrls() {
     ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
-    // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2 body
-    // is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp link).
+    // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2
+    // body is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp
+    // link). Runtime demotion is off, so the lod1 file has no live consumer (admission builds
+    // lod0, stand-ins borrow lod2): warm lod2 only and skip decode bytes nobody can draw.
     ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID)
-      .flatMap((family) => [family.lod1, family.lod2].filter(Boolean)),
+      .flatMap((family) => (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
+        ? [family.lod1, family.lod2]
+        : [family.lod2]).filter(Boolean)),
     // File-keyed families (massline express liner) have no def-id row — a far spawn's
     // demotion still needs the sibling GLBs resident, so list them explicitly.
     ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_FILE)
-      .flatMap((family) => [family.lod1, family.lod2].filter(Boolean)),
+      .flatMap((family) => (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
+        ? [family.lod1, family.lod2]
+        : [family.lod2]).filter(Boolean)),
   ]);
 }
 
@@ -4525,11 +4556,27 @@ function placeFileForEntity(entity) {
   return null;
 }
 
+// A request deduped onto a still-queued job may carry urgency the first ask did not (the
+// decode-runway kick's residencyRole). The job's priority already re-grades at admit, so
+// merge only caller-provided option fields — undefined never clobbers, and a frozen or
+// admitted job's bag is left alone.
+function mergeQueuedJobOptions(queuedJob, request) {
+  const target = queuedJob && queuedJob.options;
+  const incoming = request && request.options;
+  if (!target || !incoming || !Object.isExtensible(target)) return;
+  for (const optionKey of Object.keys(incoming)) {
+    if (incoming[optionKey] !== undefined) target[optionKey] = incoming[optionKey];
+  }
+}
+
 export function enqueueBoundaryUpgrade(scene, job) {
   const state = upgradeQueueState(scene);
   if (!job || !job.boundary) return Promise.resolve({ status: 'invalid-upgrade-request' });
   const boundaryJob = state.byBoundary.get(job.boundary);
-  if (boundaryJob) return boundaryJob.completion;
+  if (boundaryJob) {
+    if (boundaryJob.lifecycle === 'queued') mergeQueuedJobOptions(boundaryJob, job);
+    return boundaryJob.completion;
+  }
   if (!boundaryBelongsToScene(job.boundary, scene)) {
     return Promise.resolve({ status: 'cancelled-before-queue', boundary: job.boundary });
   }
@@ -4556,7 +4603,10 @@ export function enqueueBoundaryUpgrade(scene, job) {
   };
   const keyedJob = state.byKey.get(queuedJob.key);
   if (keyedJob) {
-    if (jobStillNeeded(state, keyedJob)) return keyedJob.completion;
+    if (jobStillNeeded(state, keyedJob)) {
+      if (keyedJob.lifecycle === 'queued') mergeQueuedJobOptions(keyedJob, job);
+      return keyedJob.completion;
+    }
     if (keyedJob.lifecycle === 'queued') {
       const staleIndex = state.jobs.indexOf(keyedJob);
       if (staleIndex >= 0) state.jobs.splice(staleIndex, 1);
@@ -4882,12 +4932,16 @@ function steadyFlightShipCanPassBusyPlace(state) {
 // first-flight hold grants applies in steady flight too — for every in-flight job, ship or not,
 // that has outlived any plausible upload window.
 const AUTHORED_UPGRADE_NONSHIP_STALL_MS = 120000;
+// The bypass feeds on-glass holes only: a body already drawn as a marker cannot wait the
+// ambient stall bound behind a wedged job. The serial-slot invariant still only yields to
+// dead lanes — this tightens how long 'plausibly alive' lasts when the picture is missing.
+const AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS = 30000;
 const STALLED_HOG_WAKE_MS = 5000;
 
-function jobIsStalledInFlight(job, nowMs) {
+function jobIsStalledInFlight(job, nowMs, boundMs = AUTHORED_UPGRADE_NONSHIP_STALL_MS) {
   if (!job || job.lifecycle !== 'in-flight') return false;
   const startedAt = Number(job.inFlightAtMs);
-  return Number.isFinite(startedAt) && nowMs - startedAt >= AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+  return Number.isFinite(startedAt) && nowMs - startedAt >= boundMs;
 }
 
 function queuedShipJobStillNeeded(state, job) {
@@ -4910,7 +4964,7 @@ function stalledHogsCanPassShip(state) {
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
   if (!active.length) return false;
   const now = monotonicNow();
-  return active.every((job) => jobIsStalledInFlight(job, now));
+  return active.every((job) => jobIsStalledInFlight(job, now, AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS));
 }
 
 /**
@@ -5231,6 +5285,14 @@ function entityIsOnReadableGlass(entity, state = undefined) {
   return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
 }
 
+// entityIsOnscreen runs inside the upgrade-queue sort comparator — O(jobs·log jobs)
+// comparisons per admit — so its projection/frustum/sphere scratch is module-scoped
+// instead of allocated per call. It never re-enters: nothing it calls reads these.
+const _onscreenProjection = new THREE.Matrix4();
+const _onscreenFrustum = new THREE.Frustum();
+const _onscreenCenter = new THREE.Vector3();
+const _onscreenSphere = new THREE.Sphere();
+
 export function entityIsOnscreen(entity, state) {
   const root = entity && entity.mesh;
   if (!root || root.visible === false || rootHiddenByAncestor(root)) {
@@ -5245,12 +5307,14 @@ export function entityIsOnscreen(entity, state) {
   try {
     camera.updateMatrixWorld(true);
     root.updateWorldMatrix(true, false);
-    const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    const frustum = new THREE.Frustum().setFromProjectionMatrix(projection);
+    _onscreenProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _onscreenFrustum.setFromProjectionMatrix(_onscreenProjection);
     // Sphere, not point: a big authored body is onscreen while its centre is off it.
     const presence = entityVisualCullRadius(entity, root);
-    const center = root.getWorldPosition(new THREE.Vector3());
-    return frustum.intersectsSphere(new THREE.Sphere(center, Math.max(presence, 0.001)));
+    root.getWorldPosition(_onscreenCenter);
+    _onscreenSphere.center.copy(_onscreenCenter);
+    _onscreenSphere.radius = Math.max(presence, 0.001);
+    return _onscreenFrustum.intersectsSphere(_onscreenSphere);
   } catch {
     return true;
   }
@@ -5439,7 +5503,7 @@ function scheduleNextUpgradeFrame(state) {
     return;
   }
   if (state.firstFlightHandoffHold === true
-      && !state.jobs.some(firstFlightReadableShipJob)) {
+      && !state.jobs.some(firstFlightReadableGlassJob)) {
     scheduleHeldShipWake(state);
     // The hold does not freeze in-flight jobs — a hog stalled through the hold still needs its
     // diagnostic closed on schedule.
@@ -5465,7 +5529,7 @@ function scheduleNextUpgradeFrame(state) {
   scheduleUpgradeFrame(() => {
     if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
     if (state.firstFlightHandoffHold === true
-        && !state.jobs.some(firstFlightReadableShipJob)) {
+        && !state.jobs.some(firstFlightReadableGlassJob)) {
       state.frameScheduled = false;
       scheduleHeldShipWake(state);
       armStalledHogWake(state);
@@ -5692,7 +5756,7 @@ function primeNextAuthoredAssetPlan(state) {
         && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
     state.firstFlightPrefetchJob = null;
     const player = liveState.entities?.get?.(liveState.playerId);
-    const eligible = state.jobs.filter((job) => firstFlightReadableShipJob(job)
+    const eligible = state.jobs.filter((job) => firstFlightReadableGlassJob(job)
       && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise);
     eligible.sort((a, b) => {
       const priority = authoredUpgradePriority(a) - authoredUpgradePriority(b);

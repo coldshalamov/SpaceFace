@@ -31,18 +31,29 @@ export function applyProjectedDetailLod(root, level) {
     // pool's submit gate reads, preserving the same hide/show cycle.
     const pooled = object.userData.asteroidInstanceAdopted === true;
     const now = pooled ? object.userData.poolLeafVisible !== false : object.visible !== false;
-    if (object.userData._hlodBaseVisible === undefined) {
-      object.userData._hlodBaseVisible = now;
-    }
-    const next = hide ? false : object.userData._hlodBaseVisible !== false;
-    if (pooled) {
+    // `_hlodHidden` marks a hide WE made so restore can tell it apart from the owner's own
+    // visibility: a node the owner hides at our first observation used to record
+    // base=false and stay hidden at every later un-hide even after the owner showed it.
+    // While we hold no hide, `now` IS the owner's state — refresh the base from it.
+    const hlodHidden = object.userData._hlodHidden === true;
+    if (hide) {
+      if (hlodHidden) return;
+      if (object.userData._hlodBaseVisible === undefined) object.userData._hlodBaseVisible = now;
+      if (!now) return;
+      if (pooled) object.userData.poolLeafVisible = false;
+      else object.visible = false;
+      object.userData._hlodHidden = true;
+      changed += 1;
+    } else if (hlodHidden) {
+      const next = object.userData._hlodBaseVisible !== false;
       if (now !== next) {
-        object.userData.poolLeafVisible = next;
+        if (pooled) object.userData.poolLeafVisible = next;
+        else object.visible = next;
         changed += 1;
       }
-    } else if (object.visible !== next) {
-      object.visible = next;
-      changed += 1;
+      object.userData._hlodHidden = false;
+    } else {
+      object.userData._hlodBaseVisible = now;
     }
   });
   return changed;

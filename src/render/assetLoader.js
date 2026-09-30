@@ -625,6 +625,10 @@ export async function loadAuthoredPart(url, options = {}) {
     residency.retain(cacheKey, runtime.decodeCacheOwner, {
       role: 'decode-cache',
       sectorId: options.sectorId || null,
+      // Warm-purpose decodes (sector prewarm, decode runway, roster warm) speculate on future
+      // use — a never-touched prewarm otherwise reads as the oldest idle entry and is the first
+      // casualty of byte pressure, so the spawn it covered still pops cold.
+      decodeWarm: /warm|runway|prewarm|armory/i.test(String(options.residencyRole || '')),
     });
   }
   return blueprint;

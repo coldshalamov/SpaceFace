@@ -99,7 +99,7 @@ export function mergeSharedStoreKeys(localKeys = {}, remoteKeys = {}) {
       out[key] = remote;
       continue;
     }
-    if (remote == null) {
+    if (remote == null || local === remote) {
       out[key] = local;
       continue;
     }
@@ -118,6 +118,9 @@ export function applySharedStoreKeys(keys, storage = globalThis.localStorage) {
   for (const [key, value] of Object.entries(keys || {})) {
     if (!isSharedPlayerStoreKey(key) || typeof value !== 'string') continue;
     try {
+      // A storage write of an identical ~220 KB envelope still pays the synchronous commit;
+      // the read+compare is the cheap side of the same string.
+      if (typeof storage.getItem === 'function' && storage.getItem(key) === value) continue;
       storage.setItem(key, value);
       written += 1;
     } catch {
