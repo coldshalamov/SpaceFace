@@ -4406,42 +4406,42 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/kestrel.glb",
       "release": "assets/ships/release/parts/wholeships/kestrel.glb",
-      "sourceSha256": "d893e822f3798579236b46dd4b04c58eeb19b846fad665b7034b41d381c02485",
-      "releaseSha256": "71c1cdab6759b6788bd7f4f399575705a626b5fb1c317199da220025425f001e",
-      "sourceBytes": 1952960,
-      "releaseBytes": 785128,
+      "sourceSha256": "1243a134d28c5e3b697f5f00a8b28e229db3abce218ccc9bfca9c8bb11abc703",
+      "releaseSha256": "9ad1a62f3e6cc2148b5a061b5c760f9798cb550625c75afa4cd08e7a4226d1fb",
+      "sourceBytes": 2026596,
+      "releaseBytes": 816940,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 91,
-      "contractNodeCount": 33
+      "meshoptBufferViews": 115,
+      "contractNodeCount": 39
     },
     {
       "id": "wholeship_kestrel_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/kestrel_lod1.glb",
       "release": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
-      "sourceSha256": "07911bc09b56b4720ebc9ff56e8752b7a5bfd8a8c1152ea569849150460398a4",
-      "releaseSha256": "80a40ad27799283b1622d06531d125a828b97fb58344788110a7db105e0751d2",
-      "sourceBytes": 970116,
-      "releaseBytes": 552448,
+      "sourceSha256": "9e71caee51376212dd11f945b1be66e1fdbf683f815eb4c8bf0ac3dbd93d745a",
+      "releaseSha256": "b13af22d02cf66b5db68908fb9d97e2d627dc8fc17be7f879b7fc25e4a7eb7e1",
+      "sourceBytes": 1006656,
+      "releaseBytes": 575032,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 94,
-      "contractNodeCount": 33
+      "meshoptBufferViews": 118,
+      "contractNodeCount": 39
     },
     {
       "id": "wholeship_kestrel_lod2",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/kestrel_lod2.glb",
       "release": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
-      "sourceSha256": "74dad7c455a130f6ac6ff5c760fecbaf5822c9dc3748db808b192bbc3a776226",
-      "releaseSha256": "8fe3862bdf231d6e02c150a7ad3d2ff72b9efbebb2a5acef85151acb66e95935",
-      "sourceBytes": 557536,
-      "releaseBytes": 436152,
+      "sourceSha256": "259d43474c65220390b17243bde7cc3846d4c049240925407c54555352e0937f",
+      "releaseSha256": "bbbd114617043bae67f5c83fc246a72352bd97eacef919d789a13a47f3af579a",
+      "sourceBytes": 580664,
+      "releaseBytes": 454656,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 85,
-      "contractNodeCount": 31
+      "meshoptBufferViews": 109,
+      "contractNodeCount": 37
     }
   ]
 }

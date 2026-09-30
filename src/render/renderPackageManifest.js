@@ -694,12 +694,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "6c4a2d333062d6cf87c80d3d79868cd4720195ed8932717b511d778d6330439b",
+    "expectedContentHash": "917813097eb9622294c5bb1b3e59a6e72a4680079d966ff78f66257263c0c4b3",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "71c1cdab6759b6788bd7f4f399575705a626b5fb1c317199da220025425f001e",
+    "sourceSha256": "9ad1a62f3e6cc2148b5a061b5c760f9798cb550625c75afa4cd08e7a4226d1fb",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
   {

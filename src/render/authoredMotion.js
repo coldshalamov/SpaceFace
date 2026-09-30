@@ -132,12 +132,28 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
+  // ANI-05: drive iris on the boost lifecycle. stow is gated so a stray boostStop (or a ship that
+  // never opened) doesn't replay the retract against an already-parked iris.
+  const irisOpen = (controller) => controller.clipActive?.('irisPrime')
+    || controller.clipActive?.('irisIgnite');
+  const onBoostPreKick = (payload) => {
+    dispatch('ship:boostPreKick', payload.shipId, payload, () => true);
+  };
+  const onBoostStart = (payload) => {
+    dispatch('ship:boostStart', payload.shipId, payload, () => true);
+  };
+  const onBoostStop = (payload) => {
+    dispatch('ship:boostStop', payload.shipId, payload, irisOpen);
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
+    bus.on('ship:boostPreKick', onBoostPreKick),
+    bus.on('ship:boostStart', onBoostStart),
+    bus.on('ship:boostStop', onBoostStop),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

@@ -7,6 +7,7 @@ repair pod on the port shoulder, a dorsal sensor dish. What changed is the build
 surfaces (no grime/scratch noise), crisp bevelled armour, one livery, lights where a crew needs them.
 All nine gameplay sockets sit exactly where the live game expects them.
 """
+import math
 import os
 import sys
 
@@ -16,6 +17,7 @@ import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_01  # noqa: E402
 import ANI_02  # noqa: E402
+import ANI_05  # noqa: E402
 
 SHIP_ID = 'kestrel'
 
@@ -154,6 +156,16 @@ def build():
                               source_asset_id=E_spec_asset_id())
     # ANI-02 authors into the shared bank — one kestrel.motion.json carries every rig's clips.
     ANI_02.build(s, {'cutter': cutter}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    # ANI-05 proposed geometry: six rigid iris petals inside the DriveBell mouth, hidden under
+    # the inner rim at rest; they slide toward the axis on boost and read as the fan over the
+    # glowing core. One motion group per petal so each slides along its own radial direction.
+    iris_petals = []
+    for i in range(ANI_05.PETALS):
+        petal = F.plate_v(s, f'IrisPetal{i}', ANI_05.petal_outline(math.radians(i * 60 + 30)),
+                          ANI_05.PETAL_X - 0.09, 0.09, plane='yz', material='gunmetal',
+                          chamfer=0.02, bevel=0.01)
+        iris_petals.append(petal)
+    ANI_05.build(s, {'petals': iris_petals}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     s.ani01_bank = ani01_bank
 
     # --- armour plate that sheds under damage (port shoulder cap) ------------------------
