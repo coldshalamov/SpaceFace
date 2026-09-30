@@ -75,6 +75,42 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="./styles/fonts/archivo-var-latin-standard-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="./styles/fonts/archivo-var-latin-ext-standard-normal.woff2" />
   <link rel="modulepreload" href="./src/main.js" />
+  <!-- main.js's whole static-import list, mirrored one hop deep: on the unbundled path the
+       transitive src graph is otherwise discovered fetch-by-fetch during the post-media eval
+       cascade. Preloading the direct graph overlaps that first hop with the media wait while
+       evaluation still correctly waits on the artwork+ring proof. Keep in sync with the
+       import block at the top of src/main.js (the dynamic testing/lab imports stay lazy). -->
+  <link rel="modulepreload" href="./src/core/gameState.js" />
+  <link rel="modulepreload" href="./src/core/entity.js" />
+  <link rel="modulepreload" href="./src/core/graphicsProfileBootstrap.js" />
+  <link rel="modulepreload" href="./src/core/eventBus.js" />
+  <link rel="modulepreload" href="./src/core/registry.js" />
+  <link rel="modulepreload" href="./src/core/loop.js" />
+  <link rel="modulepreload" href="./src/core/presentationJournal.js" />
+  <link rel="modulepreload" href="./src/core/presentationRunner.js" />
+  <link rel="modulepreload" href="./src/core/simSnapshot.js" />
+  <link rel="modulepreload" href="./src/core/eventTrace.js" />
+  <link rel="modulepreload" href="./src/core/timeEffects.js" />
+  <link rel="modulepreload" href="./src/core/runReset.js" />
+  <link rel="modulepreload" href="./src/core/runTransitionGuard.js" />
+  <link rel="modulepreload" href="./src/core/newGameStartTransition.js" />
+  <link rel="modulepreload" href="./src/core/shipAppearance.js" />
+  <link rel="modulepreload" href="./src/ui/screens/clips.js" />
+  <link rel="modulepreload" href="./src/ui/accessibility.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationStyles.js" />
+  <link rel="modulepreload" href="./src/ui/loadingPresenter.js" />
+  <link rel="modulepreload" href="./src/systems/ships.js" />
+  <link rel="modulepreload" href="./src/systems/combat.js" />
+  <link rel="modulepreload" href="./src/systems/telemetry.js" />
+  <link rel="modulepreload" href="./src/systems/achievements.js" />
+  <link rel="modulepreload" href="./src/data/newGameDefaults.js" />
+  <link rel="modulepreload" href="./src/data/userContent.js" />
+  <link rel="modulepreload" href="./src/data/scenarios/47aLiveScene.js" />
+  <link rel="modulepreload" href="./src/render/partsLibrary.js" />
+  <link rel="modulepreload" href="./src/render/precompile.js" />
+  <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
+  <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
+  <link rel="modulepreload" href="./src/render/uiStage.js" />
 </head>
 <body>
   <canvas id="gl-canvas"></canvas>

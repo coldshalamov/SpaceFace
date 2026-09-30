@@ -368,8 +368,12 @@ export const save = {
     let error = null;
     try {
       // The local collect+string materialization is synchronous main-thread work; overlapping
-      // it with the fetch wait removes it from the pin duration Continue observes.
+      // it with the fetch wait removes it from the pin duration Continue observes. It still
+      // must not run inside init()'s synchronous tail — on a mature profile it stringifies
+      // every save+recovery blob — so it yields one frame first, then collects while the
+      // remote fetch is still in flight.
       const remotePromise = fetchSharedPlayerStore();
+      await this._restoreFrameYield();
       const local = collectLocalSharedStoreKeys();
       const remote = await remotePromise;
       const merged = mergeSharedStoreKeys(local, remote || {});
@@ -1581,6 +1585,30 @@ export const save = {
     const primary = this._prepareEnvelopeString(primaryRaw);
     if (primary.ok) return null;
     const backup = this._prepareEnvelopeString(backupRaw);
+    if (backup.ok) return null;
+    return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
+  },
+
+  // Worker-backed twin for loadAsync: the verdict reads identically, but the two generation
+  // prepares ride the save worker instead of parsing+checksumming mature blobs on the click
+  // frame — the lane that exists to avoid exactly that.
+  async _newerUnplayableSkipAsync(burst = null) {
+    let raw = null;
+    try {
+      if (typeof localStorage === 'undefined') return null;
+      raw = normalizeSlotIndex(this._readIndex());
+    } catch (err) { return null; }
+    const best = selectLatestOccupiedSlot(raw);
+    if (!best) return null;
+    if (this._latestSlot(burst) === best) return null; // newest is playable — no skip
+    let primaryRaw = null, backupRaw = null;
+    try {
+      primaryRaw = localStorage.getItem(LS_PREFIX + best);
+      backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
+    } catch (err) { return null; }
+    const primary = await this._prepareEnvelopeStringAsync(primaryRaw);
+    if (primary.ok) return null;
+    const backup = await this._prepareEnvelopeStringAsync(backupRaw);
     if (backup.ok) return null;
     return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
   },
@@ -3000,7 +3028,7 @@ export const save = {
     let skippedNewer = null;
     if (slot === 'latest') {
       const slotBurst = {};
-      try { skippedNewer = this._newerUnplayableSkip(slotBurst); } catch (err) { skippedNewer = null; }
+      try { skippedNewer = await this._newerUnplayableSkipAsync(slotBurst); } catch (err) { skippedNewer = null; }
       const resolved = this._latestSlot(slotBurst);
       if (!resolved) {
         this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
@@ -3263,31 +3291,11 @@ export const save = {
   },
 
   // Shared failure tail for both envelope restore lanes: report, then one rollback attempt
-  // against the pre-restore snapshot when one exists. Rollback itself stays synchronous — it
-  // only ever runs on an already-failed load, never on the golden path.
+  // against the pre-restore snapshot when one exists. Rollback rides the caller's own lane —
+  // the async Continue path's second failure chunks the rollback the same as the first.
   _handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt) {
-    console.error('[save] load failed', err);
-    if (rollbackAttempt || !rollbackSnapshot || rollbackSnapshot.notNeeded) {
-      // A chunk-level throw after the 'loading' flip leaves state.mode stranded — the veil
-      // gate holds forever and the title stage is suppressed permanently. Without a rollback
-      // (title-screen Continue) nothing else recovers it, so hand the mode back here.
-      const strandedMode = this._restoreModeBeforeLoading;
-      this._restoreModeBeforeLoading = null;
-      if (strandedMode != null && this.state.mode === 'loading') {
-        this.state.mode = strandedMode;
-        this.bus.emit('mode:changed', { mode: strandedMode, previousMode: 'loading' });
-      }
-      if (options.emitError !== false) {
-        this.bus.emit('save:error', {
-          slot,
-          reason: 'load_failed',
-          rollback: rollbackAttempt ? 'failed' : 'not_needed',
-          error: restoreErrorMessage(err),
-        });
-      }
-      return false;
-    }
-
+    const failure = this._beginLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
+    if (failure === null) return false;
     let rollbackError = null;
     this._rollbackInProgress = true;
     try {
@@ -3304,7 +3312,66 @@ export const save = {
     } finally {
       this._rollbackInProgress = false;
     }
+    this._endLoadFailure(failure, rollbackError);
+    return false;
+  },
 
+  // Async twin: identical contract, but the rollback restore awaits a frame boundary between
+  // chunks so a double-failure on the Continue lane stays paintable instead of re-running the
+  // whole restore as one uninterruptible block behind the veil.
+  async _handleLoadFailureAsync(err, slot, options, rollbackSnapshot, rollbackAttempt) {
+    const failure = this._beginLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
+    if (failure === null) return false;
+    let rollbackError = null;
+    this._rollbackInProgress = true;
+    try {
+      const rollbackResult = await this._restoreAsync(rollbackSnapshot.data, rollbackSnapshot.slot, {
+        rollback: true,
+        emitError: false,
+        rollbackSnapshot: null,
+      });
+      if (!rollbackResult || rollbackResult.restored !== true) {
+        throw new Error('rollback_restore_incomplete');
+      }
+    } catch (rollbackErr) {
+      rollbackError = rollbackErr;
+    } finally {
+      this._rollbackInProgress = false;
+    }
+    this._endLoadFailure(failure, rollbackError);
+    return false;
+  },
+
+  // Reports the no-rollback case and returns null, else captures the pre-'loading'-flip mode
+  // before the nested rollback session resets the channel at open — a rollback that also
+  // fails still owes the player their mode back.
+  _beginLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt) {
+    console.error('[save] load failed', err);
+    if (rollbackAttempt || !rollbackSnapshot || rollbackSnapshot.notNeeded) {
+      this._restoreStrandedLoadMode();
+      if (options.emitError !== false) {
+        this.bus.emit('save:error', {
+          slot,
+          reason: 'load_failed',
+          rollback: rollbackAttempt ? 'failed' : 'not_needed',
+          error: restoreErrorMessage(err),
+        });
+      }
+      return null;
+    }
+    const strandedMode = this._restoreModeBeforeLoading;
+    this._restoreModeBeforeLoading = null;
+    return { err, slot, options, strandedMode };
+  },
+
+  _endLoadFailure(failure, rollbackError) {
+    const { err, slot, options, strandedMode } = failure;
+    // A failed rollback leaves mode 'loading' stranded exactly like the no-rollback case —
+    // the nested session discarded the outer capture at open, so hand the local copy back.
+    if (rollbackError && strandedMode != null && this.state.mode === 'loading') {
+      this.state.mode = strandedMode;
+      this.bus.emit('mode:changed', { mode: strandedMode, previousMode: 'loading' });
+    }
     if (options.emitError !== false) {
       const payload = {
         slot,
@@ -3317,7 +3384,18 @@ export const save = {
       if (rollbackError) payload.rollbackError = restoreErrorMessage(rollbackError);
       this.bus.emit('save:error', payload);
     }
-    return false;
+  },
+
+  // A chunk-level throw after the 'loading' flip leaves state.mode stranded — the veil
+  // gate holds forever and the title stage is suppressed permanently. Without a rollback
+  // (title-screen Continue) nothing else recovers it, so hand the mode back here.
+  _restoreStrandedLoadMode() {
+    const strandedMode = this._restoreModeBeforeLoading;
+    this._restoreModeBeforeLoading = null;
+    if (strandedMode != null && this.state.mode === 'loading') {
+      this.state.mode = strandedMode;
+      this.bus.emit('mode:changed', { mode: strandedMode, previousMode: 'loading' });
+    }
   },
 
   // Async twin of _restorePreparedEnvelope for the Continue lane: same rollback contract,
@@ -3365,7 +3443,7 @@ export const save = {
       if (result && result.restored === false) return result.superseded === true;
       return true;
     } catch (err) {
-      return this._handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
+      return this._handleLoadFailureAsync(err, slot, options, rollbackSnapshot, rollbackAttempt);
     }
   },
 
@@ -4233,6 +4311,10 @@ export const save = {
   *_clearEntitiesChunked() {
     const state = this.state;
     const list = state.entityList;
+    // The window is slice-bounded as well as count-bounded: each destroyed emit disposes a
+    // mesh tree, so a fixed 16 clears can exceed the restore driver's frame gate as one
+    // indivisible stretch. Order and the final reset are unchanged — only the yield cadence.
+    let sliceStart = nowMs();
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       e.alive = false;
@@ -4245,7 +4327,11 @@ export const save = {
           reason: 'save_restore',
         });
       } catch (err) { /* a render/vfx handler must not abort the clear */ }
-      if ((list.length - i) % RESTORE_ENTITY_CLEAR_BATCH === 0) yield 'entities-clearing';
+      if ((list.length - i) % RESTORE_ENTITY_CLEAR_BATCH === 0
+          || nowMs() - sliceStart >= RESTORE_YIELD_SLICE_MS) {
+        yield 'entities-clearing';
+        sliceStart = nowMs();
+      }
     }
     state.entities.clear();
     state.entityList.length = 0;
@@ -4307,7 +4393,14 @@ export const save = {
       }
     }
     const end = Math.min(savedList.length, startIndex + limit);
-    for (let spawnIndex = startIndex; spawnIndex < end; spawnIndex++) {
+    // The batch is slice-bounded as well as count-bounded: each spawn pays clonePlain +
+    // spawnEntity + the synchronous entity:spawned fan-out, so 16 station-size records can
+    // exceed the restore driver's frame gate as one indivisible stretch. Always run at
+    // least one spawn per call so the batch loop cannot spin.
+    const sliceStart = nowMs();
+    let spawnIndex = startIndex;
+    for (; spawnIndex < end; spawnIndex++) {
+      if (spawnIndex > startIndex && nowMs() - sliceStart >= RESTORE_YIELD_SLICE_MS) break;
       const saved = savedList[spawnIndex];
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
@@ -4342,7 +4435,7 @@ export const save = {
       state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
       if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), e.id);
     }
-    return end;
+    return spawnIndex;
   },
 
   _applySavedVitals(saved) {
