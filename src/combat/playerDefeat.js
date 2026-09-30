@@ -8,7 +8,7 @@ import { MODULES } from '../data/modules.js';
 import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
-import { currentGameLocale } from '../localization/gameLocalization.js';
+import { formatNumber, resolveNumberLocale } from '../ui/numberFormat.js';
 import { INSURANCE_DEFAULTS } from '../systems/economy.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
@@ -37,21 +37,17 @@ function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
 }
 
+// PRO-03: locale resolution now lives in one place (src/ui/numberFormat.js) so the death summary
+// and the HUD read the SAME separators. This module's private copies are kept as thin wrappers
+// because its callers pass an already-resolved locale tag and the shared helper's signature is
+// (value, state, options).
 function playerCreditLocale(state) {
-  const chosen = state && state.settings && typeof state.settings.locale === 'string'
-    ? state.settings.locale.trim()
-    : '';
-  return chosen || currentGameLocale() || 'en-US';
+  return resolveNumberLocale(state);
 }
 
 function formatCredits(amount, locale) {
   const n = Math.max(0, Math.round(Number(amount) || 0));
-  const tag = locale || 'en-US';
-  try {
-    return n.toLocaleString(tag);
-  } catch {
-    return n.toLocaleString('en-US');
-  }
+  return formatNumber(n, null, { locale });
 }
 
 // Station premium: the on-file deductible, or INSURANCE_DEFAULTS when the record never named one.

@@ -24,6 +24,7 @@ import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg } from './glyphs.js';
 import { wantedReasonText } from './wantedReason.js';
+import { formatCount } from './numberFormat.js';
 import { SHIPS } from '../data/ships.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { catalogHullFacts } from '../systems/ships.js';
@@ -258,12 +259,15 @@ function respawnStationName(id) {
 export function respawnToastText(payload = {}) {
   const parts = ['Recovered at ' + respawnStationName(payload.stationId)];
   const cost = Math.max(0, Math.round(Number(payload.costCr) || 0));
-  if (cost > 0) parts.push('recovery ' + cost.toLocaleString('en-US') + ' cr');
+  // PRO-03: locale-aware, not a pinned 'en-US'. The payload may carry the state so a settings
+  // choice is honoured before the runtime locale has been applied.
+  const locale = payload && payload.locale;
+  if (cost > 0) parts.push('recovery ' + formatCount(cost, payload, { locale }) + ' cr');
   if (typeof payload.insuranceStatus === 'string' && payload.insuranceStatus) {
     parts.push(payload.insuranceStatus.toLowerCase());
   }
   const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
-  if (refund > 0) parts.push('insurance +' + refund.toLocaleString('en-US') + ' cr');
+  if (refund > 0) parts.push('insurance +' + formatCount(refund, payload, { locale }) + ' cr');
   const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
   if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
   else if (payload.cargoLost) parts.push('cargo lost');
@@ -1875,7 +1879,8 @@ export function createHud(ctx, alerts) {
     const player = state.player || {};
     const cr = Math.round(player.credits || 0);
     const st = player.stats || {};
-    return `Credits: ${cr.toLocaleString('en-US')} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString('en-US')}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString('en-US')}`;
+    // PRO-03: every figure in this tooltip reads in the player's own locale.
+    return `Credits: ${formatCount(cr, state)} CR\nLifetime profit: ${formatCount(st.lifetimeProfit, state)}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${formatCount(st.biggestSingleProfit, state)}`;
   }
   function buildWeaponsTip(p) {
     if (!p || !p.data || !p.data.weapons || !p.data.weapons.length) return 'No weapons fitted';
@@ -3414,7 +3419,7 @@ export function createHud(ctx, alerts) {
 
     const basisText = contentEl.querySelector('.sf-ins-basis');
     const basis = getAverageBasis(state, commodityId);
-    basisText.textContent = basis != null ? `${basis.toLocaleString('en-US')} CR` : 'N/A';
+    basisText.textContent = basis != null ? `${formatCount(basis, state)} CR` : 'N/A';
 
     const buyerText = contentEl.querySelector('.sf-ins-buyer');
     const routeBtn = contentEl.querySelector('.sf-btn-route');
@@ -3424,7 +3429,7 @@ export function createHud(ctx, alerts) {
       const age = cargoMemoryAgeLabel(state, best.seenAt);
       const jumps = best.jumps == null ? '?' : best.jumps;
       const jumpText = jumps === 1 ? '1 jump' : `${jumps} jumps`;
-      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${best.sell.toLocaleString('en-US')} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
+      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${formatCount(best.sell, state)} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
       routeBtn.disabled = false;
       routeBtn.onclick = () => {
         applyTradeNavigation(ctx, best.stationId, commodityId);
@@ -3580,7 +3585,7 @@ export function createHud(ctx, alerts) {
           const qty = Math.max(0, Math.floor(Number(entry.qty) || 0));
           const total = Math.max(0, Math.round(Number(entry.total) || 0));
           const profit = Math.round(Number(entry.profit) || 0);
-          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${profit.toLocaleString('en-US')} CR</span>` : '';
+          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${formatCount(profit, state)} CR</span>` : '';
           rowsHtml += `
             <div class="sf-ledger-row">
               <div class="sf-ledger-left">
@@ -3588,7 +3593,7 @@ export function createHud(ctx, alerts) {
                 <span class="sf-ledger-station">${stn} (${age})</span>
               </div>
               <div class="sf-ledger-right">
-                <span class="sf-ledger-val">${total.toLocaleString('en-US')} CR</span>
+                <span class="sf-ledger-val">${formatCount(total, state)} CR</span>
                 ${profitHtml}
               </div>
             </div>
@@ -3934,7 +3939,7 @@ export function createHud(ctx, alerts) {
     _credTo = target;
     _credT = 0;
     creditsDirty = false;
-    setText(elCredits, Math.round(_credFrom).toLocaleString('en-US'));
+    setText(elCredits, formatCount(_credFrom, state));
     // The stake sits beside the run wallet whenever the wallet speaks (swarm only — it is the
     // run's difficulty contract, constant for the run's life).
     if (elStake) {
@@ -3960,7 +3965,7 @@ export function createHud(ctx, alerts) {
   function tickCreditsTween(dt) {
     if (_credT >= 1) return;
     _credT = Math.min(1, _credT + (dt || 0.016) / CRED_TWEEN);
-    setText(elCredits, Math.round(_credCurrent()).toLocaleString('en-US'));
+    setText(elCredits, formatCount(_credCurrent(), state));
   }
   function refreshCargo() {
     cargoDirty = false;
