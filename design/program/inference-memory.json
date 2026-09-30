@@ -74,45 +74,6 @@
   ],
   "units": [
     {
-      "id": "PIC-08",
-      "date": "2026-09-22",
-      "wf": "WF-08",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "massline tangent-meeting kills now carry collisionPresentation; terrain meetings read terrain_collision, craft meetings ship_collision, selecting the authored causal schedule instead of generic",
-      "fingerprint": "verb=see,subject=shove-kill,sector=any,domain=picture",
-      "references": [],
-      "integration": "live",
-      "commit": "26732571a",
-      "verification": "focused_green"
-    },
-    {
-      "id": "VERB-02",
-      "date": "2026-09-22",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "opening hauler raid fires with no choice offer or pass-on-timeout; thief raiders already attack the MTS hauler and side-picking is by fire",
-      "fingerprint": "verb=fight,subject=opening-raid,sector=helios,domain=verb",
-      "references": [],
-      "integration": "live",
-      "commit": "0c4293e4d",
-      "verification": "focused_green"
-    },
-    {
-      "id": "world-03-choir-tender-chart",
-      "date": "2026-09-22",
-      "wf": "WF-04",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Helios chart lists the real Choir-Tender as a wreck POI bound to wreck_choir_tender; runtimeOwner keeps the unique-wreck program as the only body",
-      "fingerprint": "verb=chart,subject=poi,sector=helios,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "3e6ca5201",
-      "verification": "focused_green"
-    },
-    {
       "id": "VERB-06",
       "date": "2026-09-22",
       "wf": "WF-02",
@@ -1659,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "0f6cd1936b366e0098b1d0c4b7a59196161847c9",
+      "verification": "focused_green"
+    },
+    {
+      "id": "PIC-20",
+      "date": "2026-09-30",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A resolved survivor pod paints one colour for rescue, ransom, or loss at the pod's last point, and the body is gone.",
+      "fingerprint": "verb=rescue,subject=survivor-pod,sector=tethys,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "5c55a8fba",
       "verification": "focused_green"
     }
   ],
