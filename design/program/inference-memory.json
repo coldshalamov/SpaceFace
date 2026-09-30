@@ -1606,7 +1606,20 @@
       "fingerprint": "verb=aim,subject=target-assist,sector=any,domain=wf-15",
       "references": [],
       "integration": "live",
-      "commit": "pending-unit-4-commit",
+      "commit": "ac0a9d5da3f3ab66bc63fd8e5eb5ff9ee4a34e39",
+      "verification": "focused_green"
+    },
+    {
+      "id": "WORLD-37",
+      "date": "2026-09-30",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "supported depot with live patrol beat publishes moving depot-patrol marker; lapse/resolve/off-sector draw nothing",
+      "fingerprint": "verb=chart,subject=depot-patrol,sector=any,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "pending-unit-5-commit",
       "verification": "focused_green"
     },
     {

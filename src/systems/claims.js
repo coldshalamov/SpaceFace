@@ -127,6 +127,27 @@ export const DEPOT_PATROL_ZONE_RADIUS_WU = 280;
 // virtualize the hulls two ticks after they spawned and the beat would churn spawns unseen.
 export const DEPOT_PATROL_PRESENCE_RANGE_WU = 1400;
 export const DEPOT_PATROL_ID_PREFIX = 'depot-patrol:';
+
+/**
+ * WORLD-37: pure projector for the chart's moving law presence. A supported depot whose
+ * patrol beat is live (encounterId set) publishes one marker; anything else yields null,
+ * so lapsed, resolving and off-window beats draw nothing. Position prefers the live hull
+ * (resolved by the caller, which owns the entity scan); the stored post anchor, then the
+ * depot body, are the deterministic fallbacks. Never serialized separately — depotSupport
+ * already persists on the claim body.
+ */
+export function depotPatrolMarker(body, livePos = null) {
+  const ds = body && body.depotSupport;
+  const encounterId = ds && ds.patrol && ds.patrol.encounterId;
+  if (!ds || ds.supported !== true || !encounterId) return null;
+  const anchor = ds.patrol.anchor;
+  const live = livePos && Number.isFinite(livePos.x) && Number.isFinite(livePos.z) ? livePos : null;
+  const fallback = anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)
+    ? anchor
+    : { x: Number(body.x) || 0, z: Number(body.z) || 0 };
+  const pos = live || fallback;
+  return { bodyId: body.id || null, encounterId, x: pos.x, z: pos.z };
+}
 export const ENDGAME_PULLS_SCHEMA = 'endgame_pulls_v1';
 export const LEGENDARY_HEADS_SCHEMA = 'legendary_heads_v1';
 export const ACE_TROPHY_TIER_MAX = 3;
@@ -2113,7 +2134,7 @@ export const claims = {
       lapseReason: null,
       rotations: 0,
       completedRotations: 0,
-      patrol: { encounterId: null, requestedAt: 0, nextAt: 0, lastDenied: null, announced: false },
+      patrol: { encounterId: null, anchor: null, requestedAt: 0, nextAt: 0, lastDenied: null, announced: false },
     };
   },
 
@@ -2180,6 +2201,7 @@ export const claims = {
       director.abort(live, 'depot_support_lapsed');
     }
     ds.patrol.encounterId = null;
+    ds.patrol.anchor = null;
     const line = depotPatrolLine(reason, { depot: body.name });
     if (body.spec) this._receipt(body, 'depot_lapsed', line, { reason });
     this.bus.emit('claim:depotSupport', {
@@ -2241,6 +2263,9 @@ export const claims = {
     // A new rotation was actually posted.
     ds.rotations = rotation;
     patrol.encounterId = encounterId;
+    // WORLD-37: the chart's moving marker needs a stable fallback when the live hull is
+    // momentarily unresolvable. Stored beside the encounter id it belongs to, cleared with it.
+    patrol.anchor = { x: anchor.x, z: anchor.z };
     patrol.requestedAt = now;
     this.bus.emit('claim:depotPatrolRotation', {
       bodyId: body.id, sectorId: body.sectorId, encounterId, rotation,
@@ -2282,6 +2307,7 @@ export const claims = {
     const now = this.state.simTime || 0;
     const heldS = now - (Number(ds.patrol.requestedAt) || 0);
     ds.patrol.encounterId = null;
+    ds.patrol.anchor = null;
     const aborted = String(payload.outcome || '').startsWith('aborted:');
     if (!aborted && heldS >= DEPOT_PATROL_CREDIT_FLOOR_S) {
       ds.completedRotations += 1;

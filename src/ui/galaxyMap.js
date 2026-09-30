@@ -71,7 +71,7 @@ import { conflictPairsForSector } from '../data/conflictZones.js';
 import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel } from '../systems/heat.js';
 import { regionalEcologyReadout } from '../systems/regionalEcology.js';
 import { REGIONAL_ECONOMY_PROFILES } from '../data/regionalEconomyProfiles.js';
-import { claimDefenseRating } from '../systems/claims.js';
+import { claimDefenseRating, depotPatrolMarker, DEPOT_PATROL_FACTION_ID } from '../systems/claims.js';
 import { bestKnownSellAtStations, knownStationQuotes, AGE_HOLLOW_S } from './marketIntelligence.js';
 import { LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
 import { buildTradeLanesModel as buildCargoDeckTradeLanesModel } from './navigation/cargoDeck.js';
@@ -1357,6 +1357,52 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     });
   }
   const markers = [];
+  // WORLD-37: the depot patrol the claim summoned draws as a moving law presence. One
+  // entity scan serves every supported depot: live hulls match by squad id, and the stored
+  // post anchor covers a hull that is momentarily unresolvable. Off-sector and lapsed beats
+  // yield nothing — the projector returns null, so the marker dies exactly once.
+  const wantedPatrols = new Map();
+  for (const body of bodies) {
+    if (!body || body.owned !== true || body.sectorId !== sid) continue;
+    const ds = body.depotSupport;
+    const encounterId = ds && ds.patrol && ds.patrol.encounterId;
+    if (ds && ds.supported === true && encounterId) wantedPatrols.set(encounterId, body);
+  }
+  if (wantedPatrols.size) {
+    const hullByEncounter = new Map();
+    const list = state && Array.isArray(state.entityList) ? state.entityList : [];
+    for (const e of list) {
+      if (!e || e.alive === false || !e.pos) continue;
+      const squadId = e.data && e.data.ai && e.data.ai.squadId;
+      if (squadId && wantedPatrols.has(squadId) && !hullByEncounter.has(squadId)) {
+        hullByEncounter.set(squadId, e);
+      }
+    }
+    for (const [encounterId, body] of wantedPatrols) {
+      const hull = hullByEncounter.get(encounterId) || null;
+      const projected = depotPatrolMarker(body, hull && hull.pos ? hull.pos : null);
+      if (!projected) continue;
+      markers.push({
+        id: `depot-patrol:${body.id}`,
+        claimId: body.id,
+        targetEntityId: hull && hull.id != null ? hull.id : null,
+        kind: 'depot-patrol',
+        role: 'PATROL',
+        glyph: '◆',
+        color: factionColorOf(DEPOT_PATROL_FACTION_ID),
+        name: `PATROL · ${body.name || 'Depot'} lane`,
+        status: 'ON STATION',
+        statusLine: `Concord patrol beat · ${hull ? 'hull on glass' : 'holding the lane'}`,
+        playerVerb: 'Fly the lane the patrol holds; hostiles answer to it before they reach your haulers.',
+        consequence: 'A stocked Trade Relay keeps this rotation posted; let the stores run dry and it is withdrawn.',
+        riskLine: 'The patrol holds the lane, not an escort — it will not follow you out of the corridor.',
+        named: true,
+        x: projected.x,
+        z: projected.z,
+        drawPos: globalToSectorLocalForSector(projected, sid),
+      });
+    }
+  }
   for (const body of bodies) {
     if (!body || body.owned !== true || body.sectorId !== sid) continue;
     const ledger = claimsSystem && typeof claimsSystem.ledger === 'function'
