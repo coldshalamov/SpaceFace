@@ -51,14 +51,23 @@ test('every Charon board epoch carries a deterministic real bounty and hunter-he
     const replay = boardFor(seed, simTime);
     assert.deepEqual(replay, first, `seed ${seed} board must be deterministic`);
     assert.ok(first.slots.length >= 3, `seed ${seed} must post a usable board`);
-    assert.equal(first.slots[0]?.type, 'bounty_hunt', `seed ${seed} must lead with a bounty`);
+    // Authored board rows (the Lung Run set-piece opening, branch intros) may lead the board —
+    // the standing-ladder contract gives tagged authored rows the head slot. The hunter
+    // exchange's promise is about PROCEDURAL work: the first non-authored slot must be the
+    // anchored writ, and a bounty must exist on every epoch.
+    const firstProcedural = first.slots.find((offer) => !offer.source);
+    assert.equal(firstProcedural?.type, 'bounty_hunt',
+      `seed ${seed} must lead its procedural work with a bounty`);
     assert.ok(first.slots.some((offer) => offer.type === 'bounty_hunt'));
+    // Mix dominance is the EXCHANGE's promise: procedural rolls against the bounty_board
+    // weights. Authored story rows (the Lung Run chain) are narrative content, not the mix.
     for (const offer of first.slots) {
+      if (offer.source) continue;
       totalOffers += 1;
       if (HUNTER_TYPES.has(offer.type)) hunterOffers += 1;
     }
   }
 
   assert.ok(hunterOffers / totalOffers >= 0.7,
-    `hunter work must dominate the shipped board mix (${hunterOffers}/${totalOffers})`);
+    `hunter work must dominate the procedural board mix (${hunterOffers}/${totalOffers})`);
 });

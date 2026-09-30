@@ -60,6 +60,7 @@ import {
   megaHeistById,
   buildMegaHeistOffer,
   missionMinRepForRisk,
+  missionStandingGateForMinRep,
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
@@ -2421,10 +2422,11 @@ export const missions = {
       // A board may declare one defining live job. This is data-owned rather than inferred from its
       // physical station type, so Charon can remain a real refinery while its hunter exchange never
       // opens on a bounty-free epoch.
-      const typeId = i === 0 && info.boardAnchorType
+      const anchored = i === 0 && !!info.boardAnchorType;
+      const typeId = anchored
         ? info.boardAnchorType
         : this._pickType(weights, rng, repBoost, profile, historyTier);
-      const offer = this._rollOffer(typeId, info, rng, epoch, i);
+      const offer = this._rollOffer(typeId, info, rng, epoch, i, { anchor: anchored });
       if (offer) offers.push(offer);
     }
     const bulkHaul = this._rollBulkHaulOffer(info, rng, epoch, 'bulk');
@@ -2540,7 +2542,15 @@ export const missions = {
       sectorRisk = destSector ? dangerTier(destSector) : 1;
     }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
-    const riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
+    let riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
+    // D85: a board's ANCHORED defining job (the writ walls' bounty exchange) stays inside the
+    // standing band a rep-0 operator can accept while that board's faction has not Accepted them,
+    // so the wall never opens on an epoch whose only writ is rep-gated out of reach — and the
+    // entry writ retires (risk resumes scaling with destination danger) before it can be farmed.
+    // Non-anchored slots always keep scaling with destination danger.
+    if (options.anchor === true && this._repOf(info.factionId) < 30) {
+      riskTier = Math.min(riskTier, missionStandingGateForMinRep(0).maxRisk);
+    }
     // D59: a bounty pays the boarding board's local rate — the board sector's own tier and danger —
     // while standing and the destination's danger escalate the MARK (riskTier above: harder, longer
     // fights, more return fire), never the priced rate. Pricing destination/standing escalation into
