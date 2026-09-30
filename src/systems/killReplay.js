@@ -57,29 +57,28 @@ function nearestOther(state, player) {
   let bestD = Infinity;
   const px = player.pos.x;
   const pz = player.pos.z;
-  // Plain inlined loop: this runs every sim tick over live ships (the replay ring samples
-  // at 60 Hz). A closer wreck must not steal the body track — captureKillReplay stamps the
-  // death sample onto the victim. First strict minimum in iteration order wins. The entity
-  // index's ships bucket is the live-hull walk; the fat list is only used when the index
-  // is not ready.
+  // Plain inlined loop: this runs every sim tick over the whole entity list (the replay ring
+  // samples at 60 Hz), and the per-entity closure call showed up in the PQ-210.01 Crucible CPU
+  // profile. Identical selection — first strict minimum in iteration order wins, as before.
   const consider = (ent) => {
     if (!ent || ent === player || ent.alive === false || !ent.pos) return;
-    if (ent.type !== 'ship') return;
+    if (ent.type !== 'ship' && ent.type !== 'wreck') return;
     const dx = ent.pos.x - px;
     const dz = ent.pos.z - pz;
     const d = dx * dx + dz * dz;
     if (d < bestD) { best = ent; bestD = d; }
   };
-  const index = state.entityIndex;
-  const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
-    && Array.isArray(index.ships);
-  if (indexed) {
-    for (let i = 0; i < index.ships.length; i += 1) consider(index.ships[i]);
-    return best;
-  }
   const list = state.entityList;
   if (list && list.length) {
-    for (let i = 0; i < list.length; i += 1) consider(list[i]);
+    for (let i = 0; i < list.length; i += 1) {
+      const ent = list[i];
+      if (!ent || ent === player || ent.alive === false || !ent.pos) continue;
+      if (ent.type !== 'ship' && ent.type !== 'wreck') continue;
+      const dx = ent.pos.x - px;
+      const dz = ent.pos.z - pz;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { best = ent; bestD = d; }
+    }
   } else if (state.entities && typeof state.entities.forEach === 'function') {
     state.entities.forEach(consider);
   }

@@ -131,8 +131,6 @@ test('explosions, braking and damage use transport without replacing solid debri
     q.spawnDamageVenting(0, 0, 0, 1, 0, 0, 4);
     assert.ok(q.flow.live > live);
     q.reset(); assert.equal(q.flow.live, 0); assert.equal(q.shrapnel.particleNum, 0);
-    assert.ok(q.renderer.batches.every(batch => batch.geometry.instanceCount === 0),
-      'reset publishes empty GPU draws even when playback remains paused');
   } finally { q.dispose(); }
   assert.equal(scene.children.length, 0);
 });

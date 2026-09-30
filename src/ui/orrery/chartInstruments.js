@@ -138,26 +138,9 @@ function tracePartial(g, pts, measure, upto) {
  * hot core, a bead at its head; `progress` draws it in (0..1); `pulseT` (seconds) runs a bright
  * packet along it — omitted under reduced motion. `alpha` < 1 is the preview (laid, not committed).
  */
-/** A polyline cut back from every vertex by `trim` px (so a beam stops at each disc's rim). */
-export function trimPolylineSegments(pts, trim) {
-  const segs = [];
-  for (let i = 1; i < pts.length; i += 1) {
-    const a = pts[i - 1];
-    const b = pts[i];
-    const L = Math.hypot(b.x - a.x, b.y - a.y);
-    if (!(L > trim * 2 + 2)) continue;
-    const ux = (b.x - a.x) / L;
-    const uy = (b.y - a.y) / L;
-    segs.push([{ x: a.x + ux * trim, y: a.y + uy * trim }, { x: b.x - ux * trim, y: b.y - uy * trim }]);
-  }
-  return segs;
-}
-
 export function drawHandBeam(g, pts, {
-  progress = 1, pulseT = null, alpha = 1, head = true, headR = 4.2, width = 1, tone = 'hand', lock = 0,
+  progress = 1, pulseT = null, alpha = 1, head = true, headR = 4.2, width = 1,
 } = {}) {
-  const BODY = tone === 'bone' ? BONE : HAND;
-  const HOT = tone === 'bone' ? LIT : HAND_HOT;
   if (!g || !Array.isArray(pts) || pts.length < 2) return null;
   const measure = polylineMeasure(pts);
   if (!(measure.total > 0.5)) return null;
@@ -170,12 +153,10 @@ export function drawHandBeam(g, pts, {
     g.lineWidth = w * width;
     g.beginPath(); tracePartial(g, pts, measure, upto); g.stroke();
   };
-  // `lock` (0..1) is the moment a laid line becomes the course: the core swells and burns hot.
-  const k = Math.max(0, Math.min(1, lock));
-  pass(BODY, 0.13 + 0.12 * k, 16 + 10 * k);
-  pass(BODY, 0.30 + 0.2 * k, 7 + 3 * k);
-  pass(BODY, 0.95, 3 + 1.5 * k);
-  pass(HOT, 0.85 + 0.15 * k, 1.2 + 1.2 * k);
+  pass(HAND, 0.13, 16);
+  pass(HAND, 0.30, 7);
+  pass(HAND, 0.95, 3);
+  pass(HAND_HOT, 0.85, 1.2);
   // The packet: a short bright run with its bead, travelling from the ship to the head.
   if (pulseT != null && upto > 40) {
     const speed = 150;
@@ -188,10 +169,10 @@ export function drawHandBeam(g, pts, {
       const a1 = pointAlong(pts, measure, to);
       const grad = g.createLinearGradient ? g.createLinearGradient(a0.x, a0.y, a1.x, a1.y) : null;
       if (grad) {
-        grad.addColorStop(0, rgbaOf(HOT, 0));
-        grad.addColorStop(1, rgbaOf(HOT, 0.95 * alpha));
+        grad.addColorStop(0, rgbaOf(HAND_HOT, 0));
+        grad.addColorStop(1, rgbaOf(HAND_HOT, 0.95 * alpha));
       }
-      g.strokeStyle = grad || rgbaOf(HOT, 0.9 * alpha);
+      g.strokeStyle = grad || rgbaOf(HAND_HOT, 0.9 * alpha);
       g.lineWidth = 4.5 * width;
       g.beginPath();
       g.moveTo(a0.x, a0.y);
@@ -199,41 +180,15 @@ export function drawHandBeam(g, pts, {
       for (let i = a0.i; i < a1.i; i += 1) g.lineTo(pts[i].x, pts[i].y);
       g.lineTo(a1.x, a1.y);
       g.stroke();
-      if (to < upto - 2) drawBead(g, a1.x, a1.y, 2.6, { rgb: HOT, a: alpha, bloom: 2.8, bloomA: 0.35 * alpha });
+      if (to < upto - 2) drawBead(g, a1.x, a1.y, 2.6, { rgb: HAND_HOT, a: alpha, bloom: 2.8, bloomA: 0.35 * alpha });
     }
   }
   g.restore();
   const end = pointAlong(pts, measure, upto);
   if (head && end) {
-    drawBead(g, end.x, end.y, headR, { rgb: HOT, a: alpha, bloom: 2.6, bloomA: 0.34 * alpha });
+    drawBead(g, end.x, end.y, headR, { rgb: HAND_HOT, a: alpha, bloom: 2.6, bloomA: 0.34 * alpha });
   }
   return end;
-}
-
-/** One ice packet running a whole path (the course locking in): `u` 0..1 along it. */
-export function drawPathPulse(g, pts, u, { len = 70, a = 1 } = {}) {
-  if (!g || !Array.isArray(pts) || pts.length < 2) return;
-  const measure = polylineMeasure(pts);
-  if (!(measure.total > 1)) return;
-  const head = measure.total * Math.max(0, Math.min(1, u));
-  const tail = Math.max(0, head - len);
-  const a0 = pointAlong(pts, measure, tail);
-  const a1 = pointAlong(pts, measure, head);
-  if (!a0 || !a1) return;
-  g.save();
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
-  const grad = g.createLinearGradient ? g.createLinearGradient(a0.x, a0.y, a1.x, a1.y) : null;
-  if (grad) { grad.addColorStop(0, rgbaOf(ICE, 0)); grad.addColorStop(1, rgbaOf('236,246,255', a)); }
-  g.strokeStyle = grad || rgbaOf(ICE, 0.8 * a);
-  g.lineWidth = 5;
-  g.beginPath();
-  g.moveTo(a0.x, a0.y);
-  for (let i = a0.i; i < a1.i; i += 1) g.lineTo(pts[i].x, pts[i].y);
-  g.lineTo(a1.x, a1.y);
-  g.stroke();
-  g.restore();
-  drawBead(g, a1.x, a1.y, 3.4, { rgb: '236,246,255', a, bloom: 3.2, bloomA: 0.4 * a });
 }
 
 /**
@@ -271,17 +226,8 @@ export function drawLaneComet(g, ax, ay, bx, by, u, { len = 46, a = 0.9, trim = 
   g.restore();
 }
 
-/** A label's leader: out of the mark on its diagonal, an elbow, then flat into the words. */
-export function drawLabelLeader(g, leader, { a = 1 } = {}) {
-  if (!leader) return;
-  drawBand(g, (c) => { c.moveTo(leader.sx, leader.sy); c.lineTo(leader.ex, leader.ey); c.lineTo(leader.lx, leader.ly); },
-    { band: 5, bandA: 0.2 * a, edge: 1.5, edgeA: 0.72 * a });
-  drawBead(g, leader.sx, leader.sy, 1.8, { a, bloom: 2, bloomA: 0.24 * a });
-}
-
 /** An unknown sector: a faint star glint, never a question mark. */
 export function drawGlint(g, x, y, { size = 6, a = 0.42, rgb = BONE } = {}) {
-  drawBandRing(g, x, y, size + 4, { band: 4, bandA: 0.1 * a / 0.42, edge: 1, edgeA: 0.3 * a / 0.42 });
   g.save();
   g.strokeStyle = rgbaOf(rgb, a * 0.7);
   g.lineWidth = 1;
@@ -443,12 +389,6 @@ const CREST_ROOT = (() => {
   try { return new URL('../../../assets/ui/generated/crests/', import.meta.url).href; } catch (_) { return ''; }
 })();
 
-/** The URL of a faction's cut crest (assets/ui/generated/crests/faction_<id>.webp). */
-export function factionCrestUrl(factionId) {
-  const id = String(factionId || '').replace(/^faction[_-]/, '');
-  return id && CREST_ROOT ? `${CREST_ROOT}faction_${id}.webp` : '';
-}
-
 /** A faction's cut crest (the produced art in assets/ui/generated/crests/), as a canvas, or null. */
 export function factionCrestCanvas(factionId, devicePx, onReady) {
   const id = String(factionId || '').replace(/^faction[_-]/, '');
@@ -539,27 +479,11 @@ export function drawSectorToken(g, sectorId, x, y, size, {
 } = {}) {
   const s = size * (1 + 0.1 * Math.max(0, Math.min(1, lift)));
   if (lift > 0.01) drawLensHalo(g, x, y, s / 2, { a: lift });
-  // The produced render fills the token's disc a little past its rim (the art carries its own
-  // transparent margin), standing in a well of glass so the lanes stop at the token instead of
-  // running through its empty corners, inside one ring of light with body.
-  const artSize = s * 1.02;
-  const art = sectorTokenCanvas(sectorId, artSize * dpr, onReady);
+  const art = sectorTokenCanvas(sectorId, s * dpr, onReady);
   if (art) {
-    const r = s / 2;
-    g.save();
-    const well = g.createRadialGradient ? g.createRadialGradient(x, y, r * 0.2, x, y, r * 1.02) : null;
-    if (well) {
-      well.addColorStop(0, 'rgba(5,7,10,0.94)');
-      well.addColorStop(0.82, 'rgba(5,7,10,0.9)');
-      well.addColorStop(1, 'rgba(5,7,10,0)');
-    }
-    g.fillStyle = well || 'rgba(5,7,10,0.9)';
-    g.beginPath(); g.arc(x, y, r * 1.02, 0, Math.PI * 2); g.fill();
-    g.restore();
-    drawBandRing(g, x, y, r, { band: 6, bandA: (stale ? 0.2 : 0.36) * a, edge: 1.6, edgeA: (stale ? 0.36 : 0.62) * a });
     g.save();
     g.globalAlpha = (stale ? 0.6 : 1) * a;
-    g.drawImage(art, x - artSize / 2, y - artSize / 2, artSize, artSize);
+    g.drawImage(art, x - s / 2, y - s / 2, s, s);
     g.restore();
   } else {
     g.save();
@@ -574,145 +498,6 @@ export function drawSectorToken(g, sectorId, x, y, size, {
  * The reading that rides a laid line: a name, then the figures, as bone and phosphor light over a
  * knocked-out halo — no plate. Anchored beside (x, y), flipped to stay inside `bounds`.
  */
-/**
- * The reading that rides a laid line, as an instrument: the destination's name in the label voice,
- * then its figures as large thin numerals each with a small unit (`numerals`: [{ value, unit }]),
- * then a quiet line of secondary figures and a note. Hangs off a 45-degree leader from the mark.
- */
-/**
- * A pool of shade with feathered edges (a solid core, then a smooth fall to nothing over
- * `feather` px on every side, rounded at the corners): glass under a reading, never a box.
- */
-export function drawFeatherPool(g, x, y, w, h, { a = 0.5, feather = 24, rgb = '5,7,10' } = {}) {
-  if (!(w > 0) || !(h > 0) || !(a > 0)) return;
-  const F = Math.max(1, feather);
-  const stops = (grad) => {
-    grad.addColorStop(0, rgbaOf(rgb, a));
-    grad.addColorStop(0.35, rgbaOf(rgb, a * 0.72));
-    grad.addColorStop(0.7, rgbaOf(rgb, a * 0.26));
-    grad.addColorStop(1, rgbaOf(rgb, 0));
-    return grad;
-  };
-  g.save();
-  g.fillStyle = rgbaOf(rgb, a);
-  g.fillRect(x, y, w, h);
-  if (typeof g.createLinearGradient === 'function' && typeof g.createRadialGradient === 'function') {
-    // edges
-    g.fillStyle = stops(g.createLinearGradient(0, y, 0, y - F)); g.fillRect(x, y - F, w, F);
-    g.fillStyle = stops(g.createLinearGradient(0, y + h, 0, y + h + F)); g.fillRect(x, y + h, w, F);
-    g.fillStyle = stops(g.createLinearGradient(x, 0, x - F, 0)); g.fillRect(x - F, y, F, h);
-    g.fillStyle = stops(g.createLinearGradient(x + w, 0, x + w + F, 0)); g.fillRect(x + w, y, F, h);
-    // corners
-    for (const [cx, cy, qx, qy] of [[x, y, x - F, y - F], [x + w, y, x + w, y - F], [x, y + h, x - F, y + h], [x + w, y + h, x + w, y + h]]) {
-      g.fillStyle = stops(g.createRadialGradient(cx, cy, 0, cx, cy, F));
-      g.fillRect(qx, qy, F, F);
-    }
-  }
-  g.restore();
-}
-
-export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figures = '', note = '', bounds = null, clear = 12, avoid = [], seat = null, measureOnly = false } = {}) {
-  if (!title && !numerals.length) return null;
-  const NUM_PX = 44;
-  g.save();
-  g.textBaseline = 'alphabetic';
-  g.font = chartFont(700, 14);
-  setTracking(g, 0.16, 14);
-  const tw = title ? g.measureText(title).width : 0;
-  const parts = [];
-  let nw = 0;
-  for (const n of numerals) {
-    g.font = `250 ${NUM_PX}px "Archivo", "Instrument Sans", system-ui, sans-serif`;
-    setTracking(g, -0.01, NUM_PX);
-    const vw = g.measureText(String(n.value)).width;
-    g.font = chartFont(650, 12);
-    setTracking(g, 0.16, 12);
-    const uw = n.unit ? g.measureText(String(n.unit)).width : 0;
-    parts.push({ ...n, vw, uw });
-    nw += vw + 6 + uw + 22;
-  }
-  nw = Math.max(0, nw - 22);
-  g.font = chartFont(560, 13, { stretch: 'normal' });
-  setTracking(g, 0.04, 13);
-  const fw = figures ? g.measureText(figures).width : 0;
-  g.font = chartFont(600, 12);
-  setTracking(g, 0.12, 12);
-  const ow = note ? g.measureText(note).width : 0;
-  const width = Math.max(tw, nw, fw, ow);
-  const height = (title ? 20 : 0) + (parts.length ? NUM_PX + 2 : 0) + (figures ? 20 : 0) + (note ? 18 : 0);
-  if (measureOnly) { g.restore(); return { width, height }; }
-  const d = Math.max(8, clear) * 0.7071;
-  const elbow = 26;
-  const place = (sxn, syn) => {
-    const ex = x + sxn * (d + elbow);
-    const ey = y + syn * (d + elbow);
-    const left = sxn > 0 ? ex + 10 : ex - 10 - width;
-    const top = syn < 0 ? ey - height + 6 : ey - 6;
-    return { ex, ey, left, top, sxn, syn };
-  };
-  let at = null;
-  let best = Infinity;
-  // A seat chosen by the chart's anchored placer (chartLabels.js) wins over the local search.
-  if (seat && seat.leader) {
-    const L = seat.leader;
-    at = { ex: L.ex, ey: L.ey, left: seat.x, top: seat.y, sxn: L.ex >= x ? 1 : -1, syn: L.ey >= y ? 1 : -1, start: { x: L.sx, y: L.sy }, lx: L.lx };
-    best = -1;
-  }
-  if (!at) for (const [cx, cy] of [[1, -1], [1, 1], [-1, -1], [-1, 1]]) {
-    const c = place(cx, cy);
-    let cost = 0;
-    if (bounds) {
-      const over = Math.max(0, bounds.x + 8 - c.left) + Math.max(0, c.left + width - (bounds.x + bounds.width - 8))
-        + Math.max(0, bounds.y + 8 - c.top) + Math.max(0, c.top + height - (bounds.y + bounds.height - 8));
-      cost += over * 20;
-    }
-    for (const m of avoid || []) {
-      const px = Math.max(c.left - 4, Math.min(m.x, c.left + width + 4));
-      const py = Math.max(c.top - 4, Math.min(m.y, c.top + height + 4));
-      const dd = Math.hypot(m.x - px, m.y - py);
-      if (dd < m.r) cost += (m.r - dd) * (m.w || 1) * 6;
-    }
-    if (cost < best - 0.01) { best = cost; at = c; }
-  }
-  // a feathered pool of shade under the reading so it reads over lanes and tokens: no plate and no
-  // edge, and never dark enough to knock out a ring it lies across (at most 52% dim)
-  drawFeatherPool(g, at.left - 10, at.top - 6, width + 20, height + 12, { a: 0.52, feather: 26 });
-  // the leader: out of the mark at 45 degrees, then flat into the reading
-  const s0 = at.start || { x: x + at.sxn * d, y: y + at.syn * d };
-  const lx = Number.isFinite(at.lx) ? at.lx : at.ex + at.sxn * 8;
-  drawBand(g, (c) => { c.moveTo(s0.x, s0.y); c.lineTo(at.ex, at.ey); c.lineTo(lx, at.ey); },
-    { band: 4, bandA: 0.24, edge: 1.5, edgeA: 0.8 });
-  drawBead(g, s0.x, s0.y, 2.2, { bloom: 2.2 });
-  let row = at.top;
-  const ink = (text, font, fill, em, px, xx, yy) => {
-    g.font = font;
-    setTracking(g, em, px);
-    g.lineJoin = 'round';
-    g.strokeStyle = 'rgba(5,7,10,0.9)';
-    g.lineWidth = 5;
-    g.strokeText(text, xx, yy);
-    g.fillStyle = fill;
-    g.fillText(text, xx, yy);
-  };
-  if (title) { row += 15; ink(title, chartFont(700, 14), rgbaOf(LIT, 1), 0.16, 14, at.left, row); row += 5; }
-  if (parts.length) {
-    row += NUM_PX - 4;
-    let cx = at.left;
-    for (const pt of parts) {
-      ink(String(pt.value), `250 ${NUM_PX}px "Archivo", "Instrument Sans", system-ui, sans-serif`, rgbaOf(PHOS, 1), -0.01, NUM_PX, cx, row);
-      cx += pt.vw + 6;
-      if (pt.unit) ink(String(pt.unit), chartFont(650, 12), rgbaOf(BONE, 0.82), 0.16, 12, cx, row);
-      cx += pt.uw + 22;
-    }
-    row += 6;
-  }
-  if (figures) { row += 16; ink(figures, chartFont(560, 13, { stretch: 'normal' }), rgbaOf(PHOS, 0.92), 0.04, 13, at.left, row); row += 4; }
-  if (note) { row += 16; ink(note, chartFont(600, 12), rgbaOf(BONE, 0.72), 0.12, 12, at.left, row); }
-  setTracking(g, 0, 12);
-  g.restore();
-  return { x: at.left, y: at.top, width, height };
-}
-
 export function drawLineReading(g, x, y, { title = '', figures = '', note = '', bounds = null, clear = 12, avoid = [] } = {}) {
   if (!title && !(Array.isArray(figures) ? figures.length : figures)) return null;
   g.save();
@@ -808,7 +593,7 @@ export function drawHoldRing(g, x, y, p) {
 const f2 = (n) => Math.round(n * 100) / 100;
 
 /**
- * THE ZOOM LEVER: the three scale words stand on one ruled scale; a lit bone needle rides it at the chart's
+ * THE ZOOM LEVER: the three scale words stand on one ruled scale; the Hand rides it at the chart's
  * continuous zoom (it follows the wheel between the words, and eases when a word is pressed).
  * `sync(pos)` takes a position in word units: 0 = the first word, 1 = the second, 2 = the third,
  * fractions between (and a little past either end).
@@ -821,10 +606,10 @@ export function createZoomLever(group) {
   const base = svg('g');
   const hand = svg('g', { class: 'orr-chart-lever__hand' });
   hand.append(
-    svg('path', { d: 'M 0 -3 L 0 -17', class: 'orr-lit-bloom', style: '--orr-w-lit-bloom:8px' }),
-    svg('path', { d: 'M 0 -3 L 0 -17', class: 'orr-lit', style: '--orr-w-lit:2px' }),
-    svg('circle', { r: 7, class: 'orr-bead-bloom' }),
-    svg('circle', { r: 3.4, class: 'orr-bead' }),
+    svg('path', { d: 'M 0 -3 L 0 -17', class: 'orr-lit-bloom is-hand', style: '--orr-w-lit-bloom:8px' }),
+    svg('path', { d: 'M 0 -3 L 0 -17', class: 'orr-lit is-hand', style: '--orr-w-lit:2px' }),
+    svg('circle', { r: 7, class: 'orr-chart-lever__beadbloom' }),
+    svg('circle', { r: 3.4, class: 'orr-chart-lever__bead' }),
   );
   face.append(base, hand);
   group.appendChild(face);
@@ -858,7 +643,7 @@ export function createZoomLever(group) {
     x0 = -pad + 2;
     x1 = gr.width + pad - 2;
     base.textContent = '';
-    base.appendChild(svg('path', { d: `M ${f2(x0)} ${f2(ruleY)} L ${f2(x1)} ${f2(ruleY)}`, class: 'orr-band', style: '--orr-w-band:8px; --orr-band-a:.34' }));
+    base.appendChild(svg('path', { d: `M ${f2(x0)} ${f2(ruleY)} L ${f2(x1)} ${f2(ruleY)}`, class: 'orr-band', style: '--orr-w-band:8px; --orr-band-a:.27' }));
     base.appendChild(svg('path', { d: `M ${f2(x0)} ${f2(ruleY)} L ${f2(x1)} ${f2(ruleY)}`, class: 'orr-edge', style: '--orr-edge-a:.62' }));
     const fine = [];
     for (let x = x0 + 5; x < x1 - 2; x += 6) fine.push(`M ${f2(x)} ${f2(ruleY + 2)} L ${f2(x)} ${f2(ruleY + 5)}`);
@@ -926,7 +711,7 @@ export function createTabScale(host) {
       const y = bottom - 2;
       const a = 0;
       const b = hr.width;
-      base.appendChild(svg('path', { d: `M ${a} ${f2(y)} L ${f2(b)} ${f2(y)}`, class: 'orr-band', style: '--orr-w-band:6px; --orr-band-a:.34' }));
+      base.appendChild(svg('path', { d: `M ${a} ${f2(y)} L ${f2(b)} ${f2(y)}`, class: 'orr-band', style: '--orr-w-band:6px; --orr-band-a:.24' }));
       base.appendChild(svg('path', { d: `M ${a} ${f2(y)} L ${f2(b)} ${f2(y)}`, class: 'orr-edge', style: '--orr-edge-a:.42' }));
       const fine = [];
       for (let x = 3; x < b; x += 7) fine.push(`M ${f2(x)} ${f2(y + 2)} L ${f2(x)} ${f2(y + 4.5)}`);

@@ -15,9 +15,9 @@ const RY = 46;
 
 const WEIGHTS = {
   // the hero under a hull (1920: ~860 x 150 px)
-  hero: { floor: [0.15, 0.07, 0.02], far: [1.8, 0.42], band: [9, 0.26], core: [2.6, 0.82], bloom: [18, 0.08], inner: [1.6, 0.24], tick: [1.6, 0.5], shadow: 0.62, shade: 0.74 },
+  hero: { floor: [0.15, 0.07, 0.02], far: [1.8, 0.42], band: [9, 0.26], core: [2.6, 0.82], bloom: [18, 0.08], inner: [1.6, 0.24], tick: [1.6, 0.5], shadow: 0.62 },
   // a slot on the filmstrip (1920: ~150 x 30 px)
-  station: { floor: [0.2, 0.1, 0.03], far: [1.4, 0.46], band: [4.5, 0.3], core: [2, 0.78], bloom: [9, 0.12], inner: [1.2, 0.26], tick: [1.2, 0.46], shadow: 0, shade: 0.6 },
+  station: { floor: [0.2, 0.1, 0.03], far: [1.4, 0.46], band: [4.5, 0.3], core: [2, 0.78], bloom: [9, 0.12], inner: [1.2, 0.26], tick: [1.2, 0.46], shadow: 0 },
 };
 
 const n2 = (v) => Math.round(v * 100) / 100;
@@ -36,8 +36,7 @@ export function berthSvg({ size = 'hero', hull = false } = {}) {
     + `<radialGradient id='s'><stop offset='0' stop-color='#000' stop-opacity='${w.shadow}'/><stop offset='.7' stop-color='#000' stop-opacity='${n2(w.shadow * 0.45)}'/>`
     + "<stop offset='1' stop-color='#000' stop-opacity='0'/></radialGradient>"
     + '</defs>');
-  // the floor: a shade that holds the world back, then the light on it
-  parts.push(`<ellipse cx='${CX}' cy='${CY}' rx='${n2(RX * 0.98)}' ry='${n2(RY * 0.98)}' fill='rgb(4,6,9)' fill-opacity='${w.shade}'/>`);
+  // the lit floor
   parts.push(`<ellipse cx='${CX}' cy='${CY}' rx='${RX}' ry='${RY}' fill='url(#f)'/>`);
   // the inner ring on the floor
   parts.push(`<ellipse cx='${CX}' cy='${CY}' rx='${n2(RX * 0.8)}' ry='${n2(RY * 0.8)}' ${stroke(w.inner[1], w.inner[0])}/>`);

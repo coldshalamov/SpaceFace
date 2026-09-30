@@ -9,12 +9,12 @@ function entity(id = 1, kind = 'bomb_singularity') {
 }
 function world(list = []) { return { mode: 'flight', simTime: 1, entityList: list,
   world: { frameOrigin: { x: 1000, z: 2000 } }, settings: { video: {} }, render: { scene: new THREE.Scene() } }; }
-test('presentation lazily admits its shared body, GPU flow and parcels and disposes on route changes', () => {
+test('presentation is lazy, shares one mesh, and disposes on route and scene changes', () => {
   const s = world(); updateBombPresentation(s); assert.equal(s.render.scene.children.length, 0);
   s.entityList.push(entity()); updateBombPresentation(s);
-  assert.equal(s.render.scene.children.length, 2); assert.equal(bombPresentationStats(s).drawCalls, 3);
+  assert.equal(s.render.scene.children.length, 1); assert.equal(bombPresentationStats(s).drawCalls, 2);
   const scene = s.render.scene; s.render.scene = new THREE.Scene(); updateBombPresentation(s);
-  assert.equal(scene.children.length, 0); assert.equal(s.render.scene.children.length, 2);
+  assert.equal(scene.children.length, 0); assert.equal(s.render.scene.children.length, 1);
   s.mode = 'menu'; updateBombPresentation(s); assert.equal(s.render.scene.children.length, 0);
   assert.equal(bombPresentationStats(s).vertices, 0); releaseBombPresentation(s);
 });
@@ -24,7 +24,7 @@ test('field geometry is bounded, finite and stable in memory under maximum occup
   batch.update(s, entities, 1);
   assert.equal(batch.stats.bombs, BOMB_DRIFT.maxWorldActive); assert.equal(batch.stats.overflow, 6);
   assert.ok(batch.count <= BOMB_PRESENTATION_MAX_VERTICES);
-  assert.equal(batch.count % 3, 0); assert.equal(batch.stats.drawCalls, 3);
+  assert.equal(batch.count % 3, 0); assert.equal(batch.stats.drawCalls, 2);
   for (const n of positions) assert.ok(Number.isFinite(n));
   for (let i = 3; i < colors.length; i += 4) assert.ok(colors[i] >= 0 && colors[i] <= 1);
   for (let i = 0; i < 120; i++) { s.simTime = 1 + i / 1200; batch.update(s, entities, 0.5); }
@@ -80,8 +80,6 @@ test('moving fields follow interpolation and floating origin without writing sim
 });
 test('reduced motion freezes travelling marks and reduced flash keeps the same danger extent', () => {
   const e = entity(1, 'bomb_goo'), s = world([e]); s.settings.video.motionReduce = true;
-  // Arrival still completes in reduced motion; compare mature marks before shutdown.
-  s.simTime = 2;
   const b = new BombPresentationBatch(s.render.scene); b.update(s, [e], 1);
   const p = b.positions.slice(0, b.count * 3), c = b.colors.slice(0, b.count * 4);
   s.simTime += 0.2; b.update(s, [e], 1); assert.deepEqual(b.positions.slice(0, b.count * 3), p);

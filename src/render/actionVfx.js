@@ -1,24 +1,10 @@
-// Receipted action responses share one bounded surface batch and transported mesh matter.
-// Source/contact ownership lives here; reusable physical constructions live in actionPrimitives.
+// Small physical answers to actions that previously only changed simulation state.
+// Uses the already precompiled folded-surface program; one bounded draw, no new lights.
 import * as THREE from 'three';
-import { SweptSurfaceBatch } from './forceLanguage/sweptSurfaceBatch.js';
+import { SweptSurfaceBatch, SURFACE_FLOATS } from './forceLanguage/sweptSurfaceBatch.js';
 import { ForceParticleFlow } from './vfx/forceParticleFlow.js';
-import { ActionPrimitiveComposer, actionPrimitiveForVerb } from './vfx/actionPrimitives.js';
-import { ADDITIONAL_ACTION_VFX_RECIPES, resolveAdditionalActionVfxReceipt } from './vfx/actionEventRecipes.js';
-import { presentedAnchorXZ, presentedAnchorRot } from './presentedAnchor.js';
-import { readFrameOrigin } from './frameCoordinates.js';
-import { modelTruthNozzleOrigin, modelTruthPlumeSocketName, modelTruthSocketWorld } from '../data/modelTruth.js';
 
-const recipe=(verb,color,life=.65,extra={})=>Object.freeze({verb,life,
-  primitive:actionPrimitiveForVerb(verb),continuous:verb==='repair'||verb==='transfer',...extra,
-  color:new THREE.Color(color)});
-const additional={};
-for(const [name,value] of Object.entries(ADDITIONAL_ACTION_VFX_RECIPES)){
-  const variants={};
-  for(const [kind,variant] of Object.entries(value.variants||{}))
-    variants[kind]=recipe(variant.verb??value.verb,variant.color??value.color,variant.life??value.life,{...value,...variant,variants:undefined});
-  additional[name]=recipe(value.verb,value.color,value.life,{...value,variants});
-}
+const recipe=(verb,color,life=.65)=>Object.freeze({verb,color:new THREE.Color(color),life});
 export const ACTION_VFX_RECIPES=Object.freeze({
   'well:capture':recipe('capture',0x87caff,.75),
   'well:fling':recipe('fling',0xb6e8ff,.6),
@@ -34,207 +20,99 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'bombs:commanded':recipe('command',0xffca86,.55),
   'ship:boostPreKick':recipe('ignition',0xa9eaff,.24),
   'salvage:reactorVented':recipe('vent',0xffb271,1.15),
-  'cargo:caughtByNet':recipe('catch',0x85e7cf,.65,{surfaceCapture:true}),
+  'cargo:caughtByNet':recipe('catch',0x85e7cf,.65),
   'mining:richCoreCompleted':recipe('harvest',0xffdf96,.85),
   'mining:richCoreFizzle':recipe('cool',0x8cacca,.6),
-  // EAR+FIGHT shared packet C: bombs:detonated already has pooled bomb-material VFX wired in
-  // vfx.js via _onBombDetonated. This actionVfx row is the second, lightweight surface answer on
-  // the shared batch: a 'shove' pressure cross-section in concussion orange, mirroring
-  // weapons:mineDetonated below. vfx.js auto-subscribes every ACTION_VFX_EVENTS key — and
-  // ACTION_VFX_EVENTS is Object.keys(THIS table) — so a row here is live the moment it lands.
-  // Never add a manual add('<event>', ...) for a name in this table: it would double-subscribe.
-  'bombs:detonated':recipe('shove',0xffb271,.7),
-  // hull:fractured is a brittle split, not a boom: a 'cool' deposition patch in pale fracture
-  // blue on the victim hull, mirroring mining:richCoreFizzle. Emitted by
-  // src/systems/hullFracture.js as { victimId, seamId, hullClass, closingSpeed, pieceIds,
-  // pieceCount }; _onActionVfx resolves victimId to the hull, so the receipt forwards as-is.
-  'hull:fractured':recipe('cool',0x9fc4d4,.8,{surfaceWork:true}),
-  // dock/undock/jump travel presentation is owned elsewhere and is NOT duplicated here:
-  // dock clunks ride the verb-cue route (sfx_dock_clunk / sfx_undock_release) plus the docking
-  // cradle holo; jump start/arrive ride the semantic journey cues (travel.jump.committed,
-  // travel.transition.continuity, travel.arrival). No actionVfx row is authored for them, and
-  // none is needed — the absence is deliberate, not a gap.
-  // player:respawn is a UI-layer beat (respawn chime + spawn placement), not a surface receipt.
-  // mining:ventReady is visual-only: the vent-ready lamp rides presentation.mining.vent_ready
-  // (worldCueRecipes 'mining.vent.ready', cool deposition); no actionVfx row is authored.
-  // brake has no bus event at all: the brake bite is a direct audio one-shot in
-  // audioSystem._updateBrakeHiss plus the existing thrust/RCS motion read. No row here either.
-  'weapons:mineArmed':recipe('arm',0x80d4ff,.75),
-  'weapons:mineDetonated':recipe('shove',0xa1dcff,.6),
-  ...additional,
 });
 export const ACTION_VFX_EVENTS=Object.freeze(Object.keys(ACTION_VFX_RECIPES));
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
+const TAU=Math.PI*2;
 function salt(id) {let h=2166136261;const s=String(id);for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return (h>>>0)/4294967296;}
 function entity(state,id){return id==null?null:state.entities?.get?.(id);}
 function valid(p){return p&&Number.isFinite(p.x)&&Number.isFinite(p.z);}
-function field(state,id){const list=state.fields?.active;if(list)for(const f of list)if(f.id===id)return f;return null;}
-// These two receipts are published exclusively by the player-owned mining/repair tool.
-// No other action may silently borrow the player's identity or position.
-const PLAYER_TOOL_EVENTS=new Set(['beam:repaired','beam:transferred']);
-function localOffset(pos,body,out,prefix){
-  const a=finite(body.rot),c=Math.cos(a),s=Math.sin(a),dx=pos.x-body.pos.x,dz=pos.z-body.pos.z;
-  out[prefix+'x']=c*dx+s*dz;out[prefix+'z']=-s*dx+c*dz;
-}
+function field(state,id){const list=state.fields?.active; if(list)for(const f of list)if(f.id===id)return f;return null;}
 
 export class ActionVfx {
   constructor(scene,toLocal=null){
-    this.batch=new SweptSurfaceBatch(scene,{capacity:256,name:'SF_ActionAnswers',fieldVolume:true});
-    this.mesh=this.batch.mesh;this.toLocal=toLocal;
-    this.particles=new ForceParticleFlow(this.mesh,{capacity:192});
+    this.batch=new SweptSurfaceBatch(scene,{capacity:192,name:'SF_ActionAnswers'});
+    this.mesh=this.batch.mesh;this.toLocal=toLocal;this.local={x:0,z:0};
+    this.particles=new ForceParticleFlow(this.mesh,{capacity:160});
     this.particleOptions={reducedMotion:false,reducedFlash:false};
-    this.composer=new ActionPrimitiveComposer(this.batch,this.particles,toLocal);
-    this.anchor={x:0,z:0};this.origin={x:0,z:0};this.socketWorld=new THREE.Vector3();
-    this.bodyBounds=new THREE.Box3();this.bodyCenter=new THREE.Vector3();
-    this.time=0;this.serial=0;this.live=0;this.disposed=false;
-    this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
-      x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
-      tx:0,tz:0,ox:0,oz:0,target:null,source:null,socket:null,sourceSocket:null,hasSource:false,
-      provenance:'none',sourceProvenance:'none'}));
+    this.particleBurst={kind:'current',x:0,z:0,y:.8,dx:1,dz:0,radius:1,seed:0,count:8,life:.5,strength:1};
+    this.d=new Float32Array(SURFACE_FLOATS);this.d[26]=-1;this.time=0;this.serial=0;this.live=0;this.disposed=false;
+    this.slots=Array.from({length:32},()=>({alive:false,event:null,id:null,sourceId:null,attached:false,born:0,last:0,
+      x:0,z:0,sx:0,sz:0,radius:1,angle:0,seed:0,recipe:null,particlePulse:-1}));
   }
   emit(name,p={},state={}){
     if(this.disposed)return false;
-    p=resolveAdditionalActionVfxReceipt(name,p,state);if(!p)return false;
-    const entry=ACTION_VFX_RECIPES[name];if(!entry)return false;
-    const selectedRecipe=entry.variants?.[p.kind]??entry;
-    const recipe=name==='ai:telegraph'?{...selectedRecipe,life:Math.max(.25,Math.min(4,finite(p.durationTicks,90)/60+.1))}:selectedRecipe;
-    const id=p.targetId??p.victimId??p.entityId??p.shipId??p.podId??p.asteroidId??p.mineId??p.wreckId??p.ownerId??p.sourceId??p.aId;
+    const recipe=ACTION_VFX_RECIPES[name];if(!recipe)return false;
+    const id=p.targetId??p.victimId??p.entityId??p.shipId??p.podId??p.asteroidId??p.ownerId??p.sourceId??p.aId;
     const target=entity(state,id);
-    const sourceId=p.sourceId??p.ownerId??p.actorId??p.byId??p.minerId??p.netId
-      ??(PLAYER_TOOL_EVENTS.has(name)?state.playerId:null);
-    const source=entity(state,sourceId),well=field(state,p.wellId??p.fieldId);
-    const contact=valid(p.contactPoint)?p.contactPoint:valid(p.pos)?p.pos:valid(p.position)?p.position:null;
-    let pos=contact??target?.pos??well?.center??source?.pos;
+    const sourceId=p.ownerId??p.actorId??p.byId??p.sourceId??p.minerId??p.netId??state.playerId;
+    const source=entity(state,sourceId);
+    const well=field(state,p.wellId??p.fieldId);
+    const pos=valid(p.pos)?p.pos:target?.pos??well?.center??source?.pos;
     if(!valid(pos))return false;
     const now=finite(state.simTime);
     let slot=null;
-    for(const s of this.slots)if(s.event===name&&s.kind===(p.kind??null)&&s.id===id&&s.alive){slot=s;break;}
-    if(slot&&now-slot.last<.14)return false;
+    for(const s of this.slots)if(s.event===name&&s.id===id&&s.alive){slot=s;break;}
+    // Continuous tools renew a single working contact. Same-tick duplicate receipts are silent.
+    if(slot && now-slot.last<.14)return false;
     if(!slot)for(const s of this.slots)if(!s.alive){slot=s;break;}
     if(!slot)return false;
-    const sustained=slot.alive&&recipe.continuous;
+    const start=well?.center??source?.pos??pos;
     if(!slot.alive)this.live++;
-    slot.alive=true;slot.event=name;slot.kind=p.kind??null;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
-    slot.target=target;slot.source=source;slot.socket=slot.sourceSocket=null;
-    slot.attached=!!target&&(!contact||p.attachToTarget===true)&&recipe.verb!=='grind';
-    if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(p.kind??'')+':'+(++this.serial)+':'+Math.round(now*1000));}
-    slot.last=now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,finite(p.radius,5))));
-    if(recipe.verb==='arm')slot.radius=Math.max(6,slot.radius*1.5);
-    if(recipe.verb==='shove')slot.radius=Math.max(8,Math.min(24,finite(p.blastRadius,100)*.14));
-    const heading=valid(p.direction)?p.direction:valid(p.dir)?p.dir:valid(p.normal)?p.normal:null;
-    this.anchor.y=0;
-    slot.angle=heading?Math.atan2(heading.z,heading.x):Math.hypot(finite(target?.vel?.x),finite(target?.vel?.z))>1
-      ?Math.atan2(target.vel.z,target.vel.x):finite(target?.rot,finite(source?.rot));
-    slot.provenance=contact?'receipt':target?'body':'field';
-    // A real source socket is kept as an object, so rotation and authored offsets follow the
-    // drawn port. Census data supplies the fitted port only when its scene object is absent.
-    if(target&&recipe.verb==='ignition'){
-      const socketName=p.socketName??modelTruthPlumeSocketName(target);
-      slot.socket=socketName?target.view?.root?.getObjectByName?.(socketName):null;
-      const nozzle=!contact?modelTruthNozzleOrigin(target):null;
-      if(nozzle){pos=nozzle;slot.provenance='measured-nozzle';}
-      else if(!contact){
-        this.anchor.x=target.pos.x-Math.cos(finite(target.rot))*slot.radius*.85;
-        this.anchor.z=target.pos.z-Math.sin(finite(target.rot))*slot.radius*.85;pos=this.anchor;slot.provenance='aft-body-port';
-      }
-      slot.angle=heading?slot.angle:finite(target.rot)+Math.PI;
-    }
-    // Missing contact coordinates resolve to the body-facing surface, not a hull-wide flash.
-    // Receipted contacts are never changed. Source-less actions retain one small local patch.
-    if(!contact&&target&&['repair','grind','harvest','cool','vent'].includes(recipe.verb)){
-      let a=heading?slot.angle:valid(source?.pos)&&source!==target?Math.atan2(source.pos.z-target.pos.z,source.pos.x-target.pos.x):finite(target.rot)+Math.PI*.5;
-      this.anchor.x=target.pos.x+Math.cos(a)*slot.radius*.82;
-      this.anchor.z=target.pos.z+Math.sin(a)*slot.radius*.82;pos=this.anchor;
-      slot.angle=a;slot.provenance='body-surface';
-    }
-    if((recipe.surfaceCapture||recipe.surfaceWork)&&target){
-      let a=recipe.surfaceWork&&valid(source?.pos)&&source!==target
-        ?Math.atan2(source.pos.z-target.pos.z,source.pos.x-target.pos.x)
-        :heading?slot.angle:valid(source?.pos)&&source!==target
-        ?Math.atan2(source.pos.z-target.pos.z,source.pos.x-target.pos.x):finite(target.rot);
-      if(!contact||p.bodySurface){
-        const dx=Math.cos(a),dz=Math.sin(a),root=target.view?.root;
-        if(root){root.updateWorldMatrix(true,true);this.bodyBounds.setFromObject(root,true);}
-        if(root&&!this.bodyBounds.isEmpty()){
-          // Bounds are measured from the drawn receiver once per receipt. Retain the resulting
-          // body-local face contact so later movement/rotation requires no mesh traversal.
-          const box=this.bodyBounds,center=box.getCenter(this.bodyCenter);
-          const tx=Math.abs(dx)>1e-6?(box.max.x-box.min.x)*.5/Math.abs(dx):Infinity;
-          const tz=Math.abs(dz)>1e-6?(box.max.z-box.min.z)*.5/Math.abs(dz):Infinity;
-          const travel=Math.min(tx,tz);readFrameOrigin(state,this.origin);
-          this.anchor.x=center.x+dx*travel+this.origin.x;
-          this.anchor.z=center.z+dz*travel+this.origin.z;
-          // A net catches the exposed upper edge; a mid-height side seat is
-          // occluded by the pod's roof at the normal flight camera.
-          this.anchor.y=name==='cargo:caughtByNet'?box.max.y+.12:
-            box.min.y+(box.max.y-box.min.y)*.60;
-          if(name==='player:scannedByPatrol'){
-            this.anchor.x=center.x+this.origin.x;this.anchor.z=center.z+this.origin.z;
-            this.anchor.y=box.max.y+.16;
-          }
-          a=tx<=tz?(dx<0?Math.PI:0):(dz<0?-Math.PI/2:Math.PI/2);
-          slot.provenance='model-bounds-surface';
-        }else{
-          this.anchor.x=target.pos.x+dx*slot.radius;this.anchor.z=target.pos.z+dz*slot.radius;
-          slot.provenance='body-surface';
-        }
-        pos=this.anchor;
-      }
-      slot.angle=a;
-      if(recipe.surfaceWork)slot.attached=target.alive!==false;
-    }
-    slot.x=pos.x;slot.y=finite(pos.y);slot.z=pos.z;
-    slot.tx=slot.tz=slot.ox=slot.oz=0;
-    if(slot.attached)localOffset(pos,target,slot,'t');
-    slot.angleOffset=slot.angle-finite(target?.rot);
-    const sourcePoint=valid(p.sourcePos)?p.sourcePos:valid(p.socketPos)?p.socketPos:null;
-    const sourceName=p.sourceSocketName;
-    slot.sourceSocket=source&&sourceName?source.view?.root?.getObjectByName?.(sourceName):null;
-    const measured=source&&sourceName&&!sourcePoint?modelTruthSocketWorld(source,sourceName):null;
-    let start=sourcePoint??measured??well?.center??source?.pos;
-    slot.hasSource=!!valid(start);
-    slot.sourceProvenance=sourcePoint?'receipt':measured||slot.sourceSocket?'socket':well?'field':source?'body':'none';
-    if(!start)start=pos;
-    slot.sx=start.x;slot.sz=start.z;
-    if(source&&valid(source.pos)){
-      // With no authored source port, meet the nearer hull surface rather than originate
-      // inside its centre. This approximation is bounded and follows its actual body.
-      if(!sourcePoint&&!measured&&!well&&source!==target){
-        const a=Math.atan2(pos.z-source.pos.z,pos.x-source.pos.x),r=finite(source.radius,0)*.82;
-        slot.sx+=Math.cos(a)*r;slot.sz+=Math.sin(a)*r;
-      }
-      this.anchor.x=slot.sx;this.anchor.z=slot.sz;localOffset(this.anchor,source,slot,'o');
-    }
+    const sustained=slot.alive&&(recipe.verb==='repair'||recipe.verb==='transfer');
+    slot.alive=true;slot.event=name;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
+    // A receipted point is a contact snapshot (including sling-bomb combos), not the owner's hull.
+    slot.attached=!valid(p.pos)&&recipe.verb!=='grind';
+    if(!sustained){slot.born=now;slot.particlePulse=-1;}
+    slot.last=now;slot.x=pos.x;slot.z=pos.z;slot.sx=start.x;slot.sz=start.z;
+    slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,5)));
+    slot.angle=Math.atan2(finite(target?.vel?.z),finite(target?.vel?.x));
+    if(recipe.verb==='ignition'||Math.hypot(finite(target?.vel?.x),finite(target?.vel?.z))<1)slot.angle=finite(target?.rot);
+    if(!sustained)slot.seed=salt(String(id)+':'+(++this.serial)+':'+Math.round(now*1000));
     return true;
   }
-  _follow(s,state){
-    const alpha=finite(state.render?.interpolationAlpha,1);
-    const target=entity(state,s.id);
-    if(s.attached&&target===s.target&&target?.alive!==false&&valid(target?.pos)){
-      const rot=presentedAnchorRot(target,alpha),c=Math.cos(rot),a=Math.sin(rot);
-      presentedAnchorXZ(target,alpha,this.anchor);
-      s.x=this.anchor.x+c*s.tx-a*s.tz;s.z=this.anchor.z+a*s.tx+c*s.tz;
-      s.angle=rot+s.angleOffset;
-      s.radius=Math.max(2.5,Math.min(24,finite(target.radius,s.radius)))*(s.recipe.verb==='arm'?1.5:1);
-      if(s.socket?.parent){
-        s.socket.updateWorldMatrix(true,false);s.socket.getWorldPosition(this.socketWorld);
-        s.x=this.socketWorld.x+this.origin.x;s.z=this.socketWorld.z+this.origin.z;s.y=this.socketWorld.y;
+  _strip(s,x,z,angle,start,end,width,bow,phase,opacity,type=1,a1=0){
+    const d=this.d,c=s.recipe.color;
+    if(this.toLocal)this.toLocal(x,z,this.local);else{this.local.x=x;this.local.z=z;}
+    d[0]=this.local.x;d[1]=.65;d[2]=this.local.z;d[3]=angle;
+    d[4]=type;d[5]=0;d[6]=a1;d[7]=start;d[8]=end;d[9]=width;d[10]=width*.7;d[11]=bow;
+    d[12]=c.r*1.65;d[13]=c.g*1.65;d[14]=c.b*1.65;d[15]=opacity;
+    d[16]=1;d[17]=phase+s.seed;d[18]=0;d[19]=s.recipe.verb==='grind'?3:0;
+    d[20]=1;d[21]=1;d[22]=1;d[23]=0;
+    d[24]=s.born; // local transport age even for short, non-field strips
+    this.batch.add(d);
+  }
+  _particles(s,age,continuous,reduced){
+    if(reduced||age<.035)return;
+    const pulse=continuous?Math.floor(age/.17):age<s.recipe.life*.68?Math.floor(age/.18):s.particlePulse;
+    if(pulse<=s.particlePulse)return;s.particlePulse=pulse;
+    const p=this.particleBurst,verb=s.recipe.verb;
+    if(this.toLocal)this.toLocal(s.x,s.z,this.local);else{this.local.x=s.x;this.local.z=s.z;}
+    p.x=this.local.x;p.z=this.local.z;p.radius=s.radius;p.dx=Math.cos(s.angle);p.dz=Math.sin(s.angle);
+    p.seed=s.seed+pulse*.381966;p.count=verb==='vent'?9:verb==='ignition'?5:6;p.strength=1;
+    p.life=Math.min(.75,s.recipe.life*.85);
+    p.kind=verb==='capture'||verb==='catch'?'well':verb==='repair'?'repair':
+      verb==='vent'||verb==='grind'||verb==='combo'?'heat':verb==='transfer'||verb==='fling'?'transfer':
+      verb==='harvest'?'repulsor':verb==='ignition'?'cone':'current';
+    if(verb==='ignition'){
+      p.x-=p.dx*s.radius*.8;p.z-=p.dz*s.radius*.8;p.dx=-p.dx;p.dz=-p.dz;p.radius=s.radius*.7;
+    }
+    if(verb==='transfer'){
+      const dx=s.x-s.sx,dz=s.z-s.sz,length=Math.hypot(dx,dz);
+      if(length>.01){
+        if(this.toLocal)this.toLocal(s.sx,s.sz,this.local);else{this.local.x=s.sx;this.local.z=s.sz;}
+        p.x=this.local.x;p.z=this.local.z;p.dx=dx/length;p.dz=dz/length;p.radius=length;
       }
     }
-    const source=entity(state,s.sourceId);
-    if(source===s.source&&source?.alive!==false&&valid(source?.pos)&&s.sourceProvenance!=='field'){
-      const rot=presentedAnchorRot(source,alpha),c=Math.cos(rot),a=Math.sin(rot);
-      presentedAnchorXZ(source,alpha,this.anchor);
-      s.sx=this.anchor.x+c*s.ox-a*s.oz;s.sz=this.anchor.z+a*s.ox+c*s.oz;
-      if(s.sourceSocket?.parent){
-        s.sourceSocket.updateWorldMatrix(true,false);s.sourceSocket.getWorldPosition(this.socketWorld);
-        s.sx=this.socketWorld.x+this.origin.x;s.sz=this.socketWorld.z+this.origin.z;
-      }
-    }
+    this.particles.emit(p);
   }
   update(state={}){
     if(this.disposed)return 0;
-    const now=finite(state.simTime,this.time),elapsed=Math.max(0,now-this.time);
+    const now=finite(state.simTime,this.time);
+    const elapsed=Math.max(0,now-this.time);
     if(now<this.time)this.clear();this.time=now;
     if(!this.live&&!this.particles.live)return 0;
     const video=state.settings?.video,a11y=state.settings?.accessibility;
@@ -242,20 +120,70 @@ export class ActionVfx {
     const flash=!!(video?.flashReduce||a11y?.flashReduce||a11y?.reducedFlash);
     this.particleOptions.reducedMotion=reduced;this.particleOptions.reducedFlash=flash;
     if(reduced)this.particles.clear();else this.particles.update(elapsed,this.particleOptions);
-    readFrameOrigin(state,this.origin);this.batch.begin(now,reduced,flash);this.live=0;
+    this.batch.begin(now,reduced,flash);this.live=0;
     for(const s of this.slots){
       if(!s.alive)continue;
-      const since=now-(s.recipe.continuous?s.last:s.born);
-      if(since>=s.recipe.life){s.alive=false;continue;}
-      this.live++;this._follow(s,state);this.composer.render(s,now,reduced,flash);
+      const age=now-s.born,continuous=s.recipe.verb==='repair'||s.recipe.verb==='transfer';
+      const t=(now-(continuous?s.last:s.born))/s.recipe.life;
+      if(t>=1){s.alive=false;continue;}this.live++;
+      const target=entity(state,s.id);
+      // Attached work follows the actual body. Contact/grind snapshots stay at their true contact.
+      if(s.attached&&target?.alive!==false&&valid(target?.pos)){s.x=target.pos.x;s.z=target.pos.z;}
+      const source=entity(state,s.sourceId);
+      if(valid(source?.pos)){s.sx=source.pos.x;s.sz=source.pos.z;}
+      const r=s.radius,verb=s.recipe.verb;
+      const u=reduced ? .35 : (continuous?age/s.recipe.life:Math.max(0,t)),attack=Math.min(1,age/.045);
+      const cooling=continuous?1-Math.max(0,(t-.5)*2):1-t;
+      const op=attack*cooling*(flash ? .4 : .92),turn=s.seed*TAU;
+      this._particles(s,age,continuous,reduced);
+      if(verb==='transfer'||verb==='latch'||verb==='cut'){
+        const dx=s.x-s.sx,dz=s.z-s.sz,len=Math.hypot(dx,dz);
+        if(len>.01){
+          const angle=Math.atan2(dz,dx),peel=verb==='cut'?1-u:1;
+          for(let k=0;k<3;k++){
+            const at=verb==='transfer'?((u*.8+k/3)%1):k*.28;
+            this._strip(s,s.sx,s.sz,angle,len*at,len*(at+Math.min(1-at,.20)*peel),
+              Math.min(1.3,r*.16),Math.min(4,len*.03)*Math.sin(k+turn+u*3),k/3,op);
+          }
+        }
+      }else if(verb==='repair'||verb==='prime'||verb==='cool'||verb==='catch'){
+        // Weld seams traverse the hull; priming clamps tighten and spent clamps fall away.
+        for(let k=0;k<4;k++){
+          const a=turn+k*TAU/4,rad=r*(verb==='repair'?1:verb==='cool'?1+u*.45:1.15-Math.min(u,.7)*.3);
+          const x=s.x+Math.cos(a)*rad,z=s.z+Math.sin(a)*rad;
+          this._strip(s,x,z,a+Math.PI/2,-r*.45,r*.45,r*.11,verb==='repair'?r*.25*Math.sin(u*5+k):r*.08,k/4,op);
+        }
+      }else if(verb==='ignition'||verb==='vent'){
+        // Engine compression loads at the nozzle, then releases aft; a vent peels a hot jet
+        // off its hull port and leaves particle residue instead of an expanding radial flash.
+        const axis=s.angle+Math.PI,reach=r*(verb==='ignition'?.4+u*.5:.4+u*2.2);
+        for(let k=0;k<3;k++){
+          const side=(k-1)*.22;
+          this._strip(s,s.x,s.z,axis+side,r*.72,r*.72+reach,r*.065,r*.12*Math.sin(u*4+k),k/3,op);
+        }
+      }else if(verb==='fling'||verb==='combo'||verb==='grind'||verb==='harvest'){
+        const angle=verb==='grind'?turn:s.angle;
+        for(let k=0;k<5;k++){
+          const spread=verb==='harvest'?k*TAU/5:(k-2)*(verb==='grind'?.72:.17);
+          const launch=Math.max(0,u-k*.035),reach=r*(.8+launch*2.4)*(1+s.seed*.4);
+          this._strip(s,s.x,s.z,angle+spread,r*(.3+launch*.8),reach,r*(.05+k%2*.025),r*.13*Math.sin(k+u*4),k/5,op);
+        }
+      }else if(verb==='disrupt'||verb==='command'){
+        // A command answers in opposed source strokes; disrupted charge forks and severs.
+        for(let k=0;k<4;k++){
+          const a=turn+k*TAU/4,breakup=Math.max(0,(u-.35)/.65),start=r*(.65+breakup*.5);
+          this._strip(s,s.x,s.z,a,start,start+r*(.8-breakup*.6),r*.065,r*.28*Math.sin(k+u*5),k/4,op);
+          if(verb==='disrupt')this._strip(s,s.x,s.z,a+.32,start+r*.2,start+r*.65,r*.03,-r*.15,k/4,op*.7);
+        }
+      }else{
+        // Capture draws curved jaws inward; disruption/command peels broken fronts outward.
+        const inward=verb==='capture',reach=r*(inward?2.4-u*1.7:1+u*2.3);
+        for(let k=0;k<5;k++)this._strip(s,s.x,s.z,turn+k*TAU/5,
+          reach,reach*(inward?.48:1.12),r*.12,0,k/5,op,0,inward?.8:.43);
+      }
     }
     this.batch.end();this.mesh.visible=this.batch.count>0||this.particles.live>0;return this.live;
   }
-  inspect(){return {schema:'spaceface.action-primitives.v1',time:this.time,active:this.live,
-    surfaces:this.batch.count,particles:this.particles.live,capacity:this.slots.length,
-    instances:this.slots.filter(s=>s.alive).map(s=>({event:s.event,kind:s.kind,id:s.id,sourceId:s.sourceId,
-      primitive:s.recipe.primitive,provenance:s.provenance,sourceProvenance:s.sourceProvenance,
-      born:s.born,last:s.last,x:s.x,y:s.y,z:s.z,sx:s.sx,sz:s.sz,angle:s.angle}))};}
   reproject(dx,dz){this.batch.reproject(dx,dz);this.particles.reproject(dx,dz);}
   clear(){for(const s of this.slots)s.alive=false;this.live=0;this.particles.clear();this.batch.begin(this.time);this.batch.end();}
   dispose(){if(this.disposed)return;this.particles.dispose();this.batch.dispose();this.disposed=true;this.live=0;}

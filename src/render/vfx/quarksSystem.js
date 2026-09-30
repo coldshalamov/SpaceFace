@@ -518,9 +518,6 @@ export class QuarksVfxSystem {
       this.root.add(sys.emitter);
       this.renderer.addSystem(sys);
     }
-    // Retained system list for the quiet update gate (particleNum === 0 skip).
-    this._systems = allSystems;
-    this._quietEmpty = false;
 
     // The batch renderer generates its own ShaderMaterial from each donor (default toneMapped),
     // which would crush the HDR gradient stops before bloom ever sees them. Opt the additive
@@ -602,7 +599,6 @@ export class QuarksVfxSystem {
     if (cap != null) n = Math.min(n, Math.max(0, cap - sys.particleNum));
     if (n <= 0) return 0;
     sys.spawn(n, sys.emissionState, matrix);
-    this._quietEmpty = false;
     return n;
   }
 
@@ -660,40 +656,17 @@ export class QuarksVfxSystem {
     scene.add(this.root);
   }
 
-  _anyParticleLive() {
-    const systems = this._systems;
-    if (!systems) return false;
-    for (let i = 0; i < systems.length; i++) {
-      if (systems[i].particleNum > 0) return true;
-    }
-    // The force-transport flow runs its own renderer/system — a live burst there is not quiet.
-    if (this.flow && this.flow.live > 0) return true;
-    return false;
-  }
-
   update(dt, accessibility = null) {
-    if (!this.scene) return;
-    if (!Number.isFinite(dt) || dt <= 0) {
-      // A paused / zero-step frame still counts as an empty observe — the latch may
-      // arm; live particles simply leave it false.
-      if (!this._anyParticleLive()) this._quietEmpty = true;
-      return;
-    }
-    // Quiet settled flight: BatchedParticleRenderer.update walked all 11 empty
-    // families every frame after the last burst died. Trust particleNum and skip
-    // once already observed empty; spawn/_spawnCapped/_emitFlow clear _quietEmpty.
-    if (!this._anyParticleLive() && this._quietEmpty) return;
+    if (!this.scene || !Number.isFinite(dt) || dt <= 0) return;
     const clampedDt = Math.min(0.05, dt);
     this.renderer.update(clampedDt);
     const profile = accessibility?.id || '';
     this._flowFrame.reducedMotion = !!accessibility?.reducedMotion || profile.includes('motion');
     this._flowFrame.reducedFlash = !!accessibility?.reducedFlash || profile.includes('flash');
     this.flow.update(dt, this._flowFrame);
-    this._quietEmpty = !this._anyParticleLive();
   }
 
   _emitFlow(kind, x, y, z, dx, dz, radius, count, life, strength = 1, seed = null) {
-    this._quietEmpty = false;
     const event = this._flowEvent;
     event.kind = kind; event.x = x; event.y = y; event.z = z; event.dx = dx; event.dz = dz;
     event.radius = radius; event.count = count; event.life = life; event.strength = strength;
@@ -729,7 +702,6 @@ export class QuarksVfxSystem {
       const count = variant === 2 ? 16 : (variant === 3 ? 20 : 10);
       this.impactSpall.spawn(count, this.impactSpall.emissionState, this._scratchMatrix);
     }
-    this._quietEmpty = false;
   }
 
   /**
@@ -753,7 +725,6 @@ export class QuarksVfxSystem {
       this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
       this.casingEjection.spawn(1, this.casingEjection.emissionState, this._scratchMatrix);
     }
-    this._quietEmpty = false;
   }
 
   /**
@@ -770,7 +741,6 @@ export class QuarksVfxSystem {
     const count = Math.max(2, Math.min(8, Math.round(intensity * 6)));
     this.retroVenting.spawn(count, this.retroVenting.emissionState, this._scratchMatrix);
     this._emitFlow('cone', x, y, z, dirX, dirZ, 7 + intensity * 8, Math.min(5, count), 0.34, intensity * 0.6);
-    this._quietEmpty = false;
   }
 
   /**
@@ -825,7 +795,6 @@ export class QuarksVfxSystem {
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
     this.damageVenting.spawn(count, this.damageVenting.emissionState, this._scratchMatrix);
     this._emitFlow('cone', x, y, z, dirX, dirZ, 5.5, Math.min(5, count), 0.7, 0.65);
-    this._quietEmpty = false;
   }
 
   /**
@@ -837,7 +806,6 @@ export class QuarksVfxSystem {
     this._scratchQuat.identity();
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
     this.shieldShards.spawn(count, this.shieldShards.emissionState, this._scratchMatrix);
-    this._quietEmpty = false;
   }
 
   /**
@@ -924,10 +892,6 @@ export class QuarksVfxSystem {
     this.shrapnel.particleNum = 0;
     this.iceSpall.particleNum = 0;
     this.cargoDebris.particleNum = 0;
-    this._quietEmpty = true;
-    // Publish the empty draw immediately: a paused/reset owner may never receive a positive dt
-    // before the next render, so old instance buffers must not keep its last fragments visible.
-    for (const batch of this.renderer.batches || []) batch.geometry.instanceCount = 0;
   }
 
   dispose() {

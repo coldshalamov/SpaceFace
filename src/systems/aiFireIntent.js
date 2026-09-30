@@ -1,14 +1,7 @@
-import { ObjectiveKind, ContactKind, clamp, wrapAngle } from '../ai/contracts.js';
+import { ObjectiveKind, ContactKind } from '../ai/contracts.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
-import {
-  assessFriendlyFireLane,
-  assessOpticSplinterReturn,
-  mountFollowsAimAngle,
-  opticVolleyMountTracking,
-  planOpticBankShot,
-} from '../ai/fireDiscipline.js';
-import { GIMBAL_ARC_DEFAULT } from './ships.js';
+import { assessFriendlyFireLane, assessOpticSplinterReturn } from '../ai/fireDiscipline.js';
 import {
   isPdScreenActor,
   resolvePdCharge,
@@ -29,11 +22,11 @@ const PD_CONTACT_ID_SCRATCH = [];
 const PD_TABLE_RADIUS_PAD_WU = 80;
 // Perf memo for recentlyDamagedBy: the backward walk over the combat trace costs O(events in the
 // 180-tick window) per armed actor per tick, and the window holds thousands of entries during a
-// busy swarm wave. The memo is INCREMENTAL: a cached `false` stands while trace.nextSeq is
-// unchanged (no append since it was computed — front-splice cannot fake that), and a cached
-// `true` stands while its proving event is inside the window and still retained (seq above
-// trace.dropped). Otherwise only the appended tail (seq above the answer's watermark) is
-// rescanned. Answers are therefore always identical to a full fresh walk.
+// busy swarm wave. The memo is INCREMENTAL: a cached answer stays valid until the trace appends
+// past the length it was computed at (then only the appended delta is scanned), and a `true`
+// answer additionally carries the tick it expires at (RECENT_DEFENSIVE_DAMAGE_TICKS after the
+// damage event that proved it). A shrunken trace (ring compaction) resets lengths so the next
+// query rescans. Answers are therefore always identical to a full fresh walk.
 const RECENT_DAMAGE_MEMOS = new WeakMap();
 const RECENT_DAMAGE_MEMO_CAP = 512;
 
@@ -48,12 +41,6 @@ export function applyAIFiringIntent(decision, state) {
   const intent = mutableIntent(data);
   const objective = decision.directive && decision.directive.objective;
   const combatDoctrine = decision.combatDoctrine || null;
-  const combat = data.combat || (data.combat = {});
-  // A doctrine may commit to a firing corridor (ranged disengager cue/window): the corridor's
-  // anchor is the true firing lead the first tick the corridor is observed, so a steady target
-  // keeps taking honest leads while a dodge can only pull the line ±capRad off it.
-  const aimCommit = combatDoctrine && combatDoctrine.aimCommit
-    && Number.isFinite(combatDoctrine.aimCommit.bearing) ? combatDoctrine.aimCommit : null;
   const pdActor = isPdScreenActor(e);
 
   // W04: pd_screen_escort policy owns target selection, but never fire authorization.
@@ -76,32 +63,7 @@ export function applyAIFiringIntent(decision, state) {
   const fireWindowOk = !combatDoctrine || combatDoctrine.fireWindow;
   if (!attack || targetId == null || !fireWindowOk) {
     if (!combatDoctrine || !fireWindowOk) FIRE_WINDOW_ADMISSION.delete(e);
-    // The corridor anchors at the telegraph, not the shot: keep the anchor state alive through
-    // the cue and pin the aim line on it, so the fire window flies the forecast the pilot saw.
-    if (aimCommit && attack && targetId != null) {
-      const commitTarget = state.entities.get(targetId);
-      if (commitTarget && commitTarget.alive !== false) {
-        committedCorridorAim(e, combat, aimCommit, commitTarget, data.weapons);
-        intent.aimAngle = aimCommit.bearing;
-      } else {
-        combat.aimCommit = null;
-      }
-    } else {
-      combat.aimCommit = null;
-    }
     clearFire(intent);
-    return;
-  }
-  // SF-057 bounded-search residual: the squad's merged focus can be pure memory — every member's
-  // contact stale — yet targetId resolves to the LIVE entity below, so firing would aim at a
-  // position nobody currently holds. The member still flies the search leg toward the last fix
-  // (the objective survives; the squad vote is advisory); the gun channel alone closes until a
-  // fresh sighting. A dispatched mark sustains the maneuver objective but is not a sighting —
-  // fire waits for a member to actually see the target. PD screen actors resolve their own
-  // track targets and are exempt.
-  if (!pdActor && objective.targetObserved === false) {
-    combat.aimCommit = null;
-    clearFire(intent, 'target_unobserved');
     return;
   }
   // A doctrine fire window authorizes action selection; the SG-03 executor remains the canonical
@@ -156,29 +118,10 @@ export function applyAIFiringIntent(decision, state) {
     return;
   }
 
-  let aimAngle = leadAngleFor(e, target, data.weapons);
+  const aimAngle = leadAngleFor(e, target, data.weapons);
+  const combat = data.combat || (data.combat = {});
   combat.targetId = targetId;
   combat.pdScreen = pdActor;
-  if (aimCommit) {
-    aimAngle = committedCorridorAim(e, combat, aimCommit, target, data.weapons);
-    // A corridor only counts if a mount that follows the aim can bear it: fixed guns and beams
-    // release along `rot + facing ± gimbalArc`, so a bearing outside every cone would fly the
-    // clamped edge — a line the commitment never vetted. Hold and keep aiming the corridor; the
-    // doctrine's faceAngle is already slewing the hull onto it. Turret/homing-only batteries
-    // solve their own direction and cannot fly a corridor, so they fire their own solution.
-    const corridorMount = aimConeStatus(e, data.weapons, aimAngle);
-    if (corridorMount.status === 'slew') {
-      clearFire(intent, 'committed_aim_off_bore');
-      // Steer the mount's bore onto the corridor, not the raw bearing — for an off-axis fixed
-      // mount (facingAngle ≠ 0) the hull must converge to corridor − facing or the hold never
-      // closes. Same rule the optic-bank slew uses.
-      intent.aimAngle = wrapAngle(aimAngle - corridorMount.facing);
-      combat.opticBankId = null;
-      return;
-    }
-  } else {
-    combat.aimCommit = null;
-  }
   const lane = assessFriendlyFireLane({
     shooter: e,
     target,
@@ -188,7 +131,6 @@ export function applyAIFiringIntent(decision, state) {
   if (!lane.clear && target.type !== 'projectile') {
     clearFire(intent, lane.reason, lane.blockerId);
     intent.aimAngle = aimAngle;
-    combat.opticBankId = null;
     return;
   }
 
@@ -205,52 +147,13 @@ export function applyAIFiringIntent(decision, state) {
   if (!splinterLane.clear && target.type !== 'projectile') {
     clearFire(intent, splinterLane.reason, splinterLane.blockerId);
     intent.aimAngle = aimAngle;
-    combat.opticBankId = null;
     return;
-  }
-
-  // Offensive half of the optic grammar: when the aimed lane dies on a body that is not the
-  // target and not a prism, a reachable diamond whose replayed ring lands on the target turns
-  // the wasted bolt into a fuse shot. The planner rejects any cascade that lands on the shooter
-  // or a same-team hull, so a bank can never route around the refusal above — it only replaces
-  // a geometrically dead lane.
-  const bank = planOpticBankShot({
-    shooter: e,
-    target,
-    aimAngle,
-    entities: opticLaneBodies(state),
-    weapons: data.weapons,
-  });
-  let bankAim = null;
-  if (bank) {
-    // A bank bearing only counts if a mount that follows the aim can actually bear it: fixed
-    // guns and continuous beams release along `rot + facing ± gimbalArc`, so a bearing outside
-    // the cone would fly the clamped edge — a corridor the cascade replay never vetted. Turrets
-    // and homing mounts lead the target themselves and cannot fly a bank at all. While the nose
-    // is still slewing onto the corridor the trigger holds; intent.aimAngle keeps turning the
-    // ship so the mount's bore lands on the corridor (bank bearing minus the mount's facing —
-    // for front mounts that is the bearing itself).
-    const mount = opticBankMountStatus(e, data.weapons, bank.aimAngle);
-    if (mount.status === 'slew') {
-      combat.opticBankId = bank.opticId;
-      clearFire(intent, 'optic_bank_slew', bank.opticId);
-      intent.aimAngle = wrapAngle(bank.aimAngle - mount.facing);
-      return;
-    }
-    if (mount.status === 'ready') {
-      combat.opticBankId = bank.opticId;
-      bankAim = bank.aimAngle;
-    } else {
-      combat.opticBankId = null;
-    }
-  } else {
-    combat.opticBankId = null;
   }
 
   intent.fire = true;
   intent.fireBlockReason = null;
   intent.fireBlockerId = null;
-  intent.aimAngle = bankAim != null ? bankAim : aimAngle;
+  intent.aimAngle = aimAngle;
   ai.lastAggressionTrace = aggressionTrace(decision, state, targetId, ai);
 }
 
@@ -284,67 +187,6 @@ export function opticLaneBodies(state) {
       : EMPTY_OPTIC_LANE_BODIES;
   }
   return (state && state.entityList) || (state && state.entities) || EMPTY_OPTIC_LANE_BODIES;
-}
-
-/**
- * Can a planned bank bearing be realized by a mount that follows the ship's aim angle?
- * Fixed guns and beams release along `rot + facing ± gimbalArc` (weapons.js `_hardpointDir`),
- * so 'ready' requires the bearing inside some optic-capable mount's cone. Turret and homing
- * mounts resolve their own direction from the locked target — they cannot fly a corridor at
- * all — so a ship without an aim-following energy mount answers 'none'. When an aim-following
- * mount exists but the nose has not slewed onto the bearing, the answer is 'slew' and the
- * caller holds fire: flightV3 turns the ship toward intent.aimAngle whether or not it fires.
- */
-function opticBankMountStatus(shooter, weapons, aimAngle) {
-  return mountConeStatus(shooter, weapons, aimAngle, (w) => {
-    const tracking = opticVolleyMountTracking(w);
-    return tracking != null && w.facing !== 'turret'
-      && tracking !== 'auto_turret' && tracking !== 'homing';
-  });
-}
-
-/**
- * Can any aim-following mount (fixed gun or beam — see mountFollowsAimAngle) bear this angle?
- * 'ready' means a cone covers it, 'slew' means the nose has not come around yet, 'none' means the
- * battery solves its own directions and aimAngle never reaches a barrel.
- */
-function aimConeStatus(shooter, weapons, aimAngle) {
-  return mountConeStatus(shooter, weapons, aimAngle, mountFollowsAimAngle);
-}
-
-/**
- * The corridor anchor is the true firing lead the first tick the corridor is observed — a steady
- * target keeps taking real leads inside ±capRad, while a dodge reads as a divergent fresh
- * solution and the aim stays pinned on the stale corridor instead of re-tracking.
- */
-function committedCorridorAim(e, combat, commit, target, weapons) {
-  const fresh = leadAngleFor(e, target, weapons);
-  const prior = combat.aimCommit;
-  const anchor = prior && prior.bearing === commit.bearing && Number.isFinite(prior.anchor)
-    ? prior.anchor
-    : fresh;
-  combat.aimCommit = { bearing: commit.bearing, anchor };
-  const cap = Number.isFinite(commit.capRad) ? Math.abs(commit.capRad) : 0;
-  return wrapAngle(anchor + clamp(wrapAngle(fresh - anchor), -cap, cap));
-}
-
-function mountConeStatus(shooter, weapons, aimAngle, canFollow) {
-  const rot = Number(shooter.rot) || 0;
-  let followable = false;
-  let bestFacing = 0;
-  let bestErr = Infinity;
-  for (const w of weapons || []) {
-    if (!canFollow(w)) continue;
-    followable = true;
-    const facing = Number(w.facingAngle) || 0;
-    const arc = Number.isFinite(w.gimbalArc) ? w.gimbalArc : GIMBAL_ARC_DEFAULT;
-    const err = Math.abs(wrapAngle(aimAngle - (rot + facing)));
-    if (err <= arc) return { status: 'ready', facing };
-    if (err < bestErr) { bestErr = err; bestFacing = facing; }
-  }
-  // On 'slew' the caller steers `aim − facing` so the mount's bore — not the raw bearing —
-  // ends up on the corridor; front mounts keep facing 0, so that is the bearing itself.
-  return { status: followable ? 'slew' : 'none', facing: bestFacing };
 }
 
 /**
@@ -518,18 +360,21 @@ function mutableIntent(data) {
 
 function recentlyDamagedBy(state, entityId, targetId) {
   const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
-  const trace = state.combat && state.combat.trace;
-  const events = trace && Array.isArray(trace.events) ? trace.events : [];
-  // nextSeq only moves on appendCombatTrace, so it is an exact "any append since" watermark even
-  // when capacity splice keeps events.length pinned; dropped counts front-evicted events, so a
-  // retained proof is exactly `proofSeq > dropped`. An events.length sentinel can do neither —
-  // at capacity it stays constant while content shifts and cannot see eviction at all.
-  const nextSeq = trace && Number.isInteger(trace.nextSeq) ? trace.nextSeq : null;
-  const dropped = trace && Number.isInteger(trace.dropped) ? trace.dropped : 0;
+  const events = state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
+    ? state.combat.trace.events
+    : [];
   let memo = RECENT_DAMAGE_MEMOS.get(state);
   if (!memo || memo.events !== events) {
-    memo = { events, byPair: new Map() };
+    memo = { events, len: 0, byPair: new Map() };
     RECENT_DAMAGE_MEMOS.set(state, memo);
+  }
+  // Ring compaction shrank the array: stored lengths are stale beyond recovery — reset them so
+  // the next query rescans from the start of what remains.
+  if (events.length < memo.len) {
+    memo.len = 0;
+    for (const perTarget of memo.byPair.values()) {
+      for (const entry of perTarget.values()) entry.len = 0;
+    }
   }
   let perTarget = memo.byPair.get(entityId);
   if (!perTarget) {
@@ -539,45 +384,39 @@ function recentlyDamagedBy(state, entityId, targetId) {
   const entry = perTarget.get(targetId);
   if (entry) {
     if (entry.answer) {
-      // A `true` holds until the proving event ages out of the window — and only while the
-      // proof is still retained; a fresh walk cannot find an evicted event.
-      if (tick <= entry.untilTick && entry.proofSeq > dropped) return true;
-    } else if (entry.seq === nextSeq) {
+      // A `true` holds until the proving damage event ages out of the window.
+      if (tick <= entry.untilTick) return true;
+    } else if (events.length === entry.len) {
       return false;
     }
   }
-  // Scan the appended delta: events with seq >= entry.seq are exactly the post-answer tail.
-  // Everything below is covered by the stored answer — a `false` found no in-window proof there
-  // (events only age further out), and the newest in-window match is always the recorded proof,
-  // so no older match below can outlive it.
-  const coveredSeq = entry && Number.isInteger(entry.seq) ? entry.seq : -Infinity;
+  // Scan the appended delta (or everything, when cold/reset/expired-true). Identical predicate
+  // to a full backward walk — events below `start` were already reflected in the cached answer.
   let result = false;
   let resultUntilTick = -1;
-  let resultProofSeq = -1;
-  for (let index = events.length - 1; index >= 0; index--) {
+  const start = entry && entry.len <= events.length ? entry.len : 0;
+  for (let index = events.length - 1; index >= start; index--) {
     const event = events[index];
     if (!event) continue;
-    if (Number.isInteger(event.seq) && event.seq < coveredSeq) break;
     const eventTick = Number.isInteger(event.tick) ? event.tick : tick;
     if (tick - eventTick > RECENT_DEFENSIVE_DAMAGE_TICKS) break;
     if (event.kind !== 'damage.routed') continue;
     if (event.targetId === entityId && (targetId == null || event.attackerId === targetId)) {
       result = true;
       resultUntilTick = eventTick + RECENT_DEFENSIVE_DAMAGE_TICKS;
-      resultProofSeq = Number.isInteger(event.seq) ? event.seq : -1;
       break;
     }
   }
-  if (!result && entry && entry.answer && tick <= entry.untilTick && entry.proofSeq > dropped) {
-    // The stored proof is still retained and inside the window and the tail held no newer
-    // proof — the old `true` stands.
+  if (!result && entry && entry.answer && tick <= entry.untilTick) {
+    // The window has not expired on the previously proven event and the new delta holds no
+    // newer proof — the old `true` still stands (its event lives below `start`).
     result = true;
     resultUntilTick = entry.untilTick;
-    resultProofSeq = entry.proofSeq;
   }
+  // While a `true` answer is alive it does not depend on trace length at all.
   perTarget.set(targetId, result
-    ? { answer: true, seq: nextSeq, untilTick: resultUntilTick, proofSeq: resultProofSeq }
-    : { answer: false, seq: nextSeq, untilTick: -1, proofSeq: -1 });
+    ? { answer: true, len: Number.MAX_SAFE_INTEGER, untilTick: resultUntilTick }
+    : { answer: false, len: events.length, untilTick: -1 });
   return result;
 }
 

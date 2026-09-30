@@ -92,6 +92,7 @@ const SEED = 4242;
 // One wheel-out from the 144 WU default. Wide enough that the station, its dock traffic and the
 // pocket's working cluster are all in the same frame — which is the thing being judged.
 const ZOOM_WU = 340;
+const SHIPPING_ZOOM_WU = 144;
 
 /**
  * Per-sector anchor spec, resolved in node from the shared canon tables
@@ -170,14 +171,12 @@ try {
   await page.getByRole('button', { name: /^New Game$/i }).click({ timeout: 30_000 });
   await page.fill('#sf-ng-seed', String(SEED));
   await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
-  // This box is shared with other build lanes; boot-to-flight has measured past 120 s under
-  // their load spikes (2026-09-26). Generous caps cost nothing on a quiet machine.
-  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 420_000 });
+  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 120_000 });
   await page.waitForFunction(() => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
     return player?.presentationAdmission === 'ready';
-  }, null, { timeout: 420_000 });
+  }, null, { timeout: 180_000 });
 
   report.seedUsed = await page.evaluate(() => window.SF.state.meta.seed);
 
@@ -204,7 +203,7 @@ try {
     await mkdir(dir, { recursive: true });
 
     const spec = anchorSpecFor(sectorId);
-    const anchor = await page.evaluate(({ id, CAPTURE_ZOOM, spec, zoomNow }) => {
+    const anchor = await page.evaluate(({ id, CAPTURE_ZOOM, spec, zoomNow, shipZoom }) => {
       const SF = window.SF;
       const state = SF.state;
       const world = SF.registry.get('world');
@@ -321,12 +320,9 @@ try {
       // the place from the sky, which is exactly the identity `design/VISION.md` Part II forbids.
       // `camera:zoom` is the mouse wheel's own event (src/ui/input.js:657), so this is a player
       // action and the rig is still the shipping chase camera. Landmark mode instead holds the
-      // shipping zoom through the settle — and must NOT re-emit the wheel event for it: the
-      // shipping level is already the boot default, and re-emitting it resets the camera's zoom
-      // transition state, after which a nearby landmark's authored-upgrade runway check denies its
-      // streamed body for minutes (isolation probe 2026-09-26: park + HUD-hide admits at ~t45s;
-      // the same sequence plus the redundant zoom emit never admits).
+      // shipping zoom through the settle so frame_ship144.jpg is the composition a player sees.
       if (zoomNow) SF.bus.emit('camera:zoom', { level: CAPTURE_ZOOM });
+      else SF.bus.emit('camera:zoom', { level: shipZoom });
 
       if (spec.kind === 'station' && spec.fallback !== true) {
         return {
@@ -346,7 +342,7 @@ try {
       };
     }, {
       id: sectorId, CAPTURE_ZOOM: ZOOM_WU, spec,
-      zoomNow: ANCHOR !== 'landmark',
+      zoomNow: ANCHOR !== 'landmark', shipZoom: SHIPPING_ZOOM_WU,
     });
 
     // Let the place become itself before the first frame: sector spawning, the first traffic
@@ -354,6 +350,12 @@ try {
     const settleFrom = await page.evaluate(() => window.SF.state.simTime);
     await page.waitForFunction((t) => window.SF.state.simTime >= t + 24, settleFrom, { timeout: 300_000 });
 
+    // PQ-153.02 round-3: landmark GLBs admit asynchronously (decode + pipeline compile measured
+    // ~40 s from sector arrival on software GL). A player flying to a landmark minutes into a
+    // sector always finds the authored body standing there; the strip must photograph that same
+    // state, not the admission window — round 2 watched Ceres for 55 s and the cathedral
+    // committed at ~t+40 s, so every frame showed the pre-admission substrate. Wait for the
+    // anchor's authored body (capped; a stall degrades to what the game actually shows).
     // PQ-153.02 round-3: landmark GLBs admit asynchronously (decode + pipeline compile measured
     // ~40 s from sector arrival on software GL). A player flying to a landmark minutes into a
     // sector always finds the authored body standing there; the strip must photograph that same

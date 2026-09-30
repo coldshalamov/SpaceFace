@@ -136,7 +136,7 @@ export const COMMODITY_WORK = deepFreeze({
   cmdty_impulse_charge: [2,16,4,'trade'],
 });
 
-// [opportunity tier, marginal saving minutes]. Prerequisites stay in tech.js.
+// [opportunity tier, marginal saving minutes, research minutes]. Prerequisites stay in tech.js.
 // Root RP is zero: basic verb access must not depend on finding a finite discovery token.
 export const TECH_WORK = deepFreeze({
   tech_combat_basics:[0,12,0], tech_beam_focusing:[1,20,20], tech_kinetic_drivers:[1,22,20],
@@ -150,15 +150,6 @@ export const TECH_WORK = deepFreeze({
   tech_impulse_ballistics:[2,25,25], tech_graviton_drives:[2,30,30], tech_long_range_survey:[1,25,25],
   tech_tractor_systems:[0,12,0], tech_drone_control:[2,30,30], tech_drone_swarm:[3,45,45],
   tech_autonomous_fleets:[4,65,65], tech_nanofabrication:[3,35,35], tech_outpost_charter:[5,100,100],
-});
-
-// Capital hull list prices, in the same saving-minutes grammar as tech. A hull is its tier's
-// biggest single purchase, so its minutes sit far above the tier's license tech (65/90/120):
-// the license is the door, the hull is the room. T0–T3 hulls keep their hand-authored ladder
-// prices — the first-hours the career cohorts validate — so the derivation governs exactly the
-// capital canyon the hand ladder used to strand (a flagship at ~62 top-wage hours).
-export const SHIP_WORK = deepFreeze({
-  ship_warden:[4,480], ship_colossus:[4,570], ship_leviathan:[5,600],
 });
 
 // Seconds of real task work; travel, handling/search, risk, and costs are added separately.
@@ -266,9 +257,6 @@ export function deriveEconomyTables(model = ECONOMY_MODEL) {
     credits:Math.round(model.phases[tier].netCrPerHour*minutes/60),
     rp:Math.round(model.phases[tier].rpPerHour*rpMinutes/60), tier, savingMinutes:minutes,
   }]));
-  const ships = Object.fromEntries(Object.entries(SHIP_WORK).map(([id,[tier,minutes]]) => [id,{
-    credits:Math.round(model.phases[tier].netCrPerHour*minutes/60), tier, savingMinutes:minutes,
-  }]));
   const c=model.contract, p=model.phases[0];
   const base = {};
   for (const [type,w] of Object.entries(MISSION_WORK)) {
@@ -309,7 +297,7 @@ export function deriveEconomyTables(model = ECONOMY_MODEL) {
       cycleFactorLo:1-m.cycleDeviationBudget,cycleFactorHi:1+m.cycleDeviationBudget,
       cyclePeriodLoS:m.cyclePeriodInHauls[0]*m.referenceHaulS,
       cyclePeriodHiS:m.cyclePeriodInHauls[1]*m.referenceHaulS},
-    commodities,tech,ships,mission:{...c,base,riskMult,work:MISSION_WORK},
+    commodities,tech,mission:{...c,base,riskMult,work:MISSION_WORK},
     offerMix,offerMixByTier,demandProfiles,demandBounds:{min:0.72,max:1.45},resource,
   };
 }

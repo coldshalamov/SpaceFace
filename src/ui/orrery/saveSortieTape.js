@@ -20,16 +20,13 @@ const BONE = '236 230 216';
 const CSS = `
 .orr-tape { position:relative; display:block; outline:none; touch-action:none; user-select:none; cursor:ew-resize; }
 .orr-tape[aria-disabled="true"] { cursor:default; }
-.orr-tape__stops { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
-.orr-tape__stop { all:unset; position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; pointer-events:auto; cursor:pointer; border-radius:50%; }
-.orr-tape__stop:focus-visible { outline:none; box-shadow:0 0 0 1.5px rgb(255 217 140 / .75); }
 .orr-tape__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
 .orr-tape__legend { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.24em; fill:rgb(${BONE} / .72); }
 .orr-tape__legend--sub { font-size:calc(10px * var(--tape-k, 1)); letter-spacing:.2em; fill:rgb(${BONE} / .56); }
-.orr-tape__base { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1.6; }
-.orr-tape__played-bloom { fill:none; stroke:rgb(${BONE} / .13); stroke-linecap:round; }
-.orr-tape__played-band { fill:none; stroke:rgb(${BONE} / .3); stroke-linecap:round; }
-.orr-tape__played-core { fill:none; stroke:rgb(${BONE} / .78); stroke-width:2.2; stroke-linecap:round; }
+.orr-tape__band { fill:rgb(${BONE} / .1); }
+.orr-tape__fill { fill:rgb(${BONE} / .26); }
+.orr-tape__core { fill:none; stroke:rgb(${BONE} / .72); stroke-width:2; }
+.orr-tape__bloom { fill:none; stroke:rgb(${BONE} / .12); stroke-width:10; }
 .orr-tape__minor { fill:none; stroke:rgb(${BONE} / .38); stroke-width:1.3; }
 .orr-tape__major { fill:none; stroke:rgb(${BONE} / .72); stroke-width:2; }
 .orr-tape__time { font-family:var(--dp-face-numeral, "Archivo"); font-size:calc(11px * var(--tape-k, 1)); font-weight:560; letter-spacing:.06em; fill:rgb(${BONE} / .7); }
@@ -37,8 +34,6 @@ const CSS = `
 .orr-tape__dot { fill:rgb(${BONE} / .9); }
 .orr-tape__label { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.14em; fill:rgb(${BONE} / .82);
   paint-order:stroke; stroke:rgb(4 5 8 / .9); stroke-width:4px; stroke-linejoin:round; }
-.orr-tape__label.is-at { fill:rgb(250 247 240); }
-.orr-tape__label--threat.is-at { fill:#ff9a82; }
 .orr-tape__mark--threat { stroke:var(--dp-danger, #ff5038); }
 .orr-tape__dot--threat { fill:var(--dp-danger, #ff5038); }
 .orr-tape__label--threat { fill:var(--dp-danger-hot, #ff7a5c); }
@@ -49,7 +44,7 @@ const CSS = `
 .orr-tape__hand-bloom { fill:none; stroke:rgb(242 185 80 / .26); stroke-width:10; stroke-linecap:round; }
 .orr-tape__hand-bead { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-tape__hand-glow { fill:rgb(255 217 140 / .22); }
-.orr-tape:focus-within .orr-tape__hand-glow, .orr-tape.is-scrubbing .orr-tape__hand-glow { fill:rgb(255 217 140 / .4); }
+.orr-tape:focus-visible .orr-tape__hand-glow, .orr-tape.is-scrubbing .orr-tape__hand-glow { fill:rgb(255 217 140 / .4); }
 .orr-tape__read { position:absolute; top:0; left:0; transform:translateX(-50%); white-space:nowrap; pointer-events:none;
   display:flex; align-items:baseline; gap:12px; }
 .orr-tape__read-t { font-family:var(--dp-face-numeral, "Archivo"); font-weight:300; font-size:calc(22px * var(--tape-k, 1)); line-height:1; letter-spacing:-.01em; color:var(--dp-phos, rgb(223 238 255));
@@ -77,7 +72,7 @@ export function fmtSortieTime(s) {
   const m = Math.floor((t % 3600) / 60);
   const sec = t % 60;
   if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${sec}s`;
+  if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
   return `${sec}s`;
 }
 
@@ -95,36 +90,27 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   injectOrrery(doc);
   injectStyle(doc);
   host.classList.add('orr-tape');
-  // the tape is a group of stops (the launch, each moment, the loss): a keyboard walks them with the
-  // arrows, a controller's d-pad with the shared spatial move, a pointer drags anywhere along it
-  host.setAttribute('role', 'group');
-  host.setAttribute('aria-label', 'Last sortie: step or drag back through it');
-  const stopsLayer = doc.createElement('div');
-  stopsLayer.className = 'orr-tape__stops';
-  let stopEls = [];
+  host.setAttribute('role', 'slider');
+  host.setAttribute('aria-label', 'Last sortie: drag back through it');
+  host.tabIndex = 0;
   const layer = svg('svg', { class: 'orr-svg orr-tape__svg', 'aria-hidden': 'true', focusable: 'false' });
   const staticG = svg('g');
-  const playedG = svg('g');
-  const playedBloom = svg('path', { class: 'orr-tape__played-bloom', d: 'M 0 0' });
-  const playedBand = svg('path', { class: 'orr-tape__played-band', d: 'M 0 0' });
-  const playedCore = svg('path', { class: 'orr-tape__played-core', d: 'M 0 0' });
-  playedG.append(playedBloom, playedBand, playedCore);
+  const fillRect = svg('rect', { class: 'orr-tape__fill', x: 0, y: 0, width: 0, height: 0 });
   const handG = svg('g');
-  layer.append(staticG, playedG, handG);
+  layer.append(fillRect, staticG, handG);
   const read = doc.createElement('div');
   read.className = 'orr-tape__read';
   read.setAttribute('aria-hidden', 'true');
+  const readT = doc.createElement('span');
+  readT.className = 'orr-tape__read-t';
   const readW = doc.createElement('span');
   readW.className = 'orr-tape__read-w';
-  read.append(readW);
-  host.append(layer, read, stopsLayer);
+  read.append(readT, readW);
+  host.append(layer, read);
 
   let model = { lengthS: null, events: [], killLabel: '' };
   let geo = null;
   let cursor = 0;
-  /** each event's word above the channel, where it had room */
-  const labelFor = new Map();
-  let litLabel = null;
   let geoK = 1;
 
   const empty = () => !(model.lengthS > 0);
@@ -150,24 +136,22 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     geoK = k;
     const bandH = Math.round(14 * k);
     const bandBot = bandTop + bandH;
-    const mid = bandTop + bandH / 2;
-    geo = { W, H, x0, x1, bandTop, bandBot, mid, k };
+    geo = { W, H, x0, x1, bandTop, bandBot };
     staticG.append(
       Object.assign(svg('text', { x: 0, y: bandTop + 4, class: 'orr-tape__legend' }), { textContent: 'LAST SORTIE' }),
       Object.assign(svg('text', { x: 0, y: bandTop + 20, class: 'orr-tape__legend orr-tape__legend--sub' }), { textContent: 'BLACK BOX' }),
     );
-    // the ruler: a baseline the length of the sortie; the played length is drawn over it as light
-    staticG.appendChild(svg('path', { class: 'orr-tape__base', d: `M ${f(x0)} ${f(mid)} L ${f(x1)} ${f(mid)}` }));
-    playedBloom.setAttribute('stroke-width', f(14 * k));
-    playedBand.setAttribute('stroke-width', f(6 * k));
+    // the channel: a lit band with a core under it and a bloom
+    staticG.appendChild(svg('rect', { class: 'orr-tape__band', x: f(x0), y: bandTop, width: f(x1 - x0), height: bandH }));
+    staticG.appendChild(svg('path', { class: 'orr-tape__bloom', d: `M ${f(x0)} ${bandBot} L ${f(x1)} ${bandBot}` }));
+    staticG.appendChild(svg('path', { class: 'orr-tape__core', d: `M ${f(x0)} ${bandBot} L ${f(x1)} ${bandBot}` }));
     if (empty()) {
-      for (const p of [playedBloom, playedBand, playedCore]) p.setAttribute('d', 'M 0 0');
       staticG.appendChild(Object.assign(svg('text', { x: f((x0 + x1) / 2), y: bandTop - 12, 'text-anchor': 'middle', class: 'orr-tape__empty' }),
         { textContent: 'NO FLIGHT RECORD FOR THIS SORTIE' }));
+      fillRect.setAttribute('width', 0);
       read.hidden = true;
       host.setAttribute('aria-disabled', 'true');
-      stopsLayer.textContent = '';
-      stopEls = [];
+      host.setAttribute('aria-valuetext', 'No flight record');
       return;
     }
     host.removeAttribute('aria-disabled');
@@ -187,8 +171,8 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     for (let t = 0; t <= L + 1e-6; t += minor) {
       const isMajor = Math.abs(t / major - Math.round(t / major)) < 1e-6;
       const xx = f(x(t));
-      if (isMajor) majD.push(`M ${xx} ${f(mid)} L ${xx} ${f(bandBot + 11 * k)}`);
-      else minD.push(`M ${xx} ${f(mid)} L ${xx} ${f(mid + 7 * k)}`);
+      if (isMajor) majD.push(`M ${xx} ${bandBot} L ${xx} ${bandBot + 11 * k}`);
+      else minD.push(`M ${xx} ${bandBot} L ${xx} ${bandBot + 5 * k}`);
       if (isMajor && x1 - x(t) > killW + 14 && (t === 0 || x(t) - x0 > 96 * k)) {
         staticG.appendChild(Object.assign(svg('text', { x: xx, y: f(bandBot + 26 * k), 'text-anchor': t === 0 ? 'start' : 'middle', class: 'orr-tape__time' }),
           { textContent: t === 0 ? 'LAUNCH' : tickTime(t) }));
@@ -201,7 +185,6 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     // and where its own mark runs through no word below it
     const rows = [[], []];
     const marks = [];
-    labelFor.clear();
     const placed = [];
     for (const ev of model.events) {
       const xx = x(ev.t);
@@ -224,10 +207,8 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       if (row >= 0) {
         rows[row].push([xx - w / 2, xx + w / 2]);
         placed.push(ev);
-        const word = Object.assign(svg('text', { x: f(xx), y: top, 'text-anchor': 'middle', class: `orr-tape__label${ev.threat ? ' orr-tape__label--threat' : ''}` }),
-          { textContent: String(ev.label).toUpperCase() });
-        labelFor.set(ev, word);
-        staticG.appendChild(word);
+        staticG.appendChild(Object.assign(svg('text', { x: f(xx), y: top, 'text-anchor': 'middle', class: `orr-tape__label${ev.threat ? ' orr-tape__label--threat' : ''}` }),
+          { textContent: String(ev.label).toUpperCase() }));
       }
     }
     // the kill: a red blade across the channel at the far end, its word over it
@@ -237,36 +218,15 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     staticG.appendChild(Object.assign(svg('text', { x: kx, y: f(bandBot + 26 * k), 'text-anchor': 'end', class: 'orr-tape__kill-word' }),
       { textContent: `LOST · ${fmtSortieTime(L)}` }));
     // the Hand
-    // the needle stops above the time row (it never touches LOST or a minute's word)
-    const needleBot = f(mid + 10 * k);
-    handG.appendChild(svg('path', { class: 'orr-tape__hand-bloom', d: `M 0 ${bandTop - 12} L 0 ${needleBot}` }));
-    handG.appendChild(svg('path', { class: 'orr-tape__hand-needle', d: `M 0 ${bandTop - 12} L 0 ${needleBot}` }));
+    handG.appendChild(svg('path', { class: 'orr-tape__hand-bloom', d: `M 0 ${bandTop - 12} L 0 ${bandBot + 18}` }));
+    handG.appendChild(svg('path', { class: 'orr-tape__hand-needle', d: `M 0 ${bandTop - 12} L 0 ${bandBot + 18}` }));
     handG.appendChild(svg('circle', { class: 'orr-tape__hand-glow', cx: 0, cy: bandTop + bandH / 2, r: 12 }));
     const cyb = bandTop + bandH / 2;
     handG.appendChild(svg('path', { class: 'orr-tape__hand-bead', d: `M 0 ${cyb - 7} L 7 ${cyb} L 0 ${cyb + 7} L -7 ${cyb} Z` }));
-    buildStops();
+    fillRect.setAttribute('y', bandTop);
+    fillRect.setAttribute('height', bandH);
+    fillRect.setAttribute('x', f(x0));
     place(false);
-  }
-
-  /** One button per stop, seated on the channel at its moment. */
-  function buildStops() {
-    stopsLayer.textContent = '';
-    stopEls = stops().map((t) => {
-      const b = doc.createElement('button');
-      b.type = 'button';
-      b.className = 'orr-tape__stop';
-      b.tabIndex = -1;
-      b.style.left = `${f(t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t))}px`;
-      b.style.top = `${f(geo.mid)}px`;
-      const ev = model.events.find((e) => e.t === t);
-      const word = t >= model.lengthS - 0.5 ? (model.killLabel || 'the loss') : t === 0 ? 'launch' : ev ? ev.label : '';
-      b.setAttribute('aria-label', `${fmtSortieTime(t)}${word ? ', ' + word : ''}`);
-      b.__t = t;
-      b.addEventListener('focus', () => { if (Math.abs(cursor - t) > 0.01) set(t); });
-      b.addEventListener('click', () => { if (Math.abs(cursor - t) > 0.01) set(t); });
-      stopsLayer.appendChild(b);
-      return b;
-    });
   }
 
   /** The event the cursor sits on (within 1.2% of the tape), else null. */
@@ -283,31 +243,24 @@ export function createSortieTape({ host, onScrub = null } = {}) {
 
   function place(notify = true) {
     if (!geo || empty()) return;
-    const atEnd = cursor >= model.lengthS - 0.5;
-    const cx = Math.min(x(cursor), geo.x1 - 22 * geo.k);
+    const cx = x(cursor);
     handG.setAttribute('transform', `translate(${f(cx)} 0)`);
-    const played = cx - geo.x0 > 2 ? `M ${f(geo.x0)} ${f(geo.mid)} L ${f(cx)} ${f(geo.mid)}` : 'M 0 0';
-    for (const p of [playedBloom, playedBand, playedCore]) p.setAttribute('d', played);
+    fillRect.setAttribute('width', f(Math.max(0, cx - geo.x0)));
+    const atEnd = cursor >= model.lengthS - 0.5;
     const ev = atEnd ? null : eventAt(cursor);
-    // the moment's word shows once: its own word above the channel lights up; only a moment whose word
-    // had no room there is named under the Hand
-    const above = ev ? labelFor.get(ev) : null;
-    if (litLabel && litLabel !== above) litLabel.classList.remove('is-at');
-    if (above) above.classList.add('is-at');
-    litLabel = above || null;
-    readW.textContent = ev && !above ? ev.label : '';
-    read.hidden = !(ev && !above);
-    readW.classList.toggle('is-threat', !!(ev && ev.threat));
-    read.style.top = `${f(geo.bandBot + 32 * geoK)}px`;
+    readT.textContent = fmtSortieTime(cursor);
+    readW.textContent = atEnd ? (model.killLabel || 'The loss') : ev ? ev.label : '';
+    readW.classList.toggle('is-threat', atEnd || !!(ev && ev.threat));
+    read.style.top = `${f(geo.bandBot + 36 * geoK)}px`;
     // the readout rides the cursor, held inside the tape
     const rw = read.offsetWidth || 0;
     const half = rw / 2;
     const left = Math.max(geo.x0 + half, Math.min(geo.W - half, cx));
     read.style.left = `${f(left)}px`;
-    // roving: the stop at (or just behind) the Hand is the one Tab lands on
-    let current = stopEls[0] || null;
-    for (const b of stopEls) if (b.__t <= cursor + 0.5) current = b;
-    for (const b of stopEls) b.tabIndex = b === current ? 0 : -1;
+    host.setAttribute('aria-valuemin', '0');
+    host.setAttribute('aria-valuemax', String(Math.round(model.lengthS)));
+    host.setAttribute('aria-valuenow', String(Math.round(cursor)));
+    host.setAttribute('aria-valuetext', `${fmtSortieTime(cursor)}${readW.textContent ? ', ' + readW.textContent : ''}`);
     if (notify && typeof onScrub === 'function') onScrub(cursor, ev, atEnd);
   }
 
@@ -319,6 +272,12 @@ export function createSortieTape({ host, onScrub = null } = {}) {
 
   // stops: the launch, every event, the loss
   const stops = () => [0, ...model.events.map((e) => e.t), model.lengthS].sort((a, b) => a - b);
+  function step(dir) {
+    const list = stops();
+    const next = dir > 0 ? list.find((s) => s > cursor + 0.5) : [...list].reverse().find((s) => s < cursor - 0.5);
+    set(next == null ? (dir > 0 ? list[0] : model.lengthS) : next);
+  }
+
   let press = null;
   const hostX = (event) => event.clientX - host.getBoundingClientRect().left;
   const onDown = (event) => {
@@ -339,17 +298,14 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     host.classList.remove('is-scrubbing');
     try { host.releasePointerCapture(event.pointerId); } catch (_) { /* not captured */ }
   };
-  // the arrows walk the stops (focus follows, so the Hand and the ring follow)
-  const onClick = () => {};
-  const focusStop = (i) => { const b = stopEls[Math.max(0, Math.min(stopEls.length - 1, i))]; if (b) b.focus(); };
+  // a click with no pointer (Enter/Space on a focused tape, a controller's A) steps to the next moment
+  const onClick = (event) => { if (!empty() && event.detail === 0) step(1); };
   const onKey = (event) => {
     if (empty()) return;
-    const at = stopEls.indexOf(doc.activeElement);
-    if (at < 0) return;
-    if (event.key === 'ArrowRight') { event.preventDefault(); focusStop(at + 1); }
-    else if (event.key === 'ArrowLeft') { event.preventDefault(); focusStop(at - 1); }
-    else if (event.key === 'Home') { event.preventDefault(); focusStop(0); }
-    else if (event.key === 'End') { event.preventDefault(); focusStop(stopEls.length - 1); }
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') { event.preventDefault(); step(1); }
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') { event.preventDefault(); step(-1); }
+    else if (event.key === 'Home') { event.preventDefault(); set(0); }
+    else if (event.key === 'End') { event.preventDefault(); set(model.lengthS); }
   };
   host.addEventListener('pointerdown', onDown);
   host.addEventListener('pointermove', onMove);
@@ -382,7 +338,6 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       host.removeEventListener('keydown', onKey);
       layer.remove();
       read.remove();
-      stopsLayer.remove();
     },
   };
 }

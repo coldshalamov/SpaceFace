@@ -15,12 +15,11 @@ import { PersistentCombatBeamPool } from '../../src/render/combat/persistentBeam
 import { vfx } from '../../src/render/vfx.js';
 import { resolveMuzzleProfile } from '../../src/render/vfxProfiles.js';
 import { worldSizeForPixels } from '../../src/render/weapons/index.js';
-import { ActionVfx } from '../../src/render/actionVfx.js';
 
 export const GAMEPLAY_WEAPON_SCENARIOS = Object.freeze({
   pulse: 5.2, 'thermal-bolt': 6.5, 'siege-lance': 7, railgun: 4.6, 'shield-impact': 2.2,
   autocannon: 6.5, 'emp-disruptor': 6.5, concussion: 6.5, missile: 8.5,
-  'vector-mine': 5, 'combat-beam': 5.5, flak:5, torpedo:9,
+  'vector-mine': 5, 'combat-beam': 5.5,
 });
 const WEAPON_IDS = Object.freeze({
   pulse: 'wpn_pulse_laser_s', 'thermal-bolt': 'wpn_plasma_cannon_m',
@@ -28,7 +27,6 @@ const WEAPON_IDS = Object.freeze({
   autocannon: 'wpn_autocannon_s', 'emp-disruptor': 'wpn_emp_disruptor_m',
   concussion: 'wpn_concussion_cannon_m', missile: 'wpn_missile_rack_m',
   'vector-mine': 'wpn_vector_mine_m', 'combat-beam': 'wpn_beam_laser_m',
-  flak:'wpn_flak_turret_s',torpedo:'wpn_torpedo_l',
 });
 const STEP = 1 / 60;
 const LAUNCH_AT = 12 * STEP;
@@ -55,7 +53,6 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     throw new Error('Weapons lab needs scene, state, camera and both authored meshes');
   }
   const root = new THREE.Group(); root.name = 'ProductionWeaponVfx'; scene.add(root);
-  const actions = new ActionVfx(root);
   const entities = new Map(), meshes = new Map(), auxMeshes = new Map();
   const privateState = { ...state, mode: 'flight', entities, entityList: [], entityIndex: null,
     fields: { active: [] }, render: { ...state.render, scene: root, camera, meshes },
@@ -71,7 +68,6 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
   const factory = createVisualFactory();
   let presenter = null, ship = null, target = null, shot = null;
   let shotMesh = null, combatBeams = null, mineOwner = null;
-  let shieldContext=null;
   let scenario = 'idle', seed = 17, randomState = 17, clock = 0, born = 0, disposed = false;
   let socketMode = 'radius fallback', launchCount = 0, impactCount = 0;
   const events = [];
@@ -99,8 +95,6 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
   function syncContext() {
     privateState.settings = state.settings || { video: {}, accessibility: {} };
     privateState.simTime = clock;
-    privateState.fields = state.fields;
-    privateState.massSeed = state.massSeed;
     const profile = resolveVfxAccessibilityProfile(privateState.settings);
     shieldCarrier.position.copy(shipMesh.position);
     shieldCarrier.quaternion.copy(shipMesh.quaternion);
@@ -112,10 +106,8 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
   }
   function publish(dt) {
     const profile = syncContext();
-    actions.update(privateState);
     presenter.update(dt, { state: privateState, camera, viewportHeight, interpolationAlpha: 1 });
-    if(shieldContext)ship.shield=shieldContext==='collapse'&&clock-born>=.2?0:100;
-    syncShipAuxPools(shieldPool, scenario === 'shield-impact'||shieldContext ? [ship] : [], auxMeshes);
+    syncShipAuxPools(shieldPool, scenario === 'shield-impact' ? [ship] : [], auxMeshes);
     const cameraDistance = camera.position.length();
     combatBeams?.update(clock, null, profile,
       worldSizeForPixels(cameraDistance, 8, camera.fov, viewportHeight), entry => socketWorldPose(entry.ownerId));
@@ -148,8 +140,7 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     if (disposed) throw new Error('Weapons adapter is disposed');
     seed = Number.isFinite(options.seed) ? options.seed >>> 0 : seed;
     clock = born = Number.isFinite(options.time) ? options.time : (Number(state.simTime) || 0);
-    randomState = seed; shieldContext=null; scenario = 'idle'; shot = null; events.length = 0;
-    actions.clear(); actions.serial = seed; actions.update({ ...privateState, simTime: clock });
+    randomState = seed; scenario = 'idle'; shot = null; events.length = 0;
     launchCount = impactCount = 0; socketMode = 'radius fallback';
     clearExtraOwners();
     presenter?.dispose();
@@ -165,8 +156,6 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     shieldBubble.material.uniforms.uFlash.value = 0;
     shieldPool.shield.material.uniforms.uShellTime.value = 0;
     privateState.simTime = clock;
-    privateState.fields = state.fields;
-    privateState.massSeed = state.massSeed;
     seeded(() => {
       presenter = new WeaponVfxPresenter({ scene: root, state: privateState, helpers: { socketWorldPose } });
       presenter.discharges.sequence = seed;
@@ -280,8 +269,6 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
       if (shotMesh) shotMesh.visible = false;
     }
     if (shot.mine) {
-      actions.emit('weapons:mineDetonated', { mineId: shot.projectile.id, ownerId: ship.id,
-        pos: shot.end, blastRadius: shot.weapon.mineBlastRadius }, privateState);
       // The actual deployment owner emits this normalized cue after resolving the mine. This
       // visual fixture supplies that receipt, not a projectile hit or invented hull damage.
       mineOwner._onPresentationCue({ id: 'combat.vectorMine.detonate', lane: 'combat', particles: 30,
@@ -315,8 +302,6 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     } else if (shot?.launched && shot.mine && !shot.hit) {
       if (!shot.projectile.data.armed && age + 1e-8 >= shot.armedAt) {
         shot.projectile.data.armed = true;
-        actions.emit('weapons:mineArmed', { mineId: shot.projectile.id, ownerId: ship.id,
-          pos: shot.projectile.pos }, privateState);
         events.push({ event: 'mine-armed', at: frameTime(age) });
       }
       if (age + 1e-8 >= shot.hitAt) impact();
@@ -353,7 +338,6 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
       transport: presenter?.quarks?.flow.live || 0,
       mineParticles: mineOwner?._liveCount || 0, mineSprites: mineOwner?._liveSpriteCount || 0,
       mineLights: mineOwner?._activeLightCount || 0,
-      actionSurfaces: actions.batch.count, actionParticles: actions.particles.live,
       contacts: ship && hasShieldContact(ship.id) ? 1 : 0 };
     const hitAt = shot?.hitAt || 0;
     const samples = shot ? { birth: shot.launchAt,
@@ -378,16 +362,15 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
         armedAt: shot.armedAt, releaseAt: shot.releaseAt,
         physicalTravelSeconds: shot.travel } : null, events: events.slice(), live,
       contacts: ship ? Array.from(readShieldContacts(ship.id, contactData) || contactData) : [],
-      // Same native distortion composition as default gameplay bloom.
-      // Report a rendered producer, not merely a field attached to the scene.
-      distortionComposited: Boolean(state.render?.bloom?.diagnostics?.().passFamilies?.distortion),
+      // The lab uses the normal bloom path. Haze is owned and aged here, but needs the optional
+      // production render graph to composite; it is never replaced by a lab-only distortion pass.
+      distortionComposited: false,
     };
   }
   function dispose() {
     if (disposed) return;
     clearExtraOwners();
     presenter?.dispose();
-    actions.dispose();
     for (const branch of [shieldPool.shield, shieldPool.nav]) {
       if (branch.dynamicBufferOwner) unregisterDynamicBufferOwner(branch.dynamicBufferOwner);
       branch.mesh?.removeFromParent(); branch.mesh?.dispose?.();
@@ -399,5 +382,5 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     entities.clear(); meshes.clear(); auxMeshes.clear(); disposed = true;
   }
   reset({ seed, time: Number(state.simTime) || 0 });
-  return { root, reset, select, fire, update, inspect, dispose, setShieldContext(mode){shieldContext=mode;}, get presenter() { return presenter; } };
+  return { root, reset, select, fire, update, inspect, dispose, get presenter() { return presenter; } };
 }

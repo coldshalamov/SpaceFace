@@ -153,44 +153,10 @@ function ownerIsAlwaysAwake(owner, state) {
 }
 
 /**
- * Cache always-awake near-work membership on the entity. Invalidated when the
- * volatile AI/weapon index rebuilds (mid-life combatant/slot attach) so stamp
- * does not re-walk owner.ai / data.ai / activityActorSlotId every tick.
- */
-export function refreshNearWorkAlwaysAwake(entity, state) {
-  if (!entity) return false;
-  const awake = ownerIsAlwaysAwake(entity, state);
-  entity._nearWorkAlwaysAwake = awake;
-  return awake;
-}
-
-export function invalidateNearWorkAlwaysAwake(entity) {
-  if (!entity) return;
-  entity._nearWorkAlwaysAwake = undefined;
-}
-
-function entityNearWorkAlwaysAwake(entity, state) {
-  if (!entity) return false;
-  const cached = entity._nearWorkAlwaysAwake;
-  if (cached === true || cached === false) return cached;
-  return refreshNearWorkAlwaysAwake(entity, state);
-}
-
-/**
  * Deterministic slice of S1 civilians that may think this tick. Hostiles and the
  * player are always included and do not consume the budget. Walk order is the
  * live shipLike index (spawn order).
  */
-// Bench-only: restore pre-#82 always-awake Set inserts for A/B.
-let _nearWorkAlwaysAwakeSetInsert = false;
-export function setNearWorkAlwaysAwakeSetInsertForBench(enabled) {
-  _nearWorkAlwaysAwakeSetInsert = enabled === true;
-  return _nearWorkAlwaysAwakeSetInsert;
-}
-export function getNearWorkAlwaysAwakeSetInsertForBench() {
-  return _nearWorkAlwaysAwakeSetInsert === true;
-}
-
 export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
   const set = (state && state.nearWorkIds instanceof Set) ? state.nearWorkIds : new Set();
   set.clear();
@@ -201,31 +167,16 @@ export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
   const n = ships.length;
   const start = n ? ((tick * limit) % n) : 0;
   let granted = 0;
-  // hasNearWorkSlot short-circuits on the cached always-awake bit before consulting the
-  // Set. Quiet stamps used to Set.add every always-awake shipLike every tick, then
-  // clear that same population next tick — O(awake) rehash with no consumer. Production
-  // only inserts the rotating S1 NEAR budget recipients. Bench toggle restores inserts.
-  const insertAwake = _nearWorkAlwaysAwakeSetInsert === true;
   for (let i = 0; i < n; i++) {
     const entity = ships[(start + i) % n];
     if (!entity || entity.alive === false) continue;
-    // Hot path: cached bit (filled on first touch / volatile AI cadence).
-    let awake = entity._nearWorkAlwaysAwake;
-    if (awake !== true && awake !== false) {
-      awake = refreshNearWorkAlwaysAwake(entity, state);
-    }
-    if (awake === true) {
-      if (insertAwake) set.add(entity.id);
+    if (ownerIsAlwaysAwake(entity, state)) {
+      set.add(entity.id);
       continue;
     }
     const tier = entity.activity && entity.activity.simTier;
     if (tier && tier !== SIM_TIER.S1_NEAR) continue;
-    if (granted >= limit) {
-      // Always-awake no longer join the Set, so the rotating budget is the only
-      // remaining work — stop once it is full (was a full shipLike scan).
-      if (!insertAwake) break;
-      continue;
-    }
+    if (granted >= limit) continue;
     set.add(entity.id);
     granted++;
   }
@@ -235,7 +186,7 @@ export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
 
 export function hasNearWorkSlot(state, entity) {
   if (!entity) return false;
-  if (entityNearWorkAlwaysAwake(entity, state)) return true;
+  if (ownerIsAlwaysAwake(entity, state)) return true;
   const set = state && state.nearWorkIds;
   if (!set) return true;
   return set.has(entity.id);

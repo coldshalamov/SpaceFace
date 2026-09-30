@@ -1077,23 +1077,6 @@ export const ECONOMY_BALANCE = deepFreeze({
       "savingMinutes": 100
     }
   },
-  "ships": {
-    "ship_warden": {
-      "credits": 384000,
-      "tier": 4,
-      "savingMinutes": 480
-    },
-    "ship_colossus": {
-      "credits": 456000,
-      "tier": 4,
-      "savingMinutes": 570
-    },
-    "ship_leviathan": {
-      "credits": 720000,
-      "tier": 5,
-      "savingMinutes": 600
-    }
-  },
   "mission": {
     "referenceDistanceWu": 1800,
     "cruiseWuPerS": 100,

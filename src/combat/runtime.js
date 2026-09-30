@@ -55,31 +55,6 @@ export function ensureCombatState(state) {
 
 export function ensureCombatant(state, entity, catalog) {
   if (!entity || entity.id == null) return null;
-  // Quiet hit: warm combat table + stable profile id skips ensureCombatState's
-  // property walk, resolveCombatProfile (Map get), and syncCombatantBounds.
-  // Status/subsystem changes still sync via the kernel's statusChanged gate (#83);
-  // damage/actions clamp at mutation sites. Cold/missing table falls through.
-  const warm = state.combat;
-  const warmEntities = warm && warm.entities;
-  if (warmEntities) {
-    const warmKey = entityKey(entity.id);
-    const warmRuntime = warmEntities[warmKey];
-    if (warmRuntime) {
-      const explicit = entity.data && entity.data.combatProfileId;
-      const expectedId = (typeof explicit === 'string' && explicit)
-        ? explicit
-        : (DEFAULT_COMBAT_PROFILE_BY_TYPE[entity.type] || null);
-      if (warmRuntime.profileId === expectedId) {
-        if (!Number.isFinite(warmRuntime.heatDissipationPerTick)) {
-          const warmProfile = expectedId ? catalog.profiles.get(expectedId) : null;
-          warmRuntime.heatDissipationPerTick = warmProfile && warmProfile.heat
-            ? Number(warmProfile.heat.dissipationPerTick) || 0
-            : 0;
-        }
-        return warmRuntime;
-      }
-    }
-  }
   const combat = ensureCombatState(state);
   // Property access with the raw id is the identical key to entityKey(entity.id) — object
   // property keys are strings, so `entities[5]` and `entities['5']` are the same slot; this
@@ -89,13 +64,6 @@ export function ensureCombatant(state, entity, catalog) {
   if (!runtime || runtime.profileId !== (profile && profile.id)) {
     runtime = createCombatantRuntime(entity, profile, catalog, runtime);
     combat.entities[entity.id] = runtime;
-  }
-  // Backfill dissipation for runtimes created before this field existed; create path
-  // already stamps it. Avoid rewriting the same number every quiet ensure.
-  if (!Number.isFinite(runtime.heatDissipationPerTick)) {
-    runtime.heatDissipationPerTick = profile && profile.heat
-      ? Number(profile.heat.dissipationPerTick) || 0
-      : 0;
   }
   syncCombatantBounds(entity, runtime, profile);
   return runtime;
@@ -179,9 +147,6 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     profileId: profile ? profile.id : null,
     heat: previous && finiteNonNegative(previous.heat) ? previous.heat : 0,
     heatMax: profile && profile.heat ? profile.heat.max : 100,
-    heatDissipationPerTick: profile && profile.heat
-      ? Number(profile.heat.dissipationPerTick) || 0
-      : 0,
     immunityTags: profile ? [...(profile.immunityTags || [])].sort() : [],
     baseCapabilities: profile ? cloneData(profile.capabilities || {}) : {},
     capabilities: profile ? cloneData(profile.capabilities || {}) : {},
@@ -191,7 +156,6 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     subsystems: {},
     statuses: {},
     pendingStatuses: [],
-    pendingSubsystemTransitionCount: 0,
     sockets: {},
     revision: previous && Number.isInteger(previous.revision) ? previous.revision + 1 : 1,
   };
@@ -202,15 +166,13 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     const old = previous && previous.subsystems && previous.subsystems[subsystemId];
     const maxHealth = Math.max(0, Number(def.health) || 0);
     const oldFraction = old && old.maxHealth > 0 ? clamp(old.health / old.maxHealth, 0, 1) : 1;
-    const pendingTransition = old && old.pendingTransition ? cloneData(old.pendingTransition) : null;
-    if (pendingTransition) runtime.pendingSubsystemTransitionCount += 1;
     runtime.subsystems[subsystemId] = {
       id: subsystemId,
       health: maxHealth * oldFraction,
       maxHealth,
       destroyed: old ? !!old.destroyed : false,
       effectiveDisabled: old ? !!old.effectiveDisabled : false,
-      pendingTransition,
+      pendingTransition: old && old.pendingTransition ? cloneData(old.pendingTransition) : null,
       lastDamageTick: old && Number.isInteger(old.lastDamageTick) ? old.lastDamageTick : -1,
     };
   }

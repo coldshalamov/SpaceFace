@@ -6,18 +6,14 @@
 // transient episode/control state stays outside the entity graph.
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { isRecovering, readTumbleStatus } from '../combat/tumbleStatus.js';
+import { readTumbleStatus } from '../combat/tumbleStatus.js';
 import { bodyLife, evidenceForConsequence } from '../combat/stuntEvidence.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
   isWorldHitstunBody,
-  holdImpulseProvenance,
-  IMPULSE_PROVENANCE_MAX_AGE_TICKS,
   publishHitstunImpulse,
   readRecentImpulseProvenance,
-  readRecentImpulseProvenanceHistory,
-  recordImpulseProvenance,
   resolveCollisionConsequence,
   signedHitSide,
 } from '../combat/impulseKernel.js';
@@ -27,11 +23,9 @@ import {
   clearPendingSlam,
   closingSpeedFromImpact,
   isSlamFractureCandidate,
-  noteLethalBlow,
   notePendingSlam,
   resetPendingSlams,
 } from './hullFracture.js';
-import { OVERKILL_ORIGIN_KINDS } from '../data/hullFractureSeams.js';
 
 export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 
@@ -63,7 +57,6 @@ export const collisionConsequences = {
       this._unsubs.push(this.bus.on('tether:whipImpact', (payload) => this._onWhipImpact(payload || {})));
       this._unsubs.push(this.bus.on(RESOLVE_PENDING_CRAFT_CONTACT_EVENT,
         (payload) => this._resolvePendingCraftContact(payload || {})));
-      this._unsubs.push(this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})));
       this._unsubs.push(this.bus.on('save:loaded', () => this._resetTransientState()));
       this._unsubs.push(this.bus.on('game:started', () => this._resetTransientState()));
       this._unsubs.push(this.bus.on('game:newGame', () => this._resetTransientState()));
@@ -153,28 +146,6 @@ export const collisionConsequences = {
     this._resolveDeferredCraftContact(pending, !heavyInvolved);
   },
 
-  _onCombatDamage(payload) {
-    // Overkill-fracture feed: damage.js clamps post-kill hull at zero, so the depth of the
-    // killing blow (pre-hit hull + raw blow) is remembered here against the shared seam
-    // catalog. Non-weapon/bomb/mine origins (collision, action, field) never qualify.
-    // combats:damage has no tick field, so stamp the current sim tick — damage routes
-    // synchronously inside entity:killed's own call stack (window: 2 ticks).
-    if (!payload || payload.targetId == null) return;
-    const originKind = payload.origin && payload.origin.kind;
-    if (!OVERKILL_ORIGIN_KINDS.includes(originKind)) return;
-    const hullBefore = Number(payload.before && payload.before.hull);
-    const hullMax = Number(payload.before && payload.before.hullMax);
-    const rawBlow = Number(payload.rawTotal ?? payload.amount ?? payload.applied ?? payload.hullDamage);
-    if (!(hullMax > 0) || !(rawBlow > 0) || !Number.isFinite(hullBefore)) return;
-    noteLethalBlow(payload.targetId, {
-      hullBefore,
-      hullMax,
-      rawBlow,
-      originKind,
-      tick: nonNegativeTick(this.state.tick),
-    });
-  },
-
   _resolvePendingCraftContact(payload) {
     const key = typeof payload.key === 'string' ? payload.key : '';
     const pending = this._pendingCraftContacts.get(key);
@@ -204,17 +175,11 @@ export const collisionConsequences = {
   },
 
   _resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
-    // Who is loose is read ONCE, before either side resolves: resolving one side tumbles it, and
-    // reading the flag afterwards would let the striker take its own projectile knock whenever it
-    // happened to be resolved second (id order), which is neither symmetric nor intended.
-    const projectiles = combatFlag('tumbleFling');
-    const looseA = projectiles && isLooseHull(this.state, a);
-    const looseB = projectiles && isLooseHull(this.state, b);
-    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseB);
-    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseA);
+    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
+    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
   },
 
-  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false) {
+  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const player = entityById(state, state.playerId);
@@ -237,8 +202,6 @@ export const collisionConsequences = {
       surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
     const provenance = ramPlate?.provenance || (observed?{actorId:observed.root.actorId,weaponId:observed.root.weaponId,
       tag:observed.root.kind==='constraint'?'massline':'weapon_hit',tick:observed.root.tick,rootId:observed.root.id}:causalProvenance);
-    // Hull-burst overhaul slice A (`combat.tumbleFling`): a hull that has lost its helm is a projectile,
-    // so what it strikes is knocked by the closing speed and both masses, not by one solver tick.
     const receipt = resolveCollisionConsequence({
       target,
       other,
@@ -250,31 +213,8 @@ export const collisionConsequences = {
       pos: payload.pos,
       normal: payload.normal,
       preSolveClosingSpeed: payload.preSolveClosingSpeed,
-      projectileStrike: strikerLoose
-        ? { strikerMass: positiveMass(other), closingSpeed: payload.preSolveClosingSpeed }
-        : null,
     });
     if (!receipt) return;
-    // The struck hull is now loose because of whoever knocked the striker loose: that credit chains.
-    // The struck hull gets its OWN fresh record (this contact is a new cause on it) so the flight hold
-    // in tumbleStates can carry the credit through ITS flight too; without it the second hull in a
-    // chain dies on a rock credited to nobody.
-    let hitProvenance = receipt.provenance;
-    if (strikerLoose && receipt.projectileKnock === true) {
-      const actorId = receipt.provenance.actorId;
-      const tag = receipt.provenance.tag;
-      if (actorId != null && actorId !== target.id && actorId !== other.id
-        && tag && tag !== 'environment' && tag !== 'direct_contact') {
-        recordImpulseProvenance(target, {
-          actorId,
-          weaponId: receipt.provenance.weaponId,
-          tag,
-          appliedTick: tick,
-          magnitude: receipt.exchangedMomentum,
-        });
-        hitProvenance = Object.freeze({ ...receipt.provenance, appliedTick: tick });
-      }
-    }
 
     publishHitstunImpulse(this.bus, {
       source: 'collision',
@@ -287,7 +227,7 @@ export const collisionConsequences = {
       dirZ: finite(receipt.normal && receipt.normal.z),
       hitSide: signedHitSide(target, receipt.normal, { pos: receipt.pos }, target.id),
       worldBody: isWorldHitstunBody(other),
-      provenance: hitProvenance,
+      provenance: receipt.provenance,
       tick,
     });
     const helmLossSeconds = helmLossFromTumbleStatus(readTumbleStatus(state, target), tick);
@@ -398,13 +338,6 @@ export const collisionConsequences = {
     this._pendingCraftContacts = new Map();
     resetPendingSlams();
   },
-
-  // Thin test seam: drive the overkill note path without booting the whole registry.
-  // The bus route is init()'s `combat:damage` subscription; the sim route is damage.js
-  // emitting combat:damage synchronously inside routeDamage's kill stack.
-  __noteLethalBlowForTest(payload) {
-    return this._onCombatDamage(payload || {});
-  },
 };
 
 function combatKernel(host) {
@@ -442,67 +375,18 @@ function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-// A hull that has lost its helm: tumbling, or in the recovery beat that follows.
-function isLooseHull(state, entity) {
-  if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) return false;
-  return readTumbleStatus(state, entity) !== null || isRecovering(state, entity);
-}
-
-// Higher appliedTick, else higher magnitude, else the stable provenance key.
-// History order and argument order are not a vote.
-function preferImpulseProvenance(left, right) {
-  if (!left) return right || null;
-  if (!right) return left;
-  if (left.appliedTick !== right.appliedTick) {
-    return left.appliedTick > right.appliedTick ? left : right;
+function contactImpulseProvenance(a, b, tick) {
+  const aProvenance = readRecentImpulseProvenance(a, tick);
+  const bProvenance = readRecentImpulseProvenance(b, tick);
+  if (!aProvenance) return bProvenance;
+  if (!bProvenance) return aProvenance;
+  if (aProvenance.appliedTick !== bProvenance.appliedTick) {
+    return aProvenance.appliedTick > bProvenance.appliedTick ? aProvenance : bProvenance;
   }
-  if (left.magnitude !== right.magnitude) {
-    return left.magnitude > right.magnitude ? left : right;
+  if (aProvenance.magnitude !== bProvenance.magnitude) {
+    return aProvenance.magnitude > bProvenance.magnitude ? aProvenance : bProvenance;
   }
-  return provenanceKey(left) <= provenanceKey(right) ? left : right;
-}
-
-function bestImpulseProvenance(entity, tick) {
-  // History first. A stale latest read clears both maps, and the held copy is not in history.
-  const history = readRecentImpulseProvenanceHistory(entity, tick);
-  let best = null;
-  for (const record of history) best = preferImpulseProvenance(best, record);
-  const latest = readRecentImpulseProvenance(entity, tick);
-  if (!latest) {
-    // The latest slot was an older expired record, so that read deleted the in-window winner
-    // along with it. Put the winner back before the next read.
-    if (best) recordImpulseProvenance(entity, best);
-    return best;
-  }
-  const chosen = preferImpulseProvenance(best, latest);
-  return retargetHeldProvenance(entity, latest, chosen, tick);
-}
-
-// A flight hold latches whichever write is in the latest slot. When that write loses the
-// equal-tick comparison, move the hold onto the winner so the long flight names the same actor
-// either write order would have named while both records were still in the window.
-// A same-actor hold keeps its slot object.
-function retargetHeldProvenance(entity, latest, chosen, tick) {
-  if (!latest || latest.holdUntilTick == null || !chosen || chosen === latest) return chosen;
-  const now = Number.isInteger(tick) ? tick : 0;
-  if (now > latest.holdUntilTick) return chosen;
-  if ((chosen.actorId ?? null) === (latest.actorId ?? null)) return chosen;
-  const age = now - chosen.appliedTick;
-  if (age < 0 || age > IMPULSE_PROVENANCE_MAX_AGE_TICKS) return chosen;
-  const until = latest.holdUntilTick;
-  const restored = recordImpulseProvenance(entity, {
-    actorId: chosen.actorId,
-    weaponId: chosen.weaponId,
-    tag: chosen.tag,
-    appliedTick: chosen.appliedTick,
-    magnitude: chosen.magnitude,
-  });
-  if (!restored) return chosen;
-  return holdImpulseProvenance(entity, until, now, restored.appliedTick) || restored;
-}
-
-export function contactImpulseProvenance(a, b, tick) {
-  return preferImpulseProvenance(bestImpulseProvenance(a, tick), bestImpulseProvenance(b, tick));
+  return provenanceKey(aProvenance) <= provenanceKey(bProvenance) ? aProvenance : bProvenance;
 }
 
 function provenanceKey(value) {

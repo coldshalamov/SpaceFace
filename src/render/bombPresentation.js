@@ -7,16 +7,12 @@ import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope } from '../combat/bombDynamics.js';
 import { readFrameOrigin, interpolateGlobalToFrame } from './frameCoordinates.js';
 import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
-import { FIELD_LIFECYCLES, smooth01 } from './forceLanguage/effectLifecycle.js';
-import { FlowEnvironment } from './forceLanguage/flowEnvironment.js';
-import { BombFlowSurface, createBombFlowPrecompileMesh } from './forceLanguage/bombFlowSurface.js';
+import { FIELD_LIFECYCLES, sampleFieldLifecycle } from './forceLanguage/effectLifecycle.js';
 import { ForceParticleFlow } from './vfx/forceParticleFlow.js';
 
-// Connected basins, throats and truthful boundaries share one CPU surface draw.
-// Singularity channels use a smooth static GPU mesh; transported matter has one lazy parcel draw.
+// Four continuous 28-station, folded inflow surfaces plus the throat and truthful boundary.
+// One surface draw plus a lazy bounded mesh-parcel draw for live field matter.
 const VERTICES_PER_BOMB = 3600;
-const SECTION_VERTICES = 7, SECTION_NORMALS = SECTION_VERTICES * 3, SECTION_DATA = SECTION_VERTICES * 6;
 export const BOMB_PRESENTATION_MAX_VERTICES = BOMB_DRIFT.maxWorldActive * VERTICES_PER_BOMB;
 const BOMB_PARTICLE_CAPACITY = BOMB_DRIFT.maxWorldActive * 16;
 const COLORS = new Map(Object.entries(BOMB_DEFS).map(([id, def]) => [id, new THREE.Color(def.visual.accent)]));
@@ -76,7 +72,7 @@ float bombContour(float edge, float value, float width) {
   float pixel = max(fwidth(value), 0.0001);
   return smoothstep(edge - width - pixel, edge + width + pixel, value);
 }`).replace('#include <color_fragment>', `#include <color_fragment>
-diffuseColor.rgb *= 0.13;`).replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+diffuseColor.rgb *= 0.024;`).replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 float bombV = vBombSurface.x;
 float bombT = vBombSurface.z;
 float bombPhase = abs(vBombSurface.w);
@@ -84,72 +80,38 @@ bool bombTar = vBombSurface.w < -0.5;
 bool bombFlowing = bombPhase > 0.5;
 // Nested caustics advect into the throat at different speeds; the cooling channels between
 // them stay dark. Their wave intersections make fine structure without final-art hash noise.
-// Transport warps length and cross-flow independently. Several unequal density waves
-// interact to tear open the stream; the luminous folds never fill a uniform neon sheet.
-float bombFlow = bombT * 42.0 - bombPhase * 4.2;
-float bombWarp = bombSin(bombT * 17.0 - bombPhase * 1.7 + bombV * 3.0);
-float bombVortex = bombSin(bombV * 8.0 + bombFlow * 0.43 + bombWarp * 1.8);
-float bombSpine = 0.06 + 0.23 * bombWarp + 0.10 * bombVortex;
-float bombFork = 0.31 + 0.10 * bombSin(bombFlow * 0.64 - bombV * 2.0);
-float bombFold = bombBand(bombV - bombSpine, 0.21);
-float bombInner = bombBand(bombV - bombSpine + bombFork, 0.085);
-float bombOuter = bombBand(bombV - bombSpine - bombFork * 1.45, 0.12);
-float bombTransport = bombWave(bombFlow + bombVortex * 2.0, 2.0, 0.375);
-float bombFiligree = bombWave(bombFlow * 2.37 + bombV * 13.0 + bombWarp * 3.0, 5.0, 0.2461);
-float bombErosion = 0.5 + 0.24 * bombSin(bombFlow * 0.53 + bombVortex * 1.9)
-  + 0.17 * bombSin(bombFlow * 1.17 + bombV * 9.0 - bombWarp)
-  + 0.09 * bombSin(bombFlow * 2.63 - bombV * 17.0 + bombVortex);
-float bombPatches = bombContour(0.49, bombErosion, 0.105);
-float bombAbsorption = bombBand(bombV + 0.26 + 0.12 * bombWarp, 0.16);
-float bombWorking = (bombFold + 0.72 * bombInner + 0.48 * bombOuter)
-  * (0.20 + 0.80 * bombTransport) * (0.12 + 0.88 * bombPatches)
-  * (1.0 - 0.62 * bombAbsorption);
-float bombMicrofold = bombBand(bombV - bombSpine + 0.06 * bombSin(bombFlow * 1.7), 0.055)
-  * bombFiligree * bombPatches;
-bombWorking += bombMicrofold * 0.70;
-float bombDrift = bombWave(bombFlow * 0.72 + bombV * 4.0, 2.0, 0.375);
-float bombDensity = 0.014 + bombPatches * (0.075 + 0.40 * clamp(bombFold + bombInner + bombOuter,0.0,1.0));
-float bombMatter = 0.045 * bombDrift * bombPatches;
+float bombSpine = 0.12 + 0.19 * bombSin(bombT * 11.0 - bombPhase * 2.0);
+float bombFork = 0.22 + 0.095 * bombSin(bombT * 21.0 - bombPhase * 2.6);
+float bombFold = bombBand(bombV - bombSpine, 0.060);
+float bombInner = bombBand(bombV - bombSpine + bombFork, 0.034);
+float bombOuter = bombBand(bombV - bombSpine - bombFork * 1.5, 0.046);
+float bombTransport = bombWave(bombT * 37.0 - bombPhase * 6.0 + bombV * 5.0, 3.0, 0.3125);
+float bombFiligree = bombWave(bombT * 61.0 - bombPhase * 4.3 + bombV * 11.0, 6.0, 0.2256);
+float bombWorking = (bombFold + 0.65 * bombInner + 0.40 * bombOuter) * (0.38 + 0.62 * bombTransport)
+  + 0.11 * bombFiligree * (1.0 - abs(bombV));
+// Energy is carried in moving ribbons of density, with transparent channels between them.
+// Broad transport stays visible even after fine detail is filtered at the flight camera.
+float bombDrift = bombWave(bombT * 13.0 - bombPhase * 2.8 + bombV * 4.0, 2.0, 0.375);
+float bombDensity = 0.025 + 0.50 * bombWorking + 0.30 * bombDrift * bombBand(bombV - bombSpine, 0.34);
+float bombMatter = 0.0;
 if (bombTar) {
   // A broken chemical reaction front crawls around a heavy, mostly unlit body. Broad dark
   // cells and two unequal contour fronts replace the bright plastic spoon spine.
   float chemicalEdge = 0.72 + 0.08 * bombSin(bombT * 31.4159 - bombPhase * 1.7)
     + 0.045 * bombSin(bombT * 69.115 - bombPhase);
-  float chemicalFront = bombBand(abs(bombV) - chemicalEdge, 0.070);
+  float chemicalFront = bombBand(abs(bombV) - chemicalEdge, 0.026);
   float chemicalCells = bombWave(bombT * 31.4159 + bombV * 6.0 - bombPhase * 1.2, 2.0, 0.375);
-  float chemicalVein = bombBand(bombV - 0.26 - 0.20 * bombSin(bombT * 18.85 - bombPhase), 0.115);
+  float chemicalVein = bombBand(bombV - 0.26 - 0.20 * bombSin(bombT * 18.85 - bombPhase), 0.040);
   bombWorking = chemicalFront * (0.045 + 0.95 * chemicalCells * chemicalCells)
     + chemicalVein * 0.24 * (1.0 - chemicalCells);
   // Irregular pockets dilute and reconnect. The tar retains a low, substantial body without
   // painting an opaque green floor; reaction light stays attached to the pockets' wet edges.
   float pocket = bombSin(bombT * 18.84956 - bombPhase * 0.6 + bombV * 5.0)
     + 0.48 * bombSin(bombT * 31.4159 + bombV * 8.0 + bombPhase * 0.4);
-  bombDensity = (0.34 + 0.40 * bombContour(-0.15, pocket, 0.25)) * (0.72 + 0.28 * chemicalCells)
+  bombDensity = (0.12 + 0.40 * bombContour(-0.15, pocket, 0.25)) * (0.6 + 0.4 * chemicalCells)
     + chemicalFront * 0.18;
-  bombMatter = 0.26 * (0.25 + 0.75 * chemicalCells)
+  bombMatter = 0.16 * (0.25 + 0.75 * chemicalCells)
     * bombBand(bombV - 0.36 - 0.1 * bombSin(bombT * 18.85 - bombPhase), 0.45);
-  if (bombT > 1.5) {
-    // The basin has polar mesh coordinates, but its material lives in Cartesian space.
-    // Angular stripes collapse to a pinwheel at the centre; a continuous wet reaction
-    // field keeps the pole seamless and lets separate pools join and recede naturally.
-    float theta = (bombT - 2.0) * 6.2831853;
-    vec2 wet = vec2(cos(theta),sin(theta)) * bombV;
-    float circulation = bombPhase * 1.65;
-    // Curl the reaction coordinates at two speeds. Separate pockets meet and break;
-    // this is advected chemistry, not a slowly rotating leaf-shaped contour.
-    wet += .10 * vec2(bombSin(wet.y * 7.0 - circulation),
-      bombSin(wet.x * 6.0 + circulation * .73));
-    float field = 0.5 + 0.22 * bombSin(wet.x * 9.0 + bombSin(wet.y * 6.0 + circulation))
-      + 0.18 * bombSin(wet.y * 11.0 - circulation + bombSin(wet.x * 5.0 - circulation))
-      + 0.10 * bombSin(wet.x * 17.0 + wet.y * 13.0 + circulation);
-    float pockets = bombContour(0.49, field, 0.16);
-    float reaction = bombBand(field - 0.58, 0.045);
-    bombDensity = 0.09 + pockets * 0.53;
-    bombMatter = pockets * 0.028;
-    float ignition = bombWave(wet.x * 12.0 - wet.y * 9.0 - circulation * 2.1,2.0,0.375);
-    bombWorking = reaction * (0.04 + 1.05 * ignition * ignition);
-    bombMatter += pockets * ignition * .065;
-  }
   diffuseColor.rgb *= 1.8;
 } else if (!bombFlowing) {
   bombWorking = 0.12 + 0.65 * bombBand(bombV - 0.12, 0.20);
@@ -159,13 +121,11 @@ float bombGrazing = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);
 float bombEdge = 1.0 - bombContour(bombTar ? 0.97 : 0.94, abs(bombV), bombTar ? 0.028 : 0.048);
 float bombTips = bombTar || !bombFlowing ? 1.0
   : bombContour(0.018, bombT, 0.015) * (1.0 - bombContour(0.985, bombT, 0.012));
-float bombRadiance = bombTar ? 1.3 : !bombFlowing ? 1.9 : 2.4;
-vec3 bombLight = vColor.rgb;
-if (bombFlowing && !bombTar) bombLight = mix(bombLight, vec3(0.80,0.94,1.0), clamp(bombMicrofold * 0.72,0.0,0.55));
-totalEmissiveRadiance += bombLight * vBombSurface.y * (0.025 + bombMatter + bombWorking * bombRadiance) * (0.80 + 0.20 * bombGrazing);
+float bombRadiance = bombTar ? 1.3 : !bombFlowing ? 1.9 : 3.8;
+totalEmissiveRadiance += vColor.rgb * vBombSurface.y * (0.025 + bombMatter + bombWorking * bombRadiance) * (0.80 + 0.20 * bombGrazing);
 diffuseColor.a *= bombEdge * bombTips * clamp(bombDensity, 0.0, 0.72);`);
   };
-  material.customProgramCacheKey = () => 'bomb-transport-volume-v6';
+  material.customProgramCacheKey = () => 'bomb-translucent-filtered-v3';
   return material;
 }
 
@@ -188,7 +148,6 @@ export function createBombPresentationPrecompileMesh() {
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.userData.precompileRetainedPipeline = 'bomb-telegraph';
-  mesh.add(createBombFlowPrecompileMesh(createBombTelegraphMaterial));
   return mesh;
 }
 
@@ -260,54 +219,20 @@ export class BombPresentationBatch {
     this.surfacePhase = 0;
     this.heatScale = 1;
     this.cooling = 0;
-    this.environment = new FlowEnvironment();
-    this.environments = [this.environment];
-    this.environmentSample = { dx: 0, dz: 0, lift: 0, contact: 0, vx: 0, vz: 0 };
-    this.deformBody = false;
-    this.bodyX = this.bodyZ = this.bodyRadius = 0;
-    this.transportAge = 0;
-    this.shutdownAge = Infinity;
-    this.releaseDuration = .42;
-    this.sectionA = new Float64Array(SECTION_DATA + 4);
-    this.sectionB = new Float64Array(SECTION_DATA + 4);
+    this.life = { build: 0, release: 0, scale: 0, crossScale: 0, opacity: 0, stage: 'dead' };
+    this.sectionA = new Float64Array(33);
+    this.sectionB = new Float64Array(33);
     this.particles = null;
-    this.flow = null;
-    this.flowRequest = { x:0, z:0, radius:1, time:0, envelope:1, seed:0, angle:0,
-      r:1, g:1, b:1, opacity:1, transportAge:0, shutdownAge:0, releaseDuration:.42,
-      cooling:0, heatScale:1, environment:null };
     this.particleOptions = { reducedMotion: false, reducedFlash: false };
     this.particleBurst = { kind: 'well', x: 0, y: 0.8, z: 0, radius: 1, seed: 0, count: 2,
       life: 1, strength: 1, age: 0, deferUpload: true };
     this.stats = { bombs: 0, vertices: 0, particles: 0, drawCalls: 0, overflow: 0 };
     this.count = 0;
     this.disposed = false;
-    // Quiet settled flight: after the first bomb owner exists, empty ticks still
-    // paid frustum rebuild + a11y + source walk + setDrawRange(0)/visible=false
-    // every frame. Latch after first empty publish; wake on entityIndexVersion
-    // or bombs.length. Soft-GPU fps not claimed.
-    this._quietEmpty = false;
-    this._quietVersion = -1;
-  }
-  // Cheap dirty wake for quiet bomb-telegraph latch — entityIndexVersion only.
-  // No index (version null) refuses the latch so entityList fallback stays truthful.
-  // False-wake falls through to one full update and re-latches when empty.
-  _quietMaybeAwake(state) {
-    const version = entityIndexVersion(state);
-    if (version == null) return true;
-    return version !== this._quietVersion;
   }
   update(state, source, alpha) {
     if (this.disposed) return;
-    // Quiet settled flight: empty bomb telegraph still paid frustum rebuild + a11y
-    // + source walk + setDrawRange(0)/visible=false every tick after the owner was
-    // created by a prior bomb. Latch after first empty publish; wake on
-    // entityIndexVersion. Soft-GPU fps not claimed.
-    if (this._quietEmpty) {
-      if (!this._quietMaybeAwake(state)) return;
-      this._quietEmpty = false;
-    }
     this.count = 0;
-    this.flow?.begin();
     const stats = this.stats;
     stats.bombs = stats.vertices = stats.particles = stats.drawCalls = stats.overflow = 0;
     // The small live emission window is sampled from each deployment's local sim age.
@@ -346,22 +271,14 @@ export class BombPresentationBatch {
         const born = Number(d.fieldStartedAt) || 0;
         const recipe = BOMB_FIELD_LIFECYCLES[f.kind] || BOMB_FIELD_LIFECYCLES.goo;
         const shutdownAt = born + f.durationS - recipe.release;
-        this.cooling = smooth01((now - shutdownAt) / recipe.release);
-        this.transportAge = age;
-        this.shutdownAge = f.durationS - recipe.release;
-        this.releaseDuration = recipe.release;
-        // Each admitted field retains its query cache; switching between 24 bombs must
-        // not invalidate one shared sampler and rescan the neighborhood every frame.
-        const environmentSlot = stats.bombs - 1;
-        this.environment = this.environments[environmentSlot]
-          || (this.environments[environmentSlot] = new FlowEnvironment());
-        this.environment.update(state, x, z, def.radius, bomb.id, alpha);
-        // Paths occupy the real field from the outset. Matter arrives along them at
-        // different times; shutdown stops supply, it never plays establishment backward.
-        this.field(x, z, def.radius, f.kind, moving ? age : 0, envelope, r, g, b, seed,
-          1, 1);
+        const releasedAt = now >= shutdownAt ? shutdownAt : -1;
+        sampleFieldLifecycle(now, born, releasedAt, recipe, this.life);
+        this.cooling = this.life.release;
+        const workingAge = releasedAt < 0 ? age : Math.max(0, shutdownAt - born);
+        this.field(x, z, def.radius, f.kind, moving ? workingAge : 0, envelope, r, g, b, seed,
+          moving ? this.life.scale : 1, this.life.opacity);
         if (moving) this.fieldParticles(x, z, def.radius, f.kind, age, f.durationS - recipe.release,
-          seed, envelope, 1, this.cooling, accessibility);
+          seed, envelope, this.life.scale, this.life.release, accessibility);
       } else {
         const speed = Math.hypot(bomb.vel?.x || 0, bomb.vel?.z || 0);
         const ax = speed > 0.01 ? bomb.vel.x / speed : Math.cos(bomb.rot || 0);
@@ -383,25 +300,10 @@ export class BombPresentationBatch {
       this.surfaceAttribute.clearUpdateRanges(); this.surfaceAttribute.addUpdateRange(0, this.count * 4);
       this.positionAttribute.needsUpdate = this.normalAttribute.needsUpdate = this.colorAttribute.needsUpdate = this.surfaceAttribute.needsUpdate = true;
     }
-    this.flow?.end();
-    stats.vertices = this.count + (this.flow?.count || 0) * (this.flow?.geometry.attributes.position.count || 0);
+    stats.vertices = this.count;
     if (this.particles?.live) this.particles.publish();
     stats.particles = this.particles?.live || 0;
-    stats.drawCalls = (this.count > 0 ? 1 : 0) + (stats.particles > 0 ? 1 : 0) + (this.flow?.count > 0 ? 1 : 0);
-    // Fully idle empty (no bombs, no aftermath parcels or particles still animating)
-    // → quiet latch when membership version is trustworthy. Soft-GPU fps not claimed.
-    if (this.count === 0 && stats.particles === 0 && (this.flow?.count || 0) === 0) {
-      const version = entityIndexVersion(state);
-      if (version != null) {
-        this._quietEmpty = true;
-        this._quietVersion = version;
-      } else {
-        this._quietEmpty = false;
-        this._quietVersion = -1;
-      }
-    } else {
-      this._quietEmpty = false;
-    }
+    stats.drawCalls = (this.count > 0 ? 1 : 0) + (stats.particles > 0 ? 1 : 0);
   }
   fieldParticles(x, z, radius, kind, age, shutdownAge, seed, envelope, growth, cooling, accessibility) {
     if (kind !== 'singularity' && kind !== 'goo') return;
@@ -422,9 +324,6 @@ export class BombPresentationBatch {
     for (let pulse = first; pulse <= last; pulse++) {
       p.seed = seed + pulse * 0.61803398875;
       p.age = Math.max(0, age - start - pulse * interval);
-      // Late parcels finish their own traversal before the authoritative field expires;
-      // they cannot survive as a bright cohort that vanishes at entity removal.
-      p.life = Math.min(life, Math.max(.05, shutdownAge + this.releaseDuration - start - pulse * interval));
       this.particles.emit(p);
     }
   }
@@ -560,8 +459,6 @@ export class BombPresentationBatch {
     this.ribbon(x - 6, z - 8, x - 6 + 13 * progress, z - 8, 2.1, r, g, b, 0.9, 0.85, 0.85);
   }
   field(x, z, radius, kind, time, envelope, r, g, b, seed, growth = 1, opacity = 1) {
-    this.deformBody = false;
-    this.surfacePhase = this.surfaceAlong = 0;
     this.surfaceAcross = 0;
     this.surfaceHeat = 0.32;
     // A quiet set of physical standing edges always marks the real influence radius. The
@@ -573,11 +470,8 @@ export class BombPresentationBatch {
       this.ribbon(outerX, outerZ, outerX - dx * radius * 0.045,
         outerZ - dz * radius * 0.045, 1.4, r, g, b, 0.56, 1, 3.8);
     }
-    this.bodyX = x; this.bodyZ = z; this.bodyRadius = radius;
-    this.deformBody = true;
-    if (kind === 'singularity') this.gravityWell(x, z, radius, time, envelope, r, g, b, seed, opacity);
-    else this.tarCloud(x, z, radius, time, envelope, r, g, b, seed, opacity);
-    this.deformBody = false;
+    if (kind === 'singularity') this.gravityWell(x, z, radius * growth, time, envelope, r, g, b, seed, opacity);
+    else this.tarCloud(x, z, radius * growth, time, envelope, r, g, b, seed, opacity);
     this.surfaceHeat = 1.4;
     this.surfaceAcross = 0;
   }
@@ -585,77 +479,36 @@ export class BombPresentationBatch {
     // Dark throat with a shallow counter-turning lip; the core is a cavity, never a glow ball.
     // Continuous angles close the seam, unlike the old twelve-sided disconnected polygon rim.
     this.surfaceHeat = 0.08;
-    const core = radius * 0.055;
+    const core = radius * 0.078;
     for (let i = 0; i < 40; i++) {
       const a0 = i * Math.PI / 20, a1 = (i + 1) * Math.PI / 20;
-      // Capture closes in unequal sectors only after inflowing matter reaches the throat.
-      // On loss of supply the lip tears at different angles while the flow still moves.
-      const sector = smooth01((this.transportAge - 0.22 - 0.11 * Math.sin(a0 * 3 + seed)) / 0.28)
-        * (1 - smooth01((this.cooling - 0.32 - 0.20 * Math.sin(a0 * 5 + seed)) / 0.46));
       const q0 = 1 + 0.10 * Math.sin(a0 * 3 + time * 0.8 + seed);
       const q1 = 1 + 0.10 * Math.sin(a1 * 3 + time * 0.8 + seed);
       const x0 = x + Math.cos(a0) * core * q0, z0 = z + Math.sin(a0) * core * q0;
       const x1 = x + Math.cos(a1) * core * q1, z1 = z + Math.sin(a1) * core * q1;
-      this.tri(x, -Math.min(4, radius * 0.035), z, x0, -0.8, z0, x1, -0.8, z1,
-        0.035 * r, 0.045 * g, 0.055 * b, opacity * 0.92 * sector, 0, 0, 0, 0, 0, 0);
-      this.tri(x0, -0.8, z0, x + (x0 - x) * 1.52, .45, z + (z0 - z) * 1.52,
-        x + (x1 - x) * 1.52, .45, z + (z1 - z) * 1.52,
-        r * 0.10, g * 0.13, b * 0.17, opacity * 0.72 * sector, 0, 0, 0, 0, 0, 0);
-      this.tri(x0, -0.8, z0, x + (x1 - x) * 1.52, .45, z + (z1 - z) * 1.52,
-        x1, -0.8, z1, r * 0.10, g * 0.13, b * 0.17, opacity * 0.72 * sector, 0, 0, 0, 0, 0, 0);
+      this.tri(x, -radius * 0.054, z, x0, -1.8, z0, x1, -1.8, z1,
+        0.035 * r, 0.045 * g, 0.055 * b, opacity * 0.92, 0, 0, 0, 0, 0, 0);
+      this.tri(x0, -1.8, z0, x + (x0 - x) * 1.52, 2.2, z + (z0 - z) * 1.52,
+        x + (x1 - x) * 1.52, 2.2, z + (z1 - z) * 1.52,
+        r * 0.36, g * 0.36, b * 0.36, opacity * 0.82, 0, 0, 0, 0, 0, 0);
+      this.tri(x0, -1.8, z0, x + (x1 - x) * 1.52, 2.2, z + (z1 - z) * 1.52,
+        x1, -1.8, z1, r * 0.36, g * 0.36, b * 0.36, opacity * 0.82, 0, 0, 0, 0, 0, 0);
     }
-    // A shared low accretion basin physically joins the unequal inflows to the throat.
-    // It carries intermittent luminous eddies, not a solid disc or three detached fans.
-    for (let i = 0; i < 40; i++) for (let j = 0; j < 2; j++) {
-      const a0=i/40,a1=(i+1)/40,u0=j/2,u1=(j+1)/2;
-      this.accretionVertex(x,z,radius,a0,u0,time,seed,r,g,b,opacity);
-      this.accretionVertex(x,z,radius,a0,u1,time,seed,r,g,b,opacity);
-      this.accretionVertex(x,z,radius,a1,u0,time,seed,r,g,b,opacity);
-      this.accretionVertex(x,z,radius,a1,u0,time,seed,r,g,b,opacity);
-      this.accretionVertex(x,z,radius,a0,u1,time,seed,r,g,b,opacity);
-      this.accretionVertex(x,z,radius,a1,u1,time,seed,r,g,b,opacity);
+    // Four broad caustic curtains feed the throat. Their outer reaches, widths and helical
+    // bend differ by seed, with a crest travelling inward and actual continuously flexing form.
+    for (let i = 0; i < 4; i++) {
+      this.swept(x, z, radius, time, envelope, seed + i * 1.917,
+        i * Math.PI / 2 + seed * 0.13, 0, 28, r, g, b, opacity * 0.83);
     }
-    // Retain only descriptors per frame. Curvature and contact normals are evaluated
-    // on the GPU, so a long bend never exposes a handful of CPU polygon stations.
-    if (!this.flow) {
-      this.flow = new BombFlowSurface(this.scene, createBombTelegraphMaterial);
-      this.flow.begin();
-    }
-    const request = this.flowRequest;
-    request.x=x; request.z=z; request.radius=radius; request.time=time;
-    request.envelope=envelope; request.r=r; request.g=g; request.b=b;
-    request.opacity=opacity*.88; request.transportAge=this.transportAge;
-    request.shutdownAge=this.shutdownAge; request.releaseDuration=this.releaseDuration;
-    request.cooling=this.cooling; request.heatScale=this.heatScale;
-    request.environment=this.environment;
-    for (let i=0;i<3;i++) {
-      request.seed=seed+i*1.917;
-      request.angle=i*Math.PI*2/3+seed*.13+Math.sin(seed+i*2.1)*.31;
-      this.flow.add(request);
-    }
-  }
-  accretionVertex(x,z,radius,theta,u,time,seed,r,g,b,opacity) {
-    const angle=theta*Math.PI*2-time*(.12+.48*(1-u)*(1-u)),ca=Math.cos(angle),sa=Math.sin(angle);
-    const reach=radius*(.078+u*(.31+.052*Math.sin(angle*3-time*.45+seed)));
-    const elevation=radius*(-.025+.071*u)+radius*.025*u*Math.sin(angle*2+u*4-time*.7+seed);
-    const slope=.22+.12*Math.sin(angle*2+u*4-time*.7+seed);
-    const length=Math.hypot(1,slope);
-    this.nx=-ca*slope/length;this.ny=1/length;this.nz=-sa*slope/length;
-    this.surfaceAcross=u*2-1;this.surfaceAlong=theta;
-    this.surfacePhase=1+seed+time*.9;this.surfaceHeat=.8*(1-this.cooling*.78);
-    // Recirculation emerges after independent feeder streams establish the basin.
-    const mature=smooth01((this.transportAge-.65-.16*Math.sin(theta*19+seed))/.55);
-    const tearing=1-smooth01((this.cooling-.10-.18*Math.sin(theta*23+u*7+seed))/.72);
-    this.vertex(x+ca*reach,elevation,z+sa*reach,r*.42,g*.42,b*.55,opacity*.62*mature*tearing);
   }
   tarCloud(x, z, radius, time, envelope, r, g, b, seed, opacity = 1) {
     // One coherent viscous volume, with unequal lobes joined through a low central basin.
     // The dark body is only part of the influence footprint; chemical light stays on its
     // moving reaction contours. This is shaped matter, not five disconnected green petals.
-    for (let i = 0; i < 32; i++) {
-      const a0 = i / 32, a1 = (i + 1) / 32;
-      for (let j = 0; j < 8; j++) {
-        const u0 = j / 8, u1 = (j + 1) / 8;
+    for (let i = 0; i < 48; i++) {
+      const a0 = i / 48, a1 = (i + 1) / 48;
+      for (let j = 0; j < 5; j++) {
+        const u0 = j / 5, u1 = (j + 1) / 5;
         this.tarVertex(x, z, radius, a0, u0, time, envelope, seed, r, g, b, opacity);
         this.tarVertex(x, z, radius, a0, u1, time, envelope, seed, r, g, b, opacity);
         this.tarVertex(x, z, radius, a1, u0, time, envelope, seed, r, g, b, opacity);
@@ -666,7 +519,7 @@ export class BombPresentationBatch {
     }
     // Unequal creeping reaches overlap the basin and physically connect its outer lobes.
     for (let i = 0; i < 3; i++) this.swept(x, z, radius * (0.90 + i * 0.025),
-      time, envelope, seed + i * 2.137, i * 2.3 + seed * 0.11, 18, r, g, b, opacity * 0.74);
+      time, envelope, seed + i * 2.137, i * 2.3 + seed * 0.11, 1, 18, r, g, b, opacity * 0.74);
     this.surfacePhase = this.surfaceAlong = 0;
   }
   tarVertex(x, z, radius, theta, u, time, envelope, seed, r, g, b, opacity) {
@@ -674,44 +527,29 @@ export class BombPresentationBatch {
     const ca = Math.cos(a), sa = Math.sin(a);
     const extent = radius * (0.67 + 0.095 * Math.sin(a * 3 + seed)
       + 0.085 * Math.sin(a * 5 - seed + time * 0.23));
-    const wave = a * 3 + u * 8 - time * 1.35 + seed;
+    const wave = a * 3 + u * 8 - time * 0.35 + seed;
     const belly = Math.sin(Math.PI * u), lobe = 0.72 + 0.28 * Math.sin(wave);
-    const depth = Math.min(4, radius * 0.15);
-    const height = depth * belly * lobe * envelope * (1 - this.cooling * 0.86);
-    const slope = depth * (Math.PI * Math.cos(Math.PI * u) * lobe
+    const height = radius * 0.095 * belly * lobe * envelope * (1 - this.cooling * 0.86);
+    const slope = radius * 0.095 * (Math.PI * Math.cos(Math.PI * u) * lobe
       + belly * 2.24 * Math.cos(wave)) * envelope * (1 - this.cooling * 0.86);
     const n = Math.hypot(extent, slope) || 1;
     this.nx = -ca * slope / n; this.ny = extent / n; this.nz = -sa * slope / n;
     this.surfaceAcross = u;
-    this.surfaceAlong = 2 + theta;
+    this.surfaceAlong = theta;
     this.surfacePhase = -(1 + seed + time * 0.34);
-    this.surfaceHeat = 1.6 * envelope * (1 - this.cooling * 0.78);
+    this.surfaceHeat = 2.8 * envelope * (1 - this.cooling * 0.78);
     this.vertex(x + ca * extent * u, 0.7 + height, z + sa * extent * u,
-      r * 0.72, g * 0.80, b * 0.68, opacity * 0.76 * this.tarCoverage(u, a, seed));
-  }
-  tarCoverage(u, angle, seed) {
-    // Three uneven nucleation sites spread locally, coalesce, then perforate in place.
-    // Their draining pores are unrelated to the initial fronts, never reverse growth.
-    const px=Math.cos(angle)*u, pz=Math.sin(angle)*u;
-    let arrival=Infinity;
-    for(let i=0;i<3;i++) {
-      const a=seed+i*2.17, reach=.22+i*.16;
-      const distance=Math.hypot(px-Math.cos(a)*reach,pz-Math.sin(a)*reach);
-      arrival=Math.min(arrival,.05+i*.075+distance*(.62+i*.11));
-    }
-    const fed=smooth01((this.transportAge-arrival)/.22);
-    const pores=.34+.19*Math.sin(px*11+pz*7+seed)+.11*Math.sin(pz*19-px*4-seed);
-    return fed*(1-smooth01((this.cooling-pores)/.36));
+      r * 0.72, g * 0.80, b * 0.68, opacity * 0.76);
   }
   // Cross-sections are sampled coherently at both ends of every segment. The folded surface
-  // has seven vertices across a deep rolled profile, avoiding flat ribbons and faceted kinks.
-  swept(x, z, radius, time, envelope, seed, angle, steps, r, g, b, opacity) {
+  // has five vertices across its curved profile, avoiding disconnected flat ribbon corners.
+  swept(x, z, radius, time, envelope, seed, angle, kind, steps, r, g, b, opacity) {
     const a = this.sectionA, bSection = this.sectionB;
-    this.sampleSection(a, 0, x, z, radius, time, envelope, seed, angle);
+    this.sampleSection(a, 0, x, z, radius, time, envelope, seed, angle, kind);
     for (let i = 1; i <= steps; i++) {
       const u = i / steps;
-      this.sampleSection(bSection, u, x, z, radius, time, envelope, seed, angle);
-      for (let j = 0; j < SECTION_VERTICES - 1; j++) {
+      this.sampleSection(bSection, u, x, z, radius, time, envelope, seed, angle, kind);
+      for (let j = 0; j < 4; j++) {
         this.sectionVertex(a, j, r, g, b, opacity);
         this.sectionVertex(a, j + 1, r, g, b, opacity);
         this.sectionVertex(bSection, j, r, g, b, opacity);
@@ -726,48 +564,57 @@ export class BombPresentationBatch {
   }
   sectionVertex(section, j, r, g, b, opacity) {
     const p = j * 3;
-    this.surfaceAcross = j / (SECTION_VERTICES - 1) * 2 - 1;
-    this.surfaceHeat = section[SECTION_DATA];
-    this.surfaceAlong = section[SECTION_DATA + 1]; this.surfacePhase = section[SECTION_DATA + 2];
-    this.nx = section[p + SECTION_NORMALS]; this.ny = section[p + SECTION_NORMALS + 1]; this.nz = section[p + SECTION_NORMALS + 2];
-    this.vertex(section[p], section[p + 1], section[p + 2], r, g, b, opacity * section[SECTION_DATA + 3]);
+    this.surfaceAcross = j * 0.5 - 1;
+    this.surfaceHeat = section[30];
+    this.surfaceAlong = section[31]; this.surfacePhase = section[32];
+    this.nx = section[p + 15]; this.ny = section[p + 16]; this.nz = section[p + 17];
+    this.vertex(section[p], section[p + 1], section[p + 2], r, g, b, opacity);
   }
-  sampleSection(out, u, x, z, radius, time, envelope, seed, angle) {
+  sampleSection(out, u, x, z, radius, time, envelope, seed, angle, kind) {
     let cx, cz, cy, nx, nz, width, fold;
     const belly = Math.sin(Math.PI * u);
-    const crest = Math.pow(0.5 + 0.5 * Math.cos(u * 10.2 - time * 1.05 + seed), 4);
-    out[SECTION_DATA] = (1.0 + crest * 1.7) * (0.40 + envelope * 0.60) * (1 - this.cooling * 0.78);
-    out[SECTION_DATA + 1] = u;
-    out[SECTION_DATA + 2] = -(1 + seed + time * .34);
-    out[SECTION_DATA + 3] = this.tarCoverage(u, angle, seed);
-    const ca = Math.cos(angle), sa = Math.sin(angle);
-    const side = radius * (0.12 * Math.sin(u * 6.2 + seed)
-      + 0.032 * Math.sin(time * 1.38 + seed + u * 4.5) * belly);
-    const along = radius * (0.10 + u * 0.86);
-    cx = x + ca * along - sa * side; cz = z + sa * along + ca * side;
-    nx = -sa; nz = ca;
-    const lumps = 0.71 + 0.22 * Math.sin(u * 11.8 - time * 1.72 + seed)
-      + 0.07 * Math.sin(u * 23.4 + time * .91 + seed * 2);
-    width = Math.min(6, radius * (0.012 + 0.24 * Math.pow(Math.max(0, belly), 0.8))) * lumps * (1 - u * 0.5);
-    cy = 0.6 + Math.min(1.6, radius * 0.019) * belly * (1 + Math.sin(u * 8.8 - time * 1.25 + seed));
-    fold = Math.min(3.5, radius * 0.145) * Math.pow(Math.max(0, belly), 0.8)
-      * (0.80 + 0.20 * Math.sin(u * 12.2 - time * 1.52 + seed)) * envelope * (1 - this.cooling * 0.86);
-    for (let j = 0; j < SECTION_VERTICES; j++) {
-      const v = j / (SECTION_VERTICES - 1) * 2 - 1, p = j * 3;
-      // The heavy wet fold joins its underlying basin with real sidewalls.
-      const lateral = v * width;
-      const vertical = (1 - v * v) * fold + Math.sin(v * 2.5) * fold * 0.34;
-      const dx = width;
-      const dy = -2 * v * fold + Math.cos(v * 2.5) * fold * 0.85;
-      let px = cx - x + nx * lateral, pz = cz - z + nz * lateral;
-      const extent = Math.hypot(px, pz), clamp = Math.min(1, radius / Math.max(0.001, extent));
-      out[p] = x + px * clamp;
-      out[p + 1] = cy + vertical;
-      out[p + 2] = z + pz * clamp;
-      const len = Math.hypot(dx, dy) || 1;
-      out[p + SECTION_NORMALS] = -nx * dy / len;
-      out[p + SECTION_NORMALS + 1] = dx / len;
-      out[p + SECTION_NORMALS + 2] = -nz * dy / len;
+    const crest = Math.pow(0.5 + 0.5 * Math.cos(u * 10.2 - time * (kind ? 1.05 : 4.2) + seed), 4);
+    out[30] = (kind ? 1.0 + crest * 1.7 : 2.7 + crest * 3.5)
+      * (0.40 + envelope * 0.60) * (1 - this.cooling * 0.78);
+    out[31] = u;
+    out[32] = (kind ? -1 : 1) * (1 + seed + time * (kind ? 0.34 : 0.9));
+    if (kind === 0) {
+      const reach = radius * (0.91 - u * 0.82);
+      const bend = angle + u * (2.1 + 0.22 * Math.sin(seed)) - time * 0.37
+        + 0.10 * Math.sin(u * 7 - time * 1.4 + seed);
+      const slope = 2.1 + 0.22 * Math.sin(seed) + 0.7 * Math.cos(u * 7 - time * 1.4 + seed);
+      const ca = Math.cos(bend), sa = Math.sin(bend);
+      cx = x + ca * reach; cz = z + sa * reach;
+      const dx = -radius * 0.82 * ca - reach * sa * slope;
+      const dz = -radius * 0.82 * sa + reach * ca * slope;
+      const len = Math.hypot(dx, dz) || 1;
+      nx = -dz / len; nz = dx / len;
+      width = radius * (0.028 + belly * 0.050) * (0.36 + 0.64 * Math.sqrt(Math.max(0, belly)));
+      cy = radius * (0.090 * (1 - u) - 0.050 * u + belly * 0.034
+        * Math.sin(u * 7.2 - time * 2.2 + seed)) * (0.55 + envelope * 0.45);
+      fold = width * (0.54 + 0.16 * Math.sin(u * 9 - time * 2.5 + seed));
+    } else {
+      const ca = Math.cos(angle), sa = Math.sin(angle);
+      const side = radius * (0.12 * Math.sin(u * 6.2 + seed)
+        + 0.032 * Math.sin(time * 0.58 + seed + u * 4.5) * belly);
+      const along = radius * (0.10 + u * 0.86);
+      cx = x + ca * along - sa * side; cz = z + sa * along + ca * side;
+      nx = -sa; nz = ca;
+      const lumps = 0.71 + 0.22 * Math.sin(u * 11.8 - time * 0.52 + seed)
+        + 0.07 * Math.sin(u * 23.4 + time * 0.31 + seed * 2);
+      width = radius * (0.008 + 0.17 * Math.pow(Math.max(0, belly), 0.8)) * lumps * (1 - u * 0.5);
+      cy = 0.6 + radius * 0.019 * belly * (1 + Math.sin(u * 8.8 - time * 0.55 + seed));
+      fold = radius * 0.095 * Math.pow(Math.max(0, belly), 0.8)
+        * (0.80 + 0.20 * Math.sin(u * 12.2 - time * 0.62 + seed)) * envelope * (1 - this.cooling * 0.86);
+    }
+    for (let j = 0; j < 5; j++) {
+      const v = j * 0.5 - 1, p = j * 3;
+      out[p] = cx + nx * v * width;
+      out[p + 1] = cy + (1 - v * v) * fold + (kind ? 0 : v * width * 0.20);
+      out[p + 2] = cz + nz * v * width;
+      const slope = -2 * v * fold + (kind ? 0 : width * 0.20);
+      const len = Math.hypot(width, slope) || 1;
+      out[p + 15] = -nx * slope / len; out[p + 16] = width / len; out[p + 17] = -nz * slope / len;
     }
   }
   face(ax, ay, az, bx, by, bz, cx, cy, cz) {
@@ -800,22 +647,12 @@ export class BombPresentationBatch {
   }
   vertex(x, y, z, r, g, b, opacity) {
     if (this.count >= BOMB_PRESENTATION_MAX_VERTICES) return;
-    let contact = 0;
-    if (this.deformBody && this.environment.count) {
-      const response=this.environment.samplePoint(x,z,this.environmentSample);
-      // Deflect cosmetic matter at the actual surface; neither move the body nor imply
-      // a different danger radius. Contacts compress the flow into a raised hot seam.
-      let dx=x+response.dx-this.bodyX, dz=z+response.dz-this.bodyZ;
-      const bounded=Math.min(1,this.bodyRadius/Math.max(.001,Math.hypot(dx,dz)));
-      x=this.bodyX+dx*bounded; z=this.bodyZ+dz*bounded;
-      y+=response.lift; contact=response.contact;
-    }
     const p = this.count * 3, c = this.count * 4;
     this.positions[p] = x; this.positions[p + 1] = y; this.positions[p + 2] = z;
     this.normals[p] = this.nx; this.normals[p + 1] = this.ny; this.normals[p + 2] = this.nz;
     this.colors[c] = r; this.colors[c + 1] = g; this.colors[c + 2] = b; this.colors[c + 3] = opacity;
     this.surfaces[c] = this.surfaceAcross;
-    this.surfaces[c + 1] = (this.surfaceHeat + contact * 1.5) * this.heatScale;
+    this.surfaces[c + 1] = this.surfaceHeat * this.heatScale;
     this.surfaces[c + 2] = this.surfaceAlong;
     this.surfaces[c + 3] = this.surfacePhase;
     this.count++;
@@ -823,10 +660,7 @@ export class BombPresentationBatch {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this._quietEmpty = false;
-    this._quietVersion = -1;
     this.particles?.dispose();
-    this.flow?.dispose();
     this.scene.remove(this.mesh);
     this.geometry.dispose(); this.material.dispose();
   }

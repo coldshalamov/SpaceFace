@@ -230,33 +230,25 @@ function applyHullWear(ctx, damageHp) {
   const e = playerEntity(ctx);
   if (!e || !(e.hullMax > 0)) return 0;
   const dmg = Math.max(0, Number(damageHp) || 0);
-  // 5507700e0 (QoL overhaul): while the player's shield is up the damage router forces
-  // penetration and shieldBypass to 0, so a single wear packet now lands on the regenerating
-  // shield only. Wear keeps meaning ~dmg hull HP: packets repeat until that much hull damage
-  // lands, bounded — every packet still routed through combat.onHit.
-  let applied = 0;
-  for (let hit = 0; hit < 40 && applied < dmg && e.alive !== false; hit += 1) {
-    const packet = scalarHitToDamagePacket({
-      damage: dmg * 4.2,
-      damageType: 'kinetic',
-      shieldBypass: 1,
-      penetration: 0,
-      pos: { x: e.pos.x, z: e.pos.z },
-      source: { kind: 'prospector_operating_wear', id: 'prospector_public_route' },
-    });
-    packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: true, ignoreInvulnerability: true };
-    const result = ctx.combat.onHit({
-      targetId: e.id,
-      ownerId: null,
-      damagePacket: packet,
-      pos: { x: e.pos.x, z: e.pos.z },
-      origin: { kind: 'prospector_operating_wear', id: 'prospector_public_route' },
-    });
-    if (!result || !result.ok) break;
-    applied += Math.max(0, result.hullDamage || 0);
-  }
+  const packet = scalarHitToDamagePacket({
+    damage: dmg * 4.2,
+    damageType: 'kinetic',
+    shieldBypass: 1,
+    penetration: 0,
+    pos: { x: e.pos.x, z: e.pos.z },
+    source: { kind: 'prospector_operating_wear', id: 'prospector_public_route' },
+  });
+  packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: true, ignoreInvulnerability: true };
+  const result = ctx.combat.onHit({
+    targetId: e.id,
+    ownerId: null,
+    damagePacket: packet,
+    pos: { x: e.pos.x, z: e.pos.z },
+    origin: { kind: 'prospector_operating_wear', id: 'prospector_public_route' },
+  });
+  if (!result || !result.ok) return 0;
   ctx.hullDamageHp = Math.max(0, e.hullMax - e.hull);
-  return applied;
+  return result.hullDamage || 0;
 }
 
 function tryTravel(ctx, {
@@ -748,10 +740,6 @@ export function runProspectorPublicRoute(options = {}) {
     fieldDepletionEvents: 0,
     inventoryCreated: 0,
     inventoryRemoved: 0,
-    // Start-cargo snapshot: missions.newGame installs the authored Thread-B fragment
-    // (persistent locked cargo) before the receipt exists — conservation counts it as
-    // start stock, not a route-created unit.
-    ownedInventoryStart: { ...(ctx.state.player.cargo.items || {}) },
     asteroidsMined: 0,
     completedLoops: 0,
     completedContracts: 0,
@@ -1446,6 +1434,7 @@ export function runProspectorPublicRoute(options = {}) {
   receipt.fieldFinals = FIELD_IDS.map((id) => fieldMemoryReadout(ctx.state, id));
   receipt.equipment.activePhase = upgraded ? 'pelican' : 'starter';
   receipt.ownedInventoryEnd = { ...(ctx.state.player.cargo.items || {}) };
+  receipt.ownedInventoryStart = {};
   return finalize(receipt, ctx, costs, budget, horizonS);
 }
 
@@ -1485,12 +1474,10 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
   receipt.researchPoints = ctx.state.player.researchPoints || 0;
   receipt.researchedNodes = (ctx.state.player.researchedNodes || []).slice();
 
-  // Inventory conservation per mined commodity on top of authored start cargo (e.g. the
-  // Thread-B fragment newGame installs before the route exists). Unexpected foreign cargo sales
+  // Inventory conservation per mined commodity (empty start). Unexpected foreign cargo sales
   // (e.g. alloys never created by this route) are reported as seams, not silent grants.
   const createdBy = receipt.inventoryCreatedBy || {};
   const removedBy = receipt.inventoryRemovedBy || {};
-  const startBy = receipt.ownedInventoryStart || {};
   const endItems = receipt.ownedInventoryEnd || {};
   const minedIds = new Set([...Object.keys(createdBy), ...Object.keys(removedBy), ...Object.keys(endItems)]);
   let conserved = true;
@@ -1500,7 +1487,7 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
     const c = createdBy[cid] || 0;
     const r = removedBy[cid] || 0;
     const e = endItems[cid] || 0;
-    const exp = (startBy[cid] || 0) + c - r;
+    const exp = c - r;
     perCmdty[cid] = { created: c, removed: r, end: e, expected: exp, ok: e === exp };
     if (e !== exp) {
       // Foreign cargo sold without route create: treat as seam if only removed side is positive.

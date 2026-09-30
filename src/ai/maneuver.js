@@ -16,12 +16,6 @@ import {
   wrapAngle,
 } from './contracts.js';
 import { createSquadFrameDirector } from './squadFrame.js';
-import { temperamentFor } from './temperament.js';
-import {
-  emptyReflexState,
-  evaluateReflexes,
-  reflexAllowedForIntent,
-} from './reflexes.js';
 
 function bodyRadius(body) {
   const measured = Number(body && body.planarRadius);
@@ -148,8 +142,6 @@ export class ManeuverPlanner {
         smoothedRight: 0,
         smoothedTorqueYaw: 0,
         collisionPasses: new Map(),
-        reflex: emptyReflexState(),
-        lastReflex: null,
       };
       this.byEntity.set(entityId, runtime);
     }
@@ -214,14 +206,6 @@ export class ManeuverPlanner {
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
     const mustRejoin = !intent.breakFormation && !choreo && formationDistance > rejoinDistance;
     const hullScale = hullScaleFor(selfPose, entityId, this.resolveHull);
-    // Per-pilot flight character (§21A variety): verve/poise/weave/dash/aim, deterministic
-    // per entity + doctrine. Every hull feels like its own pilot instead of the same
-    // steering gain cloned N times.
-    const temperament = temperamentFor(entityId, {
-      seed: this.seed,
-      doctrineId: selfPose.combatDoctrineId,
-      massBand: selfPose.operationalMassBand,
-    });
     let desired;
     if (choreo && choreo.coast) {
       desired = coastHold(selfPose);
@@ -234,29 +218,6 @@ export class ManeuverPlanner {
     } else {
       desired = desiredForIntent(intent, selfPose, target, contactSource, this.seed, entityId, this.config, this.workCounters, hullScale);
     }
-
-    // Pilot reflexes (bounded trigger→impulse reactions: volley jink, hit weave, marked
-    // weave, brake-check, pounce, scatter, heat management). Choreographed and
-    // enemy-mind-owned hulls are already speaking with intent; emergency kinds already
-    // ARE the reaction. Reflexes shape the desired point, never write the thruster
-    // request directly, and never bypass ROE or fire authority.
-    let reflex = null;
-    if (!choreo && !mindOwned && reflexAllowedForIntent(intent.kind)) {
-      reflex = evaluateReflexes(this.seed, {
-        entityId,
-        tick,
-        self: selfPose,
-        contacts,
-        events: perception && perception.events,
-        target,
-        intent,
-        temperament,
-        reflexState: runtime.reflex || (runtime.reflex = emptyReflexState()),
-      });
-      if (reflex && reflex.lateral) desired = applyReflexToDesired(desired, selfPose, reflex);
-      runtime.lastReflex = reflex ? reflex.kind : null;
-    }
-    if (desired.obstacleAvoidance === true) reflex = null; // a rock in the dodge cone owns the hull
 
     if (!(choreo && choreo.coast)) {
       desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
@@ -290,17 +251,9 @@ export class ManeuverPlanner {
     // whatever the nose points at, so a rock in the dodge cone must not steal the firing face.
     // Vetoing it made every ring pass through arena cover a firing blackout: the nose chased the
     // whipping dodge route and fixed mounts sprayed past a stationary target (D38).
-    // A dodging pilot sacrifices the firing face during the jink; a gunner keeps the nose
-    // on target through everything short of an obstacle dodge.
-    // A doctrine that commits a firing corridor or a mass-committed charge publishes an absolute
-    // faceAngle: the nose rides that bearing through the window, so a dodged target cannot pull
-    // the line back onto itself. A reflex dodge still drops the override — hull integrity beats
-    // commitment.
-    const facingUnit = !(reflex && reflex.dropAim) && Number.isFinite(intent.faceAngle)
-      ? { x: Math.cos(intent.faceAngle), z: Math.sin(intent.faceAngle) }
-      : intent.faceTarget === true && target && !(reflex && reflex.dropAim)
-        ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
-        : desiredUnit;
+    const facingUnit = intent.faceTarget === true && target
+      ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
+      : desiredUnit;
     const heading = Math.atan2(facingUnit.z, facingUnit.x);
     const angleError = wrapAngle(heading - selfPose.rot);
     // The commanded heading itself moves (a target bearing rotates as both ships fly). A
@@ -324,16 +277,6 @@ export class ManeuverPlanner {
     if (choreo && !choreo.coast) {
       const frac = Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8;
       envelope.maxSpeed = this.config.interceptSpeed * (hullScale && hullScale.speed > 0 ? hullScale.speed : 1) * frac;
-    }
-    if (!choreo) {
-      // Verve is the pilot's speed appetite; reflex bursts and hot plates gate it further.
-      envelope.maxSpeed *= 0.88 + 0.24 * temperament.verve;
-      if (reflex) {
-        envelope.maxSpeed = Math.max(6, envelope.maxSpeed * reflex.speedScale);
-        if (Number.isFinite(envelope.maxClosingSpeed)) {
-          envelope.maxClosingSpeed *= Math.min(1, reflex.speedScale);
-        }
-      }
     }
     const closing = target ? closingSpeed(selfPose, target) : 0;
     const localClosingLimit = target
@@ -385,28 +328,21 @@ export class ManeuverPlanner {
     const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance
       ? 0
       : yawRateTorqueFor(angleError, measuredWy, headingRate, kind, this.config, hullScale);
-    // Poise scales control slew: a calm pilot leans into inputs, a twitchy one snaps.
-    const poiseSlew = 1.18 - 0.7 * temperament.poise;
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
       right: rawRight,
       torqueYaw: rawTorqueYaw,
-    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew * poiseSlew });
+    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew });
 
-    const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
-      speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
-      || (reflex != null && reflex.boost === true && Math.abs(angleError) < 0.9);
-    const boost = boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer)
-      && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
+    const boostWanted = (kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
+      speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78;
+    const boost = boostWanted && !desired.obstacleAvoidance && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
     const slotSpeed = choreo && choreo.slotVel
       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
       : 0;
-    // crossingLane strips the arrival brake (a committed charge/flyby pass must not slow into
-    // its own run point), but defensive reflexes still beat commitment: reflex.brake fires only
-    // on an imminent closing contact, the same exception dropAim takes against faceAngle.
     const brake = desired.obstacleBrake || (choreo && choreo.coast
       ? false
-      : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (reflex != null && reflex.brake === true) || (!desired.contactSeek && !(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+      : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (!desired.contactSeek && !(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
         arrival < slowRadius && speed > Math.max(4, arrival / 2)));
     const trajectory = this.includeTrajectory
       ? buildTrajectory(selfPose, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
@@ -456,8 +392,6 @@ export class ManeuverPlanner {
           faceTarget: intent.faceTarget === true && !!target,
           obstacleAvoidance: desired.obstacleAvoidance === true,
           heading,
-          reflex: reflex ? reflex.kind : null,
-          temperament: temperament.id,
         },
       });
     }
@@ -564,9 +498,7 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
         : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
-      if (target) return orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign,
-        contactIndex.obstacles, config, counters,
-        contactIndex.ships === contactIndex.obstacles ? 'legacy' : 'indexed');
+      if (target) return orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign);
       // An orbit that names a world point (the witness holder's live-tracked body anchor, when
       // the body itself is not a perception contact) holds that point instead of the squad slot.
       const orbitCenter = intent.orbitCenter && Number.isFinite(intent.orbitCenter.x) && Number.isFinite(intent.orbitCenter.z)
@@ -668,79 +600,14 @@ function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72
   return commitPoint(self, point, commitSpeed, target.vel || ZERO_VEL);
 }
 
-// SF-059: when the ring's tangent carries the hull into solid terrain the reactive dodge cone
-// alone pinballs — orbit pulls back in, dodge kicks out, repeat. Sample a small fixed fan of
-// rotations off the desired direction instead: each ray is corridor-swept against the perceived
-// obstacle set and the pick prefers the widest contiguous clear arc, then alignment with the
-// hull's present velocity (a sliding hull keeps sliding rather than re-selecting the blocked
-// ring tangent each tick), then the smallest rotation. Rotation stays under half a turn, so the
-// authored orbit side never flips, and the pick re-computes every plan so the moment the ring
-// ahead is clear the raw tangent wins again — no mode to forget to exit.
-const ORBIT_TERRAIN_FAN = Object.freeze([-1.35, -0.95, -0.62, -0.34, 0, 0.34, 0.62, 0.95, 1.35]);
-
-function orbitObstacleFreeRun(self, dir, obstacles, lookahead, margin, skipId, counters, counterMode = 'legacy') {
-  let free = lookahead;
-  for (const contact of obstacles) {
-    countContactVisit(counters, counterMode);
-    if (contact.kind !== ContactKind.HAZARD && !contact.tags.includes('solid')) continue;
-    // Mirrors applyObstacleAvoidance: live ships are moving contacts handled by the ship
-    // pass-around; dead hulks and terrain are cover the ring must respect.
-    if (contact.kind === ContactKind.SHIP && contact.alive !== false) continue;
-    if (contact.id === skipId) continue;
-    const dx = contact.pos.x - self.pos.x, dz = contact.pos.z - self.pos.z;
-    const ahead = dx * dir.x + dz * dir.z;
-    const across = -dx * dir.z + dz * dir.x;
-    const clearance = margin + bodyRadius(contact);
-    if (ahead < 0 || ahead > lookahead + clearance || Math.abs(across) >= clearance) continue;
-    const entry = ahead - Math.sqrt(Math.max(0, clearance * clearance - across * across));
-    if (entry < free) free = Math.max(0, entry);
-  }
-  return free;
-}
-
-function orbit(self, target, radius, seed, entityId, lateralSign = 0, obstacles = null, config = null, counters = null, counterMode = 'legacy') {
+function orbit(self, target, radius, seed, entityId, lateralSign = 0) {
   const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
   const dist = Math.hypot(dx, dz) || 1;
   const radial = (dist - radius) / Math.max(40, radius);
   const side = lateralSign ? (lateralSign < 0 ? -1 : 1) : (hashUnit(seed, entityId, 'orbit') < 0.5 ? -1 : 1);
   const tangentX = -dz / dist * side, tangentZ = dx / dist * side;
   const radialX = dx / dist * clamp(radial, -1, 1), radialZ = dz / dist * clamp(radial, -1, 1);
-  const base = { x: tangentX + radialX * 1.15, z: tangentZ + radialZ * 1.15, arrivalDistance: Math.abs(dist - radius) };
-  if (!obstacles || obstacles.length === 0) return base;
-  const vx = self.vel && Number.isFinite(self.vel.x) ? self.vel.x : 0;
-  const vz = self.vel && Number.isFinite(self.vel.z) ? self.vel.z : 0;
-  const speed = Math.hypot(vx, vz);
-  const lookahead = Math.max(config && config.obstacleLookahead || 110, speed * 1.25);
-  const selfRadius = bodyRadius(self);
-  const margin = Math.min(config && config.obstacleClearance || 55, Math.max(6, selfRadius * 0.6)) + selfRadius;
-  const dir = unit2(base.x, base.z, tangentX, tangentZ);
-  if (orbitObstacleFreeRun(self, dir, obstacles, lookahead, margin, target.id, counters, counterMode) >= lookahead) return base;
-
-  const fans = ORBIT_TERRAIN_FAN.map((offset) => {
-    const c = Math.cos(offset), s = Math.sin(offset);
-    const cand = { x: dir.x * c - dir.z * s, z: dir.x * s + dir.z * c };
-    return { offset, dir: cand, free: orbitObstacleFreeRun(self, cand, obstacles, lookahead, margin, target.id, counters, counterMode) };
-  });
-  let best = fans[0], bestScore = -Infinity;
-  for (let i = 0; i < fans.length; i++) {
-    const entry = fans[i];
-    const feasible = entry.free >= lookahead;
-    // A wider safe arc means the pick sits inside a contiguous run of feasible directions —
-    // a single threading ray between two bodies is not a lane to hold an orbit on.
-    let arc = 0;
-    if (feasible) {
-      arc = 1;
-      for (let j = i - 1; j >= 0 && fans[j].free >= lookahead; j--) arc++;
-      for (let j = i + 1; j < fans.length && fans[j].free >= lookahead; j++) arc++;
-    }
-    const continuity = speed > 1 ? (entry.dir.x * vx + entry.dir.z * vz) / speed : 0;
-    const score = (feasible ? 10000 : 0) + arc * 300 + continuity * 60
-      - Math.abs(entry.offset) * 25 + Math.min(entry.free, lookahead) * 0.5;
-    if (score > bestScore) { bestScore = score; best = entry; }
-  }
-  if (!best || best.offset === 0) return base;
-  const mag = Math.hypot(base.x, base.z) || 1;
-  return { x: best.dir.x * mag, z: best.dir.z * mag, arrivalDistance: base.arrivalDistance };
+  return { x: tangentX + radialX * 1.15, z: tangentZ + radialZ * 1.15, arrivalDistance: Math.abs(dist - radius) };
 }
 
 // INF-024: a screen holds station — it leans toward the threat but never farther than it
@@ -1215,39 +1082,6 @@ function stampDesired(source, next) {
   next.desiredVel = source.desiredVel;
   next.contactSeek = source.contactSeek;
   return next;
-}
-
-/**
- * Displace the desired state sideways by the reflex's signed lateral offset (world units).
- * Tracked desireds shift the setpoint and feed a lateral velocity term so the PD solver
- * actually flies the weave instead of just bending the heading; direction-only desireds
- * rotate by the offset angle.
- */
-function applyReflexToDesired(desired, self, reflex) {
-  if (!desired || !reflex || !Number.isFinite(reflex.lateral) || Math.abs(reflex.lateral) < 0.5) {
-    return desired;
-  }
-  const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
-  const perpX = -dir.z;
-  const perpZ = dir.x;
-  const lat = reflex.lateral;
-  // desired.x/z is a distance-scaled vector (the solver re-normalizes it), so adding the
-  // full lateral term rotates the commanded direction by ~atan(lat / dist) — the jink.
-  const out = { ...desired, x: desired.x + perpX * lat, z: desired.z + perpZ * lat };
-  if (desired.desiredPos) {
-    out.control = 'track';
-    out.desiredPos = {
-      x: desired.desiredPos.x + perpX * lat,
-      z: desired.desiredPos.z + perpZ * lat,
-    };
-    const vel = desired.desiredVel || ZERO_VEL;
-    out.desiredVel = {
-      x: vel.x + perpX * lat * 1.1,
-      z: vel.z + perpZ * lat * 1.1,
-    };
-    out.contactSeek = desired.contactSeek;
-  }
-  return out;
 }
 
 function overlaySelf(self, live) {

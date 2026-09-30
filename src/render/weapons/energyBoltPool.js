@@ -33,7 +33,6 @@ export function weaponEffectSeed(entityId) {
 }
 
 const VERTEX_SHADER = /* glsl */`
-  attribute vec2 aBoltTopology;
   attribute vec3 aBoltPos;
   attribute vec3 aBoltPrev;
   attribute vec3 aBoltAxis;
@@ -56,8 +55,6 @@ const VERTEX_SHADER = /* glsl */`
   varying float vVariant;
   varying float vAlong;
   varying vec2 vVariation;
-  varying vec3 vBoltWorld;
-  varying float vPatch;
 
   void main() {
     vUv = uv;
@@ -67,11 +64,6 @@ const VERTEX_SHADER = /* glsl */`
     vVariant = aBoltSize.w;
     vAlong = uv.x;
     vVariation = aBoltVariation;
-    vPatch=aBoltTopology.y;
-    bool special=(aBoltSize.w>0.5&&aBoltSize.w<1.5)||(aBoltSize.w>3.5&&aBoltSize.w<5.5)||aBoltSize.w>6.5;
-    if(special!=(aBoltTopology.x>0.5)){
-      vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;
-    }
 
     vec3 curr = aBoltPos;
     vec3 prev = aBoltPrev;
@@ -118,19 +110,8 @@ const VERTEX_SHADER = /* glsl */`
       shaped.x += (1.0 - side * side) * bow * 0.19;
       shaped.yz *= 0.70 + smoothstep(0.35, 0.80, t) * 0.62;
     } else if (aBoltSize.w < 1.5) {
-      // Three unequal hollow convection channels orbit a hot open interior. The
-      // rolled cross-section exposes sidewalls and a dark cavity at every view.
-      float chargeRegion=aBoltTopology.y;
-      float helix=chargeRegion*2.0943951+t*(1.8+chargeRegion*.24)-evolution*2.3;
-      float envelope=pow(max(bow,0.0),.58);
-      float roll=side*2.35;
-      float channel=(.13+.025*sin(t*8.0-evolution*3.2+chargeRegion))*envelope;
-      float radius=(.32+.055*sin(t*9.0-evolution*4.1+chargeRegion*2.1))*envelope;
-      float radial=radius+sin(roll)*channel;
-      float tangential=(.65-cos(roll))*channel;
-      shaped.x=(t-.5)+envelope*side*.055;
-      shaped.y=cos(helix)*radial-sin(helix)*tangential;
-      shaped.z=sin(helix)*radial+cos(helix)*tangential;
+      shaped.yz *= 1.10 + 0.24 * sin(t * 12.56637 + side * 2.2 - evolution * 5.0);
+      shaped.x += bow * side * 0.12;
     } else if (aBoltSize.w >= 1.5 && aBoltSize.w < 2.5) {
       // Kinetic sabot: a machined dart, not a recoloured pulse. Needle nose, a hard flared
       // base where the driving band bit, and a rifling twist carried in the velocity frame.
@@ -141,53 +122,18 @@ const VERTEX_SHADER = /* glsl */`
       shaped.yz = vec2(shaped.y * cs - shaped.z * sn, shaped.y * sn + shaped.z * cs);
       shaped.x += (1.0 - side * side) * (1.0 - t) * 0.09;
     } else if (aBoltSize.w >= 2.5 && aBoltSize.w < 3.5) {
-      // Rail carries a continuous penetrator with a broad driving heel. No detached
-      // white collar or periodic bands: a hot leading edge leaves a cold solid shaft.
-      shaped.yz *= 0.44 + 0.82 * pow(1.0 - t, 2.4);
-      shaped.x += side * side * (1.0-t) * .04;
+      // Rail / siege: a relativistic needle with one detached ionisation collar behind the
+      // nose. Thinner than the sabot along its whole length, so the two never read alike.
+      float collar = exp(-pow((t - (0.68 + aBoltVariation.y * 0.08)) / 0.085, 2.0));
+      shaped.yz *= 0.60 + 0.32 * pow(1.0 - t, 2.2) + collar * 1.18;
+      shaped.x += collar * side * 0.07;
     } else if (aBoltSize.w >= 3.5 && aBoltSize.w < 4.5) {
-      // Induction is an opposed fork, not a thermal helix. Two thick channels
-      // bridge at the heel, split, and reconnect at the charged leading junction.
-      if(aBoltTopology.y>1.5){vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
-      float branch=aBoltTopology.y<.5?-1.0:1.0;
-      float envelope=pow(max(bow,0.0),.62),crossAngle=side*3.14159265;
-      shaped.x=t-.5;
-      shaped.y=branch*.38*envelope+sin(crossAngle)*.15*envelope;
-      shaped.z=cos(crossAngle)*.15*envelope+branch*.07*envelope*sin(t*9.0-evolution*3.4);
+      shaped.yz *= 0.8 + 0.6 * sin(t * 3.14159265);
+      shaped.yz *= 1.0 + bow * 0.12 * sin(t * 11.0 - evolution * 7.0);
+      shaped.x += abs(side) * bow * 0.20;
     } else if (aBoltSize.w >= 4.5 && aBoltSize.w < 5.5) {
-      // Three offset bow shells compress forward and peel at their open shoulders.
-      // Their short axial bowls carry a pressure wall rather than a pointed dart.
-      float shell=aBoltTopology.y;
-      float theta=side*2.2+shell*2.0943951;
-      float span=.18+.42*sin(t*3.14159265)*(.86+.10*sin(evolution*3.0-shell));
-      shaped.x=(t-.5)*.48+.16*cos(side*1.8)-shell*.075;
-      shaped.y=cos(theta)*span;
-      shaped.z=sin(theta)*span;
-    } else if (aBoltSize.w > 7.5) {
-      // A motor is fed at t=1 (the real rear nozzle). Two open, rolled exhaust banks
-      // spread into unequal afterburn reaches; torpedo carries a third loaded bank.
-      float bankId=aBoltTopology.y,heavy=step(8.5,aBoltSize.w);
-      if(bankId>1.5&&heavy<.5){vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
-      float aft=1.0-t,turn=bankId*(heavy>.5?2.0943951:3.14159265);
-      float section=side*2.3+.25*sin(aft*9.0-evolution*3.8+bankId);
-      float spread=(.09+.36*pow(aft,.7))*(.8+.2*sin(t*3.14159265));
-      float radial=sin(section)*spread,deep=(.52-cos(section))*spread;
-      shaped.x=t-.5;
-      shaped.y=cos(turn)*radial-sin(turn)*deep;
-      shaped.z=sin(turn)*radial+cos(turn)*deep;
-      shaped.yz+=vec2(sin(aft*8.0-evolution*4.2+bankId),cos(aft*7.0-evolution*3.0+bankId))*.06*aft;
-    } else if (aBoltSize.w > 6.5) {
-      // Siege carries a loaded three-lobed bore chamber, with a dark axial lumen and
-      // a blunt compressed leading shoulder. This is separate volume topology, not a rail tint.
-      float bankId=aBoltTopology.y,turn=bankId*2.0943951;
-      float envelope=pow(max(bow,0.0),.42);
-      float roll=side*2.35+.12*sin(t*7.0-evolution*2.4+bankId);
-      float radius=(.28+.11*smoothstep(.38,.76,t))*envelope;
-      float radial=radius+sin(roll)*.17*envelope;
-      float cross=(.62-cos(roll))*.17*envelope;
-      shaped.x=t-.5+envelope*.045*sin(side*2.0+bankId);
-      shaped.y=cos(turn)*radial-sin(turn)*cross;
-      shaped.z=sin(turn)*radial+cos(turn)*cross;
+      shaped.x = (t - 0.5) * 0.6 + side * side * bow * 0.28;
+      shaped.yz *= 1.65;
     } else if (aBoltSize.w >= 5.5) {
       // Flak: a stubby tumbling fragment. Stepped facets instead of a taper, and a body that
       // sits off the flight axis, so fragmentation never reads as a short glowing dart.
@@ -199,7 +145,6 @@ const VERTEX_SHADER = /* glsl */`
     vec3 world = mid
       + axis * shaped.x * dash
       + (r1 * shaped.y + r2 * shaped.z) * width;
-    vBoltWorld=world;
     gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
   }
 `;
@@ -213,8 +158,6 @@ const FRAGMENT_SHADER = /* glsl */`
   varying float vVariant;
   varying float vAlong;
   varying vec2 vVariation;
-  varying vec3 vBoltWorld;
-  varying float vPatch;
 
   uniform sampler2D uSceneDepth;
   uniform float uDepthEnabled;
@@ -242,66 +185,6 @@ const FRAGMENT_SHADER = /* glsl */`
 
   void main() {
     float boltClock = uBoltTime * (0.88 + vVariation.y * 0.24) + vVariation.x;
-    bool thermal=vVariant>.5&&vVariant<1.5;
-    bool induction=vVariant>3.5&&vVariant<4.5;
-    bool pressure=vVariant>4.5&&vVariant<5.5;
-    bool siege=vVariant>6.5&&vVariant<7.5;
-    bool motor=vVariant>7.5;
-    if(thermal||induction||pressure||siege||motor){
-      float t=vUv.x,v=vUv.y*2.0-1.0;
-      float flow=t*13.0-boltClock*5.8+vPatch*2.1;
-      float curl=v+.19*boltWave(t*9.0-boltClock*3.1+vPatch);
-      float convection=.5+.5*boltWave(flow+curl*2.8);
-      float secondary=.5+.5*boltWave(t*23.0-boltClock*7.0-curl*4.0+vPatch);
-      float broad=boltStrand(curl+.28,.30);
-      float fold=boltStrand(curl-.56,.14);
-      float channel=boltStrand(curl-.08,.18);
-      float patches=smoothstep(.18,.74,convection*.65+secondary*.35);
-      float body=.15+.42*patches;
-      float hot=broad*(.20+.80*convection)+fold*(.45+1.2*secondary);
-      float alpha=(.11+.39*patches+.18*fold)*(1.0-.72*channel);
-      float edge=1.0-smoothstep(.88,1.0,abs(v));
-      if(induction){
-        // The branch is substantial, but charge travels in discrete attached fronts.
-        float conductor=.5+.5*boltWave(v*6.2831853+t*5.0);
-        hot=(.35+.75*conductor)*(.4+.6*pow(convection,3.0));
-        body=.12+.30*conductor;alpha=.18+.42*conductor;edge=1.0;
-      }else if(pressure){
-        float front=boltStrand(t-.73-.05*boltWave(boltClock*3.0+vPatch),.15);
-        hot=front*(.65+.70*secondary)+broad*.22;
-        body=.20+.25*convection;alpha=.13+.40*front+.14*patches;
-      }else if(siege){
-        // Dense transported charge walks toward the shoulder while return flow vents
-        // down the outer folds. Dark separation survives even on a bright sky.
-        float shoulder=boltStrand(t-.72,.13);
-        float charge=boltStrand(t-(.24+.45*convection),.18);
-        hot=shoulder*(.45+.50*secondary)+charge*broad*.65+fold*.28;
-        body=.18+.24*patches;alpha=.23+.25*patches+.12*shoulder;
-      }else if(motor){
-        float aft=1.0-t;
-        float carried=.5+.5*boltWave(aft*17.0-boltClock*8.0+vPatch*1.8);
-        float nozzle=boltStrand(aft-.13,.10);
-        hot=(broad*(.35+.75*carried)+fold*.45)*(1.0-aft*.58)+nozzle*.48;
-        body=.12+.20*carried;alpha=(.20+.28*carried)*(1.0-smoothstep(.63,1.0,aft));
-        channel=boltStrand(curl,.25);
-      }
-      float tips=smoothstep(0.0,.085,t)*(1.0-smoothstep(.90,1.0,t));
-      alpha*=edge*tips;
-      vec3 N=normalize(cross(dFdx(vBoltWorld),dFdy(vBoltWorld)));
-      float viewDepth=.72+.28*(1.0-abs(dot(N,normalize(cameraPosition-vBoltWorld))));
-      vec3 colour=mix(vSheath*.36,vColor,.20+.25*patches)*body*viewDepth;
-      colour+=mix(vSheath,vColor,.58)*hot*(1.0-.65*channel)*1.5;
-      colour+=vec3(.95,.98,1.0)*pow(fold,3.0)*secondary*.40;
-      float radiance=vIntensity*mix(.52,1.0,uBoltFlicker);
-      if(uDepthEnabled>.5){
-        vec2 screenUv=gl_FragCoord.xy/max(uResolution,vec2(1.0));
-        float sceneZ=linearDepth(texture2D(uSceneDepth,screenUv).x),fragZ=linearDepth(gl_FragCoord.z);
-        float soft=clamp((sceneZ-fragZ)/max(uSoftDistance,1e-4),0.0,1.0);
-        alpha*=soft;radiance*=mix(.4,1.0,soft);
-      }
-      if(alpha<.003)discard;
-      gl_FragColor=vec4(colour*radiance,alpha);return;
-    }
     float across = abs(vUv.y * 2.0 - 1.0);
     float core = pow(max(0.0, 1.0 - across), 6.0);
     float sheath = 1.0 - smoothstep(0.72, 1.0, across);
@@ -346,15 +229,16 @@ const FRAGMENT_SHADER = /* glsl */`
     col = mix(col, vec3(1.0, 0.97, 0.9), machCore * machHead * kinetic * 0.95);
     col = mix(col, vec3(1.0, 0.62, 0.22), machTail * kinetic * 0.85);
 
-    // Variant 3: Rail - a continuous cold shaft with a brief incandescent leading edge.
+    // Variant 3: Rail / Siege - relativistic needle with a white-hot core, a tight ionized
+    // halo, and shock rings running the shaft. Thinner and hotter than the kinetic Mach
+    // tracer: the most authoritative line on the field.
     float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
     float railNeedle = pow(max(0.0, 1.0 - across), 10.0);
     float railHalo = pow(max(0.0, 1.0 - across), 2.6);
+    float railRings = 0.86 + uBoltFlicker * 0.14 * boltWave(vAlong * 44.0 - boltClock * 62.0);
     float railHead = smoothstep(0.35, 1.0, vAlong);
-    float railTip=boltStrand(vAlong-.78,.085);
-    body = mix(body, (railNeedle*(.64+.22*railHead)+railHalo*.24)*tip, rail);
-    vec3 railStock=mix(vSheath*.25,vColor*.72,railHead)+vec3(.75,.48,.20)*railTip*railNeedle;
-    col = mix(col,railStock,rail);
+    body = mix(body, (railNeedle * 1.7 + railHalo * 0.4) * railRings * (0.7 + railHead * 0.8), rail);
+    col = mix(col, vec3(1.0, 0.99, 0.96), railNeedle * rail * 0.95);
 
     // Variant 4: EMP - bifurcated electric arcs crackling across fins
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));
@@ -475,11 +359,6 @@ export class EnergyBoltPool {
     this.entityIds.fill(-1);
     this.byEntity = new Map();
     this.writeCount = 0;
-    // Quiet settled flight: beginFrame Map.clear + uniform writes + commit attr
-    // republish ran every tick after the last bolt died. Trust empty mesh after the
-    // first empty publish; defer begin until writeBolt (or drop on quiet commit).
-    this._quietEmpty = false;
-    this._deferredBegin = null;
     this._color = new THREE.Color();
     this._camera = null;
     this._time = 0;
@@ -529,17 +408,6 @@ export class EnergyBoltPool {
   }
 
   beginFrame(dt = 0, accessibilityProfile = null) {
-    // Already empty/invisible: defer Map.clear + uniform writes until a bolt is written.
-    // commit() drops the deferred begin when writeCount stays 0 — picture unchanged.
-    if (this._quietEmpty) {
-      this._deferredBegin = { dt, accessibilityProfile };
-      this.writeCount = 0;
-      return;
-    }
-    this._beginFrameNow(dt, accessibilityProfile);
-  }
-
-  _beginFrameNow(dt = 0, accessibilityProfile = null) {
     const profileId = accessibilityProfile && accessibilityProfile.id;
     const reducedMotion = profileId === 'reduced-motion' || profileId === 'reduced-motion-and-flash';
     const reducedFlash = profileId === 'reduced-flash' || profileId === 'reduced-motion-and-flash';
@@ -548,7 +416,6 @@ export class EnergyBoltPool {
     this.material.uniforms.uBoltFlicker.value = reducedFlash ? 0 : 1;
     this.writeCount = 0;
     this.byEntity.clear();
-    this._deferredBegin = null;
   }
 
   writeBolt({
@@ -561,15 +428,6 @@ export class EnergyBoltPool {
     sheathR, sheathG, sheathB,
     minPixels,
   }) {
-    if (this._deferredBegin) {
-      const deferred = this._deferredBegin;
-      this._deferredBegin = null;
-      this._quietEmpty = false;
-      this._beginFrameNow(deferred.dt, deferred.accessibilityProfile);
-    } else if (this._quietEmpty) {
-      this._quietEmpty = false;
-      this._beginFrameNow(0, null);
-    }
     const index = this.writeCount;
     if (index >= this.capacity) return -1;
     this.writeCount = index + 1;
@@ -671,16 +529,6 @@ export class EnergyBoltPool {
   }
 
   commit() {
-    // Quiet latch: deferred begin + no writes → stay empty without republishing.
-    if (this._deferredBegin && this.writeCount === 0) {
-      this._deferredBegin = null;
-      return;
-    }
-    // Already published empty — skip sort + attr needsUpdate churn.
-    if (this.writeCount === 0 && this.mesh.count === 0 && !this.mesh.visible) {
-      this._quietEmpty = true;
-      return;
-    }
     this._sortBackToFront();
     if (this.dynamicBufferOwner) {
       commitDynamicBufferOwner(this.dynamicBufferOwner, this.writeCount);
@@ -696,7 +544,6 @@ export class EnergyBoltPool {
       this.variation.needsUpdate = true;
     }
     this.mesh.visible = this.writeCount > 0;
-    this._quietEmpty = this.writeCount === 0 && this.mesh.count === 0 && !this.mesh.visible;
   }
 
   get live() {

@@ -22,7 +22,6 @@ import {
   physicsReachWu,
 } from './activityClassification.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
-import { packPoseTable, poseTableDiscoveryScan } from './poseTable.js';
 import { hasNearWorkSlot, shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
@@ -439,12 +438,9 @@ function applyStamp(entity, classified, simTime) {
   if (!rec) {
     rec = makeStamp(classified, simTime);
     attachStamp(entity, rec);
-    // Fresh stamp — physics partition depends on tier/pin; fill cache for classify.
-    refreshPhysicsPartition(entity);
     return rec;
   }
   const prior = rec.simTier;
-  const priorPinned = rec.pinnedExact;
   const wasExact = isExactTier(prior);
   let tier = classified.simTier;
   let nowExact = isExactTier(tier);
@@ -470,12 +466,6 @@ function applyStamp(entity, classified, simTime) {
   rec.lastObservedT = simTime;
   if (classified.nextEventAtT != null) rec.nextEventAtT = classified.nextEventAtT;
   else if (!Number.isFinite(rec.nextEventAtT) || rec.nextEventAtT < 0) rec.nextEventAtT = -1;
-  // entityNeedsPhysics / shouldSync partition follows simTier + pinnedExact. Refresh only
-  // when those flip so quiet revisits read the cached byte (profile shouldSyncPhysicsBodyEntity
-  // + isDynamicPhysicsBodyEntity under classifyWorld).
-  if (prior !== rec.simTier || priorPinned !== rec.pinnedExact || entity._physicsPartition == null) {
-    refreshPhysicsPartition(entity);
-  }
   return rec;
 }
 
@@ -738,7 +728,6 @@ export function admitSameTickProjectiles(state, runtime, membership) {
     const entity = unseen[i];
     runtime.seenEntityIds.add(entity.id);
     runtime.currentEntityIds.add(entity.id);
-    entity._physicsPartition = 2;
     runtime.physicsDynamics.push(entity);
     runtime.exactIds.push(entity.id);
     runtime.counts.physics += 1;
@@ -836,23 +825,13 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
   // subtracts and a compare against scratch state — no allocation.
   if (origin) {
     const discover = Math.max(0, finite(discoverWu));
-    const poseTable = packPoseTable(state);
-    const byId = state.entities;
-    const useColumns = poseTable
-      && poseTable.source === list
-      && poseTable._idlessCount === 0
-      && byId && typeof byId.get === 'function';
-    if (useColumns) {
-      poseTableDiscoveryScan(poseTable, byId, seen, add, discover, origin);
-    } else {
-      for (let i = 0; i < list.length; i++) {
-        const entity = list[i];
-        if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
-        const limit = discover + entityPresenceRadius(entity);
-        const dx = finite(entity.pos.x) - origin.x;
-        const dz = finite(entity.pos.z) - origin.z;
-        if (dx * dx + dz * dz <= limit * limit) add(entity);
-      }
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+      const limit = discover + entityPresenceRadius(entity);
+      const dx = finite(entity.pos.x) - origin.x;
+      const dz = finite(entity.pos.z) - origin.z;
+      if (dx * dx + dz * dz <= limit * limit) add(entity);
     }
   }
   return { mode: 'incremental', entities: out };
@@ -1053,8 +1032,7 @@ function classifyWorld(state, runtime) {
       }
     }
     const signature = cachedActivitySignature(runtime, entity.id, stamp);
-    // '' is a valid sentinel: real signatures always contain '|' separators.
-    if ((runtime.signaturesById.get(entity.id) ?? '') !== signature) {
+    if (runtime.signaturesById.get(entity.id) !== signature) {
       runtime.signaturesById.set(entity.id, signature);
       runtime.changedIds.push(entity.id);
     }
@@ -1071,15 +1049,13 @@ function classifyWorld(state, runtime) {
       runtime.activeTrafficEntities.push(entity);
     }
 
-    // Physics partition cache: 0=skip, 1=static, 2=dynamic. applyStamp refreshes on
-    // tier/pin flips; first touch fills. Avoids re-entering authoredPhysicsBody/defaultDynamic
-    // on every quiet classify revisit.
-    let partition = entity._physicsPartition;
-    if (partition !== 0 && partition !== 1 && partition !== 2) {
-      partition = refreshPhysicsPartition(entity);
+    if (!entityNeedsPhysics(entity)) continue;
+    if (!shouldSyncPhysicsBodyEntity(entity)) continue;
+    if (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') {
+      dynamics.push(entity);
+    } else {
+      statics.push(entity);
     }
-    if (partition === 2) dynamics.push(entity);
-    else if (partition === 1) statics.push(entity);
   }
 
   if (runtime.classifyMode === 'incremental') {
@@ -1291,26 +1267,6 @@ export function entityNeedsPhysics(entity) {
   if (!activity || !activity.simTier) return true;
   if (activity.pinnedExact) return true;
   return isExactTier(activity.simTier);
-}
-
-/**
- * Cached classify physics partition: 0 = skip, 1 = static sync, 2 = dynamic sync.
- * Mirrors entityNeedsPhysics + shouldSyncPhysicsBodyEntity + isDynamicPhysicsBodyEntity
- * (projectile forced dynamic). Quiet revisits read the byte; applyStamp refreshes on
- * simTier / pinnedExact flips.
- */
-export function refreshPhysicsPartition(entity) {
-  if (!entity || entity.alive === false) {
-    if (entity) entity._physicsPartition = 0;
-    return 0;
-  }
-  if (!entityNeedsPhysics(entity) || !shouldSyncPhysicsBodyEntity(entity)) {
-    entity._physicsPartition = 0;
-    return 0;
-  }
-  const kind = (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') ? 2 : 1;
-  entity._physicsPartition = kind;
-  return kind;
 }
 
 /**

@@ -489,9 +489,7 @@ export const gameOverScreen = {
     for (const child of root.children) {
       if (!child || !child.style) continue;
       hidden.push(child);
-      // opacity, not visibility: a hidden control cannot take focus, and a d-pad pressed during the
-      // slide moved nothing (the pad walk failed the screen); faded it stays reachable
-      child.style.opacity = '0';
+      child.style.visibility = 'hidden';
     }
     this._slideHidden = hidden;
     this._slideTimer = setTimeout(() => this._endDeathSlide(), 400);
@@ -502,7 +500,7 @@ export const gameOverScreen = {
     if (root) root.classList.add('k-screen--cold');
     const hidden = this._slideHidden;
     if (hidden) {
-      for (const child of hidden) child.style.opacity = '';
+      for (const child of hidden) child.style.visibility = '';
       this._slideHidden = null;
     }
     this._slideTimer = null;
@@ -594,8 +592,7 @@ export const gameOverScreen = {
       bead.setAttribute('transform', `rotate(${deg.toFixed(2)})`);
     }
     if (this._hubScrubT) this._hubScrubT.textContent = fmtSortieTime(t);
-    // the hub reads the time; the moment's word rides the tape's Hand (one place each)
-    if (this._hubScrubW) this._hubScrubW.textContent = 'Into the sortie';
+    if (this._hubScrubW) this._hubScrubW.textContent = ev ? ev.label : 'Into the sortie';
   },
 
   /** The ring the career record stands round: the career's time as one closed track with a bezel of
@@ -736,12 +733,10 @@ export const gameOverScreen = {
     const values = {
       cause: receipt && (receipt.fatalSummary || receipt.cause) || death.cause,
       lifespan: death.lifespan,
-      // "aft hull, main drive · shield 0% · armour 0% · hull 0%": where it struck, then what was left
       damage: receipt ? [
-        [
-          [receipt.direction, String(receipt.dominantLayer || 'hull').toUpperCase()].filter(Boolean).join(' '),
-          receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
-        ].filter(Boolean).join(', '),
+        receipt.direction,
+        String(receipt.dominantLayer || 'hull').toUpperCase(),
+        receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
         receipt.vitalsPct && `shield ${receipt.vitalsPct.shield}% · armour ${receipt.vitalsPct.armor}% · hull ${receipt.vitalsPct.hull}%`,
       ].filter(Boolean).join(' · ') : 'Unresolved',
       dock: recovery.stationName || 'No recovery route',

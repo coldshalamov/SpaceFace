@@ -61,10 +61,6 @@
   #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
   #screens { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
   #screens > .k-screen { pointer-events: auto; }
-  /* The .screen root's translateY(0) (push/pop transition) makes it the containing block for the
-     orreryFlight preview's position:fixed stage, collapsing paint to ~0x0. The bench never runs
-     push/pop transitions, so drop the transform on that root only (w3a O1, staging only). */
-  .screen[data-screen="orreryFlight"] { transform: none; }
   #bench-bar {
     position: fixed; z-index: 400; top: 0; left: 0; right: 0; display: flex; gap: 10px; align-items: center;
     padding: 4px 10px; background: rgb(6 8 10 / 0.82); border-bottom: 1px solid #2a2f36;

@@ -124,17 +124,16 @@ ${SL} > .k-hang { grid-area:hang; position:relative; min-height:0; height:calc(2
   -webkit-mask-image:none !important; mask-image:none !important; ${PLAIN} }
 ${SL} .orr-film__list > .k-row.sf-slot { display:grid !important; grid-template-columns:minmax(0, 1fr); grid-template-areas:"frame" "label" "num";
   column-gap:10px; row-gap:0; align-items:start; padding:0 !important; min-height:0 !important; height:auto !important; ${PLAIN}
-  cursor:pointer; text-align:center; color:rgb(${BONE}); outline:none !important; }
+  cursor:pointer; text-align:left; color:rgb(${BONE}); outline:none !important; }
 ${SL} .orr-film__list > .k-row.sf-slot::before, ${SL} .orr-film__list > .k-row.sf-slot::after { display:none !important; content:none !important; translate:none !important; scale:none !important; }
 ${SL} .orr-film__list > .k-row.sf-slot > div { grid-area:label; min-width:0; }
-${SL} .orr-film__list > .k-row.sf-slot > .k-row__num { grid-area:num; justify-self:center; margin-top:calc(4px * var(--sv)); }
+${SL} .orr-film__list > .k-row.sf-slot > .k-row__num { grid-area:num; justify-self:start; margin-top:calc(4px * var(--sv)); }
 ${SL} .sf-slot-frame { grid-area:frame; position:relative; display:block; height:calc(92px * var(--sv)); margin:0 0 calc(22px * var(--sv));
-  transform-origin:50% 100%; opacity:.88; transition:transform .32s cubic-bezier(.2, 1.3, .4, 1), opacity .2s linear; }
+  background:${BERTH_STATION} center bottom / min(176px, 78%) max(26px, calc(32px * var(--sv))) no-repeat;
+  transform-origin:50% 100%; opacity:.72; transition:transform .32s cubic-bezier(.2, 1.3, .4, 1), opacity .2s linear; }
 ${SL} .sf-slot-frame.is-empty { height:max(30px, calc(38px * var(--sv))); }
-${SL} .sf-slot-berth { position:absolute; left:50%; bottom:0; width:min(176px, 78%); height:max(26px, calc(32px * var(--sv))); transform:translateX(-50%);
-  background:${BERTH_STATION} center / 100% 100% no-repeat; pointer-events:none; }
 ${SL} .sf-slot-frame > img { position:absolute; left:4%; top:0; width:92%; height:calc(100% - max(10px, calc(13px * var(--sv)))); object-fit:contain; object-position:50% 100%;
-  opacity:.84; filter:saturate(.8) brightness(.92); transition:opacity .2s linear, filter .2s linear; pointer-events:none; user-select:none; }
+  opacity:.78; filter:saturate(.72) brightness(.86); transition:opacity .2s linear, filter .2s linear; pointer-events:none; user-select:none; }
 ${SL} .sf-slot-frame.is-filed::after { content:""; position:absolute; left:50%; top:38%; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%;
   box-shadow:inset 0 0 0 2px rgb(${BONE} / .42); }
 /* Dock-rail: the slot under the Hand stands up, lit on its berth; the pointer lifts what it is over */
@@ -149,16 +148,15 @@ ${SL} .orr-film__list .k-row__name.sf-slot-name { ${LABEL} display:inline; font-
   color:rgb(${BONE} / .86) !important; white-space:normal; overflow:visible; text-overflow:clip; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
 ${SL} .orr-film__list .k-row.empty .k-row__name.sf-slot-name { color:rgb(${BONE} / .6) !important; }
 ${SL} .orr-film__list > .k-row[aria-selected="true"] .k-row__name.sf-slot-name { color:rgb(250 247 240) !important; }
-${SL} .orr-film__list .sf-slot-badges { display:inline !important; margin:0 !important; padding:0 !important; vertical-align:baseline !important; }
-${SL} .orr-film__list .sf-slot-badge { display:inline !important; vertical-align:baseline !important; margin:0 0 0 .5em !important; padding:0 !important; }
-${SL} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:"·"; margin-right:.5em; color:rgb(${BONE} / .56); }
+${SL} .orr-film__list .sf-slot-badges { display:inline-flex; flex-wrap:wrap; gap:0 8px; margin-left:8px; vertical-align:1px; }
+${SL} .orr-film__list .sf-slot-badges::before { content:"·"; color:rgb(${BONE} / .56); }
 ${SL} .orr-film__list .sf-slot-badge { ${LABEL} font-size:max(10px, calc(9.5px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .64) !important; text-shadow:none !important; }
 ${SL} .orr-film__list .sf-slot-badge--calm { display:none !important; }
 ${SL} .orr-film__list .sf-slot-badge--you { color:rgb(${BONE} / .86) !important; }
 ${SL} .orr-film__list .sf-slot-badge--foe { color:var(--dp-danger-hot, #ff7a5c) !important; }
 ${SL} .orr-film__list .k-row__sub.sf-slot-sub { ${BODY} margin-top:calc(3px * var(--sv)); font-size:max(11.5px, calc(12.5px * var(--sv))) !important; line-height:1.32; color:rgb(${BONE} / .7) !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere; }
-${SL} .orr-film__list .k-row.empty .k-row__sub.sf-slot-sub { color:rgb(${BONE} / .66) !important; }
+${SL} .orr-film__list .k-row.empty .k-row__sub.sf-slot-sub { color:rgb(${BONE} / .56) !important; }
 ${SL} .orr-film__list .k-row__num { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wght" 520, "wdth" 100; font-weight:520;
   font-size:max(11.5px, calc(13px * var(--sv))) !important; line-height:1.3; color:var(--dp-phos, rgb(223 238 255)) !important; text-shadow:none !important; white-space:nowrap; }
 
@@ -321,16 +319,14 @@ ${GO} .sf-go-st--hub { left:50%; top:50%; transform:translate(-50%, -50%); flex-
 ${GO} .sf-go-st--hub .sf-go-recap__v { font-variation-settings:"wght" 250, "wdth" 100 !important; font-weight:250 !important; font-size:calc(46px * var(--sv)) !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-st:not(.sf-go-st--hub) { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__v { ${LABEL} font-size:max(11px, calc(13px * var(--sv))) !important; letter-spacing:.3em !important; color:rgb(${BONE} / .7) !important; }
-${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__k { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; }
+${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__k { color:rgb(${BONE} / .56) !important; }
 
 /* ---- the black box along the foot ---- */
 ${GO} > .sf-go-tape { grid-area:tape; position:relative; height:max(122px, calc(150px * var(--sv))); margin:0; padding:0; }
 ${GO} > .sf-go-tape::before { content:""; position:absolute; inset:-18px -40px -10px; z-index:-1; pointer-events:none;
   background:radial-gradient(60% 100% at 50% 50%, rgb(4 5 8 / .55), rgb(4 5 8 / .25) 70%, transparent); }
-${GO} > .sf-go-tape:focus-within .orr-tape__base { stroke:rgb(${BONE} / .5); }
-/* a focused stop is a ring of the Hand's light round the bead, never a square focus box */
-${GO} > .sf-go-tape .orr-tape__stop:focus-visible { outline:none !important; border-radius:50% !important; box-shadow:0 0 0 1.5px rgb(255 217 140 / .7), 0 0 10px 1px rgb(255 217 140 / .25) !important; }
-${GO} > .sf-go-tape .orr-tape__stop { border-radius:50% !important; outline:none !important; }
+${GO} > .sf-go-tape:focus-visible { outline:none; }
+${GO} > .sf-go-tape:focus-visible .orr-tape__band { fill:rgb(${BONE} / .16); }
 @media (max-width:1100px) {
   ${GO} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "stage" "foot" "recap" "tape" !important; grid-template-rows:auto auto auto auto auto !important; overflow:auto; }
   ${GO} > .sf-go-recap { justify-self:center; }

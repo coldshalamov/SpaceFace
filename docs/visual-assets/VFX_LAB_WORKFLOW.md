@@ -24,40 +24,13 @@ capture a selected action with the [capture driver](../../scripts/capture-vfx-ga
 ```powershell
 python scripts/capture-vfx-gameplay-demo.py --scenario well --video
 python scripts/capture-vfx-gameplay-demo.py --all --output .devshots/vfx-gameplay-review
-python scripts/capture-vfx-gameplay-demo.py --scenario capital-rupture --continuous-video --continuous-fps 60
-python scripts/capture-vfx-gameplay-demo.py --scenario singularity --context open --view wide
-python scripts/capture-vfx-gameplay-demo.py --all --continuous-video --width 960 --height 540 --seed-variant 41 --context-variant open --output .devshots/vfx-sequence-review
-# Compare the bundled browser with Playwright's new Chromium headless channel:
-python scripts/capture-vfx-gameplay-demo.py --scenario singularity --continuous-video --continuous-max-seconds 0.5 --continuous-fps 60 --width 960 --height 540 --browser-channel chromium --output .devshots/vfx-channel-bench
 ```
 
 The driver uses Python Playwright and saves diagnostic output under
 `.devshots/vfx-gameplay-demo/`. The page exposes `window.__vfxDemo` for deterministic
 selection and time sampling; pause playback before automated sampling.
-`--video` produces a labeled phase reel. `--continuous-video` records every selected case at
-normal speed, with every displayed frame sampled from the same 60 Hz simulation. It defaults to
-60 fps; 24 and 30 fps are available. Capture is checkpointed in `manifest.json` at bounded chunk
-intervals and can resume with `--resume`. `--continuous-max-seconds` is an explicit cap: capped
-sequences are reported as truncated instead of being silently mistaken for complete lifecycles.
-`timeline.html` is a compact contact sheet linking native canvas phase frames, raw continuous
-frames, and any encoded MP4s. Continuous frames are retained only with
-`--retain-continuous-frames`; otherwise bounded chunks are encoded and temporary PNGs are
-removed. Repeat `--scenario` to select several cases; `--all` selects the whole page catalog.
-Add `--seed-variant` or `--context-variant` to capture a cross-product of deterministic
-seed/context variants. Use the interactive page for unlimited continuous playback.
-The default `--browser-channel chromium` uses new headless Chromium (Intel/ANGLE on the tested Windows host).
-Explicit `--browser-channel default` selects the bundled headless shell; `chrome` and
-`msedge` select an installed Playwright channel for a controlled renderer comparison. The
-manifest records the browser version, WebGL debug vendor/renderer when exposed, source/module
-hashes, exact capture configuration, wall time, and per-chunk frame throughput. Resume rejects
-changed source or configuration so frames from an older production build are not reused.
-Weapon samples follow actual flight and contact times.
-Rock fracture, armor breach, volatile fuel, ship collision, and capital rupture use native
-cause-specific receipts. Capital destruction uses the released Colossus and its real radius/mass.
-The `open` context moves actual bodies beyond the field instead of disabling the environment
-response. `near` and `close` use visible, alive released bodies. Compare at the same seed, camera
-and age: local flow should bend where bodies are present, while the true force boundary stays put.
-Timelines include local arrival, early and mature flow, supply cutoff, release and extinction.
+The optional video is a labeled phase reel, not real-time playback. Use the interactive
+page to watch continuous motion. Weapon samples follow the actual flight and contact times.
 The report records resolution, renderer, asset-manifest identity, selected phases, and errors.
 
 ## Autonomous iteration
@@ -84,10 +57,10 @@ The report records resolution, renderer, asset-manifest identity, selected phase
 
 | Family | Causal motion and finish |
 |---|---|
-| Destruction | Mineral fracture fans, directional armor tearing, reactor cavities, or rolling fuel fire; material-specific fragments and cooling |
-| Gravity | Unequal inward arrival, differential shear, mature recirculation, then supply cutoff and draining fragments |
-| Pressure | Broad bowed advancing crests with depth, open sectors, peeling and slowing wake |
-| Electrical | Branch formation, travelling charge, local contact, disconnected branches and cooling |
+| Combustion and impact | Brief hot interfaces, breaking lobes and solid fragments, cooling cavities and residue |
+| Gravity | Unequal inward capture paths, orbital shear, consumption and contracting release |
+| Pressure | Directional separation, a thin advancing front, peeling and slowing wake |
+| Electrical | Branch formation, travelling charge, local contact, retraction and cooling |
 | Tools and Massline | Connected endpoints, transported work or load, truthful contact and release |
 | Repair and transfer | Directed convergence or arrival, local completion, clean retirement |
 | Propulsion | Nozzle impulse plus recorded world-space history; turns and stops preserve their different roles |
@@ -95,5 +68,5 @@ The report records resolution, renderer, asset-manifest identity, selected phase
 At every stage the hull, target, and gameplay footprint should remain readable. Reject visible
 pixel grids, solid luminous blankets, frozen internal detail, identical repeated bursts, clipped
 edges, and decorative particles unrelated to the action. Judge actual matter as matter and energy
-as substantial translucent material with moving dark channels and hot crests. Variation changes the character of an event without changing
+as structured, optically thin light. Variation changes the character of an event without changing
 what the player understands happened.

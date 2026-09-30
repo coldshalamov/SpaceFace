@@ -925,18 +925,18 @@ def s_triton_wake(m):
 def s_eunomia_gulf(m):
     rng = random.Random(211)
     glow = rock_mat("exotic", dark=(0.1, 0.09, 0.12), light=(0.3, 0.26, 0.34), rough=0.5, metal=0.4, emit=True, emit_col=(0.75, 0.45, 1.0), emit_strength=14.0, emit_scale=4.0, emit_thresh=0.05)
-    for i, (p, r) in enumerate([((-0.42, 0.3, 0.05), 0.36), ((0.44, 0.12, -0.05), 0.27), ((-0.02, -0.52, 0.0), 0.21), ((0.66, -0.5, 0.1), 0.12)]):
+    for i, (p, r) in enumerate([((-0.45, 0.3, 0.05), 0.2), ((0.4, 0.1, -0.05), 0.15), ((0.0, -0.5, 0.0), 0.12), ((0.62, -0.5, 0.1), 0.07)]):
         rock(f"ex{i}", r, p, squash=(1.2, 0.9, 0.8), detail=5, seed=80 + i, mat=glow)
     protos = rock_protos("eg", m["rock"], 3, 33)
-    scatter_cloud(protos, rng, 34, 1.05, (0.015, 0.05), squash=(1.2, 1, 0.5))
+    scatter_cloud(protos, rng, 14, 1.0, (0.01, 0.035), squash=(1.2, 1, 0.5))
 
 
 def s_sedna_dark(m):
     rng = random.Random(221)
-    body = rock_mat("sedna", dark=(0.035, 0.03, 0.03), light=(0.15, 0.13, 0.13), rough=0.4, bump=0.45)
+    body = rock_mat("sedna", dark=(0.02, 0.018, 0.018), light=(0.08, 0.07, 0.07), rough=0.45, bump=0.4)
     rock("body", 0.64, (0, 0, 0), squash=(1, 1, 0.94), detail=6, seed=91, mat=body)
     glint = emission_mat("glint", (0.65, 0.85, 1.0), 30.0)
-    for i in range(16):
+    for i in range(9):
         v = Vector((rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1))).normalized()
         if v.dot(Vector((-0.49, 0.68, 0.40)).normalized()) < -0.2:
             continue
@@ -944,9 +944,9 @@ def s_sedna_dark(m):
 
 
 def s_dione_lane(m):
-    sphere("moon", 0.36, (-0.62, 0.66, -0.35), rock_mat("dione", dark=(0.2, 0.2, 0.21), light=(0.55, 0.55, 0.54), rough=0.8, bump=0.55))
+    sphere("moon", 0.5, (-0.25, 0.2, -0.05), rock_mat("dione", dark=(0.2, 0.2, 0.21), light=(0.55, 0.55, 0.54), rough=0.8, bump=0.55))
     rng = random.Random(231)
-    hub_station("st", (0.08, -0.06, -0.02), 1.45, m, rng)
+    hub_station("st", (0.46, -0.28, 0.08), 0.62, m, rng)
     # the lane: a straight line of traffic lights passing the moon
     n = 24
     lights_along("lane", [(-1.0 + 2.0 * k / (n - 1), 0.62 - 1.24 * k / (n - 1), 0.28) for k in range(n)], 0.012, m["nav"])
@@ -975,7 +975,7 @@ SECTORS = {
     "sector_proteus_well": (s_proteus_well, {}),
     "sector_triton_wake": (s_triton_wake, {"samples": 192}),
     "sector_eunomia_gulf": (s_eunomia_gulf, {}),
-    "sector_sedna_dark": (s_sedna_dark, {"key": 1.3, "rim": 12.0}),
+    "sector_sedna_dark": (s_sedna_dark, {"key": 0.6, "rim": 9.0}),
     "sector_dione_lane": (s_dione_lane, {}),
 }
 

@@ -6,10 +6,8 @@ import { injectChartLayouts } from './orrery/chartLayouts.js';
 import {
   CHART_INK, chartFont, setTracking, drawBand, drawBandRing, drawBead, drawHandBeam, drawLaneComet,
   drawGlint, drawSensorLattice, drawSectorToken, drawLineReading, drawHoldRing, retrySectorTokens,
-  createZoomLever, createTabScale, drawFactionCrest, drawLineReadingLarge, drawPathPulse,
-  sectorTokenUrl, factionCrestUrl, drawLabelLeader, trimPolylineSegments,
+  createZoomLever, createTabScale, drawFactionCrest,
 } from './orrery/chartInstruments.js';
-import { placeChartLabels, placeChartCallout } from './orrery/chartLabels.js';
 import { dressLampKey } from './orrery/lampKey.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
 //
@@ -1049,19 +1047,6 @@ function humanizeId(id) {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1));
   return words.join(' ') || String(id);
-}
-
-/**
- * The SYSTEM dial's radial scale, in the sector-local frame: inside the gate ring a point at r
- * stands at R·√(r/R) (angles hold; the ring and everything past it stay linear). The draw applies
- * the same map in screen space; this is what a camera must aim at to centre a mark as drawn.
- */
-export function warpSectorLocal(p, ringWU) {
-  if (!p || !(ringWU > 0)) return p;
-  const d = Math.hypot(p.x, p.z);
-  if (!(d > 1e-6) || d >= ringWU) return { x: p.x, z: p.z };
-  const k = Math.sqrt(ringWU / d);
-  return { x: p.x * k, z: p.z * k };
 }
 
 function sectorNameOf(state, sectorId) {
@@ -2201,34 +2186,14 @@ export function isPlayerInGateRange(state, gateTarget) {
 export function emitGalaxyMapPrimaryAction(bus, action) {
   if (!bus || !action) return false;
   if (action.kind === 'jump' && action.targetSectorId) {
-    // The world validates on this same bus synchronously: acceptance answers `jump:chargeStart`,
-    // a refusal `jump:chargeAbort` — both DURING the requestJump emit below. Ask before claiming
-    // success: a refusal is voiced once by the receipt lane (bindJumpDenialToasts), and this
-    // toast must never promise a jump the drive just refused. A bus without listeners (headless
-    // fixtures, the shipped seam test) counts as accepted and keeps the old shape.
-    let accepted = true;
-    const onChargeStart = () => { accepted = true; };
-    const onChargeAbort = () => { accepted = false; };
-    if (typeof bus.on === 'function') {
-      accepted = false;
-      bus.on('jump:chargeStart', onChargeStart);
-      bus.on('jump:chargeAbort', onChargeAbort);
-    }
     bus.emit('world:requestJump', { targetSectorId: action.targetSectorId, via: 'gate' });
-    if (typeof bus.off === 'function') {
-      bus.off('jump:chargeStart', onChargeStart);
-      bus.off('jump:chargeAbort', onChargeAbort);
-    }
     const course = action.coursePayload || { type: 'sector', sectorId: action.targetSectorId, path: null };
     bus.emit('ui:setCourse', course);
-    if (accepted) {
-      const label = (action.coursePayload && action.coursePayload.label) || action.targetSectorId;
-      bus.emit('toast', {
-        text: `Course set: jump to ${label}`,
-        kind: 'info',
-        ttl: 3,
-      });
-    }
+    bus.emit('toast', {
+      text: `Course set: jump to ${action.targetSectorId}`,
+      kind: 'info',
+      ttl: 3,
+    });
     return true;
   }
   if (!action.coursePayload) return false;
@@ -2485,7 +2450,6 @@ const HINT_ROWS = Object.freeze([
   ['Zoom / pan the table', 'Wheel · Drag'],
   ['Inspect a mark', 'Click'],
   ['Lay a course', 'Dbl-click'],
-  ['Lay the line (preview, release to set)', 'Drag from you'],
   ['Cycle overlays', 'Tab'],
   ['Inspector tabs', '← →'],
   ['Search the chart', '/'],
@@ -3500,7 +3464,7 @@ export const galaxyMapScreen = {
       focusGlobal: known ? known.focusGlobal : (focusGlobal || preset.focusGlobal),
       spanWU: known ? known.spanWU : (sector || preset.spanWU),
       minSpanWU: MAP_SPAN_MIN_WU,
-      maxSpanWU: CHART_SPAN_MAX_WU,
+      maxSpanWU: MAP_SPAN_MAX_WU,
     });
     this._syncLegacyFromCamera();
     return this._camera;
@@ -3526,7 +3490,7 @@ export const galaxyMapScreen = {
       focusGlobal: preset.focusGlobal,
       spanWU: preset.spanWU,
       minSpanWU: MAP_SPAN_MIN_WU,
-      maxSpanWU: CHART_SPAN_MAX_WU,
+      maxSpanWU: MAP_SPAN_MAX_WU,
     });
     return this._camera;
   },
@@ -3896,33 +3860,6 @@ export const galaxyMapScreen = {
     this._tabPanel = rootEl.querySelector('#gm-tabpanel');
     this._placeActionsEl = rootEl.querySelector('#gm-place-actions');
     this._ribbonEl = rootEl.querySelector('#gm-route-ribbon');
-    // The route's state and verbs sit under the Lamp Key in the inspector (its itinerary rides the
-    // beam on the chart); the foot keeps only the four answers, so the chart keeps the height.
-    {
-      const engageReason = rootEl.querySelector('#gm-engage-reason');
-      if (this._ribbonEl && engageReason && typeof engageReason.after === 'function' && this._ribbonEl.parentNode) {
-        try { engageReason.after(this._ribbonEl); } catch (_) { /* a headless fixture keeps the ribbon where it is */ }
-      }
-    }
-    // The tilt plate: the chosen sector's render leans toward the pointer.
-    const detailsForTilt = rootEl.querySelector('#gm-tabpanel');
-    if (detailsForTilt && typeof detailsForTilt.addEventListener === 'function') {
-      detailsForTilt.addEventListener('pointermove', (ev) => {
-        const art = ev && ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('.gm-ins-plate__art') : null;
-        if (!art || galaxyMapScreen._reduceMotion) return;
-        const r = art.getBoundingClientRect();
-        const nx = ((ev.clientX - r.left) / Math.max(1, r.width)) * 2 - 1;
-        const ny = ((ev.clientY - r.top) / Math.max(1, r.height)) * 2 - 1;
-        art.style.setProperty('--tilt-y', `${(nx * 12).toFixed(1)}deg`);
-        art.style.setProperty('--tilt-x', `${(-ny * 12).toFixed(1)}deg`);
-      });
-      detailsForTilt.addEventListener('pointerleave', () => {
-        for (const art of detailsForTilt.querySelectorAll('.gm-ins-plate__art')) {
-          art.style.setProperty('--tilt-x', '0deg');
-          art.style.setProperty('--tilt-y', '0deg');
-        }
-      }, true);
-    }
     this._weatherEl = rootEl.querySelector('#gm-crest-weather');
     this._deckEl = rootEl.querySelector('#gm-cargo-deck');
     this._navFootEl = rootEl.querySelector('#gm-navfoot');
@@ -4299,9 +4236,6 @@ export const galaxyMapScreen = {
 
   onHide() {
     this._visible = false;
-    if (this._lockTimer) { clearTimeout(this._lockTimer); this._lockTimer = null; }
-    this._lock = null;
-    if (this._engageButton && this._engageButton.classList) this._engageButton.classList.remove('is-locking');
     if (this._animFrame != null && typeof cancelAnimationFrame !== 'undefined') {
       cancelAnimationFrame(this._animFrame);
     }
@@ -4639,7 +4573,7 @@ _animationActive(now = this._nowMs()) {
     if (Math.abs(this._zoom - this._targetZoom) > 0.0005) return true;
     if (this._scanRings && this._scanRings.length > 0) return true;
     if (this._iris) return true;
-    if (this._line || this._hold || this._lock) return true;
+    if (this._line || this._hold) return true;
     if (this._hoverTarget && !this._reduceMotion && now - (this._hoverSince || 0) < 220) return true;
     if (!this._reduceMotion && this._routeDrawStart != null && now - this._routeDrawStart < 600) return true;
     if (this._ambientMotion()) return true;
@@ -4700,7 +4634,7 @@ _stepAnimation(now) {
         this._beginLine(hold.x, hold.y, { pointerId: hold.pointerId });
       }
     }
-    if (this._line || this._lock) changed = true;
+    if (this._line) changed = true;
     if (this._hoverTarget && now - (this._hoverSince || 0) < 240) changed = true;
     if (this._routeDrawStart != null && now - this._routeDrawStart < 640) changed = true;
     const localLevel = levelForZoom(this._zoom) === 'local';
@@ -5024,22 +4958,17 @@ _stepAnimation(now) {
 
       html += `
         <div class="gm-ins-section">
-          <div class="gm-ins-plate">
-            <div class="gm-ins-plate__art" aria-hidden="true"><img src="${escapeMapHtml(sectorTokenUrl(t.id))}" alt="" loading="eager" onerror="this.remove()"></div>
-            <div>
-              <div class="gm-ins-kind">Sector record · [${Math.round(t.x || 0)}, ${Math.round(t.y || 0)}]</div>
-              <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
-            </div>
-          </div>
+          <div class="gm-ins-kind">Sector record · [${Math.round(t.x || 0)}, ${Math.round(t.y || 0)}]</div>
+          <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
         </div>
 
-        ${t.factionId ? `<div class="gm-ins-section">
+        <div class="gm-ins-section">
           <div class="gm-ins-title">Faction</div>
           <div class="gm-ins-row">
             <span>Authority</span>
-            <span class="gm-ins-row-val"><img class="gm-ins-plate__crest" src="${escapeMapHtml(factionCrestUrl(t.factionId))}" alt="" onerror="this.remove()" style="width:18px;height:18px;vertical-align:-4px;margin-right:8px"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(faction)}</span></span>
+            <span class="gm-ins-row-val" style="color:${color}"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(faction)}</span></span>
           </div>
-        </div>` : ''}
+        </div>
 
         ${presenceHtml}
 
@@ -5399,7 +5328,7 @@ _stepAnimation(now) {
     return `
       ${careersHtml}
       <div class="gm-ins-section">
-        <div class="gm-ins-note"><b>Drag from your ship</b> to lay a course — the line shows the route before you commit. Click a mark to inspect it; double-click also lays a course.</div>
+        <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat, careers and survey depth.</div>
       </div>`;
   },
 
@@ -6128,16 +6057,7 @@ _stepAnimation(now) {
    */
   _updateNavFoot(nav) {
     if (!HAS_DOC || !this._navFootEl) return;
-    let rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
-    // While a laid line locks in, DESTINATION already names the course being set.
-    if (this._lock && this._lock.dest) {
-      const tracked = NAV_ROW_TONE && NAV_ROW_TONE.TRACKED ? NAV_ROW_TONE.TRACKED : 'tracked';
-      rows = rows.map((row) => (row.key === 'destination'
-        ? { ...row, value: this._lock.dest, detail: 'Course set', tone: tracked }
-        : (row.key === 'leg' && this._lock.next
-          ? { ...row, value: this._lock.next, detail: this._lock.nextDetail || '', tone: tracked }
-          : row)));
-    }
+    const rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
     const key = rows.map((row) => `${row.key}|${row.value}|${row.detail || ''}|${row.tone || ''}`).join('#');
     if (this._lastNavFootKey === key) return;
     this._lastNavFootKey = key;
@@ -6145,16 +6065,9 @@ _stepAnimation(now) {
       const detail = row.detail
         ? `<span class="gm-nav-row-d">${escapeMapHtml(row.detail)}</span>`
         : '';
-      // A leg "A → B" keeps its origin in its own span, so a short screen can drop it deliberately
-      // (the destination is the part a pilot reads) instead of cutting the words with an ellipsis.
-      const value = String(row.value == null ? '' : row.value);
-      const arrow = value.indexOf(' → ');
-      const valueHtml = arrow > 0
-        ? `<span class="gm-nav-from">${escapeMapHtml(value.slice(0, arrow))} </span>→ ${escapeMapHtml(value.slice(arrow + 3))}`
-        : escapeMapHtml(value);
       return `<div class="gm-nav-row" data-nav-row="${escapeMapHtml(row.key || '')}" data-tone="${escapeMapHtml(row.tone || '')}">
           <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
-          <span class="gm-nav-row-v">${valueHtml}</span>
+          <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
           ${detail}
         </div>`;
     }).join('');
@@ -6831,19 +6744,15 @@ _stepAnimation(now) {
       // sector's authored origin is its global position; deriving it from the id rather than
       // multiplying the graph coordinate keeps one authority for sector origins.
       const origin = sectorGlobalOrigin(target.sectorId || target.id);
-      // Frame your sector and the pick together, so the course the preview beam shows stays on the
-      // glass (a pick framed alone ran the beam off the chart).
-      const both = this._galaxyFrame([currentSectorId(state), target.sectorId || target.id]);
       this._camera = setSpan(
-        setFocus(this._cameraOrInit(), both ? both.focusGlobal : { x: origin.x, z: origin.z }),
-        both ? both.spanWU : spanForZoom(LEVEL_SYSTEM_AT - 0.5), // galaxy scale
+        setFocus(this._cameraOrInit(), { x: origin.x, z: origin.z }),
+        spanForZoom(LEVEL_SYSTEM_AT - 0.5), // galaxy scale
       );
+      // The legacy galaxy camera is in graph units; keep centring it on the picked NODE so a sector
+      // whose authored graph position and lattice origin ever disagreed still frames the node.
       this._syncLegacyFromCamera();
-      if (!both) {
-        // The legacy galaxy camera is in graph units; centre it on the picked NODE.
-        this._cams.galaxy.cx = target.x;
-        this._cams.galaxy.cy = target.y;
-      }
+      this._cams.galaxy.cx = target.x;
+      this._cams.galaxy.cy = target.y;
     } else if (target.kind === 'station' || target.kind === 'gate' || target.kind === 'poi' || target.kind === 'zone' || target.kind === 'rumor') {
       // The SYSTEM camera lives in the sector-local draw frame, but a search target carries the
       // GLOBAL nav frame so the same object can arm a course. Centering on the raw nav position
@@ -6851,10 +6760,7 @@ _stepAnimation(now) {
       const focus = target.drawPos
         || globalToSectorLocalForSector(target, target.sectorId || currentSectorId(state));
       const sid = target.sectorId || currentSectorId(state);
-      // the dial draws the mark on its square-root scale: aim the camera where it is drawn
-      const shown = this._systemWarp && this._systemWarp.sectorId === sid
-        ? warpSectorLocal(focus, this._systemWarp.ringWU) : focus;
-      const globalFocus = sectorLocalToGlobalForSector({ x: shown.x, z: shown.z }, sid);
+      const globalFocus = sectorLocalToGlobalForSector({ x: focus.x, z: focus.z }, sid);
       this._camera = setSpan(
         setFocus(this._cameraOrInit(), globalFocus),
         spanForZoom(LEVEL_SYSTEM_AT + 0.5), // system scale
@@ -6983,7 +6889,7 @@ _onMouseDown(ev) {
     if (this._canvas && this._canvas.style) this._canvas.style.cursor = 'crosshair';
     if (commit && line && line.snap) {
       this._suppressClickUntil = this._nowMs() + 400;
-      this._commitCourse(line.snap, { lock: true });
+      this._commitCourse(line.snap);
       return true;
     }
     this._draw();
@@ -7197,7 +7103,7 @@ _onCanvasDblClick(ev) {
    * Lay a course to a mark: the ONE commit path, shared by double-click and a released line.
    * A sector asks the world's planner for the route; everything is then armed through ui:setCourse.
    */
-  _commitCourse(target, { lock = false } = {}) {
+  _commitCourse(target) {
     const payload = resolveCourseTarget(target);
     if (!payload || !this._ctx || !this._ctx.bus) return false;
     if (payload.type === 'sector' && payload.sectorId) {
@@ -7205,48 +7111,6 @@ _onCanvasDblClick(ev) {
     }
     this._ctx.bus.emit('ui:setCourse', payload);
     this._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
-    // A laid line locks in before the chart hands over: the beam swells into the course, one ice
-    // pulse runs it end to end and the foot's tape lights, then the chart closes (~half a second).
-    // The commit itself has already happened above, exactly as a double-click commits it.
-    const pts = this._previewPts;
-    if (lock && HAS_DOC && this._visible && !this._reduceMotion && Array.isArray(pts) && pts.length > 1
-      && typeof setTimeout === 'function') {
-      const level = this._activeLevel();
-      this._lock = {
-        t0: this._nowMs(),
-        pts: pts.map((pt) => ({ x: pt.x, y: pt.y })),
-        trim: level === 'galaxy' ? (this._galaxyTokenR || 20) + 3 : 13,
-      };
-      // The Lamp Key lights and the foot's DESTINATION rolls to the course being locked in.
-      if (this._engageButton && this._engageButton.classList) this._engageButton.classList.add('is-locking');
-      this._lock.dest = payload.label || 'Course';
-      if (payload.type === 'sector' && payload.sectorId) {
-        const plan = this._previewPathTo(payload.sectorId);
-        const ids = plan && Array.isArray(plan.ids) ? plan.ids : null;
-        if (ids && ids.length > 1) {
-          const st = this._ctx && this._ctx.state;
-          this._lock.next = `${sectorNameOf(st, ids[0])} → ${sectorNameOf(st, ids[1])}`;
-          this._lock.nextDetail = `leg 1/${ids.length - 1}`;
-        }
-      }
-      this._lastNavFootKey = null;
-      if (this._navFootEl && this._navFootEl.classList) {
-        this._navFootEl.classList.remove('is-locking');
-        void this._navFootEl.offsetWidth;
-        this._navFootEl.classList.add('is-locking');
-      }
-      this.refresh();
-      const ctx = this._ctx;
-      if (this._lockTimer) clearTimeout(this._lockTimer);
-      this._lockTimer = setTimeout(() => {
-        this._lockTimer = null;
-        this._lock = null;
-        if (this._navFootEl && this._navFootEl.classList) this._navFootEl.classList.remove('is-locking');
-        if (this._engageButton && this._engageButton.classList) this._engageButton.classList.remove('is-locking');
-        if (this._visible) popCurrentScreen(ctx);
-      }, CHART_LOCK_MS);
-      return true;
-    }
     popCurrentScreen(this._ctx);
     return true;
   },
@@ -7339,43 +7203,6 @@ _draw() {
       }
     }
 
-    // The lock-in: the laid line swells into the course and one ice pulse runs it end to end.
-    if (this._lock && Array.isArray(this._lock.pts)) {
-      const t = Math.max(0, Math.min(1, (this._nowMs() - this._lock.t0) / CHART_LOCK_MS));
-      const swell = t < 0.35 ? t / 0.35 : 1 - (t - 0.35) / 0.65 * 0.6;
-      // Stopped at each disc's rim: the course lies between the sectors, never over their renders.
-      const segs = trimPolylineSegments(this._lock.pts, this._lock.trim || 0);
-      const lens = segs.map(([a, b]) => Math.hypot(b.x - a.x, b.y - a.y));
-      const total = lens.reduce((sum, v) => sum + v, 0);
-      segs.forEach((seg, i) => drawHandBeam(g, seg, { lock: swell, head: i === segs.length - 1 }));
-      let run = Math.min(1, t / 0.8) * total;
-      for (let i = 0; i < segs.length; i += 1) {
-        if (run <= lens[i] || i === segs.length - 1) {
-          const u = lens[i] > 0 ? Math.min(1, run / lens[i]) : 1;
-          const fade = 1 - Math.max(0, t - 0.8) / 0.2;
-          drawPathPulse(g, segs[i], u, { a: fade });
-          // the ship rides the line it has just been given, thrown along the course to its end
-          const [a0, b0] = segs[i];
-          const hx = a0.x + (b0.x - a0.x) * u;
-          const hy = a0.y + (b0.y - a0.y) * u;
-          g.save();
-          g.globalAlpha = Math.max(0, fade);
-          g.translate(hx, hy);
-          g.fillStyle = 'rgba(5, 7, 10, 0.72)';
-          g.beginPath(); g.arc(0, 0, 9, 0, Math.PI * 2); g.fill();
-          g.rotate(Math.atan2(b0.y - a0.y, b0.x - a0.x));
-          g.fillStyle = CHART_INK.lit(1);
-          g.beginPath();
-          g.moveTo(7, 0); g.lineTo(-5, -4.4); g.lineTo(-2.6, 0); g.lineTo(-5, 4.4);
-          g.closePath();
-          g.fill();
-          g.restore();
-          break;
-        }
-        run -= lens[i];
-      }
-    }
-
     // The hold ring: a still press on empty space turning into a laid line.
     if (this._hold && !this._line) {
       const p = (this._nowMs() - this._hold.t0 - 90) / (CHART_LINE_HOLD_MS - 90);
@@ -7383,7 +7210,6 @@ _draw() {
     }
 
     // The reading that rides a laid line, over everything.
-    if (!this._lineReading || !this._lineReading.numerals) { this._lastReadingRect = null; this._lastReadingSeat = null; }
     if (this._lineReading) {
       const field = this._clearField(w, h);
       // The reading keeps off the marks and their names (the drawn label blocks).
@@ -7396,32 +7222,7 @@ _draw() {
         if (!lb || !lb.visible) continue;
         avoid.push({ x: lb.x + lb.width / 2, y: lb.y + lb.height / 2, r: Math.max(lb.width, lb.height) / 2, w: 1 });
       }
-      if (this._lineReading.numerals) {
-        const r = this._lineReading;
-        const size = drawLineReadingLarge(g, r.x, r.y, { ...r, measureOnly: true });
-        const obs = this._readingObstacles || { discs: [], reserved: [] };
-        // the reading keeps off the line it describes, too
-        const beam = [];
-        const pp = Array.isArray(this._previewPts) ? this._previewPts : [];
-        for (let i = 1; i < pp.length; i += 1) beam.push({ x1: pp[i - 1].x, y1: pp[i - 1].y, x2: pp[i].x, y2: pp[i].y });
-        const key = `${Math.round(r.x)},${Math.round(r.y)}`;
-        const prev = this._lastReadingSeat && this._lastReadingSeat.key === key ? this._lastReadingSeat : null;
-        const seat = size ? placeChartCallout({ x: r.x, y: r.y, r: Math.max(10, (r.clear || 12) - 4) }, size.width, size.height, {
-          bounds: { x: field.x + 6, y: field.y + 6, width: field.width - 12, height: field.height - 12 },
-          reserved: this._reservedLabelRects(w, h, obs.reserved),
-          // the names may give way to the reading (they keep 24 px off it from the next frame on)
-          soft: obs.labels || [],
-          discs: obs.discs,
-          // the reading never lies across the sector's gate ring (its leader may cross it)
-          rings: (obs.rings || []).map((ring) => ({ ...ring, clear: ring.hard ? 14 : ring.clear })),
-          segments: (obs.segments || []).concat(beam, beam, beam),
-          prefer: prev,
-        }) : null;
-        const drawn = drawLineReadingLarge(g, r.x, r.y, { ...r, bounds: field, avoid, seat });
-        this._lastReadingRect = drawn;
-        this._lastReadingSeat = drawn ? { key, x: drawn.x, y: drawn.y } : null;
-      }
-      else drawLineReading(g, this._lineReading.x, this._lineReading.y, { ...this._lineReading, bounds: field, avoid });
+      drawLineReading(g, this._lineReading.x, this._lineReading.y, { ...this._lineReading, bounds: field, avoid });
     }
 
     // Scan rings: one expanding ring of bone light, fading.
@@ -7501,7 +7302,7 @@ _draw() {
     if (rail && rail.width < w * 0.5 && rail.left < w * 0.3) left = Math.max(left, rail.right + 18);
     if (insp && insp.width < w * 0.5 && insp.left > w * 0.5) right = Math.min(right, insp.left - 18);
     if (lever && lever.bottom < h * 0.5) top = Math.max(top, lever.bottom + 12);
-    if (apron && apron.top > h * 0.5) bottom = Math.min(bottom, apron.top - (h < 820 ? 16 : 30));
+    if (apron && apron.top > h * 0.5) bottom = Math.min(bottom, apron.top - 30);
     // Before the first frame fills the foot its tape has no height yet: reserve what it will take.
     else if (!apron) bottom = Math.min(bottom, h - Math.max(150, h * 0.17));
     if (ribbon && ribbon.top > h * 0.5 && ribbon.left < (left + right) / 2) bottom = Math.min(bottom, ribbon.top - 14);
@@ -7525,19 +7326,15 @@ _draw() {
    * GALAXY's framing: the space you know — every charted sector and the course you hold — fitted to
    * the clear field, never tighter than the galaxy level allows. Null headless (no canvas size).
    */
-  _galaxyFrame(only = null) {
+  _galaxyFrame() {
     const state = this._ctx && this._ctx.state;
     const cw = this._canvas ? this._canvas.width / (this._dpr || 1) : 0;
     const ch = this._canvas ? this._canvas.height / (this._dpr || 1) : 0;
     if (!state || !(cw > 0 && ch > 0)) return null;
     const ids = new Set();
-    if (Array.isArray(only)) {
-      for (const id of only) if (id) ids.add(id);
-    } else {
-      for (const s of sectorRecords(state)) if (s && s.id && isSectorCharted(state, s)) ids.add(s.id);
-      const route = state.nav && state.nav.route;
-      for (const leg of (route && route.legs) || []) { if (leg.from) ids.add(leg.from); if (leg.to) ids.add(leg.to); }
-    }
+    for (const s of sectorRecords(state)) if (s && s.id && isSectorCharted(state, s)) ids.add(s.id);
+    const route = state.nav && state.nav.route;
+    for (const leg of (route && route.legs) || []) { if (leg.from) ids.add(leg.from); if (leg.to) ids.add(leg.to); }
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     for (const id of ids) {
       const o = sectorLocalToGlobalForSector({ x: 0, z: 0 }, id);
@@ -7550,15 +7347,13 @@ _draw() {
     const field = this._clearField(cw, ch);
     const pad = SECTOR_ORIGIN_LATTICE_WU * 1.25;
     const minor = Math.min(cw, ch);
-    const fitX = (maxX - minX + pad * 2) * minor / Math.max(1, field.width);
-    const fitZ = (maxZ - minZ + pad * 2) * minor / Math.max(1, field.height);
-    // names hang beside their tokens: the outermost tokens keep a name's width of room in the field,
-    // where that costs the chart little scale (at most a tenth)
-    const roomX = (maxX - minX + pad * 2) * minor / Math.max(1, field.width - Math.min(150, field.width * 0.16));
-    const span = Math.max(fitX, fitZ, Math.min(roomX, Math.max(fitX, fitZ) * 1.1));
+    const span = Math.max(
+      (maxX - minX + pad * 2) * minor / Math.max(1, field.width),
+      (maxZ - minZ + pad * 2) * minor / Math.max(1, field.height),
+    );
     return {
       focusGlobal: { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 },
-      spanWU: Math.max(LEVEL_SYSTEM_AT_SPAN_WU * 1.6, Math.min(CHART_SPAN_MAX_WU, span)),
+      spanWU: Math.max(LEVEL_SYSTEM_AT_SPAN_WU * 1.6, Math.min(MAP_SPAN_MAX_WU, span)),
     };
   },
 
@@ -7584,56 +7379,6 @@ _draw() {
     const minor = Math.min(cw, ch);
     const need = (ringWU * 2 + 1500) * minor / Math.max(1, Math.min(field.height, field.width));
     return Math.max(LEVEL_LOCAL_AT_SPAN_WU * 1.08, Math.min(LEVEL_SYSTEM_AT_SPAN_WU * 0.97, need));
-  },
-
-  /**
-   * Seat this frame's labels with the anchored placer (src/ui/orrery/chartLabels.js): every name
-   * within a few pixels of its mark or on a leader to it, never over a mark, never across a ring,
-   * never outside the clear field. The marks already on the table (this frame's click targets) are
-   * obstacles; `extra` adds rings, discs, lanes and rects a level knows about.
-   */
-  _placeLabels(candidates, w, h, { reserved = [], rings = [], discs = [], segments = [] } = {}) {
-    // A laid line's reading hangs over the chart: names keep 24 px clear of where it stands.
-    const readingRect = this._line && this._lastReadingRect ? this._lastReadingRect : null;
-    const keepOff = readingRect
-      ? [{ x: readingRect.x - 24, y: readingRect.y - 24, width: readingRect.width + 48, height: readingRect.height + 48 }]
-      : [];
-    const field = this._clearField(w, h);
-    const marks = [];
-    for (const t of this._clickTargets) {
-      if (!t || t.kind === 'zone' || t.edgeTick || !Number.isFinite(t.sx) || !Number.isFinite(t.sy)) continue;
-      marks.push({ x: t.sx, y: t.sy, r: Math.min(44, Math.max(6, (t.radiusPx || 10) - 2)) });
-    }
-    if (this._youScreen) marks.push({ x: this._youScreen.x, y: this._youScreen.y, r: 16 });
-    // the mark the pointer rests on (or a line snaps to) always names itself
-    const reach = [this._hoverTarget && this._hoverTarget.id, this._line && this._line.snap && this._line.snap.id]
-      .filter((id) => id != null).map((id) => ':' + String(id));
-    if (reach.length) {
-      candidates = candidates.map((c) => (reach.some((tail) => String(c.id || '').endsWith(tail)) ? { ...c, force: true } : c));
-    }
-    // ...and keep off the line being laid (last frame's beam): a name never sits on the Hand
-    const beam = [];
-    const bp = this._line && Array.isArray(this._previewPts) ? this._previewPts : [];
-    for (let i = 1; i < bp.length; i += 1) beam.push({ x1: bp[i - 1].x, y1: bp[i - 1].y, x2: bp[i].x, y2: bp[i].y });
-    const placed = placeChartLabels(candidates, {
-      bounds: field,
-      reserved: this._reservedLabelRects(w, h, reserved.concat(keepOff)),
-      discs: marks.concat(discs),
-      rings,
-      segments: beam.length ? segments.concat(beam, beam, beam, beam, beam, beam) : segments,
-      priorityOf: mapLabelPriority,
-      eligible: mapLabelEligible,
-      maxLeader: 64,
-    });
-    // what the drag reading must keep off: the marks, the names and the level's own rects
-    this._readingObstacles = {
-      segments,
-      rings,
-      discs: marks.concat(discs),
-      reserved,
-      labels: placed.filter((pl) => pl.visible).map((pl) => ({ x: pl.x, y: pl.y, width: pl.width, height: pl.height })),
-    };
-    return placed;
   },
 
   /** What a laid (or focused) line would lay a course to, if anything. */
@@ -7676,7 +7421,6 @@ _draw() {
       if (!plan) return;
       const pts = plan.ids.map((id) => screenOf.get(id)).filter(Boolean);
       if (pts.length < 2) return;
-      this._previewPts = pts;
       drawHandBeam(g, pts, { alpha: laying ? 0.92 : 0.5, pulseT: laying && !reduced ? animT * 1.4 : null, width: laying ? 1 : 0.8 });
       if (laying) {
         const hops = plan.ids.length - 1;
@@ -7689,16 +7433,14 @@ _draw() {
         const route = plan.route;
         const fuel = route && Number.isFinite(Number(route.totalFuel)) ? `FUEL ${Math.round(Number(route.totalFuel))}` : 'FUEL —';
         const charge = route && Array.isArray(route.legs) ? route.legs.reduce((s, leg) => s + (Number(leg.charge) || 0), 0) : 0;
-        const dist = splitReading(formatDistanceWU(wu));
-        const quiet = [fuel];
-        if (charge > 0) quiet.push(`ALIGN ${formatDurationS(charge)}`);
+        const second = [formatDistanceWU(wu)];
+        if (charge > 0) second.push(`ALIGN ${formatDurationS(charge)}`);
         const anchor = Number.isFinite(target.sx) ? target : null;
         this._lineReading = {
           x: anchor ? anchor.sx : this._line.x, y: anchor ? anchor.sy : this._line.y,
           clear: anchor ? (anchor.radiusPx || 14) + 8 : 12,
           title: String(target.name || sectorNameOf(state, sid)).toUpperCase(),
-          numerals: [{ value: String(hops), unit: hops === 1 ? 'JUMP' : 'JUMPS' }, { value: dist.value, unit: dist.unit }],
-          figures: quiet.join('  ·  '),
+          figures: [`${hops} ${hops === 1 ? 'JUMP' : 'JUMPS'}  ·  ${fuel}`, second.join('  ·  ')],
           note: 'RELEASE TO LAY  ·  ESC TO DROP',
         };
       }
@@ -7713,31 +7455,27 @@ _draw() {
     const you = this._youScreen;
     if (!you) return;
     if (target && Number.isFinite(target.sx) && Number.isFinite(target.sy)) {
-      this._previewPts = [{ x: you.x, y: you.y }, { x: target.sx, y: target.sy }];
-      drawHandBeam(g, this._previewPts, {
+      drawHandBeam(g, [{ x: you.x, y: you.y }, { x: target.sx, y: target.sy }], {
         alpha: laying ? 0.92 : 0.5, pulseT: laying && !reduced ? animT * 1.4 : null, width: laying ? 1 : 0.8,
       });
       if (laying) {
         const player = playerEntity(state);
         const payload = resolveCourseTarget(target);
         const pos = payload && payload.pos;
-        const numerals = [];
-        let figures = payload && payload.type === 'sector' ? 'ROUTE TO SECTOR' : '';
+        const bits = [];
+        if (payload && payload.type === 'sector') bits.push('ROUTE TO SECTOR');
         if (player && player.pos && pos) {
           const d = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
-          const dist = splitReading(formatDistanceWU(d));
-          numerals.push({ value: dist.value, unit: dist.unit });
+          bits.push(formatDistanceWU(d));
           const v = player.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : 0;
-          if (v >= 1) numerals.push({ value: formatDurationS(d / v), unit: 'ETA' });
-          else figures = [figures, 'ETA — MAKE WAY'].filter(Boolean).join('  ·  ');
+          bits.push(v >= 1 ? `ETA ${formatDurationS(d / v)}` : 'ETA — make way');
         }
         this._lineReading = {
           x: target.sx, y: target.sy,
           clear: Math.min(30, (target.radiusPx || 12)) + 8,
           title: String(target.name || payload && payload.label || 'Mark').toUpperCase(),
-          numerals,
-          figures,
-          note: 'RELEASE TO LAY  ·  ESC TO DROP',
+          figures: bits.join('  ·  '),
+          note: 'RELEASE TO LAY THE COURSE  ·  ESC LETS IT GO',
         };
       }
       return;
@@ -7754,8 +7492,8 @@ _draw() {
     this._lineReading = {
       x: line.x, y: line.y,
       title: 'LAY THE LINE',
-      figures: ['ONTO A SECTOR, STATION', 'OR CONTACT'],
-      note: 'RELEASE HERE OR ESC TO DROP',
+      figures: 'DRAG ONTO A SECTOR, STATION OR CONTACT',
+      note: 'RELEASE ON EMPTY SPACE OR ESC LETS IT GO',
     };
   },
 
@@ -7795,16 +7533,7 @@ _drawGalaxy(g, state, w, h) {
     const dpr = this._dpr || 1;
 
     // ORRERY: the sensor lattice behind the chart, brightening in a lens under the pointer.
-    drawSensorLattice(g, w, h, { pointer: this._pointer, a: 0.11 });
-
-    const field = this._clearField(w, h);
-    const fieldPad = 14;
-    const inGalaxyField = (x, y) => x >= field.x - fieldPad && x <= field.x + field.width + fieldPad
-      && y >= field.y - fieldPad && y <= field.y + field.height + fieldPad;
-    g.save();
-    g.beginPath();
-    g.rect(field.x - fieldPad, field.y - fieldPad, field.width + fieldPad * 2, field.height + fieldPad * 2);
-    g.clip();
+    drawSensorLattice(g, w, h, { pointer: this._pointer, a: 0.075 });
 
     // The token's rest size follows the chart's scale: about half the shortest charted lane, so the
     // produced art reads (≈64-80 px at the default framing) and neighbours never touch.
@@ -7813,8 +7542,7 @@ _drawGalaxy(g, state, w, h) {
       if (!e.charted) continue;
       shortest = Math.min(shortest, Math.hypot((e.bx - e.ax) * graphScale, (e.by - e.ay) * graphScale));
     }
-    const tokenCap = Math.max(84, Math.min(w, h) * 0.08);
-    const tokenSize = Math.max(36, Math.min(tokenCap, Number.isFinite(shortest) ? shortest * 0.44 : 68));
+    const tokenSize = Math.max(34, Math.min(84, Number.isFinite(shortest) ? shortest * 0.46 : 64));
     const tokenR = tokenSize / 2;
     this._galaxyTokenR = tokenR;
     const screenOf = new Map();
@@ -7907,7 +7635,7 @@ _drawGalaxy(g, state, w, h) {
       if (pts.length > 1) {
         const progress = reduced ? 1 : Math.min(1, Math.max(0, (now - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
         // While a new line is being laid the held course steps back, so the line being laid leads.
-        drawHandBeam(g, pts, { progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, alpha: this._line ? 0.4 : 1, tone: this._line ? 'bone' : 'hand' });
+        drawHandBeam(g, pts, { progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, alpha: this._line ? 0.34 : 1 });
       }
     }
 
@@ -7918,12 +7646,6 @@ _drawGalaxy(g, state, w, h) {
     const labelCandidates = [];
     const hoverId = this._hoverTarget ? this._hoverTarget.id : null;
     const snapId = this._line && this._line.snap ? this._line.snap.id : null;
-    const shipAt = model.player && model.player.drawPos
-      ? { x: sx(model.player.drawPos.x), y: sy(model.player.drawPos.z) } : null;
-    const crestRects = [];
-    const opTag = mapOperatorLabel(state);
-    let tagOnToken = false;
-    const chartedCount = model.nodes.filter((nn) => nn.charted).length;
     for (const n of model.nodes) {
       const x = sx(n.x), y = sy(n.y);
       const r = tokenR;
@@ -7932,9 +7654,7 @@ _drawGalaxy(g, state, w, h) {
       // Uncharted frontier: a faint star glint, never a question mark. A read bearing on it shows
       // as a count beside the glint.
       if (!n.charted) {
-        // a glint stands inside the clear field, never on the chrome's margins
-        const inside = x >= field.x + 12 && x <= field.x + field.width - 12 && y >= field.y + 12 && y <= field.y + field.height - 12;
-        if (this._layers.discovery && inside) {
+        if (this._layers.discovery) {
           drawGlint(g, x, y, { size: n.bearingCount > 0 ? 8 : 6, a: n.bearingCount > 0 ? 0.62 : 0.4 });
           if (n.bearingCount > 0) {
             drawBandRing(g, x, y, 13, { band: 5, bandA: 0.14, edge: 1.4, edgeA: 0.55 });
@@ -7978,16 +7698,12 @@ _drawGalaxy(g, state, w, h) {
         dpr, lift, stale, berths: sectorBerthCount(state, n.id), onReady: this._tokenReadyHandler(),
       });
 
-      // Faction: the holder's own cut crest inlaid in the token's ring (centred on the band, in its own
-      // small well) at half past seven on every token — one seat, clear of the name (names take the
-      // east and west first) and of YOU (six o'clock). Never a coloured ring.
+      // Faction: the holder's own cut crest on the token's shoulder — never a coloured ring.
       if (this._layers.faction && n.ownerId) {
-        const ang = Math.PI * 0.75;
-        const crestSize = Math.max(16, Math.min(22, drawnR * 0.5));
-        const cxC = x + Math.cos(ang) * drawnR;
-        const cyC = y + Math.sin(ang) * drawnR;
-        drawFactionCrest(g, n.ownerId, cxC, cyC, crestSize, { dpr, onReady: this._tokenReadyHandler() });
-        crestRects.push({ x: cxC - crestSize / 2 - 4, y: cyC - crestSize / 2 - 4, width: crestSize + 8, height: crestSize + 8 });
+        const ca = Math.cos(-Math.PI * 0.75), sa = Math.sin(-Math.PI * 0.75);
+        drawFactionCrest(g, n.ownerId, x + ca * (drawnR + 2), y + sa * (drawnR + 2), Math.max(18, Math.min(24, drawnR * 0.55)), {
+          dpr, onReady: this._tokenReadyHandler(),
+        });
       }
 
       // Conflict: a red arc of light round the token (war) or a bone one (tension), its count beside it.
@@ -8032,18 +7748,13 @@ _drawGalaxy(g, state, w, h) {
         }
       }
 
-      // Unrest (security lens). Red keeps one meaning — this one is dangerous — so only lawless space
-      // wears it: a red quarter arc on the ring's crown. Thin security is a short bone tick; ordinary
-      // and policed space is silent.
+      // Unrest (security lens): an arc whose sweep and weight track the danger — red past two-thirds.
       if (this._layers.security && n.security != null) {
-        const sec = Math.max(0, Math.min(1, n.security));
-        if (sec < 0.1) {
-          drawBand(g, (c) => c.arc(x, y, drawnR + 3, -Math.PI * 0.75, -Math.PI * 0.25), {
-            rgb: '255,80,56', band: 5, bandA: 0.28, edge: 2.2, edgeA: 0.95,
-          });
-        } else if (sec < 0.34) {
-          drawBand(g, (c) => c.arc(x, y, drawnR + 3, -Math.PI * 0.6, -Math.PI * 0.4), {
-            band: 4, bandA: 0.2, edge: 1.6, edgeA: 0.7,
+        const danger = 1 - Math.max(0, Math.min(1, n.security));
+        if (danger > 0.2) {
+          const hot = danger > 0.66;
+          drawBand(g, (c) => c.arc(x, y, drawnR + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, danger)), {
+            rgb: hot ? '255,80,56' : '236,230,216', band: 4, bandA: hot ? 0.26 : 0.14, edge: 1.2 + danger * 1.2, edgeA: hot ? 0.9 : 0.55,
           });
         }
       }
@@ -8055,42 +7766,24 @@ _drawGalaxy(g, state, w, h) {
 
       // Sector label + its presence rows, as ONE solver-managed block (a name and the rows that
       // belong to it travel together, so the rows can never orphan from their name).
-      const nodeInField = inGalaxyField(x, y);
       const nodeLines = [n.name];
-      if (n.current && opTag && shipAt && Math.hypot(shipAt.x - x, shipAt.y - y) <= r) {
-        nodeLines.push(opTag);
-        tagOnToken = true;
-      }
-      // On a crowded chart (a long save knows many sectors) the faction sub-lines give way so every
-      // sector keeps its name.
-      const presenceRows = this._layers.faction && n.presence && n.presence.length && chartedCount <= 12
+      const presenceRows = this._layers.faction && n.presence && n.presence.length
         ? galaxyPresenceMarkerRows(n.presence)
         : [];
       for (const row of presenceRows) nodeLines.push(`◆ ${row.label}`);
       if (stale) nodeLines.push('STALE');
-      if (nodeInField) {
-        const cand = makeMapLabelCandidate(g, {
-          id: `sector:${n.id}`,
-          kind: n.current ? 'gate' : 'station',
-          maxLeader: 104,
-          selected: !!(this._selectedTarget && this._selectedTarget.id === n.id),
-          text: n.name,
-          lines: nodeLines,
-          x,
-          y,
-          anchorRadius: drawnR + 4,
-          color: n.current ? CHART_INK.lit(1) : (stale ? CHART_INK.bone(0.62) : CHART_INK.lit(0.92)),
-          secondaryColor: null,
-        });
-        // On a crowded chart a two-word name may set on two lines to keep its seat by the token.
-        const words = String(n.name || '').split(/\s+/).filter(Boolean);
-        if (words.length >= 2) {
-          const cut = Math.ceil(words.length / 2);
-          const alt = makeMapLabelCandidate(g, { ...cand, lines: [words.slice(0, cut).join(' '), words.slice(cut).join(' '), ...nodeLines.slice(1)] });
-          cand.alts = [{ lines: alt.lines, width: alt.width + 8, height: alt.height, nameLines: 2 }];
-        }
-        labelCandidates.push(cand);
-      }
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: `sector:${n.id}`,
+        kind: n.current ? 'gate' : 'station',
+        selected: !!(this._selectedTarget && this._selectedTarget.id === n.id),
+        text: n.name,
+        lines: nodeLines,
+        x,
+        y,
+        anchorRadius: drawnR + 4,
+        color: n.current ? CHART_INK.lit(1) : (stale ? CHART_INK.bone(0.62) : CHART_INK.lit(0.92)),
+        secondaryColor: null,
+      }));
 
       // Market price (market lens): the best known sell, as a reading beside the token.
       if (this._layers.market) {
@@ -8140,29 +7833,6 @@ _drawGalaxy(g, state, w, h) {
       }
     }
 
-    // The map fades out over the field's last 48 px rather than stopping at a straight cut.
-    {
-      const F = 48;
-      const x0 = field.x - fieldPad, y0 = field.y - fieldPad;
-      const x1 = field.x + field.width + fieldPad, y1 = field.y + field.height + fieldPad;
-      g.save();
-      g.globalCompositeOperation = 'destination-out';
-      const fade = (gx0, gy0, gx1, gy1, rx, ry, rw, rh) => {
-        const grad = g.createLinearGradient ? g.createLinearGradient(gx0, gy0, gx1, gy1) : null;
-        if (!grad) return;
-        grad.addColorStop(0, 'rgba(0,0,0,1)');
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        g.fillStyle = grad;
-        g.fillRect(rx, ry, rw, rh);
-      };
-      fade(x0, 0, x0 + F, 0, x0, y0, F, y1 - y0);
-      fade(x1, 0, x1 - F, 0, x1 - F, y0, F, y1 - y0);
-      fade(0, y0, 0, y0 + F, x0, y0, x1 - x0, F);
-      fade(0, y1, 0, y1 - F, x0, y1 - F, x1 - x0, F);
-      g.restore();
-    }
-    g.restore();
-
     // Resolve every sector block against the others before any of them paints. The goal plate is
     // reserved first (below) so a node label can never be placed under it.
     const goal = activeMapGoal(state);
@@ -8192,7 +7862,7 @@ _drawGalaxy(g, state, w, h) {
       this._goalLabelPlacement = goalLabelPos;
     }
     // The operator tag ("YOU") is painted last beside the ship, outside the solver: reserve it.
-    if (model.player && model.player.drawPos && !tagOnToken) {
+    if (model.player && model.player.drawPos) {
       const opText = mapOperatorLabel(state);
       if (opText) {
         g.save();
@@ -8207,39 +7877,8 @@ _drawGalaxy(g, state, w, h) {
         });
       }
     }
-    for (const rect of crestRects) galaxyReserved.push(rect);
-    // The course's legs read on the beam: each leg's fuel at its midpoint, placed by the solver.
-    if (route && route.legs && this._layers.route && !this._line) {
-      route.legs.forEach((leg, i) => {
-        const a = screenOf.get(leg.from);
-        const b = screenOf.get(leg.to);
-        if (!a || !b || !Number.isFinite(Number(leg.fuel))) return;
-        const risk = Number(leg.interdict) > 0.25 ? '  ·  WATCHED' : '';
-        labelCandidates.push(makeMapLabelCandidate(g, {
-          id: `leg:${i}`,
-          kind: 'zone',
-          text: `LEG ${i + 1} · ${Math.round(Number(leg.fuel))}F${risk}`,
-          lines: [`LEG ${i + 1} · ${Math.round(Number(leg.fuel))}F${risk}`],
-          x: (a.x + b.x) / 2,
-          y: (a.y + b.y) / 2,
-          anchorRadius: 8,
-          color: CHART_INK.phos(0.95),
-        }));
-      });
-    }
-    const laneSegs = [];
-    for (const e of model.edges) {
-      if (!e.charted) continue;
-      laneSegs.push({ x1: sx(e.ax), y1: sy(e.ay), x2: sx(e.bx), y2: sy(e.by) });
-    }
-    const wellDiscs = [];
-    for (const n of model.nodes) {
-      const at = screenOf.get(n.id);
-      if (at) wellDiscs.push({ x: at.x, y: at.y, r: n.charted ? tokenR + 4 : 9 });
-    }
-    if (goalNode) wellDiscs.push({ x: sx(goalNode.x), y: sy(goalNode.y), r: goalRingR + 4 });
-    const galaxyLabelLayout = this._placeLabels(labelCandidates, w, h, {
-      reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
+    const galaxyLabelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
+      reserved: this._reservedLabelRects(w, h, galaxyReserved),
     });
     this._lastLabelLayout = galaxyLabelLayout;
     for (const placement of galaxyLabelLayout) {
@@ -8248,17 +7887,8 @@ _drawGalaxy(g, state, w, h) {
 
     // The current goal is the final galaxy paint and strongest hit target.
     if (goalNode) {
-      let gx = sx(goalNode.x), gy = sy(goalNode.y);
-      const routeHeadsHere = !this._line && this._layers.route && routeDest && routeDest === goal.sectorId;
-      if (inGalaxyField(gx, gy)) {
-        drawMapGoalMarker(g, gx, gy, goal.label, w, this._goalLabelPlacement || null, goalRingR, routeHeadsHere ? 'hand' : 'bone');
-      } else {
-        // Off the clear field the goal stands as a tick on its border, pointing the way.
-        const tick = edgeTickOnField(field, field.x + field.width / 2, field.y + field.height / 2, gx, gy,
-          routeHeadsHere ? INK.amberHot : INK.ink0, 'waypoint');
-        drawEdgeTick(g, tick.x, tick.y, tick.color, tick.shape, tick.angle);
-        gx = tick.x; gy = tick.y;
-      }
+      const gx = sx(goalNode.x), gy = sy(goalNode.y);
+      drawMapGoalMarker(g, gx, gy, goal.label, w, this._goalLabelPlacement || null, goalRingR);
       this._clickTargets.push({
         sx: gx,
         sy: gy,
@@ -8281,37 +7911,24 @@ _drawGalaxy(g, state, w, h) {
     if (model.player && model.player.drawPos) {
       const pxs = sx(model.player.drawPos.x);
       const pys = sy(model.player.drawPos.z);
-      // Standing inside your own sector's disc the mark rides that token's ring at six o'clock, so
-      // the sector's render is not covered; out in a corridor it stands where the ship is.
-      const homeTok = model.player.sectorId ? screenOf.get(model.player.sectorId) : null;
-      const onToken = homeTok && Math.hypot(pxs - homeTok.x, pys - homeTok.y) <= tokenR;
-      let fx = onToken ? homeTok.x : pxs;
-      let fy = onToken ? homeTok.y + tokenR + 2 : pys;
-      // The mark never leaves the glass: off the clear field it stands on the field's border.
-      if (!inGalaxyField(fx, fy)) {
-        const pin = edgeTickOnField(field, field.x + field.width / 2, field.y + field.height / 2, fx, fy, INK.ink0, 'player');
-        fx = pin.x; fy = pin.y;
-      }
-      this._youScreen = { x: fx, y: fy, sectorId: model.player.sectorId };
-      drawPlayerFixMark(g, fx, fy, model.player.rot, {
-        scale: onToken ? 0.8 : 0.92,
+      this._youScreen = { x: pxs, y: pys, sectorId: model.player.sectorId };
+      drawPlayerFixMark(g, pxs, pys, model.player.rot, {
+        scale: 0.92,
         pulse: reduced ? 0 : (0.5 + 0.5 * Math.sin(animT * 1.7)),
       });
-      if (!tagOnToken) {
-        g.save();
-        g.font = chartFont(700, 12);
-        setTracking(g, 0.14, 12);
-        g.textAlign = 'left';
-        g.textBaseline = 'middle';
-        g.lineJoin = 'round';
-        g.strokeStyle = 'rgba(5, 7, 10, 0.9)';
-        g.lineWidth = 4;
-        g.strokeText(mapOperatorLabel(state), pxs + 16, pys - 16);
-        g.fillStyle = CHART_INK.lit(1);
-        g.fillText(mapOperatorLabel(state), pxs + 16, pys - 16);
-        setTracking(g, 0, 12);
-        g.restore();
-      }
+      g.save();
+      g.font = chartFont(700, 12);
+      setTracking(g, 0.14, 12);
+      g.textAlign = 'left';
+      g.textBaseline = 'middle';
+      g.lineJoin = 'round';
+      g.strokeStyle = 'rgba(5, 7, 10, 0.9)';
+      g.lineWidth = 4;
+      g.strokeText(mapOperatorLabel(state), pxs + 16, pys - 16);
+      g.fillStyle = CHART_INK.lit(1);
+      g.fillText(mapOperatorLabel(state), pxs + 16, pys - 16);
+      setTracking(g, 0, 12);
+      g.restore();
     }
   },
 
@@ -8387,33 +8004,14 @@ _drawSystem(g, state, w, h) {
     g.clip();
     // The sector's own orrery: a graduated ring where its gates stand, a half ring inside it, the
     // ring's radius read on its crown. The doors sit on the ring; the furniture lives inside it.
-    let dial = null;
-    this._dialScreen = null;
-    this._systemWarp = null;
-    let ringWU = 0;
-    const dialWords = [];
-    let quarterFigure = null;
     {
       const gateR = [];
       for (const pnt of model.points) if (pnt.kind === 'gate' && pnt.drawPos) gateR.push(Math.hypot(pnt.drawPos.x, pnt.drawPos.z));
-      ringWU = gateR.length ? gateR.reduce((a, b) => a + b, 0) / gateR.length : 0;
+      const ringWU = gateR.length ? gateR.reduce((a, b) => a + b, 0) / gateR.length : 0;
       if (ringWU > 0) {
         const ox = sx(0), oy = sz(0), R = ringWU * pxPerWU;
-        dial = { x: ox, y: oy, r: R };
-        this._dialScreen = dial;
-        // Glass under the dial, so the paused world does not print through the sector's orrery.
-        const glass = g.createRadialGradient ? g.createRadialGradient(ox, oy, R * 0.6, ox, oy, R + 46) : null;
-        if (glass) {
-          glass.addColorStop(0, 'rgba(5,7,10,0.62)');
-          glass.addColorStop(0.82, 'rgba(5,7,10,0.62)');
-          glass.addColorStop(1, 'rgba(5,7,10,0)');
-          g.save();
-          g.fillStyle = glass;
-          g.beginPath(); g.arc(ox, oy, R + 46, 0, Math.PI * 2); g.fill();
-          g.restore();
-        }
-        drawBandRing(g, ox, oy, R * 0.5, { band: 6, bandA: 0.2, edge: 1.3, edgeA: 0.36 });
-        drawBandRing(g, ox, oy, R, { band: 9, bandA: 0.34, edge: 1.8, edgeA: 0.66, halo: 22, haloA: 0.04 });
+        drawBandRing(g, ox, oy, R * 0.5, { band: 6, bandA: 0.14, edge: 1.2, edgeA: 0.3 });
+        drawBandRing(g, ox, oy, R, { band: 9, bandA: 0.24, edge: 1.7, edgeA: 0.58, halo: 22, haloA: 0.03 });
         g.save();
         for (let i = 0; i < 120; i += 1) {
           const a = (i / 120) * Math.PI * 2;
@@ -8429,110 +8027,18 @@ _drawSystem(g, state, w, h) {
         g.font = chartFont(640, 12, { stretch: 'normal' });
         g.textAlign = 'left'; g.textBaseline = 'middle';
         g.lineJoin = 'round';
-        const tw = (t, px) => (typeof g.measureText === 'function' ? (g.measureText(t).width || t.length * px * 0.6) : t.length * px * 0.6);
-        const ringText = `GATE RING ${formatDistanceWU(ringWU)}`;
-        const ringW = tw(ringText, 12);
-        // The radius inside the ring is not linear, and the dial says so beside its own figure: on
-        // one line where the field has room, on two where it has not, and never past its edge.
-        g.font = chartFont(600, 12, { stretch: 'normal' });
-        const oneLine = 'RADIAL SCALE \u221A  \u00B7  NOT LINEAR';
-        const fieldRight = field.x + field.width - 6;
-        let lx = ox + R * 0.707 + 10;
-        const ly = oy - R * 0.707 - 8;
-        let scaleLines = [oneLine];
-        if (lx + Math.max(ringW, tw(oneLine, 12)) > fieldRight) scaleLines = ['RADIAL SCALE \u221A', 'NOT LINEAR'];
-        const blockW = Math.max(ringW, ...scaleLines.map((t) => tw(t, 12)));
-        if (lx + blockW > fieldRight) lx = Math.max(field.x + 6, fieldRight - blockW);
-        g.font = chartFont(640, 12, { stretch: 'normal' });
+        const lx = ox + R * 0.707 + 10, ly = oy - R * 0.707 - 8;
         g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-        g.strokeText(ringText, lx, ly);
+        g.strokeText(`GATE RING ${formatDistanceWU(ringWU)}`, lx, ly);
         g.fillStyle = CHART_INK.phos(0.92);
-        g.fillText(ringText, lx, ly);
-        g.font = chartFont(600, 12, { stretch: 'normal' });
-        scaleLines.forEach((t, i) => {
-          g.strokeText(t, lx, ly + 16 + i * 15);
-          g.fillStyle = CHART_INK.bone(0.72);
-          g.fillText(t, lx, ly + 16 + i * 15);
-        });
-        dialWords.push({ x: lx - 2, y: ly - 9, width: blockW + 4, height: 34 + (scaleLines.length - 1) * 15 });
-        g.restore();
-        // The half ring stands at a true quarter of the gate ring's reach; its figure is seated on
-        // the ring once the marks are down (where it is clearest of them).
-        g.save();
-        g.font = chartFont(640, 12, { stretch: 'normal' });
-        quarterFigure = { text: formatDistanceWU(ringWU / 4), width: tw(formatDistanceWU(ringWU / 4), 12) };
+        g.fillText(`GATE RING ${formatDistanceWU(ringWU)}`, lx, ly);
         g.restore();
       }
     }
 
-    // SQUARE-ROOT RADIAL SCALE (the dial's own law): inside the gate ring a mark stands at
-    // R·√(r/R) from the centre, so the furniture packed near the sector's heart opens to fill the dial
-    // while the gates stay on their ring. A presentation map over the linear projection: bearings
-    // hold, a pan slides it rigidly and a zoom scales it whole (the map is scale-free).
-    const warp = (X, Y) => {
-      if (!dial) return { x: X, y: Y };
-      const dx = X - dial.x;
-      const dy = Y - dial.y;
-      const d = Math.hypot(dx, dy);
-      if (!(d > 1e-6) || d >= dial.r) return { x: X, y: Y };
-      const k = Math.sqrt(dial.r / d);
-      return { x: dial.x + dx * k, y: dial.y + dy * k };
-    };
-    // A disc under the map: the circle through its warped rim (centre = the rim's centroid).
-    const warpDisc = (X, Y, r) => {
-      if (!dial || !(r > 0)) { const c = warp(X, Y); return { x: c.x, y: c.y, r: Math.max(0, r || 0) }; }
-      const rim = [];
-      let mx = 0;
-      let my = 0;
-      for (let i = 0; i < 16; i += 1) {
-        const a = (i / 16) * Math.PI * 2;
-        const q = warp(X + Math.cos(a) * r, Y + Math.sin(a) * r);
-        rim.push(q); mx += q.x; my += q.y;
-      }
-      mx /= 16; my /= 16;
-      let rr = 0;
-      for (const q of rim) rr += Math.hypot(q.x - mx, q.y - my);
-      return { x: mx, y: my, r: rr / 16 };
-    };
-    if (dial) this._systemWarp = { ringWU, sectorId: model.sectorId };
-
-    // Zones: regions of the sector as pools of light. Overlapping zones MERGE: each pool's light is laid
-    // with 'lighten' (the brighter light wins, no darker Venn lens), and each rim is a band of light
-    // clipped out of every other pool, so a cluster of zones wears one lit outline.
-    const pools = model.zones.filter((z) => !(z.hazard && this._layers.hazard))
-      .map((z) => ({ z, ...warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU) }));
-    // The pools live inside the sector: clipped to the gate ring's inner edge.
-    g.save();
-    if (dial) { g.beginPath(); g.arc(dial.x, dial.y, Math.max(8, dial.r - 6), 0, Math.PI * 2); g.clip(); }
-    g.save();
-    g.globalCompositeOperation = 'lighten';
-    for (const pool of pools) {
-      const grad = g.createRadialGradient ? g.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.r) : null;
-      if (grad) {
-        grad.addColorStop(0, CHART_INK.bone(this._layers.faction ? 0.2 : 0.18));
-        grad.addColorStop(0.7, CHART_INK.bone(0.08));
-        grad.addColorStop(1, CHART_INK.bone(0.03));
-      }
-      g.fillStyle = grad || CHART_INK.bone(0.06);
-      g.beginPath(); g.arc(pool.x, pool.y, pool.r, 0, Math.PI * 2); g.fill();
-    }
-    g.restore();
-    for (const pool of pools) {
-      g.save();
-      for (const other of pools) {
-        if (other === pool) continue;
-        g.beginPath();
-        g.rect(-1e4, -1e4, 3e4, 3e4);
-        g.arc(other.x, other.y, Math.max(1, other.r - 1), 0, Math.PI * 2, true);
-        g.clip('evenodd');
-      }
-      drawBandRing(g, pool.x, pool.y, pool.r, { band: 6, bandA: 0.34, edge: 1.5, edgeA: 0.72 });
-      g.restore();
-    }
-    g.restore();
+    // Zones: regions of the sector as soft pools of light — never a hairline circle.
     for (const z of model.zones) {
-      const zd = warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU);
-      const x = zd.x, y = zd.y, rr = zd.r;
+      const x = sx(z.x), y = sz(z.z), rr = z.radius * pxPerWU;
 
       // Zone centres are authored sector-local, but the click target arms an autopilot fix, which
       // world.js stores global.
@@ -8562,31 +8068,28 @@ _drawSystem(g, state, w, h) {
           color: INK.red,
         }));
       } else {
-        // (the pool and its rim were laid above, merged with its neighbours)
-        // A region's name reads inside its own pool, clear of the rim, next after the stations; a pool
-        // too small for its name hangs it on a leader off its rim once the marks have their seats.
-        const zoneLabel = makeMapLabelCandidate(g, {
+        const pool = g.createRadialGradient ? g.createRadialGradient(x, y, rr * 0.35, x, y, rr) : null;
+        if (pool) {
+          pool.addColorStop(0, CHART_INK.bone(0));
+          pool.addColorStop(0.8, CHART_INK.bone(0.03));
+          pool.addColorStop(1, CHART_INK.bone(this._layers.faction ? 0.08 : 0.065));
+        }
+        g.save();
+        g.fillStyle = pool || CHART_INK.bone(0.03);
+        g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill();
+        g.restore();
+        drawBandRing(g, x, y, rr, { band: 0, edge: 1.2, edgeA: 0.2 });
+        // A region's name reads at its crown, clear of the furniture at its heart.
+        labelCandidates.push(makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'zone',
           text: z.name + (z.threat ? ` · THREAT ${z.threat}` : ''),
           lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '')],
           x,
-          y,
+          y: y - rr,
           anchorRadius: 3,
-          inside: { x, y, r: rr },
-          priority: 700,
-          color: CHART_INK.bone(0.8),
-        });
-        labelCandidates.push(zoneLabel);
-        // A pool that meets the gate ring may hang its name outside it, as the gates do; any other
-        // region's name stays inside the sector's ring.
-        const meetsRing = !!dial && Math.hypot(x - dial.x, y - dial.y) + rr >= dial.r - 30;
-        labelCandidates.push({
-          ...zoneLabel, id: `zone:${z.id}:rim`, rimLeader: true, rimOnly: true, unlessPlaced: zoneLabel.id, priority: 380,
-          within: meetsRing ? null : dial,
-          rimHidden: pools.filter((o) => o.z !== z).map((o) => ({ x: o.x, y: o.y, r: o.r })),
-          rimClip: dial ? { x: dial.x, y: dial.y, r: dial.r - 8 } : null,
-        });
+          color: CHART_INK.bone(0.78),
+        }));
       }
     }
 
@@ -8598,12 +8101,10 @@ _drawSystem(g, state, w, h) {
         const cx = Number(f.center && f.center.x) || 0;
         const cz = Number(f.center && f.center.z) || 0;
         const radius = Number(f.clusterRadius) || Number(f.radius) || 300;
-        const fd = warpDisc(sx(cx), sz(cz), radius * pxPerWU);
-        const fx = fd.x, fy = fd.y, fr = fd.r;
+        const fx = sx(cx), fy = sz(cz), fr = radius * pxPerWU;
         const glyph = asteroidScanGlyph(f.type);
-        const fieldName = `${FIELD_NAME_BY_TYPE[f.type] || 'Ore'} field`;
         g.save();
-        g.fillStyle = CHART_INK.bone(0.05);
+        g.fillStyle = CHART_INK.bone(0.045);
         g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill();
         const grains = Math.max(10, Math.min(40, Math.round(fr * 0.9)));
         for (let i = 0; i < grains; i += 1) {
@@ -8614,18 +8115,16 @@ _drawSystem(g, state, w, h) {
           g.beginPath(); g.arc(fx + Math.cos(a) * rr, fy + Math.sin(a) * rr * 0.86, s, 0, Math.PI * 2); g.fill();
         }
         g.restore();
-        drawBandRing(g, fx, fy, fr, { band: 5, bandA: 0.26, edge: 1.3, edgeA: 0.5 });
-        // What it is and the ore it carries, named at the field's crown through the label solver.
+        drawBandRing(g, fx, fy, fr, { band: 5, bandA: 0.1, edge: 1.2, edgeA: 0.32 });
+        // The ore it carries, named at the field's crown through the label solver.
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `field:${f.id || glyph}`,
           kind: 'zone',
-          text: `${fieldName} · ${glyph}`,
-          lines: [`${fieldName} · ${glyph}`],
+          text: glyph,
+          lines: [glyph],
           x: fx,
-          y: fy,
-          anchorRadius: fr + 2,
-          area: true,
-          priority: 710,
+          y: fy - fr,
+          anchorRadius: 3,
           color: CHART_INK.lit(0.9),
         }));
       }
@@ -8636,7 +8135,7 @@ _drawSystem(g, state, w, h) {
     // Claim freight and manufactured corridors share the existing Route layer beneath their marks.
     if (this._layers.route) {
       for (const marker of model.ownership) {
-        if (marker.travelRoute) drawManufacturedTravelRoute(g, marker.travelRoute, sx, sz, true, warp);
+        if (marker.travelRoute) drawManufacturedTravelRoute(g, marker.travelRoute, sx, sz, true);
       }
     }
 
@@ -8647,9 +8146,8 @@ _drawSystem(g, state, w, h) {
         const fixed = !!bearing.drawFixedPos;
         const point = bearing.drawFixedPos || bearing.drawCenter;
         if (!point) continue;
-        const bd = warpDisc(sx(point.x), sz(point.z), fixed ? 0 : bearing.radius * pxPerWU);
-        const x = bd.x, y = bd.y;
-        const radiusPx = fixed ? 0 : bd.r;
+        const x = sx(point.x), y = sz(point.z);
+        const radiusPx = fixed ? 0 : bearing.radius * pxPerWU;
         const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
@@ -8700,9 +8198,9 @@ _drawSystem(g, state, w, h) {
     if (wpDraw && this._layers.route && model.player) {
       const progress = reduced ? 1 : Math.min(1, Math.max(0, (this._nowMs() - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
       drawHandBeam(g, [
-        warp(sx(model.player.drawPos.x), sz(model.player.drawPos.z)),
-        warp(sx(wpDraw.x), sz(wpDraw.z)),
-      ], { progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, head: false, alpha: this._line ? 0.4 : 1, tone: this._line ? 'bone' : 'hand' });
+        { x: sx(model.player.drawPos.x), y: sz(model.player.drawPos.z) },
+        { x: sx(wpDraw.x), y: sz(wpDraw.z) },
+      ], { progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, head: false, alpha: this._line ? 0.34 : 1 });
     }
 
     // Gate-name multiplicity (continuous residency can park neighbour twins on-screen).
@@ -8719,8 +8217,7 @@ _drawSystem(g, state, w, h) {
     const snapId = this._line && this._line.snap ? this._line.snap.id : null;
     for (const p of model.points) {
       if (!p.drawPos) continue;
-      const pw = warp(sx(p.drawPos.x), sz(p.drawPos.z));
-      const x = pw.x, y = pw.y;
+      const x = sx(p.drawPos.x), y = sz(p.drawPos.z);
       const isGate = p.kind === 'gate';
       const isStation = p.kind === 'station';
       const displayName = isGate
@@ -8776,38 +8273,18 @@ _drawSystem(g, state, w, h) {
       // Lane furniture and minor points name themselves when reached for (hover, selection, a laid
       // line); stations, gates and anything with a status line always do.
       const reached = p.id === hoverId || p.id === snapId || !!(this._selectedTarget && this._selectedTarget.id === p.id);
-      if (isStation || isGate || p.statusLine || reached) {
-        const pointLabel = makeMapLabelCandidate(g, {
-          id: `point:${p.id}`,
-          kind: p.kind,
-          outsideOf: isGate ? this._dialScreen : null,
-          text: displayName,
-          lines: pointLines,
-          x,
-          y,
-          anchorRadius: Math.max(pointMark.nameplatePx, isStation || isGate ? 16 : 9),
-          color: isStation || isGate ? CHART_INK.lit(0.97) : CHART_INK.bone(0.84),
-          secondaryColor: marketTint,
-          selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
-        });
-        // Where the chart is tight a name may take a shorter shape: a gate by its arrow alone, a
-        // two-word name set on two lines.
-        const alts = [];
-        const name = String(displayName || '');
-        const arrow = name.indexOf(' → ');
-        if (isGate && arrow > 0) {
-          const short = makeMapLabelCandidate(g, { ...pointLabel, lines: [name.slice(arrow + 1), ...pointLines.slice(1)] });
-          alts.push({ lines: short.lines, width: short.width, height: short.height });
-        }
-        const words = name.split(/\s+/).filter(Boolean);
-        if (!isGate && words.length >= 2) {
-          const cut = Math.ceil(words.length / 2);
-          const two = makeMapLabelCandidate(g, { ...pointLabel, lines: [words.slice(0, cut).join(' '), words.slice(cut).join(' '), ...pointLines.slice(1)] });
-          alts.push({ lines: two.lines, width: two.width, height: two.height, nameLines: 2 });
-        }
-        if (alts.length) pointLabel.alts = alts;
-        labelCandidates.push(pointLabel);
-      }
+      if (isStation || isGate || p.statusLine || reached) labelCandidates.push(makeMapLabelCandidate(g, {
+        id: `point:${p.id}`,
+        kind: p.kind,
+        text: displayName,
+        lines: pointLines,
+        x,
+        y,
+        anchorRadius: Math.max(pointMark.nameplatePx, isStation || isGate ? 16 : 9),
+        color: isStation || isGate ? CHART_INK.lit(0.97) : CHART_INK.bone(0.84),
+        secondaryColor: marketTint,
+        selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
+      }));
 
       if (isStation && services.length > 0) {
         drawServicePictograms(g, x, y + 22, services);
@@ -8826,8 +8303,7 @@ _drawSystem(g, state, w, h) {
       for (const marker of model.ownership) {
         const draw = marker.drawPos;
         if (!draw || !Number.isFinite(draw.x) || !Number.isFinite(draw.z)) continue;
-        const cw = warp(sx(draw.x), sz(draw.z));
-        const x = cw.x, y = cw.y;
+        const x = sx(draw.x), y = sz(draw.z);
         const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
         const target = {
           ...marker,
@@ -8869,8 +8345,7 @@ _drawSystem(g, state, w, h) {
     // "You are here" — only for the sector you stand in (the model can survey a remote one).
     this._youScreen = null;
     if (model.player && model.player.inSector) {
-      const yw = warp(sx(model.player.drawPos.x), sz(model.player.drawPos.z));
-      const px = yw.x, py = yw.y;
+      const px = sx(model.player.drawPos.x), py = sz(model.player.drawPos.z);
       this._youScreen = { x: px, y: py };
       drawPlayerFixMark(g, px, py, model.player.rot, {
         scale: 1,
@@ -8881,7 +8356,8 @@ _drawSystem(g, state, w, h) {
     let objectivePlacement = null;
     let wpScreen = null;
     if (wpDraw && (this._layers.route || this._layers.mission)) {
-      let { x: wx, y: wy } = warp(sx(wpDraw.x), sz(wpDraw.z));
+      let wx = sx(wpDraw.x);
+      let wy = sz(wpDraw.z);
       const target = waypointClickTarget(wp, wpPos, wx, wy);
       if (!inField(wx, wy, 6)) {
         // The goal off the clear field: its tick on the field's border, pointing the way, and its
@@ -8894,7 +8370,7 @@ _drawSystem(g, state, w, h) {
         if (target) this._clickTargets.push(target);
       }
       const objectiveLabel = waypointMapLabel(wp);
-      const goalLabel = makeMapLabelCandidate(g, {
+      labelCandidates.push(makeMapLabelCandidate(g, {
         id: 'objective:active-waypoint',
         kind: 'objective',
         objective: true,
@@ -8904,57 +8380,19 @@ _drawSystem(g, state, w, h) {
         y: wy,
         anchorRadius: 16,
         color: INK.amberHot,
-      });
-      // where the dial is tight the goal's words set on two lines instead of crossing its ring
-      const goalTwo = makeMapLabelCandidate(g, { ...goalLabel, lines: ['GOAL', objectiveLabel.toUpperCase()] });
-      goalLabel.alts = [{ lines: goalTwo.lines, width: goalTwo.width, height: goalTwo.height, nameLines: 2 }];
-      labelCandidates.push(goalLabel);
+      }));
     }
     const systemReserved = [];
     if (wpScreen && this._layers.route && model.player && model.player.drawPos) {
       // Reserve a stub of the course just off the pin so the goal's words cannot settle on the beam.
-      const from = warp(sx(model.player.drawPos.x), sz(model.player.drawPos.z));
-      const stub = waypointTetherReserveRect(from.x, from.y, wpScreen.x, wpScreen.y);
+      const stub = waypointTetherReserveRect(
+        sx(model.player.drawPos.x), sz(model.player.drawPos.z), wpScreen.x, wpScreen.y);
       if (stub) systemReserved.push(stub);
       systemReserved.push({ x: wpScreen.x - 16, y: wpScreen.y - 16, width: 32, height: 32 });
     }
     if (this._youScreen) systemReserved.push({ x: this._youScreen.x - 16, y: this._youScreen.y - 16, width: 32, height: 32 });
-    if (dial && quarterFigure) {
-      // The quarter-reach figure sits on the half ring where no mark stands near it (its flanks first;
-      // the crown is where a region likes to set its name).
-      const marksNow = this._clickTargets.filter((t) => t && t.kind !== 'zone' && Number.isFinite(t.sx))
-        .map((t) => ({ x: t.sx, y: t.sy }));
-      if (this._youScreen) marksNow.push(this._youScreen);
-      if (wpScreen) marksNow.push(wpScreen);
-      let seat = null;
-      [180, 0, -90, 90, -135, -45, 135, 45].forEach((deg, i) => {
-        const a = (deg * Math.PI) / 180;
-        const qx = dial.x + Math.cos(a) * dial.r * 0.5;
-        const qy = dial.y + Math.sin(a) * dial.r * 0.5;
-        let clear = Infinity;
-        for (const mk of marksNow) clear = Math.min(clear, Math.hypot(mk.x - qx, mk.y - qy));
-        const score = Math.min(clear, 90) - i * 2;
-        if (!seat || score > seat.score) seat = { qx, qy, score };
-      });
-      g.save();
-      g.font = chartFont(640, 12, { stretch: 'normal' });
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.lineJoin = 'round';
-      g.strokeStyle = 'rgba(5, 7, 10, 0.9)'; g.lineWidth = 5;
-      g.strokeText(quarterFigure.text, seat.qx, seat.qy);
-      g.fillStyle = CHART_INK.bone(0.74);
-      g.fillText(quarterFigure.text, seat.qx, seat.qy);
-      g.restore();
-      dialWords.push({ x: seat.qx - quarterFigure.width / 2 - 3, y: seat.qy - 6, width: quarterFigure.width + 6, height: 12 });
-    }
-    for (const r of dialWords) systemReserved.push(r);
-    const poolRings = pools.map((pool) => ({
-      x: pool.x, y: pool.y, r: pool.r, clear: 5,
-      except: pools.filter((o) => o !== pool).map((o) => ({ x: o.x, y: o.y, r: o.r })),
-    }));
-    const dialRings = dial ? [{ x: dial.x, y: dial.y, r: dial.r, clear: 10, hard: true }] : [];
-    const labelLayout = this._placeLabels(labelCandidates, w, h, {
-      reserved: systemReserved, rings: dialRings.concat(poolRings),
+    const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
+      reserved: this._reservedLabelRects(w, h, systemReserved),
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -8967,7 +8405,7 @@ _drawSystem(g, state, w, h) {
     if (this._layers.mission) {
       for (const point of missionMapGeometry(state, trackedMissionOf(state))) {
         const local = globalToSectorLocalForSector(point, model.sectorId);
-        const { x: mx, y: my } = warp(sx(local.x), sz(local.z));
+        const mx = sx(local.x), my = sz(local.z);
         if (!inField(mx, my, 6)) continue;
         drawMissionPoint(g, mx, my, point.kind, point.done);
       }
@@ -8978,7 +8416,7 @@ _drawSystem(g, state, w, h) {
 
     // Objective marker renders last, with the first label reservation and strongest contrast.
     if (wpScreen && (this._layers.route || this._layers.mission)) {
-      drawWaypointPin(g, wpScreen.x, wpScreen.y, waypointMapLabel(wp), w, objectivePlacement, this._line ? 'bone' : 'hand');
+      drawWaypointPin(g, wpScreen.x, wpScreen.y, waypointMapLabel(wp), w, objectivePlacement);
     } else if (objectivePlacement) {
       drawMapLabelBlock(g, objectivePlacement);
     }
@@ -9073,12 +8511,9 @@ _drawLocal(g, state, w, h) {
     setMapCanvasAriaLabel(this._canvas, 'local', this._layers.holdings ? model.ownership : []);
 
     const offView = (x, y) => x < field.x + 12 || y < field.y + 12 || x > field.x + field.width - 12 || y > field.y + field.height - 12;
-    // Off-field marks ride the scope's outer ring at their true bearing: one radius, read like a
-    // compass rose, never floating at the field's edge.
-    const pinRadius = Math.min(field.width, field.height) * 0.46 + 16;
     const pushEdgeTick = (x, y, color, shape, target) => {
       if (edgeTicks.length >= 24) return;
-      edgeTicks.push(ringPinTick(sx(px), sz(pz), pinRadius, x, y, color, shape, target));
+      edgeTicks.push(edgeTickOnField(field, sx(px), sz(pz), x, y, color, shape, target));
     };
 
     drawSensorLattice(g, w, h, { pointer: this._pointer, a: 0.055 });
@@ -9087,7 +8522,7 @@ _drawLocal(g, state, w, h) {
     const shipX = sx(px), shipY = sz(pz);
     const ringBase = Math.min(field.width, field.height) * 0.46;
     for (const rr of [0.33, 0.66, 1.0]) {
-      drawBandRing(g, shipX, shipY, ringBase * rr, { band: 7, bandA: rr === 1 ? 0.34 : 0.3, edge: 1.5, edgeA: rr === 1 ? 0.6 : 0.5 });
+      drawBandRing(g, shipX, shipY, ringBase * rr, { band: 7, bandA: rr === 1 ? 0.27 : 0.2, edge: 1.5, edgeA: rr === 1 ? 0.55 : 0.4 });
     }
     // Minor graduations on the outer ring: an instrument, not a circle.
     g.save();
@@ -9209,12 +8644,12 @@ _drawLocal(g, state, w, h) {
     if (wpPos && this._layers.route) {
       let ex = sx(wpPos.x), ey = sz(wpPos.z);
       if (offView(ex, ey)) {
-        wpTick = ringPinTick(shipX, shipY, pinRadius, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey) || undefined);
+        wpTick = edgeTickOnField(field, shipX, shipY, ex, ey, INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey) || undefined);
         ex = wpTick.x; ey = wpTick.y;
       }
       const progress = reduced ? 1 : Math.min(1, Math.max(0, (this._nowMs() - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
       drawHandBeam(g, [{ x: shipX, y: shipY }, { x: ex, y: ey }], {
-        progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, head: false, alpha: this._line ? 0.4 : 1, tone: this._line ? 'bone' : 'hand',
+        progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, head: false, alpha: this._line ? 0.34 : 1,
       });
     }
 
@@ -9465,7 +8900,7 @@ _drawLocal(g, state, w, h) {
       let wx = sx(wpPos.x);
       let wy = sz(wpPos.z);
       if (offView(wx, wy)) {
-        const tick = wpTick || ringPinTick(shipX, shipY, pinRadius, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy) || undefined);
+        const tick = wpTick || edgeTickOnField(field, shipX, shipY, wx, wy, INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy) || undefined);
         edgeTicks.push(tick);
         wx = tick.x; wy = tick.y;
       } else {
@@ -9491,11 +8926,9 @@ _drawLocal(g, state, w, h) {
       const stub = waypointTetherReserveRect(shipX, shipY, wpScreen.x, wpScreen.y);
       if (stub) localReserved.push(stub);
     }
-    for (const frac of [0.33, 0.66, 1.0]) {
-      const rrPx = ringBase * frac;
-      localReserved.push({ x: shipX + rrPx * 0.707 + 4, y: shipY - rrPx * 0.707 - 16, width: 64, height: 20 });
-    }
-    const labelLayout = this._placeLabels(labelCandidates, w, h, { reserved: localReserved });
+    const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
+      reserved: this._reservedLabelRects(w, h, localReserved),
+    });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
       if (!placement.visible) continue;
@@ -9517,7 +8950,7 @@ _drawLocal(g, state, w, h) {
 
     // The tracked objective owns the final paint and the strongest label reservation.
     if (wpScreen && (this._layers.route || this._layers.mission)) {
-      drawWaypointPin(g, wpScreen.x, wpScreen.y, waypointMapLabel(wp), w, objectivePlacement, this._line ? 'bone' : 'hand');
+      drawWaypointPin(g, wpScreen.x, wpScreen.y, waypointMapLabel(wp), w, objectivePlacement);
     } else if (objectivePlacement) {
       drawMapLabelBlock(g, objectivePlacement);
     }
@@ -9658,22 +9091,17 @@ function drawPoiMark(g, x, y) {
   g.restore();
 }
 
-function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame, warp = null) {
+function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame) {
   if (!route || typeof sx !== 'function' || typeof sz !== 'function') return;
   const from = useDrawFrame ? route.drawFrom : route.from;
   // Freight has two endpoints; only a manufactured corridor has an intermediate relay.
   const support = (useDrawFrame ? route.drawSupport : route.support) || from;
   const to = useDrawFrame ? route.drawTo : route.to;
   if (!from || !support || !to) return;
-  let ax = sx(from.x), ay = sz(from.z);
-  let mx = sx(support.x), my = sz(support.z);
-  let bx = sx(to.x), by = sz(to.z);
+  const ax = sx(from.x), ay = sz(from.z);
+  const mx = sx(support.x), my = sz(support.z);
+  const bx = sx(to.x), by = sz(to.z);
   if (![ax, ay, mx, my, bx, by].every(Number.isFinite)) return;
-  if (typeof warp === 'function') {
-    ({ x: ax, y: ay } = warp(ax, ay));
-    ({ x: mx, y: my } = warp(mx, my));
-    ({ x: bx, y: by } = warp(bx, by));
-  }
 
   const dx = bx - ax;
   const dy = by - ay;
@@ -9900,7 +9328,7 @@ export function drawAsteroidMark(g, x, y, seedId) {
 function drawEdgeTick(g, x, y, color, shape, angle = null) {
   // An off-field mark pinned to the field's edge: a bead of its light and a pointer out toward it.
   const hostile = shape === 'hostile' || (shape !== 'waypoint' && color === INK.red);
-  const goal = shape === 'waypoint' && color === INK.amberHot;
+  const goal = shape === 'waypoint';
   const rgbFill = goal ? CHART_INK.hand(0.95) : hostile ? CHART_INK.danger(0.92) : CHART_INK.lit(0.9);
   if (Number.isFinite(angle)) {
     const ca = Math.cos(angle), sa = Math.sin(angle);
@@ -10093,28 +9521,8 @@ function rgbTriplet(color) {
   return m ? `${m[1]},${m[2]},${m[3]}` : '236,230,216';
 }
 
-/**
- * The chart camera may open a little wider than the whole lattice: the clear field between the rails is
- * narrower than the canvas the span is measured on, so fitting all of known space needs the headroom.
- */
-const CHART_SPAN_MAX_WU = MAP_SPAN_MAX_WU * 1.8;
-
 /** How long a still press on empty space waits before it becomes a laid line. */
 const CHART_LINE_HOLD_MS = 340;
-/** A field's kind in words (the lock's own names), for the chart's field labels. */
-const FIELD_NAME_BY_TYPE = Object.freeze({
-  ast_common_rock: 'Silicate', ast_metallic: 'Metallic', ast_icy: 'Ice', ast_crystalline: 'Crystal',
-  ast_gas_cloud: 'Volatile', ast_rare_exotic: 'Exotic',
-});
-
-/** "29.5k WU" -> { value: '29.5k', unit: 'WU' }: a reading's figure and its unit, for the thin numeral. */
-function splitReading(text) {
-  const m = /^(\S+)\s+(.+)$/.exec(String(text || '').trim());
-  return m ? { value: m[1], unit: m[2] } : { value: String(text || ''), unit: '' };
-}
-
-/** How long a laid line takes to lock into the course before the chart hands over to the flight. */
-const CHART_LOCK_MS = 520;
 
 /**
  * An edge tick for a mark outside the clear field: pinned where the ray from the field's centre
@@ -10135,12 +9543,6 @@ function edgeTickOnField(field, cx, cy, x, y, color, shape, target) {
   const tx = Math.max(x0, Math.min(x1, cx + dx * t));
   const ty = Math.max(y0, Math.min(y1, cy + dy * t));
   return { x: tx, y: ty, color, shape, target, angle: Math.atan2(dy, dx) };
-}
-
-/** An off-field mark pinned to an instrument's ring at its true bearing from the ring's centre. */
-function ringPinTick(cx, cy, radius, x, y, color, shape, target) {
-  const angle = Math.atan2(y - cy, x - cx);
-  return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, color, shape, target, angle };
 }
 
 const CHART_CONTEXT_METHODS = Object.freeze([
@@ -10241,7 +9643,6 @@ function makeMapLabelCandidate(g, candidate) {
 
 function drawMapLabelBlock(g, placement) {
   if (!placement || !placement.visible) return;
-  if (placement.leader) drawLabelLeader(g, placement.leader);
   const lines = Array.isArray(placement.lines) && placement.lines.length
     ? placement.lines
     : [placement.text];
@@ -10254,13 +9655,11 @@ function drawMapLabelBlock(g, placement) {
   g.textAlign = 'left';
   g.textBaseline = 'top';
   g.lineJoin = 'round';
-  const nameLines = Math.max(1, Number(placement.nameLines) || 1);
   for (let index = 0; index < lines.length; index += 1) {
-    const primary = index < nameLines;
-    const px = primary ? 13 : 12;
-    g.font = primary ? chartFont(640, 13) : chartFont(520, 12, { stretch: 'normal' });
-    setTracking(g, primary ? 0.02 : 0.01, px);
-    const fill = primary
+    const px = index === 0 ? 13 : 12;
+    g.font = index === 0 ? chartFont(640, 13) : chartFont(520, 12, { stretch: 'normal' });
+    setTracking(g, index === 0 ? 0.02 : 0.01, px);
+    const fill = index === 0
       ? color
       : (index === lines.length - 1 && placement.secondaryColor
         ? placement.secondaryColor
@@ -10330,7 +9729,7 @@ function drawMissionPoint(g, x, y, kind, done) {
   g.restore();
 }
 
-function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity, labelPos = null, ringRadius = 17, tone = 'hand') {
+function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity, labelPos = null, ringRadius = 17) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   const text = `GOAL · ${String(label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
   // The goal is where the Hand points: a lit ring framing the node (never over it, so the sector it
@@ -10350,10 +9749,9 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity, labelPos = 
   }
   const by = y - ringR;
   const d = 6.5;
-  // Amber only when the goal is the course's head; otherwise the badge is a lit bone mark.
-  g.fillStyle = tone === 'hand' ? CHART_INK.hand(0.28) : CHART_INK.bone(0.16);
+  g.fillStyle = CHART_INK.hand(0.28);
   g.beginPath(); g.arc(x, by, 12, 0, Math.PI * 2); g.fill();
-  g.fillStyle = tone === 'hand' ? CHART_INK.hand(1) : CHART_INK.lit(0.95);
+  g.fillStyle = CHART_INK.hand(1);
   g.beginPath();
   g.moveTo(x, by - d); g.lineTo(x + d, by); g.lineTo(x, by + d); g.lineTo(x - d, by);
   g.closePath();
@@ -10475,18 +9873,8 @@ function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, rout
   return best;
 }
 
-function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacement = null, tone = 'hand') {
+function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacement = null) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-  if (tone === 'bone') {
-    // The course's head while a new line is laid: the same pin in bone (one Hand at a time).
-    drawBandRing(g, x, y, 13, { band: 6, bandA: 0.18, edge: 1.6, edgeA: 0.7 });
-    g.save();
-    g.fillStyle = CHART_INK.lit(0.8);
-    g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); g.fill();
-    g.restore();
-    if (labelPlacement) drawMapLabelBlock(g, labelPlacement);
-    return;
-  }
   // The course's destination: the Hand's own mark — an amber diamond in its bloom inside a lit ring.
   drawBandRing(g, x, y, 13, { band: 6, bandA: 0.22, edge: 1.8, edgeA: 0.95 });
   g.save();

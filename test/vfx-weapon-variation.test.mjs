@@ -38,35 +38,13 @@ test('hull contact texture identity survives target motion, origin rebase, and p
   } finally { pool.dispose(); }
 });
 
-test('weapon wake carries emission and transmission with coverage applied once', () => {
+test('weapon wake uses premultiplied additive blending exactly once', () => {
   const pool = new WeaponRibbonPool(null, { capacity: 1, segments: 4 });
   try {
-    assert.equal(pool.material.blending, THREE.NormalBlending);
+    assert.equal(pool.material.blending, THREE.AdditiveBlending);
     assert.equal(pool.material.premultipliedAlpha, true,
       'the shader already weights radiance by coverage; multiplying by alpha again erases thin tails');
-    assert.match(pool.material.fragmentShader, /vec4\(c \* a \* uIntensity, special \? a : 0\.0\)/);
-  } finally { pool.dispose(); }
-});
-
-test('sparse wake histories submit only live volume geometry and preserve identity', () => {
-  const pool = new WeaponRibbonPool(null, { capacity: 64, segments: 8 });
-  try {
-    pool._cursor = 61;
-    const first = pool.spawn({ entityId: 11, x: 0, y: 0, z: 0, width: 1, linger: 0.05 });
-    const retained = pool.spawn({ entityId: 12, x: 0, y: 0, z: 8, width: 1, linger: 1 });
-    pool.pushHead(11, 5, 0, 0);
-    pool.pushHead(12, 5, 0, 8);
-    pool.update(0.016, { x: 0, y: 60, z: 140 });
-    const oneWakeIndices = (pool.segments - 1) * (pool.sectionVertices - 1) * 6;
-    assert.equal(pool.geometry.drawRange.count, 2 * oneWakeIndices);
-    pool.release(11);
-    pool.update(0.1, { x: 0, y: 60, z: 140 });
-    assert.equal(pool.byEntity.get(12), retained, 'history identity is not repacked');
-    assert.equal(pool.drawSlots[first], -1);
-    assert.equal(pool.drawSlots[retained], 0, 'GPU output closes the retired slot');
-    assert.equal(pool.geometry.drawRange.count, oneWakeIndices);
-    assert.ok(pool.alpha[0] > 0);
-    assert.equal(pool.hist[retained * pool.segments * 3 + 2], 8);
+    assert.match(pool.material.fragmentShader, /vec4\(c \* a, a\)/);
   } finally { pool.dispose(); }
 });
 
@@ -112,7 +90,7 @@ test('wakes evolve by local age but retain the exact path and retire under reduc
   const age = pool.age[a];
   pool.update(0.05, { x: 0, y: 30, z: 20 }, { id: 'reduced-motion-and-flash' });
   assert.equal(pool.age[a], age);
-  assert.equal(pool.geometry.attributes.aShape.getW(a * pool.segments * pool.sectionVertices), age);
+  assert.equal(pool.geometry.attributes.aShape.getW(a * pool.segments * 2), age);
   assert.equal(pool.material.uniforms.uModulation.value, 0);
   pool.pushHead(101, 5, 0, 0);
   assert.equal(pool.hist[a * pool.segments * 3], 5, 'real source motion still updates');

@@ -15,9 +15,7 @@ export const RIBBON_MIN_PIXELS = 1.7;
  * the round flew (the frame-truth pin reads that). Vertices past this arc length are not drawn.
  */
 export const WAKE_VISIBLE_ARC_WU = 42;
-// Closed cross-sections make energy occupy depth at every view. The ninth vertex closes UVs.
-export const WEAPON_WAKE_SECTION_VERTICES = 9;
-const SECTION = WEAPON_WAKE_SECTION_VERTICES;
+const RIBBON_MIN_FACING = 0.25;
 
 const RIBBON_VERT = /* glsl */`
   attribute float aAlpha;
@@ -64,62 +62,77 @@ const RIBBON_FRAG = /* glsl */`
 
   void main() {
     if (vAlpha <= 0.002) discard;
-    float angle = vUv.y * 6.2831853;
+    float across = abs(vUv.y * 2.0 - 1.0);
     float along = vUv.x;
     float id = vShape.x;
+    // World arc length, not a clock: the internal structure is pinned to the path the round
+    // actually flew and does not stretch when the wake grows. The material may convect inside
+    // that history, but never moves its recorded centreline or advances during pause.
     float arc = vShape.y;
     float phase = vShape.z;
-    float flow = vShape.w * (0.88 + 0.24 * fract(phase * 4.19));
+    float age = vShape.w;
+    float flow = age * (0.88 + 0.24 * fract(phase * 4.19));
+
+    // A wake is a sheet of real material. Edge-on, the eye looks through more of it and it
+    // condenses into a hard filament; face-on it opens out. That view term is what separates a
+    // sheet from a flat card (B7) and from a camera-facing billboard (B2).
     vec3 N = normalize(vNormalW);
     vec3 V = normalize(vViewW);
     float facing = clamp(abs(dot(N, V)), 0.0, 1.0);
-    float depth = mix(0.58, 1.0, smoothstep(0.02, 0.7, facing));
-    float edgeOn = 1.0 - facing;
-    float body;
-    float hot;
+    float depth = clamp(1.0 / max(facing, 0.16), 1.0, uGrazeGain);
+    float edgeOn = 1.0 - smoothstep(0.08, 0.62, facing);
+
+    float body = 0.0;
+    float hot = 0.0;
+
     if (id < 0.5) {
-      // CORD: a compact ballistic pressure tube with traveling compression collars.
-      hot = pow(0.5 + 0.5 * ribbonWave(arc * 2.6 - flow * 38.0 + phase), 3.0);
-      body = 0.32 + hot * 0.64;
+      // CORD — machined impulse. Needle core, hard lateral cutoff, shock beads pinned to arc.
+      float beads = 0.82 + uModulation * 0.18 * ribbonWave(arc * 2.6 - flow * 38.0 + phase);
+      float core = pow(max(0.0, 1.0 - across), 13.0);
+      float jacket = 1.0 - smoothstep(0.24, 0.52, across);
+      body = (core * 1.20 + jacket * 0.32) * beads;
+      hot = core;
     } else if (id < 1.5) {
-      // BRAID: broad circulating plasma. Dark channels convect around a luminous body,
-      // while two hot folds overtake one another instead of blinking beads on a line.
-      float coil = angle * 2.0 + arc * 0.65 - flow * 9.0 + phase;
-      float fold = 0.5 + 0.5 * ribbonWave(coil + ribbonWave(arc * 0.22 - flow * 3.0));
-      hot = pow(fold, 3.0);
-      body = 0.38 + 0.76 * fold;
+      // BRAID — transported plasma. Two counter-wound convection lobes cross down the wake.
+      float wind = ribbonWave(arc * 0.85 - flow * 6.0 + phase);
+      float lobeA = ribbonStrand(across - (0.30 + 0.34 * wind), 0.29);
+      float lobeB = ribbonStrand(across - (0.30 - 0.34 * wind), 0.29);
+      float skin = 1.0 - smoothstep(0.72, 1.0, across);
+      float convection = 0.90 + uModulation * 0.10 * ribbonWave(arc * 1.7 - flow * 9.0 + phase * 2.1);
+      body = ((lobeA + lobeB) * 0.60 + 0.14) * skin * convection;
+      hot = max(lobeA, lobeB) * 0.75;
     } else if (id < 2.5) {
-      // FORK: two broad electrical lobes separated by a migrating dark seam.
-      float split = cos(angle * 2.0 + ribbonWave(arc * 0.4 - flow * 7.0) * 0.6);
-      float branch = smoothstep(-0.22, 0.48, split);
-      hot = branch * (0.55 + 0.45 * ribbonWave(arc * 1.9 - flow * 15.0 + phase));
-      body = 0.10 + branch * 0.92;
+      // FORK — induced current. Two conductors with real open air between them. Both branches
+      // start at the round and die together at the tail; neither is left dangling.
+      float split = 0.50 + 0.16 * ribbonWave(arc * 1.9 - flow * 10.0 + phase);
+      float branch = ribbonStrand(across - split, 0.14);
+      float root = (1.0 - smoothstep(0.0, 0.22, along)) * pow(max(0.0, 1.0 - across), 5.0);
+      float current = 0.90 + uModulation * 0.10 * ribbonWave(arc * 4.1 - flow * 24.0 + phase);
+      body = (branch * 1.30 + root * 0.60) * current;
+      hot = branch;
+      // The gap is a silhouette feature, not a pale stripe painted over a solid body.
+      body *= smoothstep(0.015,0.055,body);
     } else if (id < 3.5) {
-      // SHEET: rolled motor exhaust, a cooler underside and incandescent crest.
-      float roll = 0.5 + 0.5 * ribbonWave(angle + arc * 0.48 - flow * 5.0 + phase);
-      hot = roll * roll * (1.0 - along * 0.6);
-      body = 0.28 + roll * 0.64;
+      // SHEET — staged motor. Twin vapour banks around a dark, unlit exhaust channel.
+      float curl = ribbonWave(arc * 0.72 - flow * 3.6 + phase) * 0.07;
+      float bank = smoothstep(0.12 + curl, 0.44 + curl, across) * (1.0 - smoothstep(0.70, 1.0, across));
+      float channel = 1.0 - smoothstep(0.0, 0.20, across);
+      float exhaust = 0.91 + uModulation * 0.09 * ribbonWave(arc * 1.4 - flow * 5.0 + phase);
+      body = bank * exhaust + channel * 0.08;
+      hot = bank * (1.0 - smoothstep(0.0, 0.38, along));
+      body *= smoothstep(0.012,0.05,body);
     } else {
-      // FILAMENT: restrained coherent afterimage for the accepted starter pulse.
-      hot = pow(max(0.0, facing), 3.0);
-      body = 0.22 + 0.48 * hot;
+      // FILAMENT — coherent afterimage. Narrow, clean, no combustion detail at all.
+      float core = pow(max(0.0, 1.0 - across), 7.0);
+      float halo = 1.0 - smoothstep(0.38, 0.90, across);
+      body = core * 1.05 + halo * 0.20;
+      hot = core;
     }
-    // Reduced flash removes modulation, not the moving material's footprint or body.
-    body = mix(0.68, body, uModulation);
-    float a = body * depth * vAlpha;
+
+    float a = body * depth * vAlpha * uIntensity;
     if (a <= 0.003) discard;
-    bool special = id > 0.5 && id < 3.5;
-    // Premultiplied transmission retains darker channels when front/back surfaces overlap.
-    // Compact ballistic/starter wakes remain purely additive (zero extinction alpha).
-    vec3 c = special ? vColor * (0.32 + hot * 1.6) + vec3(0.7,0.85,1.0) * pow(hot,4.0) * 0.35
-      : mix(vColor, vec3(1.0, 0.97, 0.92), clamp(hot, 0.0, 1.0) * (0.12 + 0.22 * edgeOn));
-    if(id>2.5&&id<3.5){
-      // Spent motor gas keeps the colour of carried combustion, not the white ignition
-      // core. The hot nozzle is a separate 3D owner at the missile's current rear.
-      c=vColor*(.22+hot*.86)+vec3(.45,.18,.05)*pow(hot,4.0)*.24;
-    }
-    a = min(a * (special ? 0.62 : 1.0), 0.88);
-    gl_FragColor = vec4(c * a * uIntensity, special ? a : 0.0);
+    vec3 c = mix(vColor, vec3(1.0, 0.97, 0.92), clamp(hot, 0.0, 1.0) * (0.12 + 0.22 * edgeOn));
+    gl_FragColor = vec4(c * a, a);
   }
 `;
 
@@ -127,30 +140,32 @@ export class WeaponRibbonPool {
   constructor(scene, options = {}) {
     this.capacity = Math.max(1, options.capacity || WEAPON_RIBBON_CAPACITY);
     this.segments = Math.max(4, options.segments || WEAPON_RIBBON_SEGMENTS);
-    this.sectionVertices = SECTION;
-    const verts = this.capacity * this.segments * SECTION;
-    const quads = this.capacity * (this.segments - 1) * (SECTION - 1);
+    const verts = this.capacity * this.segments * 2;
+    const quads = this.capacity * (this.segments - 1);
     this.position = new Float32Array(verts * 3);
     this.color = new Float32Array(verts * 3);
     this.alpha = new Float32Array(verts);
     this.uv = new Float32Array(verts * 2);
     this.normal = new Float32Array(verts * 3);
     this.shape = new Float32Array(verts * 4);
-    // Default pool fits Uint16; explicitly larger pools select their index width safely.
-    const index = verts <= 65536 ? new Uint16Array(quads * 6) : new Uint32Array(quads * 6);
+    // The largest generated vertex index is 12,287 (256 ribbons × 24
+    // segments × 2 vertices), so WebGL1-compatible uint16 indices are enough.
+    const index = new Uint16Array(quads * 6);
     let w = 0;
     for (let r = 0; r < this.capacity; r++) {
-      const base = r * this.segments * SECTION;
+      const base = r * this.segments * 2;
+      for (let s = 0; s < this.segments - 1; s++) {
+        const a = base + s * 2;
+        index[w++] = a; index[w++] = a + 1; index[w++] = a + 2;
+        index[w++] = a + 1; index[w++] = a + 3; index[w++] = a + 2;
+      }
+    }
+    for (let r = 0; r < this.capacity; r++) {
       for (let s = 0; s < this.segments; s++) {
-        for (let k = 0; k < SECTION; k++) {
-          const v = base + s * SECTION + k;
-          this.uv[v * 2] = s / (this.segments - 1);
-          this.uv[v * 2 + 1] = k / (SECTION - 1);
-          if (s < this.segments - 1 && k < SECTION - 1) {
-            index[w++] = v; index[w++] = v + 1; index[w++] = v + SECTION;
-            index[w++] = v + 1; index[w++] = v + SECTION + 1; index[w++] = v + SECTION;
-          }
-        }
+        const i = (r * this.segments + s) * 2;
+        const u = s / (this.segments - 1);
+        this.uv[i * 2] = u; this.uv[i * 2 + 1] = 0;
+        this.uv[i * 2 + 2] = u; this.uv[i * 2 + 3] = 1;
       }
     }
     const geo = new THREE.BufferGeometry();
@@ -162,7 +177,6 @@ export class WeaponRibbonPool {
     geo.setAttribute('aShape', new THREE.BufferAttribute(this.shape, 4).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('uv', new THREE.BufferAttribute(this.uv, 2));
     geo.setIndex(new THREE.BufferAttribute(index, 1));
-    geo.setDrawRange(0, 0);
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
     this.material = new THREE.ShaderMaterial({
       // Geometry now absorbs the foreshortening, so the shader only keeps a modest residual
@@ -171,9 +185,9 @@ export class WeaponRibbonPool {
       vertexShader: RIBBON_VERT,
       fragmentShader: RIBBON_FRAG,
       transparent: true,
-      blending: THREE.NormalBlending,
-      // Fragment output owns coverage once. Special volumes absorb between hot folds;
-      // starter/ballistic profiles use zero extinction and retain additive light.
+      blending: THREE.AdditiveBlending,
+      // Fragment output already contains coverage. ONE/ONE preserves the intended thin wake;
+      // SRC_ALPHA/ONE applied that coverage twice, erasing tails and over-amplifying hot knots.
       premultipliedAlpha: true,
       depthWrite: false,
       side: THREE.DoubleSide,
@@ -206,8 +220,8 @@ export class WeaponRibbonPool {
     this._cTail = new THREE.Color();
     // Dead slots are zeroed exactly once. Before this, every idle slot in the 256-wide pool
     // rewrote and re-uploaded its vertices on every active frame.
-    this.drawSlots = new Int32Array(this.capacity);
-    this.drawSlots.fill(-1);
+    this._cleared = new Uint8Array(this.capacity);
+    this._cleared.fill(1);
     this._spanMin = Infinity;
     this._spanMax = -Infinity;
     this._dynamicAttributes = [
@@ -245,11 +259,7 @@ export class WeaponRibbonPool {
     }
     const prev = this.entityIds[slot];
     if (prev >= 0 && prev !== entityId) this.byEntity.delete(prev);
-    // Quiet settled flight: update's early-out trusts live; waking a dead slot must
-    // raise it here because _writeVertices only recounts on frames that run.
-    const wasAlive = !!this.alive[slot];
     this.alive[slot] = 1;
-    if (!wasAlive) this.live += 1;
     this.entityIds[slot] = entityId == null ? -1 : entityId;
     if (entityId != null) this.byEntity.set(entityId, slot);
     this.width[slot] = width || 0.5;
@@ -302,9 +312,6 @@ export class WeaponRibbonPool {
     const reducedFlash = id === 'reduced-flash' || id === 'reduced-motion-and-flash';
     const elapsed = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.1) : 0;
     this.material.uniforms.uModulation.value = reducedFlash ? 0 : 1;
-    // Quiet path: capacity linger walk + _writeVertices when live===0 was pure CPU;
-    // mesh already visible=false and slots cleared after the frame that retired the last wake.
-    if (!(this.live > 0)) return;
     for (let i = 0; i < this.capacity; i++) {
       if (!this.alive[i]) continue;
       if (!reducedMotion) this.age[i] += elapsed;
@@ -343,16 +350,19 @@ export class WeaponRibbonPool {
       this._spanMin = Infinity;
       this._spanMax = -Infinity;
     }
-    const previousLive = this.live;
     let live = 0;
     for (let i = 0; i < this.capacity; i++) {
-      if (!this.alive[i]) { this.drawSlots[i] = -1; continue; }
-      // History slots stay stable for entity lookup; only GPU vertices pack into a live prefix.
-      // A lone late-ring wake must not submit the geometry of 255 empty neighbours.
-      const drawSlot = live++;
-      this.drawSlots[i] = drawSlot;
-      const vb = drawSlot * seg * SECTION;
-      this._markSlot(drawSlot);
+      const vb = i * seg * 2;
+      if (!this.alive[i]) {
+        if (this._cleared[i]) continue;
+        for (let s = 0; s < seg * 2; s++) al[vb + s] = 0;
+        this._cleared[i] = 1;
+        this._markSlot(i);
+        continue;
+      }
+      live++;
+      this._cleared[i] = 0;
+      this._markSlot(i);
       // Termination: a released wake unravels from the head backwards, because the round that
       // was feeding it is gone. It never fades as one uniform sheet.
       const releaseT = this.lingerAge[i] > 0
@@ -384,11 +394,33 @@ export class WeaponRibbonPool {
         const dist = Math.hypot(ex, ey, ez) || 1;
         ex /= dist; ey /= dist; ez /= dist;
 
-        // World-anchored frame; a closed section needs no camera-facing roll guard.
-        let sx = -tz, sy = 0, sz = tx;
-        const sm = Math.hypot(sx, sz);
-        if (sm < 1e-4) { sx = 1; sz = 0; }
-        else { sx /= sm; sz /= sm; }
+        // The sheet is anchored to the world, laid in the plane the round is flying through,
+        // and carries its own normal. It is NOT rebuilt to face the camera every frame; it only
+        // rolls toward the view when the world-anchored plane would otherwise collapse to a line.
+        let wx = -tz; let wy = 0; let wz = tx;
+        let wm = Math.hypot(wx, wy, wz);
+        if (wm < 1e-4) { wx = 1; wy = 0; wz = 0; wm = 1; }
+        wx /= wm; wy /= wm; wz /= wm;
+        let pnx = wy * tz - wz * ty;
+        let pny = wz * tx - wx * tz;
+        let pnz = wx * ty - wy * tx;
+        const pnm = Math.hypot(pnx, pny, pnz) || 1;
+        pnx /= pnm; pny /= pnm; pnz /= pnm;
+        const planarFacing = Math.abs(pnx * ex + pny * ey + pnz * ez);
+        const roll = planarFacing >= 0.42 ? 0 : planarFacing <= 0.12 ? 1
+          : (() => { const k = (0.42 - planarFacing) / 0.30; return k * k * (3 - 2 * k); })();
+        let sx = wx; let sy = wy; let sz = wz;
+        if (roll > 0) {
+          let vx = ty * ez - tz * ey; let vy = tz * ex - tx * ez; let vz = tx * ey - ty * ex;
+          const vm = Math.hypot(vx, vy, vz) || 1;
+          vx /= vm; vy /= vm; vz /= vm;
+          if (vx * wx + vy * wy + vz * wz < 0) { vx = -vx; vy = -vy; vz = -vz; }
+          sx = wx + (vx - wx) * roll;
+          sy = wy + (vy - wy) * roll;
+          sz = wz + (vz - wz) * roll;
+          const sm = Math.hypot(sx, sy, sz) || 1;
+          sx /= sm; sy /= sm; sz /= sm;
+        }
         let nx = sy * tz - sz * ty;
         let ny = sz * tx - sx * tz;
         let nz = sx * ty - sy * tx;
@@ -398,12 +430,15 @@ export class WeaponRibbonPool {
         const u = s / (seg - 1);
         const hidden = s >= usable || arc > WAKE_VISIBLE_ARC_WU;
         const taper = hidden ? 0 : (1 - u) * (1 - u * 0.35);
+        // Projected pixel floor: a world-anchored sheet foreshortens, so the floor is measured
+        // on the sheet as the camera sees it. Without this a 0.12 WU rail wake is subpixel.
+        const facing = Math.max(RIBBON_MIN_FACING, Math.abs(nx * ex + ny * ey + nz * ez));
         const floorW = worldSizeForPixels(dist, RIBBON_MIN_PIXELS, this._fovDeg, this._viewportHeight);
-        // Special energy has a body; ballistic and starter wakes keep their terse silhouettes.
-        const volumeGain = profileId === RIBBON_PROFILE.BRAID ? 4.0
-          : profileId === RIBBON_PROFILE.FORK ? 3.2 : profileId === RIBBON_PROFILE.SHEET ? 2.4 : 1;
-        const depthRatio = profileId === RIBBON_PROFILE.SHEET ? 0.32 : 0.7;
-        const hw = 0.5 * Math.max(width * volumeGain, floorW / depthRatio) * taper;
+        // A world-anchored sheet foreshortens, so its world width is opened by exactly that
+        // factor. Every family therefore keeps the APPARENT width it was authored with - no wake
+        // got thinner in exchange for becoming a real sheet - and the thin ballistic threads gain
+        // a floor so a 0.12 WU rail wake can no longer fall under one pixel.
+        const hw = 0.5 * (Math.max(width, floorW) / facing) * taper;
         const unravel = releaseT > 0
           ? Math.max(0, Math.min(1, (u - unravelEdge) / 0.35))
           : 1;
@@ -411,39 +446,23 @@ export class WeaponRibbonPool {
         const cr = hr + (tr - hr) * u;
         const cg = hg + (tg - hg) * u;
         const cb = hbCol + (tb - hbCol) * u;
-        const transport = arc * 0.24 - this.age[i] * 5.0 + this.phase[i];
-        const twist = profileId === RIBBON_PROFILE.BRAID ? transport
-          : profileId === RIBBON_PROFILE.FORK ? Math.sin(transport) * 0.34 : 0;
-        for (let k = 0; k < SECTION; k++) {
-          const angle = k / (SECTION - 1) * Math.PI * 2 + twist;
-          const sn = Math.sin(angle), cs = Math.cos(angle);
-          const lobe = profileId === RIBBON_PROFILE.BRAID ? 1 + 0.18 * Math.cos(angle * 3 + transport)
-            : profileId === RIBBON_PROFILE.FORK ? 0.7 + 0.3 * Math.abs(sn) : 1;
-          const lateral = sn * hw * lobe;
-          const vertical = cs * hw * depthRatio * lobe;
-          const v = vb + s * SECTION + k;
-          const vp = v * 3;
-          pos[vp] = px + sx * lateral + nx * vertical;
-          pos[vp + 1] = py + sy * lateral + ny * vertical;
-          pos[vp + 2] = pz + sz * lateral + nz * vertical;
-          col[vp] = cr; col[vp + 1] = cg; col[vp + 2] = cb;
-          nrm[vp] = sx * sn + nx * cs / depthRatio;
-          nrm[vp + 1] = sy * sn + ny * cs / depthRatio;
-          nrm[vp + 2] = sz * sn + nz * cs / depthRatio;
-          const sh = v * 4;
-          shp[sh] = profileId; shp[sh + 1] = arc;
-          shp[sh + 2] = this.phase[i]; shp[sh + 3] = this.age[i];
-          al[v] = a;
-        }
+        const v0 = (vb + s * 2) * 3;
+        const v1 = v0 + 3;
+        pos[v0] = px - sx * hw; pos[v0 + 1] = py - sy * hw; pos[v0 + 2] = pz - sz * hw;
+        pos[v1] = px + sx * hw; pos[v1 + 1] = py + sy * hw; pos[v1 + 2] = pz + sz * hw;
+        col[v0] = cr; col[v0 + 1] = cg; col[v0 + 2] = cb;
+        col[v1] = cr; col[v1 + 1] = cg; col[v1 + 2] = cb;
+        nrm[v0] = nx; nrm[v0 + 1] = ny; nrm[v0 + 2] = nz;
+        nrm[v1] = nx; nrm[v1 + 1] = ny; nrm[v1 + 2] = nz;
+        const sh = (vb + s * 2) * 4;
+        shp[sh] = profileId; shp[sh + 1] = arc;
+        shp[sh + 2] = this.phase[i]; shp[sh + 3] = this.age[i];
+        shp[sh + 4] = profileId; shp[sh + 5] = arc;
+        shp[sh + 6] = this.phase[i]; shp[sh + 7] = this.age[i];
+        al[vb + s * 2] = a; al[vb + s * 2 + 1] = a;
       }
     }
-    if (live < previousLive) {
-      al.fill(0, live * seg * SECTION, previousLive * seg * SECTION);
-      this._markSlot(live);
-      this._markSlot(previousLive - 1);
-    }
     this.live = live;
-    this.geometry.setDrawRange(0, live * (seg - 1) * (SECTION - 1) * 6);
     this._publish();
     this.mesh.visible = live > 0;
   }
@@ -455,8 +474,8 @@ export class WeaponRibbonPool {
       return;
     }
     const seg = this.segments;
-    const firstVertex = this._spanMin * seg * SECTION;
-    const vertexCount = (this._spanMax - this._spanMin + 1) * seg * SECTION;
+    const firstVertex = this._spanMin * seg * 2;
+    const vertexCount = (this._spanMax - this._spanMin + 1) * seg * 2;
     let bytes = 0;
     for (let i = 0; i < this._dynamicAttributes.length; i++) {
       const attribute = this._dynamicAttributes[i];
@@ -482,8 +501,5 @@ export class WeaponRibbonPool {
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
     this.geometry.dispose();
     this.material.dispose();
-    this.live = 0;
-    this.alive.fill(0);
-    this.byEntity.clear();
   }
 }
