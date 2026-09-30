@@ -17,6 +17,9 @@ const NEW_FAMILY = {
   gravitic: 'sfx_wpn_gravitic',
   disruptor: 'sfx_wpn_disruptor',
   charge: 'sfx_wpn_charge',
+  // INST-33/34: the flak muzzle voice and the capital heavy-beam voice.
+  flak: 'sfx_wpn_flak',
+  heavyBeam: 'sfx_wpn_heavy_beam',
 };
 const LEGACY_FAMILY = [
   'sfx_wpn_beam_laser', 'sfx_wpn_railgun', 'sfx_wpn_missile',
@@ -28,7 +31,8 @@ const EXPECTED = {
   wpn_snarl_s: 'sfx_wpn_disruptor',
   wpn_pulse_laser_s: 'sfx_wpn_pulse_laser',
   wpn_autocannon_s: 'sfx_wpn_autocannon',
-  wpn_flak_turret_s: 'sfx_wpn_autocannon',
+  // INST-33: the flak/PD turret owns its muzzle voice; it no longer borrows the autocannon's.
+  wpn_flak_turret_s: 'sfx_wpn_flak',
   wpn_concussion_cannon_s: 'sfx_wpn_concussion',
   wpn_pulse_laser_m: 'sfx_wpn_pulse_laser',
   wpn_bank_stream_m: 'sfx_wpn_autocannon',
@@ -36,12 +40,13 @@ const EXPECTED = {
   unique_ironsong_ac: 'sfx_wpn_autocannon',
   wpn_beam_laser_m: 'sfx_wpn_beam_laser',
   unique_veil_cutter: 'sfx_wpn_beam_laser',
+  // INST-34: the capital L-slot beams get the lower-register heavy voice, not the beam laser's.
+  wpn_heavy_beam_l: 'sfx_wpn_heavy_beam',
+  unique_lighthouse_heavy_beam: 'sfx_wpn_heavy_beam',
   wpn_railgun_m: 'sfx_wpn_railgun',
   wpn_plasma_cannon_m: 'sfx_wpn_plasma',
   wpn_missile_rack_m: 'sfx_wpn_missile',
   unique_nestbreaker_rack: 'sfx_wpn_missile',
-  wpn_heavy_beam_l: 'sfx_wpn_beam_laser',
-  unique_lighthouse_heavy_beam: 'sfx_wpn_beam_laser',
   wpn_torpedo_l: 'sfx_wpn_missile',
   wpn_siege_lance_l: 'sfx_wpn_railgun',
   wpn_emp_disruptor_m: 'sfx_wpn_disruptor',

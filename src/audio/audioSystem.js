@@ -145,6 +145,14 @@ const STEM_WEIGHTS = {
 };
 
 export const MAX_AUDIO_VOICES = 12;
+// Sustained-beam voices (INST-34). _onFire routes these to a per-owner loop drone instead of a
+// one-shot per fire tick, and _startBeam/_frame resume honour the owner's own voice.
+const DEFAULT_BEAM_RECIPE_ID = 'sfx_wpn_beam_laser';
+export const SUSTAINED_BEAM_RECIPE_IDS = Object.freeze(new Set([
+  'sfx_wpn_beam_laser',
+  'sfx_wpn_heavy_beam',
+]));
+
 const SILENT_LISTENER_POS = Object.freeze({ x: 0, z: 0 });
 
 // Propulsion is a gameplay contract, but its *voice* is presentation-only. Each family keeps the
@@ -490,8 +498,11 @@ export function resolveAudioThreatContext(state, player, rt) {
   return { threat, nearbyHostiles, shieldPct, calmZone, engaged, committedHostiles };
 }
 
-// Build a fast id->recipe lookup over the data array.
-const recipeById = {};
+// Build a fast id->recipe lookup over the data array. Prototype-less on purpose: `{}` inherits
+// Object.prototype, so a cue id of "toString" or "constructor" resolved to a FUNCTION through
+// AUDIO_RECIPE_BY_ID and the audit gates (`assert(AUDIO_RECIPE_BY_ID[rid])`) passed on it — a
+// missing recipe read as a present one.
+const recipeById = Object.create(null);
 for (const r of RECIPES) recipeById[r.id] = r;
 export const AUDIO_RECIPE_BY_ID = Object.freeze(recipeById);
 
@@ -967,14 +978,24 @@ const GRAVITIC_STATUS_IDS = new Set(['status_gravity_marked', 'status_momentum_s
 // Kinetic projectile guns at or above this impulse read as shove weapons (concussion family),
 // not bullet streams — the concussion cannons (520/920) and the seismic gong (220).
 const CONCUSSION_IMPULSE_MIN = 200;
+// INST-34: a sustained hitscan beam whose per-hit momentum reaches this reads as a CAPITAL beam:
+// the heavy beam (30) and the lighthouse heavy beam (38) sit above it; the M beam laser (10), the
+// veil cutter (12) and the thermal cooker (8) sit below. Threshold, not a name match, so a future
+// L-slot emitter classifies by what it does to a hull rather than by what it is called.
+const HEAVY_BEAM_IMPULSE_MIN = 24;
 
 export function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
   const def = WEAPON_DEF_BY_ID.get(weaponId);
   if (def) {
     // Sustained hitscan emitters sound like beams whatever their damageType reads (beam lasers,
-    // and the thermal cooker — a cooking beam, not a placed charge).
-    if (def.continuous && def.tracking === 'hitscan') return 'sfx_wpn_beam_laser';
+    // and the thermal cooker — a cooking beam, not a placed charge). The capital L-slot beams
+    // get the lower-register heavy voice (INST-34) instead of borrowing the beam laser's.
+    if (def.continuous && def.tracking === 'hitscan') {
+      return (def.impulsePerHit || 0) >= HEAVY_BEAM_IMPULSE_MIN
+        ? 'sfx_wpn_heavy_beam'
+        : 'sfx_wpn_beam_laser';
+    }
     // Spinal barrels and named slug drivers are the rail family.
     if (def.mount === 'spinal' || /(rail|lance|driver)/.test(id)) return 'sfx_wpn_railgun';
     // Gravitic: gravity/inertia/field tools — deployed wellheads, mark/sink statuses, and the
@@ -1007,6 +1028,10 @@ export function recipeForWeapon(weaponId) {
     }
     // Plasma: thermal bolt throwers.
     if (def.damageType === 'thermal') return 'sfx_wpn_plasma';
+    // Flak / point defence (INST-33): a kinetic gun whose rounds INTERCEPT incoming fire is a
+    // flak turret, not a kinetic cannon — the flak/PD turret is the catalog's only interceptor.
+    // Checked above the generic kinetic branch so it does not borrow the autocannon's voice.
+    if (def.intercepts === true || /(flak|point.?defen[cs]e|\bpd_)/.test(id)) return 'sfx_wpn_flak';
     // Autocannon: kinetic projectile guns.
     if (def.damageType === 'kinetic') return 'sfx_wpn_autocannon';
     // Pulse: energy projectile guns — the starter voice belongs to this family only.
@@ -1014,7 +1039,10 @@ export function recipeForWeapon(weaponId) {
     return 'sfx_wpn_unclassified';
   }
   // Unknown id — substring families, then the authored generic combat discharge.
-  if (id.includes('beam')) return 'sfx_wpn_beam_laser';
+  // INST-33/34: flak and the capital heavy beam keep their own substrings, so an uncatalogued
+  // mount named for what it is still lands on its family voice instead of a near neighbour.
+  if (id.includes('flak') || id.includes('pointdefen') || id.includes('point_defen')) return 'sfx_wpn_flak';
+  if (id.includes('beam')) return id.includes('heavy') ? 'sfx_wpn_heavy_beam' : 'sfx_wpn_beam_laser';
   if (id.includes('rail') || id.includes('lance') || id.includes('driver')) return 'sfx_wpn_railgun';
   if (id.includes('concussion') || id.includes('seismic')) return 'sfx_wpn_concussion';
   if (id.includes('plasma')) return 'sfx_wpn_plasma';
@@ -1026,7 +1054,7 @@ export function recipeForWeapon(weaponId) {
   if (id.includes('mine') || id.includes('detonator') || id.includes('sticky')
     || id.includes('charge')) return 'sfx_wpn_charge';
   if (id.includes('missile') || id.includes('rocket') || id.includes('torp')) return 'sfx_wpn_missile';
-  if (id.includes('cannon') || id.includes('gatling') || id.includes('flak') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
+  if (id.includes('cannon') || id.includes('gatling') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
   if (id.includes('pulse') || id.includes('laser') || id.includes('blaster')) return 'sfx_wpn_pulse_laser';
   // No recognized family — a named generic combat voice, never the starter pulse.
   return 'sfx_wpn_unclassified';
@@ -1202,8 +1230,11 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
 });
 
 export function resolveAudioCueRecipeId(cueId) {
-  if (AUDIO_CUE_TO_RECIPE[cueId]) return AUDIO_CUE_TO_RECIPE[cueId];
-  if (AUDIO_RECIPE_BY_ID[cueId]) return cueId;
+  // Own-property lookups only (see AUDIO_RECIPE_BY_ID): a plain `AUDIO_CUE_TO_RECIPE[cueId]` read
+  // answered "toString"/"constructor"/"valueOf" with an inherited function, which then flowed into
+  // this.play() as a recipe id and satisfied `AUDIO_RECIPE_BY_ID[rid]` truthiness gates.
+  if (Object.hasOwn(AUDIO_CUE_TO_RECIPE, cueId)) return AUDIO_CUE_TO_RECIPE[cueId];
+  if (Object.hasOwn(AUDIO_RECIPE_BY_ID, cueId)) return cueId;
   return null;
 }
 
@@ -3121,9 +3152,12 @@ export const audio = {
     const owner = p.ownerId != null && this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(p.ownerId)
       : null;
-    if (signature.recipeId === 'sfx_wpn_beam_laser') {
-      // sustained beam: start a loop keyed by owner; stopped on combat:beamStop
-      this._startBeam(p.ownerId, p.origin, owner);
+    // Sustained hitscan emitters drone as a loop keyed by owner (stopped on combat:beamStop)
+    // instead of re-striking a one-shot every fire tick. INST-34 added the heavy-beam voice, so
+    // this gates on the RECIPE being a sustained beam rather than on one hardcoded id — a
+    // capital beam that fell through here would machine-gun its drone at the weapon's rof.
+    if (SUSTAINED_BEAM_RECIPE_IDS.has(signature.recipeId)) {
+      this._startBeam(p.ownerId, p.origin, owner, signature.recipeId);
       return;
     }
     this.play(signature.recipeId, {
@@ -3137,10 +3171,14 @@ export const audio = {
     this._maybeChargeWhine(p, owner);
   },
 
-  _startBeam(ownerId, pos, owner = null) {
+  // `recipeId` is the owner's own sustained-beam voice (INST-34 added a second one). It is stored
+  // on the want-flag so the _frame resume path re-arms the SAME voice after a context unlock or a
+  // menu veil — resuming a capital beam into the M beam laser's drone was a wrong-voice restart.
+  _startBeam(ownerId, pos, owner = null, recipeId = DEFAULT_BEAM_RECIPE_ID) {
     const rt = this.rt;
     if (ownerId == null) return;
-    rt._wantBeam[ownerId] = true;
+    const beamRecipe = SUSTAINED_BEAM_RECIPE_IDS.has(recipeId) ? recipeId : DEFAULT_BEAM_RECIPE_ID;
+    rt._wantBeam[ownerId] = beamRecipe;
     const ctx = rt.ctx;
     // Never start the drone under a pause/menu veil — the want flag survives and _frame
     // resurrects it on resume if the beam is genuinely still firing.
@@ -3156,7 +3194,7 @@ export const audio = {
       return;
     }
     const position = pos || (entity && entity.pos) || null;
-    const v = this._startLoopVoice('sfx_wpn_beam_laser', position, 0.85, { entity });
+    const v = this._startLoopVoice(beamRecipe, position, 0.85, { entity });
     if (v) {
       v.trackId = ownerId;
       v.role = 'weaponLoop';
@@ -4976,7 +5014,7 @@ export const audio = {
     if (!id) return;
     // Juice emits presentation:vfxCue then audio:cue with the same id. Unmapped juice ids used
     // to collapse to a UI click on top of the visual-event recipe; the visual-event path owns them.
-    if (resolveVisualEventCue(id) && !AUDIO_CUE_TO_RECIPE[id] && !AUDIO_RECIPE_BY_ID[id]) return;
+    if (resolveVisualEventCue(id) && !Object.hasOwn(AUDIO_CUE_TO_RECIPE, id) && !Object.hasOwn(AUDIO_RECIPE_BY_ID, id)) return;
     const rid = resolveAudioCueRecipeId(id);
     if (!rid) return;
     const opts = (cue && typeof cue === 'object') ? cue : {};
@@ -5684,7 +5722,7 @@ export const audio = {
     // paused: _onPause ended them deliberately and a resurrected loop would drone over the menu.
     if (!rt._paused) {
       for (const ownerId in rt._wantBeam) {
-        if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId));
+        if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId), null, null, rt._wantBeam[ownerId]);
       }
       if (rt._wantMining && !rt.loops.mining) this._onMiningStart({ minerId: rt._wantMining.minerId, targetId: rt._wantMining.targetId });
     }
