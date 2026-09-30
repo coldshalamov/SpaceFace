@@ -2825,13 +2825,18 @@
       "source": "assets/ships/parts/places/place_dead_hulk.glb",
       "release": "assets/ships/release/parts/places/place_dead_hulk.glb",
       "sourceSha256": "ebb14b23049a41d7c980b58de7c506b82f2bb5af2b035da4b3ec89eb9b12d912",
-      "releaseSha256": "a2cd980874445fa4c2929265be5a660dce2c5baff86a1c6ea29d07c20f86b423",
+      "releaseSha256": "2c1113cf9cf92072565e8f2606fe82e6d24ea71bd9047a705cbbba6a22c34634",
       "sourceBytes": 1305388,
-      "releaseBytes": 671868,
+      "releaseBytes": 497996,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 130,
-      "contractNodeCount": 35
+      "contractNodeCount": 35,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_debris_chunk",
@@ -2839,13 +2844,18 @@
       "source": "assets/ships/parts/places/place_debris_chunk.glb",
       "release": "assets/ships/release/parts/places/place_debris_chunk.glb",
       "sourceSha256": "2873d4cce8884ffdc785b6d1a2b86339e2ad0ed12b678baddef3fd7d1cc245ea",
-      "releaseSha256": "4ea1e04c4b1763fd48a4ef9f267834b08cdfecfa844e22701f493523eb2d6e3a",
+      "releaseSha256": "b8f5af68d85f21971220d8f4270d049202e95f8e5eb479a02ca7dd8e27df6344",
       "sourceBytes": 697000,
-      "releaseBytes": 484204,
+      "releaseBytes": 310332,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 108,
-      "contractNodeCount": 28
+      "contractNodeCount": 28,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_dock_interior",
@@ -2853,13 +2863,18 @@
       "source": "assets/ships/parts/places/place_dock_interior.glb",
       "release": "assets/ships/release/parts/places/place_dock_interior.glb",
       "sourceSha256": "21a1018a0299da103145b2913fc9aa4017c53d9a165faf4412dd5d3a5462d5f3",
-      "releaseSha256": "d861f547063f5717d08c9c29b7030ad29ab4ea1cf088501248e4be1878a6c1f2",
+      "releaseSha256": "af3b7c424bfa509d6b5e24a342bb6798ec30097da5400c4ebc0ac44f9ba80aac",
       "sourceBytes": 873608,
-      "releaseBytes": 486928,
+      "releaseBytes": 313060,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 47,
-      "contractNodeCount": 13
+      "contractNodeCount": 13,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_dock_interior_grit",
