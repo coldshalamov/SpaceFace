@@ -101,6 +101,8 @@ export function customsDecision(state, scanPayload, economySys) {
   return {
     factionId,
     factionShort: factionShort(factionId),
+    patrolId: scanPayload.patrolId ?? null,
+    stationId: scanPayload.stationId ?? null,
     hasContraband: risk.hasContraband || engineFlagged,
     risk,
     // The bribe cost label: the projected estimate (matches what economy.payBribe will charge).
@@ -206,8 +208,9 @@ export const customsPrompt = {
     if (!bus || !bus.emit || !ui) { this._dismiss(); return; }
     if (actionId === 'submit') {
       // Let the shipped patrolScan encounter / patrol:proximity resolve. economy.runScan owns the
-      // confiscation + rep + heat. Emit nothing new — the encounter's own deadline will submit.
-      bus.emit('customs:submit', { factionId: ui.factionId });
+      // confiscation + rep + heat. The submit intent carries the scanner's identity so the law's
+      // acknowledgment (lawSecurity) can name the unit that took the submission.
+      bus.emit('customs:submit', { factionId: ui.factionId, patrolId: ui.patrolId ?? null, stationId: ui.stationId ?? null });
     } else if (actionId === 'bribe') {
       // Route through economy.payBribe (listens at economy.js:293). The fine we pass is the
       // engine's own estimate shape; economy charges round(fine*BRIBE_FRAC). We never write credits.
