@@ -128,6 +128,7 @@ const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per t
 const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick (debris/rocks)
 const CRAFT_CONTACT_YAW_EPS = 0.05;     // leftover contact spin; above damping/solver noise
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
+const MAX_OWNER_SUBSTEPS = 64;
 // Hull-burst overhaul slice A, "pinging off of objects" (owner, 2026-09-29): a hull that has lost
 // its helm (control mode 'tumbling') is a projectile, not a piloted craft. Under `combat.tumbleFling`
 // it gets a bouncy contact material (Max combine rule, so it beats the ship material's Min and any
@@ -449,8 +450,25 @@ export class Sg02DynamicBodyOwner {
   }
 
   step(dt = this.fixedDt, simTick = null) {
+    const fixedDt = this.fixedDt;
+    if (!Number.isFinite(fixedDt) || fixedDt <= 0) {
+      throw new RangeError(`SG-02 owner step requires a finite positive fixedDt, got ${fixedDt}`);
+    }
+    const carried = this.accumulator;
+    if (!Number.isFinite(carried) || carried < -1e-12) {
+      throw new RangeError(
+        `SG-02 owner step requires a finite accumulator >= -1e-12, got ${carried}`);
+    }
+    const prospectiveTotal = carried + Math.min(Math.max(0, finite(dt)), 0.25);
+    const estimatedSteps = Math.floor((prospectiveTotal + 1e-12) / fixedDt);
+    if (!Number.isSafeInteger(estimatedSteps) || estimatedSteps > MAX_OWNER_SUBSTEPS
+        || (estimatedSteps >= 1 && prospectiveTotal - fixedDt === prospectiveTotal)) {
+      throw new RangeError(
+        `SG-02 owner step cannot progress: accumulator=${carried}, dt=${dt}, fixedDt=${fixedDt}`
+        + ` would require ${estimatedSteps} substeps (max ${MAX_OWNER_SUBSTEPS})`);
+    }
     this._simTick = Number.isFinite(simTick) ? Math.max(0, Math.trunc(simTick)) : null;
-    this.accumulator += Math.min(Math.max(0, finite(dt)), 0.25);
+    this.accumulator = prospectiveTotal;
     while (this.accumulator + 1e-12 >= this.fixedDt) {
       this._stepFixed();
       this.accumulator -= this.fixedDt;
@@ -939,9 +957,18 @@ export class Sg02DynamicBodyOwner {
     const w = rec.body.angvel();
     const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0 });
     const dt = this.fixedDt;
+    const yawClampedByWrite = !Number.isFinite(w.y) || Math.abs(w.y) > SANE_MAX_YAW_RATE;
+    if (yawClampedByWrite || !Number.isFinite(w.x) || !Number.isFinite(w.z)
+        || Math.abs(w.x) > 1e-9 || Math.abs(w.z) > 1e-9) {
+      _vecWriteScratch.x = 0;
+      _vecWriteScratch.y = boundedYawRate(w.y);
+      _vecWriteScratch.z = 0;
+      rec.body.setAngvel(_vecWriteScratch, true);
+    }
+    const wyBody = yawClampedByWrite ? boundedYawRate(w.y) : w.y;
     e.vx = finite(v.x) + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * dt;
     e.vz = finite(v.z) + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * dt;
-    const wyUndamped = -finite(w.y)
+    const wyUndamped = -wyBody
       + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * dt;
     const damping = contactAngularDamping(rec);
     let wyPredicted = damping > 0 ? wyUndamped / (1 + damping * dt) : wyUndamped;
@@ -953,8 +980,9 @@ export class Sg02DynamicBodyOwner {
     // rate are the same motion. The player's own commanded yaw peaks near 3 rad/s, so this ceiling
     // never touches steering; it only catches something that spun the hull.
     if (rec.entity && rec.entity.isPlayer === true) {
-      rec._playerYawCeilingApplied = Math.abs(wyPredicted) > SANE_MAX_YAW_RATE;
-      if (rec._playerYawCeilingApplied) wyPredicted = clamp(wyPredicted, -SANE_MAX_YAW_RATE, SANE_MAX_YAW_RATE);
+      rec._playerYawCeilingApplied = yawClampedByWrite
+        || Math.abs(wyPredicted) > SANE_MAX_YAW_RATE;
+      if (Math.abs(wyPredicted) > SANE_MAX_YAW_RATE) wyPredicted = clamp(wyPredicted, -SANE_MAX_YAW_RATE, SANE_MAX_YAW_RATE);
     }
     e.wy = wyPredicted;
     // Rapier can integrate a contact-generated angular response into the pose before the
@@ -1258,7 +1286,7 @@ export class Sg02DynamicBodyOwner {
       .setTranslation(posX, 0, posZ)
       .setRotation(quatFromYaw(finite(entity.rot)))
       .setLinvel(vel.x, 0, vel.z)
-      .setAngvel({ x: 0, y: -finite(entity.angVel), z: 0 })
+      .setAngvel({ x: 0, y: -boundedYawRate(entity.angVel), z: 0 })
       .enabledTranslations(true, false, true)
       .enabledRotations(false, true, false)
       .setCcdEnabled(!!spec.ccd);
@@ -1294,7 +1322,7 @@ export class Sg02DynamicBodyOwner {
       body.setTranslation({ x: posX, y: 0, z: posZ }, true);
       body.setRotation(quatFromYaw(finite(entity.rot)), true);
       body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
-      body.setAngvel({ x: 0, y: -finite(entity.angVel), z: 0 }, true);
+      body.setAngvel({ x: 0, y: -boundedYawRate(entity.angVel), z: 0 }, true);
       body.setEnabled(true);
     } else {
       body = this.world.createRigidBody(desc);
@@ -1656,7 +1684,7 @@ export class Sg02DynamicBodyOwner {
     const yaw = finite(entity.rot);
     const vx = finite(entity.vel && entity.vel.x);
     const vz = finite(entity.vel && entity.vel.z);
-    const wy = finite(entity.angVel);
+    const wy = boundedYawRate(entity.angVel);
     _vecWriteScratch.x = resyncX;
     _vecWriteScratch.y = 0;
     _vecWriteScratch.z = resyncZ;
@@ -1760,6 +1788,15 @@ export class Sg02DynamicBodyOwner {
       const force = planeForceInto(command.control.force, _planeForceScratch);
       const torque = yawTorqueInto(command.control.torque, _yawTorqueScratch);
       rec.body.addForce(force, true);
+      const currentGameWy = boundedYawRate(-rec.body.angvel().y);
+      const inertiaY = positive(rec.effectiveInertiaY, rec.spec.inertiaY);
+      const minTorque = (-SANE_MAX_YAW_RATE - currentGameWy) * inertiaY / this.fixedDt;
+      const maxTorque = (SANE_MAX_YAW_RATE - currentGameWy) * inertiaY / this.fixedDt;
+      if (!Number.isFinite(minTorque) || !Number.isFinite(maxTorque)) {
+        throw new RangeError(
+          `SG-02 cannot bound control yaw torque: inertiaY=${inertiaY}, fixedDt=${this.fixedDt}`);
+      }
+      torque.y = clamp(torque.y, minTorque, maxTorque);
       torque.y = -torque.y;
       rec.body.addTorque(torque, true);
       torque.y = -torque.y;
@@ -3273,6 +3310,10 @@ function positive(value, fallback) {
 
 function clamp(value, lo, hi) {
   return Math.max(lo, Math.min(hi, value));
+}
+
+function boundedYawRate(value) {
+  return clamp(finite(value), -SANE_MAX_YAW_RATE, SANE_MAX_YAW_RATE);
 }
 
 function smoothstep(value) {
