@@ -1,4 +1,4 @@
-// Catch-up and clock policy. Extra fixed steps keep the table clock only.
+// Catch-up and clock policy. Extra fixed steps keep the table clock plus due calendar owners.
 // Calendar owners run at 2 Hz (or on clockWake.calendar). Glass/HUD/voice never
 // run on extra catch-up steps. Near owners run on the primary tick, not catch-up.
 //
@@ -42,12 +42,16 @@ export function isCalendarTick(state, systemName) {
 
 export function shouldSkipSystemOnCatchup(systemName, state) {
   if (!isCatchupPresentationSkip(state)) return false;
-  return getSystemClock(systemName) !== SYSTEM_CLOCK.TABLE;
+  const clock = getSystemClock(systemName);
+  if (clock === SYSTEM_CLOCK.CALENDAR && isProductionClockState(state)) {
+    return !isCalendarTick(state, systemName);
+  }
+  return clock !== SYSTEM_CLOCK.TABLE;
 }
 
 /**
  * Single skip used by createSimulation and createRegistry.
- * Catch-up extra steps: table only. Primary ticks: calendar at 2 Hz; table/near/glass run.
+ * Catch-up extra steps: table plus due production calendar. Primary ticks: calendar 2 Hz; table/near/glass run.
  */
 function isProductionClockState(state) {
   return !!(state && state.runtime && state.runtime.profileId === 'production');
@@ -55,7 +59,12 @@ function isProductionClockState(state) {
 
 export function shouldSkipSystemThisStep(systemName, state) {
   const clock = getSystemClock(systemName);
-  if (isCatchupPresentationSkip(state) && clock !== SYSTEM_CLOCK.TABLE) return true;
+  if (isCatchupPresentationSkip(state)) {
+    if (clock === SYSTEM_CLOCK.CALENDAR && isProductionClockState(state)) {
+      return !isCalendarTick(state, systemName);
+    }
+    return clock !== SYSTEM_CLOCK.TABLE;
+  }
   if (clock === SYSTEM_CLOCK.CALENDAR && isProductionClockState(state) && !isCalendarTick(state, systemName)) {
     return true;
   }
@@ -66,37 +75,110 @@ export function shouldSkipSystemThisStep(systemName, state) {
  * Partition an update list once at host init. `tickQueues[m]` is the queue for a primary
  * tick with tick%period === m: every non-calendar system plus the calendar owners whose
  * firing mod is m (cohort base + sub-phase), all in original update order — so a moved
- * calendar owner keeps its position relative to the rest of the tick. Boot ticks (<=1)
- * and clockWake.calendar keep `all`; catch-up extra steps keep `table`.
+ * calendar owner keeps its position relative to the rest of the tick. `tableCalendar`
+ * and `catchupTickQueues[m]` are the production catch-up counterparts built the same
+ * way; boot ticks (<=1) and clockWake.calendar keep `all`.
  */
-export function partitionUpdateSystems(systems) {
+export function partitionUpdateSystems(systems, { state = null, bus = null } = {}) {
   const all = [];
   const table = [];
   const combat = [];
   const calendar = [];
+  const tableCalendar = [];
   const tickQueues = [];
-  for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) tickQueues.push([]);
+  const catchupTickQueues = [];
+  for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) {
+    tickQueues.push([]);
+    catchupTickQueues.push([]);
+  }
   const list = Array.isArray(systems) ? systems : [];
   for (let i = 0; i < list.length; i++) {
     const system = list[i];
     if (!system || typeof system.update !== 'function') continue;
     all.push(system);
     const clock = getSystemClock(system.name);
-    if (clock === SYSTEM_CLOCK.TABLE) table.push(system);
+    if (clock === SYSTEM_CLOCK.TABLE) {
+      table.push(system);
+      tableCalendar.push(system);
+      for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) catchupTickQueues[m].push(system);
+    }
     if (clock === SYSTEM_CLOCK.CALENDAR) {
       calendar.push(system);
+      tableCalendar.push(system);
       tickQueues[calendarCohortTickMod(system.name)].push(system);
+      catchupTickQueues[calendarCohortTickMod(system.name)].push(system);
     } else {
       combat.push(system);
       for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) tickQueues[m].push(system);
     }
   }
-  return { all, table, combat, calendar, tickQueues: calendar.length ? tickQueues : null };
+  const freshRecord = (baseline) => ({ baseline, stamps: new Map(), seeded: true });
+  let clockRecords = new WeakMap();
+  if (state && typeof state === 'object') {
+    clockRecords.set(state, freshRecord(Number(state.simTime)));
+  }
+  function resetClocks() {
+    if (state && typeof state === 'object') {
+      clockRecords.set(state, freshRecord(Number(state.simTime)));
+    } else {
+      clockRecords = new WeakMap();
+    }
+  }
+  const clockUnsubscribes = [];
+  if (bus && typeof bus.on === 'function' && state && typeof state === 'object') {
+    for (const eventName of ['game:new', 'save:restoring', 'save:loaded']) {
+      const unsubscribe = bus.on(eventName, resetClocks);
+      if (typeof unsubscribe === 'function') clockUnsubscribes.push(unsubscribe);
+    }
+  }
+  function updateDt(system, fixedDt, currentState) {
+    const host = currentState && typeof currentState === 'object' ? currentState : null;
+    if (!host || !isProductionClockState(host)) return fixedDt;
+    if (!system || getSystemClock(system.name) !== SYSTEM_CLOCK.CALENDAR) return fixedDt;
+    const simTime = Number(host.simTime);
+    if (!Number.isFinite(simTime)) return fixedDt;
+    let record = clockRecords.get(host);
+    if (!record) {
+      record = { baseline: NaN, stamps: new Map(), seeded: false };
+      clockRecords.set(host, record);
+    }
+    const hasStamp = record.stamps.has(system);
+    const prev = hasStamp ? record.stamps.get(system) : record.baseline;
+    record.stamps.set(system, simTime);
+    if (!hasStamp && !record.seeded) return fixedDt;
+    if (!Number.isFinite(prev)) return fixedDt;
+    const elapsed = simTime - prev;
+    return Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : fixedDt;
+  }
+  function dispose() {
+    for (const unsubscribe of clockUnsubscribes.splice(0)) {
+      try { unsubscribe(); } catch (_) {}
+    }
+    clockRecords = new WeakMap();
+  }
+  return {
+    all,
+    table,
+    combat,
+    calendar,
+    tableCalendar,
+    tickQueues: calendar.length ? tickQueues : null,
+    catchupTickQueues: calendar.length ? catchupTickQueues : null,
+    updateDt,
+    dispose,
+  };
 }
 
 export function updateQueueForThisStep(partitions, state) {
   if (!partitions) return [];
-  if (isCatchupPresentationSkip(state)) return partitions.table;
+  if (isCatchupPresentationSkip(state)) {
+    if (!isProductionClockState(state)) return partitions.table;
+    if (state && state.clockWake && state.clockWake.calendar === true) return partitions.tableCalendar;
+    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    if (tick <= 1) return partitions.tableCalendar;
+    const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS) % CALENDAR_CLOCK_PERIOD_TICKS;
+    return (partitions.catchupTickQueues && partitions.catchupTickQueues[mod]) || partitions.table;
+  }
   if (!isProductionClockState(state)) return partitions.all;
   if (state && state.clockWake && state.clockWake.calendar === true) return partitions.all;
   const tick = state && Number.isInteger(state.tick) ? state.tick : 0;

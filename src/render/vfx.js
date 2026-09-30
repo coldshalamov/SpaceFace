@@ -1667,6 +1667,8 @@ export const vfx = {
     invokeVfxDisposer(this._selectionSigil, 'selection sigil');
     this._selectionSigil = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
+    disposeVfxRoot(this._masslineSwingTrace && this._masslineSwingTrace.mesh, disposeState);
+    disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
     for (const slot of planetSkim && planetSkim.slots || []) {
@@ -1780,6 +1782,8 @@ export const vfx = {
     this._masslineReleaseArc = null;
     this._apexFlare = null;
     this._monofilamentBlade = null;
+    this._masslineSwingTrace = null;
+    this._dockingCradle = null;
     this._selectionSigil = null;
     this._lights = [];
     this._freeLights = null;

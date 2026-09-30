@@ -142,6 +142,30 @@ test('registry lifecycle remains fail-closed after a throwing destroy and contin
   assert.throws(() => lifecycle.init(), /lifecycle is destroyed/);
 });
 
+test('lifecycle invokes onTeardown exactly once on destroy and once on init failure', () => {
+  let calls = 0;
+  const ok = { name: 'ok', init() {}, destroy() {} };
+  const lifecycle = createSystemLifecycle({
+    systems: [ok],
+    context: {},
+    onTeardown: () => { calls += 1; },
+  });
+  lifecycle.init();
+  lifecycle.destroy();
+  lifecycle.destroy();
+  assert.equal(calls, 1, 'onTeardown must run exactly once for the destroy path');
+
+  calls = 0;
+  const failing = createSystemLifecycle({
+    systems: [{ name: 'bad', init() { throw new Error('synthetic init failure'); }, destroy() {} }],
+    context: {},
+    onTeardown: () => { calls += 1; },
+  });
+  assert.throws(() => failing.init());
+  failing.destroy();
+  assert.equal(calls, 1, 'onTeardown must run exactly once for the init-failure rollback');
+});
+
 function makeLifecycleBus() {
   const listeners = new Map();
   return {
@@ -241,6 +265,12 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
   const spriteGeometry = spriteBucket.mesh.geometry;
   const spriteMaterial = spriteBucket.mesh.material;
   const densityTexture = system._spriteBatches.smoke.mesh.material.uniforms.uDensityFilm.value;
+  const swingTraceMesh = system._masslineSwingTrace.mesh;
+  const swingTraceGeometry = swingTraceMesh.geometry;
+  const swingTraceMaterial = swingTraceMesh.material;
+  const cradleMesh = system._dockingCradle.mesh;
+  const cradleGeometry = cradleMesh.geometry;
+  const cradleMaterial = cradleMesh.material;
   const disposed = new Map();
   const watch = (resource) => {
     let count = 0;
@@ -250,10 +280,13 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
   for (const resource of [
     particleGeometry, particleMaterial, trailGeometry, trailMaterial,
     spriteGeometry, spriteMaterial, densityTexture,
+    swingTraceGeometry, swingTraceMaterial, cradleGeometry, cradleMaterial,
   ]) watch(resource);
 
   assert.equal(system.destroy(), true);
   assert.equal(scene.children.length, 1, 'VFX must detach only its own roots before renderer teardown');
+  assert.equal(swingTraceMesh.parent, null, 'the massline swing-trace mesh must detach from the scene');
+  assert.equal(cradleMesh.parent, null, 'the docking-cradle mesh must detach from the scene');
   assert.equal(borrowedMesh.parent, scene, 'borrowed scene roots must remain renderer-owned');
   assert.equal(coordinator.getDiagnostics().registeredOwners, 0,
     'VFX must release its dynamic upload owners');
@@ -273,6 +306,7 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
     '_particleAdmissionPriority', '_particleAdmissionSerial', '_alive',
     '_ts', '_spr', '_activeTrailStreaks', '_freeTrailStreaks',
     '_activeSprites', '_freeSprites',
+    '_masslineSwingTrace', '_dockingCradle',
   ]) {
     assert.equal(system[field], null, `${field} must not retain the retired generation`);
   }
@@ -284,6 +318,30 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
   }
   assert.equal(coordinator.dispose(), true);
   assert.equal(coordinator.dispose(), false);
+  borrowedMesh.removeFromParent();
+  borrowedGeometry.dispose();
+  borrowedMaterial.dispose();
+});
+
+test('repeated VFX init/destroy cycles on one scene leave only the borrowed root', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const borrowedGeometry = new THREE.BufferGeometry();
+  const borrowedMaterial = new THREE.MeshBasicMaterial();
+  const borrowedMesh = new THREE.Mesh(borrowedGeometry, borrowedMaterial);
+  scene.add(borrowedMesh);
+  for (let cycle = 0; cycle < 3; cycle++) {
+    const state = makeVfxState(scene);
+    const system = Object.create(vfx);
+    system.init({ state, bus: makeBus(), helpers: {} });
+    assert.ok(scene.children.length > 1, `cycle ${cycle} must install VFX roots`);
+    assert.equal(system.destroy(), true);
+    assert.equal(scene.children.length, 1, `cycle ${cycle} destroy must leave only the borrowed root`);
+    assert.equal(scene.children[0], borrowedMesh);
+    assert.equal(coordinator.getDiagnostics().registeredOwners, 0,
+      `cycle ${cycle} must release every dynamic upload owner`);
+  }
+  assert.equal(coordinator.dispose(), true);
   borrowedMesh.removeFromParent();
   borrowedGeometry.dispose();
   borrowedMaterial.dispose();

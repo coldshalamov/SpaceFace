@@ -84,8 +84,7 @@ export function createBus() {
     // A second sliced emit while a predecessor still has a deferred tail used to discard that
     // tail outright — every listener past the cut never heard the first sector:enter. Drain the
     // remainder synchronously so no listener is ever skipped; the newest emit still wins order.
-    if (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER);
-    emitSlice = null;
+    while (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER);
     const fns = snapshotListeners(event);
     if (!fns) return;
     emitSlice = { event, payload, fns, index: 0 };
@@ -116,18 +115,15 @@ export function createBus() {
     const slice = emitSlice;
     if (!slice) return 0;
     const limit = Math.max(1, Math.floor(Number(budget) || SECTOR_ENTER_DRAIN_BUDGET));
-    const next = dispatchRange(
-      slice.fns,
-      slice.payload,
-      slice.event,
-      slice.index,
-      slice.index + limit,
-    );
-    const ran = next - slice.index;
-    if (emitSlice === slice) {
-      slice.index = next;
-      if (slice.index >= slice.fns.length) emitSlice = null;
+    let ran = 0;
+    while (emitSlice === slice && ran < limit && slice.index < slice.fns.length) {
+      const fn = slice.fns[slice.index];
+      slice.index += 1;
+      ran += 1;
+      try { fn(slice.payload, slice.event); }
+      catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
     }
+    if (emitSlice === slice && slice.index >= slice.fns.length) emitSlice = null;
     return ran;
   }
 

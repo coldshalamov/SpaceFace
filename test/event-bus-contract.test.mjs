@@ -155,3 +155,107 @@ test('the default emit is fully synchronous: a sliced budget for a foreign event
   bus.emit('not-sector-enter');
   assert.deepEqual(seen, ['a', 'b'], 'only sector:enter slices; everything else fires inline');
 });
+
+test('a reentrant drain mid-dispatch continues after the running listener instead of re-running it', () => {
+  const bus = createBus();
+  const seen = [];
+  let middleCalls = 0;
+  let innerRan = -1;
+  bus.setEmitSliceBudget('sector:enter', 1);
+  bus.on('sector:enter', () => seen.push('first'));
+  bus.on('sector:enter', () => {
+    seen.push('middle');
+    middleCalls += 1;
+    if (middleCalls === 1) innerRan = bus.drainEmitSlice(1);
+  });
+  bus.on('sector:enter', () => seen.push('last'));
+  bus.emit('sector:enter');
+  const outerRan = bus.drainEmitSlice(2);
+  assert.deepEqual(seen, ['first', 'middle', 'last'], 'the nested drain must resume after middle, not replay it');
+  assert.equal(bus.pendingEmitSliceCount(), 0);
+  assert.equal(innerRan, 1, 'the nested drain ran exactly one callback: the tail listener');
+  assert.equal(outerRan, 1, 'the outer drain ran only middle; last was delivered by the nested drain');
+});
+
+test('a listener emitting a replacement sector event mid-slice delivers every listener both events once', () => {
+  const bus = createBus();
+  const seen = [];
+  let redirected = false;
+  bus.setEmitSliceBudget('sector:enter', 2);
+  for (const name of ['l0', 'l1', 'l2']) {
+    bus.on('sector:enter', (p) => {
+      seen.push(`${name}:${p}`);
+      if (name === 'l0' && p === 'a' && !redirected) {
+        redirected = true;
+        bus.emit('sector:enter', 'b');
+      }
+    });
+  }
+  bus.emit('sector:enter', 'a');
+  assert.deepEqual(seen, ['l0:a', 'l1:a', 'l2:a', 'l0:b', 'l1:b'], 'a drains its whole tail before b starts');
+  assert.equal(bus.pendingEmitSliceCount(), 1);
+  bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+  assert.deepEqual(seen, ['l0:a', 'l1:a', 'l2:a', 'l0:b', 'l1:b', 'l2:b'], 'each listener hears a and b exactly once');
+  assert.equal(bus.pendingEmitSliceCount(), 0);
+});
+
+test('a sliced emit arriving behind a pending slice drains all earlier events in order before starting', () => {
+  const bus = createBus();
+  const seen = [];
+  let emittedB = false;
+  bus.setEmitSliceBudget('sector:enter', 1);
+  for (const name of ['l0', 'l1', 'l2']) {
+    bus.on('sector:enter', (p) => {
+      seen.push(`${name}:${p}`);
+      if (name === 'l1' && p === 'a' && !emittedB) {
+        emittedB = true;
+        bus.emit('sector:enter', 'b');
+      }
+    });
+  }
+  bus.emit('sector:enter', 'a');
+  assert.deepEqual(seen, ['l0:a'], 'only the inline slice ran');
+  bus.emit('sector:enter', 'c');
+  assert.deepEqual(seen, ['l0:a', 'l1:a', 'l2:a', 'l0:b', 'l1:b', 'l2:b', 'l0:c'], 'a and b fully finish before c begins; no b tail is lost');
+  assert.equal(bus.pendingEmitSliceCount(), 2, 'only the c tail remains');
+  bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+  assert.deepEqual(seen.slice(-2), ['l1:c', 'l2:c'], 'the c tail drains once');
+  assert.equal(bus.pendingEmitSliceCount(), 0);
+});
+
+test('a sliced listener calling clear() during a drain stops the rest of that slice; fresh listeners still work', () => {
+  const bus = createBus();
+  const seen = [];
+  bus.setEmitSliceBudget('sector:enter', 4);
+  bus.on('sector:enter', () => seen.push('l0'));
+  bus.on('sector:enter', () => { seen.push('l1'); bus.clear(); });
+  bus.on('sector:enter', () => seen.push('l2'));
+  bus.on('sector:enter', () => seen.push('l3'));
+  bus.emit('sector:enter');
+  assert.deepEqual(seen, ['l0', 'l1'], 'teardown inside the drain window aborts: later handlers never run');
+  assert.equal(bus.pendingEmitSliceCount(), 0);
+  bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+  assert.deepEqual(seen, ['l0', 'l1'], 'no stale tail survives teardown');
+  bus.on('sector:enter', () => seen.push('fresh'));
+  bus.emit('sector:enter');
+  assert.deepEqual(seen, ['l0', 'l1', 'fresh'], 'a fresh listener on the cleared bus still works');
+});
+
+test('a once() listener emitting a new sliced event still fires once and every tail listener hears both events once', () => {
+  const bus = createBus();
+  const seen = [];
+  bus.setEmitSliceBudget('sector:enter', 2);
+  bus.on('sector:enter', (p) => seen.push(`a:${p}`));
+  bus.once('sector:enter', (p) => {
+    seen.push(`once:${p}`);
+    if (p === 'x') bus.emit('sector:enter', 'y');
+  });
+  bus.on('sector:enter', (p) => seen.push(`b:${p}`));
+  bus.on('sector:enter', (p) => seen.push(`c:${p}`));
+  bus.emit('sector:enter', 'x');
+  assert.deepEqual(seen, ['a:x', 'once:x', 'b:x', 'c:x', 'a:y', 'b:y'], 'the once wrapper is gone before y snapshots; x tail finishes first');
+  assert.equal(bus.pendingEmitSliceCount(), 1, 'c still waits in the y tail');
+  bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+  assert.deepEqual(seen, ['a:x', 'once:x', 'b:x', 'c:x', 'a:y', 'b:y', 'c:y']);
+  assert.equal(bus.pendingEmitSliceCount(), 0);
+});

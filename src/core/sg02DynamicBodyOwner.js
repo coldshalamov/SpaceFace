@@ -3261,6 +3261,7 @@ function bodyStateMatchesEntity(rec, entity, frameOrigin, frameScratch) {
 
 function wrapAngle(value) {
   let out = finite(value);
+  if (Math.abs(out) > Math.PI * 3) out %= Math.PI * 2;
   while (out <= -Math.PI) out += Math.PI * 2;
   while (out > Math.PI) out -= Math.PI * 2;
   return out;

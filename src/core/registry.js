@@ -280,13 +280,14 @@ export function destroySystems(systems, dependencies = TEARDOWN_DEPENDENCIES) {
  * `getDestroyCandidates` is evaluated only when teardown starts. The normal registry supplies the
  * manifest update order plus init order; a partial init supplies only the systems it reached.
  *
- * @param {{systems?: object[], context?: object, getDestroyCandidates?: function, dependencies?: Array}} options
+ * @param {{systems?: object[], context?: object, getDestroyCandidates?: function, dependencies?: Array, onTeardown?: function}} options
  */
 export function createSystemLifecycle({
   systems = [],
   context = null,
   getDestroyCandidates = null,
   dependencies = TEARDOWN_DEPENDENCIES,
+  onTeardown = null,
 } = {}) {
   const initSystems = Array.isArray(systems) ? systems : [];
   const destroyCandidates = typeof getDestroyCandidates === 'function'
@@ -312,7 +313,11 @@ export function createSystemLifecycle({
     try {
       destroySystems(candidates, dependencies);
     } finally {
-      phase = finalPhase;
+      try {
+        if (typeof onTeardown === 'function') onTeardown();
+      } finally {
+        phase = finalPhase;
+      }
     }
   }
 
@@ -720,7 +725,10 @@ export function createRegistry(ctx) {
     throw new Error('Runtime manifest must publish input from the first fixed-tick update slot');
   }
   const POST_INPUT_UPDATE_ORDER = UPDATE_ORDER.slice(1);
-  const postInputPartitions = partitionUpdateSystems(POST_INPUT_UPDATE_ORDER);
+  const postInputPartitions = partitionUpdateSystems(POST_INPUT_UPDATE_ORDER, {
+    state: ctx && ctx.state,
+    bus: ctx && ctx.bus,
+  });
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
   // state.player.masslineTelemetry subtree, never entities or SG-02 attachments, and emits only the
@@ -791,6 +799,7 @@ export function createRegistry(ctx) {
     context: ctx,
     getDestroyCandidates: () => [...UPDATE_ORDER, ...SYSTEMS],
     dependencies: TEARDOWN_DEPENDENCIES,
+    onTeardown: () => postInputPartitions.dispose(),
   });
 
   return {
@@ -858,7 +867,7 @@ export function createRegistry(ctx) {
           }
           for (const s of updateQueueForThisStep(postInputPartitions, state)) {
             if (countSystems) tier1.countSystemInvocation(s.name);
-            s.update(dt, state);
+            s.update(postInputPartitions.updateDt(s, dt, state), state);
           }
           if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
           core.lifetimeSweep(dt, state);
@@ -885,7 +894,7 @@ export function createRegistry(ctx) {
       for (const s of updateQueueForThisStep(postInputPartitions, state)) {
         if (countSystems) tier1.countSystemInvocation(s.name);
         t = perfNow();
-        try { s.update(dt, state); }
+        try { s.update(postInputPartitions.updateDt(s, dt, state), state); }
         finally { perf.recordSystem(s.name, perfNow() - t); }
       }
       t = perfNow();

@@ -795,6 +795,7 @@ export class SpatialHash {
 
   _clearStaticLayer() {
     this._clearStaticQueryCache();
+    this._coherentQueries.clear();
     this._staticBuckets.clear();
     this._staticActiveBuckets.length = 0;
     this._staticActiveCellX.length = 0;

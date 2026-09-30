@@ -109,7 +109,7 @@ export function createSimulation(options = {}) {
 
   let initialized = false;
   let stepping = false;
-  const updatePartitions = partitionUpdateSystems(updates);
+  const updatePartitions = partitionUpdateSystems(updates, { state, bus });
 
   const explicitSystemIds = Object.freeze(
     (options.systems || []).map((s) => (s && s.name) || null).filter(Boolean),
@@ -184,7 +184,7 @@ export function createSimulation(options = {}) {
         const queue = updateQueueForThisStep(updatePartitions, state);
         for (const system of queue) {
           if (countSystems) tier1.countSystemInvocation(system.name);
-          system.update(dt, state);
+          system.update(updatePartitions.updateDt(system, dt, state), state);
         }
         if (core.lifetimeSweep) {
           if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
@@ -217,6 +217,9 @@ export function createSimulation(options = {}) {
       if (typeof helpers.spawnEntity !== 'function') throw new Error('Core spawn helper is unavailable');
       return helpers.spawnEntity(spec);
     },
-    dispose() { if (bus && typeof bus.clear === 'function') bus.clear(); },
+    dispose() {
+      updatePartitions.dispose();
+      if (bus && typeof bus.clear === 'function') bus.clear();
+    },
   });
 }

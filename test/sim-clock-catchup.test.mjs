@@ -4,6 +4,8 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import {
   CALENDAR_CLOCK_PERIOD_TICKS,
+  shouldRunSystemThisStep,
+  shouldSkipSystemOnCatchup,
   shouldSkipSystemThisStep,
 } from '../src/core/catchupPolicy.js';
 import {
@@ -86,7 +88,7 @@ test('createSimulation extra catch-up steps invoke table only', () => {
     ],
   });
   sim.state.runtime = { profileId: 'production' };
-  sim.state.tick = 0;
+  sim.state.tick = 1;
   sim.state.simCatchupIndex = 1;
   sim.step(1 / 60);
   const names = ran.map((row) => row.name).sort();
@@ -218,8 +220,153 @@ test('production primary ticks iterate the combat queue, not calendar names', ()
   const catchupState = { runtime: { profileId: 'production' }, tick: 30, simCatchupIndex: 1 };
   assert.deepEqual(
     updateQueueForThisStep(partitions, catchupState).map((s) => s.name),
-    ['physics'],
+    ['physics', 'barkDirector', 'missions'],
+    'a due catch-up step still runs its authored calendar owners alongside table',
   );
+  const nonDueCatchupState = { runtime: { profileId: 'production' }, tick: 31, simCatchupIndex: 1 };
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, nonDueCatchupState).map((s) => s.name),
+    ['physics'],
+    'a non-due catch-up step remains table-only',
+  );
+});
+
+test('production catch-up steps still fire every calendar owner on its authored tick phase', () => {
+  for (const stepsPerFrame of [1, 2, 3, 4]) {
+    const ran = [];
+    const systems = [
+      stub('physics', ran),
+      stub('weapons', ran),
+      stub('npcJobsRuntime', ran),
+      stub('masslineHud', ran),
+      ...CALENDAR_CLOCK_IDS.map((id) => stub(id, ran)),
+    ];
+    const sim = createSimulation({ seed: 1, systems });
+    sim.state.runtime = { profileId: 'production' };
+    sim.state.tick = 60;
+    for (let i = 0; i < 600; i++) {
+      sim.state.simCatchupIndex = i % stepsPerFrame;
+      sim.step(1 / 60);
+    }
+    const byName = (name) => ran.filter((row) => row.name === name);
+    assert.equal(byName('physics').length, 600, `fps ${60 / stepsPerFrame}: table runs every fixed step`);
+    assert.equal(byName('weapons').length, 600, `fps ${60 / stepsPerFrame}: table runs every fixed step`);
+    assert.equal(byName('npcJobsRuntime').length, 600 / stepsPerFrame, `fps ${60 / stepsPerFrame}: near owners run primary steps only`);
+    assert.equal(byName('masslineHud').length, 600 / stepsPerFrame, `fps ${60 / stepsPerFrame}: glass owners run primary steps only`);
+    for (const id of CALENDAR_CLOCK_IDS) {
+      assert.equal(byName(id).length, 20, `fps ${60 / stepsPerFrame}: ${id} must fire once per 30-tick window even on catch-up steps`);
+    }
+    sim.dispose();
+  }
+});
+
+test('a jittered catch-up sequence lands every calendar phase exactly once, never doubled or skipped', () => {
+  const stepsPattern = [1, 2, 3, 4, 1, 3, 2];
+  const ran = [];
+  const systems = [
+    stub('physics', ran),
+    stub('npcJobsRuntime', ran),
+    ...CALENDAR_CLOCK_IDS.map((id) => stub(id, ran)),
+  ];
+  const sim = createSimulation({ seed: 1, systems });
+  sim.state.runtime = { profileId: 'production' };
+  sim.state.tick = 60;
+  let ticks = 0;
+  for (let frame = 0; ticks < 600; frame++) {
+    const stepsPerFrame = stepsPattern[frame % stepsPattern.length];
+    for (let index = 0; index < stepsPerFrame && ticks < 600; index++) {
+      sim.state.simCatchupIndex = index;
+      sim.step(1 / 60);
+      ticks += 1;
+    }
+  }
+  const byName = (name) => ran.filter((row) => row.name === name);
+  assert.equal(byName('physics').length, 600);
+  assert.equal(byName('npcJobsRuntime').length, 263, 'near owners run once per presented frame');
+  for (const id of CALENDAR_CLOCK_IDS) {
+    assert.equal(byName(id).length, 20, `${id} missed a phase or ran twice`);
+  }
+  sim.dispose();
+});
+
+test('a due catch-up step preserves the original update order across table and calendar', () => {
+  const ran = [];
+  const sim = createSimulation({
+    seed: 1,
+    systems: [
+      stub('physics', ran),
+      stub('barkDirector', ran),
+      stub('missions', ran),
+      stub('npcJobsRuntime', ran),
+    ],
+  });
+  sim.state.runtime = { profileId: 'production' };
+  sim.state.tick = 29;
+  sim.state.simCatchupIndex = 3;
+  sim.step(1 / 60);
+  assert.deepEqual(ran.map((row) => row.name), ['physics', 'barkDirector', 'missions']);
+  sim.dispose();
+});
+
+test('skip helpers agree with the production catch-up queues on due, non-due, boot, wake and foreign hosts', () => {
+  const partitions = partitionUpdateSystems([
+    stub('physics', []),
+    stub('barkDirector', []),
+    stub('missions', []),
+    stub('economy', []),
+    stub('npcJobsRuntime', []),
+  ]);
+  const prod = (tick, catchupIndex, extra = {}) => ({
+    runtime: { profileId: 'production' }, tick, simCatchupIndex: catchupIndex, ...extra,
+  });
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, prod(30, 1)).map((s) => s.name),
+    ['physics', 'barkDirector', 'missions'],
+    'due catch-up: cohort-0 owners run alongside table',
+  );
+  assert.equal(shouldSkipSystemThisStep('barkDirector', prod(30, 1)), false);
+  assert.equal(shouldSkipSystemOnCatchup('barkDirector', prod(30, 1)), false);
+  assert.equal(shouldRunSystemThisStep('barkDirector', prod(30, 1)), true);
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, prod(31, 1)).map((s) => s.name),
+    ['physics'],
+    'non-due catch-up stays table-only',
+  );
+  assert.equal(shouldSkipSystemThisStep('missions', prod(31, 1)), true);
+  assert.equal(shouldSkipSystemThisStep('economy', prod(31, 1)), true);
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, prod(40, 2)).map((s) => s.name),
+    ['physics', 'economy'],
+    'a due calendar owner runs on an extra step at its authored phase',
+  );
+  assert.equal(shouldSkipSystemThisStep('economy', prod(40, 2)), false);
+  assert.equal(shouldSkipSystemOnCatchup('economy', prod(40, 2)), false);
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, prod(1, 1)).map((s) => s.name),
+    ['physics', 'barkDirector', 'missions', 'economy'],
+    'bootstrap ticks run the whole calendar even on catch-up',
+  );
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, prod(7, 1, { clockWake: { calendar: true } })).map((s) => s.name),
+    ['physics', 'barkDirector', 'missions', 'economy'],
+    'a calendar wake runs every owner even on catch-up',
+  );
+  assert.equal(shouldSkipSystemThisStep('economy', prod(7, 1, { clockWake: { calendar: true } })), false);
+  assert.equal(shouldSkipSystemThisStep('npcJobsRuntime', prod(30, 1)), true, 'near owners never run on catch-up');
+  const legacy = { runtime: { profileId: 'legacy47a' }, tick: 30, simCatchupIndex: 1 };
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, legacy).map((s) => s.name),
+    ['physics'],
+    'legacy hosts keep table-only catch-up',
+  );
+  assert.equal(shouldSkipSystemThisStep('barkDirector', legacy), true);
+  const unprofiled = { tick: 30, simCatchupIndex: 1 };
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, unprofiled).map((s) => s.name),
+    ['physics'],
+    'unprofiled hosts keep table-only catch-up',
+  );
+  assert.equal(shouldSkipSystemThisStep('barkDirector', unprofiled), true);
 });
 
 test('legacy47a and unprofiled hosts still walk calendar every tick', () => {
