@@ -1153,10 +1153,15 @@ export function applySandboxSetup(ctx, config) {
             : undefined,
         });
         // The purse is the difficulty you bought at the door: it lands in the run wallet
-        // through the wallet's own award seam, BEFORE the opening armory can spend it.
+        // through the wallet's own award seam, BEFORE the opening armory can spend it — and only
+        // if the begin landed. begin() is synchronous, so the accepted run is already visible:
+        // kind survival at phase loadout with this seed. A refused begin (a live run in the way)
+        // must not credit a foreign wallet.
         if (launchRuleset === SWARM_RULESET) {
+          const run = ctx.state && ctx.state.run;
           const purse = swarmStakeFor(cfg.swarmStake).purse;
-          if (purse > 0) {
+          if (purse > 0 && run && run.kind === 'survival' && run.phase === 'loadout'
+            && run.seed === (setup.seed >>> 0)) {
             ctx.bus.emit('run:awardRequested', {
               credits: purse,
               reason: 'swarm:stake:' + normalizeSwarmStake(cfg.swarmStake),

@@ -76,7 +76,8 @@ export function createSwarmEventDirector(ctx) {
     name: 'swarmEvents',
     _armed: null,     // { event, fireAt } — telegraphed, waiting to spend
     _live: null,      // { event, until, restores:[{id, strength}], fieldId, podId }
-    _podIds: new Set(),
+    /** Live supply pods: pickupId -> the credits stamped on it at spawn. */
+    _pods: new Map(),
 
     init() {
       this._state = ctx && ctx.state;
@@ -238,7 +239,7 @@ export function createSwarmEventDirector(ctx) {
           const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
           if (id != null) {
             live.podId = id;
-            this._podIds.add(id);
+            this._pods.set(id, Number.isFinite(event.credits) ? event.credits : 0);
           }
           this._emitEvent('spend', state, event, { podId: id ?? null });
           break;
@@ -262,14 +263,15 @@ export function createSwarmEventDirector(ctx) {
 
     _onPodCollected(payload) {
       const id = payload && payload.pickupId;
-      if (id == null || !this._podIds.has(id)) return;
-      this._podIds.delete(id);
+      if (id == null || !this._pods.has(id)) return;
+      const credits = this._pods.get(id);
+      this._pods.delete(id);
       // Same collector gate as the repair cell: NPC/drone collection consumes the pod but
       // never pays the player's wallet (the publishers disagree on shape, so absent still claims).
       if (payload.collectorId != null && this._state && payload.collectorId !== this._state.playerId) return;
-      const credits = this._live && this._live.event && this._live.event.kind === 'supply'
-        ? this._live.event.credits : (SWARM_EVENT_BY_ID.supply_drop && 60);
-      // The run wallet takes the pod's worth — award is the only credits write path.
+      // The run wallet takes the pod's stamped worth — award is the only credits write path.
+      // Supply events finish the same tick they spend (windowS 0), so _live is already gone
+      // at collect time; the pod's own ledger entry is the truth.
       if (this._bus) this._bus.emit('run:awardRequested', { credits, reason: 'swarm:supplyPod' });
     },
 
@@ -277,7 +279,8 @@ export function createSwarmEventDirector(ctx) {
       // A wave that cleared mid-surge must calm the room, not leave it running hot.
       if (this._live) this._finishLive(this._state);
       this._armed = null;
-      this._podIds.clear();
+      // Pods outlive the wave ledger on purpose: a spawned pod still on the board (18 s TTL)
+      // and scooped after the clear must still pay. Entries die on collect or with the director.
       this._lastTeardown = reason;
     },
 
