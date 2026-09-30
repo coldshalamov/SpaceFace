@@ -22,7 +22,7 @@ import { ORES, ASTEROIDS } from '../../data/mining.js';
 import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
 import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
-import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS } from '../../systems/gamepad.js';
+import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS, gamepadButtonNames, gamepadButtonLabels } from '../../systems/gamepad.js';
 import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
 import { el, words, settle, cue } from '../kit/index.js';
@@ -97,69 +97,92 @@ function liveBoostLabel(state) {
 // INF-059: the gamepad section printed stock button names as literals, so a pad remap
 // (Settings → Controls, PQ-164.01) re-labeled the dock chip and the pad itself while the game's
 // own instructions kept teaching the old buttons. The section is now a projection of the resolved
-// pad map. A stock map (or none) returns the authored dual Xbox/PlayStation table unchanged; a
-// remapped map names each action's current button; a deliberately unbound action says so instead
-// of printing a phantom button.
-const GAMEPAD_ROWS_STOCK = Object.freeze([
-  ['Fly (yaw + throttle)', null, 'Left stick'],
-  ['Aim weapons', null, 'Right stick'],
-  ['Fire', null, 'RT / R2'],
-  ['Mine beam', null, 'LT / L2'],
-  ['Boost', null, 'RB / R1'],
-  ['Brake / reverse', null, 'LB / L1'],
-  ['Shove (repulsor)', null, 'Y / △'],
-  ['Massline', null, 'A / Cross'],
-  ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
-  ['Countermeasure', null, 'R3'],
-  ['Drop bomb', null, 'D-Pad Right'],
-  ['Cycle bomb-bay payload', null, 'D-Pad Left'],
-  ['Cycle target', null, 'X / □'],
-  ['Open star-map', null, 'View / Select'],
-  ['Open codex', null, 'Guide (or Pause → Codex)'],
-  ['Open mission log', null, 'Start / Options → Pause → Mission Log'],
-  ['Pause', null, 'Start / Options'],
-  ['Dock / activate', null, 'B / ○ (when prompted)'],
-  ['Cancel / back', null, 'B / ○'],
-  ['Travel burn', null, 'L3'],
-  ['Auto-target', null, 'D-Pad Up'],
-  ['Detonate charge', null, 'D-Pad Down'],
-]);
-
-// Row verb, pad action, and the stock-map sentence shape for the live projection.
+// pad map. The sheet is a PROJECTION of the resolved map on both paths: a stock map (or none)
+// renders the dual Xbox/PlayStation register, a remapped map names each action's current button,
+// and an action with no button says so honestly instead of printing a phantom one.
 const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Fire', 'fire', (g) => g],
   ['Mine beam', 'mine', (g) => g],
   ['Boost', 'boost', (g) => g],
   ['Brake / reverse', 'brake', (g) => g],
   ['Shove (repulsor)', 'deployRepulsor', (g) => g],
+  ['Accept / confirm', 'accept', (g) => g],
   ['Massline', 'massline', (g) => g],
   ['Countermeasure', 'countermeasure', (g) => g],
   ['Drop bomb', 'dropBomb', (g) => g],
   ['Cycle bomb-bay payload', 'cycleBomb', (g) => g],
   ['Cycle target', 'cycleTarget', (g) => g],
   ['Open star-map', 'map', (g) => g],
-  ['Open codex', 'codex', (g) => g],
+  ['Open codex', 'codex', (g) => `${g} (or Pause → Codex)`],
   ['Pause', 'pause', (g) => g],
   ['Dock / activate', 'dock', (g) => `${g} (when prompted)`],
   ['Cancel / back', 'cancel', (g) => g],
+  ['Station tab: previous', 'tabPrev', (g) => g],
+  ['Station tab: next', 'tabNext', (g) => g],
   ['Travel burn', 'travelBurn', (g) => g],
   ['Auto-target', 'autoTarget', (g) => g],
   ['Detonate charge', 'chargeDetonate', (g) => g],
+  ['Hull burst', 'hullBurst', (g) => g],
 ]);
 
-const GAMEPAD_STATIC_ROW_INDEXES = Object.freeze(new Set([0, 1, 8, 15]));
+// Rows with no pad action: analogue sticks, and two verbs a pad does not own. Keyed by LABEL, not
+// by index — an index set silently starts freezing the wrong row the first time one is inserted.
+const GAMEPAD_STATIC_LABELS = Object.freeze(new Set([
+  'Fly (yaw + throttle)', 'Aim weapons', 'Anchor Mass Seed', 'Open mission log',
+]));
 
+// Every entry of GAMEPAD_DEFAULT_BINDINGS gets a row, so the row list IS the sheet's order.
+// Gaps between action rows are the static ones above; see gamepadControlRows.
+const GAMEPAD_ROW_ORDER = Object.freeze([
+  'Fly (yaw + throttle)', 'Aim weapons',
+  'Fire', 'Mine beam', 'Boost', 'Brake / reverse', 'Shove (repulsor)', 'Accept / confirm',
+  'Massline', 'Anchor Mass Seed', 'Countermeasure', 'Drop bomb', 'Cycle bomb-bay payload',
+  'Cycle target', 'Open star-map', 'Open codex', 'Open mission log', 'Pause', 'Dock / activate',
+  'Cancel / back', 'Station tab: previous', 'Station tab: next', 'Travel burn', 'Auto-target',
+  'Detonate charge', 'Hull burst',
+]);
+
+// The static rows carry no action, so their text is authored here. Everything else is derived.
+const GAMEPAD_STATIC_TEXT = Object.freeze({
+  'Fly (yaw + throttle)': 'Left stick',
+  'Aim weapons': 'Right stick',
+  'Anchor Mass Seed': 'keyboard verb — rebind under Settings → Controls',
+  'Open mission log': 'Start / Options → Pause → Mission Log',
+});
+
+// Two different reasons a row can name no button. A player who cleared a binding chose that; a
+// verb the game ships with no default button at all is the game's gap, and saying otherwise
+// blames the player's profile for the game's design.
+const UNBOUND_BY_PLAYER = 'unbound — Settings → Controls';
+const UNBOUND_BY_DESIGN = 'no default button — bind it under Settings → Controls';
+
+const GAMEPAD_ROW_BY_LABEL = new Map(GAMEPAD_ROW_ACTIONS.map((row) => [row[0], row]));
+
+
+/**
+ * The Gamepad section: one projection, one code path. `map` is the resolved pad map (see
+ * resolveGamepadBindings); a null or stock map renders the dual register, because only the shipped
+ * layout is entitled to the Xbox/PlayStation pairing. A chord names every button it holds.
+ */
 export function gamepadControlRows(map) {
-  if (map == null || map === GAMEPAD_DEFAULT_BINDINGS) {
-    return GAMEPAD_ROWS_STOCK.map((row) => row.slice());
-  }
-  const live = new Map(GAMEPAD_ROW_ACTIONS.map(([label, action, shape]) => {
-    const glyph = gamepadGlyphForAction(action, map);
-    return [label, glyph ? shape(glyph) : 'unbound — Settings → Controls'];
-  }));
-  return GAMEPAD_ROWS_STOCK.map((row, i) => (
-    GAMEPAD_STATIC_ROW_INDEXES.has(i) ? row.slice() : [row[0], null, live.get(row[0]) || row[2]]
-  ));
+  const stock = map == null || map === GAMEPAD_DEFAULT_BINDINGS;
+  // A null map is "no overrides configured", which IS the default map — resolve it rather than
+  // letting the lookup read through an empty object.
+  const resolved = map == null ? GAMEPAD_DEFAULT_BINDINGS : map;
+  return GAMEPAD_ROW_ORDER.map((label) => {
+    if (GAMEPAD_STATIC_LABELS.has(label)) return [label, null, GAMEPAD_STATIC_TEXT[label]];
+    const [, action, format] = GAMEPAD_ROW_BY_LABEL.get(label);
+    const labels = gamepadButtonLabels(action, resolved, { dual: stock });
+    if (!labels.length) {
+      // A player who cleared a binding chose that; a verb the game ships with no default button is
+      // the game's own gap, and saying otherwise blames the profile for the design.
+      const shipped = gamepadButtonNames(action, GAMEPAD_DEFAULT_BINDINGS);
+      return [label, null, shipped.length ? UNBOUND_BY_PLAYER : UNBOUND_BY_DESIGN];
+    }
+    // ' / ' already separates an Xbox name from its PlayStation one, so a chord joins with ' or ':
+    // 'RT / R2 or RB / R1' reads; 'RT / R2 / RB / R1' does not.
+    return [label, null, format(labels.join(' or '))];
+  });
 }
 
 export function controlSections(state) {
@@ -306,11 +329,18 @@ function playerHullId(state) {
   return (ship && ship.defId) || 'ship_kestrel';
 }
 
-function padLabel(names) {
-  const n = names && names[0];
-  return n ? (GAMEPAD_BUTTON_LABELS[n] || n) : '';
+/**
+ * A pad cell from a binding list: the first button is the main glyph and any chord partners go in
+ * the alt line. Reading `[0]` alone (as this used to, and as `gamepadGlyphForAction` still does for
+ * prompt-deck chips) drops the rest of a chord, so the help and the pad disagree about a verb.
+ */
+function padCell(action, map) {
+  const labels = gamepadButtonLabels(action, map);
+  return { main: shortPad(labels[0]), alt: labels.slice(1).map(shortPad).join(' or ') };
 }
 function shortPad(label) {
+  // The rig cell is narrow, so it spells the D-pad compactly while the ladder prints the full
+  // 'D-Pad Up'. Deliberate: both spellings appear on this screen and neither is a typo.
   return String(label || '').replace(/^D-Pad /, 'D-pad ');
 }
 
@@ -331,7 +361,7 @@ export function rigStations(state) {
     if (s.action === 'fire' && kb.main !== 'LMB') kb.alt = 'LMB';
     let pad;
     if (s.stick) pad = { main: 'L-stick', alt: STICK_GLYPH[s.stick] };
-    else if (s.padAction) pad = { main: shortPad(padLabel(padMap[s.padAction])) };
+    else if (s.padAction) pad = padCell(s.padAction, padMap);
     else pad = { main: '' };
     return { ...s, kb, pad };
   });
