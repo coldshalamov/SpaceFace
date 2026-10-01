@@ -530,6 +530,8 @@ function ensureEntityIndex(state) {
     radarContacts: [],
     radarAsteroids: [],
     byStationId: new Map(),
+    byWorldSiteId: new Map(),
+    capitalBossCast: new Set(),
     byWorldRecordId: new Map(),
     // Parallel carrier count for byWorldRecordId: O(1) "exactly one carrier" answers — any
     // ambiguity (0, ≥2, or a missing count) keeps the entityList walk callers already run.
@@ -596,6 +598,8 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.radarContacts)) index.radarContacts = [];
   if (!Array.isArray(index.radarAsteroids)) index.radarAsteroids = [];
   if (!(index.byStationId instanceof Map)) index.byStationId = new Map();
+  if (!(index.byWorldSiteId instanceof Map)) index.byWorldSiteId = new Map();
+  if (!(index.capitalBossCast instanceof Set)) index.capitalBossCast = new Set();
   if (!(index.byWorldRecordId instanceof Map)) {
     index.byWorldRecordId = new Map();
     index.ready = false;
@@ -652,6 +656,8 @@ function clearEntityIndex(index) {
   index.radarContacts.length = 0;
   index.radarAsteroids.length = 0;
   index.byStationId.clear();
+  index.byWorldSiteId.clear();
+  index.capitalBossCast.clear();
   index.byWorldRecordId.clear();
   index.byWorldRecordIdCount.clear();
   index._indexedIds.clear();
@@ -719,6 +725,19 @@ function appendEntityIndex(index, e) {
     // post-spawn re-stamp decrements the right lane and remove decrements what was incremented.
     e._wrIndexStamp = worldRecordId;
     bumpLaneVersion(index, 'worldRecordIds');
+  }
+  // worldSiteId lives only in the spawn literal — append-time decidable, so site
+  // materialization syncs read one bucket instead of walking the whole entity map.
+  const worldSiteId = e.data && e.data.worldSiteId;
+  if (worldSiteId != null) {
+    let bucket = index.byWorldSiteId.get(worldSiteId);
+    if (!bucket) { bucket = new Set(); index.byWorldSiteId.set(worldSiteId, bucket); }
+    if (!bucket.has(e)) { bucket.add(e); bumpLaneVersion(index, 'worldSites'); }
+  }
+  // Capital-boss cast keys are also spawn-literal only; the reconcile event walks
+  // this handful instead of the whole entity map per boss fight.
+  if (e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)) {
+    if (!index.capitalBossCast.has(e)) { index.capitalBossCast.add(e); bumpLaneVersion(index, 'capitalBossCast'); }
   }
 
   switch (e.type) {
@@ -868,6 +887,18 @@ function removeEntityIndex(index, e) {
       }
     }
   }
+  const removedWorldSiteId = e.data && e.data.worldSiteId;
+  if (removedWorldSiteId != null) {
+    const bucket = index.byWorldSiteId.get(removedWorldSiteId);
+    if (bucket && bucket.delete(e)) {
+      if (bucket.size === 0) index.byWorldSiteId.delete(removedWorldSiteId);
+      bumpLaneVersion(index, 'worldSites');
+    }
+  }
+  if (e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)
+      && index.capitalBossCast.delete(e)) {
+    bumpLaneVersion(index, 'capitalBossCast');
+  }
   // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
   // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
   // Decrement the id the entity was COUNTED under — a post-spawn re-stamp can leave
@@ -1009,6 +1040,17 @@ function removeEntitiesFromIndex(index, corpses) {
     }
     if (e && e.data && e.data.role === 'world_site_root') {
       index.laneVersions.worldSiteRoots = (index.laneVersions.worldSiteRoots || 0) + 1;
+    }
+    if (e && e.data && e.data.worldSiteId != null) {
+      const bucket = index.byWorldSiteId.get(e.data.worldSiteId);
+      if (bucket && bucket.delete(e)) {
+        if (bucket.size === 0) index.byWorldSiteId.delete(e.data.worldSiteId);
+        index.laneVersions.worldSites = (index.laneVersions.worldSites || 0) + 1;
+      }
+    }
+    if (e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)
+        && index.capitalBossCast.delete(e)) {
+      index.laneVersions.capitalBossCast = (index.laneVersions.capitalBossCast || 0) + 1;
     }
   }
   removeCorpsesFromIndexArray(index.mineables, removed);

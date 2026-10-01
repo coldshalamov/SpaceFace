@@ -3639,7 +3639,10 @@ export const world = {
    */
   _assignDurableRecordId(ent, sectorId, kind, keyHint, active) {
     if (!ent || !ent.data) return null;
-    if (ent.data.worldRecordId) return ent.data.worldRecordId;
+    if (ent.data.worldRecordId) {
+      registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
+      return ent.data.worldRecordId;
+    }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const seq = (active && (active._durableSeq = (active._durableSeq || 0) + 1)) || 0;
     const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
@@ -3649,6 +3652,7 @@ export const world = {
     ent.data.worldRecordId = recordId;
     ent.data.identityKey = key;
     ent.data.recordCreatedTick = this.state.tick | 0;
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
     return recordId;
   },
 

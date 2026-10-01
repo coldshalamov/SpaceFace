@@ -1784,7 +1784,7 @@ export const aftermathWrecks = {
     // record shell — IS that marker's wreck; spawning beside it was the D89 duplicate. Adopt the
     // first claimant (bindImmediateWreck upgrades it to the full spec) and retire the rest.
     const claimants = new Map();
-    for (const e of state.entityList || []) {
+    for (const e of indexedTypeScan(state, 'wrecks')) {
       if (e && e.alive !== false && e.type === 'wreck' && e.data && e.data.markerId != null) {
         const list = claimants.get(e.data.markerId) || [];
         list.push(e);

@@ -5712,7 +5712,10 @@ export const missions = {
     const prefix = `${m.id}/`;
     const have = new Set(m.targetEntityIds || []);
     let reattached = 0;
-    for (const e of this.state.entityList || []) {
+    const castIndex = this.state.entityIndex;
+    const cast = castIndex && castIndex.__spacefaceEntityIndexV1 === true && castIndex.ready === true
+      && castIndex.capitalBossCast instanceof Set ? castIndex.capitalBossCast : this.state.entityList || [];
+    for (const e of cast) {
       if (!e || e.alive === false) continue;
       const key = e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
       if (!key || !String(key).startsWith(prefix) || have.has(e.id)) continue;
@@ -5742,7 +5745,10 @@ export const missions = {
     this._reattachCapitalBossCastTargets(m);
     let repointed = 0;
     const liveByKey = new Map();
-    for (const e of this.state.entityList || []) {
+    const castScanIndex = this.state.entityIndex;
+    const castScan = castScanIndex && castScanIndex.__spacefaceEntityIndexV1 === true && castScanIndex.ready === true
+      && castScanIndex.capitalBossCast instanceof Set ? castScanIndex.capitalBossCast : this.state.entityList || [];
+    for (const e of castScan) {
       const key = e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
       if (key && e.alive !== false) liveByKey.set(String(key), e);
     }

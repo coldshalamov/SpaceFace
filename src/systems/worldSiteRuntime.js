@@ -180,7 +180,7 @@ export function removeWorldSiteMaterialization({ state, helpers, siteId, sectorI
   const existing = existingByWorldRecord(state, siteId);
   const trackedReferences = captureWorldSiteEntityReferences(state, siteId, existing);
   let removed = 0;
-  for (const entity of state.entities.values()) {
+  for (const entity of worldSiteEntitySource(state, siteId)) {
     const data = entity && entity.data || {};
     if (entity.alive === false || data.worldSiteId !== siteId) continue;
     if (sectorId && data.homeSectorId && data.homeSectorId !== sectorId) continue;
@@ -193,9 +193,18 @@ export function removeWorldSiteMaterialization({ state, helpers, siteId, sectorI
 
 export function liveWorldSiteEntities(state, siteId) {
   if (!state || !state.entities) return [];
-  return [...state.entities.values()]
+  return [...worldSiteEntitySource(state, siteId)]
     .filter((entity) => entity && entity.alive !== false && entity.data && entity.data.worldSiteId === siteId)
     .sort((a, b) => String(a.data.worldRecordId).localeCompare(String(b.data.worldRecordId)) || stableEntityId(a) - stableEntityId(b));
+}
+
+// The byWorldSiteId bucket carries every live site entity (worldSiteId is spawn-literal only);
+// fall back to the whole map when the index is absent or mid-build so headless paths keep working.
+function worldSiteEntitySource(state, siteId) {
+  const index = state && state.entityIndex;
+  const bucket = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldSiteId instanceof Map ? index.byWorldSiteId.get(siteId) : null;
+  return bucket || state.entities.values();
 }
 
 function existingByWorldRecord(state, siteId) {
@@ -209,7 +218,7 @@ function existingByWorldRecord(state, siteId) {
     if (!out.has(worldRecordId)) out.set(worldRecordId, []);
     out.get(worldRecordId).push(entity);
   };
-  for (const entity of state.entities.values()) add(entity);
+  for (const entity of worldSiteEntitySource(state, siteId)) add(entity);
   const far = state.world && state.world.farActors;
   if (far && Array.isArray(far.rows)) {
     for (let i = 0; i < far.rows.length; i++) add(far.rows[i]);
@@ -250,7 +259,7 @@ function captureWorldSiteEntityReferences(state, siteId, eligibleWorldRecords = 
 function rebindWorldSiteEntityReferences(state, siteId, tracked) {
   if (!tracked.length) return { tracked: 0, rebound: 0, cleared: 0 };
   const liveByWorldRecord = new Map();
-  for (const entity of state.entities.values()) {
+  for (const entity of worldSiteEntitySource(state, siteId)) {
     if (!entity || entity.alive === false || entity.data?.worldSiteId !== siteId
       || !entity.data?.worldRecordId) continue;
     const current = liveByWorldRecord.get(entity.data.worldRecordId);

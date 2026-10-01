@@ -31,9 +31,11 @@ import {
   requestActivityReclassify,
 } from '../world/activityRuntime.js';
 import {
+  entityIndexLaneVersion,
   forEachFieldRock,
   forEachJobInteractable,
   forEachLivingWorldActor,
+  indexedTypeScan,
   indexedWorldRecordEntity,
   registerEntityWorldRecordId,
 } from '../world/livingWorldViews.js';
@@ -2142,6 +2144,7 @@ export const traffic = {
     entity.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
     data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
     data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+    this._indexWorldRecordId(entity);
   },
 
   _captureCeresActivityCast() {
@@ -2277,6 +2280,7 @@ export const traffic = {
     entity.homeSectorId = sectorId;
     data.homeSectorId = sectorId;
     data.sectorId = sectorId;
+    this._indexWorldRecordId(entity);
   },
 
   _assignActivityJob(entity, entry) {
@@ -4877,12 +4881,10 @@ export const traffic = {
       // Memoize misses on the worldRecordIds lane — appends/removes and registered post-spawn
       // stamps all bump it, so a served miss is bit-identical to what the fallback walk sees
       // and the walk's repair path stays open across any mutation.
-      const index = this.state && this.state.entityIndex;
-      const lane = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
-        && index.laneVersions ? (index.laneVersions.worldRecordIds || 0) : null;
+      const lane = entityIndexLaneVersion(this.state, ['worldRecordIds']);
       const memo = this._worldSiteRouteMissMemo || (this._worldSiteRouteMissMemo = { lane: -1, ids: new Set() });
-      if (lane == null || memo.lane !== lane) {
-        memo.lane = lane == null ? -1 : lane;
+      if (lane < 0 || memo.lane !== lane) {
+        memo.lane = lane;
         memo.ids.clear();
       }
       if (!memo.ids.has(route.siteWorldRecordId)) {
@@ -9104,9 +9106,7 @@ export const traffic = {
       || targetData.sectorId !== CERES_ACTIVITY_SECTOR_ID
       || (this.state.world && this.state.world.currentSectorId) !== CERES_ACTIVITY_SECTOR_ID) return false;
     const candidates = [];
-    for (const entity of this.state.entities && this.state.entities.values
-      ? this.state.entities.values()
-      : []) {
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
       if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
       const entityData = entity.data || {};
       if (entityData.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
