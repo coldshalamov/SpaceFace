@@ -22,13 +22,14 @@ COLORS = {
     'hazard': '#d99a1e',
     'bare': '#868c93',     # honed steel
     'glow_drive': '#ff9a4a',
+    'glow_cyan.sodium': '#ff8a2a',   # sodium lifted to light (Ashline identity trim)
 }
 
 
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
-    build_frame(s, rail_y=0.95)
+    build_frame(s, rail_y=0.95, lit_rails=False)   # the rails sit under the blade armour here
     build_engine(s, ew=1.3)
 
     # Long cutting prow: flat diamond-section blade with a sodium ridge and a honed steel edge.
@@ -58,6 +59,10 @@ def build():
     F.band(s, 'ArmorAft', (-1.4, 1.95, 0), (0.4, 0.92, 0), 0.22, 'stripe', facing=(0, 0, 1), mirror=True,
            min_facing=0.2)
     F.panel(s, 'ArmorAft', (-2.6, 1.05), (2.2, 0.7), 'dark', inset=0.04, depth=-0.04, mirror=True)
+    # Identity trim, lit: a thin sodium line 0.3 m inside each aft blade's leading edge, parallel to the
+    # stripe, on the oxide top (LOOK.md: lamps are light). Normal (0.4, 0.92) is the edge's outboard normal.
+    F.band(s, 'ArmorAft', (-1.52, 1.67, 0), (0.4, 0.92, 0), 0.08, 'glow_cyan.sodium', facing=(0, 0, 1),
+           mirror=True, min_facing=0.2, inset=0.004, depth=-0.01)
     # Honed steel along each aft blade's outer leading edge: the Ashline edge, as on the Dart.
     blade_edge = [(0.3, 1.44), (-2.8, 2.78), (-5.1, 3.28), (-4.9, 3.1), (-2.9, 2.6), (0.1, 1.3)]
     F.plate(s, 'BladeEdge', blade_edge, z0=0.7, thickness=0.1, material='bare', chamfer=0.03, mirror=True)

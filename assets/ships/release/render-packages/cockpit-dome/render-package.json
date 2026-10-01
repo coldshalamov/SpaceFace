@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "598c208c60148a964c0b016f398bac1f7d5d2e5782a8877c75da5c95db328a24",
+  "contentHash": "898093b427bab630c8a1fa7aa6531cf90eb436de06ad96cc6a1875242399d44a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1596,8 +1596,8 @@
       "uri": "cockpit_dome.glb"
     },
     "sourceManifest": {
-      "bytes": 197727,
-      "sha256": "1d0dbcc0afcde55653448733834f07ed6d40d478062ffdfeddcd91a9b8ba4a22",
+      "bytes": 197728,
+      "sha256": "8c13c87183948c151e572016a7343416b587ecdb5cb0f31dd410a03a95c98b3c",
       "uri": "pilots.json"
     }
   },
@@ -2023,7 +2023,7 @@
     "slot": "cockpit",
     "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
   },
-  "runtimeHash": "dca61ab02aef4398835f0e0260e4d589ca9cac0bd5e82a127f94de2fe307395e",
+  "runtimeHash": "3818f30ec429f06b3df62bf372c21ef08028a952cba58ed39494dcdd2d518dff",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
