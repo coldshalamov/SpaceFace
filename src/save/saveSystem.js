@@ -4277,7 +4277,12 @@ export const save = {
       // per restore yield so a mature save's neighbor materialization spreads across frames
       // instead of landing inside this chunk — plan order is preserved, so the post-drain state
       // is identical to the synchronous plan before later chunks read neighbor sectors.
-      if (worldSys && typeof worldSys._drainResidencyQueue === 'function') {
+      if (worldSys && typeof worldSys._drainResidencyQueueChunks === 'function') {
+        for (const _ of worldSys._drainResidencyQueueChunks()) {
+          this._reportRestoreProgress(0.18, 'Materializing nearby sectors');
+          yield 'residency-drained';
+        }
+      } else if (worldSys && typeof worldSys._drainResidencyQueue === 'function') {
         while (worldSys._pendingResidency && worldSys._pendingResidency.length) {
           worldSys._drainResidencyQueue();
           this._reportRestoreProgress(0.18, 'Materializing nearby sectors');

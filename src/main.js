@@ -174,7 +174,8 @@ async function boot() {
     // authority is never re-armed under the running sim. finalizeLoadedGame adopts the
     // promise below (and kicks itself if this lane never ran).
     let earlyContinuePhysicsPrep = null;
-    bus.on('save:envelopePrepared', () => {
+    const kickEarlyContinuePhysicsPrep = () => {
+      if (earlyContinuePhysicsPrep) return;
       if (state.mode === 'flight') return;
       const physicsSystem = registry.get('physics');
       if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
@@ -188,7 +189,11 @@ async function boot() {
       earlyContinuePhysicsPrep = Promise.resolve()
         .then(() => physicsSystem.prepareBackend(state));
       earlyContinuePhysicsPrep.catch(() => {});
-    });
+    };
+    // Speculative prepare fires during menu dwell — WASM bring-up reads no envelope data,
+    // so it can overlap the dwell instead of serializing inside the Continue gate.
+    bus.on('save:envelopeSpecPrepared', kickEarlyContinuePhysicsPrep);
+    bus.on('save:envelopePrepared', kickEarlyContinuePhysicsPrep);
     helpers.deferLoadedGameRestore = (restore) => {
       bus.emit('game:loadingProgress', {
         id: 'restoring-save',

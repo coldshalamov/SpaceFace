@@ -24,6 +24,7 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { authoredSetPieceById, megaHeistById } from '../data/missions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
+import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 
@@ -262,6 +263,27 @@ export function saveEnvelopeSectorStubs(data) {
     }
   }
 
+  // Bare mission wrecks pick their packaged body by id hash across the aftermath table —
+  // covering the residue classes needs the same hash the mount reads (machinery shared with
+  // the identity-less aftermath-marker case below).
+  let bareMissionWrecksCovered = false;
+  const coverBareMissionWrecks = () => {
+    if (bareMissionWrecksCovered) return;
+    bareMissionWrecksCovered = true;
+    const covered = new Set();
+    for (let i = 0; covered.size < 6 && i < 64; i += 1) {
+      const id = `envelope-warm:mission-wreck:${i}`;
+      const variant = hashId(id) % 6;
+      if (covered.has(variant)) continue;
+      covered.add(variant);
+      out.placeStubs.push({
+        id,
+        type: 'wreck',
+        data: { wreckClass: 'battlefield', parentType: 'ship' },
+      });
+    }
+  };
+
   // Aftermath wreck markers serialize the victim's full visual identity (defId + the same
   // visual fields its own admission read, faction kit, fracture piece) and _spawnForSector
   // rematerializes them at save:loaded — the stub resolves through the same wreckPackagedFile
@@ -271,6 +293,13 @@ export function saveEnvelopeSectorStubs(data) {
   if (Array.isArray(aftermathMarkers)) {
     for (const marker of aftermathMarkers) {
       if (!marker) continue;
+      // A generic marker carries no victim identity: the hash pick then lands on the spawn's
+      // allocated entity id — cover the residue table instead of one doomed residue.
+      if (!marker.fracturePiece && !marker.victimDefId && !marker.victimVisual
+          && marker.wreckClass !== 'military') {
+        coverBareMissionWrecks();
+        continue;
+      }
       const stubData = {
         wreckClass: marker.wreckClass || 'battlefield',
         parentType: marker.wreckClass === 'military' ? 'military' : 'ship',
@@ -380,23 +409,6 @@ export function saveEnvelopeSectorStubs(data) {
   // The non-bounty needsTargets families (escort convoys, claim sites, salvage pockets, signal
   // derelicts, physical set pieces, authored casts) respawn through the same pass — bare wreck
   // props warm the aftermath table by residue class, ship actors warm their archetype hulls.
-  let bareMissionWrecksCovered = false;
-  const coverBareMissionWrecks = () => {
-    if (bareMissionWrecksCovered) return;
-    bareMissionWrecksCovered = true;
-    const covered = new Set();
-    for (let i = 0; covered.size < 6 && i < 64; i += 1) {
-      const id = `envelope-warm:mission-wreck:${i}`;
-      const variant = hashId(id) % 6;
-      if (covered.has(variant)) continue;
-      covered.add(variant);
-      out.placeStubs.push({
-        id,
-        type: 'wreck',
-        data: { wreckClass: 'battlefield', parentType: 'ship' },
-      });
-    }
-  };
   const missions = (data.missions && Array.isArray(data.missions.active)) ? data.missions.active : [];
   for (const m of missions) {
     if (!m || !m.needsTargets || m.status !== 'active') continue;
@@ -448,10 +460,17 @@ export function saveEnvelopeSectorStubs(data) {
     }
     if (m.type === 'tow_recovery') continue; // slag core is a plain asteroid — procedural
     if (m.type === 'authored_set_piece' || m.type === 'capital_boss') {
-      const definition = authoredSetPieceById(params.authoredSetPieceId)
-        || megaHeistById(params.authoredSetPieceId);
-      const encounter = definition
-        && (AUTHORED_SET_PIECE_ENCOUNTERS[definition.id] || MEGA_HEIST_ENCOUNTERS[definition.id]);
+      // capital_boss offers stamp encounterId/capitalBossId, never authoredSetPieceId —
+      // resolving the set-piece tables for them yields nothing; the real spawn reads
+      // capitalBossEncounter(params.encounterId).
+      const encounter = m.type === 'capital_boss'
+        ? capitalBossEncounter(params.encounterId)
+        : (() => {
+          const definition = authoredSetPieceById(params.authoredSetPieceId)
+            || megaHeistById(params.authoredSetPieceId);
+          return definition
+            && (AUTHORED_SET_PIECE_ENCOUNTERS[definition.id] || MEGA_HEIST_ENCOUNTERS[definition.id]);
+        })();
       const fallback = m.type === 'capital_boss' ? 'bruiser_brawler' : 'wasp_swarmer';
       for (const actor of (encounter && encounter.actors) || []) {
         if (!actor) continue;

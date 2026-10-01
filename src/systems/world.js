@@ -1198,21 +1198,44 @@ export const world = {
       ran++;
     }
     if (!jobs.length) {
-      const state = this.state;
-      this.bus.emit('world:residency', {
-        sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
-          sectorId,
-          tier: state.world.residentSectors[sectorId].tier,
-          epoch: state.world.residentSectors[sectorId].epoch,
-        })),
-        membershipSectorId: state.world.currentSectorId,
-        reason: 'arrival-slice',
-        tick: state.tick | 0,
-        noTeleport: true,
-        pending: [],
-      });
+      this._emitResidencyArrivalSlice();
     }
     return ran;
+  },
+
+  _emitResidencyArrivalSlice() {
+    const state = this.state;
+    this.bus.emit('world:residency', {
+      sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
+        sectorId,
+        tier: state.world.residentSectors[sectorId].tier,
+        epoch: state.world.residentSectors[sectorId].epoch,
+      })),
+      membershipSectorId: state.world.currentSectorId,
+      reason: 'arrival-slice',
+      tick: state.tick | 0,
+      noTeleport: true,
+      pending: [],
+    });
+  },
+
+  /**
+   * Generator twin of _drainResidencyQueue for the restore lane: each deferred neighbor
+   * materializes through _ensureSectorMaterializedChunks so phase boundaries paint inside
+   * the neighbor too — the sync lane's per-job order (materialize → meta → tier sync) is
+   * preserved and the residency emit still fires once when the queue empties.
+   */
+  *_drainResidencyQueueChunks() {
+    const jobs = this._pendingResidency;
+    if (!jobs || !jobs.length) return;
+    while (jobs.length) {
+      const job = jobs.shift();
+      yield* this._ensureSectorMaterializedChunks(job.sectorId, job.tier, { restoreDurableRecords: false });
+      this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
+      this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      yield 'residency-job';
+    }
+    this._emitResidencyArrivalSlice();
   },
 
   _setResidentMeta(sectorId, tier, reason) {
@@ -1265,7 +1288,7 @@ export const world = {
 
     this._spawnStations(sector, active, rng);
     yield 'materialize:stations';
-    this._spawnFields(sector, active, disc, rng);
+    yield* this._spawnFieldsChunks(sector, active, disc, rng);
     yield 'materialize:fields';
     this._spawnGates(sector, active, rng);
     yield 'materialize:gates';
@@ -1278,14 +1301,14 @@ export const world = {
     this._rematerializeUsedUpFieldOpportunity(sectorId, sector, active);
     yield 'materialize:field-opportunity';
     // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
-    const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier, opts);
+    const rematerialized = yield* this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
     yield 'materialize:records';
     if (tier === RESIDENCY_TIER.FULL) {
-      this._spawnDressing(sector, active, rng);
+      yield* this._spawnDressingChunks(sector, active, rng);
       yield 'materialize:dressing';
       // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
       if (!rematerialized.hadCombatHistory) {
-        this._spawnEnemies(sector, active, rng);
+        yield* this._spawnEnemiesChunks(sector, active, rng);
         this._spawnBossIfDue(sector, active, rng);
       } else {
         // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
@@ -1659,6 +1682,18 @@ export const world = {
    * @returns {{ spawned:number, hadCombatHistory:boolean, spawnedBoss:boolean }}
    */
   _rematerializeSectorRecords(sectorId, active, tier, opts = {}) {
+    const it = this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
+  },
+
+  /**
+   * Generator twin of _rematerializeSectorRecords: yields every 8 processed records so the
+   * restore lane can paint inside a record-dense sector. The sync wrapper drains inline —
+   * identical record order and result.
+   */
+  *_rematerializeSectorRecordsChunks(sectorId, active, tier, opts = {}) {
     const state = this.state;
     const bag = ensureWorldRecords(state.world);
     // sectorSim remains recipe-only; world adopts current recipes only at FULL promotion.
@@ -1671,7 +1706,9 @@ export const world = {
     let spawned = 0;
     let hadCombatHistory = false;
     let spawnedBoss = false;
+    let processed = 0;
     for (const rec of list) {
+      if ((++processed & 7) === 0) yield 'materialize:records-batch';
       if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss) {
         hadCombatHistory = true;
       }
@@ -2262,6 +2299,14 @@ export const world = {
 
   // Asteroid FIELDS: clusters of real ASTEROIDS-type rocks so mining oreTables resolve.
   _spawnFields(sector, active, disc, rng) {
+    for (const _ of this._spawnFieldsChunks(sector, active, disc, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnFields: yields every 8 rock inserts so the restore lane paints
+   * inside a big field. The sync wrapper drains inline — identical rng draws and spawn order.
+   */
+  *_spawnFieldsChunks(sector, active, disc, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const baseParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
     // Shallow copy so we can attach homeSectorId without mutating the shared FIELDS catalog.
@@ -2299,6 +2344,7 @@ export const world = {
       const arrangement = arranger && arranger.createField(fdef, center, clusterR);
       const authoredGeologyPlaceId = authoredGeologyPlaceForField(fdef);
       for (let i = 0; i < count; i++) {
+        if (i > 0 && (i & 7) === 0) yield 'materialize:field-rocks';
         const activityBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
           && fdef.id === 'f_ceres_1'
           && i === 1
@@ -2765,6 +2811,15 @@ export const world = {
   },
 
   _spawnDressing(sector, active, rng) {
+    for (const _ of this._spawnDressingChunks(sector, active, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnDressing: yields between the named sub-spawns so the restore
+   * lane paints inside a dressing-heavy sector. The sync wrapper drains inline — identical
+   * spawn order.
+   */
+  *_spawnDressingChunks(sector, active, rng) {
     const arranger = this._arrangerForSector(sector, active);
     const paletteClass = paletteClassForSector(sector);
     if (paletteClass === 'core') {
@@ -2776,13 +2831,18 @@ export const world = {
     } else if (paletteClass === 'anomaly') {
       this._spawnAnomalyDressing(sector, active, rng, paletteClass, arranger);
     }
+    yield 'materialize:dressing-palette';
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
+    yield 'materialize:dressing-kit';
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
+    yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);
+    yield 'materialize:dressing-oneoffs';
     // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
     // sector. Deterministic off its own rng stream — runs last so the world rng order is
     // untouched by ecology content.
     materializeAlienEcology(this, sector, active);
+    yield 'materialize:dressing-ecology';
     // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
     // entities, same deterministic seam, same dressing substrate.
     materializeMachineLayer(this, sector, active);
@@ -3386,6 +3446,14 @@ export const world = {
 
   // Enemy spawns sized by enemyDensity / enemyLevel via makeEnemySpawnSpec (combat).
   _spawnEnemies(sector, active, rng) {
+    for (const _ of this._spawnEnemiesChunks(sector, active, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnEnemies: yields every 8 spawned combatants so the restore lane
+   * paints inside a dense ambient roll. The sync wrapper drains inline — identical rng draws.
+   */
+  *_spawnEnemiesChunks(sector, active, rng) {
     // If sectorSim has drifted this sector while the player was away, use the drifted density/
     // security so re-entering a sector reflects its current state (V2 §33/§35.3). Falls back to the
     // passed-in sector (no drift → first visit or pre-sectorSim) so behavior is unchanged otherwise.
@@ -3414,6 +3482,7 @@ export const world = {
     // The ships are relocated onto believable zones, not multiplied. Sectors with no authored zones
     // keep the legacy ring path. `grant` (not `count`) caps how many we place, per the budget above.
     const zonePlan = grant > 0 ? planZoneSpawns(sector.id, grant, sector.enemyLevel || [lvLo, lvHi], rng) : [];
+    let spawned = 0;
     if (zonePlan.length) {
       const player = this.state.entities.get(this.state.playerId);
       const starterSafe = starterSafeRadius(sector);
@@ -3448,6 +3517,7 @@ export const world = {
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, intent.archetypeId || 'npc', active);
         active.enemies.push(ent.id);
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
       }
     } else if (grant > 0) {
       const pool = this._enemyPool(sector);
@@ -3464,13 +3534,14 @@ export const world = {
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, typeId || 'npc', active);
         active.enemies.push(ent.id);
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
       }
     }
     // Return any reserved-but-unspent ambient slots (safe-zone skips / no valid pos) so the
     // encounterDirector can use them. Reserve/release keeps the shared cap honest (REVAMP 2.1 risk #1).
     if (budget && typeof budget.releaseSome === 'function') {
-      const spawned = active.enemies.length - enemiesBefore;
-      if (spawned < grant) budget.releaseSome(ambientRequester, grant - spawned);
+      const spawnedAmbient = active.enemies.length - enemiesBefore;
+      if (spawnedAmbient < grant) budget.releaseSome(ambientRequester, grant - spawnedAmbient);
     }
     // WANTED hunters (V2 §20b / cut-list #15): if the player is hot, bounty-hunter lawful patrols
     // spawn specifically to hunt them — real consequence for piracy. Count scales with heat; they
@@ -3508,6 +3579,7 @@ export const world = {
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, 'patrol_lawman:hunter', active);
         active.enemies.push(ent.id);
         huntersSpawned++;
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
       }
       if (budget && typeof budget.releaseSome === 'function' && huntersSpawned < hunterGrant) {
         budget.releaseSome(hunterRequester, hunterGrant - huntersSpawned);

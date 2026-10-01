@@ -168,12 +168,21 @@ export function createCombatKernel(ctx, options = {}) {
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
   if (bus && typeof bus.on === 'function') {
     subscriptions.push(bus.on('entity:spawned', (payload) => {
-      invalidateSortedCache();
+      // The sorted roster only holds living-world actors — a projectile volley or pickup
+      // drop changes none of its membership, so the revision survives their churn.
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      // Untyped payloads invalidate anyway — an unknown spawn might still join the roster.
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
       const entity = payload && (payload.entity || getEntity(payload.id));
       if (entity) initializeEntity(entity);
     }));
     subscriptions.push(bus.on('entity:destroyed', (payload) => {
-      invalidateSortedCache();
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
       onEntityGone(payload);
     }));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
