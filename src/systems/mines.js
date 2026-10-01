@@ -261,14 +261,26 @@ export const mines = {
       packet,
       origin: { kind: 'mine', id: mine.id },
     };
-    this._routeDamage(request);
+    const pos = { x: mine.pos.x, z: mine.pos.z };
     if (this.bus) {
+      // The snap is the first receipt. Detonation follows on this same tick —
+      // the fuse length does not change.
       this.bus.emit('mines:triggered', {
         mineId: mine.id,
         ownerId: data.ownerId,
         targetId: victim.id,
         damage,
-        pos: { x: mine.pos.x, z: mine.pos.z },
+        pos,
+      });
+    }
+    this._routeDamage(request);
+    if (this.bus) {
+      this.bus.emit('mines:detonated', {
+        mineId: mine.id,
+        ownerId: data.ownerId,
+        targetId: victim.id,
+        damage,
+        pos,
       });
     }
     mine.alive = false;

@@ -60,6 +60,9 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'beacon:deployed': {verb:'command',primitive:'induction',color:0x80ead8,life:1.1},
   // A warded shot's sheet lies on the aimed hull, along the hit that was absorbed.
   'combat:warded': {verb:'cool',primitive:'deposition',color:0x8fe1fa,life:.5,continuous:false},
+  // The snap is a short cut on the mine. The shove is the blast that follows it.
+  'mines:triggered': {verb:'cut',primitive:'connection',color:0xffe08a,life:.18,continuous:false},
+  'mines:detonated': {verb:'shove',primitive:'pressure',color:0xff8a4a,life:.45,continuous:false},
   // The pod body is disposed in the same turn, so the mark is the receipt point, not the mesh.
   'survivorPod:resolved': {verb:'disrupt',primitive:'induction',color:SURVIVOR_POD_RETIRE.abandoned.color,life:.72,continuous:false,
     variants:{
@@ -164,6 +167,10 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     const variant = SURVIVOR_POD_RETIRE[p && p.outcome];
     if (!variant || !point(p.pos)) return null;
     return {...p, kind: p.outcome, pos: copyPoint(p.pos), targetId: null, sourceId: p.entityId, attachToTarget: false};
+  }
+  if (name === 'mines:triggered' || name === 'mines:detonated') {
+    if (!point(p && p.pos)) return null;
+    return {...p, pos: copyPoint(p.pos), sourceId: p.mineId, targetId: p.targetId, attachToTarget: false};
   }
   if (name === 'combat:warded') {
     const aimed = body(state, p && p.targetId);
