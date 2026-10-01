@@ -6,6 +6,11 @@ import {
   drillTierReqForOre,
   avatarDrawPos,
   avatarMoveProgress,
+  deriveDrillCommitment,
+  drillCellEvidence,
+  drillEnergyLimitCopy,
+  drillHeatLimitCopy,
+  visibleCablePoints,
 } from '../../systems/drill.js';
 import { BEAMS, ORES } from '../../data/mining.js';
 import { MODULES } from '../../data/modules.js';
@@ -15,7 +20,7 @@ import { escapeHtml } from '../comms.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { formatBindingCode, resolveActionCodes } from '../../systems/input.js';
 
-const { COLS, ROWS, TILE, SCAN_RADIUS, SCAN_COOLDOWN_S, SCAN_ACTIVE_S } = DRILL_CONST;
+const { COLS, ROWS, TILE, SCAN_RADIUS, SCAN_COOLDOWN_S, SCAN_ACTIVE_S, GAS_TELL_RADIUS } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
 /** A full hold leaves the unpaid units in the vein. The screen must not call that waste. */
@@ -64,6 +69,86 @@ export function drillTierWarnCopy(oreId, row) {
 export function drillFittedHeadName(tier) {
   const head = miningHeadForTier(Number(tier));
   return head ? head.name : '';
+}
+
+/** Cargo-grant floater. Zero or a refused bite is not a successful haul. */
+export function drillYieldGrantCopy(qty, name) {
+  const n = Math.floor(Number(qty) || 0);
+  if (!(n > 0)) return '';
+  return `+${n} ${name || 'ore'} extracted`;
+}
+
+function commitmentVeinLine(prefix, vein, commitment) {
+  const name = commodityName(vein.ore);
+  if (vein.blocked) {
+    const head = drillTierBlockLabel(vein.ore, vein.row);
+    return head ? `${prefix}: ${name}. Blocked — needs ${head}.` : `${prefix}: ${name}. Blocked.`;
+  }
+  if (commitment.depleted) return `${prefix}: ${name}. Played out — no cargo.`;
+  if (commitment.cargoBlocked) return `${prefix}: ${name}. Holds are full.`;
+  const holds = Math.max(0, Math.floor(Number(vein.yieldU) || 0));
+  return holds > 0 ? `${prefix}: ${name}, ${holds}u.` : `${prefix}: ${name}. The vein holds nothing.`;
+}
+
+function sameCommitmentCell(a, b) {
+  return !!a && !!b && a.col === b.col && a.row === b.row;
+}
+
+/**
+ * Player-facing next commitment. Names only known ore, a gas tell, a blocked head, and the
+ * cleared walk home. Unscanned ore ids never reach this string.
+ */
+export function formatDrillCommitment(commitment) {
+  if (!commitment) return '';
+  const lines = [];
+  if (commitment.limit === 'heat' || commitment.limit === 'both') lines.push(drillHeatLimitCopy());
+  if (commitment.limit === 'energy' || commitment.limit === 'both') lines.push(drillEnergyLimitCopy());
+  const facing = commitment.facing;
+  if (facing) {
+    if (facing.evidence === 'unrevealed') {
+      lines.push('Unrevealed ahead. No yield promised.');
+    } else if (facing.evidence === 'suspected-gas') {
+      lines.push('Suspected gas ahead. It pays no cargo.');
+    } else if (facing.evidence === 'boundary') {
+      lines.push('Asteroid boundary.');
+    } else if (facing.evidence === 'open') {
+      lines.push('Open tunnel ahead.');
+    } else if (facing.evidence === 'known' && facing.ore) {
+      const name = commodityName(facing.ore);
+      if (facing.blocked) {
+        const head = drillTierBlockLabel(facing.ore, facing.row);
+        lines.push(head ? `Known ore ${name}. Blocked — needs ${head}.` : `Known ore ${name}. Blocked.`);
+      } else if (commitment.depleted) {
+        lines.push(`Known ore ${name}. This rock is played out — boring grants no cargo.`);
+      } else if (commitment.cargoBlocked) {
+        lines.push(`Known ore ${name}. Holds are full — a tap takes nothing.`);
+      } else if (commitment.limit) {
+        lines.push(`Known ore ${name}. The bore waits on the rig.`);
+      } else {
+        const holds = Math.max(0, Math.floor(Number(facing.yieldU) || 0));
+        lines.push(holds > 0
+          ? `Known ore ${name}. Next bore can pay ${holds}u.`
+          : `Known ore ${name}. The vein holds nothing.`);
+      }
+    } else if (facing.evidence === 'known' && facing.type === 'gas') {
+      lines.push('Known gas ahead. It pays no cargo.');
+    } else if (facing.evidence === 'known') {
+      lines.push('Known rock ahead. It pays no cargo.');
+    }
+  }
+  if (commitment.nearby && !sameCommitmentCell(commitment.nearby, facing)) {
+    lines.push(commitmentVeinLine('Nearby known vein', commitment.nearby, commitment));
+  }
+  if (commitment.deeper
+    && !sameCommitmentCell(commitment.deeper, facing)
+    && !sameCommitmentCell(commitment.deeper, commitment.nearby)) {
+    lines.push(commitmentVeinLine('Deeper known vein', commitment.deeper, commitment));
+  }
+  const tells = Array.isArray(commitment.suspectedGas) ? commitment.suspectedGas.length : 0;
+  if (tells > 0) lines.push(`Suspected gas beside the tunnel (${tells}).`);
+  const back = Array.isArray(commitment.returnPath) ? commitment.returnPath.length : 0;
+  if (back > 1) lines.push(`Way back: ${back} cleared cells to the shaft.`);
+  return lines.join(' ');
 }
 
 function bindingCodes(state, action) {
@@ -1513,6 +1598,7 @@ export const drillScreen = {
     let drillTheta = 0;
     let viewY = undefined;
     let particles = [];
+    let commitmentPath = [];
     let hudElapsed = 0;
     let sonarElapsed = 0;
     let sonarDirty = true;
@@ -1578,20 +1664,20 @@ export const drillScreen = {
         return;
       }
 
-      const surveyed = drillSys.isTileSurveyed(col, row);
+      const evidence = drillCellEvidence(d.field, col, row);
+      const known = evidence.kind === 'known';
       let img = null;
-      // Gas pockets are always legible as hazards — never disguised as dirt. A pocket you only
-      // learn about by dying into it is an unfair death, so the hazard sprite shows through the
-      // survey fog exactly as it does once adjacent/revealed.
-      if (t.type === 'gas') img = IMAGES.gasRevealed;
-      else if (!surveyed) img = (t.type === 'rock' || t.type === 'vein') ? IMAGES.rock : IMAGES.dirt;
+      // Unscanned cells share one anonymous face. A gas pocket only becomes a tell once a
+      // cleared cell is close enough to hint it — never a confirmed sprite, and never a yield.
+      if (evidence.kind === 'unrevealed' || evidence.kind === 'suspected-gas') img = IMAGES.rock;
+      else if (t.type === 'gas') img = IMAGES.gasRevealed;
       else if (t.type === 'dirt') img = IMAGES.dirt;
       else if (t.type === 'rock') img = IMAGES.rock;
       else if (t.type === 'vein' && t.ore) img = IMAGES[t.ore];
 
       if (img?.complete && img.naturalWidth > 0) {
         strataCtx.drawImage(img, x, y, TILE, TILE);
-      } else if (surveyed && t.type === 'vein' && t.ore) {
+      } else if (known && t.type === 'vein' && t.ore) {
         strataCtx.fillStyle = paint(roles.foe, 0.25);
         strataCtx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
         strataCtx.strokeStyle = roles.foe;
@@ -1602,13 +1688,27 @@ export const drillScreen = {
         strataCtx.textAlign = 'center';
         strataCtx.fillText('?', x + TILE / 2, y + TILE / 2 + 3);
       } else {
-        // Images decode asynchronously on first boot. Preserve material readability for that short
-        // window; buildStrataCache runs again as soon as every SVG is decoded.
-        strataCtx.fillStyle = (t.type === 'rock' || t.type === 'vein') ? roles.edge : roles.surface;
+        // Images decode asynchronously on first boot. Unscanned cells stay one anonymous fill
+        // so a missing sprite cannot reveal dirt versus ore. Known cells keep their material.
+        strataCtx.fillStyle = (evidence.kind === 'unrevealed' || evidence.kind === 'suspected-gas')
+          ? roles.edge
+          : ((t.type === 'rock' || t.type === 'vein') ? roles.edge : roles.surface);
         strataCtx.fillRect(x, y, TILE, TILE);
       }
 
-      if (surveyed && t.type === 'vein' && t.ore) {
+      if (evidence.kind === 'suspected-gas') {
+        strataCtx.save();
+        strataCtx.fillStyle = paint(roles.foe, 0.28);
+        strataCtx.fillRect(x, y, TILE, TILE);
+        strataCtx.strokeStyle = paint(roles.foe, 0.9);
+        strataCtx.lineWidth = 1.5;
+        strataCtx.strokeRect(x + 8, y + 8, TILE - 16, TILE - 16);
+        strataCtx.restore();
+        return;
+      }
+      if (!known) return;
+
+      if (t.type === 'vein' && t.ore) {
         const head = drillTierBlockLabel(t.ore, row);
         const req = drillTierReqForOre(t.ore);
         const tier = drillScreen._drillTier || 1;
@@ -1691,6 +1791,7 @@ export const drillScreen = {
     // Register event subscriptions
     unsubs.push(ctx.bus.on('drill:yield', (p) => {
       const name = commodityName(p.commodityId);
+      if (!drillYieldGrantCopy(p.qty, name)) return;
       yieldFlash.t = 1.1;
       yieldFlash.text = '+' + p.qty + ' ' + name.toUpperCase();
       const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
@@ -1813,7 +1914,7 @@ export const drillScreen = {
     unsubs.push(ctx.bus.on('drill:break', (p) => {
       if (!state.drill) return;
       damagedTiles.delete(`${p.col}:${p.row}`);
-      paintStrataTile(state.drill, p.col, p.row);
+      paintStrataNeighborhood(state.drill, p.col, p.row, GAS_TELL_RADIUS);
       const cx = p.col * TILE + TILE / 2;
       const cy = p.row * TILE + TILE / 2;
       const color = sparkColorFor(p.type, p.ore);
@@ -2090,6 +2191,24 @@ export const drillScreen = {
         ctx2d.drawImage(strataCanvas, 0, viewY, canvas.width, viewHeight, 0, 0, canvas.width, viewHeight);
       }
 
+      // Way back: only cleared cells, so the mark cannot trace an unscanned vein or pocket.
+      if (commitmentPath.length > 1) {
+        ctx2d.save();
+        ctx2d.strokeStyle = paint(roles.you, 0.55);
+        ctx2d.lineWidth = 2;
+        ctx2d.setLineDash([3, 5]);
+        ctx2d.beginPath();
+        for (let i = 0; i < commitmentPath.length; i++) {
+          const pt = commitmentPath[i];
+          const px = pt.col * TILE + TILE / 2;
+          const py = pt.row * TILE + TILE / 2 - viewY;
+          if (i === 0) ctx2d.moveTo(px, py);
+          else ctx2d.lineTo(px, py);
+        }
+        ctx2d.stroke();
+        ctx2d.restore();
+      }
+
       // Cracks are the only tile surface that changes continuously while the drill is in contact.
       // Track those few cells explicitly instead of scanning every visible tile each frame.
       for (const key of damagedTiles) {
@@ -2179,21 +2298,34 @@ export const drillScreen = {
       const ry = drillScreen._ry - viewY;
 
       // --- Draw Massline Power Cable ---
-      if (d.cableTrail && d.cableTrail.length > 0) {
+      const cable = visibleCablePoints(d.cableTrail, d.field);
+      if (cable.length > 0) {
         ctx2d.save();
-        // Thick dark outer casing
+        // Thick dark outer casing. Points on rock or an unscanned cell are already dropped.
         ctx2d.strokeStyle = paint(roles.surface, 0.85);
         ctx2d.lineWidth = 5;
         ctx2d.lineCap = 'round';
         ctx2d.lineJoin = 'round';
         ctx2d.beginPath();
         const startCol = Math.floor(COLS / 2);
-        ctx2d.moveTo(startCol * TILE + TILE / 2, 0 - viewY);
-        for (let i = 0; i < d.cableTrail.length; i++) {
-          const pt = d.cableTrail[i];
-          ctx2d.lineTo(pt.col * TILE + TILE / 2, pt.row * TILE + TILE / 2 - viewY);
+        let penCol = startCol;
+        let penRow = 0;
+        ctx2d.moveTo(penCol * TILE + TILE / 2, penRow * TILE + TILE / 2 - viewY);
+        for (let i = 0; i < cable.length; i++) {
+          const pt = cable[i];
+          const step = Math.abs(pt.col - penCol) + Math.abs(pt.row - penRow);
+          const x = pt.col * TILE + TILE / 2;
+          const y = pt.row * TILE + TILE / 2 - viewY;
+          // A gap would stroke across rock. Lift the pen and start again on the next open cell.
+          if (step !== 1) ctx2d.moveTo(x, y);
+          else ctx2d.lineTo(x, y);
+          penCol = pt.col;
+          penRow = pt.row;
         }
-        ctx2d.lineTo(rx + TILE / 2, ry + TILE / 2);
+        const roverCol = d.avatar.col;
+        const roverRow = d.avatar.row;
+        const roverStep = Math.abs(roverCol - penCol) + Math.abs(roverRow - penRow);
+        if (roverStep === 1) ctx2d.lineTo(rx + TILE / 2, ry + TILE / 2);
         ctx2d.stroke();
 
         // Glowing inner core
@@ -2470,12 +2602,16 @@ export const drillScreen = {
           let reqText = fittedHead ? `Head: ${fittedHead}` : '';
           let valueText = '';
           let blockedHead = '';
-          const surveyed = drillSys.isTileSurveyed(col, row);
+          const evidence = drillCellEvidence(d.field, col, row);
 
-          if (!surveyed) {
-            name = 'UNSURVEYED STRATA';
-            subtitle = 'Composition unresolved';
-            reqText = 'Pulse survey · ' + controlMap.scanLabel;
+          if (evidence.kind === 'unrevealed' || evidence.kind === 'boundary') {
+            name = 'UNREVEALED';
+            subtitle = 'No yield promised';
+            reqText = '';
+          } else if (evidence.kind === 'suspected-gas') {
+            name = 'SUSPECTED GAS';
+            subtitle = 'Pays no cargo';
+            reqText = '';
           } else if (t.type === 'dirt') {
             name = 'SOFT REGOLITH';
             subtitle = 'HP: ' + Math.ceil(t.hp) + '/' + t.maxHp;
@@ -2688,61 +2824,26 @@ export const drillScreen = {
         setText(hudEls.dps, 'dps', `${dps} HP/s`);
       }
 
-      // 2. Target scanner — only re-render HTML when the targeted tile/type changes.
+      // 2. Next commitment — known ore, a gas tell, a blocked head, the way back.
+      // Unscanned cells are not named and their yield is not quoted.
       if (hudEls.scan) {
-        let nc = d.avatar.col;
-        let nr = d.avatar.row;
-        const dir = d.avatar.faceDir || 'down';
-        if (dir === 'left') nc--;
-        else if (dir === 'right') nc++;
-        else if (dir === 'down') nr++;
-        else if (dir === 'up') nr--;
-
-        let html = null;
-        if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
-          const t = d.field[nc][nr];
-          const telemetry = drillSys.getTargetTelemetry(nc, nr);
-          const hardness = telemetry ? telemetry.hardness.toFixed(2) : '0.00';
-          const progress = telemetry ? Math.round(telemetry.progress * 100) : 0;
-          const remaining = telemetry && Number.isFinite(telemetry.remainingS)
-            ? `${telemetry.remainingS.toFixed(1)} s`
-            : '—';
-          const workLine = `<br>Hardness ${hardness} · ${progress}% cut · ${remaining}`;
-          if (!drillSys.isTileSurveyed(nc, nr)) {
-            html = '<strong>UNSURVEYED STRATA</strong><br>Pulse survey to resolve';
-          } else if (t.type === 'empty') {
-            html = '<span style="color:var(--sf-calm);">Target</span><br>Open bore';
-          } else if (t.type === 'dirt') {
-            html = '<strong>SOFT REGOLITH</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine
-              + '<br><span style="color:var(--sf-calm);">Bore only — no cargo yield</span>';
-          } else if (t.type === 'rock') {
-            html = '<strong>SOLID BASALT</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine
-              + `<br>Risk ${t.risk || 'low'} · <span style="color:var(--sf-calm);">No ore — clears path only</span>`;
-          } else if (t.type === 'gas') {
-            html = '<strong style="color:var(--sf-foe);">HAZARD — COMPRESSED GAS</strong><br>Risk critical · damages hull, yields no cargo · route around';
-          } else if (t.type === 'vein' && t.ore) {
-            const name = commodityName(t.ore);
-            const basePrice = COMMODITY_BY_ID.get(t.ore)?.basePrice || 0;
-            const req = drillTierReqForOre(t.ore);
-            const head = drillTierBlockLabel(t.ore, nr);
-            const tier = drillScreen._drillTier || 1;
-            const blocked = head && tier < req;
-            const rockEmpty = Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0;
-            const tierLine = !head
-              ? ''
-              : blocked
-                ? `<strong style="color:var(--sf-foe);">LOCKED — needs ${escapeHtml(head)}</strong>`
-                : escapeHtml(head);
-            const payLine = rockEmpty
-              ? '<br><strong style="color:var(--sf-goal);">ROCK PLAYED OUT — this vein pays 0 until recovery</strong>'
-              : '';
-            const tierBit = tierLine ? ` · ${tierLine}` : '';
-            html = `<strong>${entitySpanHtml('commodity:' + t.ore, escapeHtml(name.toUpperCase()))} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'}${tierBit}${payLine}`;
+        const tier = drillScreen._drillTier || 1;
+        const cargo = state.player && state.player.cargo;
+        const cargoFree = cargo && cargo.capVolume > 0
+          ? Math.max(0, Math.floor(cargo.capVolume - (Number(cargo.usedVolume) || 0)))
+          : Infinity;
+        const commitment = deriveDrillCommitment(d, { tier, cargoFree });
+        commitmentPath = commitment && Array.isArray(commitment.returnPath) ? commitment.returnPath : [];
+        let html = escapeHtml(formatDrillCommitment(commitment));
+        const facing = commitment && commitment.facing;
+        if (facing && facing.evidence === 'known' && facing.type && facing.type !== 'empty') {
+          const telemetry = drillSys.getTargetTelemetry(facing.col, facing.row);
+          if (telemetry && telemetry.hardness > 0) {
+            const progress = Math.round((Number(telemetry.progress) || 0) * 100);
+            html += `<br>Hardness ${telemetry.hardness.toFixed(2)} · ${progress}% cut`;
           }
-        } else {
-          html = '<span style="color:var(--sf-calm);">Target</span><br>Asteroid boundary';
         }
-        setHtml(hudEls.scan, 'scan', html);
+        setHtml(hudEls.scan, 'scan', html || '—');
       }
     }
 
