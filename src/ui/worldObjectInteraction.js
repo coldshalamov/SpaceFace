@@ -210,10 +210,20 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     return hoverEntity.mesh || null;
   }
 
+  function hoverTint() {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!hoverEntity || !player) return 'neutral';
+    if (isHostileToPlayer(hoverEntity, player.team, state)) return 'hostile';
+    if ((player.team !== 0 && hoverEntity.team === player.team) || (hoverEntity.data && hoverEntity.data.ownerId === player.id)) return 'friendly';
+    return 'neutral';
+  }
+
   function publishHover() {
     const root = (acceptingInput() && hoverEntity) ? hoverRoot() : null;
     if (root === hoverRootPublished) return;
     hoverRootPublished = root;
+    try { hoverPresentation.setTint(hoverTint()); } catch (_) {}
     try { hoverPresentation.setSubject(root); } catch (_) {}
   }
 

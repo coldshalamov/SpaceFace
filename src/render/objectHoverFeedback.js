@@ -1,7 +1,15 @@
 import * as THREE from 'three';
 import { collectPresentedBodyLeaves } from './worldObjectPicking.js';
 
-const LIFT = 0.05;
+// Hover must read at a glance on a busy field: a 0.05 lift was below what a dark hull against a
+// starfield shows. The tint carries relation (hostile red, ally cyan, anything else warm white) so
+// the glow answers "what is this" before the name tag does.
+const LIFT = 0.34;
+export const HOVER_TINTS = Object.freeze({
+  hostile: [1.0, 0.27, 0.31],
+  friendly: [0.38, 0.82, 1.0],
+  neutral: [1.0, 0.92, 0.72],
+});
 
 function ancestorChainVisible(object, stopAt) {
   for (let node = object.parent; node && node !== stopAt; node = node.parent) {
@@ -13,9 +21,9 @@ function ancestorChainVisible(object, stopAt) {
 export function createObjectHoverFeedback(env) {
   const scene = env && env.scene;
   const material = new THREE.ShaderMaterial({
-    uniforms: { uLift: { value: LIFT } },
+    uniforms: { uLift: { value: LIFT }, uColor: { value: new THREE.Color(...HOVER_TINTS.neutral) } },
     vertexShader: 'void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: 'uniform float uLift; void main(){ gl_FragColor = vec4(vec3(uLift), 1.0); }',
+    fragmentShader: 'uniform float uLift; uniform vec3 uColor; void main(){ gl_FragColor = vec4(uColor * uLift, 1.0); }',
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthTest: true,
@@ -105,6 +113,11 @@ export function createObjectHoverFeedback(env) {
     }
   }
 
+  function setTint(kind) {
+    const t = HOVER_TINTS[kind] || HOVER_TINTS.neutral;
+    material.uniforms.uColor.value.setRGB(t[0], t[1], t[2]);
+  }
+
   function setSubject(root) {
     if (disposed) return;
     if (root === subject) return;
@@ -162,6 +175,7 @@ export function createObjectHoverFeedback(env) {
 
   return {
     setSubject,
+    setTint,
     clear: () => setSubject(null),
     update,
     warmup,
@@ -176,6 +190,7 @@ export function createWorldObjectHoverPresentation(state) {
   let overlay = null;
   let boundScene = null;
   let requestedSubject = null;
+  let requestedTint = 'neutral';
   let api = null;
 
   function currentScene() {
@@ -205,9 +220,15 @@ export function createWorldObjectHoverPresentation(state) {
     if (!scene) return;
     overlay = createObjectHoverFeedback({ scene });
     prewarm();
+    try { overlay.setTint(requestedTint); } catch (_) {}
     if (requestedSubject) {
       try { overlay.setSubject(requestedSubject); } catch (_) {}
     }
+  }
+
+  function setTint(kind) {
+    requestedTint = kind || 'neutral';
+    if (overlay) { try { overlay.setTint(requestedTint); } catch (_) {} }
   }
 
   function setSubject(root) {
@@ -242,6 +263,7 @@ export function createWorldObjectHoverPresentation(state) {
 
   return {
     setSubject,
+    setTint,
     clear: () => setSubject(null),
     update,
     get subject() { return overlay ? overlay.subject : null; },
