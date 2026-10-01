@@ -529,6 +529,7 @@ export const encounterDirector = {
       }
     }
     dir.live = {};
+    dir.squadMembership = {};
     dir.pending = [];
     dir.active = {};                                   // spawnBudget hard-resets on non-continuous exit
     dir.plannedKey = null;                             // same-day re-entry must replan
@@ -1406,6 +1407,7 @@ export const encounterDirector = {
           rec.ids.push(ent.id);
           live.ids.push(ent.id);
           live.roles[ent.id] = sh.role || 'squad';
+          indexSquadMember(dir, live, ent.id);
         }
       }
     } finally {
@@ -1502,6 +1504,7 @@ export const encounterDirector = {
     if (!entity || entity.id == null) return null;
     live.ids.push(entity.id);
     live.roles[entity.id] = 'freight_pod';
+    indexSquadMember(ensureDirectorState(this.state), live, entity.id);
     return entity;
   },
 
@@ -1821,6 +1824,7 @@ export const encounterDirector = {
       });
       if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
+    dropLiveSquadMembership(dir, live);
     delete dir.live[live.id];
   },
 
@@ -1845,6 +1849,7 @@ export const encounterDirector = {
       sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
       causality: live.causality ? { ...live.causality } : null,
     });
+    dropLiveSquadMembership(dir, live);
     delete dir.live[live.id];
   },
 
@@ -1982,6 +1987,7 @@ export const encounterDirector = {
           if (live.ids[index] === id) live.ids.splice(index, 1);
         }
         if (live.roles && typeof live.roles === 'object') delete live.roles[id];
+        dropSquadMember(dir, live, id);
       }
     }
   },
@@ -2010,16 +2016,29 @@ export const encounterDirector = {
       this.emit('encounter:namedCaptainDefeated', { captainId: externalCaptainId, entityId: p.id, byPlayer });
     }
     let handled = null;
-    for (const lid of Object.keys(dir.live)) {
-      const live = dir.live[lid];
-      const role = live.roles[p.id];
-      if (role !== undefined && live.ids.includes(p.id)) {
-        handled = live;
-        this._scriptEvent(live, 'squadKill', {
-          id: p.id, role, byPlayer, killerId: p.killerId,
-          pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
-        });
-        break;
+    // squadMembership answers the squad question in O(1); the walk below stays as the cold path
+    // for rows minted before the index (or lost to a stale save).
+    const memberLiveId = dir.squadMembership[p.id];
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    if (memberLive && memberLive.roles && memberLive.roles[p.id] !== undefined
+      && memberLive.ids.includes(p.id)) {
+      handled = memberLive;
+      this._scriptEvent(memberLive, 'squadKill', {
+        id: p.id, role: memberLive.roles[p.id], byPlayer, killerId: p.killerId,
+        pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+      });
+    } else {
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        const role = live.roles[p.id];
+        if (role !== undefined && live.ids.includes(p.id)) {
+          handled = live;
+          this._scriptEvent(live, 'squadKill', {
+            id: p.id, role, byPlayer, killerId: p.killerId,
+            pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+          });
+          break;
+        }
       }
     }
     if (handled || !byPlayer) return;
@@ -2661,16 +2680,19 @@ export const encounterDirector = {
   adoptCeresActivityAmbush(live, phase = 'offer') {
     if (!live || !(live.data && live.data.ceresActivityAmbush === true)) return [];
     const cohort = this._ceresActivityAmbushCohort();
-    const sampler = ensureDirectorState(this.state)._ceresActivityAmbush;
+    const dir = ensureDirectorState(this.state);
+    const sampler = dir._ceresActivityAmbush;
     live.data.adoptedWorldActors = true;
     live.data.restoreByRecordId = sampler && sampler.restoreByRecordId
       ? sampler.restoreByRecordId
       : Object.create(null);
+    dropLiveSquadMembership(dir, live);
     live.ids = [];
     live.roles = {};
     for (const entity of cohort) {
       live.ids.push(entity.id);
       live.roles[entity.id] = 'squad';
+      indexSquadMember(dir, live, entity.id);
       const ai = entity.data && entity.data.ai;
       if (ai) {
         const restore = ai[CERES_ACTIVITY_AMBUSH_RESTORE];
@@ -2707,6 +2729,7 @@ export const encounterDirector = {
     )) ? 'conflict' : 'offer';
     const script = encounterScriptFor(live);
     if (!script || typeof script.resume !== 'function') {
+      dropLiveSquadMembership(dir, live);
       delete dir.live[live.id];
       return false;
     }
@@ -4036,6 +4059,29 @@ function persistedFreightCarrierBinding(entity) {
   return { data, ai, manifest, custody, identityKey };
 }
 
+// entityId -> liveId, so a kill resolves its encounter row without walking every live encounter.
+// The map holds plain ids rather than live refs: it serializes like any other director row, and a
+// recycled entity id cannot claim a stale row because every drop compares before deleting.
+function indexSquadMember(dir, live, id) {
+  if (!dir.squadMembership || typeof dir.squadMembership !== 'object' || Array.isArray(dir.squadMembership)) {
+    dir.squadMembership = {};
+  }
+  dir.squadMembership[id] = live.id;
+}
+
+function dropSquadMember(dir, live, id) {
+  const membership = dir.squadMembership;
+  if (membership && membership[id] === (live && live.id)) delete membership[id];
+}
+
+function dropLiveSquadMembership(dir, live) {
+  const membership = dir.squadMembership;
+  if (!membership || !live || !Array.isArray(live.ids)) return;
+  for (const id of live.ids) {
+    if (membership[id] === live.id) delete membership[id];
+  }
+}
+
 function ensureDirectorState(state) {
   if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
     state.encounterDirector = freshState();
@@ -4044,6 +4090,7 @@ function ensureDirectorState(state) {
   if (!Array.isArray(d.pending)) d.pending = [];
   if (!d.active || typeof d.active !== 'object' || Array.isArray(d.active)) d.active = {};
   if (!d.live || typeof d.live !== 'object' || Array.isArray(d.live)) d.live = {};
+  if (!d.squadMembership || typeof d.squadMembership !== 'object' || Array.isArray(d.squadMembership)) d.squadMembership = {};
   if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0, mystery: 0, patrol: 0 };
   if (!Number.isFinite(d.pressure.combat)) d.pressure.combat = 0;
   if (!Number.isFinite(d.pressure.civilian)) d.pressure.civilian = 0;

@@ -15802,6 +15802,42 @@ export function createVfxPrecompileSalvo() {
   sigilSpecimen.mesh.name = 'SF_Precompile_SelectionSigil';
   group.add(sigilSpecimen.mesh);
 
+  // Emergent combat structures (energy arcs, pressure rings, deposits, splinters) live in a
+  // lazily-created pool — the first real event used to link 4 bespoke programs plus the
+  // force-particle transport inside a presented combat frame. One packet per family drives
+  // every instanced mesh visible here so the link lands inside the salvo.
+  const emergentWarm = createEmergentPrimitivePools();
+  group.add(emergentWarm.group);
+  emergentWarm.update({
+    simTime: 0.016,
+    emergent: {
+      presentation: [
+        { kind: 'arc', x: -12, z: -14, x2: -9, z2: -14, scale: 1, yaw: 0 },
+        { kind: 'ring', x: -4, z: -14, x2: -4, z2: -14, scale: 3, yaw: 0 },
+        { kind: 'gel', x: 4, z: -14, x2: 4, z2: -14, scale: 8, yaw: 0 },
+        { kind: 'prism', x: 12, z: -14, x2: 12, z2: -14, scale: 2, yaw: 0.6 },
+      ],
+      presentationCount: 4,
+      flashes: [
+        { kind: 'arc', x: -12, z: -14, x2: -9, z2: -14, scale: 1, yaw: 0, ttl: 0.1 },
+        { kind: 'ring', x: -4, z: -14, x2: -4, z2: -14, scale: 3, yaw: 0, ttl: 0.15 },
+      ],
+      fields: [{ x: 4, z: -14, radius: 8, life: 1.5 }],
+      prisms: [{ x: 12, z: -14, radius: 2, yaw: 0.6, life: 2 }],
+    },
+  }, null);
+
+  // Arcade structural pools (blades, broken arcs, physical shards, plates) are created lazily on
+  // the first structural impact — 2 additive surface programs + 2 lit standard variants used to
+  // link inside the same combat frame the wreck announced. A spawn plus one update flips each
+  // pool's instanced mesh visible here so the link lands in the salvo instead.
+  const arcadeWarm = new ArcadeStructuralFx(group);
+  arcadeWarm.spawnBlade({ life: 0.4, x: -14, z: -14, length0: 3, width0: 1.2, color: 0xffb060 });
+  arcadeWarm.spawnArc({ life: 0.4, x: -10, z: -14, length0: 2, width0: 1, color: 0xffd090 });
+  arcadeWarm.spawnShard({ life: 0.4, x: 14, z: -14, length0: 1.5, width0: 1 });
+  arcadeWarm.spawnPlate({ life: 0.4, x: 18, z: -14, length0: 2.5, width0: 1.6 });
+  arcadeWarm.update(0.016);
+
   // Fracture-vein strips (asteroidMotionPresentation ensureVeinRig) mount nested under an
   // already-presented asteroid root the first time a rock cracks past 2% — outside the scene
   // mount watch — with a program key nothing else pins: mapless MeshBasicMaterial, additive,
