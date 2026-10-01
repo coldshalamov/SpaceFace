@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "U11-bounty-wrecks-salvage",
-      "date": "2026-09-26",
-      "wf": "WF-10",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Bounty Wrecks was dressing plus a discovery line: no signal, no entity, no decision. It now emits a DERELICT SALVAGE signal, gates on active scan plus manual investigation, binds the hulk as the recovery body, and settles rescue/blackbox/strip through the existing recovery owner.",
-      "fingerprint": "verb=recover,subject=wreck-poi,sector=sker,domain=exploration",
-      "references": [],
-      "integration": "live",
-      "commit": "87bf9e4bf",
-      "verification": "focused_green"
-    },
-    {
       "id": "missing-five-rail",
       "date": "2026-09-26",
       "wf": "WF-15",
@@ -1637,6 +1624,19 @@
       "references": [],
       "integration": "live",
       "commit": "b25ba4756",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ECON-05",
+      "date": "2026-10-01",
+      "wf": "WF-11",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "sinkCharged carries causeWord; alerts raises one keyed line per charge naming the SESSION_SINK kind; zero-delta silent",
+      "fingerprint": "verb=receipt,subject=sink-charge,sector=alerts,domain=econ",
+      "references": [],
+      "integration": "live",
+      "commit": "d7ae7d51d",
       "verification": "focused_green"
     }
   ],
