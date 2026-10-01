@@ -80,10 +80,17 @@ Owner, 2026-09-22. Two kinds of agent work this repo.
   **does the line**. The line is already considered. It names the player-visible change,
   the owner, the done check, and what not to invent.
 
-When the catalog has an OPEN line, that line outranks look-then-rotate (§0) and outranks a
-§23 campaign. `N` is how many catalog lines you finish. Take the first OPEN line whose
-paths are not in a live NOW row and not named by another CLAIMED line. The next line is a
-different group (picture, verb, world, instrument, fight, econ, story, law, mach, pro, teach — the seven latter opened by the Fable bank 2026-09-29) when one is free.
+This catalog is the job only when the owner said INFERENCE. An empty `program-dispatch`
+result is not that order. A "do N tasks" sitting claims free seams on `build_map.md` §1C
+and does N open rows there. An OPEN line whose files sit in the seam you claimed is part of
+that row: ship it or mark it already true, and do not count it as one of the N.
+
+When the owner did say INFERENCE and the catalog has an OPEN line, that line outranks
+look-then-rotate (§0) and outranks a §23 campaign. `N` is how many catalog lines you finish.
+Take the first OPEN line whose paths are not in a live NOW row, not named by another CLAIMED
+line, and not inside a seam another agent has claimed on §1C. The next line is a different
+group (picture, verb, world, instrument, fight, econ, story, law, mach, pro, teach — the
+seven latter opened by the Fable bank 2026-09-29) when one is free.
 
 Do not EXPAND a catalog line into a new fantasy, a new system, or a second queue. If the
 live owner already meets the done check, mark the line SHIPPED with "already true" and

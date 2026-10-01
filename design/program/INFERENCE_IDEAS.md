@@ -9,10 +9,15 @@ encounter for the same beat, a new faction, or a better idea. If the done check 
 true in the live owner, mark the line SHIPPED with "already true" and take the next line.
 If the line fights the vision, move it to CUT with one causal sentence.
 
+These lines are small. They are not the build map. The plans live on `build_map.md` §1C,
+grouped into seams. If `program-dispatch` prints a drained queue, claim a free seam and do
+its rows. Fold an OPEN line into the seam that owns its files. Do not spend the sitting on
+this catalog unless the owner said INFERENCE.
+
 ## How to take a line
 
-1. Take the first OPEN line whose paths are not in a live `NOW.md` row and not named by a
-   CLAIMED line. One line per agent.
+1. Take the first OPEN line whose paths are not in a live `NOW.md` row, not named by a
+   CLAIMED line, and not inside a §1C seam another agent has claimed. One line per agent.
 2. Mark it CLAIMED with today's date and your thread, in the same edit as your NOW row.
 3. Change only the owners the line names. Prove the done sentence on a fixed seed (4242
    unless the line says otherwise) with the live owner or a focused test. Do not add a package
@@ -200,11 +205,11 @@ not to invent.
 | INST-25 | The emergent primitives' own voice file answers the audio event they emit | `src/systems/emergentPrimitives.js`, `src/audio/emergentPrimitiveVoice.js` | On seed 4242 `emergent:audio` reaches `emergentPrimitiveVoice.js` and plays once per event; a focused test pins it | Route through the weapon fire voice. Add samples | SHIPPED INST-25 c8c91ef1d |
 | INST-26 | Towing a reactor clear gets a relief tone instead of a SILENT row | `src/audio/combatVerbCues.js`, `src/systems/salvage.js` | On seed 4242 `salvage:reactorTowedClear` plays one resolving cue; a focused test pins it | Play during the tow. Add samples | SHIPPED INST-26 3c9ae6dda |
 | INST-27 | A claim raid warning uses the wanted-alert register at low gain, so it is urgent without being a menu beep | `src/audio/audioSystem.js`, `src/systems/claims.js` | On seed 4242 `claim:raidWarning` plays `sfx_wanted_alert` at the authored low gain once; a focused test pins id and gain | Duck music for it. Add samples | SHIPPED |
-| INST-28 | Crossing the wanted search radius is audible in both directions | `src/presentation/wantedSearchVolume.js`, `src/audio/audioSystem.js` | On seed 4242 leaving the search ring plays one falling cue and re-entering one rising cue; a focused test pins both edges | Change heat clear timers. Add samples | OPEN |
-| INST-29 | A station service starting and aborting are heard at the berth | `src/systems/stationServices.js`, `src/audio/audioSystem.js` | On seed 4242 `service:started` and `service:aborted` each play one authored cue; a focused test pins both | Voice `service:progress` ticks. Add samples | OPEN |
+| INST-28 | Crossing the wanted search radius is audible in both directions | `src/presentation/wantedSearchVolume.js`, `src/audio/audioSystem.js` | On seed 4242 leaving the search ring plays one falling cue and re-entering one rising cue; a focused test pins both edges | Change heat clear timers. Add samples | SHIPPED |
+| INST-29 | A station service starting and aborting are heard at the berth | `src/systems/stationServices.js`, `src/audio/audioSystem.js` | On seed 4242 `service:started` and `service:aborted` each play one authored cue; a focused test pins both | Voice `service:progress` ticks. Add samples | SHIPPED |
 | INST-30 | A magnet capture chimes softly, distinct from a scoop pickup | `src/systems/lootShards.js`, `src/audio/audioSystem.js` | On seed 4242 `loot:magnetCaptured` plays a recipe id different from `sfx_pickup_chime`; a focused test pins the ids differ | Chime per unit in a stream. Add samples | SHIPPED INST-30 f94613bbc — soft vent-chime ping; _magnetTracked boundary reset fixes recycled-id swallowed emits |
-| INST-31 | The choir bell, the nestbreaker split and the pale coil blink each have a voice | `src/systems/uniqueLootAbilities.js`, `src/audio/audioSystem.js` | On seed 4242 the three `uniqueLoot:*` events play three distinct authored cues; a focused test pins three ids | Reuse the field deploy voices. Add samples | OPEN |
-| INST-32 | A revealed build identity is heard once as a scan resolve, not read off a panel | `src/systems/buildIdentity.js`, `src/audio/audioSystem.js` | On seed 4242 `buildIdentity:revealed` plays the scan-resolve cue once per target; a focused test pins once-only | Reveal beyond the scan stage. Add samples | OPEN |
+| INST-31 | The choir bell, the nestbreaker split and the pale coil blink each have a voice | `src/systems/uniqueLootAbilities.js`, `src/audio/audioSystem.js` | On seed 4242 the three `uniqueLoot:*` events play three distinct authored cues; a focused test pins three ids | Reuse the field deploy voices. Add samples | SHIPPED |
+| INST-32 | A revealed build identity is heard once as a scan resolve, not read off a panel | `src/systems/buildIdentity.js`, `src/audio/audioSystem.js` | On seed 4242 `buildIdentity:revealed` plays the scan-resolve cue once per target; a focused test pins once-only | Reveal beyond the scan stage. Add samples | SHIPPED |
 | INST-33 | Flak has its own muzzle voice instead of sharing the autocannon's | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_flak_turret_s` fire resolves a flak recipe id and `wpn_autocannon_s` keeps `sfx_wpn_autocannon`; a focused test pins the ids differ | Add samples. Change flak damage | SHIPPED INST-33 — infer-audio-01; the interceptor flag classifies flak from weapon data; focused-green (27 tests); baseline's 4 failures proven pre-existing by pristine-HEAD replay |
 | INST-34 | Heavy beams sound heavier than the beam laser | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_heavy_beam_l` resolves a lower-register beam recipe than `wpn_beam_laser_m`; a focused test pins the two ids and the rate order | Add samples. Change beam dps | SHIPPED INST-34 — infer-audio-01; capital split is a momentum threshold and the loop drone is per-owner recipe-aware; focused-green; baseline's 4 failures proven pre-existing by pristine-HEAD replay |
 

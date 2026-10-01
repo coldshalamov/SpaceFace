@@ -54,10 +54,13 @@ wrong still starts at the fun loop (§1.7), then returns here.
    the first lane whose files are free, worked in order. A lane is an open-ended area assignment —
    you own the named work still open there **and** the review and tuning of that area to the
    A-list bar; the queue units inside it are its checklist, not a script. The A2 actualize lane
-   (§23.4) is committed and closed. If this sitting is INFERENCE, take one OPEN catalog line.
-   Otherwise `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it
-   names under [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do
-   not shop around `--ready` for something you would rather do; the order is the plan (§1.2).
+   (§23.4) is committed and closed. If the owner said INFERENCE, take catalog lines
+   ([`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md)). Otherwise read the seam table
+   in [§1C](#1c-the-board--every-dispatchable-unit-numbered-refreshed-2026-09-27) and
+   `node scripts/board-chunks.mjs`. Claim a `free` seam and do its open rows. `program-dispatch
+   --next` still returns an old packet when one is actually ready; a drained result is this
+   board, not an empty game and not the inference catalog. Do not shop `--ready` for a smaller
+   packet. The seam you claimed is the plan.
 3. On a queue unit, read the packet's **How agents get this wrong** section before touching code.
    Then its Leaves row: the done-when is the definition of done, in player units. If a done-when is
    missing, unclear, or could be satisfied by something the owner would call thin, write the missing
@@ -122,8 +125,8 @@ preparation**: parked until there is a release to prepare, and never the dispatc
 work stays in scope only as a development instrument — finding and fixing what makes the game worse
 on a real, busy machine — not as a gate that waits on a quiet host. Until pre-release opens, game
 development runs through §27's lanes (THE MACHINE's development half, THE HAND, THE FIGHT, THE
-WORLD, THE LONG GAME, THE PICTURE, THE EAR); **a drained queue means take the next numbered row
-on the board (§1C) — or a lane for open-ended work — never stop.**
+WORLD, THE LONG GAME, THE PICTURE, THE EAR); **a drained queue means claim a free seam on the
+board (§1C) and do its open rows — never stop, and never switch to the inference catalog.**
 
 **§23 is the superpower front (owner, 2026-09-22).** The sequential lane is **A2** in the table
 above: [§23.4](#234-actualize-the-tools), `AQ-CAS` then `AQ-LOD` then `AQ-LIGHT` then `AQ-SURFACE`
@@ -355,21 +358,78 @@ Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept
 
 ## 1C. The board — every dispatchable unit, numbered (refreshed 2026-09-27)
 
-`--next` reads `program-queue.json`; **that queue is drained** (0 claimable units — the one
-`ready` row is dep-gated, `PQ-210.08` is parked). The plans did not run out — the counting did.
-This board is the counted front door: **"take the next 10 tasks" means the next 10 numbered
-rows.** Each row points at the plan that owns its detail — do not restate specs here, and do not
-open a second list anywhere else.
+The old packet queue (`program-dispatch --next`) is drained. **That is not an empty plan.**
+An empty script result is this board. It is not permission to switch to
+`INFERENCE_IDEAS.md`. The inference catalog is the small wiring inside a seam you already
+claimed, and it is the whole job only when the owner said INFERENCE.
 
-How to take a row:
+**"Do 10 tasks" means 10 open rows inside seams you claimed.** A row is already a chunk: a
+planbank batch, a next-wave build, or a fable batch. Do not split it into captions, and do
+not count a catalog line as one of the ten.
 
-1. Take the lowest-numbered **OPEN** row whose named paths are not in a live `NOW.md` row.
-   `CLAIMED <who>` rows are taken; `PARKED <blocker>` rows wait for the named blocker.
-2. Add your `NOW.md` row and flip this row to `CLAIMED <thread>` in the **same edit**.
-3. On landing, **delete the row** in the landing commit — this board lists open work only;
-   receipts live in git and `01_VERIFIED_DONE.md`.
-4. A defect row also deletes its ledger row in the fixing commit (ledger law, AGENTS §7).
-5. New dispatchable work is appended at the bottom of its kind-group with the next number.
+### Seams — what is free, and what another agent has
+
+One seam is one set of files. Five agents take five different seams. Read the Claim cell
+and `node scripts/board-chunks.mjs` before you pick. `free` means nobody has it. A thread
+name means it is in flight — take a different seam. `done` means its rows are finished.
+
+1. Pick a seam that says `free` and whose files are not in a live `NOW.md` row or a dirty
+   foreign hunk.
+2. In the same edit as your NOW row, replace `free` with your thread name.
+3. Do the seam's still-OPEN rows in the order listed, up to the count you were given
+   (ten, unless the owner named another number). Skip a row whose status is no longer OPEN.
+4. If the seam runs out before your count, claim another `free` seam whose files do not
+   overlap the one you have.
+5. When you stop, set the cell back to `free` if any of its rows are still OPEN, or `done`
+   if none are. Delete a detail row only in the commit that finishes it.
+6. If two agents edit the same files, keep both changes and merge them. Do not revert the
+   other agent. A `PARKED` row waits for the blocker named on that row.
+7. Lanes `L-MACHINE`, `L-HAND`, `L-FIGHTWORLD`, `L-LONGGAME`, and `L-EAR` are area
+   ownership, not one of the ten rows. Claiming a lane claims the matching seam too.
+
+OPEN catalog lines whose files sit in your seam are part of the row you are already doing.
+Ship them or mark them already true inside that row. They are not an alternate queue.
+
+| Seam | Claim | Files — one agent | Rows, in order |
+|---|---|---|---|
+| picture | free | renderer, admission, residency | 31, 32, 39, 45, 75, 139, 140, 141, 171, 259 |
+| camera | free | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
+| boot | free | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
+| audio | free | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
+| save | free | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
+| economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
+| effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
+| swarm | free | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
+| fight | free | enemies, bombs, countermeasures, squads | 96, 178, 179, 200, 202, 221, 231, 234 |
+| fields | free | fields | 94, 162 |
+| law | free | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
+| discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
+| industry | free | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
+| people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
+| ship | free | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
+| hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 220, 229, 236, 238, 239 |
+| missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
+| world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
+| story | free | story | 192, 215, 216, 253 |
+| input | free | gamepad, input, settings behavior | 196, 237, 260, 262 |
+| ui-sim | free | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
+| physics | free | physics clocks, manifest | 258 |
+| accept | free | judge work that is already built | 60, 63, 64 |
+| imports | free | doc imports only, after code seams | 30 |
+| art | free | one visible asset defect; skip if the graphics lane is live | 223 |
+
+`node scripts/board-chunks.mjs` prints which of those rows are still open, which seams are
+claimed, and any open row that is not in a seam. `--check` fails when the table and the
+detail rows drift.
+
+How to finish a row:
+
+1. Add your `NOW.md` row for the exact files before the first edit.
+2. On landing, **delete the detail row** in the landing commit — this board lists open work
+   only; receipts live in git and `01_VERIFIED_DONE.md`.
+3. A defect row also deletes its ledger row in the fixing commit (ledger law, AGENTS §7).
+4. New dispatchable work is appended at the bottom of its kind-group with the next number,
+   and its number is added to the seam that owns its files.
 
 Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-drop package batch ·
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
@@ -425,8 +485,8 @@ and `src/core/coreSystem.js` are still dirty, those hunks are not this batch: on
 perception into the combat override, the other keeps measured skins off dynamic hulls. Do not
 revert them and do not fold them into an unrelated commit.
 
-**Next.** The lowest-numbered OPEN row below whose paths are not in a live `NOW.md` row.
-Inference continues at the first OPEN line in `INFERENCE_IDEAS.md` whose paths are free.
+**Next.** A `free` seam in the table above whose files are not already claimed. An OPEN
+inference line is folded into that seam. It is not the next task by itself.
 
 ### A. Recover — finished work stranded in the tree
 
@@ -613,7 +673,7 @@ This user-requested wave supplies pre-decided outcomes, not permission for a wea
 
 **One live board.** BUILD status is in this table; small-task status is in `design/program/INFERENCE_IDEAS.md`. The packet files and JSON are specifications, not a second mutable queue. `OPEN` means a named task may be taken after exact-path checks, not that it is free of all concurrent work. `WAITING <id>` means an actual missing capability; an equivalent verified implementation can satisfy it. Open dependent rows in the landing that supplies the capability. Do not infer DONE from a deleted row.
 
-**Do not dry-fire.** An empty legacy `program-dispatch` result does not authorize brainstorming while dependency-ready directed board/catalog work exists. Read this board or run `node scripts/next-wave-read.mjs --kind build --next` / `--kind inference --next`. The helper is read-only and uses canonical live rows, not frozen JSON statuses. It is advisory; inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
+**Do not dry-fire.** An empty legacy `program-dispatch` result means claim a free seam in §1C. It does not authorize brainstorming, and it does not switch the sitting to the inference catalog. `node scripts/board-chunks.mjs` lists the free seams. `next-wave-read.mjs` is advisory detail for a row you already took; `--kind inference` is only for an owner-said INFERENCE sitting. Inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
 
 **Reuse rather than duplicate.** Read the prior SF/PQ/PB owner named in each packet. Implement equivalent work once, then retire/match the duplicate row to its actual result. Existing SF packet bodies are under `design/planbank/SpaceFace_Planbank_300/plans/<domain>/` (not `packets/<domain>/`). Do not re-admit shipped slices or copy active PR #170/#174 work. Necessary functional UI follows ORRERY; no second redesign. Release-prep work remains parked.
 
