@@ -74,45 +74,6 @@
   ],
   "units": [
     {
-      "id": "cluster-detonation-receipt",
-      "date": "2026-09-26",
-      "wf": "WF-15",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "rated well+primed-light cluster moment now lands as a premium player receipt: banner, caption, camera, authored boom, detonation VFX; NPC clusters keep world lanes only",
-      "fingerprint": "verb=announce,subject=cluster-detonation,sector=any,layer=world,tempo=burst,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "e7c629215",
-      "verification": "focused_green"
-    },
-    {
-      "id": "INFERENCE-13",
-      "date": "2026-09-26",
-      "wf": "WF-09",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Five live K1-route factions (Archive/Fulfillment/Pitborn/Understory/Verge-Layer) spoke Frontier fallback words and voice on every contact; each house now authors its own bark corpus, recognition/law/event-line families, bar voice, stunt lines, and a distinct synthetic voice register (corpus 277->437, all WAVs generated, blind PCM identification green).",
-      "fingerprint": "verb=hear,subject=deep-faction-contacts,sector=K1-route,layer=voice,tempo=contact,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "4465c784d",
-      "verification": "focused_green"
-    },
-    {
-      "id": "INFERENCE-15",
-      "date": "2026-09-26",
-      "wf": "WF-03",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "blackmarket was the only station type with no ambient-business side events, so every den's apron read commercially dead; the live side-event planner now schedules den business — an unmanifested lights-out runner (quiet_dock, new slip-run trajectory + dim accent) and the fence's cargo tractor.",
-      "fingerprint": "verb=watch,subject=station-apron,sector=blackmarket,layer=ambient,tempo=station-day,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "fe3ccf650",
-      "verification": "focused_green"
-    },
-    {
       "id": "INFERENCE-14",
       "date": "2026-09-26",
       "wf": "WF-18",
@@ -1638,6 +1599,47 @@
       "integration": "live",
       "commit": "34c620e25",
       "verification": "focused_green"
+    },
+    {
+      "id": "NXI-190",
+      "date": "2026-10-01",
+      "wf": "WF-05",
+      "mode": "recovery",
+      "verdict": "accepted",
+      "reason": "normalizeStoryNewGamePlusRecord is schema-bounded; stray entityId/liveEntityHandle/entityRef fields never reach the stored record",
+      "fingerprint": "verb=carry,subject=newgameplus-record,domain=nxi,layer=schema",
+      "references": [],
+      "integration": "live",
+      "commit": "c6bd43336",
+      "verification": "route_accepted",
+      "evidence": "test/new-game-plus.test.mjs"
+    },
+    {
+      "id": "NXI-191",
+      "date": "2026-10-01",
+      "wf": "WF-05",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "leftoverNewRunLine now states cargo/credits/contracts/claims reset beside the carries; confirmation no longer implies obligations survive",
+      "fingerprint": "verb=describe,subject=newgameplus-reset,domain=nxi,layer=confirm",
+      "references": [],
+      "integration": "live",
+      "commit": "c6bd43336",
+      "verification": "focused_green"
+    },
+    {
+      "id": "NXI-192",
+      "date": "2026-10-01",
+      "wf": "WF-05",
+      "mode": "recovery",
+      "verdict": "accepted",
+      "reason": "carried knowledge ids are authored/semantic strings only; no entity handle exists in the record schema",
+      "fingerprint": "verb=carry,subject=discovery-knowledge,domain=nxi,layer=identity",
+      "references": [],
+      "integration": "live",
+      "commit": "c6bd43336",
+      "verification": "route_accepted",
+      "evidence": "test/new-game-plus.test.mjs"
     }
   ],
   "knownDefects": [
