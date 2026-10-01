@@ -22,6 +22,7 @@ COLORS = {
     'stripe': '#0f4f4d',
     'hazard': '#c8901e',
     'paint.graphite': '#26292d',
+    'glow_cyan.helios': '#2fe0cf',   # the courier teal lifted to light (identity trim)
 }
 
 HY = 4.4                 # hull centre lines (port +HY)
@@ -75,6 +76,8 @@ def build():
     ], material='paint', belly='paint2', back_material='dark', count=56, mirror=True)
     F.band(s, 'Hull', (15.0, HY, 0), (1, 0, 0), 1.6, 'glass', facing=(0.6, 0, 0.8), min_facing=0.45, mirror=True)
     F.band(s, 'Hull', (13.6, HY, 0), (1, 0, 0), 0.5, 'paint2', inset=0.02, depth=0.02, mirror=True)
+    # Identity trim, lit: a thin teal ring on each hull's ivory just aft of the bow band (LOOK.md: lamps are light).
+    F.band(s, 'Hull', (13.05, HY, 0), (1, 0, 0), 0.16, 'glow_cyan.helios', inset=0.01, depth=-0.02, mirror=True)
     F.band(s, 'Hull', (-12.6, HY, 0), (1, 0, 0), 0.8, 'paint2', inset=0.02, depth=0.02, mirror=True)
     F.band(s, 'Hull', (-1.0, HY, 0), (0, 1, 0), 0.5, 'stripe', facing=(0, 0, 1), min_facing=0.7, mirror=True)
     zw = 0.35
@@ -130,6 +133,9 @@ def build():
     pts = [(SX1 + (SX0 - SX1) * i / (n - 1), 0.0, spine_z(SX1 + (SX0 - SX1) * i / (n - 1))) for i in range(n)]
     sweep(s, 'Spine', pts, 0.6, 0.38, (0, 1, 0), material='paint')
     F.band(s, 'Spine', (0, 0, 0), (0, 1, 0), 0.5, 'stripe', facing=(0, 0, 1), min_facing=0.4)
+    # the lit runway up the arc: one thin teal line down the spine's top, inside the stripe
+    F.band(s, 'Spine', (0, 0, 0), (0, 1, 0), 0.14, 'glow_cyan.helios', facing=(0, 0, 1), min_facing=0.4, inset=0.01,
+           depth=-0.02)
     for j, x in enumerate((-7.2, -3.0, 1.2, 5.4)):
         zs = spine_z(x)
         rib = []

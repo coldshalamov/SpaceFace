@@ -18,6 +18,7 @@ COLORS = {
     'stripe': '#c4542a',
     'hazard': '#c8901e',
     'paint.graphite': '#26282c',
+    'glow_cyan.rust': '#ffd23a',   # work-fleet yellow lifted to light (identity trim)
 }
 
 RY = 2.85     # rail centre line (port); starboard mirrored
@@ -97,6 +98,10 @@ def build():
         F.band(s, 'Rail', (x, RY, 0), (0.8, 0.6, 0), 0.7, 'paint2', facing=(0, 0, 1), min_facing=0.5, mirror=True,
                inset=0.02, depth=0.02)
     F.band(s, 'Rail', (-12.8, RY, 0), (1, 0, 0), 0.4, 'hazard', mirror=True)
+    # Identity trim, lit: a thin yellow line down each rail top the length of the cradle, so the open
+    # fork reads by its light at the chase camera (LOOK.md: lamps are light).
+    F.band(s, 'Rail', (-7.0, RY, RZ), (0, 1, 0), 0.1, 'glow_cyan.rust', facing=(0, 0, 1), min_facing=0.6,
+           mirror=True, inset=0.004, depth=-0.01, region=(('x', -12.4, -1.4),))
     # drive nacelles at the rail ends
     F.cylinder(s, 'DriveHousing', (-14.6, RY, RZ), (-12.2, RY, RZ), 0.95, 0.9, material='paint', segments=36,
                mirror=True, cap_material='dark')

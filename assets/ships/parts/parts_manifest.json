@@ -6307,8 +6307,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
-      "tris": 36992,
-      "bytes": 2312552,
+      "tris": 37724,
+      "bytes": 2363440,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6343,12 +6343,12 @@
           -3.105302095413208
         ],
         "max": [
-          9.641345977783203,
+          9.64134693145752,
           2.076219081878662,
           3.0450000762939453
         ],
         "dimensionsM": [
-          18.361998558044434,
+          18.36199951171875,
           2.901238799095154,
           6.150302171707153
         ]
@@ -6361,8 +6361,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
-      "tris": 35760,
-      "bytes": 2241460,
+      "tris": 37810,
+      "bytes": 2351136,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6596,8 +6596,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
-      "tris": 56374,
-      "bytes": 3309200,
+      "tris": 64326,
+      "bytes": 3726732,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7646,8 +7646,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
-      "tris": 36895,
-      "bytes": 2173012,
+      "tris": 38670,
+      "bytes": 2284004,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7681,12 +7681,12 @@
           -2.5892467498779297
         ],
         "max": [
-          10.300000190734863,
+          10.30003833770752,
           2.220898389816284,
           2.5892133712768555
         ],
         "dimensionsM": [
-          18.421079635620117,
+          18.421117782592773,
           3.2427176237106323,
           5.178460121154785
         ]
@@ -7811,8 +7811,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
-      "tris": 63359,
-      "bytes": 3635212,
+      "tris": 68503,
+      "bytes": 3903624,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7915,8 +7915,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/scrap_sweeper.glb",
-      "tris": 31888,
-      "bytes": 2031524,
+      "tris": 34101,
+      "bytes": 2156216,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7947,18 +7947,18 @@
       "bounds": {
         "min": [
           -10.22094440460205,
-          -1.228190302848816,
-          -3.282108783721924
+          -1.2271404266357422,
+          -3.2820756435394287
         ],
         "max": [
-          9.944897651672363,
+          9.948709487915039,
           3.2744998931884766,
-          3.282146692276001
+          3.2820756435394287
         ],
         "dimensionsM": [
-          20.165842056274414,
-          4.5026901960372925,
-          6.564255475997925
+          20.16965389251709,
+          4.501640319824219,
+          6.564151287078857
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Scrap Sweeper, live traffic role sweeper; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3520/678/290 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7968,8 +7968,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
-      "tris": 35374,
-      "bytes": 2115572,
+      "tris": 49866,
+      "bytes": 2898912,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8000,7 +8000,7 @@
       "bounds": {
         "min": [
           -10.370341300964355,
-          -1.149999976158142,
+          -1.150007724761963,
           -4.199999809265137
         ],
         "max": [
@@ -8010,7 +8010,7 @@
         ],
         "dimensionsM": [
           21.90317726135254,
-          5.338587164878845,
+          5.338594913482666,
           8.399999618530273
         ]
       },
@@ -8021,8 +8021,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
-      "tris": 65248,
-      "bytes": 3748208,
+      "tris": 70912,
+      "bytes": 4044896,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8054,17 +8054,17 @@
         "min": [
           -17.520679473876953,
           -3.000007390975952,
-          -3.2219927310943604
+          -3.221982002258301
         ],
         "max": [
-          17.600311279296875,
-          3.6781911849975586,
-          3.2219927310943604
+          17.600156784057617,
+          3.6747663021087646,
+          3.2219817638397217
         ],
         "dimensionsM": [
-          35.12099075317383,
-          6.678198575973511,
-          6.443985462188721
+          35.12083625793457,
+          6.674773693084717,
+          6.4439637660980225
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Volatiles Tanker, live traffic role tanker; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8688/2646/1130 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
