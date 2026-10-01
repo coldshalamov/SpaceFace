@@ -37,6 +37,7 @@ import {
   wrapShipWithAuthoredParts,
 } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import { canonicalizeInstalledSurfaceProgramKey } from './illustratedSurface.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import {
   applyIndustrialMaterialFamilies,
@@ -157,6 +158,9 @@ const RESOLVING_MARKER_MATERIAL = new THREE.MeshStandardMaterial({
   depthWrite: false,
 });
 RESOLVING_MARKER_MATERIAL.userData.spacefaceSharedAsset = true;
+// Canon-stamp puts the bare marker key inside the warmed Standard family space — without it the
+// first pending boundary pays a linkProgram on the exact frame the marker appears.
+canonicalizeInstalledSurfaceProgramKey(RESOLVING_MARKER_MATERIAL);
 
 // GFX-12: a pending authored ship shows its own lowest-detail resident body instead of the
 // abstract marker whenever the catalog record is already resident (the normal cold-start case —
@@ -220,6 +224,7 @@ function standInMaterialFor(primitiveMaterial) {
     });
     material.userData.spacefaceSharedAsset = true;
     material.userData.authoredResolvingMarker = true;
+    canonicalizeInstalledSurfaceProgramKey(material);
     material.dispose = () => {};
     STAND_IN_MATERIALS.set(key, material);
   }

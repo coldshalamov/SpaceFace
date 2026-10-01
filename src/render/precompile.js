@@ -948,6 +948,10 @@ function addAuthoredCanopyPipelineWarmup(staging) {
         'frontside', 'tangentless', 'vertexcolors', 'mask',
         'iridescence', 'sheen', 'anisotropy', 'transmission-map',
         'clearcoat-map', 'objectspace-normal',
+        // KHR map slots shipped canopies actually carry (catalog grep: clearcoat ~793 GLBs,
+        // specular ~502, anisotropy ~10): each mints a USE_* variant the canon slot set lacks.
+        'clearcoat-roughness-map', 'clearcoat-normal-map',
+        'specular-intensity-map', 'specular-color-map', 'anisotropy-map',
       ],
       make: (maps, axisId) => {
         const material = new THREE.MeshPhysicalMaterial({
@@ -990,6 +994,22 @@ function addAuthoredCanopyPipelineWarmup(staging) {
             break;
           case 'clearcoat-map':
             material.clearcoatMap = surface;
+            break;
+          case 'clearcoat-roughness-map':
+            material.clearcoatRoughnessMap = surface;
+            break;
+          case 'clearcoat-normal-map':
+            material.clearcoatNormalMap = normal;
+            break;
+          case 'specular-intensity-map':
+            material.specularIntensityMap = surface;
+            break;
+          case 'specular-color-map':
+            material.specularColorMap = baseColor;
+            break;
+          case 'anisotropy-map':
+            material.anisotropy = 1;
+            material.anisotropyMap = surface;
             break;
           case 'objectspace-normal':
             material.normalMapType = THREE.ObjectSpaceNormalMap;

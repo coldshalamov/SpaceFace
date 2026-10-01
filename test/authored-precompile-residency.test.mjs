@@ -153,7 +153,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   });
 
   assert.equal(result.skipped, false);
-  assert.equal(result.retainedCanopyVariants, 14);
+  assert.equal(result.retainedCanopyVariants, 19);
   assert.equal(exactTargetPrepareCalls, 1);
   assert.equal(legacyCompileCalls, 0);
   assert.ok(retainedVfxMaterialCount > 4, 'fixture must cover the retained VFX material family');
@@ -292,6 +292,36 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     },
     {
       id: 'axis_objectspace-normal', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_clearcoat-roughness-map', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_clearcoat-normal-map', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_specular-intensity-map', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_specular-color-map', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_anisotropy-map', map: true, normalMap: true, aoMap: true,
       roughnessMap: true, metalnessMap: true,
       transmission: 0, transparent: true, depthWrite: false,
       forceSinglePass: true, dithering: true, tangents: true,
