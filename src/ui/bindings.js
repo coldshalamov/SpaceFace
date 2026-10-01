@@ -37,6 +37,10 @@ export const BINDINGS = Object.freeze({
   // PQ-183.02 global find. Slash is the classic find key (EVE, vim, quick-find) and free
   // repo-wide; text entry still wins, so typing '/' into a field never opens the palette.
   find: { key: '/', code: 'Slash', label: '/' },
+  // PRO-09: the voice floor's pill is dismissable. Every letter belongs to a verb table, so it
+  // sits on Delete — free in flight (the drill screen that owns it there is modal) and reads as
+  // "clear this" without costing a letter key.
+  dismissVoice: { key: 'Delete', code: 'Delete', label: 'DEL' },
 });
 
 // --- Device-aware prompt glyphs (PQ-164.01) ----------------------------------------------------
