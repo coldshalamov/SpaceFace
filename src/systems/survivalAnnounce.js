@@ -67,8 +67,8 @@ const BEARING_WORD = Object.freeze({
 /**
  * Player-facing prose for the authored counterHint tokens in src/data/enemies.js.
  *
- * Four of the six authored hints are snake_case tokens ('cut_tether_or_clear_wake'), not sentences —
- * they were written for a consumer that never got built. This is that consumer, so the tokens get
+ * Nine authored hints are snake_case tokens ('cut_tether_or_clear_wake'), not sentences — they
+ * were written for a consumer that never got built. This is that consumer, so the tokens get
  * their words here. dreadnought_boss authored real prose and is used verbatim (see hintTextFor).
  * An unknown token prints NOTHING rather than leaking a raw identifier at the player.
  */
@@ -78,6 +78,10 @@ const HINT_PROSE = Object.freeze({
   break_lock_close_under_cover: 'Shoots from long range. Break its lock and close under cover.',
   displace_break_anchor_or_outmass: 'Contests your Massline. Displace, break the anchor, or outmass it.',
   kill_or_massline_displace_anchor_leave_radius: 'Holds you inside its field. Kill it, displace it, or leave the radius.',
+  low_mass_shove_tether_or_kill_at_range_blast_hits_everyone: 'Light hull. Shove it with the line or stay outside the blast — it hits everyone.',
+  cross_the_pass_shoot_the_stern_while_it_turns_back: 'Cross its pass and shoot the stern while it swings back.',
+  bank_shots_off_room_plate_or_attack_the_flanks: 'Its face sheds shots. Bank one off the plate or take the flanks.',
+  outrange_or_ignore_until_pack_commits: 'Outrange it, or ignore it until the pack commits.',
 });
 
 const NUMBER_WORD = Object.freeze([

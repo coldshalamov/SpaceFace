@@ -33,6 +33,7 @@ import { entityIndexVersion, forEachLivingWorldActor, indexedTypeScan } from '..
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
+import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
@@ -311,8 +312,10 @@ export const barkDirector = {
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
     this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
     this._onCustodyAcknowledged = (payload) => this._speakCustodyAcknowledged(payload || {});
+    this._onCounterHintSpawn = (payload) => this._teachCounterHint(payload && payload.entity);
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:spawned', this._onEntitySpawnedBark);
+      this.bus.on('entity:spawned', this._onCounterHintSpawn);
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('save:loaded', this._onStuntLoad);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
@@ -589,6 +592,37 @@ export const barkDirector = {
         : `Custody acknowledged${name ? ` at ${name}` : ''} — transfer logged; yard crews take the hull from here.`,
       category: 'law',
       ttl: 6,
+    });
+    return true;
+  },
+
+  // FIGHT-06: every hostile archetype carries an authored counterHint on its spawn data, but the
+  // only speaker was the Crucible announcer — the open world never taught it. First sighting of
+  // each type in adventure speaks one tutorial line, remembered on player.hints so it persists
+  // across saves and never repeats. A second spawn of the same type says nothing.
+  _teachCounterHint(entity) {
+    const state = this.state;
+    if (!state || !entity || entity.alive === false) return false;
+    if (state.mode && state.mode !== 'flight') return false;
+    if (!adventureStunts(state)) return false;
+    if (entity.team !== 1) return false;
+    const enemyId = entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
+    if (typeof enemyId !== 'string' || !enemyId) return false;
+    const text = hintTextFor(enemyId);
+    if (!text) return false;
+    const player = state.player;
+    if (!player) return false;
+    if (state.settings && state.settings.gameplay
+      && state.settings.gameplay.tutorialHints === false) return false;
+    if (!player.hints) player.hints = {};
+    const key = `counterHint_${enemyId}`;
+    if (player.hints[key]) return false;
+    player.hints[key] = true;
+    this._emit('voice:say', {
+      channel: 'tutorial',
+      id: `barkDirector:counterHint:${enemyId}`,
+      text,
+      ttl: 7,
     });
     return true;
   },
@@ -1187,6 +1221,7 @@ export const barkDirector = {
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
       if (this._onCustodyAcknowledged) this.bus.off('law:custodyAcknowledged', this._onCustodyAcknowledged);
+      if (this._onCounterHintSpawn) this.bus.off('entity:spawned', this._onCounterHintSpawn);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -1209,6 +1244,7 @@ export const barkDirector = {
     this._onHeatWantedCrossed = null;
     this._onBountyCooled = null;
     this._onCustodyAcknowledged = null;
+    this._onCounterHintSpawn = null;
     this._onBodyReleased = null;
     this._onBodyShoved = null;
     this._onBodyImpact = null;

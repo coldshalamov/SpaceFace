@@ -5,7 +5,7 @@
 > authoritative order is `src/runtime/authoritativeSystemManifest.js` (materialized by
 > `src/core/registry.js`); this is a navigable projection of it.
 >
-> Generated: 2026-09-30. Live/legacy note: `flight` and `ai` slots are flag-selected
+> Generated: 2026-10-01. Live/legacy note: `flight` and `ai` slots are flag-selected
 > (see root `AGENTS.md` §5). Defaults: `flightBackend:'v3'`, `aiBackend:'sg06-tactical'`,
 > `physicsBackend:'rapier-dynamic'`. Legacy `flight.js`/`ai.js` are fallback-only.
 
@@ -43,7 +43,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `nemesisEncounter` | `systems/nemesisEncounter.js` | 9 | 0 | 0 | — |
 | `capitalBossEncounters` | `systems/capitalBossEncounters.js` | 149 | 2 | 0 | `capitalBoss:telegraphEnd`×2 |
 | `ai` | `systems/tacticalAI.js` (+ legacy) | 1266 | 2 | 0 | `ai:telegraph`×1, `ai:doctrinePhase`×1 |
-| `barkDirector` | `systems/barkDirector.js` | 1649 | 1 | 23 | `audio:cue`×1 |
+| `barkDirector` | `systems/barkDirector.js` | 1685 | 1 | 24 | `audio:cue`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 844 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
 | `beacons` | `systems/beacons.js` | 216 | 5 | 2 | `audio:cue`×3, `economy:chargeCredits`×1, `beacon:deployed`×1 |
@@ -57,7 +57,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `weapons` | `systems/weapons.js` | 2821 | 21 | 0 | `combat:fire`×4, `presentation:vfxCue`×3, `weapons:vent`×2 |
 | `countermeasures` | `systems/countermeasures.js` | 549 | 5 | 3 | `audio:cue`×2, `pds:intercept`×1, `countermeasure:deployed`×1 |
 | `bombs` | `systems/bombs.js` | 1314 | 31 | 14 | `bombs:denied`×8, `economy:chargeCredits`×4, `bombs:stockChanged`×3 |
-| `emergentPrimitives` | `systems/emergentPrimitives.js` | 1151 | 2 | 0 | `emergent:audio`×1, `emergent:contact`×1 |
+| `emergentPrimitives` | `systems/emergentPrimitives.js` | 1171 | 2 | 0 | `emergent:audio`×1, `emergent:contact`×1 |
 | `impulseCharges` | `systems/impulseCharges.js` | 1363 | 24 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
 | `hullBurst` | `systems/hullBurst.js` | 556 | 17 | 0 | `audio:cue`×6, `presentation:vfxCue`×4, `hullBurst:hit`×3 |
 | `mines` | `systems/mines.js` | 335 | 8 | 6 | `mines:armed`×2, `mines:capReached`×1, `ai:telegraph`×1 |
@@ -138,7 +138,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `chronicler` | `systems/chronicler.js` | 354 | 0 | 0 | — |
 | `bandRadio` | `systems/bandRadio.js` | 688 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
 | `onboarding` | `systems/onboarding.js` | 3105 | 19 | 68 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
-| `masslineHud` | `ui/masslineHud.js` | 1899 | 0 | 3 | — |
+| `masslineHud` | `ui/masslineHud.js` | 1971 | 0 | 3 | — |
 | `massSeedHud` | `ui/massSeedHud.js` | 381 | 0 | 0 | — |
 | `fieldHud` | `ui/fieldHud.js` | 317 | 0 | 0 | — |
 | `planetHud` | `ui/planetHud.js` | 193 | 0 | 0 | — |
