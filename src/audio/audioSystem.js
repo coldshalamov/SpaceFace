@@ -1950,6 +1950,7 @@ export const audio = {
     bus.on('mission:failed', () => this._onCue('deny'));
     bus.on('mission:expired', () => this._onCue('deny'));
     bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
+    bus.on('poi:discovered', (p) => this._onPoiDiscovered(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     bus.on('combat:shove', (p) => {
       const id = combatVerbRecipe('shove');
@@ -3329,6 +3330,30 @@ export const audio = {
       this.play('sfx_discovery_plate_note', { gain: 0.62, rate: 1.26, critical: true });
       this.play('sfx_discovery_plate_note', { gain: 0.55, rate: 1.5, critical: true });
     }
+  },
+
+  // INST-18: a point of interest resolving on the scope is the authored wonder beat — the
+  // fifth-sweep recipe was bound and never once played. Emitters already gate once-per-POI on
+  // the persisted discovery record; this Set is the listener's own never-repeat so a re-emitted
+  // row cannot re-ring. One reveal per tick coalesces a survey sweep into a single find. A POI
+  // whose record already shows an identification or investigation belongs to the bigger plate
+  // motif (world.js sets those flags before it emits), so the reveal yields rather than stacks.
+  _onPoiDiscovered(p) {
+    const rt = this.rt;
+    if (!rt || !p || p.poiId == null) return;
+    const heard = rt._poiRevealHeard || (rt._poiRevealHeard = new Set());
+    const key = `${p.sectorId || ''}:${p.poiId}`;
+    if (heard.has(key)) return;
+    heard.add(key);
+    const state = this.state;
+    const sectorId = p.sectorId || (state && state.world && state.world.currentSectorId);
+    const disc = sectorId && state.world && state.world.discovery && state.world.discovery[sectorId];
+    const rec = disc && disc.pois && disc.pois[p.poiId];
+    if (rec && (rec.identified || rec.investigated)) return;
+    const tick = (state && state.tick) | 0;
+    if (rt._wonderTick === tick) return;
+    rt._wonderTick = tick;
+    this.play('sfx_discovery_reveal', { gain: 0.7 });
   },
 
   // One voice per contact. The live rapier-dynamic backend emits `physics:impact` only; the
