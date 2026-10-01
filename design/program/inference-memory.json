@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "pause-last-hit",
-      "date": "2026-09-25",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Pause names the latest hit and replaces it when a newer hit lands",
-      "fingerprint": "verb=name-last-hit,subject=pause-brief,sector=any,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "61f1391ff",
-      "verification": "focused_green"
-    },
-    {
       "id": "disabled-hull-rope-hail",
       "date": "2026-09-25",
       "wf": "WF-16",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "f51f05542",
+      "verification": "focused_green"
+    },
+    {
+      "id": "FIGHT-01",
+      "date": "2026-10-01",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "jackal row combatDoctrineId now mine_layer_wake; ENEMY_DOCTRINE_OVERRIDES entry removed; stamp leaves stock + authored doctrines untouched",
+      "fingerprint": "verb=file,subject=jackal,domain=fight,layer=data",
+      "references": [],
+      "integration": "live",
+      "commit": "5ade74789",
       "verification": "focused_green"
     }
   ],
