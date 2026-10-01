@@ -45,6 +45,7 @@ import {
   ORRIN_WITNESS_SUBMISSION_EVENT,
   isOrrinWitnessRecorder,
   orrinWitnessSource,
+  orrinWitnessCase,
 } from '../data/orrinWitnessCase.js';
 import { addCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -136,6 +137,7 @@ export const story = {
     bus.on('save:loaded', () => this._onLoaded());
     bus.on('encounter:resolved', (p) => this._onOrrinWitnessTransition(p || {}));
     bus.on('signal:investigated', (p) => this._onOrrinWitnessEvidence(p || {}));
+    bus.on('orrinWitness:evidenceEnsured', (p) => this._onOrrinWitnessEnsured(p || {}));
     // ── Ambient comms registry (E1 depth-program consequences). A registered line is durable
     // story state and is voiced once when it registers — the ghost mayday actually reaches the
     // player instead of dying on the bus. Tone changes only update the registry.
@@ -1081,7 +1083,37 @@ export const story = {
       sectorId: source.sectorId,
       anchor: { ...source.anchor },
     });
+    this._fireOrrinWitnessStage('case_open',
+      'A published account just reopened the Corridor Massacre. One original recorder may still be out there.');
     return { source, record };
+  },
+
+  // STORY-03 — each orrinWitness:* stage speaks once on the comms log. seenComms is the durable
+  // once-guard: ensureEvidence/evidenceEnsured re-emit on every reconcile and save load, so the
+  // stage lines dedupe by stage id rather than by event count.
+  _fireOrrinWitnessStage(stage, text) {
+    this._ensureState();
+    const s = this.state.story;
+    const commsId = `orrin_witness_stage_${stage}`;
+    if (s.seenComms[commsId]) return false;
+    s.seenComms[commsId] = true;
+    this._fireComms({
+      id: commsId,
+      sender: 'WARRANT ORRIN',
+      text,
+      category: 'story',
+      ttl: 8,
+      persist: true,
+    });
+    return true;
+  },
+
+  _onOrrinWitnessEnsured(payload) {
+    if (!payload || !payload.sourceId) return false;
+    const current = orrinWitnessCase(this.state);
+    if (!current || current.sourceId !== payload.sourceId) return false;
+    return this._fireOrrinWitnessStage('recorder_confirmed',
+      'The original is real — a recorder body rides the drift at the Io Reach. It only counts if the chain stays unbroken.');
   },
 
   // ── Ambient comms registry (E1 depth-program consequences) ────────────────────────────────
