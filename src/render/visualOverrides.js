@@ -607,6 +607,26 @@ function isPackagedBodyDescendant(object, root) {
   return false;
 }
 
+// A detached packaged group the admission run still owns: its primitives were minted fresh for
+// this mount, so geometry and material instances die with it. Shared-asset geometries keep
+// their pool pin; texture maps ride the packaged cache and are left alone.
+function disposeDetachedPackagedGroup(group) {
+  if (!group || typeof group.traverse !== 'function') return;
+  group.traverse((object) => {
+    if (!object) return;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+  });
+}
+
 function hideProceduralPropDrawables(root) {
   if (!root || typeof root.traverse !== 'function') return;
   root.traverse((object) => {
@@ -662,7 +682,20 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   const start = (renderer, scene, requestOptions = {}) => {
     const state = root.userData.authoredAssetState;
     const existing = root.userData.authoredUpgradePromise;
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      // Same join as the hulk packaged path: a glass-visible re-request re-grades the shared
+      // decode tail visible instead of leaving it behind ambient warms.
+      if (renderer && requestOptions && requestOptions.admissionVisible === true) {
+        const joiner = typeof requestOptions.loadAuthoredPart === 'function'
+          ? requestOptions.loadAuthoredPart
+          : loadAuthoredPart;
+        Promise.resolve(joiner(url, {
+          renderer, slot: spec.slot || slotForPackagedFile(spec.file), optional: true,
+          admissionVisible: true,
+        })).catch(() => {});
+      }
+      return existing;
+    }
     if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer || !scene) return null;
     if (state === 'authored') return Promise.resolve(true);
@@ -706,16 +739,19 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       freezeStaticChildMatrices(packaged);
       freezeStaticTransformRoot(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
+      // Mint once: residencyOptionsForBoundary bumps the boundary epoch on every call, so an
+      // error-path or publish-path re-mint would classify this run's own commit as stale.
+      const mintedAdmissionOptions = admissionOptions();
       try {
-        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+        await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
-        releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed');
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
         // Same lifecycle abort partsLibrary classifies: an owner that shelves mid-admission
         // has no visual to publish — a breadcrumb, not a composition defect.
         const causes = error && Array.isArray(error.errors) && error.errors.length
           ? error.errors
           : [error];
-        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+        const ownerInactive = admissionOwnerInactive(mintedAdmissionOptions, liveEntity, error)
           || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
         if (ownerInactive) {
           if (root.parent) {
@@ -731,15 +767,25 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         return false;
       }
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile');
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
       const publicationWait = waitForOpeningGraphPublicationRelease();
       if (publicationWait) await publicationWait;
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication');
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      // Same stale-run guard the other three commit paths carry: a run parked at the
+      // publication wait while its boundary re-admitted under a newer epoch must not mount
+      // its packaged root over the replacement's — the live epoch owns the boundary.
+      if ((mintedAdmissionOptions.admissionEpoch != null && root.userData.admissionEpoch != null
+            && root.userData.admissionEpoch !== mintedAdmissionOptions.admissionEpoch)
+          || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
+          || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
+        disposeDetachedPackagedGroup(packaged);
         return false;
       }
       hideProceduralPropDrawables(root);
@@ -747,7 +793,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       // The detached prepare compiled/touched `packaged`; attached-state keys can still differ
       // (owner chain, final visibility). One exact-target re-touch here pays any residual link
       // inside this continuation instead of the first presented bloom pass.
-      const touch = admissionOptions().touchAuthoredExactTarget;
+      const touch = mintedAdmissionOptions.touchAuthoredExactTarget;
       if (typeof touch === 'function') {
         try { touch(packaged); } catch (error) { reportVisualWarning(options, '[visualOverrides] packaged publish touch failed', error); }
       }

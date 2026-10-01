@@ -161,6 +161,12 @@ export function createRenderPackageLoader(options = {}) {
       if (!existing.packageOwner && !retainPackageOwner(existing, decodeWarm, decodeServed)) {
         throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
       }
+      // A live-boundary serve upgrades a speculation-warm package lease in place — residency
+      // .retain merges decodeServed onto the existing owner record.
+      else if (existing.packageOwner && decodeServed === true) {
+        residency.retain(existing.key, existing.packageOwner,
+          { role: 'render-package-cache', decodeWarm, decodeServed });
+      }
       return loaded;
     }
 

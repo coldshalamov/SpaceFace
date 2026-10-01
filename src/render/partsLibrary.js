@@ -2443,7 +2443,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     // in-flight or completed request is honoured.
     if (existing && !authoredReadmissionStatus(state)) {
       if (requestOptions && requestOptions.admissionVisible === true) {
-        promoteInFlightJobAdmissionVisible(
+        regradeJoinedJobAdmissionVisible(
           upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
       }
       return existing;
@@ -2591,7 +2591,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     const existing = boundary.userData.authoredUpgradePromise;
     if (existing && !authoredReadmissionStatus(state)) {
       if (requestOptions && requestOptions.admissionVisible === true) {
-        promoteInFlightJobAdmissionVisible(
+        regradeJoinedJobAdmissionVisible(
           upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
       }
       return existing;
@@ -2714,7 +2714,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     );
   }
   if (!boundary.parent) {
-    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-swap');
+    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-swap', options.admissionEpoch);
     boundary.userData.authoredAssetState = 'orphaned-before-swap';
     return false;
   }
@@ -2767,7 +2767,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   }
   if (!boundary.parent) {
     await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedCargoCapsule()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
-    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-after-pipeline-compile');
+    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-after-pipeline-compile', options.admissionEpoch);
     boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
     return false;
   }
@@ -2778,7 +2778,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   }
   if (!boundary.parent) {
     await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedCargoCapsule()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
-    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication');
+    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication', options.admissionEpoch);
     boundary.userData.authoredAssetState = 'orphaned-before-swap';
     return false;
   }
@@ -3152,7 +3152,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     const existing = boundary.userData.authoredUpgradePromise;
     if (existing && !authoredReadmissionStatus(state)) {
       if (requestOptions && requestOptions.admissionVisible === true) {
-        promoteInFlightJobAdmissionVisible(
+        regradeJoinedJobAdmissionVisible(
           upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
       }
       return existing;
@@ -3296,7 +3296,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     const existing = boundary.userData.authoredUpgradePromise;
     if (existing && !authoredReadmissionStatus(state)) {
       if (requestOptions && requestOptions.admissionVisible === true) {
-        promoteInFlightJobAdmissionVisible(
+        regradeJoinedJobAdmissionVisible(
           upgradeQueueState(scene).byBoundary.get(boundary), { options: requestOptions });
       }
       return existing;
@@ -3378,7 +3378,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   } catch (error) {
     handoffBootstrapIfCovered(renderer);
     if (!boundary.parent) {
-      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-load-error');
+      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-load-error', options.admissionEpoch);
       boundary.userData.authoredAssetState = 'orphaned-before-swap';
       return false;
     }
@@ -3410,7 +3410,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     }
   }
   if (!record || !boundary.parent) {
-    releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable');
+    releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable', options.admissionEpoch);
     boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
     if (!record) {
       return failAuthoredPlaceAdmission(
@@ -3453,7 +3453,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   }
   if (!authored || !boundary.parent) {
     if (!boundary.parent) {
-      releaseBoundaryResidency(renderer, boundary, 'place-swap-not-committed');
+      releaseBoundaryResidency(renderer, boundary, 'place-swap-not-committed', options.admissionEpoch);
       return false;
     }
     return failAuthoredPlaceAdmission(
@@ -3512,7 +3512,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     }
     if (!boundary.parent) {
       await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedPlace()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
-      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
+      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile', options.admissionEpoch);
       return false;
     }
     const publicationWait = waitForOpeningGraphPublicationRelease();
@@ -3522,7 +3522,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     }
     if (!boundary.parent) {
       await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedPlace()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
-      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
+      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication', options.admissionEpoch);
       return false;
     }
     // Same stale-run guard as the ship commit: a run that parked while its boundary
@@ -4791,6 +4791,14 @@ function carryAdmissionEpochToJoinedJob(joinedJob, request) {
     // guards would drop the live run's only committer.
     target.admissionEpoch = Math.max(Number(target.admissionEpoch) || 0, incomingEpoch);
   }
+}
+
+// A same-boundary re-request joins whichever lifecycle the job is in: queued jobs merge the
+// option bag (the same monotonic admissionVisible promote the enqueue path applies), in-flight
+// jobs take the flag-only promote.
+function regradeJoinedJobAdmissionVisible(joinedJob, request) {
+  if (joinedJob && joinedJob.lifecycle === 'queued') mergeQueuedJobOptions(joinedJob, request);
+  else promoteInFlightJobAdmissionVisible(joinedJob, request);
 }
 
 // An admitted job's option bag stays frozen except one field: a request that dedupes onto it

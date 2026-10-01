@@ -46,7 +46,7 @@ test('place and cargo commit paths refuse stale admission runs like the ship com
     'cargo commit must drop a run whose epoch the boundary superseded');
   assert.match(cargoGuard, /options\.isAbortedStalledAdmission\?\.\(\)|typeof options\.isAbortedStalledAdmission === 'function' && options\.isAbortedStalledAdmission\(\)/,
     'cargo commit must drop stall-aborted runs');
-  assert.match(cargoGuard, /disposePreparedAuthoredBoundary\(boundary\)\s*\|\|\s*disposePreparedCargoCapsule\(\)/,
+  assert.match(cargoGuard, /installedPreparedDisposer\s*\?\s*installedPreparedDisposer\(\)\s*:\s*disposePreparedCargoCapsule\(\)\s*\)\s*\|\|\s*disposeOwnedPreparedBoundary\(boundary/,
     'cargo commit must dispose only its own prepared tree');
 
   const placeCommit = partsLibrarySrc.indexOf('return commitAuthoredPlaceBoundary(');
@@ -54,6 +54,6 @@ test('place and cargo commit paths refuse stale admission runs like the ship com
   const placeGuard = partsLibrarySrc.slice(placeCommit - 1400, placeCommit);
   assert.match(placeGuard, /boundary\.userData\.admissionEpoch\s*!==\s*options\.admissionEpoch/,
     'place commit must drop a run whose epoch the boundary superseded');
-  assert.match(placeGuard, /disposePreparedAuthoredBoundary\(boundary\)\s*\|\|\s*disposePreparedPlace\(\)/,
+  assert.match(placeGuard, /installedPreparedDisposer\s*\?\s*installedPreparedDisposer\(\)\s*:\s*disposePreparedPlace\(\)\s*\)\s*\|\|\s*disposeOwnedPreparedBoundary\(boundary/,
     'place commit must dispose only its own prepared tree');
 });
