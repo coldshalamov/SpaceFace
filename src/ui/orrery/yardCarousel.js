@@ -11,17 +11,20 @@
 // It seats the screen's own buttons (roving focus, data-action, aria-pressed) and follows aria-pressed; a
 // click on a word turns the ring to it. Reduced motion: no glide, the ring snaps. Nothing runs at rest.
 import { svg } from './svg.js';
-import { createSpring, reducedMotion } from './motion.js';
+import { createSpring, onFrame, reducedMotion } from './motion.js';
 import { injectOrrery } from './tokens.js';
 
 const STYLE_ID = 'sf-orrery-yard-style';
 const CSS = `
-.orr-yard__grab { position:absolute; pointer-events:auto; cursor:grab; touch-action:none; z-index:0; }
+.orr-yard__grab { position:absolute; pointer-events:auto; cursor:grab; touch-action:none; z-index:0; user-select:none; -webkit-user-select:none; }
 .orr-yard.is-dragging .orr-yard__grab { cursor:grabbing; }
 .orr-yard.is-dragging > .orr-turntable__row > li, .orr-yard.is-dragging > .orr-turntable__art { transition:none !important; }
 .orr-yard > .orr-turntable__row { z-index:1; }
 .orr-svg .orr-yard__floor { pointer-events:none; }
 .orr-yard__back { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:-1; }
+.orr-yard__model { position:absolute; left:0; top:0; pointer-events:none; transform-origin:0 0; will-change:transform; }
+.orr-yard__model > img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+.orr-yard--models > .orr-turntable__row > li, .orr-yard--models > .orr-yard__model { transition:none !important; }
 /* the detent: the index bead flashes as each hull passes the front */
 .orr-yard .orr-yard__bead { transform-box:fill-box; transform-origin:center; transition:transform 220ms cubic-bezier(.2,1.6,.4,1); }
 .orr-yard .orr-yard__bead.is-detent { transform:scale(1.9); transition:none; }
@@ -35,6 +38,17 @@ function injectStyle(doc) {
   style.id = STYLE_ID;
   style.textContent = CSS;
   doc.head.appendChild(style);
+}
+
+const RING_K = 0.65;
+const RING_SQRT = Math.sqrt(1 - RING_K * RING_K);
+const FOLLOW_TAU_S = 0.045;
+const TAP_PX = 7;
+
+export function yardRingPose(thetaRad) {
+  const c = Math.cos(thetaRad);
+  const d = 1 - RING_K * c;
+  return { x: Math.sin(thetaRad) * RING_SQRT / d, y: (c - RING_K) / d, p: (1 - RING_K) / d, c };
 }
 
 const wrapDeg = (a) => ((((a + 180) % 360) + 360) % 360) - 180;
@@ -51,15 +65,15 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * @param {Object<string,number>} [o.mass]  data-action -> tonnes (how the ring answers with that hull in front)
  * @param {(i0:number, i1:number, f:number) => void} [o.onTurn]
  */
-export function createYardCarousel({ row, host, anchor, hero, art = null, artWidth = 132, mass = null, onTurn = null } = {}) {
+export function createYardCarousel({ row, host, anchor, hero, art = null, artWidth = 132, mass = null, onTurn = null, modelRing = false, onModelsReady = null } = {}) {
   const doc = (row && row.ownerDocument) || globalThis.document;
   if (!row || !host || !anchor || !doc || typeof doc.createElementNS !== 'function' || typeof anchor.getBoundingClientRect !== 'function') {
-    return { el: null, update() {}, layout() {}, dispose() {} };
+    return { el: null, update() {}, layout() {}, setActive() {}, dispose() {} };
   }
   injectOrrery();
   injectStyle(doc);
   const wrap = doc.createElement('div');
-  wrap.className = 'orr-turntable orr-turntable--carousel orr-yard';
+  wrap.className = `orr-turntable orr-turntable--carousel orr-yard${modelRing ? ' orr-yard--models' : ''}`;
   const face = svg('svg', { class: 'orr-svg', 'aria-hidden': 'true' });
   const grab = doc.createElement('div');
   grab.className = 'orr-yard__grab';
@@ -68,7 +82,11 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   row.classList.add('orr-turntable__row');
   host.appendChild(wrap);
 
-  const items = () => [...row.children].filter((li) => li.querySelector && li.querySelector('button'));
+  let members = null;
+  const items = () => {
+    if (!members) members = [...row.children].filter((li) => li.querySelector && li.querySelector('button'));
+    return members;
+  };
   const actionOf = (li) => li.querySelector('button').dataset.action;
   const massOf = (i) => { const li = items()[i]; const m = li && mass ? Number(mass[actionOf(li)]) : NaN; return Number.isFinite(m) && m > 0 ? m : 32; };
   const lightest = () => Math.min(...items().map((_, i) => massOf(i)), 32);
@@ -78,6 +96,16 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
 
   let g = null;
   let rot = 0;
+  let intent = 0;
+  let rotVel = 0;
+  let followOff = null;
+  let followLast = 0;
+  let suppressClick = false;
+  let modelsReady = false;
+  let modelsNotified = false;
+  let disposed = false;
+  let active = true;
+  const models = [];
   const pt = (t) => [g.cx + g.rx * Math.sin(t * Math.PI / 180), g.cy + g.ry * Math.cos(t * Math.PI / 180)];
   const ring = (t0, t1, steps = 64) => {
     const pts = [];
@@ -112,12 +140,38 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   let lastFront = -1;
 
   function place(r) {
-    if (!g) return;
+    if (disposed || !g) return;
+    wrap._rot = r;
     const lis = items();
     const step = sp();
     lis.forEach((li, i) => {
       const t = wrapDeg(i * step - r);
       const at = Math.abs(t);
+      if (modelRing) {
+        const pose = yardRingPose(t * Math.PI / 180);
+        const depth = (pose.c + 1) / 2;
+        const dim = 0.35 + 0.65 * depth;
+        const z = Math.round(10 + 90 * depth);
+        const px = g.cx + g.rx * pose.x;
+        const py = g.cy + g.ry * pose.y;
+        const m = models[i];
+        if (m && m.img && g.mw) {
+          const s = pose.p;
+          m.pose = { x: px, y: py, w: g.mw * s, h: g.mh * s };
+          m.wrap.style.transform = `translate(${(px - (s * g.mw) / 2).toFixed(2)}px, ${(py - s * g.mh).toFixed(2)}px) scale(${s.toFixed(4)})`;
+          m.wrap.style.opacity = modelsReady ? dim.toFixed(3) : '0';
+          m.wrap.style.zIndex = z;
+        }
+        li.style.left = '0px';
+        li.style.top = '0px';
+        li.style.transform = `translate(${(px + g.rx * 0.3 * Math.sin(t * Math.PI / 180)).toFixed(1)}px, ${(py + 14).toFixed(1)}px) translateX(-50%)`;
+        li.style.textAlign = 'center';
+        li.style.opacity = dim.toFixed(2);
+        li.style.pointerEvents = dim < 0.4 ? 'none' : '';
+        li.style.zIndex = z;
+        li.classList.toggle('is-front', at < 12);
+        return;
+      }
       const [x, y] = pt(t);
       if (at < 30) { li.style.left = `${x.toFixed(1)}px`; li.style.top = `${(y + 20).toFixed(1)}px`; li.style.transform = ''; li.style.textAlign = ''; }
       else {
@@ -148,7 +202,7 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => { for (const b of [bead, beadBloom]) b.classList.remove('is-detent'); }));
     }
     lastFront = nearest;
-    if (typeof onTurn === 'function') {
+    if (typeof onTurn === 'function' && lis.length) {
       const count = lis.length;
       const p = (((r / step) % count) + count) % count;
       const i0 = Math.floor(p) % count;
@@ -157,6 +211,7 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   }
 
   function build() {
+    if (disposed || !active) return;
     const hb = host.getBoundingClientRect();
     const heroEl = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null;
     const hr = heroEl ? heroEl.getBoundingClientRect() : null;
@@ -166,6 +221,17 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     const rx = Math.min(ab.width * 0.42, 420);
     const ry = rx * 0.2;
     g = { cx: ab.left - hb.left + ab.width / 2, cy: Math.min(ab.top - hb.top + ab.height + 4, H - ry - 96), rx, ry };
+    if (modelRing && typeof host.querySelector === 'function') {
+      const routeEl = host.querySelector('.sf-ng-route');
+      if (routeEl && typeof routeEl.getBoundingClientRect === 'function') {
+        const rt = routeEl.getBoundingClientRect();
+        if (rt && rt.top) {
+          let liH = 40;
+          for (const li of items()) { const r = li.getBoundingClientRect(); if (r && r.height > liH) liH = r.height; }
+          g.cy = Math.min(g.cy, rt.top - hb.top - ry - 14 - liH - 16);
+        }
+      }
+    }
     face.setAttribute('viewBox', `0 0 ${W} ${H}`);
     // the back layer lives in the anchor (the stage), under its picture, measured in the host's box
     if (!back.isConnected && anchor.firstChild) anchor.insertBefore(back, anchor.firstChild);
@@ -186,20 +252,83 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     for (const b of [bead, beadBloom]) { b.setAttribute('cx', fx.toFixed(1)); b.setAttribute('cy', fy.toFixed(1)); }
     // the grab surface: the yard itself, from the hero's top to just under the ring
     const top = ab.top - hb.top;
+    g.grab = { l: g.cx - rx - 30, t: top, r: g.cx + rx + 30, b: g.cy + ry + 26 };
     Object.assign(grab.style, { left: `${(g.cx - rx - 30).toFixed(0)}px`, top: `${top.toFixed(0)}px`, width: `${(2 * rx + 60).toFixed(0)}px`, height: `${(g.cy + ry + 26 - top).toFixed(0)}px` });
+    if (modelRing) {
+      const posterEl = typeof anchor.querySelector === 'function' ? anchor.querySelector('.k-stage__poster') : null;
+      const pr = posterEl ? posterEl.getBoundingClientRect() : null;
+      g.mw = (pr && pr.width) || (hr && hr.width ? hr.width : ab.width * 0.74) * 1.4;
+      g.mh = (pr && pr.height) || (hr && hr.width ? hr.height : ab.height * 0.46) * 1.4;
+      for (const m of models) {
+        if (!m || m.dead || !m.wrap) continue;
+        m.wrap.style.width = `${g.mw.toFixed(0)}px`;
+        m.wrap.style.height = `${g.mh.toFixed(0)}px`;
+      }
+    }
     items().forEach((li, i) => {
       const a = art && art[actionOf(li)];
-      if (a && !arts[i]) { const img = doc.createElement('div'); img.className = 'orr-turntable__art'; img.style.backgroundImage = `url("${a}")`; wrap.insertBefore(img, row); arts[i] = img; }
+      if (modelRing) {
+        if (a && g.mw && !models[i]) {
+          const shell = doc.createElement('div');
+          shell.className = 'orr-yard__model';
+          shell.style.width = `${g.mw.toFixed(0)}px`;
+          shell.style.height = `${g.mh.toFixed(0)}px`;
+          shell.style.opacity = '0';
+          const img = doc.createElement('img');
+          img.alt = '';
+          img.setAttribute('aria-hidden', 'true');
+          img.draggable = false;
+          const rec = { wrap: shell, img, loaded: false, dead: false, pose: null };
+          img.addEventListener('load', () => { if (!rec.dead && !disposed) { rec.loaded = true; checkModels(); } });
+          img.addEventListener('error', () => { if (!rec.dead && !disposed) failModels(); });
+          img.src = a;
+          shell.appendChild(img);
+          wrap.insertBefore(shell, row);
+          models[i] = rec;
+          if (img.complete && img.naturalWidth > 0) rec.loaded = true;
+        }
+      } else if (a && !arts[i]) { const img = doc.createElement('div'); img.className = 'orr-turntable__art'; img.style.backgroundImage = `url("${a}")`; wrap.insertBefore(img, row); arts[i] = img; }
     });
+    if (modelRing) {
+      const lis = items();
+      if (lis.length > 0 && lis.every((_, i) => modelOk(i))) setModelsReady(true);
+      else if (lis.length === 0 || lis.some((_, i) => !models[i] || models[i].dead)) setModelsReady(false);
+    }
     if (!drag && !settling) rot = pressedIndex() * sp();
     place(rot);
   }
+
+  const setModelsReady = (v) => {
+    const next = !!v;
+    if (modelsNotified && next === modelsReady) return;
+    modelsNotified = true;
+    modelsReady = next;
+    place(rot);
+    if (typeof onModelsReady === 'function') onModelsReady(next);
+  };
+  const modelOk = (i) => {
+    const m = models[i];
+    return !!(m && !m.dead && m.loaded && m.wrap && m.wrap.parentNode);
+  };
+  const checkModels = () => {
+    const lis = items();
+    if (lis.length > 0 && lis.every((_, i) => modelOk(i))) setModelsReady(true);
+  };
+  const failModels = () => {
+    for (const m of models) {
+      if (!m) continue;
+      m.dead = true;
+      if (m.wrap) m.wrap.remove();
+    }
+    setModelsReady(false);
+  };
 
   // ---- the settle: a spring whose stiffness follows the arriving hull's mass (heavy settles slow and deep)
   let settle = null;
   let settling = false;
   let settleTarget = 0;
   function settleTo(target, v, m, instant = false) {
+    if (disposed) return;
     if (settle) settle.stop();
     settleTarget = target;
     if (instant || reducedMotion() || typeof requestAnimationFrame !== 'function') { settle = null; settling = false; rot = target; place(rot); return; }
@@ -220,49 +349,177 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
 
   // ---- the drag
   let drag = null;
-  grab.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || !g) return;
+  const win = (doc && doc.defaultView) || (typeof window !== 'undefined' ? window : null);
+  const noFrames = () => typeof requestAnimationFrame !== 'function';
+  const resistNow = () => {
+    const count = n();
+    const p = (((intent / sp()) % count) + count) % count;
+    const i0 = Math.floor(p) % count;
+    const f = p - Math.floor(p);
+    const m = massOf(i0) + (massOf((i0 + 1) % count) - massOf(i0)) * f;
+    return clamp(lightest() / m, 0.55, 1.2);
+  };
+  const inGrab = (lx, ly) => !!(g && g.grab && lx >= g.grab.l && lx <= g.grab.r && ly >= g.grab.t && ly <= g.grab.b);
+  const hitModel = (lx, ly) => {
+    if (!modelsReady) return null;
+    let best = null;
+    let bestW = -Infinity;
+    items().forEach((li, i) => {
+      const m = models[i];
+      if (!m || m.dead || !m.pose) return;
+      if (lx >= m.pose.x - m.pose.w / 2 && lx <= m.pose.x + m.pose.w / 2 && ly >= m.pose.y - m.pose.h && ly <= m.pose.y) {
+        if (m.pose.w > bestW) { bestW = m.pose.w; best = i; }
+      }
+    });
+    return best;
+  };
+  const inYard = (lx, ly) => inGrab(lx, ly) || hitModel(lx, ly) != null;
+  const isControl = (t) => {
+    for (let node = t; node && node !== host; node = node.parentNode) {
+      const tag = node.tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'A' || node.isContentEditable) return true;
+    }
+    return false;
+  };
+  const gestureDenied = () => {
+    const lis = items();
+    return lis.length > 0 && lis.every((li) => { const b = li.querySelector('button'); return b && b.getAttribute('aria-disabled') === 'true'; });
+  };
+  const localXY = (e) => {
+    const hb = host.getBoundingClientRect();
+    return [e.clientX - hb.left, e.clientY - hb.top];
+  };
+  const follow = (now) => {
+    if (!drag || disposed) return false;
+    const dt = followLast ? Math.min(0.05, Math.max(0.001, (now - followLast) / 1000)) : 1 / 60;
+    followLast = now;
+    const a = reducedMotion() ? 1 : 1 - Math.exp(-dt / FOLLOW_TAU_S);
+    const prev = rot;
+    rot += (intent - rot) * a;
+    rotVel = 0.5 * rotVel + 0.5 * ((rot - prev) / dt);
+    place(rot);
+    return true;
+  };
+  const startFollow = () => {
+    followLast = 0;
+    if (!followOff && !noFrames()) followOff = onFrame(follow);
+  };
+  const stopFollow = () => {
+    if (followOff) { followOff(); followOff = null; }
+  };
+  const onDown = (e) => {
+    suppressClick = 0;
+    if (disposed || !active || !g || drag) return;
+    if (!e || e.button !== 0 || e.isPrimary === false) return;
+    if (isControl(e.target) || gestureDenied()) return;
+    if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
+    const [lx, ly] = localXY(e);
+    if (!inYard(lx, ly)) return;
+    e.preventDefault();
     if (settle) settle.stop();
     settling = false;
-    drag = { x: e.clientX, t: performance.now(), v: 0, moved: 0 };
+    rotVel = 0;
+    drag = { id: e.pointerId, x: e.clientX, t: performance.now(), v: 0, moved: 0, tapIndex: hitModel(lx, ly) };
+    intent = rot;
     try { grab.setPointerCapture(e.pointerId); } catch (_) {}
     wrap.classList.add('is-dragging');
-  });
-  grab.addEventListener('pointermove', (e) => {
-    if (!drag || !g) return;
+    startFollow();
+  };
+  const applyMove = (e) => {
     const now = performance.now();
     const dx = e.clientX - drag.x;
     // the hull at the front sets how the ring answers the hand: heavy resists, light runs
-    const resist = clamp(lightest() / massOf(frontIndex()), 0.55, 1.2);
-    const d = -(dx / g.rx) * (180 / Math.PI) * resist;
-    rot += d;
+    const d = -(dx / g.rx) * (180 / Math.PI) * resistNow();
+    intent += d;
     const dt = Math.max(0.001, (now - drag.t) / 1000);
     drag.v = 0.7 * drag.v + 0.3 * (d / dt);
     drag.moved += Math.abs(dx);
-    drag.x = e.clientX; drag.t = now;
-    place(rot);
-  });
-  const end = () => {
-    if (!drag) return;
-    const v = performance.now() - drag.t > 140 ? 0 : drag.v;
-    drag = null;
-    wrap.classList.remove('is-dragging');
-    const step = sp();
-    // a light hull glides on; a heavy one stops short
-    const glide = reducedMotion() ? 0 : 0.2 * clamp(lightest() / massOf(frontIndex()), 0.5, 1.4);
-    const projected = rot + v * glide;
-    const k = Math.round(projected / step);
-    const c = n();
-    const idx = ((k % c) + c) % c;
-    settleTo(k * step, v, massOf(idx));
-    pick(idx);
+    drag.x = e.clientX;
+    drag.t = now;
+    if (noFrames() || reducedMotion()) { rot = intent; place(rot); }
   };
+  const onMove = (e) => {
+    if (!drag || !g || (e.pointerId !== undefined && e.pointerId !== drag.id)) return;
+    if (!Number.isFinite(e.clientX)) return;
+    applyMove(e);
+  };
+  const end = (e) => {
+    if (!drag || (e && e.pointerId !== undefined && e.pointerId !== drag.id)) return;
+    const v = performance.now() - drag.t > 140 ? 0 : drag.v;
+    if (e && Number.isFinite(e.clientX)) applyMove(e);
+    const tap = drag.moved < TAP_PX;
+    const tapIndex = drag.tapIndex;
+    const pid = drag.id;
+    drag = null;
+    stopFollow();
+    wrap.classList.remove('is-dragging');
+    try { grab.releasePointerCapture(pid); } catch (_) {}
+    const step = sp();
+    const c = n();
+    let idx;
+    if (tap) {
+      idx = tapIndex != null ? tapIndex : (((Math.round(intent / step) % c) + c) % c);
+      settleTo(rot + wrapDeg(idx * step - rot), 0, massOf(idx));
+    } else {
+      // a light hull glides on; a heavy one stops short
+      const glide = reducedMotion() ? 0 : 0.2 * clamp(lightest() / massOf(frontIndex()), 0.5, 1.4);
+      const k0 = Math.round(intent / step);
+      const k = k0 + clamp(Math.round((intent + v * glide) / step) - k0, -1, 1);
+      idx = ((k % c) + c) % c;
+      settleTo(rot + wrapDeg(k * step - rot), rotVel, massOf(idx));
+    }
+    pick(idx);
+    suppressClick = performance.now();
+  };
+  const cancelDrag = () => {
+    if (!drag) return;
+    const pid = drag.id;
+    drag = null;
+    stopFollow();
+    wrap.classList.remove('is-dragging');
+    try { grab.releasePointerCapture(pid); } catch (_) {}
+    suppressClick = performance.now();
+    const idx = pressedIndex();
+    settleTo(rot + wrapDeg(idx * sp() - rot), 0, massOf(idx));
+  };
+  const onCancel = (e) => {
+    if (!drag || (e && e.pointerId !== undefined && e.pointerId !== drag.id)) return;
+    cancelDrag();
+  };
+  const onDragStart = (e) => {
+    if (drag) { e.preventDefault(); return; }
+    if (!g || !e) return;
+    if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
+    const [lx, ly] = localXY(e);
+    if (!inYard(lx, ly)) return;
+    if (e.target && e.target.tagName === 'IMG') { e.preventDefault(); return; }
+    if (!isControl(e.target)) e.preventDefault();
+  };
+  const onClick = (e) => {
+    if (!suppressClick) return;
+    if (performance.now() - suppressClick > 400) { suppressClick = 0; return; }
+    if (e && e.detail === 0) return;
+    suppressClick = 0;
+    e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+  };
+  const onHidden = () => { if (doc.visibilityState === 'hidden') cancelDrag(); };
+  host.addEventListener('pointerdown', onDown, true);
+  host.addEventListener('dragstart', onDragStart, true);
+  host.addEventListener('click', onClick, true);
+  grab.addEventListener('pointermove', onMove);
   grab.addEventListener('pointerup', end);
-  grab.addEventListener('pointercancel', end);
+  grab.addEventListener('pointercancel', onCancel);
+  grab.addEventListener('lostpointercapture', onCancel);
+  if (win && typeof win.addEventListener === 'function') {
+    win.addEventListener('pointerup', end);
+    win.addEventListener('blur', cancelDrag);
+  }
+  if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', onHidden);
 
   // a click on a word (or any aria-pressed change) turns the ring to it, the short way round
   function update({ instant = false } = {}) {
-    if (!g || drag) return;
+    if (disposed || !active || !g || drag) return;
     const idx = pressedIndex();
     const target = rot + wrapDeg(idx * sp() - rot);
     if (settling && Math.abs(target - settleTarget) < 0.01) return;
@@ -271,19 +528,25 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   }
   let mo = null;
   if (typeof MutationObserver === 'function') {
-    mo = new MutationObserver(() => update());
-    mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
+    mo = new MutationObserver((muts) => {
+      if (muts && muts.some((m) => m.type === 'childList')) members = null;
+      update();
+    });
   }
   let ro = null;
-  if (typeof ResizeObserver === 'function') {
-    ro = new ResizeObserver(() => build());
-    ro.observe(host);
-    // the stage and the hero box move as the columns settle: the yard re-centres on the hull with them
-    ro.observe(anchor);
-    const heroBox = hero && typeof anchor.querySelector === "function" ? anchor.querySelector(hero) : null;
-    if (heroBox) ro.observe(heroBox);
-    for (const li of items()) ro.observe(li);
-  }
+  if (typeof ResizeObserver === 'function') ro = new ResizeObserver(() => build());
+  const observeAll = () => {
+    if (mo) mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'], childList: true });
+    if (ro) {
+      ro.observe(host);
+      // the stage and the hero box move as the columns settle: the yard re-centres on the hull with them
+      ro.observe(anchor);
+      const heroBox = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null;
+      if (heroBox) ro.observe(heroBox);
+      for (const li of items()) ro.observe(li);
+    }
+  };
+  observeAll();
   if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => build());
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => build());
   build();
@@ -293,19 +556,63 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   let lastAt = null;
   const heroAt = () => { const h = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null; const r = (h || anchor).getBoundingClientRect(); return r.left + r.width / 2 + ',' + (r.top + r.height); };
   const watch = () => {
-    if (disposed) return;
+    if (disposed || !active) return;
     const at = heroAt();
     if (lastAt !== null && at !== lastAt && !drag) build();
     lastAt = at;
     if (performance.now() < watchUntil && typeof requestAnimationFrame === 'function') requestAnimationFrame(watch);
   };
-  let disposed = false;
   if (typeof requestAnimationFrame === 'function' && typeof performance !== 'undefined') requestAnimationFrame(watch);
+  const setActive = (v = true) => {
+    if (disposed) return;
+    if (!v) {
+      cancelDrag();
+      if (settle) { settle.stop(); settle = null; }
+      settling = false;
+      stopFollow();
+      rotVel = 0;
+      intent = rot = pressedIndex() * sp();
+      if (g) place(rot);
+      if (mo) mo.disconnect();
+      if (ro) ro.disconnect();
+      active = false;
+      return;
+    }
+    active = true;
+    observeAll();
+    build();
+    update({ instant: true });
+  };
   return {
     el: wrap,
     update,
     layout: build,
+    setActive,
     get geometry() { return g; },
-    dispose() { disposed = true; if (settle) settle.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); wrap.remove(); back.remove(); },
+    get rotation() { return rot; },
+    get modelsReady() { return modelsReady; },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      cancelDrag();
+      intent = rot = pressedIndex() * sp();
+      rotVel = 0;
+      stopFollow();
+      if (settle) settle.stop();
+      host.removeEventListener('pointerdown', onDown, true);
+      host.removeEventListener('dragstart', onDragStart, true);
+      host.removeEventListener('click', onClick, true);
+      if (doc && typeof doc.removeEventListener === 'function') doc.removeEventListener('visibilitychange', onHidden);
+      if (win && typeof win.removeEventListener === 'function') {
+        win.removeEventListener('pointerup', end);
+        win.removeEventListener('blur', cancelDrag);
+      }
+      if (mo) mo.disconnect();
+      if (ro) ro.disconnect();
+      for (const m of models) if (m) m.dead = true;
+      wrap.remove();
+      back.remove();
+      setModelsReady(false);
+    },
   };
 }
