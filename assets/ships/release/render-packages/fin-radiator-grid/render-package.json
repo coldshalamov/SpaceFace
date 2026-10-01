@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0fc465c628cacec310144ba8fbf8843dc7cfb1dfb260467d01f43c043ab76bd4",
+  "contentHash": "d4d79d217db1814dc96ba1e02062da07a0b3f013f723fdb19e425206657d6446",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -345,7 +345,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "dbf7e6746c48b831d67b1abc7488c58cfb6fdf059deb8f96921bafd7734c519c",
+      "sha256": "61853b75e050e660c30b6585daadf9a6c48ab8342fb7defa82163027bb03dabf",
       "uri": "pilots.json"
     }
   },
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_radiator_grid.glb"
   },
-  "runtimeHash": "d1adfe7c75dffb25a76f0f6837f8c9a8658ec337e6b10084db884f39552802b9",
+  "runtimeHash": "483c685e35e25acb146f8361d4b21ccd1348958cd78f16adf643ea8b2732b59c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

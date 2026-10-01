@@ -43,6 +43,9 @@ def build():
     # a 6-sided drum: flat top deck, chamfered rim, ballast pods at the corners
     F.cylinder(s, 'Float', (0, 0, -0.9), (0, 0, 0.9), HEX_R, material='paint', segments=6,
                bevel=0.18, cap=True)
+    # Identity trim, lit: one thin teal ring round the float's rim just under the deck, so the hex
+    # reads as a lit shape before the halo (LOOK.md: lamps are light). No new material.
+    F.band(s, 'Float', (0, 0, 0.72), (0, 0, 1), 0.16, 'glow_cyan', inset=0.01, depth=-0.02)
     F.cylinder(s, 'FloatDeck', (0, 0, 0.9), (0, 0, 1.15), HEX_R * 0.86, material='paint2',
                segments=6, bevel=0.08)
     # underside skirt so the float reads as a hull, not a coin
