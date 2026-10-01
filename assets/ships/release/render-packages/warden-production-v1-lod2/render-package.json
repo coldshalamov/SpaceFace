@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9093169183feeb1114ae0a34121e717ad6d6d4e2e35042f32243421f5159cea7",
+  "contentHash": "30dc5103f022cef0f15c99a02398e11a223f4d348b2b611de37e9432ce11cd29",
   "dynamicGroups": [
     {
       "id": "sf.render.warden-production-v1-lod2.node.lod0-hook-armor-port-armor.dynamic",
@@ -3042,7 +3042,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "19c87a7e242c14bcf6cacb0213752266099f5e722b3ac9c7f2cbc39eff7fe3c8",
+      "sha256": "0d4995f8bd1bf5351807ce23ea9e411eb7a9356e6b2c5dad02c4915feb109ae5",
       "uri": "pilots.json"
     }
   },
@@ -4389,7 +4389,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1_lod2.glb"
   },
-  "runtimeHash": "6434021fa060d30b3db61b57bb36b0419f4f9f33d65e8641ddcb1ae0ffdae4cc",
+  "runtimeHash": "c3ea7ee5b258e69f40115329feef76816461f385aaffcb6bf8e5f82bc1d3166f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

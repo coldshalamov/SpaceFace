@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5ffc49c442e3db1240c3961bff8e72818897d0ecd459f7acfa0333c33c99e25c",
+  "contentHash": "e018553790ecf6f2cdede38b4168ce577991f8e48223ace4ea35c897146f4ece",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -6229,7 +6229,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "19c87a7e242c14bcf6cacb0213752266099f5e722b3ac9c7f2cbc39eff7fe3c8",
+      "sha256": "0d4995f8bd1bf5351807ce23ea9e411eb7a9356e6b2c5dad02c4915feb109ae5",
       "uri": "pilots.json"
     }
   },
@@ -9111,7 +9111,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb"
   },
-  "runtimeHash": "3be3b949aece4655e3b0407de83747c8b350088c5da6fad864b6a2af0cebef5a",
+  "runtimeHash": "f0e4e1dc37892540c795e36fb3613bc91556c5e8f077c6175febefcf039d3d3f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

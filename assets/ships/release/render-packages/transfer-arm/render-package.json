@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a7cc988846c6f6869b5865ca4fc980f8582d21a30050e8e2d526a7ed17332214",
+  "contentHash": "e8066d337aff398ac8d48a20ee5dd7acb0f6e63bd241e66e4773a3b66a5eb621",
   "dynamicGroups": [
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.dynamic",
@@ -2402,7 +2402,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "19c87a7e242c14bcf6cacb0213752266099f5e722b3ac9c7f2cbc39eff7fe3c8",
+      "sha256": "0d4995f8bd1bf5351807ce23ea9e411eb7a9356e6b2c5dad02c4915feb109ae5",
       "uri": "pilots.json"
     }
   },
@@ -3377,7 +3377,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transfer_arm.glb"
   },
-  "runtimeHash": "2054f958296033f501f3ca72b228d95e18be8563750fcab8d91f5d1068229fb5",
+  "runtimeHash": "b98af9eac83a09d1bcec11f505fa8ab2e2d4dd750710b4f554eaa8884870a479",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
