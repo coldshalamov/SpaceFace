@@ -163,7 +163,7 @@ import {
   upsertRecord,
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
-import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
+import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
   dropAsteroidFieldSector,
@@ -1305,6 +1305,12 @@ export const world = {
     const rematerialized = yield* this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
     yield 'materialize:records';
     if (tier === RESIDENCY_TIER.FULL) {
+      // The bag is populated (anchors + records) but not yet published — arm the FULL-extras
+      // decode runway while dressing/enemies/optics still mount. Covers fresh-boot embark and
+      // first-visit jumps, which no prewarm arm reaches (no bag existed to enumerate).
+      if (this.helpers && typeof this.helpers.warmSectorFullExtras === 'function') {
+        this.helpers.warmSectorFullExtras(sectorId, active);
+      }
       yield* this._spawnDressingChunks(sector, active, rng);
       yield 'materialize:dressing';
       // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
@@ -2986,6 +2992,9 @@ export const world = {
     // The reuse path can revive an entity appended collides:false — re-key the collision
     // slice or its hull physically collides while broadphase/splinter lanes see nothing.
     syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the reused body was appended under a different type,
+    // so without this re-key it never reaches wrecks/mineables readers (or vice versa).
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
     ent.radius = oneOff.radius;
     ent.mass = mass;
     ent.physicsBody = { ...(ent.physicsBody && typeof ent.physicsBody === 'object' ? ent.physicsBody : {}),

@@ -834,11 +834,13 @@ function liveAftermathOwnsMarker(state, markerId) {
  * Pure reads only — never touches world rng, records, or the dressing table.
  * @returns {{ sectorId: string|null, placeStubs: object[], roster: object[] }}
  */
-export function liveSectorFullExtrasStubs(state, sectorId) {
+export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   const out = { sectorId: null, placeStubs: [], shipStubs: [], roster: [] };
   const world = state && state.world;
   const sector = sectorId && (world.sectors && world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId));
-  const active = world && world.sectorContents && world.sectorContents[sectorId];
+  // The materialize lane arms the warm with its in-flight bag — it is populated but not yet
+  // published to sectorContents when the decode runway needs the cohort.
+  const active = activeOverride || (world && world.sectorContents && world.sectorContents[sectorId]);
   // A bag already built at FULL (or absent — the charge path only reaches resident sectors,
   // which all carry bags) has no promote cohort to warm.
   if (!sector || !active || active.fullExtrasBuilt === true) return out;
@@ -997,9 +999,11 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
       const disc = world.discovery && world.discovery[sector.id];
       const bossDefeated = !!(disc && disc.pois && disc.pois[bossPoi.id] && disc.pois[bossPoi.id].bossDefeated);
       const liveBoss = active.boss && state.entities && state.entities.get(active.boss.entityId);
-      const recordClaims = bossRecordRematerializes
-        || sectorRecords.some((rec) => rec && rec.isBoss === true && heldRecordIds.has(rec.recordId));
-      if (!bossDefeated && !(liveBoss && liveBoss.alive !== false) && !recordClaims) {
+      // Suppress only for a record that will actually mount the boss — the rematerialize
+      // enumeration already covers it with a shipStub. A merely-held record (live carrier
+      // elsewhere or a farActor row) is no coverage at all: _spawnBossIfDue ignores records,
+      // so gating on it starved the fresh spawn's decode.
+      if (!bossDefeated && !(liveBoss && liveBoss.alive !== false) && !bossRecordRematerializes) {
         out.roster.push({ archetype: 'dreadnought_boss' });
       }
     }
@@ -1099,8 +1103,11 @@ export function saveEnvelopeFullExtrasStubs(data) {
   if (bossPoi) {
     const disc = data.world.discovery && data.world.discovery[sector.id];
     const bossDefeated = !!(disc && disc.pois && disc.pois[bossPoi.id] && disc.pois[bossPoi.id].bossDefeated);
+    // Same rule as the live enumerator: only a record that actually rematerializes claims
+    // the boss slot — it is already enumerated into shipStubs, so suppressing the roster
+    // stub for a merely-held record left the restored boss's GLB with no warm.
     const recordClaims = sectorRecords.concat(intentRecords).some((rec) => rec && rec.isBoss === true
-      && (heldRecordIdsForStubs.has(rec.recordId) || recordShouldRematerialize(rec, 'FULL')));
+      && recordShouldRematerialize(rec, 'FULL'));
     if (!bossDefeated && !recordClaims) {
       out.roster.push({ archetype: 'dreadnought_boss' });
     }

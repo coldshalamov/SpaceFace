@@ -740,6 +740,15 @@ function appendEntityIndex(index, e) {
     if (!index.capitalBossCast.has(e)) { index.capitalBossCast.add(e); bumpLaneVersion(index, 'capitalBossCast'); }
   }
 
+  appendTypedLaneMembership(index, e);
+  index.version++;
+}
+
+// Type-keyed lane membership for appendEntityIndex — extracted so post-spawn type flips
+// (syncEntityTypeLaneMembership) re-derive it without duplicating the switch. Every append
+// records the type it was indexed under as _indexType; removal keys on that stamp so a
+// drifted entity still vacates the lanes it actually occupies.
+function appendTypedLaneMembership(index, e) {
   switch (e.type) {
     case 'ship':
       index.ships.push(e);
@@ -829,7 +838,7 @@ function appendEntityIndex(index, e) {
       index.damageables.push(e);
       break;
   }
-  index.version++;
+  e._indexType = e.type;
 }
 
 function removeEntityIndex(index, e) {
@@ -846,47 +855,12 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.movables, e);
   removeFromIndexArray(index.radarContacts, e);
   removeFromIndexArray(index.radarAsteroids, e);
-  removeFromIndexArray(index.ships, e);
-  removeFromIndexArray(index.drones, e);
-  if (removeFromIndexArray(index.shipLike, e)) bumpLaneVersion(index, 'shipLike');
-  if (removeFromIndexArray(index.projectiles, e)) bumpLaneVersion(index, 'projectiles');
-  if (removeFromIndexArray(index.pickups, e)) bumpLaneVersion(index, 'pickups');
-  if (removeFromIndexArray(index.payloads, e)) bumpLaneVersion(index, 'payloads');
-  if (removeFromIndexArray(index.stations, e)) bumpLaneVersion(index, 'stations');
-  removeFromIndexArray(index.dockStations, e);
-  removeFromIndexArray(index.gates, e);
-  if (removeFromIndexArray(index.asteroids, e)) bumpLaneVersion(index, 'asteroids');
-  if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
-  if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
+  removeTypedLaneMembership(index, e);
   if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
   if (e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
     bumpLaneVersion(index, 'flavorCarriers');
   }
   if (e.data && e.data.role === 'world_site_root') bumpLaneVersion(index, 'worldSiteRoots');
-  removeFromIndexArray(index.mineables, e);
-  if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
-  removeFromIndexArray(index.fx, e);
-  removeFromIndexArray(index.mines, e);
-  removeFromIndexArray(index.vectorMines, e);
-  removeFromIndexArray(index.snares, e);
-  removeFromIndexArray(index.charges, e);
-  if (removeFromIndexArray(index.bombs, e)) bumpLaneVersion(index, 'bombs');
-  removeFromIndexArray(index.statics, e);
-  removeFromIndexArray(index.damageables, e);
-  removeFromIndexArray(index.aiShips, e);
-  removeFromIndexArray(index.weaponShips, e);
-  if (e.type === 'station') {
-    const stationId = e.data && e.data.stationId;
-    if (stationId && index.byStationId.get(stationId) === e) {
-      index.byStationId.delete(stationId);
-      for (const station of index.stations) {
-        if (station && station.alive && station.data && station.data.stationId === stationId) {
-          index.byStationId.set(stationId, station);
-          break;
-        }
-      }
-    }
-  }
   const removedWorldSiteId = e.data && e.data.worldSiteId;
   if (removedWorldSiteId != null) {
     const bucket = index.byWorldSiteId.get(removedWorldSiteId);
@@ -913,6 +887,7 @@ function removeEntityIndex(index, e) {
   if (countedWorldRecordId != null) {
     bumpLaneVersion(index, 'worldRecordIds');
     e._wrIndexStamp = undefined;
+    e._indexType = undefined;
   }
   if (countedWorldRecordId != null && index.byWorldRecordId.get(countedWorldRecordId) === e) {
     index.byWorldRecordId.delete(countedWorldRecordId);
@@ -947,11 +922,74 @@ function removeFromIndexArray(list, e) {
   return false;
 }
 
+// Inverse of appendTypedLaneMembership for the removal paths — unconditional indexOf splices
+// mean the live e.type is irrelevant here; only the counter-only lanes and the byStationId
+// remap need the type the entity was actually indexed under (its _indexType stamp).
+function removeTypedLaneMembership(index, e) {
+  const stamped = e._indexType !== undefined ? e._indexType : e.type;
+  removeFromIndexArray(index.ships, e);
+  removeFromIndexArray(index.drones, e);
+  if (removeFromIndexArray(index.shipLike, e)) bumpLaneVersion(index, 'shipLike');
+  if (removeFromIndexArray(index.projectiles, e)) bumpLaneVersion(index, 'projectiles');
+  if (removeFromIndexArray(index.pickups, e)) bumpLaneVersion(index, 'pickups');
+  if (removeFromIndexArray(index.payloads, e)) bumpLaneVersion(index, 'payloads');
+  if (removeFromIndexArray(index.stations, e)) bumpLaneVersion(index, 'stations');
+  removeFromIndexArray(index.dockStations, e);
+  removeFromIndexArray(index.gates, e);
+  if (removeFromIndexArray(index.asteroids, e)) bumpLaneVersion(index, 'asteroids');
+  if (stamped === 'freighter') bumpLaneVersion(index, 'freighters');
+  if (stamped === 'fauna') bumpLaneVersion(index, 'fauna');
+  removeFromIndexArray(index.mineables, e);
+  if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
+  removeFromIndexArray(index.fx, e);
+  removeFromIndexArray(index.mines, e);
+  removeFromIndexArray(index.vectorMines, e);
+  removeFromIndexArray(index.snares, e);
+  removeFromIndexArray(index.charges, e);
+  if (removeFromIndexArray(index.bombs, e)) bumpLaneVersion(index, 'bombs');
+  removeFromIndexArray(index.statics, e);
+  removeFromIndexArray(index.damageables, e);
+  removeFromIndexArray(index.aiShips, e);
+  removeFromIndexArray(index.weaponShips, e);
+  if (stamped === 'station') {
+    const stationId = e.data && e.data.stationId;
+    if (stationId && index.byStationId.get(stationId) === e) {
+      index.byStationId.delete(stationId);
+      for (const station of index.stations) {
+        if (station && station.alive && station.data && station.data.stationId === stationId) {
+          index.byStationId.set(stationId, station);
+          break;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Post-spawn type flips. appendTypedLaneMembership runs the type switch exactly once at
+ * spawn and flips never re-key, so a ship rebadged 'wreck'/'anomaly' keeps shipLike and
+ * damageables membership while wrecks/mineables readers never see it. Re-keys just the
+ * type-derived slice to match e.type — collision/physics/data-keyed buckets are untouched.
+ */
+export function syncEntityTypeLaneMembership(index, e) {
+  if (!index || !index.__spacefaceEntityIndexV1 || !e || e.alive === false) return;
+  repairEntityIndex(index);
+  if (e.id != null && !index._indexedIds.has(e.id)) return;
+  const prev = e._indexType;
+  if (prev === e.type) return;
+  removeTypedLaneMembership(index, e);
+  appendTypedLaneMembership(index, e);
+  // Counter-only lanes sit outside the switch — mirror the append-time bumps for the new type.
+  if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
+  if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
+  index.version++;
+}
+
 /**
  * Post-spawn collides flips. append ran `if (e.collides)` exactly once at spawn and flips
  * never re-key, so an F→T body keeps real Rapier collision (physics syncs entityList) while
  * every bucket consumer — projectile broadphase (spatialStatics/spatialDynamics), autopilot
- * obstacles, optic-lane bodies, framing and spawn clearance — treats it as absent. The flip
+ * obstacles, optic-lane bodies, framing and spawn clearance �� treats it as absent. The flip
  * sites bump collidesFlipEpoch for the epoch-keyed caches; this re-keys just the collision
  * slice to match e.collides. Direction-agnostic, though today only F→T sites call it:
  * T→F stale presence is the separate, conservative over-inclusion caveat.

@@ -110,6 +110,29 @@
   <link rel="modulepreload" href="./src/ui/screens/credits.js" />
   <link rel="modulepreload" href="./src/ui/screens/crucible.js" />
   <link rel="modulepreload" href="./src/ui/screens/demoEnd.js" />
+  <!-- The deferred wave (SCREEN_MODULES minus BOOT_SCREEN_EXPORTS in uiRoot.js): registration
+       still batches in menu idle and never gates interaction — these are fetch-only hints so a
+       fast launch→undock never discovers a cold module inside the flight loop. Keep in sync
+       with the non-boot rows of SCREEN_MODULES. -->
+  <link rel="modulepreload" href="./src/ui/station/stationScreen.js" />
+  <link rel="modulepreload" href="./src/ui/galaxyMap.js" />
+  <link rel="modulepreload" href="./src/ui/ship/shipScreen.js" />
+  <link rel="modulepreload" href="./src/ui/screens/range.js" />
+  <link rel="modulepreload" href="./src/ui/screens/footprint.js" />
+  <link rel="modulepreload" href="./src/ui/screens/starmap.js" />
+  <link rel="modulepreload" href="./src/ui/screens/localmap.js" />
+  <link rel="modulepreload" href="./src/ui/screens/techTree.js" />
+  <link rel="modulepreload" href="./src/ui/screens/automationPanel.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/asteroidScreen.js" />
+  <link rel="modulepreload" href="./src/ui/screens/base.js" />
+  <link rel="modulepreload" href="./src/ui/screens/crucibleDraft.js" />
+  <link rel="modulepreload" href="./src/ui/screens/achievements.js" />
+  <link rel="modulepreload" href="./src/ui/screens/codex.js" />
+  <link rel="modulepreload" href="./src/ui/screens/missionLog.js" />
+  <link rel="modulepreload" href="./src/ui/screens/sandbox.js" />
+  <!-- bootVisualizer's artwork chain mounts on the boot path — the only runtime dynamic
+       import left un-preloaded. -->
+  <link rel="modulepreload" href="./src/ui/loadingTerminalArt.js" />
   <!-- bootEntry's fire-and-forget title remix is a 2-hop lazy chain — the decoration still
        lands late on cold cache without these fetch-only hints. -->
   <link rel="modulepreload" href="./src/ui/introSignalRemixBoot.js" />

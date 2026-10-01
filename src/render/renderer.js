@@ -3136,11 +3136,11 @@ function warmKillHulkDecode(owner, entity, sectorIdOverride) {
  * off the live bag's own gates; the stubs resolve through the same packaged/ship/roster lanes
  * as every other warm and stay file-deduped against the census warm.
  */
-function warmLiveSectorFullExtras(owner, sectorId) {
+function warmLiveSectorFullExtras(owner, sectorId, opts = {}) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
   if (!state || !renderer || !renderer.domElement || !sectorId) return;
-  const stubs = liveSectorFullExtrasStubs(state, String(sectorId));
+  const stubs = liveSectorFullExtrasStubs(state, String(sectorId), opts.bag || null);
   if (!stubs.sectorId) return;
   for (const stub of stubs.placeStubs) {
     Promise.resolve(warmPackagedEntityDecode(owner, stub, null, false, stubs.sectorId)).catch(() => {});
@@ -11007,6 +11007,9 @@ export const render = {
       resolveAsteroidInstanceEntityId: (object, instanceId) => (
         resolveAsteroidInstanceEntityId(this._asteroidInstancePool, object, instanceId)
       ),
+      // The bag is populated but not yet published to sectorContents when this fires —
+      // pass it through so the warm enumeration reads the cohort being mounted.
+      warmSectorFullExtras: (sectorId, bag) => warmLiveSectorFullExtras(this, sectorId, { bag }),
     };
     Object.assign(ctx.helpers, helperBindings);
     this._helperBindings = { target: ctx.helpers, values: helperBindings };

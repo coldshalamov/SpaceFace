@@ -177,9 +177,9 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
-import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable, isLivingWorldActor, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
-import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
+import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
@@ -7366,11 +7366,8 @@ export const missions = {
       const entity = this.state.entities.get(id);
       return entity && entity.alive !== false;
     });
-    // Continue: adopt rematerialized hosts before deciding to spawn (avoids duplicate targets).
-    this._adoptLiveMissionTargets(m);
-    // The adopt view never yields asteroids: re-attach the authored capital cast by durable key.
-    this._reattachCapitalBossCastTargets(m);
-    // _spawnTargetsFor computes the exact remaining quota, so partial cap grants can top up later.
+    // _spawnTargetsFor leads with the same adopt + capital-cast reattach pair — calling them
+    // here too paid a second living-actor scan per ensure for identical, idempotent output.
     this._spawnTargetsFor(m);
     this._refreshTrackedMissionNav(m);
   },
@@ -7458,6 +7455,9 @@ export const missions = {
     // The flip leaves a permanent stale member otherwise: the entity stays alive as the scan
     // objective, so the collidables/spatial buckets it was appended under carry it forever.
     syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the rebadged anomaly/wreck keeps shipLike/damageables
+    // membership and never joins wrecks/mineables readers without this re-key.
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
     ent.data = ent.data || {};
     ent.data.poiType = follow.targetType;
     ent.data.kind = follow.targetType;
@@ -8639,9 +8639,22 @@ export const missions = {
     }
     const targetIds = new Set(m.targetEntityIds || []);
     if (follow) {
-      forEachLivingWorldActor(this.state, (e) => {
-        if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
-      });
+      // O(1) holder arm under a proven single count — the walk predicate pins the same
+      // recordId plus living-actor membership, so a counted unique holder is the only
+      // possible match. Ambiguous/absent counts keep the lane walk (multi-carrier rows).
+      const wrIndex = this.state && this.state.entityIndex;
+      const holder = wrIndex && wrIndex.__spacefaceEntityIndexV1 === true && wrIndex.ready === true
+        && wrIndex.byWorldRecordId instanceof Map && wrIndex.byWorldRecordIdCount instanceof Map
+        && wrIndex.byWorldRecordIdCount.get(follow.targetRecordId) === 1
+        ? wrIndex.byWorldRecordId.get(follow.targetRecordId)
+        : null;
+      if (holder) {
+        if (isLivingWorldActor(holder)) targetIds.add(holder.id);
+      } else {
+        forEachLivingWorldActor(this.state, (e) => {
+          if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
+        });
+      }
     }
     // Spring-wing raiders are not objective targets: settlement RELEASES them to ordinary lane
     // life (unpinned, unstamped) rather than sweeping them — the fight the contract started
@@ -8845,7 +8858,8 @@ export const missions = {
       m.targetEntityIds = m.targetEntityIds.filter((id) => {
         const e = this.state.entities.get(id); return e && e.alive;
       });
-      this._adoptLiveMissionTargets(m);
+      // _spawnTargetsFor re-runs the adopt + cast-reattach itself — the explicit adopt
+      // here duplicated its living-actor scan for identical output.
       if (m.objectiveProgress < m.objectiveTarget) {
         this._spawnTargetsFor(m);
       }

@@ -164,7 +164,21 @@ export function registerEntityWorldRecordId(index, entity) {
       if (n > 0) index.byWorldRecordIdCount.set(counted, n);
       else index.byWorldRecordIdCount.delete(counted);
     }
-    if (index.byWorldRecordId.get(counted) === entity) index.byWorldRecordId.delete(counted);
+    if (index.byWorldRecordId.get(counted) === entity) {
+      index.byWorldRecordId.delete(counted);
+      // A duplicate carrier survives — remap the slot like removeEntityIndex does so a
+      // wholesale-map reader never loses the id while the walk would still find a holder.
+      const source = index._sourceList;
+      if (Array.isArray(source)) {
+        for (const survivor of source) {
+          if (survivor && survivor !== entity && survivor.alive !== false
+            && survivor.data && survivor.data.worldRecordId === counted) {
+            index.byWorldRecordId.set(counted, survivor);
+            break;
+          }
+        }
+      }
+    }
     if (index.laneVersions) index.laneVersions.worldRecordIds = (index.laneVersions.worldRecordIds || 0) + 1;
   }
   entity._wrIndexStamp = id != null ? id : undefined;

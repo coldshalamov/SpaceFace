@@ -7615,10 +7615,11 @@ export const traffic = {
       return null;
     }
 
-    const matches = [];
-    for (const entity of this.state.entities && this.state.entities.values
+    const source = this.state.entities && this.state.entities.values
       ? this.state.entities.values()
-      : []) {
+      : [];
+    const matches = [];
+    for (const entity of source) {
       if (!entity || entity.alive === false || !predicate(entity)
         || !hasExactCeresSectorAuthority(entity)) continue;
       matches.push(entity);
