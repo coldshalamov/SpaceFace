@@ -310,6 +310,8 @@ export const barkDirector = {
     this._onLawCheckpointPosted = (payload) => this._speakLawSurrender(payload || {});
     this._onLawReportReceipt = (payload) => this._speakLawWitness(payload || {});
     this._onPatrolIntervened = (payload) => this._speakLawIntervention(payload || {});
+    // WORLD-24 — the mercy-disengaged harasser names its own exit in the flee register.
+    this._onHarasserDisengaged = (payload) => this._speakFromEvent(payload, 'flee', 'harasser:disengaged');
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
     this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
     this._onCustodyAcknowledged = (payload) => this._speakCustodyAcknowledged(payload || {});
@@ -337,6 +339,7 @@ export const barkDirector = {
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('encounter:patrolIntervened', this._onPatrolIntervened);
+      this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
       this.bus.on('bounty:cooled', this._onBountyCooled);
       this.bus.on('law:custodyAcknowledged', this._onCustodyAcknowledged);
       this.bus.on('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
@@ -434,7 +437,7 @@ export const barkDirector = {
 
   _speakFromEvent(payload, situation, reason) {
     if (!payload || !this.state) return false;
-    const entityId = payload.entityId ?? payload.ownerId ?? payload.shipId ?? payload.id;
+    const entityId = payload.entityId ?? payload.ownerId ?? payload.shipId ?? payload.id ?? payload.attackerId;
     if (entityId == null) return false;
     const entity = this.state.entities && this.state.entities.get && this.state.entities.get(entityId);
     if (!entity) return false;
@@ -1280,6 +1283,7 @@ export const barkDirector = {
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onPatrolIntervened) this.bus.off('encounter:patrolIntervened', this._onPatrolIntervened);
+      if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
       if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
       if (this._onCustodyAcknowledged) this.bus.off('law:custodyAcknowledged', this._onCustodyAcknowledged);
       if (this._onCounterHintSpawn) this.bus.off('entity:spawned', this._onCounterHintSpawn);
@@ -1305,6 +1309,7 @@ export const barkDirector = {
     this._onLawCheckpointPosted = null;
     this._onLawReportReceipt = null;
     this._onPatrolIntervened = null;
+    this._onHarasserDisengaged = null;
     this._onHeatWantedCrossed = null;
     this._onBountyCooled = null;
     this._onCustodyAcknowledged = null;
