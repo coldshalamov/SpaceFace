@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "helios-starter-miner-shift",
-      "date": "2026-09-25",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A Helios starter miner cuts one rock for a short shift, drops ore, and stops",
-      "fingerprint": "verb=cut,subject=starter-miner,sector=helios,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "a6cf28696",
-      "verification": "focused_green"
-    },
-    {
       "id": "sker-haven-standing-picket",
       "date": "2026-09-26",
       "wf": "WF-03",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "2955d09a5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "WORLD-24",
+      "date": "2026-10-01",
+      "wf": "WF-10",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "harasser:disengaged now resolves attackerId through _speakFromEvent into the flee register; dedupe is the standard said-situation guard so one hull cannot repeat its exit",
+      "fingerprint": "verb=bark,subject=harasser,domain=world,layer=voice",
+      "references": [],
+      "integration": "live",
+      "commit": "b550b584f",
       "verification": "focused_green"
     }
   ],
