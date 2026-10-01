@@ -17,3 +17,16 @@
 # passes; this attribute stops the mismatch happening in the first place.
 *.generated.js text eol=lf
 src/data/frontierRegions/*.js text eol=lf
+
+# Render-package seal inputs are also byte-pinned: `scripts/lib/releasePackaging.mjs` hashes the
+# *working-tree* bytes of each pilot's motion bank (`sealMotionBankRef`) and of `pilots.json`
+# (`sourceManifest`) into the package's `metadata.runtime`, and `check-bundle` recomputes them on
+# CI. A Windows checkout holds those files as CRLF while the runner's Linux checkout holds LF, so
+# a package sealed on Windows never matches the LF recomputation — observed 2026-10-01 as
+# "runtime table does not match its compiled render.glb" on every branch that rebuilt packages on
+# Windows. `eol=lf` makes the sealed bytes identical on every platform.
+# The generated outputs are pinned too so their own bytes are stable if a future check hashes them.
+assets/ships/motions/*.motion.json text eol=lf
+assets/ships/render-packages/pilots.json text eol=lf
+assets/ships/release/render-packages/**/render-package.json text eol=lf
+src/render/renderPackageManifest.js text eol=lf
