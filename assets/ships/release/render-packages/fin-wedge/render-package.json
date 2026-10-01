@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "dbeeed5e832bc65cc3810c5223e9dba2cc407d6789e9610f0926650e2077e685",
+  "contentHash": "38649a3f7572cae0738d3a5c5bca3df6cb8201c40d25a2983c05e8e38e25e391",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1073,8 +1073,8 @@
       "uri": "fin_wedge.glb"
     },
     "sourceManifest": {
-      "bytes": 212794,
-      "sha256": "02f5fab7eb1ecf1412cf8ba2964587cd184484a3d9f59c20a197f14e935a9a9e",
+      "bytes": 219108,
+      "sha256": "fc8ccfdc78b8f4b49ff9c2dbd6a949765ee81d036dcd7f96c88683f2d9ade9ff",
       "uri": "pilots.json"
     }
   },
@@ -1344,7 +1344,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_wedge.glb"
   },
-  "runtimeHash": "81fb6c1988cea760d9c64f8a1ac7abd1879ca1a081a93cd0fd5a0e98504bc735",
+  "runtimeHash": "773e14090f7116a27a59313e1be1522e0370105061dd098703456d0419889199",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

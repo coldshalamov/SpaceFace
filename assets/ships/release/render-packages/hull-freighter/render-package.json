@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "13d83474aec7b8f71da3317c14358f16b76747a93ceb869e5ebf8c0f4b8c58af",
+  "contentHash": "f5c7d3ed315f39cdc9c7dce742964832c0da20daf7512116a8f2c180aaae8b9a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1078,8 +1078,8 @@
       "uri": "hull_freighter.glb"
     },
     "sourceManifest": {
-      "bytes": 212794,
-      "sha256": "02f5fab7eb1ecf1412cf8ba2964587cd184484a3d9f59c20a197f14e935a9a9e",
+      "bytes": 219108,
+      "sha256": "fc8ccfdc78b8f4b49ff9c2dbd6a949765ee81d036dcd7f96c88683f2d9ade9ff",
       "uri": "pilots.json"
     }
   },
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_freighter.glb"
   },
-  "runtimeHash": "72d8d66ad6fd8f9641c857c780e227b723a6574fa42404cdb9f0cdfc47842ecb",
+  "runtimeHash": "6d2d2fc2ebcf66594eaba00a2b432dce62da739c44968a3274f0faf2bef1345c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
