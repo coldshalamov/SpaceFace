@@ -95,6 +95,9 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'tether:cutDenied': SILENT('A refused cut leaves the line where it is.'),
   'tether:lineControlDenied': SILENT('A refused reel is the winch not moving.'),
   'fields:hitchLatched': 'sfx_hitch_latch',
+  'cloak:faded': 'sfx_cloak_fade',
+  'cloak:dropped': 'sfx_massline_cloak_off',
+  'massline:releaseCancelled': 'sfx_ui_switch_detent',
   'fields:hitchCut': 'sfx_tether_twang',
 
   'cruise:engaged': SILENT('Cruise engage is owned by the lane-lock voice (presentation.travel.lane_lock); a boost row would double it.'),

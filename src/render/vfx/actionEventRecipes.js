@@ -55,6 +55,10 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'cargo:volatileCryo': {verb:'cool',primitive:'deposition',color:0x8fe1fa,life:1.3},
   'cloak:engaged': {verb:'disrupt',primitive:'induction',color:0x7996bd,life:.85},
   'cloak:dropped': {verb:'cut',primitive:'connection',color:0xaac8ef,life:.65},
+  // A fade-out is a slow shimmer. The pilot's drop stays the short cut above.
+  'cloak:faded': {verb:'disrupt',primitive:'induction',color:0x6a7f9a,life:1.6,continuous:false},
+  'weapons:momentumSinkPlanted': {verb:'catch',primitive:'capture',color:0xff9d48,life:.55,continuous:false},
+  'weapons:momentumSinkReleased': {verb:'fling',primitive:'pressure',color:0xfff0bf,life:.4,continuous:false},
   'optic:contact': {verb:'disrupt',primitive:'induction',color:0xbbdbff,life:.5},
   'optic:rekindled': {verb:'harvest',primitive:'deposition',color:0xecf4ff,life:1},
   'beacon:deployed': {verb:'command',primitive:'induction',color:0x80ead8,life:1.1},
@@ -145,6 +149,18 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
   // These are player-only telemetry/tool publishers, unlike generic combat receipts.
   if (name==='tether:reelPump' || name==='tether:snapCatch') return {...p,sourceId:state.playerId};
   if (name==='cloak:engaged' || name==='cloak:dropped') return {...p,targetId:state.playerId};
+  if (name==='cloak:faded') {
+    const id = p.targetId ?? state.playerId;
+    const ship = body(state, id);
+    if (!point(ship?.pos)) return null;
+    return {...p, targetId: id, sourceId: p.observerId ?? id, pos: copyPoint(ship.pos)};
+  }
+  if (name==='weapons:momentumSinkPlanted' || name==='weapons:momentumSinkReleased') {
+    const id = p.targetId ?? p.ownerId;
+    const ent = body(state, id);
+    if (!point(ent?.pos)) return null;
+    return {...p, targetId: ent.id, sourceId: p.ownerId, pos: copyPoint(ent.pos)};
+  }
   if (name==='weapons:inertialShunt') {
     const a=body(state,p.shunterId), b=body(state,p.targetId);
     if (!point(a?.pos) || !point(b?.pos)) return null;

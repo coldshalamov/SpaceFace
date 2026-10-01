@@ -2154,6 +2154,17 @@ export const RECIPES = [
     gainMult: 0.55,
   },
   {
+    id: 'sfx_cloak_fade',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520,
+    freqSweep: [520, 220],
+    sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.04, sustain: 0.08, release: 0.55 },
+    gainMult: 0.28,
+  },
+  {
     id: 'sfx_massline_cloak_off',
     category: 'ui',
     type: 'noise_filtered',

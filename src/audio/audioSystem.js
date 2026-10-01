@@ -1985,6 +1985,9 @@ export const audio = {
     bus.on('mining:stop', (p) => this._onMiningStop(p));
     bus.on('mining:tick', (p) => this._onMiningTick(p));
     bus.on('asteroid:destroyed', (p) => this.play('sfx_asteroid_depleted', { position: p && p.pos, gain: 0.7 }));
+    bus.on('cloak:faded', () => this.play(combatVerbRecipe('cloak:faded'), { gain: 0.32 }));
+    bus.on('cloak:dropped', () => this.play(combatVerbRecipe('cloak:dropped'), { gain: 0.45 }));
+    bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
     // Ceres living-work stamps already carry the calving on lamp/text channels; audio joins for
     // the rock's two own beats only (groan before the split, the split itself). The receipt has no
     // position — the bound actor is resolved read-only from the live cast, and play() culls
