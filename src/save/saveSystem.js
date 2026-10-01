@@ -33,6 +33,7 @@ import {
 } from '../core/newGamePlus.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
+import { ORBIT_ASSIST_STRENGTH } from '../core/flight/orbitAssist.js';
 import {
   SAVE_JOURNAL_EVENT,
   acknowledgeSaveSnapshotBoundary,
@@ -108,9 +109,15 @@ const DEFAULT_AI_BACKEND = 'sg06-tactical';
 const DEFAULT_FLIGHT_BACKEND = 'v3';
 const DEFAULT_CONTROL_SCHEME = 'pilot';
 const DEFAULT_MASSLINE_RELEASE_ASSIST = 'snap';
+const DEFAULT_ORBIT_ASSIST_STRENGTH = 'standard';
+const DEFAULT_AUTOSAVE_INTERVAL_S = 120;
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_CONTROL_SCHEMES = new Set(['pilot', 'helm-assist', 'classic']);
 const VALID_MASSLINE_RELEASE_ASSISTS = new Set(['arm', 'snap', 'off']);
+// DERIVED, not hand-written like the three above: this is a flight-kernel domain, and a
+// hand-written copy silently clamps a legal value the day ORBIT_ASSIST_STRENGTH grows one.
+// orbitAssist.js has no imports of its own, so reading its frozen table here costs nothing.
+const VALID_ORBIT_ASSIST_STRENGTHS = new Set(Object.keys(ORBIT_ASSIST_STRENGTH));
 const DEFAULT_START_SECTOR = NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime';
 // 'activity' stays on the skip list for the GENERIC entity cloner: it is non-enumerable anyway,
 // and plainEntity persists it through the explicit residency-stamp mirror below.
@@ -4830,6 +4837,20 @@ function sanitizeRestoredSettings(settings) {
   if (!VALID_MASSLINE_RELEASE_ASSISTS.has(s.gameplay.masslineReleaseAssist)) {
     s.gameplay.masslineReleaseAssist = DEFAULT_MASSLINE_RELEASE_ASSIST;
   }
+  // Without this rule every out-of-domain value reaches the flight kernel untouched. The kernel
+  // normalizes, so nothing crashes — but its lowercasing means a case variant like 'OFF' from a
+  // hand-edited profile resolves to a legal 'off' and silently disables the assist the player
+  // never turned off, while the accessibility checklist reads the same value as an enabled
+  // assist. Sanitizing is the single gate that keeps those two readers agreeing.
+  if (!VALID_ORBIT_ASSIST_STRENGTHS.has(s.gameplay.orbitAssistStrength)) {
+    s.gameplay.orbitAssistStrength = DEFAULT_ORBIT_ASSIST_STRENGTH;
+  }
+  // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
+  // false, so interval autosave stops firing for the rest of the session with no error at all,
+  // and the Settings row renders it as '[object Object]'.
+  if (typeof s.gameplay.autosaveIntervalS !== 'number' || !(s.gameplay.autosaveIntervalS >= 0)) {
+    s.gameplay.autosaveIntervalS = DEFAULT_AUTOSAVE_INTERVAL_S;
+  }
 
   if (!s.controls || typeof s.controls !== 'object' || Array.isArray(s.controls)) s.controls = {};
   if (!VALID_FLIGHT_MODES.has(s.controls.flightMode)) {
@@ -4874,6 +4895,9 @@ function profileSettingsSnapshot(settings) {
       controlScheme: s.gameplay && s.gameplay.controlScheme,
       controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
       masslineReleaseAssist: s.gameplay && s.gameplay.masslineReleaseAssist,
+      // Already in-domain: this function sanitizes at its first line, so a second normalization
+      // here would only duplicate the rule and risk disagreeing with it.
+      orbitAssistStrength: s.gameplay && s.gameplay.orbitAssistStrength,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
     },
