@@ -666,7 +666,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 213 | BUILD | [NXB-043](design/program/next-wave-2026-09-28/build/NXB-043.md) | One local shortage creates competing real jobs without multiplying the population | Existing owners; SF-084, SF-099, SF-116, SF-162 | OPEN |
 | 214 | BUILD | [NXB-045](design/program/next-wave-2026-09-28/build/NXB-045.md) | A useful clue can become stale or contradicted without revealing hidden truth | Existing owners; SF-168, SF-171, SF-178, SF-180, SF-245 | OPEN |
 | 215 | BUILD | [NXB-047](design/program/next-wave-2026-09-28/build/NXB-047.md) | An existing ending changes a continuing working universe across three return visits | Existing owners; SF-149, SF-158, SF-294, PQ-032 | OPEN |
-| 216 | BUILD | [NXB-048](design/program/next-wave-2026-09-28/build/NXB-048.md) | New Game Plus carries declared knowledge but does not duplicate physical possessions | Existing owners; SF-131, SF-180, SF-280, PQ-032 | OPEN |
+| 216 | BUILD | [NXB-048](design/program/next-wave-2026-09-28/build/NXB-048.md) | New Game Plus carries declared knowledge but does not duplicate physical possessions | Existing owners; SF-131, SF-180, SF-280, PQ-032 | SHIPPED — residual children NXI-189/190/191/192 closed 2026-10-01 |
 | 217 | BUILD | [NXB-050](design/program/next-wave-2026-09-28/build/NXB-050.md) | A chain reaction can be followed across camera scale without commandeering the camera | Existing owners; SF-202, SF-208, SF-218, SF-219 | OPEN |
 | 218 | BUILD | [NXB-051](design/program/next-wave-2026-09-28/build/NXB-051.md) | Damage marks stay attached to the real hull through rotation, LOD and refit | Existing owners; SF-211, SF-213, SF-223, SF-224 | OPEN |
 

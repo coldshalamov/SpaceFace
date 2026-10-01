@@ -11,6 +11,7 @@ import {
   leftoverNewRunLine,
   legacyFlightLine,
   normalizeStoryNewGamePlusRecord,
+  storyNewGamePlusRecord,
 } from '../src/core/newGamePlus.js';
 import { FRESH_RUN_SYSTEMS, resetFreshRunSystems } from '../src/core/runReset.js';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
@@ -173,7 +174,7 @@ test('completed run projects one selectable keepsake and only unresolved named-h
   assert.equal(candidate.worldFactTitle, 'CONTRACT 47-B');
   assert.equal(
     leftoverNewRunLine(candidate),
-    'THE NEXT RUN · keep one item · Yara No-Cut still hunting · weapon scar on the bow · Knotmaker · CONTRACT 47-B',
+    'THE NEXT RUN · keep one item · Yara No-Cut still hunting · weapon scar on the bow · Knotmaker · CONTRACT 47-B · cargo, credits, contracts and claims reset',
   );
 
   const overlay = buildNewGamePlusOverlay(data, { keepsakeId: 'mod_market_data_s' }, { slot: 'legacy' });
@@ -441,4 +442,43 @@ test('leftover Thunderchild: a live NPC sighting id peels, and that NPC title do
     'no dead NPC holder key rides into the new run',
   );
   assert.equal(playerEntity.data.titleId, undefined, 'the new hull is not stamped with Thunderchild');
+});
+
+test('NXI-190: stray runtime fields on a carry record never reach the stored legacy', () => {
+  const record = normalizeStoryNewGamePlusRecord({
+    sourceEnding: 'E',
+    keepsakeId: 'mod_market_data_s',
+    entityId: 777,
+    liveEntityHandle: { id: 42 },
+    arbitraryJunk: ['a', 'b'],
+    scars: [{ id: 's1', cause: 'weapon', surface: 'hull', band: 'mid', facing: 'bow', atT: 1, tick: 9, patchedAtT: null, entityRef: 42 }],
+    titles: [{ id: 'title_knotmaker', title: 'Knotmaker', holderKey: 'player', status: 'held', liveEntity: 5 }],
+  });
+  const json = JSON.stringify(record);
+  for (const banned of ['entityId', 'liveEntityHandle', 'arbitraryJunk', 'entityRef', 'liveEntity']) {
+    assert.equal(json.includes(banned), false, `${banned} cannot ride into the new GameState`);
+  }
+});
+
+test('NXI-191: the confirmation line states the physical reset beside the carries', () => {
+  const candidate = buildNewGamePlusCandidate(completedRunData(), { slot: 'legacy' });
+  const line = leftoverNewRunLine(candidate);
+  assert.match(line, /cargo, credits, contracts and claims reset/);
+  assert.doesNotMatch(line, /keep (your )?(contract|claim|shipment|cargo|credits)/i,
+    'nothing implies an active obligation survives');
+});
+
+test('NXI-192: carried knowledge holds durable identities, never old entity handles', () => {
+  const data = completedRunData();
+  const overlay = buildNewGamePlusOverlay(data, { keepsakeId: 'unique_veil_cutter' }, { slot: 'legacy' });
+  const record = storyNewGamePlusRecord(overlay, 4242);
+  const json = JSON.stringify(record);
+  // Every carried id is an authored/stable semantic identity — no numeric run-entity id appears.
+  for (const field of [...record.scars.map((s) => s.id), record.keepsakeId,
+    record.leadGrudgeAceId, ...record.titles.map((t) => t.id)]) {
+    assert.ok(typeof field === 'string' && field && !/^\d+$/.test(field),
+      `${field} is a durable identity, not an entity handle`);
+  }
+  assert.ok(!/"entityId"/.test(json) && !/"entity"/.test(json),
+    'no entity reference exists anywhere in the stored record');
 });
