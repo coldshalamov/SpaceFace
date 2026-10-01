@@ -242,6 +242,9 @@ async function buildBundledHtml() {
     // dev warmup links resolve through the importmap and have no meaning in the bundle:
     // the bundled main.js covers src/, and the vendor/ tree it points at is not shipped.
     .replace(/<link rel="modulepreload"[^>]*>\s*/g, '')
+    // src/-scoped fetch hints (worker preloads etc.) are equally dev-only — the bundle does
+    // not ship the src/ tree they point at.
+    .replace(/<link rel="preload"[^>]*href="\.\/src\/[^>]*>\s*/g, '')
     // point the module script at the bundled output
     .replace('<script type="module" src="./src/ui/bootEntry.js"></script>', '<script type="module" src="./main.js"></script>');
   // A drifted index.html must fail the build here — a silently missed rewrite ships a
