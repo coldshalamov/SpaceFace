@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "668a7afc733b0e5b892a8f8461888cf57c018b0f3ee2954cb79215b6c95790dd",
+  "contentHash": "c5e4ee0d649ef80f51ec2da2057cb59df41f039c885e90884137e2cbd71c4964",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel.node.lod0-hook-armor-port-armor.dynamic",
@@ -3356,8 +3356,8 @@
       "uri": "kestrel.glb"
     },
     "sourceManifest": {
-      "bytes": 202711,
-      "sha256": "794530566a8fb0e48839ae5b3a87c1935430cf72710d867d1f42e6e0cbc045f6",
+      "bytes": 197727,
+      "sha256": "b14a823cf9731c041aad29b705086b9ad3428553de5ddeedc18f9a745c9e671d",
       "uri": "pilots.json"
     }
   },
@@ -4260,9 +4260,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 192075,
+      "bytes": 180303,
       "rigId": "kestrel_dish",
-      "sha256": "8e40dc9c0a081c005b456737f98709e368bda94562e624c20d6b15cfbc8415b3",
+      "sha256": "84f4456d5f489db4599d9ac115af6a9a3c19e83bbaa5f18c66a693a2fb848f13",
       "uri": "assets/ships/motions/kestrel.motion.json"
     },
     "nodeCount": 40,
@@ -4954,7 +4954,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
-  "runtimeHash": "6dc5ac44635cad746a116f1dda80f7ed5caa7589ab38a0978a098e3ad9604bc8",
+  "runtimeHash": "a0343115f016f4b950dc5598a2fec661480bde4d40004fb276b960a349fdff3a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
