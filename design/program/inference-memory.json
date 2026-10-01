@@ -74,16 +74,16 @@
   ],
   "units": [
     {
-      "id": "world-08-dmc-contact-grammar",
+      "id": "verb-10-latched-pickup-vacuum",
       "date": "2026-09-23",
-      "wf": "WF-01",
-      "mode": "opportunity",
+      "wf": "WF-06",
+      "mode": "repair",
       "verdict": "implemented",
-      "reason": "define Collective yard contact grammar and Ceres patrol line",
-      "fingerprint": "verb=hail,subject=collective,sector=ceres,domain=wf-01",
+      "reason": "skip updatePickups vacuum on Massline-latched pickup",
+      "fingerprint": "verb=latch,subject=pickup,sector=any,domain=wf-06",
       "references": [],
       "integration": "live",
-      "commit": "44d500c8b",
+      "commit": "ce206fb31",
       "verification": "focused_green"
     },
     {
@@ -100,16 +100,16 @@
       "verification": "focused_green"
     },
     {
-      "id": "verb-10-latched-pickup-vacuum",
+      "id": "world-08-dmc-contact-grammar",
       "date": "2026-09-23",
-      "wf": "WF-06",
-      "mode": "repair",
+      "wf": "WF-01",
+      "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "skip updatePickups vacuum on Massline-latched pickup",
-      "fingerprint": "verb=latch,subject=pickup,sector=any,domain=wf-06",
+      "reason": "define Collective yard contact grammar and Ceres patrol line",
+      "fingerprint": "verb=hail,subject=collective,sector=ceres,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "ce206fb31",
+      "commit": "44d500c8b",
       "verification": "focused_green"
     },
     {
@@ -1659,6 +1659,19 @@
       "references": [],
       "integration": "live",
       "commit": "7ec626e98",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inst-30-magnet-chime",
+      "date": "2026-10-01",
+      "wf": "WF-05",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "loot:magnetCaptured had zero consumers; soft positional vent-chime ping now answers it off the scoop ladder; folded in _magnetTracked session/sector boundary reset that let recycled entity ids swallow captures",
+      "fingerprint": "verb=loot_magnet,subject=capture_chime,sector=audio,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "f94613bbc",
       "verification": "focused_green"
     }
   ],
