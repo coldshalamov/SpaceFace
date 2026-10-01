@@ -20,6 +20,8 @@ for (const [type, data, file, radius] of [
     const entity = { id: 43, type, alive: true, radius, data };
     const original = structuredClone(entity);
     const root = factory().build(entity);
+    // hideImmediately doctrine: the procedural prop stays hidden through the whole admission
+    // window; only the authored body may ever appear (publish re-hides at swap regardless).
     assert.equal(root.children[0].visible, false);
     assert.equal(root.userData.authoredPackageUrl, `assets/ships/release/parts/places/${file}`);
     const scene = new THREE.Scene();

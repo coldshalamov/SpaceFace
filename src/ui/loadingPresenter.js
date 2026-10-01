@@ -1,4 +1,4 @@
-import { createTerminalArtwork, ensureBootTerminalCanvas } from './loadingTerminalArt.js';
+import { getBootVisualizer } from './bootVisualizer.js';
 import { mountBootRing } from './orrery/bootRing.js';
 import { createLoadingProgressDriver } from './loadingProgressDriver.js';
 import { observeBootWork, createBootWorkAccumulator } from '../core/bootWork.js';
@@ -37,13 +37,13 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
   function artwork() {
     if (terminalArt) return terminalArt;
-    const canvas = ensureBootTerminalCanvas(document);
-    if (!canvas) return NO_ART;
     try {
-      const isolated = typeof globalThis.Worker === 'function' && typeof canvas.transferControlToOffscreen === 'function';
-      terminalArt = createTerminalArtwork({ canvas, waveformCanvas, overlay, force2D: isolated, document }) || NO_ART;
-      retainWorkerArt = isolated && terminalArt !== NO_ART;
-      retainedCanvas = retainWorkerArt ? canvas : null;
+      terminalArt = getBootVisualizer(document) || NO_ART;
+      // Native playback and its fallback are owned together, on every host.
+      // Retain the paused owner across New Game / Continue, not just on hosts
+      // with Worker support. Its start() never seeks back to the first frame.
+      retainWorkerArt = terminalArt !== NO_ART;
+      retainedCanvas = null;
     } catch (error) {
       console.warn('[boot] loading artwork failed; continuing without it', error);
       retainWorkerArt = false; retainedCanvas = null; terminalArt = NO_ART;

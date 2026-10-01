@@ -8,7 +8,7 @@ import {
   computeRenderPackageContentHash,
 } from '../../src/contracts/renderPackage.js';
 import { RENDER_PACKAGE_PILOTS } from '../../src/render/renderPackageManifest.js';
-import { buildRuntimeTableForRenderGlb } from './renderPackageRuntimeTable.mjs';
+import { buildRuntimeTableForRenderGlb, sealMotionBankRef } from './renderPackageRuntimeTable.mjs';
 
 export const RELEASE_BUILD_RECEIPT = 'spaceface.releaseBuild.v2';
 export const RELEASE_RECEIPT_FILE = 'spaceface-release-build.json';
@@ -387,6 +387,8 @@ async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {
       assetId: pilot.runtimeAssetId,
       boundsOverride: unionGeometryBounds(metadata.geometry),
     });
+    const motionBank = await sealMotionBankRef(pilot, metadata, { repoRoot: projectRoot });
+    if (motionBank) expectedRuntime.motionBank = motionBank;
     if (!isDeepStrictEqual(metadata.runtime, expectedRuntime)) {
       throw new Error(`${metadataUrl} runtime table does not match its compiled render.glb`);
     }

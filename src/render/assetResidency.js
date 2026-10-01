@@ -440,6 +440,23 @@ export function createAssetResidencyRegistry(options = {}) {
     return true;
   }
 
+  // Warm-purpose decode leases speculate on a spawn that has not arrived yet — they read as
+  // oldest-idle in the LRU sort and get reclaimed first, which is the pop they exist to prevent.
+  // They still count against the byte cap; they just lose it last.
+  function hasWarmDecodeLease(entry) {
+    for (const metadata of entry.owners.values()) {
+      if (metadata && metadata.decodeWarm === true) return true;
+    }
+    return false;
+  }
+
+  function sortSoftEvictionCandidates(candidates) {
+    candidates.sort((a, b) => (
+      (hasWarmDecodeLease(a) ? 1 : 0) - (hasWarmDecodeLease(b) ? 1 : 0)
+        || a.lastReleaseAtMs - b.lastReleaseAtMs
+    ));
+  }
+
   // Fully soft: every owner is a cache-lease role (package cache, decode cache, or the scopeless
   // runtime-cache session pin). A live presentation owner of any kind disqualifies the entry.
   function isSoftOnlyEntry(entry) {
@@ -490,7 +507,7 @@ export function createAssetResidencyRegistry(options = {}) {
 
   function evictOldestSoftEntries(candidates, maxBytes, totalBytes, matches) {
     if (maxBytes == null) return 0;
-    candidates.sort((a, b) => a.lastReleaseAtMs - b.lastReleaseAtMs);
+    sortSoftEvictionCandidates(candidates);
     let evicted = 0;
     for (const entry of candidates) {
       if (totalBytes <= maxBytes) break;
@@ -582,7 +599,7 @@ export function createAssetResidencyRegistry(options = {}) {
       let softBytes = 0;
       for (const entry of budgetCandidates) softBytes += assetResidentBytes(entry);
       if (softBytes > maxCacheOnlyBytes) {
-        budgetCandidates.sort((a, b) => a.lastReleaseAtMs - b.lastReleaseAtMs);
+        sortSoftEvictionCandidates(budgetCandidates);
         for (const entry of budgetCandidates) {
           if (softBytes <= maxCacheOnlyBytes) break;
           if (entry.state !== 'resident' || !assets.has(entry.key)) continue;

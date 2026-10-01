@@ -4261,6 +4261,14 @@ export function createHud(ctx, alerts) {
     setAttr(el, name, value);
   }
 
+  function setTargetArcDash(el, radius, fraction, cx, cy) {
+    const c = 2 * Math.PI * radius;
+    const maxArc = c * (300 / 360);
+    const fill = fraction * maxArc;
+    setSvgAttr(el, 'stroke-dasharray', `${fill} ${c}`);
+    setSvgAttr(el, 'transform', `rotate(-150 ${cx} ${cy})`);
+  }
+
   function getIffData(e, playerTeam) {
     let iff = 'neutral';
     if (e.team === playerTeam || e.team === 0) {
@@ -4827,17 +4835,9 @@ export function createHud(ctx, alerts) {
     setSvgAttr(targetArcArmor, 'cx', cx);  setSvgAttr(targetArcArmor, 'cy', cy);  setSvgAttr(targetArcArmor, 'r', rArmor);
     setSvgAttr(targetArcHull, 'cx', cx);   setSvgAttr(targetArcHull, 'cy', cy);   setSvgAttr(targetArcHull, 'r', rHull);
 
-    function setArc(el, radius, fraction) {
-      const c = 2 * Math.PI * radius;
-      const maxArc = c * (300 / 360);
-      const fill = fraction * maxArc;
-      setSvgAttr(el, 'stroke-dasharray', `${fill} ${c}`);
-      setSvgAttr(el, 'transform', `rotate(-150 ${cx} ${cy})`);
-    }
-
-    setArc(targetArcShield, rShield, shieldFrac);
-    setArc(targetArcArmor, rArmor, armorFrac);
-    setArc(targetArcHull, rHull, hullFrac);
+    setTargetArcDash(targetArcShield, rShield, shieldFrac, cx, cy);
+    setTargetArcDash(targetArcArmor, rArmor, armorFrac, cx, cy);
+    setTargetArcDash(targetArcHull, rHull, hullFrac, cx, cy);
   }
 
   // Travel Burn instrument update (D5 / W1-6 / W1-9).

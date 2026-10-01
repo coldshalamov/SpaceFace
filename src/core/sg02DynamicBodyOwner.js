@@ -287,6 +287,9 @@ export class Sg02DynamicBodyOwner {
     // Contact-impact merge bookkeeping is retained across ticks: aId -> Map<bId, {stamp,receipt}>
     // replaces per-event `a\0b` string keys, and the emitted receipt list is a reused scratch.
     this._impactMergeRows = new Map();
+    // Inner bucket maps are pooled too: clearing returns them here instead of allocating a
+    // fresh Map per a-id bucket per tick.
+    this._impactByBPool = [];
     this._impactReceipts = [];
     this._impactStamp = 0;
     this._contactPointScratch = { x: 0, z: 0 };
@@ -1540,6 +1543,10 @@ export class Sg02DynamicBodyOwner {
     // every step. The final sort is a strict total order on unique (aId,bId) pairs, so bucket
     // flatten order cannot change the result.
     const merged = this._impactMergeRows;
+    for (const byB of merged.values()) {
+      byB.clear();
+      this._impactByBPool.push(byB);
+    }
     merged.clear();
     const receipts = this._impactReceipts;
     receipts.length = 0;
@@ -1559,9 +1566,16 @@ export class Sg02DynamicBodyOwner {
       // The player's own record keeps the ordinary bound: its per-contact delta-V feeds the fragile-cargo
       // and camera-trauma receipts, and a fling must not raise what a hit on the player costs it.
       const tumbleContact = recA._tumbling === true || recB._tumbling === true;
-      const boundFor = (rec) => (tumbleContact && !(rec.entity && rec.entity.isPlayer === true) ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV);
-      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * boundFor(recA));
-      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * boundFor(recB));
+      if (recA.spec.dynamic) {
+        cap = Math.min(cap, effectiveMass(recA)
+          * (tumbleContact && !(recA.entity && recA.entity.isPlayer === true)
+            ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
+      }
+      if (recB.spec.dynamic) {
+        cap = Math.min(cap, effectiveMass(recB)
+          * (tumbleContact && !(recB.entity && recB.entity.isPlayer === true)
+            ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
+      }
       if (cap === Infinity) return;
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
@@ -1601,7 +1615,7 @@ export class Sg02DynamicBodyOwner {
       const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz);
       let byB = merged.get(a.entity.id);
       if (!byB) {
-        byB = new Map();
+        byB = this._impactByBPool.length ? this._impactByBPool.pop() : new Map();
         merged.set(a.entity.id, byB);
       }
       const existing = byB.get(b.entity.id);

@@ -43916,7 +43916,7 @@
           13.260697
         ]
       },
-      "bytes": 775728,
+      "bytes": 785128,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44123,9 +44123,9 @@
         "height": 0.426148,
         "length": 1.72
       },
-      "meshHash": "0de4320fbd7822395c76af17c75befefd71ff0664b425fe2a34609ac599a3ec0",
-      "meshes": 22,
-      "nodes": 32,
+      "meshHash": "61b5f1c1f70b407ddc2acacf93d25d49524d84ba836da761d8281fdacafe2a68",
+      "meshes": 25,
+      "nodes": 39,
       "note": null,
       "opening": null,
       "pivot": [
@@ -44449,7 +44449,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 33460,
+      "triangles": 33648,
       "unmeasuredHitVolumes": [
         "subsystem_tether_spool",
         "subsystem_transport_clamp"

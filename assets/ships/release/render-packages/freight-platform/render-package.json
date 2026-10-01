@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "be3caee880c2599333d24e55d7118ef98d6fd987d195db52f054d15bf59d868f",
+  "contentHash": "c8dca4ec5e0491385c55097b8d74387bb38defa57891bc1e0963c2916992b730",
   "dynamicGroups": [
     {
       "id": "sf.render.freight-platform.mesh.lod0-hook-nav-starboard.dynamic",
@@ -2730,7 +2730,7 @@
     },
     "sourceManifest": {
       "bytes": 212795,
-      "sha256": "db6e53e6c0233030808cb3ad99b0b3264ce1b410320cdb3ece2c0cf2e0349559",
+      "sha256": "6ad96f51a2017a9ec303285ca2a0a577796a2672af36ea4087d156c0985da48d",
       "uri": "pilots.json"
     }
   },
@@ -3834,7 +3834,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_freight_platform.glb"
   },
-  "runtimeHash": "f1b00683695d0e74f9441cdbbdf57fcf2c88b1495dcb6019aa8a5acfaafcf4a9",
+  "runtimeHash": "62bb0af54b0f985ce49d195f797c6658ee9e9a90273fe5402134dc1ab6aa8d26",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

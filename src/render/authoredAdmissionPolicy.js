@@ -11,8 +11,26 @@ import {
   tableLookAtDelta,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
+import { entityPresenceRadius } from '../world/activityClassification.js';
+import { isPresentationLedgerRow } from '../world/presentationSources.js';
+import { itineraryVelocityInto } from '../world/worldCatchup.js';
 
 const _authoredLookDelta = { x: 0, z: 0 };
+const _rowSchedVel = { x: 0, z: 0 };
+
+// Ledger rows carry their motion in the itinerary schedule — advanceWorldRecord zeroes the
+// stored vel — so the closing-speed clause must read the cruise velocity there, else inbound
+// traffic predicts as static and the runway fires ~2-4 s late.
+function closingVelocity(entity, state) {
+  if (isPresentationLedgerRow(entity) && entity.intent && Number.isFinite(entity.lastExactT)) {
+    const simTime = Number.isFinite(state && state.simTime)
+      ? state.simTime
+      : ((state && state.tick) | 0) / 60;
+    const along = itineraryVelocityInto(entity.intent, simTime, _rowSchedVel);
+    if (along) return along;
+  }
+  return { x: Number(entity.vel?.x) || 0, z: Number(entity.vel?.z) || 0 };
+}
 
 export const AUTHORED_ASSET_PREFETCH_RADIUS = authoredPrefetchRadius();
 export const AUTHORED_ASSET_IMMEDIATE_RADIUS = authoredImmediateRadius();
@@ -53,7 +71,7 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const dz = Number(look.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
-  const visual = Math.max(0, Number(entity.radius) || 0);
+  const visual = entityPresenceRadius(entity);
   const surface = Math.max(0, distance - visual);
   if (surface <= immediate) return true;
   const camera = state && state.camera || {};
@@ -75,8 +93,9 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   if (surface <= glass) return true;
   if (distance <= 0) return false;
 
-  const relativeX = (Number(player.vel?.x) || 0) - (Number(entity.vel?.x) || 0);
-  const relativeZ = (Number(player.vel?.z) || 0) - (Number(entity.vel?.z) || 0);
+  const entityVel = closingVelocity(entity, state);
+  const relativeX = (Number(player.vel?.x) || 0) - entityVel.x;
+  const relativeZ = (Number(player.vel?.z) || 0) - entityVel.z;
   const closingSpeed = (dx * relativeX + dz * relativeZ) / distance;
   // Already inside the 4s authored decode radius: start decode even if the contact is sliding
   // along the rim (closing speed <= 1). That skip was a late-pop hole for crossing traffic.

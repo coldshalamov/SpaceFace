@@ -171,7 +171,8 @@ export function queryAsteroidField(state, pos, radius, out = []) {
         const dx = rec.pos.x - x;
         const dz = rec.pos.z - z;
         const reach = r + finite(rec.radius);
-        if (dx * dx + dz * dz <= reach * reach || dx * dx + dz * dz <= r2) out.push(rec);
+        const d2 = dx * dx + dz * dz;
+        if (d2 <= reach * reach || d2 <= r2) out.push(rec);
       }
     }
   }
@@ -448,7 +449,10 @@ export function tickOpticFieldRocks(state, helpers) {
     if (ent) promoted += 1;
   }
 
-  const list = state.entityList || [];
+  // Prefer the indexed asteroid list — the fat entityList walk re-visits every ship/station/
+  // projectile on every demote pass while the index already carries exactly this filter.
+  const index = state.entityIndex;
+  const list = (index && Array.isArray(index.asteroids)) ? index.asteroids : (state.entityList || []);
   for (let i = list.length - 1; i >= 0; i--) {
     const entity = list[i];
     if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
