@@ -884,8 +884,11 @@ export const ui = {
       // The baked clip is a bonus layer over the .cine-bg still: drop the
       // element on any failure and the Ken-Burns still simply remains.
       const cineVideo = cinematic.querySelector('.cine-video');
+      // Function scope, not the `if (cineVideo)` block: mountCinematic's play() error paths call
+      // this too, and a ReferenceError escaping the catch would leave the fence/auto-dismiss
+      // uninstalled — the cinematic could never dismiss.
+      const dropVideo = () => { try { cineVideo && cineVideo.remove(); } catch (_) {} };
       if (cineVideo) {
-        const dropVideo = () => { try { cineVideo.remove(); } catch (_) {} };
         cineVideo.addEventListener('error', dropVideo);
         const cineSource = cineVideo.querySelector('source');
         if (cineSource) cineSource.addEventListener('error', dropVideo);
