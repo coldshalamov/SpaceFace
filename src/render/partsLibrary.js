@@ -2747,14 +2747,14 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     }
     return true;
   };
-  if (options.deferBoundaryPublication === true) {
-    installPreparedBoundaryDisposer(boundary, disposePreparedCargoCapsule);
-  }
+  const installedPreparedDisposer = options.deferBoundaryPublication === true
+    ? installPreparedBoundaryDisposer(boundary, disposePreparedCargoCapsule)
+    : null;
   boundary.userData.authoredAssetState = 'compiling-pipelines';
   try {
     await prepareAuthoredVisualPipelines(authored.root, options);
   } catch (error) {
-    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
+    await (disposePreparedCargoCapsule() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
     return failAuthoredCargoCapsuleAdmission(
       boundary,
       fallbackRoot,
@@ -2766,7 +2766,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     );
   }
   if (!boundary.parent) {
-    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
+    await (disposePreparedCargoCapsule() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-after-pipeline-compile');
     boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
     return false;
@@ -2777,7 +2777,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     await publicationWait;
   }
   if (!boundary.parent) {
-    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
+    await (disposePreparedCargoCapsule() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication');
     boundary.userData.authoredAssetState = 'orphaned-before-swap';
     return false;
@@ -2792,7 +2792,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
         && boundary.userData.admissionEpoch !== options.admissionEpoch)
       || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
       || (entity && entity.alive === false)) {
-    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
+    await (disposePreparedCargoCapsule() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
     return false;
   }
   return commitAuthoredCargoCapsuleBoundary(
@@ -3487,9 +3487,9 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     }
     return true;
   };
-  if (options.deferBoundaryPublication === true) {
-    installPreparedBoundaryDisposer(boundary, disposePreparedPlace);
-  }
+  const installedPreparedDisposer = options.deferBoundaryPublication === true
+    ? installPreparedBoundaryDisposer(boundary, disposePreparedPlace)
+    : null;
 
   boundary.userData.authoredAssetState = 'compiling-pipelines';
   const completeAdmission = async () => {
@@ -3497,7 +3497,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       await prepareAuthoredVisualPipelines(authored.root, options);
     } catch (error) {
       try {
-        await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
+        await (disposePreparedPlace() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
       } catch (cleanupError) {
         throw new AggregateError(
           [error, cleanupError],
@@ -3511,7 +3511,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       );
     }
     if (!boundary.parent) {
-      await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
+      await (disposePreparedPlace() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
       return false;
     }
@@ -3521,7 +3521,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       await publicationWait;
     }
     if (!boundary.parent) {
-      await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
+      await (disposePreparedPlace() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
       return false;
     }
@@ -3535,7 +3535,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
           && boundary.userData.admissionEpoch !== options.admissionEpoch)
         || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
         || (commitEntity && commitEntity.alive === false)) {
-      await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
+      await (disposePreparedPlace() || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
       return false;
     }
     return commitAuthoredPlaceBoundary(
@@ -6989,11 +6989,11 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       return false;
     }
     registerPreparedAuthoredAdmission(scene, boundary, authored);
-    if (options.deferBoundaryPublication === true) {
-      installPreparedBoundaryDisposer(boundary, () => (
+    const installedPreparedDisposer = options.deferBoundaryPublication === true
+      ? installPreparedBoundaryDisposer(boundary, () => (
         disposePreparedShipBoundaryResources(boundary, authored)
-      ));
-    }
+      ))
+      : null;
     boundary.userData.authoredAssetState = 'compiling-pipelines';
     const completeAdmission = async () => {
       let pipelineReady;
@@ -7042,7 +7042,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     if (options.overlapAuthoredPipelineCompile === true) {
       const pending = completeAdmission().catch(async (error) => {
         await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored,
-          options.admissionEpoch);
+          options.admissionEpoch, installedPreparedDisposer);
         return false;
       });
       boundary.userData.authoredPipelineReady = pending;
@@ -7056,16 +7056,16 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     return await completeAdmission();
   } catch (error) {
     await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored,
-      options.admissionEpoch);
+      options.admissionEpoch, installedPreparedDisposer);
     return false;
   }
 }
 
-async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null, admissionEpoch = null) {
+async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null, admissionEpoch = null, installedDisposer = null) {
   if (!swapped) {
     releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed', admissionEpoch);
     const cleanupErrors = [];
-    const preparedDisposal = disposePreparedAuthoredBoundary(boundary);
+    const preparedDisposal = disposeOwnedPreparedBoundary(boundary, installedDisposer);
     if (preparedDisposal !== false) {
       try { await preparedDisposal; } catch (cleanupError) { cleanupErrors.push(cleanupError); }
     } else {
@@ -7185,7 +7185,7 @@ async function disposePreparedShipBoundaryResources(boundary, authored) {
 function installPreparedBoundaryDisposer(boundary, dispose) {
   if (!boundary?.userData || typeof dispose !== 'function') return false;
   let completion = null;
-  boundary.userData.__disposePreparedAuthoredBoundary = () => {
+  const installed = () => {
     if (completion) return completion;
     completion = Promise.resolve().then(dispose).then(
       (result) => {
@@ -7200,12 +7200,25 @@ function installPreparedBoundaryDisposer(boundary, dispose) {
     completion.catch(() => null);
     return completion;
   };
-  return true;
+  boundary.userData.__disposePreparedAuthoredBoundary = installed;
+  return installed;
 }
 
 export function disposePreparedAuthoredBoundary(boundary) {
   const dispose = boundary?.userData?.__disposePreparedAuthoredBoundary;
   return typeof dispose === 'function' ? dispose() : false;
+}
+
+/**
+ * Operand-B disposal guarded to the disposer this run installed. A stale run that reads the
+ * boundary slot after a newer run re-armed it must not invoke (and so dispose) the live run's
+ * prepared root — it cleans up only what it prepared itself.
+ */
+function disposeOwnedPreparedBoundary(boundary, installedDisposer) {
+  return typeof installedDisposer === 'function'
+    && boundary?.userData?.__disposePreparedAuthoredBoundary === installedDisposer
+    ? disposePreparedAuthoredBoundary(boundary)
+    : false;
 }
 
 /** Publish an exact boundary prepared while its final scene owner was hidden. Package-pool proxy
