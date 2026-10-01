@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c3be0fc4671137199a32ec9e9ee8be7ac7d87e9a39161592ef31645e3855e46a",
+  "contentHash": "22884b3844850d1ea6212070b9ca991d0a2191065f6ea2207be1ff407eb01522",
   "dynamicGroups": [
     {
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -2201,7 +2201,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "b601c9da55dcdbd981839402efc9ab871a02282dbcd14dbc208ca0f0e46e412c",
+      "sha256": "1d0dbcc0afcde55653448733834f07ed6d40d478062ffdfeddcd91a9b8ba4a22",
       "uri": "pilots.json"
     }
   },
@@ -3072,7 +3072,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "19f05d5eaa12190d7d7f71ccc1a185024ef050a6dfe12af666f9bc6d6f8f35e8",
+  "runtimeHash": "52107e3e5c379093070e820cf0111719c19204b8ea14c1f74fe9e23f3299bbd7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

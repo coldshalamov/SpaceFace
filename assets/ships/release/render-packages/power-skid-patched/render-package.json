@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e7265baad40d624d664a9ee63fa0ae5a679da4e871f2344feee86453e47a1a71",
+  "contentHash": "b64ab46abc1c9891fcb87e6b9c584cc591e2e766047f2e6073bd3de86b4dd66b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1439,7 +1439,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "b601c9da55dcdbd981839402efc9ab871a02282dbcd14dbc208ca0f0e46e412c",
+      "sha256": "1d0dbcc0afcde55653448733834f07ed6d40d478062ffdfeddcd91a9b8ba4a22",
       "uri": "pilots.json"
     }
   },
@@ -2069,7 +2069,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_power_skid_patched.glb"
   },
-  "runtimeHash": "111deef2155d5f00dac4c4636057e948871dc66d6d4f7f283f2c5191f5a3fcf0",
+  "runtimeHash": "59cd03d9cf0bbe375c8f3a5d72f65a2e56f11527d683b3ee49ed486a81e3a5f6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

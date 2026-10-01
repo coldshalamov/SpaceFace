@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e4728a2ddbf253d00a1a89870a507d0f669740f317ed269f43e67d3e602c8f9f",
+  "contentHash": "e2bd68d4a3e46779ed96b64e9599c5e6ad812dfd5436becd7c2f375394daf65d",
   "dynamicGroups": [
     {
       "id": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port.dynamic",
@@ -1968,7 +1968,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "b601c9da55dcdbd981839402efc9ab871a02282dbcd14dbc208ca0f0e46e412c",
+      "sha256": "1d0dbcc0afcde55653448733834f07ed6d40d478062ffdfeddcd91a9b8ba4a22",
       "uri": "pilots.json"
     }
   },
@@ -2783,7 +2783,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_maintenance_gantry.glb"
   },
-  "runtimeHash": "00df3bff0198b57b84cd4b1204c03afe4dde29603708ae792ba4abb6f8a30dce",
+  "runtimeHash": "bd0f34468639d2f8e413f65c6e5eb18a8d4a640456c986b849e6703e3e69a4ff",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
