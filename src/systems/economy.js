@@ -2413,6 +2413,8 @@ export const economy = {
       return { ok: false, reason: 'salvage_listing_unavailable' };
     }
 
+    // ECON-04 — the receipt names the lot's nominal value at the pre-absorption mid.
+    const valueCr = Math.max(1, Math.round((Number(entry.lastMid) || 0) * intake.scrapQty));
     this.applyStockPressure(
       intake.yardId,
       NPC_SALVAGE_INTAKE_COMMODITY_ID,
@@ -2432,6 +2434,7 @@ export const economy = {
       lotId: intake.lotId,
       commodityId: NPC_SALVAGE_INTAKE_COMMODITY_ID,
       qty: intake.scrapQty,
+      valueCr,
       ignoredCommodityIds: intake.ignoredCommodityIds,
     };
     this.bus.emit('economy:salvageIntakeApplied', result);

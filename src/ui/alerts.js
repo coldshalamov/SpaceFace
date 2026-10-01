@@ -15,6 +15,7 @@
 //      voice is not duplicated bottom-right or via a second live region.
 //
 import { BINDINGS, promptLabel } from './bindings.js';
+import { stationName } from './sectorLawPresenter.js';
 
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
@@ -382,6 +383,21 @@ export function createAlerts(ctx) {
     const granted = Number(p && p.granted);
     if (!(granted > 0)) return;
     announce({ key: `research:${researchGrantKey(p)}`, sev: 'info', text: `+${granted} RP — ${researchGrantLabel(p)}`, ttl: 4 });
+  });
+
+  // ECON-04 — an NPC salvage lot the market absorbed posts one receipt line naming the yard and
+  // the lot's nominal value. Keyed by intake id so a duplicate application refreshes in place.
+  bus.on('economy:salvageIntakeApplied', (p) => {
+    if (!p || p.ok !== true) return;
+    const qty = Math.max(0, Math.round(Number(p.qty) || 0));
+    const value = Math.max(0, Math.round(Number(p.valueCr) || 0));
+    const yard = stationName(ctx.state, p.yardId);
+    announce({
+      key: `salvage-intake:${p.intakeId || p.lotId || 'x'}`,
+      sev: 'info',
+      text: `SALVAGE INTAKE — ${qty}t scrap taken in at ${yard} · ~${value} CR`,
+      ttl: 4,
+    });
   });
 
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
