@@ -439,6 +439,14 @@ export function bindAuthoredMotion(root, bank, options = {}) {
   // Each settle gets its own clip name — two settles in one tick (scoped blends on
   // different rigs sharing this bank) would otherwise clobber one another by name.
   let settleSerial = 0;
+  // Parked settles can never run again — drop them from the bank map so a long session
+  // of aborts/early-completions can't accumulate dead clip objects. Run only after the
+  // surviving run-entries are in state.clips; anything not referenced there is dead.
+  function trimParkedSettles() {
+    for (const name of [...clips.keys()]) {
+      if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
+    }
+  }
 
   function restAll() {
     for (const { binding, nodes } of groups.values()) {
@@ -514,12 +522,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       clips.set(settleName, settleClip);
       state.clips.clear();
       state.clips.set(settleName, { startS: timeS, rateScale: 1 });
-      // Parked settles can never run again — drop them from the bank map so a long session
-      // of aborts/early-completions can't accumulate dead clip objects. Must run after
-      // state.clips.clear() so the just-superseded settles are collected too.
-      for (const name of [...clips.keys()]) {
-        if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
-      }
+      trimParkedSettles();
       state.latest = settleName;
       state.parked = false;
       return true;
@@ -578,11 +581,8 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         }
       }
       state.clips.set(settleName, { startS: timeS, rateScale: 1 });
-      // Same parked-settle trim — clips dropped above may include prior settles. Runs after
-      // settleName joins state.clips so the fresh clip is never collected as dead.
-      for (const name of [...clips.keys()]) {
-        if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
-      }
+      // Runs after settleName joins state.clips so the fresh clip is never collected as dead.
+      trimParkedSettles();
       state.latest = settleName;
       state.parked = false;
       return true;
@@ -601,6 +601,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       if (clipName === 'rest' || clipName === 'idle' || clipName == null) {
         if (generation != null) state.generation = generation;
         state.clips.clear();
+        trimParkedSettles();
         state.latest = null;
         state.parked = true;
         restAll();
@@ -704,7 +705,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     dispose() {
       if (disposed) return;
       disposed = true;
-      state.clip = null;
+      state.clips.clear();
       restAll();
     },
   };
