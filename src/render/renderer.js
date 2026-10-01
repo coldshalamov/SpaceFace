@@ -109,6 +109,7 @@ import {
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
+import { saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
@@ -12141,6 +12142,31 @@ export const render = {
     // entity still takes the authored-hero path, just onto a warm cache).
     if (entities.player && typeof entities.player === 'object') {
       warmSaveEnvelopeEntityDecode(this, Object.assign({}, entities.player, { isPlayer: false }));
+    }
+    // Sector recipe pass: the envelope names the saved sector, whose catalog cast (stations,
+    // gates, POI landmarks, field geology heads, dressing rows, durable records, owed mission
+    // rosters) rematerializes behind the authored-visuals gate — none of it is an envelope
+    // entity, so without this pass their decodes start cold at enterSector.
+    const sectorStubs = saveEnvelopeSectorStubs(data);
+    for (const stub of sectorStubs.placeStubs) {
+      Promise.resolve(warmPackagedEntityDecode(this, stub)).catch(() => {});
+    }
+    for (const stub of sectorStubs.shipStubs) warmSaveEnvelopeEntityDecode(this, stub);
+    // Roster entries decode through the same authored preload the spawn kick uses. The
+    // menu-dwell caller is mode-free, so warmEnemyRosterDecode's flight/loading gate is
+    // reproduced inline rather than invoked.
+    const rosterSeen = new Set();
+    for (const entry of sectorStubs.roster) {
+      const key = entry && enemyHullDecodeKey(entry.archetype, entry.factionId || null, entry.trafficRole || null);
+      if (!key || rosterSeen.has(key.key)) continue;
+      rosterSeen.add(key.key);
+      const stub = makeWaveHullDecodeStub(key);
+      if (!stub) continue;
+      Promise.resolve(preloadAuthoredAssetsForEntity(this.renderer, stub, {
+        residencyRole: 'save-envelope-decode-runway',
+        sectorId: sectorStubs.sectorId,
+      })).catch(() => {});
+      warmKillHulkDecode(this, stub);
     }
   },
 

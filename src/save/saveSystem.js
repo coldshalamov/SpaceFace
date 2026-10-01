@@ -3545,7 +3545,8 @@ export const save = {
       return Promise.resolve(importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes));
     }
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
-      return Promise.resolve(this._prepareEnvelopeString(raw));
+      // No-worker lane still paints between the envelope's graph walks.
+      return this._prepareEnvelopeStringYielded(raw);
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -3563,7 +3564,7 @@ export const save = {
         { timeoutMs: 2500 });
       if (!accepted) settle(null);
     }).then(async (prepared) => {
-      if (!prepared) return this._prepareEnvelopeString(raw);
+      if (!prepared) return this._prepareEnvelopeStringYielded(raw);
       if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
       const env = prepared.env;
       if (!env || typeof env !== 'object') return { ok: false, reason: 'bad_format' };
@@ -3641,6 +3642,53 @@ export const save = {
     try { env = JSON.parse(raw); }
     catch (err) { return { ok: false, reason: 'parse_failed' }; }
     return this._prepareEnvelope(env);
+  },
+
+  /**
+   * Yielded fallback twin of _prepareEnvelopeString for _prepareEnvelopeStringAsync's no-worker
+   * lane: same sequence (parse → preflight → checksum → clone+migrate → normalize) with a frame
+   * yield between the object-graph walks so the loading shell paints on a mature save. Parse and
+   * checksum stay atomic — the walks around them are where the yields pay.
+   */
+  async _prepareEnvelopeStringYielded(raw) {
+    if (!raw) return { ok: false, reason: 'no_save' };
+    if (typeof raw !== 'string') return { ok: false, reason: 'parse_failed' };
+    const bytes = saveImportByteLength(raw);
+    if (bytes > SAVE_IMPORT_MAX_BYTES) {
+      return importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes);
+    }
+    let env;
+    try { env = JSON.parse(raw); }
+    catch (err) { return { ok: false, reason: 'parse_failed' }; }
+    return this._prepareEnvelopeYielded(env);
+  },
+
+  async _prepareEnvelopeYielded(env) {
+    try {
+      if (!env || env.fmt !== FMT) return { ok: false, reason: 'bad_format' };
+      const versionRead = readSaveVersion(env.version);
+      if (!versionRead.ok) return versionRead;
+      const ver = versionRead.version;
+      if (!env.data || typeof env.data !== 'object') return { ok: false, reason: 'no_data' };
+
+      await this._restoreFrameYield();
+      const preflight = preflightSaveImport(env);
+      if (!preflight.ok) return preflight;
+
+      if (env.checksum) {
+        const computed = fnv1a(safeStringify(env.data));
+        if (computed !== env.checksum) return { ok: false, reason: 'checksum' };
+      }
+      await this._restoreFrameYield();
+      let data = clonePlain(env.data);
+      if (!runMigrations(data, ver)) return { ok: false, reason: 'migration_failed' };
+      await this._restoreFrameYield();
+      const normalized = normalizeRestorableData(data);
+      if (!normalized.ok) return { ok: false, reason: normalized.reason };
+      return { ok: true, env, data, version: ver };
+    } catch (err) {
+      return { ok: false, reason: 'load_failed', error: err };
+    }
   },
 
   _prepareEnvelope(env) {
@@ -4208,7 +4256,16 @@ export const save = {
           this.bus.emit('mode:changed', { mode: state.mode, previousMode });
         }
       }
-      if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
+      if (worldSys && typeof worldSys.enterSectorChunked === 'function' && sectorId) {
+        // Chunked twin: the whole catalog regen (stations|fields|gates|poi|dressing|
+        // enemies|records) yields at phase boundaries so the loading shell paints between
+        // spawn bricks — spawn order and the sector:enter emit tail are identical to the
+        // sync lane. Enter-side yields pass through as restore paint points.
+        for (const _ of worldSys.enterSectorChunked(sectorId, { restoreDurableRecords: true, sliceNeighbors: true })) {
+          this._reportRestoreProgress(0.16, 'Rebuilding the saved sector');
+          yield 'sector-materialize-step';
+        }
+      } else if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
         worldSys.enterSector(sectorId, { restoreDurableRecords: true, sliceNeighbors: true });
       }
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
@@ -4449,7 +4506,9 @@ export const save = {
       let saveLoadedDrainSince = nowMs();
       while (typeof this.bus.pendingEmitSliceCount === 'function'
           && this.bus.pendingEmitSliceCount() > 0) {
-        this.bus.drainEmitSlice(4);
+        // Count AND wall-clock budget: one heavyweight listener would otherwise stretch a
+        // count-only slice past the paint deadline — stop the batch after it instead.
+        this.bus.drainEmitSlice(4, RESTORE_YIELD_SLICE_MS);
         if (nowMs() - saveLoadedDrainSince >= RESTORE_YIELD_SLICE_MS) {
           yield 'save-loaded-drained';
           saveLoadedDrainSince = nowMs();

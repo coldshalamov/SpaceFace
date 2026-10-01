@@ -907,6 +907,20 @@ export const world = {
    * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean, restoreDurableRecords?:boolean}} [opts]
    */
   enterSector(sectorId, opts = {}) {
+    // Sync lane: drain the generator twin — every batch inline, identical order.
+    let done = null;
+    const gen = this.enterSectorChunked(sectorId, opts);
+    while (!(done = gen.next()).done) { /* inline */ }
+    return done.value;
+  },
+
+  /**
+   * Generator twin of enterSector: yields only at phase boundaries (the residency plan's
+   * per-resident materialization steps pass through, then one paint point before the atomic
+   * emit tail). The restore generator drains it so a save's sector regen never freezes the
+   * loading shell behind a single unyielded brick.
+   */
+  *enterSectorChunked(sectorId, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) { console.warn('[world] enterSector: unknown sector', sectorId); return null; }
@@ -951,12 +965,19 @@ export const world = {
     const focusGlobal = placePlayer
       ? { x: entryPoint.x, z: entryPoint.z }
       : (this._playerGlobalPos() || sectorGlobalOrigin(sectorId));
-    this._applyResidencyPlan(sectorId, {
+    // _applyResidencyPlan is the observability seam (tests/tools wrap it to inspect plan opts):
+    // an own-property override still intercepts the enter and just collapses that call's yields.
+    const planOpts = {
       reason,
       noTeleport,
       focusGlobal,
       restoreDurableRecords: opts.restoreDurableRecords === true,
-    });
+    };
+    if (this._applyResidencyPlan !== world._applyResidencyPlan) {
+      this._applyResidencyPlan(sectorId, planOpts);
+    } else {
+      yield* this._applyResidencyPlanChunks(sectorId, planOpts);
+    }
 
     const active = state.world.sectorContents[sectorId]
       || (state.world.sectorContents[sectorId] = this._emptySectorBag());
@@ -975,6 +996,10 @@ export const world = {
     if (placePlayer) this._placePlayer(entryPoint);
     this._resolveShipModules();
     this._flushPendingSpawns(sectorId, sector);
+
+    // One paint point before the atomic emit tail — sector:enter listeners see a fully
+    // materialized world either way, but the restore lane gets to paint between spawn bricks.
+    yield 'enter-pre-emit';
 
     if (firstVisit) {
       this.bus.emit('sector:discovered', { sectorId });
@@ -1052,8 +1077,17 @@ export const world = {
   /**
    * Apply FULL/REDUCED/RECORD_ONLY plan for membership. Materializes missing residents,
    * demotes extras, never global-wipes, never touches the player.
+   * Sync lane: drain the generator twin — every batch inline, identical order.
    */
   _applyResidencyPlan(membershipSectorId, opts = {}) {
+    for (const _ of this._applyResidencyPlanChunks(membershipSectorId, opts)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin: yields only after each resident's materialization — plan order is
+   * unchanged, the yields simply let the restore lane paint between sector bricks.
+   */
+  *_applyResidencyPlanChunks(membershipSectorId, opts = {}) {
     const state = this.state;
     this._ensureResidencyState();
     this._pendingResidency = [];
@@ -1096,8 +1130,9 @@ export const world = {
       const restoreDurableRecords = opts.restoreDurableRecords === true
         && id === membershipSectorId
         && tier === RESIDENCY_TIER.FULL;
-      this._ensureSectorMaterialized(id, tier, { restoreDurableRecords });
+      yield* this._ensureSectorMaterializedChunks(id, tier, { restoreDurableRecords });
       this._setResidentMeta(id, tier, opts.reason || 'residency');
+      yield 'residency:materialized';
     }
     // Demote everyone marked RECORD_ONLY (scoped despawn only).
     for (const id of plan.demote) {
@@ -1195,8 +1230,18 @@ export const world = {
   /**
    * First materialization creates the sector bag with epoch-stable RNG.
    * FULL includes combat/dressing; REDUCED is structural only.
+   * Sync lane: drain the generator twin — every batch inline, identical phase order.
    */
   _ensureSectorMaterialized(sectorId, tier, opts = {}) {
+    for (const _ of this._ensureSectorMaterializedChunks(sectorId, tier, opts)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin: yields only between whole catalog spawn phases — RNG order, spawn order,
+   * and the final bag assignment are identical to the sync lane; the restore generator uses
+   * the boundaries as paint points instead of freezing the loading shell behind one brick.
+   */
+  *_ensureSectorMaterializedChunks(sectorId, tier, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) return;
@@ -1219,18 +1264,25 @@ export const world = {
     const active = this._emptySectorBag();
 
     this._spawnStations(sector, active, rng);
+    yield 'materialize:stations';
     this._spawnFields(sector, active, disc, rng);
+    yield 'materialize:fields';
     this._spawnGates(sector, active, rng);
+    yield 'materialize:gates';
     this._spawnPOIs(sector, active, disc, rng, tier);
+    yield 'materialize:pois';
     this._spawnHazards(sector, active);
     // A used-up field's onward seam is a durable promise: the nextFields record outlives the
     // sector bag, so re-materialize re-derives the same plan and re-places its rocks before
     // ambient re-roll. Rocks the player already mined stay mined via resourceBodies.
     this._rematerializeUsedUpFieldOpportunity(sectorId, sector, active);
+    yield 'materialize:field-opportunity';
     // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
     const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier, opts);
+    yield 'materialize:records';
     if (tier === RESIDENCY_TIER.FULL) {
       this._spawnDressing(sector, active, rng);
+      yield 'materialize:dressing';
       // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
       if (!rematerialized.hadCombatHistory) {
         this._spawnEnemies(sector, active, rng);
@@ -1239,6 +1291,7 @@ export const world = {
         // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
         if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
       }
+      yield 'materialize:enemies';
       this._ensureOpticStructures(sector, active);
     }
 

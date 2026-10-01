@@ -139,7 +139,7 @@ export function createBus() {
     return n;
   }
 
-  function drainEmitSlice(budget = SECTOR_ENTER_DRAIN_BUDGET) {
+  function drainEmitSlice(budget = SECTOR_ENTER_DRAIN_BUDGET, maxMs = Infinity) {
     // Capture the slice locally: a listener that clear()s the bus (screen teardown mid-present)
     // or starts a re-entrant sliced emit nulls/replaces `emitSlice` while this drain is on the
     // stack — writing through the global here crashed on the stale null (seen on glass would be
@@ -147,6 +147,12 @@ export function createBus() {
     const slice = emitSlice;
     if (!slice) return 0;
     const limit = Math.max(1, Math.floor(Number(budget) || SECTOR_ENTER_DRAIN_BUDGET));
+    // Optional wall-clock budget alongside the listener count: a single heavyweight listener
+    // can blow a count-only slice past the paint deadline. Checked after each listener so at
+    // least one always runs per drain call (listener order is unchanged either way).
+    const deadline = Number.isFinite(maxMs) && maxMs > 0
+      ? performance.now() + maxMs
+      : Infinity;
     let ran = 0;
     while (emitSlice === slice && ran < limit && slice.index < slice.fns.length) {
       const fn = slice.fns[slice.index];
@@ -154,6 +160,7 @@ export function createBus() {
       ran += 1;
       try { fn(slice.payload, slice.event); }
       catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+      if (performance.now() >= deadline) break;
     }
     if (emitSlice === slice && slice.index >= slice.fns.length) emitSlice = null;
     return ran;
