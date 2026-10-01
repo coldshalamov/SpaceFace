@@ -64,6 +64,12 @@ EVENTS = {
     'authoredMotion:attach': 'hook_dangle',
     'massline:snareArmed': 'line_quiver',
     'tether:strain': 'line_quiver',
+    # Mass-seed lifecycle rides the same winch hardware — deploy pays out, lock
+    # snaps the catch, cut/collapse releases the line.
+    'massSeed:deployed': 'payout',
+    'massSeed:locked': 'catch',
+    'massSeed:tetherCut': 'release',
+    'massSeed:collapsed': 'release',
 }
 
 

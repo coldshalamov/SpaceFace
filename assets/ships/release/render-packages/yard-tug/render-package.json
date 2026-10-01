@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4bad87847c66db72277f38d18a0e0a199c1df966d1c1831a4c8e564e76e7506b",
+  "contentHash": "79ce4056c5fca8afe624c97e5489c4e136c90d9ded778b4ae68377546cda36f2",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -748,7 +748,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0fd694d051cd2aa93576bab830aa5273fdfcdf7747a76bbf04281ea4454a4c3d",
+      "geometryHash": "74d55d68f3fc9e767cbde7886d6d143dbc6739cfcc6c225ec0717d39979d9eaf",
       "id": "sf.render.yard-tug.node.lod0-armor.primitive.0",
       "indexCount": 32280,
       "indexed": true,
@@ -1344,11 +1344,11 @@
         "min": [
           -12.25,
           -1.249462604522705,
-          -3.7998580932617188
+          -3.7998578548431396
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b635856b62b513db4fe0250f20748c062aa3a828fe53cfd6d5dd207e56e49c1",
+      "geometryHash": "0ad4029d6b861b2dcfe4e6e0d3ea0a11eaf5481da59efe47f3b3d6a1ea13e6a5",
       "id": "sf.render.yard-tug.node.lod1-armor.primitive.0",
       "indexCount": 8757,
       "indexed": true,
@@ -1948,7 +1948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "754fd0267002d57e5d59bf3408deea194d6eba83c5540068e4fcb6b389525d93",
+      "geometryHash": "60cddbd1b52161724553ff2b81ce1d1313b0016c8d1a5427156ae3f2f4bbd95c",
       "id": "sf.render.yard-tug.node.lod2-armor.primitive.0",
       "indexCount": 4818,
       "indexed": true,
@@ -7024,19 +7024,19 @@
       "sha256": "6425016bef3ddcb1179c0dd08cb367ea784bcc27adbc00650d345a8036985322"
     },
     "sourceGlb": {
-      "bytes": 1350780,
-      "sha256": "ef15f2d8d6ddf8273e4fa5c62683377551894969ad7a0b172fdb7ada913ad320",
+      "bytes": 1350752,
+      "sha256": "7531c223c89abee98384825a9647b7a3a0d17c5023d75726536d5fdb3f11e8bc",
       "uri": "yard_tug.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "5dfa8b6c5d74b983c6c9894307cb7866e0cc6182f27782aff0c27741b4656a59",
+      "sha256": "863194803e074f57ef54a3152877e7b7fcdcb2a90f3dd1a3230aead87cc3b494",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2523360,
-    "sha256": "84e2267f04219cc484322b4cc6a16f8802b7280aec3e92abc59a12a5bfcf5d9b",
+    "bytes": 2523368,
+    "sha256": "021b078b28b67ba1c3bbed9bf094ccc6675d72a219b2e3cfd4e36b1358cf401a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -8253,9 +8253,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 232658,
+      "bytes": 232791,
       "rigId": "yard_tug_winch",
-      "sha256": "99b7f1ef6047796384c4ff38742e7a88411ebf89fc699b3a85803688b05d1b57",
+      "sha256": "733887225bd4575d29e8e8ea84d3f09a20f78699daf230086cfb74e21a7b96b9",
       "uri": "assets/ships/motions/yard-tug.motion.json"
     },
     "nodeCount": 88,
@@ -10261,7 +10261,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "7235fa29fc0d9d6d4dfe165417cef888c456c6558a3a7e0677fe26fc5bc6ff0f",
+  "runtimeHash": "4548aebf1bb827ca3cb52220e7825d07ceff808b70a08fab41739bb2f56a205f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

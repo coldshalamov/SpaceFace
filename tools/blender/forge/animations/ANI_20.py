@@ -27,6 +27,8 @@ TROLLEY_DRIFT = 0.35
 HOIST_BOB_M = 0.06
 HOIST_SWAY_DEG = 0.8
 WRIST_TREMOR_DEG = 1.5
+DRIFT_M = 2.4          # full repositioning stroke — readable at station scale
+DRIFT_SWAY_DEG = 2.5   # hoist lag-sway while the trolley travels
 
 
 def author(bank):
@@ -55,9 +57,24 @@ def author(bank):
                  loc=(wrist.x, wrist.y, wrist.z),
                  rot=_deg(0.0, WRIST_TREMOR_DEG * math.sin(3 * phase + 0.9)))
 
+    # Queue change: the trolley travels a full repositioning stroke down-rail and
+    # eases to a stop — the yard visibly answers new work before the weld loops in.
+    drift = bank.clip('trolley_drift', 2.2, loop=False, end_mode='rest')
+    for k in range(9):
+        t = k * 2.2 / 8
+        # out-and-back sinusoid: the trolley probes down-rail and eases home, so a
+        # rest-ended finish never snaps and repeated queue changes stay continuous.
+        f = math.sin(math.pi * t / 2.2)
+        drift.key('crane0_trolley', t,
+                  loc=(trolley.x, trolley.y + DRIFT_M * f, trolley.z))
+        drift.key('crane0_hoist', t,
+                  loc=(hoist.x, hoist.y, hoist.z),
+                  rot=_deg(DRIFT_SWAY_DEG * math.sin(2.5 * math.pi * t / 2.2), 0.0))
+
 
 EVENTS = {
     'authoredMotion:attach': 'crane_idle_sway',
+    'craft:queueChanged': 'trolley_drift',
 }
 
 

@@ -42,8 +42,10 @@ def author(bank):
                  rot=Euler((0.0, 0.0, i * 2 * 3.141592653589793 / 3.0)))
 
     pulse = bank.clip('ring_pulse', 1.5, loop=False, end_mode='rest')
+    # Ring climbs the spire, holds a beat at the lamp seat, then slides home —
+    # the recock reads as the beacon cycling for the next pulse, no evict snap.
     for t, f in [(0.0, 0.0), (0.14, 0.06), (0.45, 0.42), (0.8, 0.82),
-                 (1.05, 0.98), (1.2, 1.0), (1.5, 1.0)]:
+                 (1.05, 0.98), (1.15, 1.0), (1.3, 0.72), (1.45, 0.18), (1.5, 0.0)]:
         # loc keys are absolute local: the pulse ring climbs the spire from its
         # docked seat at z=-2.8, not from the buoy's origin.
         pulse.key('nav_buoy_pulse', t, loc=(0.0, 0.0, PULSE_HOME_Z + PULSE_TRAVEL * f))

@@ -64,11 +64,20 @@ def author(bank):
                  (1.4, 0.04), (1.6, 0.0)]:
         steady.key('pod_shell', t, rot=Euler((2 * math.pi * (1.0 - f), 0.0, 0.0)))
 
+    settle = bank.clip('pod_settle', 1.2, loop=False, end_mode='rest')
+    # Delivered: one last contact jolt and the beacon folds back to its seat —
+    # the pod is cargo now, not a rescue target.
+    for t, f in [(0.0, 0.0), (0.15, 1.0), (0.4, 0.4), (0.7, 0.12), (1.2, 0.0)]:
+        settle.key('pod_shell', t, rot=Euler((0.09 * f, 0.05 * f, 0.0)))
+    for t, f in [(0.0, 1.0), (0.5, 0.5), (0.9, 0.1), (1.2, 0.0)]:
+        settle.key('pod_ping', t, loc=(PING_HOME_X + PING_TRAVEL * f, 0.0, 1.05))
+
 
 EVENTS = {
     'authoredMotion:attach': 'beacon_pulse',
     'survivorPod:ejected': 'pod_eject_tumble',
     'survivorPod:rescueSelected': 'pod_steady',
+    'survivorPod:delivered': 'pod_settle',
 }
 
 

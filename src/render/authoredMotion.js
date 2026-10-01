@@ -404,11 +404,18 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   // ANI-33: the trap payload carries the placed buoy entity ids — each placed iris blooms.
   const onInterdictionTriggered = (payload) => {
     const ids = payload && payload.entityIds;
-    if (!Array.isArray(ids)) return;
+    // The spawn path carries the placed buoy ids; the encounter-script snare carries
+    // only a sector — there every live buoy rig is part of the trap field.
+    if (!Array.isArray(ids)) {
+      fanoutRig('interdiction_buoy', 'interdiction:triggered', payload);
+      return;
+    }
     for (const id of ids) dispatch('interdiction:triggered', id, payload, () => true);
   };
   const onSnareRequest = (payload) => {
-    dispatch('cruise:snareRequest', payload && payload.sourceId, payload, () => true);
+    // sourceId is the encounter record, not a rig entity — the snare warn spins up
+    // every live buoy core, so it always fans out.
+    fanoutRig('interdiction_buoy', 'cruise:snareRequest', payload);
   };
   // cruise:dropped carries no buoy id — fold every armed iris (the close clip is gated on
   // an open unfold, so parked buoys ignore it).
@@ -431,6 +438,36 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   };
   const onPodRescue = (payload) => {
     dispatch('survivorPod:rescueSelected', payload && payload.entityId, payload, () => true);
+  };
+  // Delivery settles the POD entity's rig — podEntityId rides the payload so the
+  // clip lands on the same rig the tumble/steady clips did, not the rescue craft.
+  const onPodDelivered = (payload) => {
+    dispatch('survivorPod:delivered', payload && payload.podEntityId, payload, () => true);
+  };
+  // Cruise charge spools the engine gimbals for the burn — same entity routing as
+  // ship:boostStart (the playerId is the ship entity the engine rigs bind under).
+  const onCruiseCharging = (payload) => {
+    dispatch('cruise:charging', payload && payload.playerId, payload, () => true);
+  };
+  // Hot-core eject: salvage payloads name the wreck, not the cutter — brace every
+  // live jaw rig; the cutter working that wreck is the one on screen.
+  const onCoreEjected = (payload) => fanoutRig('salvage_cutter_jaw', 'salvage:coreEjected', payload);
+  // Encounter telegraphs carry the encounter record, not ship entities — every
+  // live wasp bristles; only rigs on screen answer anyway.
+  const onEncounterTelegraph = (payload) => fanoutRig('wasp', 'encounter:telegraph', payload);
+  // A rock breaking kicks the drill head; asteroid payloads carry no platform id.
+  const onAsteroidDestroyed = (payload) => fanoutRig('drill_platform', 'asteroid:destroyed', payload);
+  // The massline is the seed-tether hardware: deployment pays the winch out, a
+  // lock snaps the catch, a cut or collapse releases it. Seed payloads never
+  // name a tug, so the lifecycle fans out to the live winch rigs.
+  const onMassSeedDeployed = (payload) => fanoutRig('yard_tug_winch', 'massSeed:deployed', payload);
+  const onMassSeedLocked = (payload) => fanoutRig('yard_tug_winch', 'massSeed:locked', payload);
+  const onMassSeedEnded = (type) => (payload) => fanoutRig('yard_tug_winch', type, payload);
+  // Charge ticks stream every frame while charging — the gate surge re-arms only
+  // when the previous one drains, so the ring pulses at the clip's cadence.
+  const onChargeTick = (payload) => {
+    fanoutRig('gate_emitter_index', 'jump:chargeTick', payload,
+      (c) => !c.clipActive?.('emitter_charge_surge'));
   };
   // ANI-26: drill sessions carry an asteroid id, never the platform entity — the only
   // platform the player can see is the one the session is happening at, so the drill
@@ -498,7 +535,8 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     fanoutRig('freight_platform', 'freight:arrival', payload, (c) => !pickBusy(c));
   };
   const onStationThroughput = (payload) => {
-    fanoutRig('freight_platform', 'station:throughput', payload, () => true);
+    fanoutRig('freight_platform', 'station:throughput', payload,
+      (c) => !c.clipActive?.('gantry_sweep'));
   };
   // ANI-25: the berth answers the same dock verbs the hull does — resolve the station's
   // dock-interior entity so the clamps/boom play their half of the handshake.
@@ -729,6 +767,16 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('freight:custodyChanged', onCustodyChanged),
     bus.on('freight:arrival', onFreightArrival),
     bus.on('station:throughput', onStationThroughput),
+    bus.on('survivorPod:delivered', onPodDelivered),
+    bus.on('cruise:charging', onCruiseCharging),
+    bus.on('salvage:coreEjected', onCoreEjected),
+    bus.on('encounter:telegraph', onEncounterTelegraph),
+    bus.on('asteroid:destroyed', onAsteroidDestroyed),
+    bus.on('massSeed:deployed', onMassSeedDeployed),
+    bus.on('massSeed:locked', onMassSeedLocked),
+    bus.on('massSeed:tetherCut', onMassSeedEnded('massSeed:tetherCut')),
+    bus.on('massSeed:collapsed', onMassSeedEnded('massSeed:collapsed')),
+    bus.on('jump:chargeTick', onChargeTick),
     bus.on('dock:range', onDockRange),
     bus.on('dock:docked', onDocked),
     bus.on('dock:undocked', onUndocked),

@@ -40,12 +40,17 @@ def register(ship, parts):
 
 def author(bank):
     pump = bank.clip('mast_pump_cycle', 2.4, loop=True, end_mode='rest')
-    # Six-sample sinusoid; rod counter-phases the beam nose.
-    for i, f in enumerate((0.0, 0.5, 1.0, 1.0, 0.5, 0.0)):
-        t = i * 0.48
-        pump.key('mast_beam', t, rot=Euler((0.0, ROCK_RAD * (f - 0.5) * 2.0, 0.0)))
+    # Beam rocks sinusoidally; the rod strokes on a 90-degree lag like a real
+    # pumpjack. Both channels sit at rest at the loop seam so loop entry and
+    # re-entry never pop.
+    for i in range(9):
+        p = i / 8.0
+        t = i * 0.3
+        beam = ROCK_RAD * math.sin(2.0 * math.pi * p)
+        stroke = STROKE_M * (1.0 - math.cos(2.0 * math.pi * p)) * 0.5
+        pump.key('mast_beam', t, rot=Euler((0.0, beam, 0.0)))
         # loc keys are absolute local: the plunger strokes from its mast home.
-        pump.key('mast_rod', t, loc=(ROD_HOME[0], ROD_HOME[1], ROD_HOME[2] - STROKE_M * (1.0 - f)))
+        pump.key('mast_rod', t, loc=(ROD_HOME[0], ROD_HOME[1], ROD_HOME[2] - stroke))
 
     idle = bank.clip('mast_idle', 9.0, loop=True, end_mode='rest')
     for i, f in enumerate((0.0, 0.4, 0.85, 1.0, 0.85, 0.4, 0.0)):

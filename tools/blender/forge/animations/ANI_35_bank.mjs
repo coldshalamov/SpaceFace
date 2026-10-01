@@ -78,19 +78,37 @@ const GIMBAL = [[0, 0, 0], [0.12, 0.105, 0.015], [0.3, -0.055, -0.01], [0.45, 0,
 const FLARE = [[0, 0, 0], [0.1, -0.19, -0.03], [0.32, 0.07, 0.01], [0.5, 0, 0]];
 const lag = (keys, dt) => keys.map(([t, p, y]) => [t + dt, p, y]);
 
+// Ambient drift: the gimbal searches a slow lissajous, sinusoid-keyed so the
+// loop seams on identity and never fights a thrust clip for the same channel.
+const DRIFT_PERIOD = 5.0;
+const driftKeys = (phase = 0) => {
+  const keys = [];
+  for (let i = 0; i <= 10; i++) {
+    const t = (i / 10) * DRIFT_PERIOD;
+    const ph = 2 * Math.PI * (t / DRIFT_PERIOD + phase);
+    keys.push([t, 0.022 * Math.sin(ph), 0.014 * Math.sin(2 * ph + 0.6)]);
+  }
+  return keys;
+};
+
 function bank(rigId, sourceAssetId, glbPath, groups, clipsExtra = {}) {
   const nodes = glbNodes(glbPath);
   const bindings = groups.map(({ id, node, parent }) => ({
     id, node, parent: parent || null,
     restPose: nodeTrs(nodes, node), requiredAtLod: [0],
   }));
+  // Clip durations must cover each group's own lag or the lagged channel's
+  // times overrun durationS and the bank fails validation at bind.
+  const maxLag = Math.max(0, ...groups.map((g) => g.lag || 0));
   const clips = [
-    clip('nozzle_spool', 0.9, false, 'rest', groups.map((g) =>
+    clip('nozzle_spool', 0.9 + maxLag, false, 'rest', groups.map((g) =>
       rotChannel(g.id, g.lag ? lag(SPOOL, g.lag) : SPOOL, 0.9 + (g.lag || 0)))),
-    clip('nozzle_gimbal_pitch', 0.45, false, 'rest', groups.map((g) =>
+    clip('nozzle_gimbal_pitch', 0.45 + maxLag, false, 'rest', groups.map((g) =>
       rotChannel(g.id, g.lag ? lag(GIMBAL, g.lag) : GIMBAL, 0.45 + (g.lag || 0)))),
-    clip('nozzle_flare', 0.5, false, 'rest', groups.map((g) =>
+    clip('nozzle_flare', 0.5 + maxLag, false, 'rest', groups.map((g) =>
       rotChannel(g.id, g.lag ? lag(FLARE, g.lag) : FLARE, 0.5 + (g.lag || 0)))),
+    clip('gimbal_drift', DRIFT_PERIOD, true, 'rest', groups.map((g) =>
+      rotChannel(g.id, driftKeys(g.driftPhase || 0), DRIFT_PERIOD))),
     ...(clipsExtra.clips || []),
   ];
   const glbSha = createHash('sha256').update(readFileSync(glbPath)).digest('hex');
@@ -99,10 +117,12 @@ function bank(rigId, sourceAssetId, glbPath, groups, clipsExtra = {}) {
     rigId, sourceAssetId, sourceGlbSha256: glbSha, fps: FPS,
     bindings, clips,
     events: {
+      'authoredMotion:attach': 'gimbal_drift',
       'ship:thrust': 'nozzle_gimbal_pitch',
       'ship:boostStart': 'nozzle_spool',
       'ship:dash': 'nozzle_flare',
       'ship:swingDash': 'nozzle_flare',
+      'cruise:charging': 'nozzle_spool',
       ...(clipsExtra.events || {}),
     },
   };
@@ -117,7 +137,7 @@ const banks = [
     [{ id: 'eng_nozzle', node: 'MOTION_ENG_NOZZLE' }]],
   ['engine_ion_twin', 'SF_PART_ENGINE_ION_TWIN', join(ENG, 'engine_ion_twin.glb'),
     [{ id: 'eng_nozzle_p', node: 'MOTION_ENG_NOZZLE_P' },
-     { id: 'eng_nozzle_s', node: 'MOTION_ENG_NOZZLE_S', lag: 0.05 }]],
+     { id: 'eng_nozzle_s', node: 'MOTION_ENG_NOZZLE_S', lag: 0.05, driftPhase: 0.4 }]],
   ['engine_plasma_ring', 'SF_PART_ENGINE_PLASMA_RING', join(ENG, 'engine_plasma_ring.glb'),
     [{ id: 'eng_nozzle', node: 'MOTION_ENG_NOZZLE' }]],
 ];

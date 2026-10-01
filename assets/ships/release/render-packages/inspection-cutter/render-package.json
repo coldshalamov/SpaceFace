@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "62bdba58ae2de6bd635d4738b692df2d35dffdbcb8455991ea902fc2b38d2839",
+  "contentHash": "730e8e674987d217c7d33bdce383ddabf5f8a30f903b01fcd489406fceb81435",
   "dynamicGroups": [
     {
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.dynamic",
@@ -653,7 +653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "918bfd8858b7cc398bc25169a1efc558af349d3e98fd049ea27868ddced7395d",
+      "geometryHash": "253ecef9ca1e715f7d8ece36db477b0c57d6f54421bc294f4c433142144f76ec",
       "id": "sf.render.inspection-cutter.node.lod0-armor.primitive.0",
       "indexCount": 26634,
       "indexed": true,
@@ -1128,7 +1128,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fa4be036a2669f7d2ad09dd27b4cbf30c69886b198ccb975469b5ed67cf7bbf",
+      "geometryHash": "7a2c317adbb9231a98c79835477cb37363eede8e3ff391e91d7ff4cccaea51b0",
       "id": "sf.render.inspection-cutter.node.lod1-armor.primitive.0",
       "indexCount": 10077,
       "indexed": true,
@@ -1378,7 +1378,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d0a2cc6790211c0b6c8fc2f6635eda2fb3d3f37859d29c94173d9f0ce6a2264",
+      "geometryHash": "c3d8f05f156efd224d13cbf77371f505c5197476966af031b5e7afaf51335cfe",
       "id": "sf.render.inspection-cutter.node.lod1-livery.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -1594,16 +1594,16 @@
         "max": [
           11.300076484680176,
           3.754495859146118,
-          2.4484610557556152
+          2.4484851360321045
         ],
         "min": [
           -10.600139617919922,
           -2.400449275970459,
-          -2.4492955207824707
+          -2.4492714405059814
         ]
       },
       "drawMode": 4,
-      "geometryHash": "97c6a3d0dceb5f09aecb8c03464079471137b010669be382ea8d80add9a67a42",
+      "geometryHash": "33fdddac01d570522ff0a3ca50fe0ed173b61dd0b775a8610e5ef10110e619c4",
       "id": "sf.render.inspection-cutter.node.lod2-armor.primitive.0",
       "indexCount": 4170,
       "indexed": true,
@@ -1853,7 +1853,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64790f7acaf8bcf5c0dbee91b53632da6c7d4a9d06fb284af86dee72dc564999",
+      "geometryHash": "9a98552f7a5976b5048fbf0078a79915ec1145ab493e844b5543a7e2245dcac5",
       "id": "sf.render.inspection-cutter.node.lod2-livery.primitive.0",
       "indexCount": 465,
       "indexed": true,
@@ -1878,7 +1878,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c464486dc5d6ae76c6e28d9220fc8bb615b7d4f22883625daa01f14e630cf74",
+      "geometryHash": "e05a5ca67b7b5ae27b568c983ad6f8b12b019bdda589450fc3ed7c3f4fe48e9a",
       "id": "sf.render.inspection-cutter.node.lod2-mechanical.primitive.0",
       "indexCount": 1344,
       "indexed": true,
@@ -5912,19 +5912,19 @@
       "sha256": "fe0d10df117b178e19fe118aee5cdcb402b380876f233516ac7f9f77951be798"
     },
     "sourceGlb": {
-      "bytes": 992708,
-      "sha256": "4f72978df79880360e038799c340997870bcc2194291ce227ad52bbce3a88413",
+      "bytes": 992704,
+      "sha256": "ce36fdcc1f515d84f65fe709f9feb46820d25a61efc265f612d78b66b08c6feb",
       "uri": "inspection_cutter.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
+      "sha256": "863194803e074f57ef54a3152877e7b7fcdcb2a90f3dd1a3230aead87cc3b494",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1806496,
-    "sha256": "0eadab002fd35273adc903da67dc274a1f37b1f2c8d82b2d1243eb3ff2093f10",
+    "sha256": "f2561450c6a5da0c6ed43b37550ed93a184186b256b82de83f4ca4eb4b75e3e9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7011,9 +7011,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 142426,
+      "bytes": 142473,
       "rigId": "inspection_cutter",
-      "sha256": "7acba56c57257caf89d6f188d936aee099bc6ce10a7f2b0693a95ca3d9f36827",
+      "sha256": "7cf6b96bea27421bb83093175739b520bdb5127ba2dd06b4fec8ce40bd6ccdea",
       "uri": "assets/ships/motions/inspection-cutter.motion.json"
     },
     "nodeCount": 74,
@@ -8643,7 +8643,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
-  "runtimeHash": "895da1bca3aea0e30d4fbaec17ebd4fab7bf30240401ba53beb10ade8a24f5cf",
+  "runtimeHash": "ac0038252c5f511e9682b64a52bee3ed7aaad836776eac0b61c4bbc6985188f3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

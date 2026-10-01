@@ -2,11 +2,15 @@
 // ANI-30 inspection-cutter arm, ANI-35 engine-part nozzle gimbals.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { evaluateMotionClip } from '../src/contracts/motionBank.js';
+import { readFileSync, readdirSync } from 'node:fs';
+import { evaluateMotionClip, validateMotionBank } from '../src/contracts/motionBank.js';
 
 const bank = (key) => JSON.parse(
   readFileSync(new URL(`../assets/ships/motions/${key}.motion.json`, import.meta.url)));
+
+const allBankKeys = readdirSync(new URL('../assets/ships/motions', import.meta.url))
+  .filter((f) => f.endsWith('.motion.json'))
+  .map((f) => f.replace(/\.motion\.json$/, ''));
 
 const clip = (b, name) => {
   const c = b.clips.find((x) => x.name === name);
@@ -83,4 +87,12 @@ test('ANI-35 engine banks: gimbal kicks, spool overshoots, flare snaps back', ()
   const pMid = delta(twin, 'nozzle_spool', 0.2, 'eng_nozzle_p').rotation;
   const sMid = delta(twin, 'nozzle_spool', 0.2, 'eng_nozzle_s').rotation;
   assert.ok(pMid[2] !== sMid[2], 'twin nozzles phase-offset, not mirrored');
+});
+
+test('every committed motion bank passes validateMotionBank', () => {
+  assert.ok(allBankKeys.length >= 20, 'expected the full bank set');
+  for (const key of allBankKeys) {
+    assert.doesNotThrow(() => validateMotionBank(bank(key)),
+      `${key}.motion.json fails contract validation`);
+  }
 });

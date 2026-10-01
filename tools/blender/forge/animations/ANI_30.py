@@ -56,9 +56,9 @@ def author(bank):
 
     # --- sweep: accelerate into the spin, glide out — one clean sensor pass --------------
     c = bank.clip('scanring_sweep', 1.8, loop=False, end_mode='rest')
-    sweep = ((0.0, 0.0), (0.3, 0.35), (0.7, 0.95), (1.2, 1.3), (1.55, 1.47), (1.8, 1.5))
-    for t, turns in sweep:
-        c.key('cutter_scanring', t, rot=Euler((0.0, 0.0, turns * 6.283185307179586)))
+    sweep = ((0.0, 0.0), (0.3, 0.23), (0.7, 0.63), (1.2, 0.87), (1.55, 0.98), (1.8, 1.0))
+    for t, frac in sweep:
+        c.key('cutter_scanring', t, rot=Euler((0.0, 0.0, frac * SWEEP_TURNS * 6.283185307179586)))
     for t, f in ((0.0, 0.0), (0.4, 1.0), (0.9, 0.6), (1.8, 0.0)):
         c.key('cutter_scanring', t,
               loc=(RING_HOME[0], RING_HOME[1], RING_HOME[2] + 0.12 * f))

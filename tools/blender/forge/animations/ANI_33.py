@@ -47,18 +47,27 @@ def register(ship, parts):
     ship.motion_group('snare_core', pivot=(0.0, 0.0, 2.0), objects=list(parts['core']))
 
 
+def _petal_rot(a, f):
+    """Absolute local rotation for a yawed petal: rest yaw composed with the
+    tangent-hinge flare. Keys are absolute — the yaw must ride in the key or
+    the delta swings the petal around the ring instead of hinging it."""
+    return (Euler((0.0, 0.0, a)).to_quaternion()
+            @ Euler((0.0, FLARE_RAD * f, 0.0)).to_quaternion())
+
+
 def author(bank):
     unfold = bank.clip('petals_unfold', 1.6, loop=False, end_mode='hold')
     for k in range(PETALS):
         group = f'snare_petal_{k}'
+        a = math.radians(k * 60)
         # Stagger the ring: petal k starts at k*0.08s — the iris blooms in a wave.
         lag = k * 0.08
         for t, f in [(0.0, 0.0), (0.25, 0.28), (0.55, 0.75), (0.78, 1.0),
                      (0.92, 1.06), (1.06, 0.98), (1.2, 1.0)]:
             tt = lag + t * 0.75
             if tt <= 1.6:
-                unfold.key(group, tt, rot=Euler((0.0, FLARE_RAD * f, 0.0)))
-        unfold.key(group, 1.6, rot=Euler((0.0, FLARE_RAD, 0.0)))
+                unfold.key(group, tt, rot=_petal_rot(a, f))
+        unfold.key(group, 1.6, rot=_petal_rot(a, 1.0))
 
     spin = bank.clip('core_spin_up', SPIN_PERIOD, loop=True, end_mode='rest')
     for i in range(4):
@@ -66,13 +75,26 @@ def author(bank):
                  rot=Euler((0.0, 0.0, i * 2 * math.pi / 3.0)))
 
     close = bank.clip('petals_close', 1.2, loop=False, end_mode='rest')
-    for group in petal_groups():
+    for k, group in enumerate(petal_groups()):
+        a = math.radians(k * 60)
         for t, f in [(0.0, 1.0), (0.3, 0.92), (0.6, 0.62), (0.85, 0.25),
                      (1.0, 0.06), (1.1, 0.10), (1.2, 0.0)]:
-            close.key(group, t, rot=Euler((0.0, FLARE_RAD * f, 0.0)))
+            close.key(group, t, rot=_petal_rot(a, f))
+
+    # Ambient: a parked trap still breathes — each petal shimmers a few degrees
+    # on its hinge, phase-offset around the ring so the shimmer travels.
+    shimmer = bank.clip('petal_shimmer', 7.0, loop=True, end_mode='rest')
+    for k, group in enumerate(petal_groups()):
+        a = math.radians(k * 60)
+        phase = k / PETALS
+        for i in range(9):
+            t = i * 7.0 / 8
+            shimmer.key(group, t,
+                        rot=_petal_rot(a, 0.05 * math.sin(2 * math.pi * (t / 7.0 + phase))))
 
 
 EVENTS = {
+    'authoredMotion:attach': 'petal_shimmer',
     'interdiction:triggered': 'petals_unfold',
     'cruise:snareRequest': 'core_spin_up',
     'cruise:dropped': 'petals_close',

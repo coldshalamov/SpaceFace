@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "yard_tug_winch",
  "sourceAssetId": "SF_WHOLESHIP_YARD_TUG",
- "sourceGlbSha256": "b80f56b9c404cecf80428f4029360ae5f1bf6ff68fc7221c297a2f57d761c632",
+ "sourceGlbSha256": "17937fa3b0387bae4b88a846de76d290fff742ed57a91a07659483d7c3b23a05",
  "fps": 60,
  "bindings": [
   {
@@ -13023,6 +13023,10 @@
   "tether:latchDenied": "release",
   "authoredMotion:attach": "hook_dangle",
   "massline:snareArmed": "line_quiver",
-  "tether:strain": "line_quiver"
+  "tether:strain": "line_quiver",
+  "massSeed:deployed": "payout",
+  "massSeed:locked": "catch",
+  "massSeed:tetherCut": "release",
+  "massSeed:collapsed": "release"
  }
 }

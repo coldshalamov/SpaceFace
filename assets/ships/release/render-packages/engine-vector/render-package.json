@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "28e0fe769ec655199eaf5226cfcdb439288b8ac40b5a6239c02b41bca61870c7",
+  "contentHash": "beeabd752f4de05a969a8ce56dcf14f5d621bfbc6a7c737b5bae97ddd66b9924",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -700,7 +700,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
+      "sha256": "863194803e074f57ef54a3152877e7b7fcdcb2a90f3dd1a3230aead87cc3b494",
       "uri": "pilots.json"
     }
   },
@@ -816,9 +816,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 11378,
+      "bytes": 41740,
       "rigId": "engine_vector",
-      "sha256": "b853e95dcbedb3ec55ac56a6de458240d8c2b37f4894595ff23ee520d33e0e4e",
+      "sha256": "aee971dc2bbb01ced67d940aae34d174e4f59c63f1a8e17234fba40256be0859",
       "uri": "assets/ships/motions/engine-vector.motion.json"
     },
     "nodeCount": 10,
@@ -1087,7 +1087,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_vector.glb"
   },
-  "runtimeHash": "d2478c9291fd8864cce3fad6e1f9bbf17c7d0b70e9346c0cd775ee63a2d615e8",
+  "runtimeHash": "e9071bc6624820dada0a0467711d9c545f6b27c502c9ee8c6b0136af6b0f71f7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

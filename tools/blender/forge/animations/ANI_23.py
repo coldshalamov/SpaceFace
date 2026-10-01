@@ -24,6 +24,8 @@ IDLE_GAPE_RAD = math.radians(4.0)     # ~8% of the work gape
 IDLE_SLIDE_M = 0.06
 RAM_SLIDE_M = 1.55                     # matches ANI_09 stroke
 RAM_YAW = math.radians(2.0)
+BRACE_SLIDE_M = 0.9                    # partial ram stroke — braced, not a work cut
+BRACE_GAPE_RAD = math.radians(7.0)     # jaws close down hard against the blast
 
 
 def author(bank):
@@ -46,8 +48,26 @@ def author(bank):
             chomp.key(ram, t, loc=(at.x, at.y, at.z),
                       rot=Euler((0.0, 0.0, sgn * (slide / RAM_SLIDE_M) * RAM_YAW)))
 
+    # Core eject: the cutter slams its rams home and clamps the gape shut — a
+    # full brace against the blast the moment the hot core vents.
+    brace = bank.clip('ram_brace', 0.9, loop=False, end_mode='rest')
+    for side in ('port', 'star'):
+        sgn = 1.0 if side == 'port' else -1.0
+        jaw = f'salvage_jaw_{side}'
+        ram = f'salvage_ram_{side}'
+        ram_rest = bank.ship.motion_pivots[ram].matrix_basis.translation
+        rod_dir = Vector((1.8, sgn * 0.32, -0.15)).normalized()
+        for t, f in ((0.0, 0.0), (0.12, 0.85), (0.3, 1.0), (0.5, 0.94),
+                     (0.7, 0.6), (0.85, 0.2), (0.9, 0.0)):
+            at = ram_rest + rod_dir * (-BRACE_SLIDE_M * f)
+            brace.key(jaw, t, rot=Euler((0.0, 0.0, sgn * BRACE_GAPE_RAD * f)))
+            brace.key(ram, t, loc=(at.x, at.y, at.z),
+                      rot=Euler((0.0, 0.0, sgn * (f * BRACE_SLIDE_M / RAM_SLIDE_M) * RAM_YAW)))
+
+
 EVENTS = {
     'authoredMotion:attach': 'jaw_idle_chomp',
+    'salvage:coreEjected': 'ram_brace',
 }
 
 

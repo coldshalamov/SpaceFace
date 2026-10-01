@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "efd66e0666f645840ae77ed3f4cf7ff9dd9a6a19ea39a6018bee2d38d20c7bf4",
+  "contentHash": "b3620c9f5848da59dfea444efb4a92386f3291230dea1516f1576d8c6020a409",
   "dynamicGroups": [
     {
       "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.dynamic",
@@ -1603,7 +1603,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6266fd88bbfdd24582779d94953bf78c99a9dc788188f78aecf1e205aa54b525",
+      "geometryHash": "fff1896507d0883a053f76a5f281ce06824b6c81185e7784f239c97cd60bf9e8",
       "id": "sf.render.salvage-cutter.node.lod1-hull.primitive.0",
       "indexCount": 3477,
       "indexed": true,
@@ -1719,7 +1719,7 @@
         "max": [
           10.746306419372559,
           0.44948384165763855,
-          -0.9572703242301941
+          -0.9572702944278717
         ],
         "min": [
           3.7061290740966797,
@@ -1728,7 +1728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d5481f1084a4ab5cd164a0f7bd9568908e539836c90a1aee20b2da67f84ea6b",
+      "geometryHash": "3e7a48d9892c9669619ace424a5d107cd2761907510f38d743a547354acf9e7b",
       "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-armor.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -1778,7 +1778,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1177c14dd5ac5a19e4f76c52e845aa9552a46a564f591ac6a7faa348cf8a6bdc",
+      "geometryHash": "cbe41b4a1b99ace655dcf1e44d78e47d5b3da463f97089ccf4e988df07f68a79",
       "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-brushedmetal.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -1824,11 +1824,11 @@
         "min": [
           3.706088066101074,
           -0.4494745135307312,
-          0.9572717547416687
+          0.9572717249393463
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cb4195898a0e85f44ecc7df397f182a7a66f9208df512d641480bcac2897938c",
+      "geometryHash": "0d7f032164fcd431e25af94b9650da596c5f94e2c83428cacd4b520c1da759ec",
       "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-armor.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -1867,18 +1867,18 @@
     {
       "bounds": {
         "max": [
-          10.748997688293457,
-          0.09993951767683029,
-          2.070151627063751
+          10.749029159545898,
+          0.09994005411863327,
+          2.0701029896736145
         ],
         "min": [
           4.901286602020264,
-          -0.09993951767683029,
-          0.5616003274917603
+          -0.09994005411863327,
+          0.5615435242652893
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bcfe52cd6d8dafe60bcf40c83472e9bab2d8a2f7dd529dbb3e664a4a5d3065a4",
+      "geometryHash": "e74c7ebf83896a45ca6d20894608af1afdc124cc61880b34671a4ced27539e88",
       "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-brushedmetal.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -1978,7 +1978,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f8a01876ff4b8786661c22d3633a40e5792e28d581ee5cefe629da943ef63f0",
+      "geometryHash": "15b3fb5bfd57e304b17ed1069aafdfd29261e9128d57201fa3a614f8359d015c",
       "id": "sf.render.salvage-cutter.node.lod1-warning.primitive.0",
       "indexCount": 2865,
       "indexed": true,
@@ -2369,7 +2369,7 @@
         "max": [
           10.745348930358887,
           0.4491531550884247,
-          -0.957021564245224
+          -0.9570215344429016
         ],
         "min": [
           3.7043933868408203,
@@ -2378,7 +2378,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ed006996a088236aa72e303f2f99bd93cbe95f8041d0d4746705b1f19add9c8",
+      "geometryHash": "dbac81452bd97239a30c72845fefcb9614088b6505b7cb1e1ecaabe2cd2adc50",
       "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-armor.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -2418,17 +2418,17 @@
       "bounds": {
         "max": [
           10.74678897857666,
-          0.09766484797000885,
-          -0.5605782270431519
+          0.0976652055978775,
+          -0.5605754256248474
         ],
         "min": [
-          4.903399467468262,
-          -0.09707319736480713,
-          -2.0701547265052795
+          4.903378009796143,
+          -0.09707355499267578,
+          -2.070157527923584
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e6a26d34444b030a73764cdfb7c71c23d18fb34e2cdb8f0973d75e77c8d7719",
+      "geometryHash": "36787547e7d3f985777fc047d68d96782cacada7202b0ce87df99a32c03d7a1b",
       "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-brushedmetal.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -2474,11 +2474,11 @@
         "min": [
           3.7043933868408203,
           -0.4490923285484314,
-          0.9570215344429016
+          0.9570215046405792
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23c2612c218c2ff5090f0b1e90bcebe32b18f4e744d3853d1b71498f0ac3a1ae",
+      "geometryHash": "7b86387aca320c0734eb83b10fe3de6a11df35daabaf5bca0a48d16e6c887580",
       "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-armor.primitive.0",
       "indexCount": 246,
       "indexed": true,
@@ -2503,7 +2503,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e722e8638f44c4ed0721d97e6ccca05f7488932a13c37fd33ce2abb0d27ba66b",
+      "geometryHash": "7cd46c0287b9aa87c351573948bbf2603c91bca3ec8d2339991c6f6754e852de",
       "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-beacon-amber.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -2517,18 +2517,18 @@
     {
       "bounds": {
         "max": [
-          10.746901512145996,
-          0.09766657650470734,
-          2.0701626539230347
+          10.746880531311035,
+          0.09766622632741928,
+          2.0700572729110718
         ],
         "min": [
           4.903450965881348,
-          -0.0970735028386116,
-          0.5605703592300415
+          -0.09707315266132355,
+          0.5604704022407532
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c877431b83ff4d75660fc81e13989b9ebd46621735ac75960971c8dfc139fcfb",
+      "geometryHash": "88dd5168a046f3cb10fa44682c77661020730127b460c1d98f50819cdf65bf7a",
       "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-brushedmetal.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -7823,18 +7823,18 @@
     },
     "sourceGlb": {
       "bytes": 983104,
-      "sha256": "a5584a407f6e1cce8f3af4262d8c404cc301e0e60cbdf88c268eafdaecb633ab",
+      "sha256": "7175027988d346313c851b520c09910b55a99418686341f4ee15f6233240cbfc",
       "uri": "salvage_cutter.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "5dfa8b6c5d74b983c6c9894307cb7866e0cc6182f27782aff0c27741b4656a59",
+      "sha256": "863194803e074f57ef54a3152877e7b7fcdcb2a90f3dd1a3230aead87cc3b494",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1677116,
-    "sha256": "153c4344afb2fff020e4f123bcac4e98959c1fce1446d7bde617a369b940143e",
+    "bytes": 1677120,
+    "sha256": "e51ecf74513ad1ca4ad1674dffebb1a18401caed8101bb942fbf5050165bab9a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9166,9 +9166,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 402130,
+      "bytes": 441766,
       "rigId": "salvage_cutter_jaw",
-      "sha256": "59130ba1e6bb73def185eed11c2bfc99b305a2104b10068e74fca52db87fd588",
+      "sha256": "926b17b4ee5ab6c3eb5eec7181246c917f813e9f9cadf0aeac50073edd531f1a",
       "uri": "assets/ships/motions/salvage-cutter.motion.json"
     },
     "nodeCount": 99,
@@ -11433,7 +11433,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "e3e687dc03039bca20619b3f7dbd523a30940a6b06bf08eaddf9d56ba25ddfb6",
+  "runtimeHash": "8e9b6433de173707a4319501cf0b6c64c3835b592d1673b0bf5614977bbb07e1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

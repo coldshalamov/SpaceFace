@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "aa5395e65b57a5efa212c0d0c215d0727e924d1acfb8df034a7cc7cf6161ee6e",
+  "contentHash": "db800bd60998537afec5ad7c31fd08b8f06f3f69414177a6d31f27781558963c",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-mts-escort.node.lod0-hook-armor-flap-armor.dynamic",
@@ -6406,7 +6406,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
+      "sha256": "863194803e074f57ef54a3152877e7b7fcdcb2a90f3dd1a3230aead87cc3b494",
       "uri": "pilots.json"
     }
   },
@@ -7593,9 +7593,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 108407,
+      "bytes": 135920,
       "rigId": "wasp",
-      "sha256": "83733abc8d42105e7ebcb1c803792322f3e1543b0b4bd36ce82ad45c3dad38cb",
+      "sha256": "fd65e394b6a78adebbcd69f2f436f3b3218957e723e7f1c7a009848ae9454e1a",
       "uri": "assets/ships/motions/wasp-mts-escort.motion.json"
     },
     "nodeCount": 81,
@@ -9405,7 +9405,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_mts_escort.glb"
   },
-  "runtimeHash": "4ec3a5423f628668e986bd935e539f0cdc46f598261eef0848af94ab99455a13",
+  "runtimeHash": "0344182cbb58a04393093f6824ec519773a1ec14f6bf9d4c97b8bde2fabf27ed",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

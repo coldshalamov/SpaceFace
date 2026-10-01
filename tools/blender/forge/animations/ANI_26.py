@@ -61,15 +61,33 @@ def author(bank):
         kick.key('drill_string', t, rot=Euler((0.0, 0.0, STALL_RAD * f)))
 
     park = bank.clip('drill_park', 1.4, loop=False, end_mode='rest')
+    # Park must claim the string too or the spin loop owns it forever after
+    # drill:end — a slow coast to a dead stop supersedes the loop.
     for t, f in [(0.0, 3.0), (0.4, 2.4), (0.8, 1.2), (1.1, 0.3), (1.4, 0.0)]:
         park.key('drill_collar', t, loc=(0.0, 0.0, COLLAR_HOME_Z - FEED_STEP * f))
+    for t, r in [(0.0, 0.10), (0.35, 0.045), (0.7, 0.015), (1.4, 0.0)]:
+        park.key('drill_string', t, rot=Euler((0.0, 0.0, r)))
+
+    # Ambient: a parked platform still hums — the collar creeps millimetres on
+    # its track and the string index-turns a lazy fraction, both at rest at seam.
+    idle = bank.clip('drill_idle', 8.0, loop=True, end_mode='rest')
+    for i in range(9):
+        t = i * 1.0
+        phase = 2 * math.pi * t / 8.0
+        idle.key('drill_collar', t,
+                 loc=(0.0, 0.0, COLLAR_HOME_Z - 0.05 * (0.5 - 0.5 * math.cos(phase))))
+        idle.key('drill_string', t,
+                 rot=Euler((0.0, 0.0, 0.06 * math.sin(phase))))
 
 
 EVENTS = {
+    'authoredMotion:attach': 'drill_idle',
     'drill:start': 'drill_spin_up',
     'drill:feed': 'drill_feed',
     'drill:break': 'drill_stall_kick',
     'drill:end': 'drill_park',
+    # Rock breaking is its own kick — the head bucks as the asteroid gives.
+    'asteroid:destroyed': 'drill_stall_kick',
 }
 
 

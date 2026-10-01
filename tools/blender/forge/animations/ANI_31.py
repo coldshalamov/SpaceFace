@@ -16,6 +16,7 @@ can't leave the rig stuck flared.
 Triggers: `ai:telegraph`, `encounter:predationEngaged` (payload.raiderId),
 `ai:flee` — all entity-addressed.
 """
+import math
 import os
 import sys
 
@@ -30,6 +31,8 @@ SLAM_RAD = -0.16   # predation: wings flatten hard
 TUCK_RAD = -0.30   # flee: tips fold low
 GUN_EXT_M = 0.5
 GUN_REC_M = -0.22
+IDLE_WING_RAD = math.radians(1.8)   # ambient fin breathing — far under the bristle
+IDLE_GUN_M = 0.05                   # barrel tremor, one tenth of the predation punch
 # clip.key loc is the absolute local translation: gun travel rides the pod's
 # chin-mount home, not the hull origin.
 GUN_HOME = (3.2, 0.0, 0.55)
@@ -56,31 +59,45 @@ def author(bank):
     _wing_keys(c, [
         (0.0, 0.0), (0.25, FLARE_RAD), (0.45, FLARE_RAD * 0.92),
         (0.8, FLARE_RAD * 0.88), (1.0, FLARE_RAD * 0.35), (1.4, 0.0)])
-    c.key('wasp_guns', 0.0)
+    c.key('wasp_guns', 0.0, loc=gun_at(0.0))
     c.key('wasp_guns', 0.3, loc=gun_at(0.18))
     c.key('wasp_guns', 0.8, loc=gun_at(0.18))
-    c.key('wasp_guns', 1.4)
+    c.key('wasp_guns', 1.4, loc=gun_at(0.0))
 
     # --- predation: wings slam flat while the guns punch out --------------------------
     c = bank.clip('wasp_predate', 1.2, loop=False, end_mode='rest')
     _wing_keys(c, [
         (0.0, 0.0), (0.18, SLAM_RAD), (0.5, SLAM_RAD * 0.8), (1.2, 0.0)])
-    c.key('wasp_guns', 0.0)
+    c.key('wasp_guns', 0.0, loc=gun_at(0.0))
     c.key('wasp_guns', 0.15, loc=gun_at(GUN_EXT_M))
     c.key('wasp_guns', 0.55, loc=gun_at(GUN_EXT_M * 0.85))
-    c.key('wasp_guns', 1.2)
+    c.key('wasp_guns', 1.2, loc=gun_at(0.0))
 
     # --- flee: tuck low and recoil the stingers -----------------------------------------
     c = bank.clip('wasp_flee', 1.2, loop=False, end_mode='rest')
     _wing_keys(c, [
         (0.0, 0.0), (0.3, TUCK_RAD), (0.7, TUCK_RAD * 0.9), (1.2, 0.0)])
-    c.key('wasp_guns', 0.0)
+    c.key('wasp_guns', 0.0, loc=gun_at(0.0))
     c.key('wasp_guns', 0.35, loc=gun_at(GUN_REC_M))
-    c.key('wasp_guns', 1.2)
+    c.key('wasp_guns', 1.2, loc=gun_at(0.0))
+
+
+    # --- ambient: the winglets never lock — a hunting wasp breathes on its fins --------
+    idle = bank.clip('wasp_idle_drift', 6.0, loop=True, end_mode='rest')
+    for group, phase in (('wasp_winglet_p', 0.0), ('wasp_winglet_s', 0.5)):
+        for i in range(9):
+            t = i * 6.0 / 8
+            a = IDLE_WING_RAD * math.sin(2 * math.pi * (t / 6.0 + phase))
+            idle.key(group, t, rot=Euler((0.0, a, 0.0)))
+    for i in range(9):
+        t = i * 6.0 / 8
+        idle.key('wasp_guns', t, loc=gun_at(IDLE_GUN_M * math.sin(2 * math.pi * t / 6.0)))
 
 
 EVENTS = {
+    'authoredMotion:attach': 'wasp_idle_drift',
     'ai:telegraph': 'wasp_bristle',
+    'encounter:telegraph': 'wasp_bristle',
     'encounter:predationEngaged': 'wasp_predate',
     'ai:flee': 'wasp_flee',
 }

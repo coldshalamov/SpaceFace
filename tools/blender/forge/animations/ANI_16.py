@@ -21,6 +21,7 @@ Triggers: `dock:range` (deploy, render-side gate on payload.inRange),
 `dock:docked` (settle), `dock:undocked` + synthetic `kestrel:strutsStow`
 (range lost before docking) -> struts_stow.
 """
+import math
 import os
 import sys
 
@@ -93,8 +94,19 @@ def author(bank):
         (0.0, 1.0), (0.15, 1.03), (0.4, 0.72), (0.65, 0.3),
         (0.82, 0.08), (0.9, 0.0)])
 
+    # A live hull never sits dead still — the gear breathes a whisper of splay
+    # flex on a long cycle, out of phase. Rot-only: no extension, so the idle
+    # reads as hydraulic idle, never as a partial deploy in flight.
+    idle = bank.clip('strut_idle', 7.0, loop=True, end_mode='rest')
+    for group, phase in (('kestrel_strut_p', 0.0), ('kestrel_strut_s', 0.37),
+                         ('kestrel_strut_f', 0.71)):
+        for i in range(8):
+            p = ((i / 7.0) + phase) % 1.0
+            idle.key(group, i * 1.0, rot=Euler((0.02 * math.sin(2 * math.pi * p), 0.0, 0.0)))
+
 
 EVENTS = {
+    'authoredMotion:attach': 'strut_idle',
     'dock:range': 'struts_deploy',
     'dock:docked': 'dock_settle',
     'dock:undocked': 'struts_stow',

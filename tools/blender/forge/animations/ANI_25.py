@@ -22,6 +22,7 @@ Triggers: `dock:range` -> dock_anticipate (render-side gate on payload.inRange);
 `dock:docked` -> dock_engage; `dock:undocked` -> dock_release;
 `dock:denied` -> clamp_denied_flare.
 """
+import math
 import os
 import sys
 
@@ -112,8 +113,22 @@ def author(bank):
     for t, f in ((0.0, 0.0), (0.2, 1.0), (0.8, 0.0)):
         c.key('dock_umbilical', t, loc=(BOOM_HOME[0], BOOM_HOME[1] + BOOM_FLINCH_Y * f, BOOM_HOME[2]))
 
+    # --- ambient: the berth breathes between dockings -----------------------------------
+    # Boom sways a few cm on its riser and the clamps flex their springs — a bay
+    # that is never visited still reads alive.
+    c = bank.clip('berth_idle', 9.0, loop=True, end_mode='rest')
+    for i in range(10):
+        t = i * 1.0
+        phase = 2 * math.pi * t / 9.0
+        c.key('dock_umbilical', t,
+              loc=(BOOM_HOME[0], BOOM_HOME[1] + 0.08 * math.sin(phase), BOOM_HOME[2]))
+        _clamp_keys(c, [(t, {
+            'l': (0.04 * math.sin(phase + 1.1), 0.0),
+            'r': (-0.04 * math.sin(phase + 2.3), 0.0)})])
+
 
 EVENTS = {
+    'authoredMotion:attach': 'berth_idle',
     'dock:range': 'dock_anticipate',
     'dock:docked': 'dock_engage',
     'dock:undocked': 'dock_release',
